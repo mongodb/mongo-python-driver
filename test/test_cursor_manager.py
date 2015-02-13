@@ -34,14 +34,14 @@ class TestCursorManager(IntegrationTest):
     def setUpClass(cls):
         super(TestCursorManager, cls).setUpClass()
         cls.collection = cls.db.test
-        cls.collection.remove()
+        cls.collection.drop()
 
         # Ensure two batches.
-        cls.collection.insert({'_id': i} for i in range(200))
+        cls.collection.insert_many([{'_id': i} for i in range(200)])
 
     @classmethod
     def tearDownClass(cls):
-        cls.collection.remove()
+        cls.collection.drop()
 
     def test_cursor_manager_validation(self):
         with self.assertRaises(TypeError):

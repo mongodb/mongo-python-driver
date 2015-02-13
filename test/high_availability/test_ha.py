@@ -32,6 +32,7 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
+from pymongo.write_concern import WriteConcern
 from test import SkipTest, unittest, utils, client_knobs
 from test.utils import one, wait_until, connected
 from test.version import Version
@@ -96,12 +97,13 @@ class TestDirectConnection(HATestCase):
     def test_secondary_connection(self):
         self.c = MongoClient(self.seed, replicaSet=self.name)
         wait_until(lambda: len(self.c.secondaries), "discover secondary")
-        db = self.c.pymongo_test
-
         # Wait for replication...
         w = len(self.c.secondaries) + 1
-        db.test.remove({}, w=w)
-        db.test.insert({'foo': 'bar'}, w=w)
+        db = self.c.get_database("pymongo_test",
+                                 write_concern=WriteConcern(w=w))
+
+        db.test.delete_many({})
+        db.test.insert_one({'foo': 'bar'})
 
         # Test direct connection to a primary or secondary
         primary_host, primary_port = ha_tools.get_primary().split(':')
@@ -149,7 +151,9 @@ class TestDirectConnection(HATestCase):
             # direct connection raises AutoReconnect('not master'), MongoClient
             # should do the same for unacknowledged writes.
             try:
-                client.pymongo_test.test.insert({}, w=0)
+                client.get_database(
+                    "pymongo_test",
+                    write_concern=WriteConcern(w=0)).test.insert_one({})
             except AutoReconnect as e:
                 self.assertEqual('not master', e.args[0])
             else:
@@ -167,7 +171,9 @@ class TestDirectConnection(HATestCase):
             
             # See explanation above
             try:
-                client.pymongo_test.test.insert({}, w=0)
+                client.get_database(
+                    "pymongo_test",
+                    write_concern=WriteConcern(w=0)).test.insert_one({})
             except AutoReconnect as e:
                 self.assertEqual('not master', e.args[0])
             else:
@@ -389,10 +395,11 @@ class TestWritesWithFailover(HATestCase):
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: len(c.secondaries) == 2, "discover secondaries")
         primary = c.primary
-        db = c.pymongo_test
         w = len(c.secondaries) + 1
-        db.test.remove({}, w=w)
-        db.test.insert({'foo': 'bar'}, w=w)
+        db = c.get_database("pymongo_test",
+                            write_concern=WriteConcern(w=w))
+        db.test.delete_many({})
+        db.test.insert_one({'foo': 'bar'})
         self.assertEqual('bar', db.test.find_one()['foo'])
 
         killed = ha_tools.kill_primary(9)
@@ -406,7 +413,7 @@ class TestWritesWithFailover(HATestCase):
         # while we wait for new primary.
         for _ in xrange(10000):
             try:
-                db.test.insert({'bar': 'baz'})
+                db.test.insert_one({'bar': 'baz'})
 
                 # No error, found primary.
                 break
@@ -438,11 +445,12 @@ class TestReadWithFailover(HATestCase):
                 pass
             return True
 
-        db = c.pymongo_test
         w = len(c.secondaries) + 1
-        db.test.remove({}, w=w)
+        db = c.get_database("pymongo_test",
+                            write_concern=WriteConcern(w=w))
+        db.test.delete_many({})
         # Force replication
-        db.test.insert([{'foo': i} for i in xrange(10)], w=w)
+        db.test.insert_many([{'foo': i} for i in xrange(10)])
         self.assertEqual(10, db.test.count())
 
         db.read_preference = SECONDARY_PREFERRED
@@ -505,11 +513,11 @@ class TestReadPreference(HATestCase):
         self.other_secondary_dc = {'dc': self.other_secondary_tags['dc']}
 
         self.c = MongoClient(self.seed, replicaSet=self.name)
-        self.db = self.c.pymongo_test
         self.w = len(self.c.secondaries) + 1
-        self.db.test.remove({}, w=self.w)
-        self.db.test.insert(
-            [{'foo': i} for i in xrange(10)], w=self.w)
+        self.db = self.c.get_database("pymongo_test",
+                                      write_concern=WriteConcern(w=self.w))
+        self.db.test.delete_many({})
+        self.db.test.insert_many([{'foo': i} for i in xrange(10)])
 
         self.clear_ping_times()
 
@@ -754,8 +762,9 @@ class TestReplicaSetAuth(HATestCase):
 
     def test_auth_during_failover(self):
         self.assertTrue(self.db.authenticate('user', 'userpass'))
-        self.assertTrue(self.db.foo.insert({'foo': 'bar'},
-                                           w=3, wtimeout=3000))
+        db = self.db.connection.get_database(
+            self.db.name, write_concern=WriteConcern(w=3, wtimeout=3000))
+        self.assertTrue(db.foo.insert_one({'foo': 'bar'})
         self.db.logout()
         self.assertRaises(OperationFailure, self.db.foo.find_one)
 
@@ -820,7 +829,7 @@ class TestMongosHighAvailability(HATestCase):
 
     def test_mongos_ha(self):
         coll = self.client[self.dbname].test
-        self.assertTrue(coll.insert({'foo': 'bar'}))
+        coll.insert_one({'foo': 'bar'}))
 
         first = '%s:%d' % (self.client.host, self.client.port)
         ha_tools.kill_mongos(first)
@@ -873,13 +882,11 @@ class TestLastErrorDefaults(HATestCase):
 
         self.c.admin.command("replSetReconfig", replset)
 
-        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.insert,
+        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.insert_one,
                           {'_id': 0})
-        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.save,
-                          {'_id': 0, "a": 5})
-        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.update,
+        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.update_one,
                           {'_id': 0}, {"$set": {"a": 10}})
-        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.remove,
+        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.delete_one,
                           {'_id': 0})
 
 
@@ -893,8 +900,10 @@ class TestShipOfTheseus(HATestCase):
 
     def test_ship_of_theseus(self):
         c = MongoClient(self.seed, replicaSet=self.name)
-        db = c.pymongo_test
-        db.test.insert({}, w=len(c.secondaries) + 1)
+        db = c.get_database(
+            "pymongo_test",
+            write_concern=WriteConcern(w=len(c.secondaries) + 1))
+        db.test.insert_one({})
         find_one = db.test.find_one
 
         primary = ha_tools.get_primary()
@@ -985,9 +994,10 @@ class TestLastError(HATestCase):
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: c.secondaries, "discover secondary")
         ha_tools.stepdown_primary()
-        db = c.pymongo_test
+        db = c.get_database(
+            "pymongo_test", write_concern=WriteConcern(w=0))
 
-        db.test.insert({}, w=0)
+        db.test.insert_one({})
         response = db.error()
         self.assertTrue('err' in response and 'not master' in response['err'])
         wait_until(lambda: len(c.secondaries) == 2, "discover two secondaries")

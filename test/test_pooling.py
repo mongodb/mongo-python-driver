@@ -76,25 +76,25 @@ class MongoThread(threading.Thread):
         raise NotImplementedError
 
 
-class SaveAndFind(MongoThread):
+class InsertOneAndFind(MongoThread):
     def run_mongo_thread(self):
         for _ in range(N):
             rand = random.randint(0, N)
-            _id = self.db.sf.save({"x": rand})
+            _id = self.db.sf.insert_one({"x": rand}).inserted_id
             assert rand == self.db.sf.find_one(_id)["x"]
 
 
 class Unique(MongoThread):
     def run_mongo_thread(self):
         for _ in range(N):
-            self.db.unique.insert({})  # no error
+            self.db.unique.insert_one({})  # no error
 
 
 class NonUnique(MongoThread):
     def run_mongo_thread(self):
         for _ in range(N):
             try:
-                self.db.unique.insert({"_id": "jesse"})
+                self.db.unique.insert_one({"_id": "jesse"})
             except DuplicateKeyError:
                 pass
             else:
@@ -159,8 +159,8 @@ class _TestPoolingBase(unittest.TestCase):
         db = self.c[DB]
         db.unique.drop()
         db.test.drop()
-        db.unique.insert({"_id": "jesse"})
-        db.test.insert([{} for _ in range(10)])
+        db.unique.insert_one({"_id": "jesse"})
+        db.test.insert_many([{} for _ in range(10)])
 
     def create_pool(self, pair=(host, port), *args, **kwargs):
         return Pool(pair, PoolOptions(*args, **kwargs))
@@ -180,10 +180,10 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(c.max_pool_size, 100)
 
     def test_no_disconnect(self):
-        run_cases(self.c, [NonUnique, Unique, SaveAndFind])
+        run_cases(self.c, [NonUnique, Unique, InsertOneAndFind])
 
     def test_disconnect(self):
-        run_cases(self.c, [SaveAndFind, Disconnect, Unique])
+        run_cases(self.c, [InsertOneAndFind, Disconnect, Unique])
 
     def test_pool_reuses_open_socket(self):
         # Test Pool's _check_closed() method doesn't close a healthy socket.
@@ -286,8 +286,8 @@ class TestPooling(_TestPoolingBase):
             raise SkipTest("No multiprocessing module")
 
         a = rs_or_single_client()
-        a.pymongo_test.test.remove()
-        a.pymongo_test.test.insert({'_id':1})
+        a.pymongo_test.test.drop()
+        a.pymongo_test.test.insert_one({'_id':1})
         a.pymongo_test.test.find_one()
         self.assertEqual(1, len(get_pool(a).sockets))
         a_sock = one(get_pool(a).sockets)
@@ -422,8 +422,8 @@ class TestPoolMaxSize(_TestPoolingBase):
         collection = c[DB].test
 
         # Need one document.
-        collection.remove()
-        collection.insert({})
+        collection.drop()
+        collection.insert_one({})
 
         # nthreads had better be much larger than max_pool_size to ensure that
         # max_pool_size sockets are actually required at some point in this
@@ -457,8 +457,8 @@ class TestPoolMaxSize(_TestPoolingBase):
         collection = c[DB].test
 
         # Need one document.
-        collection.remove()
-        collection.insert({})
+        collection.drop()
+        collection.insert_one({})
 
         cx_pool = get_pool(c)
         nthreads = 10

@@ -149,8 +149,8 @@ class TestCursor(IntegrationTest):
         db.pymongo_test.drop()
         coll = db.pymongo_test
         self.assertRaises(TypeError, coll.find().max_time_ms, 'foo')
-        coll.insert({"amalia": 1})
-        coll.insert({"amalia": 2})
+        coll.insert_one({"amalia": 1})
+        coll.insert_one({"amalia": 2})
 
         coll.find().max_time_ms(None)
         coll.find().max_time_ms(long(1))
@@ -194,7 +194,7 @@ class TestCursor(IntegrationTest):
     def test_max_time_ms_getmore(self):
         # Test that Cursor handles server timeout error in response to getmore.
         coll = self.db.pymongo_test
-        coll.insert({} for _ in range(200))
+        coll.insert_many([{} for _ in range(200)])
         cursor = coll.find().max_time_ms(100)
 
         # Send initial query before turning on failpoint.
@@ -229,8 +229,7 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, db.test.find().hint, 5.5)
         db.test.drop()
 
-        for i in range(100):
-            db.test.insert({"num": i, "foo": i})
+        db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
 
         self.assertRaises(OperationFailure,
                           db.test.find({"num": 17, "foo": 17})
@@ -260,8 +259,7 @@ class TestCursor(IntegrationTest):
         db = self.db
         db.test.drop()
 
-        for i in range(100):
-            db.test.insert({'i': i})
+        db.test.insert_many([{"i": i} for i in range(100)])
 
         db.test.create_index([('i', DESCENDING)], name='fooindex')
         first = next(db.test.find())
@@ -278,8 +276,7 @@ class TestCursor(IntegrationTest):
         self.assertTrue(db.test.find().limit(long(5)))
 
         db.test.drop()
-        for i in range(100):
-            db.test.save({"x": i})
+        db.test.insert_many([{"x": i} for i in range(100)])
 
         count = 0
         for _ in db.test.find():
@@ -322,8 +319,7 @@ class TestCursor(IntegrationTest):
         db.test.drop()
         db.test.ensure_index([("j", ASCENDING)])
 
-        for j in range(10):
-            db.test.insert({"j": j, "k": j})
+        db.test.insert_many([{"j": j, "k": j} for j in range(10)])
 
         cursor = db.test.find().max([("j", 3)])
         self.assertEqual(len(list(cursor)), 3)
@@ -353,8 +349,7 @@ class TestCursor(IntegrationTest):
         db.test.drop()
         db.test.ensure_index([("j", ASCENDING)])
 
-        for j in range(10):
-            db.test.insert({"j": j, "k": j})
+        db.test.insert_many([{"j": j, "k": j} for j in range(10)])
 
         cursor = db.test.find().min([("j", 3)])
         self.assertEqual(len(list(cursor)), 7)
@@ -382,8 +377,7 @@ class TestCursor(IntegrationTest):
     def test_batch_size(self):
         db = self.db
         db.test.drop()
-        for x in range(200):
-            db.test.save({"x": x})
+        db.test.insert_many([{"x": x} for x in range(200)])
 
         self.assertRaises(TypeError, db.test.find().batch_size, None)
         self.assertRaises(TypeError, db.test.find().batch_size, "hello")
@@ -425,8 +419,7 @@ class TestCursor(IntegrationTest):
     def test_limit_and_batch_size(self):
         db = self.db
         db.test.drop()
-        for x in range(500):
-            db.test.save({"x": x})
+        db.test.insert_many([{"x": x} for x in range(500)])
 
         curs = db.test.find().limit(0).batch_size(10)
         next(curs)
@@ -475,8 +468,7 @@ class TestCursor(IntegrationTest):
 
         db.drop_collection("test")
 
-        for i in range(100):
-            db.test.save({"x": i})
+        db.test.insert_many([{"x": i} for i in range(100)])
 
         for i in db.test.find():
             self.assertEqual(i["x"], 0)
@@ -525,8 +517,7 @@ class TestCursor(IntegrationTest):
         unsort = list(range(10))
         random.shuffle(unsort)
 
-        for i in unsort:
-            db.test.save({"x": i})
+        db.test.insert_many([{"x": i} for i in unsort])
 
         asc = [i["x"] for i in db.test.find().sort("x", ASCENDING)]
         self.assertEqual(asc, list(range(10)))
@@ -550,7 +541,7 @@ class TestCursor(IntegrationTest):
 
         db.test.drop()
         for (a, b) in shuffled:
-            db.test.save({"a": a, "b": b})
+            db.test.insert_one({"a": a, "b": b})
 
         result = [(i["a"], i["b"]) for i in
                   db.test.find().sort([("b", DESCENDING),
@@ -569,8 +560,7 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(0, db.test.find().count())
 
-        for i in range(10):
-            db.test.save({"x": i})
+        db.test.insert_many([{"x": i} for i in range(10)])
 
         self.assertEqual(10, db.test.find().count())
         self.assertTrue(isinstance(db.test.find().count(), int))
@@ -592,8 +582,7 @@ class TestCursor(IntegrationTest):
         collection = self.db.test
         collection.drop()
 
-        collection.save({'i': 1})
-        collection.save({'i': 2})
+        collection.insert_many([{'i': 1}, {'i': 2}])
         self.assertEqual(2, collection.find().count())
 
         collection.create_index([('i', 1)])
@@ -631,8 +620,7 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, a.where, None)
         self.assertRaises(TypeError, a.where, {})
 
-        for i in range(10):
-            db.test.save({"x": i})
+        db.test.insert_many([{"x": i} for i in range(10)])
 
         self.assertEqual(3, len(list(db.test.find().where('this.x < 3'))))
         self.assertEqual(3,
@@ -664,9 +652,7 @@ class TestCursor(IntegrationTest):
         self.assertRaises(InvalidOperation, a.where, 'this.x < 3')
 
     def test_rewind(self):
-        self.db.test.save({"x": 1})
-        self.db.test.save({"x": 2})
-        self.db.test.save({"x": 3})
+        self.db.test.insert_many([{"x": i} for i in range(1, 4)])
 
         cursor = self.db.test.find().limit(2)
 
@@ -698,9 +684,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(cursor, cursor.rewind())
 
     def test_clone(self):
-        self.db.test.save({"x": 1})
-        self.db.test.save({"x": 2})
-        self.db.test.save({"x": 3})
+        self.db.test.insert_many([{"x": i} for i in range(1, 4)])
 
         cursor = self.db.test.find().limit(2)
 
@@ -798,7 +782,7 @@ class TestCursor(IntegrationTest):
 
     def test_count_with_fields(self):
         self.db.test.drop()
-        self.db.test.save({"x": 1})
+        self.db.test.insert_one({"x": 1})
         self.assertEqual(1, self.db.test.find({}, ["a"]).count())
 
     def test_bad_getitem(self):
@@ -808,8 +792,7 @@ class TestCursor(IntegrationTest):
 
     def test_getitem_slice_index(self):
         self.db.drop_collection("test")
-        for i in range(100):
-            self.db.test.save({"i": i})
+        self.db.test.insert_many([{"i": i} for i in range(100)])
 
         count = itertools.count
 
@@ -874,8 +857,7 @@ class TestCursor(IntegrationTest):
 
     def test_getitem_numeric_index(self):
         self.db.drop_collection("test")
-        for i in range(100):
-            self.db.test.save({"i": i})
+        self.db.test.insert_many([{"i": i} for i in range(100)])
 
         self.assertEqual(0, self.db.test.find()[0]['i'])
         self.assertEqual(50, self.db.test.find()[50]['i'])
@@ -897,8 +879,7 @@ class TestCursor(IntegrationTest):
             self.assertEqual(length, cursor.count(True))
 
         self.db.drop_collection("test")
-        for i in range(100):
-            self.db.test.save({"i": i})
+        self.db.test.insert_many([{"i": i} for i in range(100)])
 
         check_len(self.db.test.find(), 100)
 
@@ -927,7 +908,7 @@ class TestCursor(IntegrationTest):
     def test_get_more(self):
         db = self.db
         db.drop_collection("test")
-        db.test.insert([{'i': i} for i in range(10)])
+        db.test.insert_many([{'i': i} for i in range(10)])
         self.assertEqual(10, len(list(db.test.find().batch_size(5))))
 
     def test_tailable(self):
@@ -937,21 +918,21 @@ class TestCursor(IntegrationTest):
         self.addCleanup(db.drop_collection, "test")
         cursor = db.test.find(cursor_type=TAILABLE)
 
-        db.test.insert({"x": 1})
+        db.test.insert_one({"x": 1})
         count = 0
         for doc in cursor:
             count += 1
             self.assertEqual(1, doc["x"])
         self.assertEqual(1, count)
 
-        db.test.insert({"x": 2})
+        db.test.insert_one({"x": 2})
         count = 0
         for doc in cursor:
             count += 1
             self.assertEqual(2, doc["x"])
         self.assertEqual(1, count)
 
-        db.test.insert({"x": 3})
+        db.test.insert_one({"x": 3})
         count = 0
         for doc in cursor:
             count += 1
@@ -961,7 +942,7 @@ class TestCursor(IntegrationTest):
         # Capped rollover - the collection can never
         # have more than 3 documents. Just make sure
         # this doesn't raise...
-        db.test.insert(({"x": i} for i in range(4, 7)))
+        db.test.insert_many([{"x": i} for i in range(4, 7)])
         self.assertEqual(0, len(list(cursor)))
 
         # and that the cursor doesn't think it's still alive.
@@ -973,11 +954,8 @@ class TestCursor(IntegrationTest):
     def test_distinct(self):
         self.db.drop_collection("test")
 
-        self.db.test.save({"a": 1})
-        self.db.test.save({"a": 2})
-        self.db.test.save({"a": 2})
-        self.db.test.save({"a": 2})
-        self.db.test.save({"a": 3})
+        self.db.test.insert_many(
+            [{"a": 1}, {"a": 2}, {"a": 2}, {"a": 2}, {"a": 3}])
 
         distinct = self.db.test.find({"a": {"$lt": 3}}).distinct("a")
         distinct.sort()
@@ -986,10 +964,10 @@ class TestCursor(IntegrationTest):
 
         self.db.drop_collection("test")
 
-        self.db.test.save({"a": {"b": "a"}, "c": 12})
-        self.db.test.save({"a": {"b": "b"}, "c": 8})
-        self.db.test.save({"a": {"b": "c"}, "c": 12})
-        self.db.test.save({"a": {"b": "c"}, "c": 8})
+        self.db.test.insert_one({"a": {"b": "a"}, "c": 12})
+        self.db.test.insert_one({"a": {"b": "b"}, "c": 8})
+        self.db.test.insert_one({"a": {"b": "c"}, "c": 12})
+        self.db.test.insert_one({"a": {"b": "c"}, "c": 8})
 
         distinct = self.db.test.find({"c": 8}).distinct("a.b")
         distinct.sort()
@@ -998,8 +976,7 @@ class TestCursor(IntegrationTest):
 
     def test_max_scan(self):
         self.db.drop_collection("test")
-        for _ in range(100):
-            self.db.test.insert({})
+        self.db.test.insert_many([{} for _ in range(100)])
 
         self.assertEqual(100, len(list(self.db.test.find())))
         self.assertEqual(50, len(list(self.db.test.find().max_scan(50))))
@@ -1008,8 +985,7 @@ class TestCursor(IntegrationTest):
 
     def test_with_statement(self):
         self.db.drop_collection("test")
-        for _ in range(100):
-            self.db.test.insert({})
+        self.db.test.insert_many([{} for _ in range(100)])
 
         c1 = self.db.test.find()
         with self.db.test.find() as c2:
@@ -1062,7 +1038,7 @@ class TestCursor(IntegrationTest):
 
         run_with_profiling(distinct)
 
-        self.db.test.insert([{}, {}])
+        self.db.test.insert_many([{}, {}])
         cursor = self.db.test.find()
         next(cursor)
         self.assertRaises(InvalidOperation, cursor.comment, 'hello')
@@ -1076,8 +1052,8 @@ class TestCursor(IntegrationTest):
         client = client_context.rs_or_standalone_client
         db = client.pymongo_test
 
-        db.test.remove({})
-        db.test.insert({'_id': i} for i in range(200))
+        db.test.delete_many({})
+        db.test.insert_many([{'_id': i} for i in range(200)])
 
         class CManager(CursorManager):
             def __init__(self, connection):

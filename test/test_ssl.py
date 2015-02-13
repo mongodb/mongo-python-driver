@@ -193,7 +193,7 @@ class TestSSL(unittest.TestCase):
 
         db = client.pymongo_ssl_test
         db.test.drop()
-        self.assertTrue(db.test.insert({'ssl': True}))
+        db.test.insert_one({'ssl': True})
         self.assertTrue(db.test.find_one()['ssl'])
         client.drop_database('pymongo_ssl_test')
 
@@ -219,7 +219,7 @@ class TestSSL(unittest.TestCase):
 
         db = client.pymongo_ssl_test
         db.test.drop()
-        self.assertTrue(db.test.insert({'ssl': True}))
+        db.test.insert_one({'ssl': True})
         self.assertTrue(db.test.find_one()['ssl'])
         client.drop_database('pymongo_ssl_test')
 
@@ -245,7 +245,7 @@ class TestSSL(unittest.TestCase):
 
         db = client.pymongo_ssl_test
         db.test.drop()
-        self.assertTrue(db.test.insert({'ssl': True}))
+        db.test.insert_one({'ssl': True})
         self.assertTrue(db.test.find_one()['ssl'])
         client.drop_database('pymongo_ssl_test')
 
@@ -286,7 +286,7 @@ class TestSSL(unittest.TestCase):
 
         db = client.pymongo_ssl_test
         db.test.drop()
-        self.assertTrue(db.test.insert({'ssl': True}))
+        db.test.insert_one({'ssl': True})
         self.assertTrue(db.test.find_one()['ssl'])
         client.drop_database('pymongo_ssl_test')
 
@@ -328,7 +328,7 @@ class TestSSL(unittest.TestCase):
 
         db = client.pymongo_ssl_test
         db.test.drop()
-        self.assertTrue(db.test.insert({'ssl': True}))
+        db.test.insert_one({'ssl': True})
         self.assertTrue(db.test.find_one()['ssl'])
         client.drop_database('pymongo_ssl_test')
 
@@ -395,7 +395,7 @@ class TestSSL(unittest.TestCase):
         self.assertRaises(OperationFailure, coll.count)
         self.assertTrue(ssl_client.admin.authenticate(
             MONGODB_X509_USERNAME, mechanism='MONGODB-X509'))
-        self.assertTrue(coll.remove())
+        coll.drop()
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
                    quote_plus(MONGODB_X509_USERNAME), host, port))
@@ -408,7 +408,7 @@ class TestSSL(unittest.TestCase):
                                                                 port))
         client_bad = MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM)
         self.assertRaises(OperationFailure,
-                          client_bad.pymongo_test.test.remove)
+                          client_bad.pymongo_test.test.delete_one, {})
 
         # Auth should fail if username and certificate do not match
         uri = ('mongodb://%s@%s:%d/?authMechanism='

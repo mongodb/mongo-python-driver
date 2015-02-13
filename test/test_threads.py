@@ -43,7 +43,7 @@ class AutoAuthenticateThreads(threading.Thread):
 
     def run(self):
         for i in range(self.num):
-            self.coll.insert({'num': i})
+            self.coll.insert_one({'num': i})
             self.coll.find_one({'num': i})
 
         self.success = True
@@ -80,7 +80,7 @@ class Insert(threading.Thread):
             error = True
 
             try:
-                self.collection.insert({"test": "insert"})
+                self.collection.insert_one({"test": "insert"})
                 error = False
             except:
                 if not self.expect_exception:
@@ -104,8 +104,8 @@ class Update(threading.Thread):
             error = True
 
             try:
-                self.collection.update({"test": "unique"},
-                                       {"$set": {"test": "update"}})
+                self.collection.update_one({"test": "unique"},
+                                           {"$set": {"test": "update"}})
                 error = False
             except:
                 if not self.expect_exception:
@@ -136,8 +136,7 @@ class TestThreads(IntegrationTest):
 
     def test_threading(self):
         self.db.drop_collection("test")
-        for i in range(1000):
-            self.db.test.save({"x": i})
+        self.db.test.insert_many([{"x": i} for i in range(1000)])
 
         threads = []
         for i in range(10):
@@ -149,9 +148,9 @@ class TestThreads(IntegrationTest):
 
     def test_safe_insert(self):
         self.db.drop_collection("test1")
-        self.db.test1.insert({"test": "insert"})
+        self.db.test1.insert_one({"test": "insert"})
         self.db.drop_collection("test2")
-        self.db.test2.insert({"test": "insert"})
+        self.db.test2.insert_one({"test": "insert"})
 
         self.db.test2.create_index("test", unique=True)
         self.db.test2.find_one()
@@ -167,11 +166,11 @@ class TestThreads(IntegrationTest):
 
     def test_safe_update(self):
         self.db.drop_collection("test1")
-        self.db.test1.insert({"test": "update"})
-        self.db.test1.insert({"test": "unique"})
+        self.db.test1.insert_one({"test": "update"})
+        self.db.test1.insert_one({"test": "unique"})
         self.db.drop_collection("test2")
-        self.db.test2.insert({"test": "update"})
-        self.db.test2.insert({"test": "unique"})
+        self.db.test2.insert_one({"test": "update"})
+        self.db.test2.insert_one({"test": "unique"})
 
         self.db.test2.create_index("test", unique=True)
         self.db.test2.find_one()
@@ -187,8 +186,7 @@ class TestThreads(IntegrationTest):
 
     def test_client_disconnect(self):
         self.db.drop_collection("test")
-        for i in range(1000):
-            self.db.test.save({"x": i})
+        self.db.test.insert_many([{"x": i} for i in range(1000)])
 
         # Start 10 threads that execute a query, and 10 threads that call
         # client.disconnect() 10 times in a row.

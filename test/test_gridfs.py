@@ -363,7 +363,7 @@ class TestGridfs(IntegrationTest):
         self.fs.put(b"", filename="empty")
         doc = self.db.fs.files.find_one({"filename": "empty"})
         doc.pop("length")
-        self.db.fs.files.save(doc)
+        self.db.fs.files.replace_one({"_id": doc["_id"]}, doc)
         f = self.fs.get_last_version(filename="empty")
 
         def iterate_file(grid_file):
@@ -426,8 +426,8 @@ class TestGridfs(IntegrationTest):
         # Lua, and perhaps other buggy GridFS clients, store size as a float.
         data = b'data'
         self.fs.put(data, filename='f')
-        self.db.fs.files.update({'filename': 'f'},
-                                {'$set': {'chunkSize': 100.0}})
+        self.db.fs.files.update_one({'filename': 'f'},
+                                    {'$set': {'chunkSize': 100.0}})
 
         self.assertEqual(data, self.fs.get_version('f').read())
 

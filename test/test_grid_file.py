@@ -123,8 +123,8 @@ class TestGridFile(IntegrationTest):
         self.assertEqual("6f5902ac237024bdd0c176cb93063dc4", f.md5)
 
     def test_alternate_collection(self):
-        self.db.alt.files.remove({})
-        self.db.alt.chunks.remove({})
+        self.db.alt.files.delete_many({})
+        self.db.alt.chunks.delete_many({})
 
         f = GridIn(self.db.alt)
         f.write(b"hello world")

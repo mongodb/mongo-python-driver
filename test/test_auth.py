@@ -161,8 +161,8 @@ class TestGSSAPI(unittest.TestCase):
         # multiple sockets from the pool concurrently, proving that
         # auto-authentication works with GSSAPI.
         collection = client.test.collection
-        collection.remove()
-        collection.insert({'_id': 1})
+        collection.drop()
+        collection.insert_one({'_id': 1})
 
         threads = []
         for _ in range(4):
@@ -239,14 +239,14 @@ class TestSASLPlain(unittest.TestCase):
         self.assertRaises(OperationFailure, client.ldap.authenticate,
                           'not-user', SASL_PASS, SASL_DB, 'PLAIN')
         self.assertRaises(OperationFailure, client.ldap.test.find_one)
-        self.assertRaises(OperationFailure, client.ldap.test.insert,
+        self.assertRaises(OperationFailure, client.ldap.test.insert_one,
                           {"failed": True})
 
         # Bad password
         self.assertRaises(OperationFailure, client.ldap.authenticate,
                           SASL_USER, 'not-pwd', SASL_DB, 'PLAIN')
         self.assertRaises(OperationFailure, client.ldap.test.find_one)
-        self.assertRaises(OperationFailure, client.ldap.test.insert,
+        self.assertRaises(OperationFailure, client.ldap.test.insert_one,
                           {"failed": True})
 
         def auth_string(user, password):
@@ -412,8 +412,8 @@ class TestDelegatedAuth(unittest.TestCase):
         self.client.pymongo_test2.foo.drop()
 
     def test_delegated_auth(self):
-        self.client.pymongo_test2.foo.remove()
-        self.client.pymongo_test2.foo.insert({})
+        self.client.pymongo_test2.foo.drop()
+        self.client.pymongo_test2.foo.insert_one({})
         # User definition with no roles in pymongo_test.
         self.client.pymongo_test.add_user('user', 'pass', roles=[])
         # Delegate auth to pymongo_test.

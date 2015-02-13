@@ -48,7 +48,7 @@ class TestCommon(IntegrationTest):
         # Test basic query
         uu = uuid.uuid4()
         # Insert as binary subtype 3
-        coll.insert({'uu': uu})
+        coll.insert_one({'uu': uu})
         self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=STANDARD))
@@ -62,34 +62,25 @@ class TestCommon(IntegrationTest):
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         self.assertEqual(1, coll.find({'uu': uu}).count())
 
-        # Test remove
+        # Test delete
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=STANDARD))
-        coll.remove({'uu': uu})
+        coll.delete_one({'uu': uu})
         self.assertEqual(1, coll.count())
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        coll.remove({'uu': uu})
+        coll.delete_one({'uu': uu})
         self.assertEqual(0, coll.count())
 
-        # Test save
-        coll.insert({'_id': uu, 'i': 0})
-        self.assertEqual(1, coll.count())
-        self.assertEqual(1, coll.find({'_id': uu}).count())
-        self.assertEqual(0, coll.find_one({'_id': uu})['i'])
-        doc = coll.find_one({'_id': uu})
-        doc['i'] = 1
-        coll.save(doc)
-        self.assertEqual(1, coll.find_one({'_id': uu})['i'])
-
-        # Test update
+        # Test update_one
+        coll.insert_one({'_id': uu, 'i': 1})
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=STANDARD))
-        coll.update({'_id': uu}, {'$set': {'i': 2}})
+        coll.update_one({'_id': uu}, {'$set': {'i': 2}})
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         self.assertEqual(1, coll.find_one({'_id': uu})['i'])
-        coll.update({'_id': uu}, {'$set': {'i': 2}})
+        coll.update_one({'_id': uu}, {'$set': {'i': 2}})
         self.assertEqual(2, coll.find_one({'_id': uu})['i'])
 
         # Test Cursor.distinct
@@ -118,9 +109,9 @@ class TestCommon(IntegrationTest):
 
         # Test (inline)_map_reduce
         coll.drop()
-        coll.insert({"_id": uu, "x": 1, "tags": ["dog", "cat"]})
-        coll.insert({"_id": uuid.uuid4(), "x": 3,
-                     "tags": ["mouse", "cat", "dog"]})
+        coll.insert_one({"_id": uu, "x": 1, "tags": ["dog", "cat"]})
+        coll.insert_one({"_id": uuid.uuid4(), "x": 3,
+                         "tags": ["mouse", "cat", "dog"]})
 
         map = Code("function () {"
                    "  this.tags.forEach(function(z) {"
@@ -158,8 +149,8 @@ class TestCommon(IntegrationTest):
         coll.drop()
 
         # Test group
-        coll.insert({"_id": uu, "a": 2})
-        coll.insert({"_id": uuid.uuid4(), "a": 1})
+        coll.insert_one({"_id": uu, "a": 2})
+        coll.insert_one({"_id": uuid.uuid4(), "a": 1})
 
         reduce = "function (obj, prev) { prev.count++; }"
         coll = self.db.get_collection(
@@ -196,27 +187,27 @@ class TestCommon(IntegrationTest):
         coll = m.pymongo_test.write_concern_test
         coll.drop()
         doc = {"_id": ObjectId()}
-        coll.insert(doc)
-        self.assertTrue(coll.insert(doc, w=0))
-        self.assertTrue(coll.insert(doc))
-        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+        coll.insert_one(doc)
+        self.assertTrue(coll.insert_one(doc))
+        coll = coll.with_options(write_concern=WriteConcern(w=1))
+        self.assertRaises(OperationFailure, coll.insert, doc)
 
         m = rs_or_single_client()
         coll = m.pymongo_test.write_concern_test
-        self.assertTrue(coll.insert(doc, w=0))
-        self.assertRaises(OperationFailure, coll.insert, doc)
-        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+        new_coll = coll.with_options(write_concern=WriteConcern(w=0))
+        self.assertTrue(new_coll.insert_one(doc))
+        self.assertRaises(OperationFailure, coll.insert_one, doc)
 
         m = MongoClient("mongodb://%s/" % (pair,),
                         replicaSet=client_context.replica_set_name)
 
         coll = m.pymongo_test.write_concern_test
-        self.assertRaises(OperationFailure, coll.insert, doc)
+        self.assertRaises(OperationFailure, coll.insert_one, doc)
         m = MongoClient("mongodb://%s/?w=0" % (pair,),
                         replicaSet=client_context.replica_set_name)
 
         coll = m.pymongo_test.write_concern_test
-        self.assertTrue(coll.insert(doc))
+        coll.insert_one(doc)
 
         # Equality tests
         direct = connected(single_client(w=0))

@@ -187,9 +187,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
         # Disable background refresh.
         with client_knobs(heartbeat_frequency=999999):
-            c = rs_client(socketTimeoutMS=3000)
+            c = rs_client(socketTimeoutMS=3000, w=self.w)
             collection = c.pymongo_test.test
-            collection.insert({}, w=self.w)
+            collection.insert_one({})
 
             # Query the primary.
             self.assertRaises(
@@ -236,8 +236,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
         uri = "mongodb://%slocalhost:%d,[::1]:%d" % (auth_str, port, port)
         client = MongoClient(uri, replicaSet=self.name)
-        client.pymongo_test.test.save({"dummy": u("object")})
-        client.pymongo_test_bernie.test.save({"dummy": u("object")})
+        client.pymongo_test.test.insert_one({"dummy": u("object")})
+        client.pymongo_test_bernie.test.insert_one({"dummy": u("object")})
 
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
@@ -246,12 +246,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
     def _test_kill_cursor_explicit(self, read_pref):
         with client_knobs(kill_cursor_frequency=0.01):
-            c = rs_client(read_preference=read_pref)
+            c = rs_client(read_preference=read_pref, w=self.w)
             db = c.pymongo_test
             db.drop_collection("test")
 
             test = db.test
-            test.insert([{"i": i} for i in range(20)], w=self.w)
+            test.insert_many([{"i": i} for i in range(20)])
 
             # Partially evaluate cursor so it's left alive, then kill it
             cursor = test.find().batch_size(10)
@@ -298,10 +298,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             direct_client.pymongo_test.command('count', 'collection')
 
         with self.assertRaises(NotMasterError):
-            direct_client.pymongo_test.collection.insert({})
+            direct_client.pymongo_test.collection.insert_one({})
 
+        db = direct_client.get_database(
+                "pymongo_test", write_concern=WriteConcern(w=0))
         with self.assertRaises(NotMasterError):
-            direct_client.pymongo_test.collection.insert({}, w=0)
+            db.collection.insert_one({})
 
 
 class TestReplicaSetWireVersion(MockClientTest):
@@ -341,7 +343,7 @@ class TestReplicaSetWireVersion(MockClientTest):
         wait_until(raises_configuration_error,
                    'notice we are incompatible with server')
 
-        self.assertRaises(ConfigurationError, c.db.collection.insert, {})
+        self.assertRaises(ConfigurationError, c.db.collection.insert_one, {})
 
 
 class TestReplicaSetClientInternalIPs(MockClientTest):

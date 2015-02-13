@@ -28,6 +28,7 @@ from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, OperationFailure
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
+from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   db_user,
                   db_pwd,
@@ -191,7 +192,9 @@ def remove_all_users(db):
         db.command("dropAllUsersFromDatabase", 1,
                    writeConcern={"w": client_context.w})
     else:
-        db.system.users.remove({}, w=client_context.w)
+        db = db.connetion.get_database(
+            db.name, write_concern=WriteConcern(w=client_context.w))
+        db.system.users.delete_many({})
 
 
 def joinall(threads):

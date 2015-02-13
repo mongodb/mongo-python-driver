@@ -39,7 +39,7 @@ collection = client.test.test
 ndocs = 20
 
 collection.drop()
-collection.insert([{'i': i} for i in range(ndocs)])
+collection.insert_many([{'i': i} for i in range(ndocs)])
 client.disconnect()  # Discard main thread's request socket.
 
 try:

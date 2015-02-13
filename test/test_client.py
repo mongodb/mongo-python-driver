@@ -278,8 +278,8 @@ class TestClient(IntegrationTest):
         self.assertEqual(client_context.nodes, self.client.nodes)
 
     def test_database_names(self):
-        self.client.pymongo_test.test.save({"dummy": u("object")})
-        self.client.pymongo_test_mike.test.save({"dummy": u("object")})
+        self.client.pymongo_test.test.insert_one({"dummy": u("object")})
+        self.client.pymongo_test_mike.test.insert_one({"dummy": u("object")})
 
         dbs = self.client.database_names()
         self.assertTrue("pymongo_test" in dbs)
@@ -289,8 +289,8 @@ class TestClient(IntegrationTest):
         self.assertRaises(TypeError, self.client.drop_database, 5)
         self.assertRaises(TypeError, self.client.drop_database, None)
 
-        self.client.pymongo_test.test.save({"dummy": u("object")})
-        self.client.pymongo_test2.test.save({"dummy": u("object")})
+        self.client.pymongo_test.test.insert_one({"dummy": u("object")})
+        self.client.pymongo_test2.test.insert_one({"dummy": u("object")})
         dbs = self.client.database_names()
         self.assertIn("pymongo_test", dbs)
         self.assertIn("pymongo_test2", dbs)
@@ -409,7 +409,7 @@ class TestClient(IntegrationTest):
 
         # Confirm we can do operations via the socket.
         client = MongoClient(uri)
-        client.pymongo_test.test.save({"dummy": "object"})
+        client.pymongo_test.test.insert_one({"dummy": "object"})
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
 
@@ -470,7 +470,7 @@ class TestClient(IntegrationTest):
     def test_document_class(self):
         c = self.client
         db = c.pymongo_test
-        db.test.insert({"x": 1})
+        db.test.insert_one({"x": 1})
 
         self.assertEqual(dict, c.document_class)
         self.assertTrue(isinstance(db.test.find_one(), dict))
@@ -521,7 +521,7 @@ class TestClient(IntegrationTest):
         timeout = rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
 
         no_timeout.pymongo_test.drop_collection("test")
-        no_timeout.pymongo_test.test.insert({"x": 1})
+        no_timeout.pymongo_test.test.insert_one({"x": 1})
 
         # A $where clause that takes a second longer than the timeout
         where_func = delay(timeout_sec + 1)
@@ -554,7 +554,7 @@ class TestClient(IntegrationTest):
         aware.pymongo_test.drop_collection("test")
 
         now = datetime.datetime.utcnow()
-        aware.pymongo_test.test.insert({"x": now})
+        aware.pymongo_test.test.insert_one({"x": now})
 
         self.assertEqual(None, naive.pymongo_test.test.find_one()["x"].tzinfo)
         self.assertEqual(utc, aware.pymongo_test.test.find_one()["x"].tzinfo)
@@ -574,8 +574,8 @@ class TestClient(IntegrationTest):
             uri += '/?replicaSet=' + client_context.replica_set_name
 
         client = rs_or_single_client_noauth(uri)
-        client.pymongo_test.test.save({"dummy": u("object")})
-        client.pymongo_test_bernie.test.save({"dummy": u("object")})
+        client.pymongo_test.test.insert_one({"dummy": u("object")})
+        client.pymongo_test_bernie.test.insert_one({"dummy": u("object")})
 
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
@@ -606,7 +606,7 @@ class TestClient(IntegrationTest):
     def test_contextlib(self):
         client = rs_or_single_client()
         client.pymongo_test.drop_collection("test")
-        client.pymongo_test.test.insert({"foo": "bar"})
+        client.pymongo_test.test.insert_one({"foo": "bar"})
 
         # The socket used for the previous commands has been returned to the
         # pool
@@ -638,7 +638,7 @@ class TestClient(IntegrationTest):
 
         # Need exactly 1 document so find() will execute its $where clause once
         db.drop_collection('foo')
-        db.foo.insert({'_id': 1})
+        db.foo.insert_one({'_id': 1})
 
         def interrupter():
             # Raises KeyboardInterrupt in the main thread
@@ -674,10 +674,10 @@ class TestClient(IntegrationTest):
         self.assertGreaterEqual(socket_count, 1)
         old_sock_info = next(iter(pool.sockets))
         self.client.pymongo_test.test.drop()
-        self.client.pymongo_test.test.insert({'_id': 'foo'})
+        self.client.pymongo_test.test.insert_one({'_id': 'foo'})
         self.assertRaises(
             OperationFailure,
-            self.client.pymongo_test.test.insert, {'_id': 'foo'})
+            self.client.pymongo_test.test.insert_one, {'_id': 'foo'})
 
         self.assertEqual(socket_count, len(pool.sockets))
         new_sock_info = next(iter(pool.sockets))
@@ -697,9 +697,9 @@ class TestClient(IntegrationTest):
             raise SkipTest("Can't test kill_cursors against old mongos")
 
         self.collection = self.client.pymongo_test.test
-        self.collection.remove()
+        self.collection.drop()
         
-        self.collection.insert({'_id': i} for i in range(200))
+        self.collection.insert_many([{'_id': i} for i in range(200)])
         cursor = self.collection.find().batch_size(1)
         next(cursor)
         self.client.kill_cursors([cursor.cursor_id])
@@ -740,14 +740,14 @@ class TestClient(IntegrationTest):
 
         # Use a separate collection to avoid races where we're still
         # completing an operation on a collection while the next test begins.
-        client = rs_or_single_client(connect=False)
-        client.test_lazy_connect_w0.test.insert({}, w=0)
+        client = rs_or_single_client(connect=False, w=0)
+        client.test_lazy_connect_w0.test.insert_one({})
 
         client = rs_or_single_client(connect=False)
-        client.test_lazy_connect_w0.test.update({}, {'$set': {'x': 1}}, w=0)
+        client.test_lazy_connect_w0.test.update_one({}, {'$set': {'x': 1}})
 
         client = rs_or_single_client(connect=False)
-        client.test_lazy_connect_w0.test.remove(w=0)
+        client.test_lazy_connect_w0.test.delete_one({})
 
     @client_context.require_no_mongos
     def test_exhaust_network_error(self):
@@ -870,9 +870,9 @@ class TestExhaustCursor(IntegrationTest):
         # out on success but it's checked in on error to avoid semaphore leaks.
         client = rs_or_single_client(max_pool_size=1)
         collection = client.pymongo_test.test
-        collection.remove()
+        collection.drop()
 
-        collection.insert([{} for _ in range(200)])
+        collection.insert_many([{} for _ in range(200)])
         self.addCleanup(client_context.client.pymongo_test.test.drop)
 
         pool = get_pool(client)
@@ -928,8 +928,8 @@ class TestExhaustCursor(IntegrationTest):
         # out on success but it's checked in on error to avoid semaphore leaks.
         client = rs_or_single_client(max_pool_size=1)
         collection = client.pymongo_test.test
-        collection.remove()
-        collection.insert([{} for _ in range(200)])  # More than one batch.
+        collection.drop()
+        collection.insert_many([{} for _ in range(200)])  # More than one batch.
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
 
@@ -992,63 +992,51 @@ class TestClientLazyConnect(IntegrationTest):
     def _get_client(self):
         return rs_or_single_client(connect=False)
 
-    def test_insert(self):
+    def test_insert_one(self):
         def reset(collection):
             collection.drop()
 
-        def insert(collection, _):
-            collection.insert({})
+        def insert_one(collection, _):
+            collection.insert_one({})
 
         def test(collection):
             self.assertEqual(NTHREADS, collection.count())
 
-        lazy_client_trial(reset, insert, test, self._get_client)
+        lazy_client_trial(reset, insert_one, test, self._get_client)
 
-    def test_save(self):
+    def test_update_one(self):
         def reset(collection):
             collection.drop()
-
-        def save(collection, _):
-            collection.save({})
-
-        def test(collection):
-            self.assertEqual(NTHREADS, collection.count())
-
-        lazy_client_trial(reset, save, test, self._get_client)
-
-    def test_update(self):
-        def reset(collection):
-            collection.drop()
-            collection.insert([{'i': 0}])
+            collection.insert_one({'i': 0})
 
         # Update doc 10 times.
-        def update(collection, _):
-            collection.update({}, {'$inc': {'i': 1}})
+        def update_one(collection, _):
+            collection.update_one({}, {'$inc': {'i': 1}})
 
         def test(collection):
             self.assertEqual(NTHREADS, collection.find_one()['i'])
 
-        lazy_client_trial(reset, update, test, self._get_client)
+        lazy_client_trial(reset, update_one, test, self._get_client)
 
-    def test_remove(self):
+    def test_delete_one(self):
         def reset(collection):
             collection.drop()
-            collection.insert([{'i': i} for i in range(NTHREADS)])
+            collection.insert_many([{'i': i} for i in range(NTHREADS)])
 
-        def remove(collection, i):
-            collection.remove({'i': i})
+        def delete_one(collection, i):
+            collection.delete_one({'i': i})
 
         def test(collection):
             self.assertEqual(0, collection.count())
 
-        lazy_client_trial(reset, remove, test, self._get_client)
+        lazy_client_trial(reset, delete_one, test, self._get_client)
 
     def test_find_one(self):
         results = []
 
         def reset(collection):
             collection.drop()
-            collection.insert({})
+            collection.insert_one({})
             results[:] = []
 
         def find_one(collection, _):

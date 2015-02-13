@@ -20,6 +20,7 @@ sys.path[0:0] = [""]
 
 from bson.py3compat import MAXSIZE
 from pymongo.cursor import _QUERY_OPTIONS
+from pymongo.errors import ConfigurationError
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import (ReadPreference, MovingAverage,
                                       Primary, PrimaryPreferred,
@@ -27,7 +28,7 @@ from pymongo.read_preferences import (ReadPreference, MovingAverage,
                                       Nearest, ServerMode)
 from pymongo.server_selectors import any_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.errors import ConfigurationError
+from pymongo.write_concern import WriteConcern
 
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test import (client_context,
@@ -48,8 +49,10 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
         super(TestReadPreferencesBase, self).setUp()
         # Insert some data so we can use cursors in read_from_which_host
         self.client.pymongo_test.test.drop()
-        self.client.pymongo_test.test.insert(
-            [{'_id': i} for i in range(10)], w=self.w)
+        self.client.get_database(
+            "pymongo_test",
+            write_concern=WriteConcern(w=self.w)).test.insert_many(
+                [{'_id': i} for i in range(10)])
 
         self.addCleanup(self.client.pymongo_test.test.drop)
 
@@ -287,10 +290,12 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
     @client_context.require_version_min(2, 5, 2)
     def test_aggregate_command_with_out(self):
         # Tests aggregate command when pipeline contains $out.
-        self.c.pymongo_test.test.insert({"x": 1, "y": 1}, w=self.w)
-        self.c.pymongo_test.test.insert({"x": 1, "y": 2}, w=self.w)
-        self.c.pymongo_test.test.insert({"x": 2, "y": 1}, w=self.w)
-        self.c.pymongo_test.test.insert({"x": 2, "y": 2}, w=self.w)
+        db = self.c.get_database(
+            "pymongo_test", write_concern=WriteConcern(w=self.w))
+        db.test.insert_one({"x": 1, "y": 1})
+        db.test.insert_one({"x": 1, "y": 2})
+        db.test.insert_one({"x": 2, "y": 1})
+        db.test.insert_one({"x": 2, "y": 2})
 
         # Test aggregate when sent through the collection aggregate
         # function. Aggregate with $out always goes to primary, doesn't obey
@@ -320,7 +325,9 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
     def test_map_reduce(self):
         # mapreduce fails if no collection
-        self.c.pymongo_test.test.insert({}, w=self.w)
+        coll = self.c.pymongo_test.test.with_options(
+            write_concern=WriteConcern(w=self.w))
+        coll.insert_one({})
 
         self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
                                'function() { }', 'function() { }', 'mr_out')
@@ -331,7 +338,9 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
     def test_inline_map_reduce(self):
         # mapreduce fails if no collection
-        self.c.pymongo_test.test.insert({}, w=self.w)
+        coll = self.c.pymongo_test.test.with_options(
+            write_concern=WriteConcern(w=self.w))
+        coll.insert_one({})
 
         self._test_coll_helper(True, self.c.pymongo_test.test,
                                'inline_map_reduce',

@@ -45,7 +45,7 @@ class BulkTestBase(IntegrationTest):
 
     def setUp(self):
         super(BulkTestBase, self).setUp()
-        self.coll.remove()
+        self.coll.drop()
 
     def assertEqualResponse(self, expected, actual):
         """Compare response from bulk.execute() to expected response."""
@@ -197,7 +197,7 @@ class TestBulk(BulkTestBase):
             'writeErrors': [],
             'writeConcernErrors': []
         }
-        self.coll.insert([{}, {}])
+        self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
 
@@ -216,8 +216,8 @@ class TestBulk(BulkTestBase):
         self.assertEqualResponse(expected, result)
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 2)
 
-        self.coll.remove()
-        self.coll.insert([{}, {}])
+        self.coll.delete_many({})
+        self.coll.insert_many([{}, {}])
         result = self.coll.bulk_write([UpdateMany({},
                                                   {'$set': {'foo': 'bar'}})])
         self.assertEqualResponse(expected, result.bulk_api_result)
@@ -230,8 +230,8 @@ class TestBulk(BulkTestBase):
         bulk.find({}).update(updates)
         self.assertRaises(BulkWriteError, bulk.execute)
 
-        self.coll.remove()
-        self.coll.insert([{}, {}])
+        self.coll.delete_many({})
+        self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).update({'$set': {'bim': 'baz'}})
@@ -249,7 +249,7 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 2)
 
-        self.coll.insert({'x': 1})
+        self.coll.insert_one({'x': 1})
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({'x': 1}).update({'$set': {'x': 42}})
         result = bulk.execute()
@@ -294,7 +294,7 @@ class TestBulk(BulkTestBase):
             'writeConcernErrors': []
         }
 
-        self.coll.insert([{}, {}])
+        self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
 
@@ -312,16 +312,16 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
 
-        self.coll.remove()
-        self.coll.insert([{}, {}])
+        self.coll.delete_many({})
+        self.coll.insert_many([{}, {}])
         result = self.coll.bulk_write([UpdateOne({},
                                                  {'$set': {'foo': 'bar'}})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.matched_count)
         self.assertTrue(result.modified_count in (1, None))
 
-        self.coll.remove()
-        self.coll.insert([{}, {}])
+        self.coll.delete_many({})
+        self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).update_one({'$set': {'bim': 'baz'}})
@@ -349,7 +349,7 @@ class TestBulk(BulkTestBase):
             'writeConcernErrors': []
         }
 
-        self.coll.insert([{}, {}])
+        self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
         self.assertRaises(TypeError, bulk.find({}).replace_one, 1)
@@ -361,15 +361,15 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
 
-        self.coll.remove()
-        self.coll.insert([{}, {}])
+        self.coll.delete_many({})
+        self.coll.insert_many([{}, {}])
         result = self.coll.bulk_write([ReplaceOne({}, {'foo': 'bar'})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.matched_count)
         self.assertTrue(result.modified_count in (1, None))
 
-        self.coll.remove()
-        self.coll.insert([{}, {}])
+        self.coll.delete_many({})
+        self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).replace_one({'bim': 'baz'})
@@ -390,7 +390,7 @@ class TestBulk(BulkTestBase):
             'writeErrors': [],
             'writeConcernErrors': []
         }
-        self.coll.insert([{}, {}])
+        self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
 
@@ -402,13 +402,13 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(self.coll.count(), 0)
 
-        self.coll.insert([{}, {}])
+        self.coll.insert_many([{}, {}])
         result = self.coll.bulk_write([DeleteMany({})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(2, result.deleted_count)
 
         # Test removing some documents, ordered.
-        self.coll.insert([{}, {'x': 1}, {}, {'x': 1}])
+        self.coll.insert_many([{}, {'x': 1}, {}, {'x': 1}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
 
@@ -426,10 +426,10 @@ class TestBulk(BulkTestBase):
             result)
 
         self.assertEqual(self.coll.count(), 2)
-        self.coll.remove()
+        self.coll.delete_many({})
 
         # Test removing all documents, unordered.
-        self.coll.insert([{}, {}])
+        self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).remove()
@@ -448,7 +448,7 @@ class TestBulk(BulkTestBase):
         # Test removing some documents, unordered.
         self.assertEqual(self.coll.count(), 0)
 
-        self.coll.insert([{}, {'x': 1}, {}, {'x': 1}])
+        self.coll.insert_many([{}, {'x': 1}, {}, {'x': 1}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({'x': 1}).remove()
@@ -465,7 +465,7 @@ class TestBulk(BulkTestBase):
             result)
 
         self.assertEqual(self.coll.count(), 2)
-        self.coll.remove()
+        self.coll.delete_many({})
 
     def test_remove_one(self):
 
@@ -476,7 +476,7 @@ class TestBulk(BulkTestBase):
 
         # Test removing one document, empty selector.
         # First ordered, then unordered.
-        self.coll.insert([{}, {}])
+        self.coll.insert_many([{}, {}])
         expected = {
             'nMatched': 0,
             'nModified': 0,
@@ -494,13 +494,13 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(self.coll.count(), 1)
 
-        self.coll.insert({})
+        self.coll.insert_one({})
         result = self.coll.bulk_write([DeleteOne({})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.deleted_count)
         self.assertEqual(self.coll.count(), 1)
 
-        self.coll.insert({})
+        self.coll.insert_one({})
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).remove_one()
@@ -511,7 +511,7 @@ class TestBulk(BulkTestBase):
 
         # Test removing one document, with a selector.
         # First ordered, then unordered.
-        self.coll.insert([{'x': 1}])
+        self.coll.insert_one({'x': 1})
 
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.find({'x': 1}).remove_one()
@@ -519,7 +519,7 @@ class TestBulk(BulkTestBase):
         self.assertEqualResponse(expected, result)
 
         self.assertEqual([{}], list(self.coll.find({}, {'_id': False})))
-        self.coll.insert({'x': 1})
+        self.coll.insert_one({'x': 1})
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({'x': 1}).remove_one()
@@ -551,7 +551,7 @@ class TestBulk(BulkTestBase):
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
 
-        self.coll.remove()
+        self.coll.delete_many({})
         result = self.coll.bulk_write([ReplaceOne({},
                                                   {'foo': 'bar'},
                                                   upsert=True)])
@@ -837,7 +837,7 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(1, result['nInserted'])
 
-        self.coll.remove()
+        self.coll.delete_many({})
 
         big = 'x' * (1024 * 1024 * 4)
         batch = self.coll.initialize_ordered_bulk_op()
@@ -869,7 +869,7 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(2, result['nInserted'])
 
-        self.coll.remove()
+        self.coll.delete_many({})
 
         big = 'x' * (1024 * 1024 * 4)
         batch = self.coll.initialize_ordered_bulk_op()
@@ -896,7 +896,7 @@ class TestBulk(BulkTestBase):
         self.assertEqual(n_docs, self.coll.count())
 
         # Same with ordered bulk.
-        self.coll.remove()
+        self.coll.delete_many({})
         batch = self.coll.initialize_ordered_bulk_op()
         for _ in range(n_docs):
             batch.insert({})
@@ -995,7 +995,7 @@ class TestBulkWriteConcern(BulkTestBase):
         self.assertEqual(64, failed['code'])
         self.assertTrue(isinstance(failed['errmsg'], string_type))
 
-        self.coll.remove()
+        self.coll.delete_many({})
         self.coll.ensure_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
 
@@ -1061,7 +1061,7 @@ class TestBulkWriteConcern(BulkTestBase):
         # write concern error for each operation.
         self.assertTrue(len(result['writeConcernErrors']) > 1)
 
-        self.coll.remove()
+        self.coll.delete_many({})
         self.coll.ensure_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
 

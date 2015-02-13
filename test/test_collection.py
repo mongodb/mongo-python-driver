@@ -137,7 +137,7 @@ class TestCollection(IntegrationTest):
         self.assertRaises(ValueError, db.test.create_index, [])
 
         db.test.drop_indexes()
-        db.test.insert({})
+        db.test.insert_one({})
         self.assertEqual(len(db.test.index_information()), 1)
 
         db.test.create_index("hello")
@@ -164,8 +164,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue("hello_-1_world_1" in db.test.index_information())
 
         db.test.drop()
-        db.test.insert({'a': 1})
-        db.test.insert({'a': 1})
+        db.test.insert_one({'a': 1})
+        db.test.insert_one({'a': 1})
         self.assertRaises(DuplicateKeyError, db.test.create_index,
                                                     'a', unique=True)
 
@@ -247,14 +247,14 @@ class TestCollection(IntegrationTest):
     def test_ensure_unique_index_threaded(self):
         coll = self.db.test_unique_threaded
         coll.drop()
-        coll.insert(({'foo': i} for i in range(10000)))
+        coll.insert_many([{'foo': i} for i in range(10000)])
 
         class Indexer(threading.Thread):
             def run(self):
                 try:
                     coll.ensure_index('foo', unique=True)
-                    coll.insert({'foo': 'bar'})
-                    coll.insert({'foo': 'bar'})
+                    coll.insert_one({'foo': 'bar'})
+                    coll.insert_one({'foo': 'bar'})
                 except OperationFailure:
                     pass
 
@@ -301,7 +301,7 @@ class TestCollection(IntegrationTest):
     def test_reindex(self):
         db = self.db
         db.drop_collection("test")
-        db.test.insert({"foo": "bar", "who": "what", "when": "how"})
+        db.test.insert_one({"foo": "bar", "who": "what", "when": "how"})
         db.test.create_index("foo")
         db.test.create_index("who")
         db.test.create_index("when")
@@ -326,9 +326,8 @@ class TestCollection(IntegrationTest):
 
     def test_index_info(self):
         db = self.db
-        db.test.drop_indexes()
-        db.test.remove({})
-        db.test.save({})  # create collection
+        db.test.drop()
+        db.test.insert_one({})  # create collection
         self.assertEqual(len(db.test.index_information()), 1)
         self.assertTrue("_id_" in db.test.index_information())
 
@@ -358,16 +357,15 @@ class TestCollection(IntegrationTest):
     @client_context.require_no_mongos
     def test_index_haystack(self):
         db = self.db
-        db.test.drop_indexes()
-        db.test.remove()
-        _id = db.test.insert({
+        db.test.drop()
+        _id = db.test.insert_one({
             "pos": {"long": 34.2, "lat": 33.3},
             "type": "restaurant"
-        })
-        db.test.insert({
+        }).inserted_id
+        db.test.insert_one({
             "pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"
         })
-        db.test.insert({
+        db.test.insert_one({
             "pos": {"long": 59.1, "lat": 87.2}, "type": "office"
         })
         db.test.create_index(
@@ -475,10 +473,10 @@ class TestCollection(IntegrationTest):
 
     def _drop_dups_setup(self, db):
         db.drop_collection('test')
-        db.test.insert({'i': 1})
-        db.test.insert({'i': 2})
-        db.test.insert({'i': 2})  # duplicate
-        db.test.insert({'i': 3})
+        db.test.insert_one({'i': 1})
+        db.test.insert_one({'i': 2})
+        db.test.insert_one({'i': 2})  # duplicate
+        db.test.insert_one({'i': 3})
 
     @client_context.require_version_max(2, 6)
     def test_index_drop_dups(self):
@@ -520,7 +518,7 @@ class TestCollection(IntegrationTest):
         db.drop_collection("test")
 
         doc = {"a": 1, "b": 5, "c": {"d": 5, "e": 10}}
-        db.test.insert(doc)
+        db.test.insert_one(doc)
 
         # Test field inclusion
         doc = next(db.test.find({}, ["_id"]))
@@ -580,8 +578,9 @@ class TestCollection(IntegrationTest):
         db.drop_collection("test")
 
     def test_insert_find_one(self):
+        # Tests legacy insert.
         db = self.db
-        db.test.remove({})
+        db.test.drop()
         self.assertEqual(0, len(list(db.test.find())))
         doc = {"hello": u("world")}
         id = db.test.insert(doc)
@@ -676,6 +675,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(15, db.test.count())
 
     def test_generator_insert(self):
+        # Only legacy insert currently supports insert from a generator.
         db = self.db
         db.test.remove({})
         self.assertEqual(db.test.find().count(), 0)
@@ -688,6 +688,7 @@ class TestCollection(IntegrationTest):
         db.test.remove({})
 
     def test_remove_one(self):
+        # Tests legacy remove.
         self.db.test.remove()
         self.assertEqual(0, self.db.test.count())
 
@@ -702,6 +703,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, self.db.test.count())
 
     def test_remove_all(self):
+        # Tests legacy remove.
         self.db.test.remove()
         self.assertEqual(0, self.db.test.count())
 
@@ -763,10 +765,10 @@ class TestCollection(IntegrationTest):
 
     def test_find_w_fields(self):
         db = self.db
-        db.test.remove({})
+        db.test.delete_many({})
 
-        db.test.insert({"x": 1, "mike": "awesome",
-                        "extra thing": "abcdefghijklmnopqrstuvwxyz"})
+        db.test.insert_one({"x": 1, "mike": "awesome",
+                            "extra thing": "abcdefghijklmnopqrstuvwxyz"})
         self.assertEqual(1, db.test.count())
         doc = next(db.test.find({}))
         self.assertTrue("x" in doc)
@@ -789,9 +791,9 @@ class TestCollection(IntegrationTest):
 
     def test_fields_specifier_as_dict(self):
         db = self.db
-        db.test.remove({})
+        db.test.delete_many({})
 
-        db.test.insert({"x": [1, 2, 3], "mike": "awesome"})
+        db.test.insert_one({"x": [1, 2, 3], "mike": "awesome"})
 
         self.assertEqual([1, 2, 3], db.test.find_one()["x"])
         self.assertEqual([2, 3],
@@ -802,12 +804,12 @@ class TestCollection(IntegrationTest):
 
     def test_find_w_regex(self):
         db = self.db
-        db.test.remove({})
+        db.test.delete_many({})
 
-        db.test.insert({"x": "hello_world"})
-        db.test.insert({"x": "hello_mike"})
-        db.test.insert({"x": "hello_mikey"})
-        db.test.insert({"x": "hello_test"})
+        db.test.insert_one({"x": "hello_world"})
+        db.test.insert_one({"x": "hello_mike"})
+        db.test.insert_one({"x": "hello_mikey"})
+        db.test.insert_one({"x": "hello_test"})
 
         self.assertEqual(db.test.find().count(), 4)
         self.assertEqual(db.test.find({"x":
@@ -822,17 +824,17 @@ class TestCollection(IntegrationTest):
     def test_id_can_be_anything(self):
         db = self.db
 
-        db.test.remove({})
+        db.test.delete_many({})
         auto_id = {"hello": "world"}
-        db.test.insert(auto_id)
+        db.test.insert_one(auto_id)
         self.assertTrue(isinstance(auto_id["_id"], ObjectId))
 
         numeric = {"_id": 240, "hello": "world"}
-        db.test.insert(numeric)
+        db.test.insert_one(numeric)
         self.assertEqual(numeric["_id"], 240)
 
         object = {"_id": numeric, "hello": "world"}
-        db.test.insert(object)
+        db.test.insert_one(object)
         self.assertEqual(object["_id"], numeric)
 
         for x in db.test.find():
@@ -843,30 +845,31 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.test.drop()
 
-        db.test.insert({"hello": "world"})
-        db.test.insert({"hello": {"hello": "world"}})
+        db.test.insert_one({"hello": "world"})
+        db.test.insert_one({"hello": {"hello": "world"}})
 
-        self.assertRaises(InvalidDocument, db.test.insert, {"$hello": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert_one, {"$hello": "world"})
+        self.assertRaises(InvalidDocument, db.test.insert_one,
                           {"hello": {"$hello": "world"}})
 
-        db.test.insert({"he$llo": "world"})
-        db.test.insert({"hello": {"hello$": "world"}})
+        db.test.insert_one({"he$llo": "world"})
+        db.test.insert_one({"hello": {"hello$": "world"}})
 
-        self.assertRaises(InvalidDocument, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert_one,
                           {".hello": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert_one,
                           {"hello": {".hello": "world"}})
-        self.assertRaises(InvalidDocument, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert_one,
                           {"hello.": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert_one,
                           {"hello": {"hello.": "world"}})
-        self.assertRaises(InvalidDocument, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert_one,
                           {"hel.lo": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert_one,
                           {"hello": {"hel.lo": "world"}})
 
     def test_insert_multiple(self):
+        # Tests legacy insert.
         db = self.db
         db.drop_collection("test")
         doc1 = {"hello": u("world")}
@@ -891,6 +894,7 @@ class TestCollection(IntegrationTest):
         self.assertRaises(InvalidOperation, db.test.insert, (i for i in []))
 
     def test_insert_multiple_with_duplicate(self):
+        # Tests legacy insert.
         db = self.db
         db.drop_collection("test")
         db.test.ensure_index([('i', ASCENDING)], unique=True)
@@ -933,6 +937,7 @@ class TestCollection(IntegrationTest):
         )
 
     def test_insert_iterables(self):
+        # Tests legacy insert.
         db = self.db
 
         self.assertRaises(TypeError, db.test.insert, 4)
@@ -951,7 +956,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(db.test.find().count(), 10)
 
     def test_insert_manipulate_false(self):
-        # Test three aspects of insert with manipulate=False:
+        # Test three aspects of legacy insert with manipulate=False:
         #   1. The return value is None or [None] as appropriate.
         #   2. _id is not set on the passed-in document object.
         #   3. _id is not sent to server.
@@ -977,6 +982,7 @@ class TestCollection(IntegrationTest):
         collection.drop()
 
     def test_save(self):
+        # Tests legacy save.
         self.db.drop_collection("test")
 
         # Save a doc with autogenerated id
@@ -1012,6 +1018,7 @@ class TestCollection(IntegrationTest):
             {'_id': 'explicit_id', 'hello': 'world'})
 
     def test_save_with_invalid_key(self):
+        # Tests legacy save.
         self.db.drop_collection("test")
         self.assertTrue(self.db.test.insert({"hello": "world"}))
         doc = self.db.test.find_one()
@@ -1027,15 +1034,15 @@ class TestCollection(IntegrationTest):
         db.test.create_index("hello")
 
         # No error.
-        db.test.save({"hello": "world"})
-        db.test.save({"hello": "world"})
+        db.test.insert_one({"hello": "world"})
+        db.test.insert_one({"hello": "world"})
 
         db.drop_collection("test")
         db.test.create_index("hello", unique=True)
 
         with self.assertRaises(DuplicateKeyError):
-            db.test.save({"hello": "world"})
-            db.test.save({"hello": "world"})
+            db.test.insert_one({"hello": "world"})
+            db.test.insert_one({"hello": "world"})
 
     def test_duplicate_key_error(self):
         db = self.db
@@ -1043,15 +1050,15 @@ class TestCollection(IntegrationTest):
 
         db.test.create_index("x", unique=True)
 
-        db.test.insert({"_id": 1, "x": 1})
+        db.test.insert_one({"_id": 1, "x": 1})
 
         with self.assertRaises(DuplicateKeyError) as context:
-            db.test.insert({"x": 1})
+            db.test.insert_one({"x": 1})
 
         self.assertIsNotNone(context.exception.details)
 
         with self.assertRaises(DuplicateKeyError) as context:
-            db.test.save({"x": 1})
+            db.test.insert_one({"x": 1})
 
         self.assertIsNotNone(context.exception.details)
         self.assertEqual(1, db.test.count())
@@ -1060,18 +1067,19 @@ class TestCollection(IntegrationTest):
         # Ensure setting wtimeout doesn't disable write concern altogether.
         # See SERVER-12596.
         collection = self.db.test
-        collection.remove()
-        collection.insert({'_id': 1})
+        collection.drop()
+        collection.insert_one({'_id': 1})
 
         coll = collection.with_options(
             write_concern=WriteConcern(w=1, wtimeout=1000))
-        self.assertRaises(DuplicateKeyError, coll.insert, {'_id': 1})
+        self.assertRaises(DuplicateKeyError, coll.insert_one, {'_id': 1})
 
         coll = collection.with_options(
             write_concern=WriteConcern(wtimeout=1000))
-        self.assertRaises(DuplicateKeyError, coll.insert, {'_id': 1})
+        self.assertRaises(DuplicateKeyError, coll.insert_one, {'_id': 1})
 
     def test_continue_on_error(self):
+        # Tests legacy insert.
         db = self.db
         db.drop_collection("test")
         oid = db.test.insert({"one": 1})
@@ -1110,7 +1118,7 @@ class TestCollection(IntegrationTest):
 
     def test_error_code(self):
         try:
-            self.db.test.update({}, {"$thismodifierdoesntexist": 1})
+            self.db.test.update_many({}, {"$thismodifierdoesntexist": 1})
         except OperationFailure as exc:
             self.assertTrue(exc.code in (9, 10147, 16840, 17009))
             # Just check that we set the error document. Fields
@@ -1123,19 +1131,20 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.drop_collection("test")
 
-        db.test.insert({"hello": {"a": 4, "b": 5}})
-        db.test.insert({"hello": {"a": 7, "b": 2}})
-        db.test.insert({"hello": {"a": 4, "b": 10}})
+        db.test.insert_one({"hello": {"a": 4, "b": 5}})
+        db.test.insert_one({"hello": {"a": 7, "b": 2}})
+        db.test.insert_one({"hello": {"a": 4, "b": 10}})
 
         db.drop_collection("test")
         db.test.create_index("hello.a", unique=True)
 
-        db.test.insert({"hello": {"a": 4, "b": 5}})
-        db.test.insert({"hello": {"a": 7, "b": 2}})
+        db.test.insert_one({"hello": {"a": 4, "b": 5}})
+        db.test.insert_one({"hello": {"a": 7, "b": 2}})
         self.assertRaises(DuplicateKeyError,
-            db.test.insert, {"hello": {"a": 4, "b": 10}})
+            db.test.insert_one, {"hello": {"a": 4, "b": 10}})
 
     def test_acknowledged_insert(self):
+        # Tests legacy insert.
         db = self.db
         db.drop_collection("test")
 
@@ -1145,6 +1154,7 @@ class TestCollection(IntegrationTest):
         self.assertRaises(OperationFailure, db.test.insert, a)
 
     def test_update(self):
+        # Tests legacy update.
         db = self.db
         db.drop_collection("test")
 
@@ -1279,6 +1289,7 @@ class TestCollection(IntegrationTest):
 
 
     def test_update_manipulate(self):
+        # Tests legacy update.
         db = self.db
         db.drop_collection("test")
         db.test.insert({'_id': 1})
@@ -1304,6 +1315,7 @@ class TestCollection(IntegrationTest):
             db.test.find_one())
 
     def test_update_nmodified(self):
+        # Tests legacy update.
         db = self.db
         db.drop_collection("test")
         used_write_commands = (self.client.max_wire_version > 1)
@@ -1323,6 +1335,7 @@ class TestCollection(IntegrationTest):
             self.assertFalse('nModified' in result)
 
     def test_multi_update(self):
+        # Tests legacy update.
         db = self.db
         db.drop_collection("test")
 
@@ -1340,6 +1353,7 @@ class TestCollection(IntegrationTest):
                                            multi=True)["n"])
 
     def test_upsert(self):
+        # Tests legacy update.
         db = self.db
         db.drop_collection("test")
 
@@ -1350,6 +1364,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, db.test.find_one()["count"])
 
     def test_acknowledged_update(self):
+        # Tests legacy update.
         db = self.db
         db.drop_collection("test")
         db.test.create_index("x", unique=True)
@@ -1371,7 +1386,7 @@ class TestCollection(IntegrationTest):
 
     def test_update_with_invalid_keys(self):
         self.db.drop_collection("test")
-        self.assertTrue(self.db.test.insert({"hello": "world"}))
+        self.assertTrue(self.db.test.insert_one({"hello": "world"}))
         doc = self.db.test.find_one()
         doc['a.b'] = 'c'
 
@@ -1380,24 +1395,24 @@ class TestCollection(IntegrationTest):
             expected = OperationFailure
 
         # Replace
-        self.assertRaises(expected,
-                          self.db.test.update, {"hello": "world"}, doc)
+        self.assertRaises(expected, self.db.test.replace_one,
+                          {"hello": "world"}, doc)
         # Upsert
-        self.assertRaises(expected,
-                          self.db.test.update, {"foo": "bar"}, doc, upsert=True)
+        self.assertRaises(expected, self.db.test.replace_one,
+                          {"foo": "bar"}, doc, upsert=True)
 
         # Check that the last two ops didn't actually modify anything
         self.assertTrue('a.b' not in self.db.test.find_one())
 
         # Modify shouldn't check keys...
-        self.assertTrue(self.db.test.update({"hello": "world"},
-                                            {"$set": {"foo.bar": "baz"}},
-                                            upsert=True))
+        self.assertTrue(self.db.test.update_one({"hello": "world"},
+                                                {"$set": {"foo.bar": "baz"}},
+                                                upsert=True))
 
         # I know this seems like testing the server but I'd like to be notified
         # by CI if the server's behavior changes here.
         doc = SON([("$set", {"foo.bar": "bim"}), ("hello", "world")])
-        self.assertRaises(OperationFailure, self.db.test.update,
+        self.assertRaises(OperationFailure, self.db.test.update_one,
                           {"hello": "world"}, doc, upsert=True)
 
         # This is going to cause keys to be checked and raise InvalidDocument.
@@ -1405,14 +1420,16 @@ class TestCollection(IntegrationTest):
         # doesn't change. If the behavior changes checking the first key for
         # '$' in update won't be good enough anymore.
         doc = SON([("hello", "world"), ("$set", {"foo.bar": "bim"})])
-        self.assertRaises(expected, self.db.test.update,
+        self.assertRaises(expected, self.db.test.replace_one,
                           {"hello": "world"}, doc, upsert=True)
 
         # Replace with empty document
-        self.assertNotEqual(0, self.db.test.update({"hello": "world"},
-                            {})['n'])
+        self.assertNotEqual(0,
+                            self.db.test.replace_one(
+                                {"hello": "world"}, {}).matched_count)
 
     def test_acknowledged_save(self):
+        # Tests legacy save.
         db = self.db
         db.drop_collection("test")
         db.test.create_index("hello", unique=True)
@@ -1427,18 +1444,19 @@ class TestCollection(IntegrationTest):
         db.drop_collection("test")
         db.create_collection("test", capped=True, size=1000)
 
-        db.test.insert({"x": 1})
+        db.test.insert_one({"x": 1})
         self.assertEqual(1, db.test.count())
 
         # Can't remove from capped collection.
-        self.assertRaises(OperationFailure, db.test.remove, {"x": 1})
+        self.assertRaises(OperationFailure, db.test.delete_one, {"x": 1})
         db.drop_collection("test")
-        db.test.insert({"x": 1})
-        db.test.insert({"x": 1})
-        self.assertEqual(2, db.test.remove({})["n"])
-        self.assertEqual(0, db.test.remove({})["n"])
+        db.test.insert_one({"x": 1})
+        db.test.insert_one({"x": 1})
+        self.assertEqual(2, db.test.delete_many({}).deleted_count)
+        self.assertEqual(0, db.test.delete_many({}).deleted_count)
 
     def test_last_error_options(self):
+        # Tests legacy write methods.
         self.db.test.save({"x": 1}, w=1, wtimeout=1)
         self.db.test.insert({"x": 1}, w=1, wtimeout=1)
         self.db.test.remove({"x": 1}, w=1, wtimeout=1)
@@ -1475,7 +1493,8 @@ class TestCollection(IntegrationTest):
                           {"_id": 1}, j=True, fsync=True)
 
     def test_manual_last_error(self):
-        self.db.test.save({"x": 1}, w=0)
+        coll = self.db.get_collection("test", write_concern=WriteConcern(w=0))
+        self.db.test.insert_one({"x": 1})
         self.db.command("getlasterror", w=1, wtimeout=1)
 
     def test_count(self):
@@ -1483,11 +1502,9 @@ class TestCollection(IntegrationTest):
         db.drop_collection("test")
 
         self.assertEqual(db.test.count(), 0)
-        db.test.save({})
-        db.test.save({})
+        db.test.insert_many([{}, {}])
         self.assertEqual(db.test.count(), 2)
-        db.test.save({'foo': 'bar'})
-        db.test.save({'foo': 'baz'})
+        db.test.insert_many([{'foo': 'bar'}, {'foo': 'baz'}])
         self.assertEqual(db.test.find({'foo': 'bar'}).count(), 1)
         self.assertEqual(db.test.count({'foo': 'bar'}), 1)
         self.assertEqual(db.test.find({'foo': re.compile(r'ba.*')}).count(), 2)
@@ -1497,7 +1514,7 @@ class TestCollection(IntegrationTest):
     def test_aggregate(self):
         db = self.db
         db.drop_collection("test")
-        db.test.save({'foo': [1, 2]})
+        db.test.insert_one({'foo': [1, 2]})
 
         self.assertRaises(TypeError, db.test.aggregate, "wow")
 
@@ -1523,12 +1540,13 @@ class TestCollection(IntegrationTest):
         if client_context.replica_set_name:
             # Test that getMore messages are sent to the right server.
             db = self.client.get_database(
-                db.name, read_preference=ReadPreference.SECONDARY)
+                db.name,
+                read_preference=ReadPreference.SECONDARY,
+                write_concern=WriteConcern(w=self.w))
 
         for collection_size in (10, 1000):
             db.drop_collection("test")
-            db.test.insert([{'_id': i} for i in range(collection_size)],
-                           w=self.w)
+            db.test.insert_many([{'_id': i} for i in range(collection_size)])
             expected_sum = sum(range(collection_size))
             # Use batchSize to ensure multiple getMore messages
             cursor = db.test.aggregate(
@@ -1547,10 +1565,12 @@ class TestCollection(IntegrationTest):
         if client_context.replica_set_name:
             # Test that getMore messages are sent to the right server.
             db = self.client.get_database(
-                db.name, read_preference=ReadPreference.SECONDARY)
+                db.name,
+                read_preference=ReadPreference.SECONDARY,
+                write_concern=WriteConcern(w=self.w))
 
         coll = db.test
-        coll.insert(({'_id': i} for i in range(8000)), w=self.w)
+        coll.insert_many([{'_id': i} for i in range(8000)])
         docs = []
         threads = [threading.Thread(target=docs.extend, args=(cursor,))
                    for cursor in coll.parallel_scan(3)]
@@ -1572,9 +1592,7 @@ class TestCollection(IntegrationTest):
                                        "function (obj, prev) { prev.count++; }"
                                        ))
 
-        db.test.save({"a": 2})
-        db.test.save({"b": 5})
-        db.test.save({"a": 1})
+        db.test.insert_many([{"a": 2}, {"b": 5}, {"a": 1}])
 
         self.assertEqual([{"count": 3}],
                          db.test.group([], {}, {"count": 0},
@@ -1586,7 +1604,7 @@ class TestCollection(IntegrationTest):
                                        "function (obj, prev) { prev.count++; }"
                                       ))
 
-        db.test.save({"a": 2, "b": 3})
+        db.test.insert_one({"a": 2, "b": 3})
 
         self.assertEqual([{"a": 2, "count": 2},
                           {"a": None, "count": 1},
@@ -1632,8 +1650,7 @@ class TestCollection(IntegrationTest):
     def test_group_with_scope(self):
         db = self.db
         db.drop_collection("test")
-        db.test.save({"a": 1})
-        db.test.save({"b": 1})
+        db.test.insert_many([{"a": 1}, {"b": 1}])
 
         reduce_function = "function (obj, prev) { prev.count += inc_value; }"
 
@@ -1669,7 +1686,7 @@ class TestCollection(IntegrationTest):
 
         for i in range(2000):
             doc = {"x": i, "y": my_str}
-            db.test_large_limit.insert(doc)
+            db.test_large_limit.insert_one(doc)
 
         i = 0
         y = 0
@@ -1685,7 +1702,7 @@ class TestCollection(IntegrationTest):
         db.drop_collection("test")
 
         for i in range(10):
-            db.test.insert({"x": i})
+            db.test.insert_one({"x": i})
 
         self.assertEqual(10, db.test.count())
 
@@ -1711,7 +1728,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.foo.count())
 
         for i in range(10):
-            db.test.insert({"x": i})
+            db.test.insert_one({"x": i})
 
         self.assertEqual(10, db.test.count())
 
@@ -1725,7 +1742,7 @@ class TestCollection(IntegrationTest):
             self.assertEqual(x, doc["x"])
             x += 1
 
-        db.test.insert({})
+        db.test.insert_one({})
         self.assertRaises(OperationFailure, db.foo.rename, "test")
         db.foo.rename("test", dropTarget=True)
 
@@ -1733,7 +1750,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.drop_collection("test")
 
-        id = db.test.save({"hello": "world", "foo": "bar"})
+        id = db.test.insert_one({"hello": "world", "foo": "bar"}).inserted_id
 
         self.assertEqual("world", db.test.find_one()["hello"])
         self.assertEqual(db.test.find_one(id), db.test.find_one())
@@ -1753,16 +1770,17 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.drop_collection("test")
 
-        db.test.save({"_id": 5})
+        db.test.insert_one({"_id": 5})
 
         self.assertTrue(db.test.find_one(5))
         self.assertFalse(db.test.find_one(6))
 
     def test_remove_non_objectid(self):
+        # Tests legacy remove.
         db = self.db
         db.drop_collection("test")
 
-        db.test.save({"_id": 5})
+        db.test.insert_one({"_id": 5})
 
         self.assertEqual(1, db.test.count())
         db.test.remove(5)
@@ -1772,9 +1790,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.drop_collection("test")
 
-        db.test.save({"x": 1})
-        db.test.save({"x": 2})
-        db.test.save({"x": 3})
+        db.test.insert_many([{"x": i} for i in range(1, 4)])
 
         self.assertEqual(1, db.test.find_one()["x"])
         self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])
@@ -1783,9 +1799,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.drop_collection("test")
 
-        db.test.save({"x": 2})
-        db.test.save({"x": 1})
-        db.test.save({"x": 3})
+        db.test.insert_many([{"x": 2}, {"x": 1}, {"x": 3}])
 
         self.assertEqual(2, db.test.find_one()["x"])
         self.assertEqual(1, db.test.find_one(sort=[("x", 1)])["x"])
@@ -1803,6 +1817,7 @@ class TestCollection(IntegrationTest):
         self.assertRaises(ValueError, db.test.find, sort=["hello", 1])
 
     def test_insert_adds_id(self):
+        # Tests legacy insert.
         doc = {"hello": "world"}
         self.db.test.insert(doc)
         self.assertTrue("_id" in doc)
@@ -1813,6 +1828,7 @@ class TestCollection(IntegrationTest):
             self.assertTrue("_id" in doc)
 
     def test_save_adds_id(self):
+        # Tests legacy save.
         doc = {"hello": "jesse"}
         self.db.test.save(doc)
         self.assertTrue("_id" in doc)
@@ -1841,7 +1857,7 @@ class TestCollection(IntegrationTest):
 
         self.db.drop_collection("test")
         # Insert enough documents to require more than one batch
-        self.db.test.insert([{'i': i} for i in range(150)])
+        self.db.test.insert_many([{'i': i} for i in range(150)])
 
         client = rs_or_single_client(max_pool_size=1)
         socks = get_pool(client).sockets
@@ -1876,11 +1892,7 @@ class TestCollection(IntegrationTest):
         self.db.drop_collection("test")
 
         test = self.db.test
-        test.save({"a": 1})
-        test.save({"a": 2})
-        test.save({"a": 2})
-        test.save({"a": 2})
-        test.save({"a": 3})
+        test.insert_many([{"a": 1}, {"a": 2}, {"a": 2}, {"a": 2}, {"a": 3}])
 
         distinct = test.distinct("a")
         distinct.sort()
@@ -1897,10 +1909,10 @@ class TestCollection(IntegrationTest):
 
         self.db.drop_collection("test")
 
-        test.save({"a": {"b": "a"}, "c": 12})
-        test.save({"a": {"b": "b"}, "c": 12})
-        test.save({"a": {"b": "c"}, "c": 12})
-        test.save({"a": {"b": "c"}, "c": 12})
+        test.insert_one({"a": {"b": "a"}, "c": 12})
+        test.insert_one({"a": {"b": "b"}, "c": 12})
+        test.insert_one({"a": {"b": "c"}, "c": 12})
+        test.insert_one({"a": {"b": "c"}, "c": 12})
 
         distinct = test.distinct("a.b")
         distinct.sort()
@@ -1909,8 +1921,8 @@ class TestCollection(IntegrationTest):
 
     def test_query_on_query_field(self):
         self.db.drop_collection("test")
-        self.db.test.save({"query": "foo"})
-        self.db.test.save({"bar": "foo"})
+        self.db.test.insert_one({"query": "foo"})
+        self.db.test.insert_one({"bar": "foo"})
 
         self.assertEqual(1,
                          self.db.test.find({"query": {"$ne": None}}).count())
@@ -1920,8 +1932,7 @@ class TestCollection(IntegrationTest):
 
     def test_min_query(self):
         self.db.drop_collection("test")
-        self.db.test.save({"x": 1})
-        self.db.test.save({"x": 2})
+        self.db.test.insert_many([{"x": 1}, {"x": 2}])
         self.db.test.create_index("x")
 
         self.assertEqual(1, len(list(self.db.test.find({"$min": {"x": 2},
@@ -1930,6 +1941,7 @@ class TestCollection(IntegrationTest):
                                                "$query": {}})[0]["x"])
 
     def test_insert_large_document(self):
+        # Tests legacy insert, save, and update.
         max_size = self.db.connection.max_bson_size
         half_size = int(max_size / 2)
         self.assertEqual(max_size, 16777216)
@@ -1955,6 +1967,7 @@ class TestCollection(IntegrationTest):
         self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 32)})
 
     def test_insert_large_batch(self):
+        # Tests legacy insert.
         db = self.client.test_insert_large_batch
         self.addCleanup(self.client.drop_database, 'test_insert_large_batch')
         max_bson_size = self.client.max_bson_size
@@ -2011,20 +2024,20 @@ class TestCollection(IntegrationTest):
 
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's 1000-document batch size limit.
-        self.db.test.remove()
+        self.db.test.drop()
         n_docs = 2100
-        self.db.test.insert({} for _ in range(n_docs))
+        self.db.test.insert_many([{} for _ in range(n_docs)])
         self.assertEqual(n_docs, self.db.test.count())
-        self.db.test.remove()
+        self.db.test.drop()
 
     def test_map_reduce(self):
         db = self.db
         db.drop_collection("test")
 
-        db.test.insert({"id": 1, "tags": ["dog", "cat"]})
-        db.test.insert({"id": 2, "tags": ["cat"]})
-        db.test.insert({"id": 3, "tags": ["mouse", "cat", "dog"]})
-        db.test.insert({"id": 4, "tags": []})
+        db.test.insert_one({"id": 1, "tags": ["dog", "cat"]})
+        db.test.insert_one({"id": 2, "tags": ["cat"]})
+        db.test.insert_one({"id": 3, "tags": ["mouse", "cat", "dog"]})
+        db.test.insert_one({"id": 4, "tags": []})
 
         map = Code("function () {"
                    "  this.tags.forEach(function(z) {"
@@ -2043,10 +2056,10 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
 
-        db.test.insert({"id": 5, "tags": ["hampster"]})
+        db.test.insert_one({"id": 5, "tags": ["hampster"]})
         result = db.test.map_reduce(map, reduce, out='mrunittests')
         self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
-        db.test.remove({"id": 5})
+        db.test.delete_one({"id": 5})
 
         result = db.test.map_reduce(map, reduce,
                                     out={'merge': 'mrunittests'})
@@ -2107,9 +2120,9 @@ class TestCollection(IntegrationTest):
     def test_messages_with_unicode_collection_names(self):
         db = self.db
 
-        db[u("Employés")].insert({"x": 1})
-        db[u("Employés")].update({"x": 1}, {"x": 2})
-        db[u("Employés")].remove({})
+        db[u("Employés")].insert_one({"x": 1})
+        db[u("Employés")].replace_one({"x": 1}, {"x": 2})
+        db[u("Employés")].delete_many({})
         db[u("Employés")].find_one()
         list(db[u("Employés")].find())
 
@@ -2122,14 +2135,14 @@ class TestCollection(IntegrationTest):
     def test_bad_encode(self):
         c = self.db.test
         c.drop()
-        self.assertRaises(InvalidDocument, c.save, {"x": c})
+        self.assertRaises(InvalidDocument, c.insert_one, {"x": c})
 
         class BadGetAttr(dict):
             def __getattr__(self, name):
                 pass
 
         bad = BadGetAttr([('foo', 'bar')])
-        c.insert({'bad': bad})
+        c.insert_one({'bad': bad})
         self.assertEqual('bar', c.find_one()['bad']['foo'])
 
     def test_bad_dbref(self):
@@ -2139,11 +2152,11 @@ class TestCollection(IntegrationTest):
         # Incomplete DBRefs.
         self.assertRaises(
             InvalidDocument,
-            c.insert, {'ref': {'$ref': 'collection'}})
+            c.insert_one, {'ref': {'$ref': 'collection'}})
 
         self.assertRaises(
             InvalidDocument,
-            c.insert, {'ref': {'$id': ObjectId()}})
+            c.insert_one, {'ref': {'$id': ObjectId()}})
 
         ref_only = {'ref': {'$ref': 'collection'}}
         id_only = {'ref': {'$id': ObjectId()}}
@@ -2249,7 +2262,7 @@ class TestCollection(IntegrationTest):
     def test_find_one_and(self):
         c = self.db.test
         c.drop()
-        c.insert({'_id': 1, 'i': 1})
+        c.insert_one({'_id': 1, 'i': 1})
 
         self.assertEqual({'_id': 1, 'i': 1},
                          c.find_one_and_update({'_id': 1}, {'$inc': {'i': 1}}))
@@ -2287,7 +2300,7 @@ class TestCollection(IntegrationTest):
 
         c.drop()
         for j in range(5):
-            c.insert({'j': j, 'i': 0})
+            c.insert_one({'j': j, 'i': 0})
 
         sort=[('j', DESCENDING)]
         self.assertEqual(4, c.find_one_and_update({},
@@ -2298,6 +2311,7 @@ class TestCollection(IntegrationTest):
         # MongoDB versions >= 2.6.0 don't return the updatedExisting field
         # and return upsert _id in an array subdocument. This test should
         # pass regardless of server version or type (mongod/s).
+        # Tests legacy update.
         c = self.db.test
         c.drop()
         oid = ObjectId()
@@ -2360,7 +2374,7 @@ class TestCollection(IntegrationTest):
     def test_find_with_nested(self):
         c = self.db.test
         c.drop()
-        c.insert([{'i': i} for i in range(5)])  # [0, 1, 2, 3, 4]
+        c.insert_many([{'i': i} for i in range(5)])  # [0, 1, 2, 3, 4]
         self.assertEqual(
             [2],
             [i['i'] for i in c.find({
@@ -2422,12 +2436,12 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, c.find_one(manipulate=False)['foo'])
 
         self.assertEqual(2, c.find_one(manipulate=True)['foo'])
-        c.remove({})
+        c.drop()
 
     def test_find_regex(self):
         c = self.db.test
         c.drop()
-        c.insert({'r': re.compile('.*')})
+        c.insert_one({'r': re.compile('.*')})
 
         self.assertTrue(isinstance(c.find_one()['r'], Regex))
         for doc in c.find():

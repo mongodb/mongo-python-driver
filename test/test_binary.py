@@ -187,7 +187,7 @@ class TestBinary(unittest.TestCase):
         coll = db.get_collection(
             'java_uuid', CodecOptions(uuid_representation=JAVA_LEGACY))
 
-        coll.insert(docs)
+        coll.insert_many(docs)
         self.assertEqual(5, coll.count())
         for d in coll.find():
             self.assertEqual(d['newguid'], uuid.UUID(d['newguidstring']))
@@ -257,7 +257,7 @@ class TestBinary(unittest.TestCase):
         coll = db.get_collection(
             'csharp_uuid', CodecOptions(uuid_representation=CSHARP_LEGACY))
 
-        coll.insert(docs)
+        coll.insert_many(docs)
         self.assertEqual(5, coll.count())
         for d in coll.find():
             self.assertEqual(d['newguid'], uuid.UUID(d['newguidstring']))
@@ -284,7 +284,7 @@ class TestBinary(unittest.TestCase):
         coll.drop()
 
         uu = uuid.uuid4()
-        coll.insert({'uuid': Binary(uu.bytes, 3)})
+        coll.insert_one({'uuid': Binary(uu.bytes, 3)})
         self.assertEqual(1, coll.count())
 
         # Test UUIDLegacy queries.
@@ -297,7 +297,7 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(uu, retrieved['uuid'])
 
         # Test regular UUID queries (using subtype 4).
-        coll.insert({'uuid': uu})
+        coll.insert_one({'uuid': uu})
         self.assertEqual(2, coll.count())
         cur = coll.find({'uuid': uu})
         self.assertEqual(1, cur.count())

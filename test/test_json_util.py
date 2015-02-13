@@ -228,7 +228,7 @@ class TestJsonUtilRoundtrip(IntegrationTest):
                                ObjectId('509b8db456c02c5ab7e63c34'))}}
         ]
 
-        db.test.insert(docs)
+        db.test.insert_many(docs)
         reloaded_docs = json_util.loads(json_util.dumps(db.test.find()))
         for doc in docs:
             self.assertTrue(doc in reloaded_docs)

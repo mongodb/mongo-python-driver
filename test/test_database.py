@@ -150,7 +150,7 @@ class TestDatabase(IntegrationTest):
     def test_create_collection(self):
         db = Database(self.client, "pymongo_test")
 
-        db.test.insert({"hello": "world"})
+        db.test.insert_one({"hello": "world"})
         self.assertRaises(CollectionInvalid, db.create_collection, "test")
 
         db.drop_collection("test")
@@ -161,7 +161,7 @@ class TestDatabase(IntegrationTest):
 
         test = db.create_collection("test")
         self.assertTrue(u("test") in db.collection_names())
-        test.save({"hello": u("world")})
+        test.insert_one({"hello": u("world")})
         self.assertEqual(db.test.find_one()["hello"], "world")
 
         db.drop_collection("test.foo")
@@ -171,8 +171,8 @@ class TestDatabase(IntegrationTest):
 
     def test_collection_names(self):
         db = Database(self.client, "pymongo_test")
-        db.test.save({"dummy": u("object")})
-        db.test.mike.save({"dummy": u("object")})
+        db.test.insert_one({"dummy": u("object")})
+        db.test.mike.insert_one({"dummy": u("object")})
 
         colls = db.collection_names()
         self.assertTrue("test" in colls)
@@ -190,22 +190,22 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, db.drop_collection, 5)
         self.assertRaises(TypeError, db.drop_collection, None)
 
-        db.test.save({"dummy": u("object")})
+        db.test.insert_one({"dummy": u("object")})
         self.assertTrue("test" in db.collection_names())
         db.drop_collection("test")
         self.assertFalse("test" in db.collection_names())
 
-        db.test.save({"dummy": u("object")})
+        db.test.insert_one({"dummy": u("object")})
         self.assertTrue("test" in db.collection_names())
         db.drop_collection(u("test"))
         self.assertFalse("test" in db.collection_names())
 
-        db.test.save({"dummy": u("object")})
+        db.test.insert_one({"dummy": u("object")})
         self.assertTrue("test" in db.collection_names())
         db.drop_collection(db.test)
         self.assertFalse("test" in db.collection_names())
 
-        db.test.save({"dummy": u("object")})
+        db.test.insert_one({"dummy": u("object")})
         self.assertTrue("test" in db.collection_names())
         db.test.drop()
         self.assertFalse("test" in db.collection_names())
@@ -219,7 +219,7 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, db.validate_collection, 5)
         self.assertRaises(TypeError, db.validate_collection, None)
 
-        db.test.save({"dummy": u("object")})
+        db.test.insert_one({"dummy": u("object")})
 
         self.assertRaises(OperationFailure, db.validate_collection,
                           "test.doesnotexist")
@@ -337,14 +337,15 @@ class TestDatabase(IntegrationTest):
     def test_command_with_regex(self):
         db = self.client.pymongo_test
         db.test.drop()
-        db.test.insert({'r': re.compile('.*')})
-        db.test.insert({'r': Regex('.*')})
+        db.test.insert_one({'r': re.compile('.*')})
+        db.test.insert_one({'r': Regex('.*')})
 
         result = db.command('aggregate', 'test', pipeline=[])
         for doc in result['result']:
             self.assertTrue(isinstance(doc['r'], Regex))
 
     def test_last_status(self):
+        # Tests many legacy API elements.
         with ignore_deprecations():
             # We must call getlasterror on same socket as the last operation.
             db = rs_or_single_client(max_pool_size=1).pymongo_test
@@ -452,14 +453,14 @@ class TestDatabase(IntegrationTest):
 
         # Check that we're read-write by default.
         db.authenticate('jesse', 'pw')
-        db.collection.insert({})
+        db.collection.insert_one({})
         db.logout()
 
         # Make the user read-only.
         auth_db.add_user('jesse', 'pw', read_only=True)
 
         db.authenticate('jesse', 'pw')
-        self.assertRaises(OperationFailure, db.collection.insert, {})
+        self.assertRaises(OperationFailure, db.collection.insert_one, {})
 
     @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
@@ -550,20 +551,20 @@ class TestDatabase(IntegrationTest):
         admin_db.authenticate('ro-admin', 'pass')
         self.assertEqual(0, other_db.test.count())
         self.assertRaises(OperationFailure,
-                          other_db.test.insert, {})
+                          other_db.test.insert_one, {})
 
         # Close all sockets.
         client.disconnect()
 
         # We should still be able to write to the regular user's db.
-        self.assertTrue(users_db.test.remove())
+        self.assertTrue(users_db.test.delete_many({}))
 
         # And read from other dbs...
         self.assertEqual(0, other_db.test.count())
 
         # But still not write to other dbs.
         self.assertRaises(OperationFailure,
-                          other_db.test.insert, {})
+                          other_db.test.insert_one, {})
 
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first
@@ -573,8 +574,8 @@ class TestDatabase(IntegrationTest):
         # work right in Jython or any Python or environment
         # with hash randomization enabled (e.g. tox).
         db = self.client.pymongo_test
-        db.test.remove({})
-        db.test.insert(SON([("hello", "world"),
+        db.test.drop()
+        db.test.insert_one(SON([("hello", "world"),
                             ("_id", 5)]))
 
         db = self.client.get_database(
@@ -587,7 +588,7 @@ class TestDatabase(IntegrationTest):
 
     def test_deref(self):
         db = self.client.pymongo_test
-        db.test.remove({})
+        db.test.drop()
 
         self.assertRaises(TypeError, db.dereference, 5)
         self.assertRaises(TypeError, db.dereference, "hello")
@@ -595,7 +596,7 @@ class TestDatabase(IntegrationTest):
 
         self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
         obj = {"x": True}
-        key = db.test.save(obj)
+        key = db.test.insert_one(obj).inserted_id
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
         self.assertEqual(obj,
                          db.dereference(DBRef("test", key, "pymongo_test")))
@@ -604,14 +605,14 @@ class TestDatabase(IntegrationTest):
 
         self.assertEqual(None, db.dereference(DBRef("test", 4)))
         obj = {"_id": 4}
-        db.test.save(obj)
+        db.test.insert_one(obj)
         self.assertEqual(obj, db.dereference(DBRef("test", 4)))
 
     def test_deref_kwargs(self):
         db = self.client.pymongo_test
-        db.test.remove({})
+        db.test.drop()
 
-        db.test.insert({"_id": 4, "foo": "bar"})
+        db.test.insert_one({"_id": 4, "foo": "bar"})
         db = self.client.get_database(
             "pymongo_test", codec_options=CodecOptions(as_class=SON))
         self.assertEqual(SON([("foo", "bar")]),
@@ -621,7 +622,7 @@ class TestDatabase(IntegrationTest):
     @client_context.require_no_auth
     def test_eval(self):
         db = self.client.pymongo_test
-        db.test.remove({})
+        db.test.drop()
 
         self.assertRaises(TypeError, db.eval, None)
         self.assertRaises(TypeError, db.eval, 5)
@@ -646,12 +647,12 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(OperationFailure, db.eval, "5 ++ 5;")
 
     # TODO some of these tests belong in the collection level testing.
-    def test_save_find_one(self):
+    def test_insert_find_one(self):
         db = self.client.pymongo_test
-        db.test.remove({})
+        db.test.drop()
 
         a_doc = SON({"hello": u("world")})
-        a_key = db.test.save(a_doc)
+        a_key = db.test.insert_one(a_doc).inserted_id
         self.assertTrue(isinstance(a_doc["_id"], ObjectId))
         self.assertEqual(a_doc["_id"], a_key)
         self.assertEqual(a_doc, db.test.find_one({"_id": a_doc["_id"]}))
@@ -662,7 +663,7 @@ class TestDatabase(IntegrationTest):
 
         b = db.test.find_one()
         b["hello"] = u("mike")
-        db.test.save(b)
+        db.test.replace_one({"_id": b["_id"]}, b)
 
         self.assertNotEqual(a_doc, db.test.find_one(a_key))
         self.assertEqual(b, db.test.find_one(a_key))
@@ -675,70 +676,53 @@ class TestDatabase(IntegrationTest):
 
     def test_long(self):
         db = self.client.pymongo_test
-        db.test.remove({})
-        db.test.save({"x": long(9223372036854775807)})
+        db.test.drop()
+        db.test.insert_one({"x": long(9223372036854775807)})
         retrieved = db.test.find_one()['x']
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)
-        db.test.remove({})
-        db.test.insert({"x": Int64(1)})
+        db.test.delete_many({})
+        db.test.insert_one({"x": Int64(1)})
         retrieved = db.test.find_one()['x']
         self.assertEqual(Int64(1), retrieved)
         self.assertIsInstance(retrieved, Int64)
 
-    def test_remove(self):
+    def test_delete(self):
         db = self.client.pymongo_test
-        db.test.remove({})
+        db.test.drop()
 
-        one = db.test.save({"x": 1})
-        db.test.save({"x": 2})
-        db.test.save({"x": 3})
+        db.test.insert_one({"x": 1})
+        db.test.insert_one({"x": 2})
+        db.test.insert_one({"x": 3})
         length = 0
         for _ in db.test.find():
             length += 1
         self.assertEqual(length, 3)
 
-        db.test.remove(one)
+        db.test.delete_one({"x": 1})
         length = 0
         for _ in db.test.find():
             length += 1
         self.assertEqual(length, 2)
 
-        db.test.remove(db.test.find_one())
-        db.test.remove(db.test.find_one())
+        db.test.delete_one(db.test.find_one())
+        db.test.delete_one(db.test.find_one())
         self.assertEqual(db.test.find_one(), None)
 
-        one = db.test.save({"x": 1})
-        db.test.save({"x": 2})
-        db.test.save({"x": 3})
+        db.test.insert_one({"x": 1})
+        db.test.insert_one({"x": 2})
+        db.test.insert_one({"x": 3})
 
         self.assertTrue(db.test.find_one({"x": 2}))
-        db.test.remove({"x": 2})
+        db.test.delete_one({"x": 2})
         self.assertFalse(db.test.find_one({"x": 2}))
 
         self.assertTrue(db.test.find_one())
-        db.test.remove({})
+        db.test.delete_many({})
         self.assertFalse(db.test.find_one())
 
-    def test_save_a_bunch(self):
-        db = self.client.pymongo_test
-        db.test.remove({})
-
-        for i in range(1000):
-            db.test.save({"x": i})
-
-        count = 0
-        for _ in db.test.find():
-            count += 1
-
-        self.assertEqual(1000, count)
-
-        # test that kill cursors doesn't assert or anything
-        for _ in range(62):
-            for _ in db.test.find():
-                break
-
     def test_auto_ref_and_deref(self):
+        # Legacy API.
         db = self.client.pymongo_test
         db.add_son_manipulator(AutoReference(db))
         db.add_son_manipulator(NamespaceInjector())
@@ -767,6 +751,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(db.test.c.find_one(), c)
 
     def test_auto_ref_and_deref_list(self):
+        # Legacy API.
         db = self.client.pymongo_test
         db.add_son_manipulator(AutoReference(db))
         db.add_son_manipulator(NamespaceInjector())
@@ -789,7 +774,7 @@ class TestDatabase(IntegrationTest):
     @client_context.require_no_auth
     def test_system_js(self):
         db = self.client.pymongo_test
-        db.system.js.remove()
+        db.system.js.delete_many({})
 
         self.assertEqual(0, db.system.js.count())
         db.system_js.add = "function(a, b) { return a + b; }"
@@ -820,7 +805,7 @@ class TestDatabase(IntegrationTest):
 
     def test_system_js_list(self):
         db = self.client.pymongo_test
-        db.system.js.remove()
+        db.system.js.delete_many({})
         self.assertEqual([], db.system_js.list())
 
         db.system_js.foo = "function() { return 'blah'; }"
@@ -912,6 +897,7 @@ class TestDatabase(IntegrationTest):
         # before any other checks, so they can insert non-dict objects and
         # have them dictified before the _id is inserted or any other
         # processing.
+        # Tests legacy API elements.
         class Thing(object):
             def __init__(self, value):
                 self.value = value
@@ -930,6 +916,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual('value', out.get('value'))
 
     def test_son_manipulator_inheritance(self):
+        # Tests legacy API elements.
         class Thing(object):
             def __init__(self, value):
                 self.value = value
