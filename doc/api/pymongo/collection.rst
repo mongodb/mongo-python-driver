@@ -33,6 +33,7 @@
       .. autoattribute:: write_concern
       .. automethod:: with_options
       .. automethod:: insert_one
+      .. automethod:: insert_many
       .. automethod:: replace_one
       .. automethod:: update_one
       .. automethod:: update_many
