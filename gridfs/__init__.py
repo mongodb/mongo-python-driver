@@ -27,6 +27,7 @@ from gridfs.grid_file import (GridIn,
 from pymongo import (ASCENDING,
                      DESCENDING)
 from pymongo.database import Database
+from pymongo.errors import ConfigurationError
 
 
 class GridFS(object):
@@ -48,10 +49,18 @@ class GridFS(object):
           - `connect` (optional): whether to begin connecting the client in
             the background
 
+        .. versionchanged:: 3.0
+           `database` must use an acknowledged
+           :attr:`~pymongo.database.Database.write_concern`
+
         .. mongodoc:: gridfs
         """
         if not isinstance(database, Database):
             raise TypeError("database must be an instance of Database")
+
+        if not database.write_concern.acknowledged:
+            raise ConfigurationError('database must use '
+                                     'acknowledged write_concern')
 
         self.__database = database
         self.__collection = database[collection]
@@ -210,7 +219,7 @@ class GridFS(object):
     def delete(self, file_id):
         """Delete a file from GridFS by ``"_id"``.
 
-        Removes all data belonging to the file with ``"_id"``:
+        Deletes all data belonging to the file with ``"_id"``:
         `file_id`.
 
         .. warning:: Any processes/threads reading from the file while
@@ -225,9 +234,8 @@ class GridFS(object):
           - `file_id`: ``"_id"`` of the file to delete
         """
         self.__ensure_index_files_id()
-        self.__files.remove({"_id": file_id},
-                            **self.__files._get_wc_override())
-        self.__chunks.remove({"files_id": file_id})
+        self.__files.delete_many({"_id": file_id})
+        self.__chunks.delete_one({"files_id": file_id})
 
     def list(self):
         """List the names of all files stored in this instance of

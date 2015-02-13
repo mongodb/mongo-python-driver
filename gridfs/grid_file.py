@@ -27,7 +27,7 @@ from gridfs.errors import (CorruptGridFile,
 from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
-from pymongo.errors import DuplicateKeyError, InvalidOperation
+from pymongo.errors import ConfigurationError, DuplicateKeyError
 from pymongo.read_preferences import ReadPreference
 
 try:
@@ -62,9 +62,8 @@ def _grid_in_property(field_name, docstring, read_only=False,
 
     def setter(self, value):
         if self._closed:
-            self._coll.files.update({"_id": self._file["_id"]},
-                                    {"$set": {field_name: value}},
-                                    **self._coll._get_wc_override())
+            self._coll.files.update_one({"_id": self._file["_id"]},
+                                        {"$set": {field_name: value}})
         self._file[field_name] = value
 
     if read_only:
@@ -135,11 +134,17 @@ class GridIn(object):
           - `**kwargs` (optional): file level options (see above)
 
         .. versionchanged:: 3.0
-           w=0 writes to GridFS are now prohibited.
+           `root_collection` must use an acknowledged
+           :attr:`~pymongo.collection.Collection.write_concern`
         """
         if not isinstance(root_collection, Collection):
             raise TypeError("root_collection must be an "
                             "instance of Collection")
+
+        # With w=0, 'filemd5' might run before the final chunks are written.
+        if not root_collection.write_concern.acknowledged:
+            raise ConfigurationError('root_collection must use '
+                                     'acknowledged write_concern')
 
         # Handle alternative naming
         if "content_type" in kwargs:
@@ -204,9 +209,8 @@ class GridIn(object):
             # them now.
             self._file[name] = value
             if self._closed:
-                self._coll.files.update({"_id": self._file["_id"]},
-                                        {"$set": {name: value}},
-                                        **self._coll._get_wc_override())
+                self._coll.files.update_one({"_id": self._file["_id"]},
+                                            {"$set": {name: value}})
 
     def __flush_data(self, data):
         """Flush `data` to a chunk.
@@ -224,7 +228,7 @@ class GridIn(object):
                  "data": Binary(data)}
 
         try:
-            self._chunks.insert(chunk)
+            self._chunks.insert_one(chunk)
         except DuplicateKeyError:
             self._raise_file_exists(self._file['_id'])
         self._chunk_number += 1
@@ -252,8 +256,7 @@ class GridIn(object):
             self._file["length"] = self._position
             self._file["uploadDate"] = datetime.datetime.utcnow()
 
-            return self._coll.files.insert(self._file,
-                                           **self._coll._get_wc_override())
+            return self._coll.files.insert_one(self._file)
         except DuplicateKeyError:
             self._raise_file_exists(self._id)
 
@@ -295,10 +298,6 @@ class GridIn(object):
         """
         if self._closed:
             raise ValueError("cannot write to a closed file")
-
-        # With w=0, 'filemd5' might run before the final chunks are written.
-        if not self._coll.write_concern.acknowledged:
-            raise InvalidOperation('Cannot write file to GridFS with w=0')
 
         try:
             # file-like

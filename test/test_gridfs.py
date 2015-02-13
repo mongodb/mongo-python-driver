@@ -26,7 +26,7 @@ import gridfs
 
 from bson.py3compat import u, StringIO, string_type
 from pymongo.mongo_client import MongoClient
-from pymongo.errors import ConnectionFailure, InvalidOperation
+from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo.read_preferences import ReadPreference
 from gridfs.errors import (FileExists,
                            NoFile)
@@ -433,10 +433,8 @@ class TestGridfs(IntegrationTest):
 
     def test_unacknowledged(self):
         # w=0 is prohibited.
-        fs = gridfs.GridFS(rs_or_single_client(w=0).pymongo_test)
-
-        with self.assertRaises(InvalidOperation):
-            fs.put(b'data')
+        with self.assertRaises(ConfigurationError):
+            gridfs.GridFS(rs_or_single_client(w=0).pymongo_test)
 
 
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
