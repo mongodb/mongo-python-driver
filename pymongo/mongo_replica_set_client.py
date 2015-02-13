@@ -578,6 +578,9 @@ class MongoReplicaSetClient(common.BaseObject):
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``. Defaults to ``None``.
+          - `ssl_validate_hostname`: (boolean) Whether to validate the hostname
+            when a ``ssl_ca_cert`` is provided to be validated. Defaults to
+            ``True``.
 
         .. versionchanged:: 2.5
            Added additional ssl options
@@ -659,6 +662,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__ssl_certfile = self.__opts.get('ssl_certfile', None)
         self.__ssl_cert_reqs = self.__opts.get('ssl_cert_reqs', None)
         self.__ssl_ca_certs = self.__opts.get('ssl_ca_certs', None)
+        self.__ssl_validate_hostname = self.__opts.get('ssl_validate_hostname', True)
 
         ssl_kwarg_keys = [k for k in kwargs.keys()
                           if k.startswith('ssl_') and kwargs[k]]
@@ -1048,7 +1052,8 @@ class MongoReplicaSetClient(common.BaseObject):
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
-            ssl_ca_certs=self.__ssl_ca_certs)
+            ssl_ca_certs=self.__ssl_ca_certs,
+            ssl_validate_hostname=self.__ssl_validate_hostname)
 
         if self.in_request():
             connection_pool.start_request()
