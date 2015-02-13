@@ -52,6 +52,28 @@ class InsertOneResult(_WriteResult):
         return self.__inserted_id
 
 
+class InsertManyResult(_WriteResult):
+    """The return type for :meth:`~pymongo.collection.Collection.insert_many`.
+    """
+
+    __slots__ = ("__inserted_ids", "__acknowledged")
+
+    def __init__(self, inserted_ids, acknowledged):
+        self.__inserted_ids = inserted_ids
+        super(InsertManyResult, self).__init__(acknowledged)
+
+    @property
+    def inserted_ids(self):
+        """A list of _ids of the inserted documents, in the order provided.
+
+        .. note:: If ``False`` is passed for the `ordered` parameter to
+          :meth:`~pymongo.collection.Collection.insert_many` the server
+          may have inserted the documents in a different order than what
+          is presented here.
+        """
+        return self.__inserted_ids
+
+
 class UpdateResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.update_one`
     and :meth:`~pymongo.collection.Collection.update_many`"""

@@ -48,7 +48,7 @@ from pymongo.errors import (ConfigurationError,
                             WTimeoutError)
 from pymongo.options import ReturnDocument
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
+from pymongo.results import *
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
@@ -638,6 +638,42 @@ class TestCollection(IntegrationTest):
         self.assertFalse(result.acknowledged)
         # The insert failed duplicate key...
         self.assertEqual(2, db.test.count())
+
+    def test_insert_many(self):
+        db = self.db
+        db.test.drop()
+
+        docs = [{} for _ in range(5)]
+        result = db.test.insert_many(docs)
+        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertEqual(5, len(result.inserted_ids))
+        for doc in docs:
+            _id = doc["_id"]
+            self.assertTrue(isinstance(_id, ObjectId))
+            self.assertTrue(_id in result.inserted_ids)
+            self.assertEqual(1, db.test.count({'_id': _id}))
+        self.assertTrue(result.acknowledged)
+
+        docs = [{"_id": i} for i in range(5)]
+        result = db.test.insert_many(docs)
+        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertEqual(5, len(result.inserted_ids))
+        for doc in docs:
+            _id = doc["_id"]
+            self.assertTrue(isinstance(_id, int))
+            self.assertTrue(_id in result.inserted_ids)
+            self.assertEqual(1, db.test.count({"_id": _id}))
+        self.assertTrue(result.acknowledged)
+
+        db = db.connection.get_database(db.name,
+                                        write_concern=WriteConcern(w=0))
+        docs = [{} for _ in range(5)]
+        result = db.test.insert_many(docs)
+        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertFalse(result.acknowledged)
+        self.assertEqual(15, db.test.count())
 
     def test_generator_insert(self):
         db = self.db

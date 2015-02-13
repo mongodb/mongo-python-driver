@@ -29,7 +29,7 @@ from bson.son import SON
 from pymongo import (common,
                      helpers,
                      message)
-from pymongo.bulk import (BulkOperationBuilder, _Bulk)
+from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
@@ -494,6 +494,39 @@ class Collection(common.BaseObject):
             document["_id"] = ObjectId()
         return InsertOneResult(self.__insert(document),
                                self.write_concern.acknowledged)
+
+    def insert_many(self, documents, ordered=True):
+        """Insert a list of documents.
+
+        :Parameters:
+          - `documents`: A list of documents to insert.
+          - `ordered` (optional): If ``True`` (the default) documents will be
+            inserted on the server serially, in the order provided. If an error
+            occurs all remaining inserts are aborted. If ``False``, documents
+            will be inserted on the server in arbitrary order, possibly in
+            parallel, and all document inserts will be attempted.
+
+        :Returns:
+          An instance of :class:`~pymongo.results.InsertManyResult`.
+        """
+        if not isinstance(documents, list) or not documents:
+            raise TypeError("documents must be a non-empty list")
+        inserted_ids = []
+        def gen():
+            """A generator that validates documents and handles _ids."""
+            for document in documents:
+                if not isinstance(document, collections.MutableMapping):
+                    raise TypeError("document must be a dict or other "
+                                    "subclass of collections.MutableMapping")
+                if "_id" not in document:
+                    document["_id"] = ObjectId()
+                inserted_ids.append(document["_id"])
+                yield (_INSERT, document)
+
+        blk = _Bulk(self, ordered)
+        blk.ops = [doc for doc in gen()]
+        blk.execute(self.write_concern.document)
+        return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
 
     def __insert(self, docs, ordered=True,
                  check_keys=True, manipulate=False, write_concern=None):
