@@ -350,6 +350,11 @@ class MovingAverage(object):
         self.average = None
 
     def add_sample(self, sample):
+        if sample < 0:
+            # Likely system time change while waiting for ismaster response
+            # and not using time.monotonic. Ignore it, the next one will
+            # probably be valid.
+            return
         if self.average is None:
             self.average = sample
         else:
