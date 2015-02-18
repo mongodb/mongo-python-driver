@@ -17,16 +17,16 @@
 
 import collections
 
+from bson.binary import (STANDARD, PYTHON_LEGACY,
+                         JAVA_LEGACY, CSHARP_LEGACY)
 from bson.codec_options import CodecOptions
+from bson.py3compat import string_type, integer_types
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import (read_pref_mode_from_name,
                                       ServerMode)
 from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern
-from bson.binary import (STANDARD, PYTHON_LEGACY,
-                         JAVA_LEGACY, CSHARP_LEGACY)
-from bson.py3compat import string_type, integer_types
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
@@ -415,15 +415,4 @@ class BaseObject(object):
         .. versionadded:: 2.1
         """
         return self.__read_preference
-
-    def _get_wc_override(self):
-        """Get write concern override.
-
-        Used in internal methods that **must** do acknowledged write ops.
-        We don't want to override user write concern options if write concern
-        is already enabled.
-        """
-        if self.__write_concern.acknowledged:
-            return {}
-        return {'w': 1}
 

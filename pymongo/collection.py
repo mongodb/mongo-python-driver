@@ -390,12 +390,16 @@ class Collection(common.BaseObject):
         if not isinstance(to_save, collections.MutableMapping):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
+
         if "_id" not in to_save:
-            return self.insert(to_save, manipulate, check_keys, **kwargs)
+            return self.__insert(to_save, True,
+                                 check_keys, manipulate, write_concern)
         else:
-            self.update({"_id": to_save["_id"]}, to_save, True,
-                        manipulate, check_keys=check_keys, **kwargs)
-            return to_save.get("_id", None)
+            self.__update({"_id": to_save["_id"]}, to_save, True,
+                          check_keys, False, manipulate, write_concern)
 
     def insert(self, doc_or_docs, manipulate=True,
                check_keys=True, continue_on_error=False, **kwargs):
@@ -1293,9 +1297,10 @@ class Collection(common.BaseObject):
         except OperationFailure as exc:
             if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 index["ns"] = self.__full_name
-                self.__database.system.indexes.insert(index, manipulate=False,
-                                                      check_keys=False,
-                                                      **self._get_wc_override())
+                wcn = (self.write_concern if
+                       self.write_concern.acknowledged else WriteConcern())
+                self.__database.system.indexes.__insert(
+                    index, True, False, False, wcn)
             else:
                 raise
 

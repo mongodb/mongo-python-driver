@@ -19,6 +19,7 @@ import warnings
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
+from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
 from pymongo import auth, common, helpers
@@ -30,6 +31,7 @@ from pymongo.errors import (CollectionInvalid,
                             OperationFailure)
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
+from pymongo.write_concern import WriteConcern
 
 
 def _check_name(name):
@@ -735,8 +737,9 @@ class Database(common.BaseObject):
             opts["pwd"] = auth._password_digest(name, password)
             opts["digestPassword"] = False
 
-        opts["writeConcern"] = (
-            self._get_wc_override() or self.write_concern.document)
+        # Don't send {} as writeConcern.
+        if self.write_concern.acknowledged and self.write_concern.document:
+            opts["writeConcern"] = self.write_concern.document
         opts.update(kwargs)
 
         if create:
@@ -756,8 +759,14 @@ class Database(common.BaseObject):
             user["readOnly"] = read_only
         user.update(kwargs)
 
+        # We don't care what the _id is, only that it has one
+        # for the replace_one call below.
+        user.setdefault("_id", ObjectId())
+        coll = self.system.users
+        if not self.write_concern.acknowledged:
+            coll = coll.with_options(write_concern=WriteConcern())
         try:
-            self.system.users.save(user, **self._get_wc_override())
+            coll.replace_one({"_id": user["_id"]}, user, True)
         except OperationFailure as exc:
             # First admin user add fails gle in MongoDB >= 2.1.2
             # See SERVER-4225 for more information.
@@ -840,17 +849,19 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the user to remove
         """
-
         try:
-            write_concern = (
-                self._get_wc_override() or self.write_concern.document)
-            self.command("dropUser", name,
-                         writeConcern=write_concern)
+            cmd = SON([("dropUser", name)])
+            # Don't send {} as writeConcern.
+            if self.write_concern.acknowledged and self.write_concern.document:
+                cmd["writeConcern"] = self.write_concern.document
+            self.command(cmd)
         except OperationFailure as exc:
             # See comment in add_user try / except above.
             if exc.code in common.COMMAND_NOT_FOUND_CODES:
-                self.system.users.remove({"user": name},
-                                         **self._get_wc_override())
+                coll = self.system.users
+                if not self.write_concern.acknowledged:
+                    coll = coll.with_options(write_concern=WriteConcern())
+                coll.delete_one({"user": name})
                 return
             raise
 
@@ -1024,18 +1035,21 @@ class SystemJS(object):
           >>> db.system.js.find({"_id": "add1"}).count()
           0
         """
+        if not database.write_concern.acknowledged:
+            database = database.connection.get_database(
+                database.name, write_concern=WriteConcern())
         # can't just assign it since we've overridden __setattr__
         object.__setattr__(self, "_db", database)
 
     def __setattr__(self, name, code):
-        self._db.system.js.save({"_id": name, "value": Code(code)},
-                                **self._db._get_wc_override())
+        self._db.system.js.replace_one(
+            {"_id": name}, {"_id": name, "value": Code(code)}, True)
 
     def __setitem__(self, name, code):
         self.__setattr__(name, code)
 
     def __delattr__(self, name):
-        self._db.system.js.remove({"_id": name}, **self._db._get_wc_override())
+        self._db.system.js.delete_one({"_id": name})
 
     def __delitem__(self, name):
         self.__delattr__(name)
