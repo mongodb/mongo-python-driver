@@ -627,6 +627,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertTrue(result.acknowledged)
         self.assertIsNotNone(db.test.find_one({"_id": document["_id"]}))
+        self.assertEqual(2, db.test.count())
 
         db = db.connection.get_database(db.name,
                                         write_concern=WriteConcern(w=0))
@@ -739,7 +740,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, DeleteResult))
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
-        self.assertEqual(0, self.db.test.count())
+        wait_until(lambda: 0 == db.test.count(), 'delete 1 documents')
 
     def test_delete_many(self):
         self.db.test.drop()
@@ -753,7 +754,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, DeleteResult))
         self.assertEqual(2, result.deleted_count)
         self.assertTrue(result.acknowledged)
-        self.assertEqual(0, self.db.test.count({"x": 2}))
+        self.assertEqual(0, self.db.test.count({"x": 1}))
 
         db = self.db.connection.get_database(self.db.name,
                                              write_concern=WriteConcern(w=0))
@@ -761,7 +762,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, DeleteResult))
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
-        self.assertEqual(0, self.db.test.count())
+        wait_until(lambda: 0 == db.test.count(), 'delete 2 documents')
 
     def test_find_w_fields(self):
         db = self.db
