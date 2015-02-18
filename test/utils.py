@@ -192,7 +192,7 @@ def remove_all_users(db):
         db.command("dropAllUsersFromDatabase", 1,
                    writeConcern={"w": client_context.w})
     else:
-        db = db.connetion.get_database(
+        db = db.connection.get_database(
             db.name, write_concern=WriteConcern(w=client_context.w))
         db.system.users.delete_many({})
 
