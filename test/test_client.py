@@ -16,7 +16,6 @@
 
 import contextlib
 import datetime
-import multiprocessing
 import os
 import socket
 import struct
@@ -423,6 +422,10 @@ class TestClient(IntegrationTest):
         # Test using a client before and after a fork.
         if sys.platform == "win32":
             raise SkipTest("Can't fork on windows")
+        try:
+            import multiprocessing
+        except ImportError:
+            raise SkipTest("No multiprocessing module")
 
         db = self.client.pymongo_test
 
