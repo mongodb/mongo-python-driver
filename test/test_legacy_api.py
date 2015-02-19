@@ -904,6 +904,25 @@ class TestLegacy(IntegrationTest):
         self.assertTrue(isinstance(out, Thing))
         self.assertEqual('value', out.value)
 
+    def test_disabling_manipulators(self):
+
+        class IncByTwo(SONManipulator):
+            def transform_outgoing(self, son, collection):
+                if 'foo' in son:
+                    son['foo'] += 2
+                return son
+
+        db = self.client.pymongo_test
+        db.add_son_manipulator(IncByTwo())
+        c = db.test
+        c.drop()
+        c.insert({'foo': 0})
+        self.assertEqual(2, c.find_one()['foo'])
+        self.assertEqual(0, c.find_one(manipulate=False)['foo'])
+
+        self.assertEqual(2, c.find_one(manipulate=True)['foo'])
+        c.drop()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -157,7 +157,7 @@ class TestCommon(IntegrationTest):
             "uuid", CodecOptions(uuid_representation=STANDARD))
         self.assertEqual([],
                          coll.group([], {"_id": uu},
-                                     {"count": 0}, reduce))
+                                    {"count": 0}, reduce))
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         self.assertEqual([{"count": 1}],
@@ -190,7 +190,7 @@ class TestCommon(IntegrationTest):
         coll.insert_one(doc)
         self.assertTrue(coll.insert_one(doc))
         coll = coll.with_options(write_concern=WriteConcern(w=1))
-        self.assertRaises(OperationFailure, coll.insert, doc)
+        self.assertRaises(OperationFailure, coll.insert_one, doc)
 
         m = rs_or_single_client()
         coll = m.pymongo_test.write_concern_test

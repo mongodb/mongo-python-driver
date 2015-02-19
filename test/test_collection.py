@@ -47,7 +47,6 @@ from pymongo.results import (InsertOneResult,
                              InsertManyResult,
                              UpdateResult,
                              DeleteResult)
-from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
@@ -397,7 +396,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue("weights" in index_info)
 
         if client_context.version.at_least(2, 5, 5):
-            db.test.insert([
+            db.test.insert_many([
                 {'t': 'spam eggs and spam'},
                 {'t': 'spam'},
                 {'t': 'egg sausage and bacon'}])
@@ -1723,25 +1722,6 @@ class TestCollection(IntegrationTest):
                 ]
             })]
         )
-
-    def test_disabling_manipulators(self):
-
-        class IncByTwo(SONManipulator):
-            def transform_outgoing(self, son, collection):
-                if 'foo' in son:
-                    son['foo'] += 2
-                return son
-
-        db = self.client.pymongo_test
-        db.add_son_manipulator(IncByTwo())
-        c = db.test
-        c.drop()
-        c.insert({'foo': 0})
-        self.assertEqual(2, c.find_one()['foo'])
-        self.assertEqual(0, c.find_one(manipulate=False)['foo'])
-
-        self.assertEqual(2, c.find_one(manipulate=True)['foo'])
-        c.drop()
 
     def test_find_regex(self):
         c = self.db.test
