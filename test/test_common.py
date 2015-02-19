@@ -89,7 +89,7 @@ class TestCommon(IntegrationTest):
             "uuid", CodecOptions(uuid_representation=STANDARD))
         self.assertEqual([], coll.find({'_id': uu}).distinct('i'))
 
-        # Test find_and_modify
+        # Test findAndModify
         self.assertEqual(None, coll.find_one_and_update({'_id': uu},
                                                         {'$set': {'i': 5}}))
         coll = self.db.get_collection(

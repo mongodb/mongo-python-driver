@@ -45,7 +45,6 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
-                                     SONManipulator,
                                      ObjectIdShuffler)
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
@@ -344,20 +343,6 @@ class TestDatabase(IntegrationTest):
         for doc in result['result']:
             self.assertTrue(isinstance(doc['r'], Regex))
 
-    def test_last_status(self):
-        # Tests many legacy API elements.
-        with ignore_deprecations():
-            # We must call getlasterror on same socket as the last operation.
-            db = rs_or_single_client(max_pool_size=1).pymongo_test
-            db.test.remove({})
-            db.test.save({"i": 1})
-
-            db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
-            self.assertTrue(db.last_status()["updatedExisting"])
-
-            db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
-            self.assertFalse(db.last_status()["updatedExisting"])
-
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)
         self.assertRaises(TypeError, auth._password_digest, True)
@@ -576,7 +561,7 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert_one(SON([("hello", "world"),
-                            ("_id", 5)]))
+                                ("_id", 5)]))
 
         db = self.client.get_database(
             "pymongo_test", codec_options=CodecOptions(as_class=SON))
@@ -721,56 +706,6 @@ class TestDatabase(IntegrationTest):
         db.test.delete_many({})
         self.assertFalse(db.test.find_one())
 
-    def test_auto_ref_and_deref(self):
-        # Legacy API.
-        db = self.client.pymongo_test
-        db.add_son_manipulator(AutoReference(db))
-        db.add_son_manipulator(NamespaceInjector())
-
-        db.test.a.remove({})
-        db.test.b.remove({})
-        db.test.c.remove({})
-
-        a = {"hello": u("world")}
-        db.test.a.save(a)
-
-        b = {"test": a}
-        db.test.b.save(b)
-
-        c = {"another test": b}
-        db.test.c.save(c)
-
-        a["hello"] = "mike"
-        db.test.a.save(a)
-
-        self.assertEqual(db.test.a.find_one(), a)
-        self.assertEqual(db.test.b.find_one()["test"], a)
-        self.assertEqual(db.test.c.find_one()["another test"]["test"], a)
-        self.assertEqual(db.test.b.find_one(), b)
-        self.assertEqual(db.test.c.find_one()["another test"], b)
-        self.assertEqual(db.test.c.find_one(), c)
-
-    def test_auto_ref_and_deref_list(self):
-        # Legacy API.
-        db = self.client.pymongo_test
-        db.add_son_manipulator(AutoReference(db))
-        db.add_son_manipulator(NamespaceInjector())
-
-        db.drop_collection("users")
-        db.drop_collection("messages")
-
-        message_1 = {"title": "foo"}
-        db.messages.save(message_1)
-        message_2 = {"title": "bar"}
-        db.messages.save(message_2)
-
-        user = {"messages": [message_1, message_2]}
-        db.users.save(user)
-        db.messages.update(message_1, {"title": "buzz"})
-
-        self.assertEqual("buzz", db.users.find_one()["messages"][0]["title"])
-        self.assertEqual("bar", db.users.find_one()["messages"][1]["title"])
-
     @client_context.require_no_auth
     def test_system_js(self):
         db = self.client.pymongo_test
@@ -891,55 +826,6 @@ class TestDatabase(IntegrationTest):
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",
                                       mode="off")
-
-    def test_object_to_dict_transformer(self):
-        # PYTHON-709: Some users rely on their custom SONManipulators to run
-        # before any other checks, so they can insert non-dict objects and
-        # have them dictified before the _id is inserted or any other
-        # processing.
-        # Tests legacy API elements.
-        class Thing(object):
-            def __init__(self, value):
-                self.value = value
-
-        class ThingTransformer(SONManipulator):
-            def transform_incoming(self, thing, collection):
-                return {'value': thing.value}
-
-        db = self.client.foo
-        db.add_son_manipulator(ThingTransformer())
-        t = Thing('value')
-
-        db.test.remove()
-        db.test.insert([t])
-        out = db.test.find_one()
-        self.assertEqual('value', out.get('value'))
-
-    def test_son_manipulator_inheritance(self):
-        # Tests legacy API elements.
-        class Thing(object):
-            def __init__(self, value):
-                self.value = value
-
-        class ThingTransformer(SONManipulator):
-            def transform_incoming(self, thing, collection):
-                return {'value': thing.value}
-
-            def transform_outgoing(self, son, collection):
-                return Thing(son['value'])
-
-        class Child(ThingTransformer):
-            pass
-
-        db = self.client.foo
-        db.add_son_manipulator(Child())
-        t = Thing('value')
-
-        db.test.remove()
-        db.test.insert([t])
-        out = db.test.find_one()
-        self.assertTrue(isinstance(out, Thing))
-        self.assertEqual('value', out.value)
 
 
 if __name__ == "__main__":
