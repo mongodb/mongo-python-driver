@@ -112,7 +112,7 @@ knows about. If you wait a moment, it to discovers the whole replica set:
 You need not wait for replica set discovery in your application, however.
 If you need to do any operation with a MongoClient, such as a
 :meth:`~pymongo.collection.Collection.find` or an
-:meth:`~pymongo.collection.Collection.insert`, the client waits to discover
+:meth:`~pymongo.collection.Collection.insert_one`, the client waits to discover
 a suitable member before it attempts the operation.
 
 Handling Failover
@@ -125,7 +125,7 @@ example failover to illustrate how everything behaves. First, we'll
 connect to the replica set and perform a couple of basic operations::
 
   >>> db = MongoClient("localhost", replicaSet='foo').test
-  >>> db.test.save({"x": 1})
+  >>> db.test.insert_one({"x": 1})
   ObjectId('...')
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
@@ -306,7 +306,7 @@ connect to a sharded cluster, using a seed list, and perform a couple of
 basic operations::
 
   >>> db = MongoClient('localhost:30000,localhost:30001,localhost:30002').test
-  >>> db.test.save({'x': 1})
+  >>> db.test.insert_one({'x': 1})
   ObjectId('...')
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}

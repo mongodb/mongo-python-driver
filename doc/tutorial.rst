@@ -119,24 +119,22 @@ converted to and from the appropriate `BSON
 Inserting a Document
 --------------------
 To insert a document into a collection we can use the
-:meth:`~pymongo.collection.Collection.insert` method:
+:meth:`~pymongo.collection.Collection.insert_one` method:
 
 .. doctest::
 
   >>> posts = db.posts
-  >>> post_id = posts.insert(post)
+  >>> post_id = posts.insert_one(post).inserted_id
   >>> post_id
   ObjectId('...')
 
 When a document is inserted a special key, ``"_id"``, is automatically
 added if the document doesn't already contain an ``"_id"`` key. The value
 of ``"_id"`` must be unique across the
-collection. :meth:`~pymongo.collection.Collection.insert` returns the
-value of ``"_id"`` for the inserted document. For more information, see the
-`documentation on _id
+collection. :meth:`~pymongo.collection.Collection.insert_one` returns an
+instance of :class:`~pymongo.results.InsertOneResult`. For more information
+on ``"_id"``, see the `documentation on _id
 <http://www.mongodb.org/display/DOCS/Object+IDs>`_.
-
-.. todo:: notes on the differences between save and insert
 
 After inserting the first document, the *posts* collection has
 actually been created on the server. We can verify this by listing all
@@ -144,11 +142,8 @@ of the collections in our database:
 
 .. doctest::
 
-  >>> db.collection_names()
-  [u'system.indexes', u'posts']
-
-.. note:: The *system.indexes* collection is a special internal
-   collection that was created automatically.
+  >>> db.collection_names(include_system_collections=False)
+  [u'posts']
 
 Getting a Single Document With :meth:`~pymongo.collection.Collection.find_one`
 ------------------------------------------------------------------------------
@@ -242,9 +237,9 @@ Bulk Inserts
 ------------
 In order to make querying a little more interesting, let's insert a
 few more documents. In addition to inserting a single document, we can
-also perform *bulk insert* operations, by passing an iterable as the
-first argument to :meth:`~pymongo.collection.Collection.insert`. This
-will insert each document in the iterable, sending only a single
+also perform *bulk insert* operations, by passing a list as the
+first argument to :meth:`~pymongo.collection.Collection.insert_many`.
+This will insert each document in the list, sending only a single
 command to the server:
 
 .. doctest::
@@ -257,12 +252,13 @@ command to the server:
   ...               "title": "MongoDB is fun",
   ...               "text": "and pretty easy too!",
   ...               "date": datetime.datetime(2009, 11, 10, 10, 45)}]
-  >>> posts.insert(new_posts)
+  >>> result = posts.insert_many(new_posts)
+  >>> result.inserted_ids
   [ObjectId('...'), ObjectId('...')]
 
 There are a couple of interesting things to note about this example:
 
-  - The call to :meth:`~pymongo.collection.Collection.insert` now
+  - The result from :meth:`~pymongo.collection.Collection.insert_many` now
     returns two :class:`~bson.objectid.ObjectId` instances, one for
     each inserted document.
   - ``new_posts[1]`` has a different "shape" than the other posts -

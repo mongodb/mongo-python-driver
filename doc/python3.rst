@@ -25,7 +25,7 @@ read it back. Notice the byte string is decoded back to :class:`bytes`::
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
   >>> c = pymongo.MongoClient()
-  >>> c.test.bintest.insert({'binary': b'this is a byte string'})
+  >>> c.test.bintest.insert_one({'binary': b'this is a byte string'}).inserted_id
   ObjectId('4f9086b1fba5222021000000')
   >>> c.test.bintest.find_one()
   {'binary': b'this is a byte string', '_id': ObjectId('4f9086b1fba5222021000000')}

@@ -24,7 +24,10 @@ from bson.py3compat import string_type
 from pymongo import MongoClient
 from pymongo.options import *
 from pymongo.common import partition_node
-from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
+from pymongo.errors import (BulkWriteError,
+                            ConfigurationError,
+                            InvalidOperation,
+                            OperationFailure)
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   unittest,
@@ -953,7 +956,7 @@ class TestBulkWriteConcern(BulkTestBase):
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'a': 1})
         self.assertRaises(
-            OperationFailure,
+            ConfigurationError,
             batch.execute, {'fsync': True, 'j': True})
 
     @client_context.require_replica_set

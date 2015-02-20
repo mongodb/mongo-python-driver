@@ -185,10 +185,11 @@ class UUIDLegacy(Binary):
 
       >>> import uuid
       >>> from bson.binary import Binary, UUIDLegacy, STANDARD
+      >>> from bson.codec_options import CodecOptions
       >>> my_uuid = uuid.uuid4()
       >>> coll = db.get_collection('test',
       ...                          CodecOptions(uuid_representation=STANDARD))
-      >>> coll.insert({'uuid': Binary(my_uuid.bytes, 3)})
+      >>> coll.insert_one({'uuid': Binary(my_uuid.bytes, 3)}).inserted_id
       ObjectId('...')
       >>> coll.find({'uuid': my_uuid}).count()
       0
@@ -199,8 +200,8 @@ class UUIDLegacy(Binary):
       >>>
       >>> # Convert from subtype 3 to subtype 4
       >>> doc = coll.find_one({'uuid': UUIDLegacy(my_uuid)})
-      >>> coll.save(doc)
-      ObjectId('...')
+      >>> coll.replace_one({"_id": doc["_id"]}, doc).matched_count
+      1
       >>> coll.find({'uuid': UUIDLegacy(my_uuid)}).count()
       0
       >>> coll.find({'uuid': {'$in': [UUIDLegacy(my_uuid), my_uuid]}}).count()

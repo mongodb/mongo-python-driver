@@ -113,11 +113,11 @@ Here's a basic example (for more see the *examples* section of the docs):
   u'test'
   >>> db.my_collection
   Collection(Database(MongoClient('localhost', 27017), u'test'), u'my_collection')
-  >>> db.my_collection.save({"x": 10})
+  >>> db.my_collection.insert_one({"x": 10}).inserted_id
   ObjectId('4aba15ebe23f6b53b0000000')
-  >>> db.my_collection.save({"x": 8})
+  >>> db.my_collection.insert_one({"x": 8}).inserted_id
   ObjectId('4aba160ee23f6b543e000000')
-  >>> db.my_collection.save({"x": 11})
+  >>> db.my_collection.insert_one({"x": 11}).inserted_id
   ObjectId('4aba160ee23f6b543e000002')
   >>> db.my_collection.find_one()
   {u'x': 10, u'_id': ObjectId('4aba15ebe23f6b53b0000000')}

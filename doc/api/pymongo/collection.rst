@@ -32,6 +32,7 @@
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
       .. automethod:: with_options
+      .. automethod:: bulk_write
       .. automethod:: insert_one
       .. automethod:: insert_many
       .. automethod:: replace_one
@@ -39,33 +40,32 @@
       .. automethod:: update_many
       .. automethod:: delete_one
       .. automethod:: delete_many
-      .. automethod:: insert(doc_or_docs[, manipulate=True[, check_keys=True[, continue_on_error=False[, **kwargs]]]])
-      .. automethod:: save(to_save[, manipulate=True[, check_keys=True[, **kwargs]]])
-      .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, multi=False[, check_keys=True[, **kwargs]]]]])
-      .. automethod:: remove([spec_or_id=None[, multi=True[, **kwargs]]])
-      .. automethod:: initialize_unordered_bulk_op
-      .. automethod:: initialize_ordered_bulk_op
-      .. automethod:: bulk_write
-      .. automethod:: drop
+      .. automethod:: aggregate
       .. automethod:: find([filter=None[, projection=None[, skip=0[, limit=0[, no_cursor_timeout=False[, cursor_type=NON_TAILABLE[, sort=None[, allow_partial_results=False[, oplog_replay=False[, modifiers=None[, manipulate=True]]]]]]]]]]])
       .. automethod:: find_one([filter_or_id=None[, *args[, **kwargs]]])
-      .. automethod:: parallel_scan
+      .. automethod:: find_one_and_delete
+      .. automethod:: find_one_and_replace(filter, replacement, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)
+      .. automethod:: find_one_and_update(filter, update, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)
       .. automethod:: count
+      .. automethod:: distinct
       .. automethod:: create_index
       .. automethod:: ensure_index
       .. automethod:: drop_index
       .. automethod:: drop_indexes
       .. automethod:: reindex
       .. automethod:: index_information
-      .. automethod:: options
-      .. automethod:: aggregate
-      .. automethod:: group
+      .. automethod:: drop
       .. automethod:: rename
-      .. automethod:: distinct
+      .. automethod:: options
+      .. automethod:: group
       .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
+      .. automethod:: parallel_scan
+      .. automethod:: initialize_unordered_bulk_op
+      .. automethod:: initialize_ordered_bulk_op
+      .. automethod:: insert(doc_or_docs[, manipulate=True[, check_keys=True[, continue_on_error=False[, **kwargs]]]])
+      .. automethod:: save(to_save[, manipulate=True[, check_keys=True[, **kwargs]]])
+      .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, multi=False[, check_keys=True[, **kwargs]]]]])
+      .. automethod:: remove([spec_or_id=None[, multi=True[, **kwargs]]])
       .. automethod:: find_and_modify
-      .. automethod:: find_one_and_delete
-      .. automethod:: find_one_and_replace(filter, replacement, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)
-      .. automethod:: find_one_and_update(filter, update, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)
 

@@ -30,6 +30,7 @@ from pymongo.errors import (BulkWriteError,
                             OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
                              insert, _do_batched_write_command)
+from pymongo.write_concern import WriteConcern
 
 
 _DELETE_ALL = 0
@@ -272,8 +273,8 @@ class _Bulk(object):
         for run in generator:
             cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
                        ('ordered', self.ordered)])
-            if write_concern:
-                cmd['writeConcern'] = write_concern
+            if write_concern.document:
+                cmd['writeConcern'] = write_concern.document
 
             results = _do_batched_write_command(
                 self.namespace, run.op_type, cmd,
@@ -296,31 +297,34 @@ class _Bulk(object):
         """Execute all operations, returning no results (w=0).
         """
         coll = self.collection
-        w_value = 0
         # If ordered is True we have to send GLE or use write
         # commands so we can abort on the first error.
-        if self.ordered:
-            w_value = 1
+        write_concern = WriteConcern(w=int(self.ordered))
 
         for run in generator:
             try:
                 if run.op_type == _INSERT:
-                    coll.insert(run.ops,
-                                continue_on_error=not self.ordered,
-                                w=w_value)
+                    coll._insert(run.ops,
+                                 self.ordered,
+                                 write_concern=write_concern)
                 else:
                     for operation in run.ops:
                         try:
                             if run.op_type == _UPDATE:
-                                coll.update(operation['q'],
-                                            operation['u'],
-                                            upsert=operation['upsert'],
-                                            multi=operation['multi'],
-                                            w=w_value)
+                                doc = operation['u']
+                                check_keys = True
+                                if doc and next(iter(doc)).startswith('$'):
+                                    check_keys = False
+                                coll._update(operation['q'],
+                                             doc,
+                                             operation['upsert'],
+                                             check_keys,
+                                             operation['multi'],
+                                             write_concern=write_concern)
                             else:
-                                coll.remove(operation['q'],
-                                            multi=(not operation['limit']),
-                                            w=w_value)
+                                coll._delete(operation['q'],
+                                             not operation['limit'],
+                                             write_concern)
                         except OperationFailure:
                             if self.ordered:
                                 return
@@ -331,7 +335,7 @@ class _Bulk(object):
     def legacy_insert(self, operation, write_concern):
         """Do a legacy insert and return the result.
         """
-        # We have to do this here since Collection.insert
+        # We have to do this here since Collection._insert
         # throws away results and we need to check for jnote.
         client = self.collection.database.connection
         return client._send_message(
@@ -359,17 +363,23 @@ class _Bulk(object):
                     # at a time. That means the performance of bulk insert
                     # will be slower here than calling Collection.insert()
                     if run.op_type == _INSERT:
-                        result = self.legacy_insert(operation, write_concern)
+                        result = self.legacy_insert(operation,
+                                                    write_concern.document)
                     elif run.op_type == _UPDATE:
-                        result = coll.update(operation['q'],
-                                             operation['u'],
-                                             upsert=operation['upsert'],
-                                             multi=operation['multi'],
-                                             **write_concern)
+                        doc = operation['u']
+                        check_keys = True
+                        if doc and next(iter(doc)).startswith('$'):
+                            check_keys = False
+                        result = coll._update(operation['q'],
+                                              doc,
+                                              operation['upsert'],
+                                              check_keys,
+                                              operation['multi'],
+                                              write_concern=write_concern)
                     else:
-                        result = coll.remove(operation['q'],
-                                             multi=(not operation['limit']),
-                                             **write_concern)
+                        result = coll._delete(operation['q'],
+                                              not operation['limit'],
+                                              write_concern)
                     _merge_legacy(run, full_result, result, idx)
                 except DocumentTooLarge as exc:
                     # MongoDB 2.6 uses error code 2 for "too large".
@@ -410,14 +420,15 @@ class _Bulk(object):
                                    'only be executed once.')
         self.executed = True
         client = self.collection.database.connection
-        write_concern = write_concern or self.collection.write_concern.document
+        write_concern = (WriteConcern(**write_concern) if
+                         write_concern else self.collection.write_concern)
 
         if self.ordered:
             generator = self.gen_ordered()
         else:
             generator = self.gen_unordered()
 
-        if write_concern.get('w') == 0:
+        if not write_concern.acknowledged:
             self.execute_no_results(generator)
         elif client._writable_max_wire_version() > 1:
             return self.execute_command(generator, write_concern)
@@ -534,11 +545,6 @@ class BulkOperationBuilder(object):
             in arbitrary order (possibly in parallel on the server), reporting
             any errors that occurred after attempting all operations. Defaults
             to ``True``.
-
-        .. warning::
-          If you are using a version of MongoDB older than 2.6 you will
-          get much better bulk insert performance using
-          :meth:`~pymongo.collection.Collection.insert`.
         """
         self.__bulk = _Bulk(collection, ordered)
 

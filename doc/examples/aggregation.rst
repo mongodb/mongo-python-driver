@@ -20,14 +20,12 @@ aggregations on:
 
   >>> from pymongo import MongoClient
   >>> db = MongoClient().aggregation_example
-  >>> db.things.insert({"x": 1, "tags": ["dog", "cat"]})
-  ObjectId('...')
-  >>> db.things.insert({"x": 2, "tags": ["cat"]})
-  ObjectId('...')
-  >>> db.things.insert({"x": 2, "tags": ["mouse", "cat", "dog"]})
-  ObjectId('...')
-  >>> db.things.insert({"x": 3, "tags": []})
-  ObjectId('...')
+  >>> result = db.things.insert_many([{"x": 1, "tags": ["dog", "cat"]},
+  ...                                 {"x": 2, "tags": ["cat"]},
+  ...                                 {"x": 2, "tags": ["mouse", "cat", "dog"]},
+  ...                                 {"x": 3, "tags": []}])
+  >>> result.inserted_ids
+  [ObjectId('...'), ObjectId('...'), ObjectId('...'), ObjectId('...')]
 
 .. _aggregate-examples:
 

@@ -26,7 +26,6 @@ sys.path[0:0] = [""]
 
 from bson.regex import Regex
 from bson.code import Code
-from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import u, itervalues
 from bson.son import SON
@@ -1596,36 +1595,6 @@ class TestCollection(IntegrationTest):
         bad = BadGetAttr([('foo', 'bar')])
         c.insert_one({'bad': bad})
         self.assertEqual('bar', c.find_one()['bad']['foo'])
-
-    def test_bad_dbref(self):
-        c = self.db.test
-        c.drop()
-
-        # Incomplete DBRefs.
-        self.assertRaises(
-            InvalidDocument,
-            c.insert_one, {'ref': {'$ref': 'collection'}})
-
-        self.assertRaises(
-            InvalidDocument,
-            c.insert_one, {'ref': {'$id': ObjectId()}})
-
-        ref_only = {'ref': {'$ref': 'collection'}}
-        id_only = {'ref': {'$id': ObjectId()}}
-
-        # Starting with MongoDB 2.5.2 this is no longer possible
-        # from insert, update, or findAndModify.
-        if not client_context.version.at_least(2, 5, 2):
-            # Force insert of ref without $id.
-            c.insert(ref_only, check_keys=False)
-            self.assertEqual(DBRef('collection', id=None),
-                             c.find_one()['ref'])
-
-            c.drop()
-
-            # DBRef without $ref is decoded as normal subdocument.
-            c.insert(id_only, check_keys=False)
-            self.assertEqual(id_only, c.find_one())
 
     def test_find_one_and(self):
         c = self.db.test

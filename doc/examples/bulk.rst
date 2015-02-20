@@ -17,8 +17,8 @@ Bulk Insert
 
 .. versionadded:: 2.6
 
-A batch of documents can be inserted by passing a list or generator
-to the :meth:`~pymongo.collection.Collection.insert` method. PyMongo
+A batch of documents can be inserted by passing a list to the
+:meth:`~pymongo.collection.Collection.insert_many` method. PyMongo
 will automatically split the batch into smaller sub-batches based on
 the maximum message size accepted by MongoDB, supporting very large
 bulk insert operations.
@@ -27,7 +27,7 @@ bulk insert operations.
 
   >>> import pymongo
   >>> db = pymongo.MongoClient().bulk_example
-  >>> db.test.insert(({'i': i} for i in xrange(10000)))
+  >>> db.test.insert_many([{'i': i} for i in xrange(10000)]).inserted_ids
   [...]
   >>> db.test.count()
   10000
@@ -40,13 +40,6 @@ Mixed Bulk Write Operations
 PyMongo also supports executing mixed bulk write operations. A batch
 of insert, update, and remove operations can be executed together using
 the bulk write operations API.
-
-.. note::
-
-  Though the following API will work with all versions of MongoDB, it is
-  designed to be used with MongoDB versions >= 2.6. Much better bulk insert
-  performance can be achieved with older versions of MongoDB through the
-  :meth:`~pymongo.collection.Collection.insert` method.
 
 .. _ordered_bulk:
 
@@ -182,7 +175,7 @@ regardless of execution order.
   >>> bulk.insert({'a': 2})
   >>> bulk.insert({'a': 3})
   >>> try:
-  ...     bulk.execute({'w': 4, 'wtimeout': 1})
+  ...     bulk.execute({'w': 3, 'wtimeout': 1})
   ... except BulkWriteError as bwe:
   ...     pprint(bwe.details)
   ... 

@@ -284,11 +284,8 @@ class Collection(common.BaseObject):
     def bulk_write(self, requests, ordered=True):
         """Send a batch of write operations to the server.
 
-        This is an alternative to the fluent bulk write API provided through
-        the :meth:`initialize_ordered_bulk_op` and
-        :meth:`initialize_unordered_bulk_op` methods. Write operations are
-        passed as a list using the write operation classes from the
-        :mod:`~pymongo.options` module::
+        Write operations are passed as a list using the write operation classes
+        from the :mod:`~pymongo.options` module::
 
           >>> # DeleteOne, UpdateOne, and UpdateMany are also available.
           ...
@@ -324,216 +321,8 @@ class Collection(common.BaseObject):
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
 
-    def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
-        """Save a document in this collection.
-
-        If `to_save` already has an ``"_id"`` then an :meth:`update`
-        (upsert) operation is performed and any existing document with
-        that ``"_id"`` is overwritten. Otherwise an :meth:`insert`
-        operation is performed. In this case if `manipulate` is ``True``
-        an ``"_id"`` will be added to `to_save` and this method returns
-        the ``"_id"`` of the saved document. If `manipulate` is ``False``
-        the ``"_id"`` will be added by the server but this method will
-        return ``None``.
-
-        Raises :class:`TypeError` if `to_save` is not an instance of
-        :class:`dict`.
-
-        Write concern options can be passed as keyword arguments, overriding
-        any global defaults. Valid options include w=<int/string>,
-        wtimeout=<int>, j=<bool>, or fsync=<bool>. See the parameter list below
-        for a detailed explanation of these options.
-
-        By default an acknowledgment is requested from the server that the
-        save was successful, raising :class:`~pymongo.errors.OperationFailure`
-        if an error occurred. **Passing w=0 disables write acknowledgement
-        and all other write concern options.**
-
-        :Parameters:
-          - `to_save`: the document to be saved
-          - `manipulate` (optional): manipulate the document before
-            saving it?
-          - `check_keys` (optional): check if keys start with '$' or
-            contain '.', raising :class:`~pymongo.errors.InvalidName`
-            in either case.
-          - `w`: (integer or string) Used with replication, write operations
-            will block until they have been replicated to the specified number
-            or tagged set of servers. `w=<integer>` always includes the replica
-            set primary (e.g. w=3 means write to the primary and wait until
-            replicated to **two** secondaries). **w=0 disables acknowledgement
-            of write operations and can not be used with other write concern
-            options.**
-          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
-            in milliseconds to control how long to wait for write propagation
-            to complete. If replication does not complete in the given
-            timeframe, a timeout exception is raised.
-          - `j`: If ``True`` block until write operations have been committed
-            to the journal. Cannot be used in combination with `fsync`. Prior
-            to MongoDB 2.6 this option was ignored if the server was running
-            without journaling. Starting with MongoDB 2.6 write operations will
-            fail with an exception if this option is used when the server is
-            running without journaling.
-          - `fsync`: If ``True`` and the server is running without journaling,
-            blocks until the server has synced all data files to disk. If the
-            server is running with journaling, this acts the same as the `j`
-            option, blocking until write operations have been committed to the
-            journal. Cannot be used in combination with `j`.
-        :Returns:
-          - The ``'_id'`` value of `to_save` or ``[None]`` if `manipulate` is
-            ``False`` and `to_save` has no '_id' field.
-
-        .. versionchanged:: 3.0
-           Removed the `safe` parameter
-
-        .. mongodoc:: insert
-        """
-        if not isinstance(to_save, collections.MutableMapping):
-            raise TypeError("cannot save object of type %s" % type(to_save))
-
-        write_concern = None
-        if kwargs:
-            write_concern = WriteConcern(**kwargs)
-
-        if "_id" not in to_save:
-            return self.__insert(to_save, True,
-                                 check_keys, manipulate, write_concern)
-        else:
-            self.__update({"_id": to_save["_id"]}, to_save, True,
-                          check_keys, False, manipulate, write_concern)
-
-    def insert(self, doc_or_docs, manipulate=True,
-               check_keys=True, continue_on_error=False, **kwargs):
-        """Insert a document(s) into this collection.
-
-        If `manipulate` is ``True``, the document(s) are manipulated using
-        any :class:`~pymongo.son_manipulator.SONManipulator` instances
-        that have been added to this :class:`~pymongo.database.Database`.
-        In this case an ``"_id"`` will be added if the document(s) does
-        not already contain one and the ``"id"`` (or list of ``"_id"``
-        values for more than one document) will be returned.
-        If `manipulate` is ``False`` and the document(s) does not include
-        an ``"_id"`` one will be added by the server. The server
-        does not return the ``"_id"`` it created so ``None`` is returned.
-
-        Write concern options can be passed as keyword arguments, overriding
-        any global defaults. Valid options include w=<int/string>,
-        wtimeout=<int>, j=<bool>, or fsync=<bool>. See the parameter list below
-        for a detailed explanation of these options.
-
-        By default an acknowledgment is requested from the server that the
-        insert was successful, raising :class:`~pymongo.errors.OperationFailure`
-        if an error occurred. **Passing w=0 disables write acknowledgement
-        and all other write concern options.**
-
-        :Parameters:
-          - `doc_or_docs`: a document or list of documents to be
-            inserted
-          - `manipulate` (optional): If ``True`` manipulate the documents
-            before inserting.
-          - `check_keys` (optional): If ``True`` check if keys start with '$'
-            or contain '.', raising :class:`~pymongo.errors.InvalidName` in
-            either case.
-          - `continue_on_error` (optional): If ``True``, the database will not
-            stop processing a bulk insert if one fails (e.g. due to duplicate
-            IDs). This makes bulk insert behave similarly to a series of single
-            inserts, except lastError will be set if any insert fails, not just
-            the last one. If multiple errors occur, only the most recent will
-            be reported by :meth:`~pymongo.database.Database.error`.
-          - `w`: (integer or string) Used with replication, write operations
-            will block until they have been replicated to the specified number
-            or tagged set of servers. `w=<integer>` always includes the replica
-            set primary (e.g. w=3 means write to the primary and wait until
-            replicated to **two** secondaries). **w=0 disables acknowledgement
-            of write operations and can not be used with other write concern
-            options.**
-          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
-            in milliseconds to control how long to wait for write propagation
-            to complete. If replication does not complete in the given
-            timeframe, a timeout exception is raised.
-          - `j`: If ``True`` block until write operations have been committed
-            to the journal. Cannot be used in combination with `fsync`. Prior
-            to MongoDB 2.6 this option was ignored if the server was running
-            without journaling. Starting with MongoDB 2.6 write operations will
-            fail with an exception if this option is used when the server is
-            running without journaling.
-          - `fsync`: If ``True`` and the server is running without journaling,
-            blocks until the server has synced all data files to disk. If the
-            server is running with journaling, this acts the same as the `j`
-            option, blocking until write operations have been committed to the
-            journal. Cannot be used in combination with `j`.
-        :Returns:
-          - The ``'_id'`` value (or list of '_id' values) of `doc_or_docs` or
-            ``[None]`` if manipulate is ``False`` and the documents passed
-            as `doc_or_docs` do not include an '_id' field.
-
-        .. note:: `continue_on_error` requires server version **>= 1.9.1**
-
-        .. versionchanged:: 3.0
-           Removed the `safe` parameter
-        .. versionadded:: 2.1
-           Support for continue_on_error.
-
-        .. mongodoc:: insert
-        """
-        write_concern = None
-        if kwargs:
-            write_concern = WriteConcern(**kwargs)
-        return self.__insert(doc_or_docs, not continue_on_error,
-                             check_keys, manipulate, write_concern)
-
-    def insert_one(self, document):
-        """Insert a single document.
-
-        :Parameters:
-          - `document`: The document to insert. Must be a mutable mapping
-            type. If the document does not have an _id field one will be
-            added automatically.
-
-        :Returns:
-          - An instance of :class:`~pymongo.results.InsertOneResult`.
-        """
-        if not isinstance(document, collections.MutableMapping):
-            raise TypeError("document must be a mutable mapping type")
-        if "_id" not in document:
-            document["_id"] = ObjectId()
-        return InsertOneResult(self.__insert(document),
-                               self.write_concern.acknowledged)
-
-    def insert_many(self, documents, ordered=True):
-        """Insert a list of documents.
-
-        :Parameters:
-          - `documents`: A list of documents to insert.
-          - `ordered` (optional): If ``True`` (the default) documents will be
-            inserted on the server serially, in the order provided. If an error
-            occurs all remaining inserts are aborted. If ``False``, documents
-            will be inserted on the server in arbitrary order, possibly in
-            parallel, and all document inserts will be attempted.
-
-        :Returns:
-          An instance of :class:`~pymongo.results.InsertManyResult`.
-        """
-        if not isinstance(documents, list) or not documents:
-            raise TypeError("documents must be a non-empty list")
-        inserted_ids = []
-        def gen():
-            """A generator that validates documents and handles _ids."""
-            for document in documents:
-                if not isinstance(document, collections.MutableMapping):
-                    raise TypeError("document must be a dict or other "
-                                    "subclass of collections.MutableMapping")
-                if "_id" not in document:
-                    document["_id"] = ObjectId()
-                inserted_ids.append(document["_id"])
-                yield (_INSERT, document)
-
-        blk = _Bulk(self, ordered)
-        blk.ops = [doc for doc in gen()]
-        blk.execute(self.write_concern.document)
-        return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
-
-    def __insert(self, docs, ordered=True,
-                 check_keys=True, manipulate=False, write_concern=None):
+    def _insert(self, docs, ordered=True,
+                check_keys=True, manipulate=False, write_concern=None):
         """Internal insert helper."""
         client = self.database.connection
         return_one = False
@@ -588,168 +377,59 @@ class Collection(common.BaseObject):
         else:
             return ids
 
-    def update(self, spec, document, upsert=False, manipulate=False,
-               multi=False, check_keys=True, **kwargs):
-        """Update a document(s) in this collection.
-
-        Raises :class:`TypeError` if either `spec` or `document` is
-        not an instance of ``dict`` or `upsert` is not an instance of
-        ``bool``.
-
-        Write concern options can be passed as keyword arguments, overriding
-        any global defaults. Valid options include w=<int/string>,
-        wtimeout=<int>, j=<bool>, or fsync=<bool>. See the parameter list below
-        for a detailed explanation of these options.
-
-        By default an acknowledgment is requested from the server that the
-        update was successful, raising :class:`~pymongo.errors.OperationFailure`
-        if an error occurred. **Passing w=0 disables write acknowledgement
-        and all other write concern options.**
-
-        There are many useful `update modifiers`_ which can be used
-        when performing updates. For example, here we use the
-        ``"$set"`` modifier to modify some fields in a matching
-        document:
-
-        .. doctest::
-
-          >>> db.test.insert({"x": "y", "a": "b"})
-          ObjectId('...')
-          >>> list(db.test.find())
-          [{u'a': u'b', u'x': u'y', u'_id': ObjectId('...')}]
-          >>> db.test.update({"x": "y"}, {"$set": {"a": "c"}})
-          {...}
-          >>> list(db.test.find())
-          [{u'a': u'c', u'x': u'y', u'_id': ObjectId('...')}]
+    def insert_one(self, document):
+        """Insert a single document.
 
         :Parameters:
-          - `spec`: a ``dict`` or :class:`~bson.son.SON` instance
-            specifying elements which must be present for a document
-            to be updated
-          - `document`: a ``dict`` or :class:`~bson.son.SON`
-            instance specifying the document to be used for the update
-            or (in the case of an upsert) insert - see docs on MongoDB
-            `update modifiers`_
-          - `upsert` (optional): perform an upsert if ``True``
-          - `manipulate` (optional): manipulate the document before
-            updating? If ``True`` all instances of
-            :mod:`~pymongo.son_manipulator.SONManipulator` added to
-            this :class:`~pymongo.database.Database` will be applied
-            to the document before performing the update.
-          - `check_keys` (optional): check if keys in `document` start
-            with '$' or contain '.', raising
-            :class:`~pymongo.errors.InvalidName`. Only applies to
-            document replacement, not modification through $
-            operators.
-          - `multi` (optional): update all documents that match
-            `spec`, rather than just the first matching document. The
-            default value for `multi` is currently ``False``, but this
-            might eventually change to ``True``. It is recommended
-            that you specify this argument explicitly for all update
-            operations in order to prepare your code for that change.
-          - `w`: (integer or string) Used with replication, write operations
-            will block until they have been replicated to the specified number
-            or tagged set of servers. `w=<integer>` always includes the replica
-            set primary (e.g. w=3 means write to the primary and wait until
-            replicated to **two** secondaries). **w=0 disables acknowledgement
-            of write operations and can not be used with other write concern
-            options.**
-          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
-            in milliseconds to control how long to wait for write propagation
-            to complete. If replication does not complete in the given
-            timeframe, a timeout exception is raised.
-          - `j`: If ``True`` block until write operations have been committed
-            to the journal. Cannot be used in combination with `fsync`. Prior
-            to MongoDB 2.6 this option was ignored if the server was running
-            without journaling. Starting with MongoDB 2.6 write operations will
-            fail with an exception if this option is used when the server is
-            running without journaling.
-          - `fsync`: If ``True`` and the server is running without journaling,
-            blocks until the server has synced all data files to disk. If the
-            server is running with journaling, this acts the same as the `j`
-            option, blocking until write operations have been committed to the
-            journal. Cannot be used in combination with `j`.
+          - `document`: The document to insert. Must be a mutable mapping
+            type. If the document does not have an _id field one will be
+            added automatically.
+
         :Returns:
-          - A document (dict) describing the effect of the update or ``None``
-            if write acknowledgement is disabled.
-
-        .. versionchanged:: 3.0
-           Removed the `safe` parameter
-
-        .. _update modifiers: http://www.mongodb.org/display/DOCS/Updating
-
-        .. mongodoc:: update
+          - An instance of :class:`~pymongo.results.InsertOneResult`.
         """
-        if not isinstance(spec, collections.Mapping):
-            raise TypeError("spec must be a mapping type")
-        if not isinstance(document, collections.Mapping):
-            raise TypeError("document must be a mapping type")
-        if document:
-            # If a top level key begins with '$' this is a modify operation
-            # and we should skip key validation. It doesn't matter which key
-            # we check here. Passing a document with a mix of top level keys
-            # starting with and without a '$' is invalid and the server will
-            # raise an appropriate exception.
-            first = next(iter(document))
-            if first.startswith('$'):
-                check_keys = False
+        if not isinstance(document, collections.MutableMapping):
+            raise TypeError("document must be a mutable mapping type")
+        if "_id" not in document:
+            document["_id"] = ObjectId()
+        return InsertOneResult(self._insert(document),
+                               self.write_concern.acknowledged)
 
-        write_concern = None
-        if kwargs:
-            write_concern = WriteConcern(**kwargs)
-        return self.__update(spec, document, upsert,
-                             check_keys, multi, manipulate, write_concern)
-
-    def replace_one(self, filter, replacement, upsert=False):
-        """Replace a single document matching the filter.
+    def insert_many(self, documents, ordered=True):
+        """Insert a list of documents.
 
         :Parameters:
-          - `filter`: A query that matches the document to replace.
-          - `replacement`: The new document.
-          - `upsert` (optional): If ``True``, perform an insert if no documents
-            match the filter.
+          - `documents`: A list of documents to insert.
+          - `ordered` (optional): If ``True`` (the default) documents will be
+            inserted on the server serially, in the order provided. If an error
+            occurs all remaining inserts are aborted. If ``False``, documents
+            will be inserted on the server in arbitrary order, possibly in
+            parallel, and all document inserts will be attempted.
 
         :Returns:
-          - An instance of :class:`~pymongo.results.UpdateResult`.
+          An instance of :class:`~pymongo.results.InsertManyResult`.
         """
-        helpers._check_ok_for_replace(replacement)
-        result = self.__update(filter, replacement, upsert)
-        return UpdateResult(result, self.write_concern.acknowledged)
+        if not isinstance(documents, list) or not documents:
+            raise TypeError("documents must be a non-empty list")
+        inserted_ids = []
+        def gen():
+            """A generator that validates documents and handles _ids."""
+            for document in documents:
+                if not isinstance(document, collections.MutableMapping):
+                    raise TypeError("document must be a dict or other "
+                                    "subclass of collections.MutableMapping")
+                if "_id" not in document:
+                    document["_id"] = ObjectId()
+                inserted_ids.append(document["_id"])
+                yield (_INSERT, document)
 
-    def update_one(self, filter, update, upsert=False):
-        """Update a single document matching the filter.
+        blk = _Bulk(self, ordered)
+        blk.ops = [doc for doc in gen()]
+        blk.execute(self.write_concern.document)
+        return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
 
-        :Parameters:
-          - `filter`: A query that matches the document to update.
-          - `update`: The modifications to apply.
-          - `upsert` (optional): If ``True``, perform an insert if no documents
-            match the filter.
-
-        :Returns:
-          - An instance of :class:`~pymongo.results.UpdateResult`.
-        """
-        helpers._check_ok_for_update(update)
-        result = self.__update(filter, update, upsert, False)
-        return UpdateResult(result, self.write_concern.acknowledged)
-
-    def update_many(self, filter, update, upsert=False):
-        """Update one or more documents that match the filter.
-
-        :Parameters:
-          - `filter`: A query that matches the documents to update.
-          - `update`: The modifications to apply.
-          - `upsert` (optional): If ``True``, perform an insert if no documents
-            match the filter.
-
-        :Returns:
-          - An instance of :class:`~pymongo.results.UpdateResult`.
-        """
-        helpers._check_ok_for_update(update)
-        result = self.__update(filter, update, upsert, False, True)
-        return UpdateResult(result, self.write_concern.acknowledged)
-
-    def __update(self, filter, document, upsert=False, check_keys=True,
-                 multi=False, manipulate=False, write_concern=None):
+    def _update(self, filter, document, upsert=False, check_keys=True,
+                multi=False, manipulate=False, write_concern=None):
         """Internal update / replace helper."""
         if not isinstance(filter, collections.Mapping):
             raise TypeError("filter must be a mapping type")
@@ -796,6 +476,54 @@ class Collection(common.BaseObject):
                                filter, document, safe, concern,
                                check_keys, self.codec_options), safe)
 
+    def replace_one(self, filter, replacement, upsert=False):
+        """Replace a single document matching the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the document to replace.
+          - `replacement`: The new document.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+        """
+        helpers._check_ok_for_replace(replacement)
+        result = self._update(filter, replacement, upsert)
+        return UpdateResult(result, self.write_concern.acknowledged)
+
+    def update_one(self, filter, update, upsert=False):
+        """Update a single document matching the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the document to update.
+          - `update`: The modifications to apply.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+        """
+        helpers._check_ok_for_update(update)
+        result = self._update(filter, update, upsert, False)
+        return UpdateResult(result, self.write_concern.acknowledged)
+
+    def update_many(self, filter, update, upsert=False):
+        """Update one or more documents that match the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the documents to update.
+          - `update`: The modifications to apply.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+        """
+        helpers._check_ok_for_update(update)
+        result = self._update(filter, update, upsert, False, True)
+        return UpdateResult(result, self.write_concern.acknowledged)
+
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
@@ -806,97 +534,7 @@ class Collection(common.BaseObject):
         """
         self.__database.drop_collection(self.__name)
 
-    def remove(self, spec_or_id=None, multi=True, **kwargs):
-        """Remove a document(s) from this collection.
-
-        .. warning:: Calls to :meth:`remove` should be performed with
-           care, as removed data cannot be restored.
-
-        If `spec_or_id` is ``None``, all documents in this collection
-        will be removed. This is not equivalent to calling
-        :meth:`~pymongo.database.Database.drop_collection`, however,
-        as indexes will not be removed.
-
-        Write concern options can be passed as keyword arguments, overriding
-        any global defaults. Valid options include w=<int/string>,
-        wtimeout=<int>, j=<bool>, or fsync=<bool>. See the parameter list below
-        for a detailed explanation of these options.
-
-        By default an acknowledgment is requested from the server that the
-        remove was successful, raising :class:`~pymongo.errors.OperationFailure`
-        if an error occurred. **Passing w=0 disables write acknowledgement
-        and all other write concern options.**
-
-        :Parameters:
-          - `spec_or_id` (optional): a dictionary specifying the
-            documents to be removed OR any other type specifying the
-            value of ``"_id"`` for the document to be removed
-          - `multi` (optional): If ``True`` (the default) remove all documents
-            matching `spec_or_id`, otherwise remove only the first matching
-            document.
-          - `w`: (integer or string) Used with replication, write operations
-            will block until they have been replicated to the specified number
-            or tagged set of servers. `w=<integer>` always includes the replica
-            set primary (e.g. w=3 means write to the primary and wait until
-            replicated to **two** secondaries). **w=0 disables acknowledgement
-            of write operations and can not be used with other write concern
-            options.**
-          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
-            in milliseconds to control how long to wait for write propagation
-            to complete. If replication does not complete in the given
-            timeframe, a timeout exception is raised.
-          - `j`: If ``True`` block until write operations have been committed
-            to the journal. Cannot be used in combination with `fsync`. Prior
-            to MongoDB 2.6 this option was ignored if the server was running
-            without journaling. Starting with MongoDB 2.6 write operations will
-            fail with an exception if this option is used when the server is
-            running without journaling.
-          - `fsync`: If ``True`` and the server is running without journaling,
-            blocks until the server has synced all data files to disk. If the
-            server is running with journaling, this acts the same as the `j`
-            option, blocking until write operations have been committed to the
-            journal. Cannot be used in combination with `j`.
-        :Returns:
-          - A document (dict) describing the effect of the remove or ``None``
-            if write acknowledgement is disabled.
-
-        .. versionchanged:: 3.0
-           Removed the `safe` parameter
-
-        .. mongodoc:: remove
-        """
-        if spec_or_id is None:
-            spec_or_id = {}
-        if not isinstance(spec_or_id, collections.Mapping):
-            spec_or_id = {"_id": spec_or_id}
-        write_concern = None
-        if kwargs:
-            write_concern = WriteConcern(**kwargs)
-        return self.__delete(spec_or_id, multi, write_concern)
-
-    def delete_one(self, filter):
-        """Delete a single document matching the filter.
-
-        :Parameters:
-          - `filter`: A query that matches the document to delete.
-        :Returns:
-          - An instance of :class:`~pymongo.results.DeleteResult`.
-        """
-        return DeleteResult(self.__delete(filter, False),
-                            self.write_concern.acknowledged)
-
-    def delete_many(self, filter):
-        """Delete one or more documents matching the filter.
-
-        :Parameters:
-          - `filter`: A query that matches the documents to delete.
-        :Returns:
-          - An instance of :class:`~pymongo.results.DeleteResult`.
-        """
-        return DeleteResult(self.__delete(filter, True),
-                            self.write_concern.acknowledged)
-
-    def __delete(self, filter, multi, write_concern=None):
+    def _delete(self, filter, multi, write_concern=None):
         """Internal delete helper."""
         if not isinstance(filter, collections.Mapping):
             raise TypeError("filter must be a mapping type")
@@ -926,6 +564,28 @@ class Collection(common.BaseObject):
                 message.delete(self.__full_name, filter, safe,
                                concern, self.codec_options,
                                int(not multi)), safe)
+
+    def delete_one(self, filter):
+        """Delete a single document matching the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the document to delete.
+        :Returns:
+          - An instance of :class:`~pymongo.results.DeleteResult`.
+        """
+        return DeleteResult(self._delete(filter, False),
+                            self.write_concern.acknowledged)
+
+    def delete_many(self, filter):
+        """Delete one or more documents matching the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the documents to delete.
+        :Returns:
+          - An instance of :class:`~pymongo.results.DeleteResult`.
+        """
+        return DeleteResult(self._delete(filter, True),
+                            self.write_concern.acknowledged)
 
     def find_one(self, filter=None, *args, **kwargs):
         """Get a single document from the database.
@@ -1299,7 +959,7 @@ class Collection(common.BaseObject):
                 index["ns"] = self.__full_name
                 wcn = (self.write_concern if
                        self.write_concern.acknowledged else WriteConcern())
-                self.__database.system.indexes.__insert(
+                self.__database.system.indexes._insert(
                     index, True, False, False, wcn)
             else:
                 raise
@@ -1868,74 +1528,6 @@ class Collection(common.BaseObject):
         else:
             return res.get("results")
 
-    def find_and_modify(self, query={}, update=None,
-                        upsert=False, sort=None, full_response=False,
-                        manipulate=False, **kwargs):
-        """Update and return an object.
-
-        **DEPRECATED** - Use :meth:`find_one_and_delete`,
-        :meth:`find_one_and_replace`, or :meth:`find_one_and_update` instead.
-        """
-        warnings.warn("find_and_modify is deprecated, use find_one_and_delete"
-                      ", find_one_and_replace, or find_one_and_update instead",
-                      DeprecationWarning, stacklevel=2)
-
-        if (not update and not kwargs.get('remove', None)):
-            raise ValueError("Must either update or remove")
-
-        if (update and kwargs.get('remove', None)):
-            raise ValueError("Can't do both update and remove")
-
-        # No need to include empty args
-        if query:
-            kwargs['query'] = query
-        if update:
-            kwargs['update'] = update
-        if upsert:
-            kwargs['upsert'] = upsert
-        if sort:
-            # Accept a list of tuples to match Cursor's sort parameter.
-            if isinstance(sort, list):
-                kwargs['sort'] = helpers._index_document(sort)
-            # Accept OrderedDict, SON, and dict with len == 1 so we
-            # don't break existing code already using find_and_modify.
-            elif (isinstance(sort, ordered_types) or
-                  isinstance(sort, dict) and len(sort) == 1):
-                warnings.warn("Passing mapping types for `sort` is deprecated,"
-                              " use a list of (key, direction) pairs instead",
-                              DeprecationWarning, stacklevel=2)
-                kwargs['sort'] = sort
-            else:
-                raise TypeError("sort must be a list of (key, direction) "
-                                 "pairs, a dict of len 1, or an instance of "
-                                 "SON or OrderedDict")
-
-
-        fields = kwargs.pop("fields", None)
-        if fields is not None:
-            kwargs["fields"] = helpers._fields_list_to_dict(fields, "fields")
-
-        cmd = SON([("findAndModify", self.__name)])
-        cmd.update(kwargs)
-        out = self._command(cmd,
-                            ReadPreference.PRIMARY,
-                            allowable_errors=[_NO_OBJ_ERROR])[0]
-
-        if not out['ok']:
-            if out["errmsg"] == _NO_OBJ_ERROR:
-                return None
-            else:
-                # Should never get here b/c of allowable_errors
-                raise ValueError("Unexpected Error: %s" % (out,))
-
-        if full_response:
-            return out
-        else:
-            document = out.get('value')
-            if manipulate:
-                document = self.__database._fix_outgoing(document, self)
-            return document
-
     def __find_and_modify(self, filter, projection, sort, upsert=None,
                           return_document=ReturnDocument.Before, **kwargs):
         """Internal findAndModify helper."""
@@ -2050,6 +1642,166 @@ class Collection(common.BaseObject):
         kwargs['update'] = update
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document, **kwargs)
+
+    def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
+        """Save a document in this collection.
+
+        **DEPRECATED** - Use :meth:`insert_one` or :meth:`replace_one` instead.
+
+        .. versionchanged:: 3.0
+           Removed the `safe` parameter
+        """
+        warnings.warn("save is deprecated. Use insert_one or replace_one "
+                      "instead", DeprecationWarning, stacklevel=2)
+        if not isinstance(to_save, collections.MutableMapping):
+            raise TypeError("cannot save object of type %s" % type(to_save))
+
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
+
+        if "_id" not in to_save:
+            return self._insert(to_save, True,
+                                check_keys, manipulate, write_concern)
+        else:
+            self._update({"_id": to_save["_id"]}, to_save, True,
+                         check_keys, False, manipulate, write_concern)
+
+    def insert(self, doc_or_docs, manipulate=True,
+               check_keys=True, continue_on_error=False, **kwargs):
+        """Insert a document(s) into this collection.
+
+        **DEPRECATED** - Use :meth:`insert_one` or :meth:`insert_many` instead.
+
+        .. versionchanged:: 3.0
+           Removed the `safe` parameter
+        """
+        warnings.warn("insert is deprecated. Use insert_one or insert_many "
+                      "instead.", DeprecationWarning, stacklevel=2)
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
+        return self._insert(doc_or_docs, not continue_on_error,
+                            check_keys, manipulate, write_concern)
+
+    def update(self, spec, document, upsert=False, manipulate=False,
+               multi=False, check_keys=True, **kwargs):
+        """Update a document(s) in this collection.
+
+        **DEPRECATED** - Use :meth:`replace_one`, :meth:`update_one`, or
+        :meth:`update_many` instead.
+
+        .. versionchanged:: 3.0
+           Removed the `safe` parameter
+        """
+        warnings.warn("update is deprecated. Use replace_one, update_one or "
+                      "update_many instead.", DeprecationWarning, stacklevel=2)
+        if not isinstance(spec, collections.Mapping):
+            raise TypeError("spec must be a mapping type")
+        if not isinstance(document, collections.Mapping):
+            raise TypeError("document must be a mapping type")
+        if document:
+            # If a top level key begins with '$' this is a modify operation
+            # and we should skip key validation. It doesn't matter which key
+            # we check here. Passing a document with a mix of top level keys
+            # starting with and without a '$' is invalid and the server will
+            # raise an appropriate exception.
+            first = next(iter(document))
+            if first.startswith('$'):
+                check_keys = False
+
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
+        return self._update(spec, document, upsert,
+                            check_keys, multi, manipulate, write_concern)
+
+    def remove(self, spec_or_id=None, multi=True, **kwargs):
+        """Remove a document(s) from this collection.
+
+        **DEPRECATED** - Use :meth:`delete_one` or :meth:`delete_many` instead.
+
+        .. versionchanged:: 3.0
+           Removed the `safe` parameter
+        """
+        warnings.warn("remove is deprecated. Use delete_one or delete_many "
+                      "instead.", DeprecationWarning, stacklevel=2)
+        if spec_or_id is None:
+            spec_or_id = {}
+        if not isinstance(spec_or_id, collections.Mapping):
+            spec_or_id = {"_id": spec_or_id}
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
+        return self._delete(spec_or_id, multi, write_concern)
+
+    def find_and_modify(self, query={}, update=None,
+                        upsert=False, sort=None, full_response=False,
+                        manipulate=False, **kwargs):
+        """Update and return an object.
+
+        **DEPRECATED** - Use :meth:`find_one_and_delete`,
+        :meth:`find_one_and_replace`, or :meth:`find_one_and_update` instead.
+        """
+        warnings.warn("find_and_modify is deprecated, use find_one_and_delete"
+                      ", find_one_and_replace, or find_one_and_update instead",
+                      DeprecationWarning, stacklevel=2)
+
+        if (not update and not kwargs.get('remove', None)):
+            raise ValueError("Must either update or remove")
+
+        if (update and kwargs.get('remove', None)):
+            raise ValueError("Can't do both update and remove")
+
+        # No need to include empty args
+        if query:
+            kwargs['query'] = query
+        if update:
+            kwargs['update'] = update
+        if upsert:
+            kwargs['upsert'] = upsert
+        if sort:
+            # Accept a list of tuples to match Cursor's sort parameter.
+            if isinstance(sort, list):
+                kwargs['sort'] = helpers._index_document(sort)
+            # Accept OrderedDict, SON, and dict with len == 1 so we
+            # don't break existing code already using find_and_modify.
+            elif (isinstance(sort, ordered_types) or
+                  isinstance(sort, dict) and len(sort) == 1):
+                warnings.warn("Passing mapping types for `sort` is deprecated,"
+                              " use a list of (key, direction) pairs instead",
+                              DeprecationWarning, stacklevel=2)
+                kwargs['sort'] = sort
+            else:
+                raise TypeError("sort must be a list of (key, direction) "
+                                 "pairs, a dict of len 1, or an instance of "
+                                 "SON or OrderedDict")
+
+
+        fields = kwargs.pop("fields", None)
+        if fields is not None:
+            kwargs["fields"] = helpers._fields_list_to_dict(fields, "fields")
+
+        cmd = SON([("findAndModify", self.__name)])
+        cmd.update(kwargs)
+        out = self._command(cmd,
+                            ReadPreference.PRIMARY,
+                            allowable_errors=[_NO_OBJ_ERROR])[0]
+
+        if not out['ok']:
+            if out["errmsg"] == _NO_OBJ_ERROR:
+                return None
+            else:
+                # Should never get here b/c of allowable_errors
+                raise ValueError("Unexpected Error: %s" % (out,))
+
+        if full_response:
+            return out
+        else:
+            document = out.get('value')
+            if manipulate:
+                document = self.__database._fix_outgoing(document, self)
+            return document
 
     def __iter__(self):
         return self

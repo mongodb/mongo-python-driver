@@ -21,6 +21,7 @@ import warnings
 sys.path[0:0] = [""]
 
 from bson.codec_options import CodecOptions
+from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import u
 from bson.son import SON
@@ -41,6 +42,42 @@ from test.test_client import IntegrationTest
 from test.utils import (oid_generated_on_client,
                         rs_or_single_client,
                         wait_until)
+
+
+class TestDeprecations(IntegrationTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestDeprecations, cls).setUpClass()
+        cls.warn_context = warnings.catch_warnings()
+        cls.warn_context.__enter__()
+        warnings.simplefilter("error", DeprecationWarning)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.warn_context.__exit__()
+        cls.warn_context = None
+
+    def test_save_deprecation(self):
+        self.assertRaises(
+            DeprecationWarning, lambda: self.db.test.save({}))
+
+    def test_insert_deprecation(self):
+        self.assertRaises(
+            DeprecationWarning, lambda: self.db.test.insert({}))
+
+    def test_update_deprecation(self):
+        self.assertRaises(
+            DeprecationWarning, lambda: self.db.test.update({}, {}))
+
+    def test_remove_deprecation(self):
+        self.assertRaises(
+            DeprecationWarning, lambda: self.db.test.remove({}))
+
+    def test_find_and_modify_deprecation(self):
+        self.assertRaises(
+            DeprecationWarning,
+            lambda: self.db.test.find_and_modify({'i': 5}, {}))
 
 
 class TestLegacy(IntegrationTest):
@@ -180,7 +217,7 @@ class TestLegacy(IntegrationTest):
 
         db.drop_collection("test")
         self.assertEqual(db.test.find().count(), 0)
-        ids = db.test.insert(({"hello": u("world")}, {"hello": u("world")}))
+        db.test.insert(({"hello": u("world")}, {"hello": u("world")}))
         self.assertEqual(db.test.find().count(), 2)
 
         db.drop_collection("test")
@@ -329,6 +366,37 @@ class TestLegacy(IntegrationTest):
         # Only the first and third documents are inserted.
         wait_until(lambda: 2 == db.collection_4.count(),
                    'insert 2 documents', timeout=60)
+
+    def test_bad_dbref(self):
+        # Requires the legacy API to test.
+        c = self.db.test
+        c.drop()
+
+        # Incomplete DBRefs.
+        self.assertRaises(
+            InvalidDocument,
+            c.insert_one, {'ref': {'$ref': 'collection'}})
+
+        self.assertRaises(
+            InvalidDocument,
+            c.insert_one, {'ref': {'$id': ObjectId()}})
+
+        ref_only = {'ref': {'$ref': 'collection'}}
+        id_only = {'ref': {'$id': ObjectId()}}
+
+        # Starting with MongoDB 2.5.2 this is no longer possible
+        # from insert, update, or findAndModify.
+        if not client_context.version.at_least(2, 5, 2):
+            # Force insert of ref without $id.
+            c.insert(ref_only, check_keys=False)
+            self.assertEqual(DBRef('collection', id=None),
+                             c.find_one()['ref'])
+
+            c.drop()
+
+            # DBRef without $ref is decoded as normal subdocument.
+            c.insert(id_only, check_keys=False)
+            self.assertEqual(id_only, c.find_one())
 
     def test_update(self):
         # Tests legacy update.
@@ -627,11 +695,6 @@ class TestLegacy(IntegrationTest):
         c = self.db.test
         c.drop()
         c.insert({'_id': 1, 'i': 1})
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            self.assertRaises(DeprecationWarning, lambda:
-                              c.find_and_modify({'i': 5}, {}))
 
         # Test that we raise DuplicateKeyError when appropriate.
         # MongoDB doesn't have a code field for DuplicateKeyError

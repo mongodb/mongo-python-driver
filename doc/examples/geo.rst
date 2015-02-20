@@ -33,14 +33,12 @@ insert a couple of example locations:
 
 .. doctest::
 
-  >>> db.places.insert({"loc": [2, 5]})
-  ObjectId('...')
-  >>> db.places.insert({"loc": [30, 5]})
-  ObjectId('...')
-  >>> db.places.insert({"loc": [1, 2]})
-  ObjectId('...')
-  >>> db.places.insert({"loc": [4, 4]})
-  ObjectId('...')
+  >>> result = db.places.insert_many([{"loc": [2, 5]},
+  ...                                 {"loc": [30, 5]},
+  ...                                 {"loc": [1, 2]},
+  ...                                 {"loc": [4, 4]}])
+  >>> result.inserted_ids
+  [ObjectId('...'), ObjectId('...'), ObjectId('...'), ObjectId('...')]
 
 Querying
 --------
@@ -76,8 +74,8 @@ It's also possible to query for all items within a given rectangle
   >>> for doc in db.places.find({"loc": {"$within": {"$box": [[2, 2], [5, 6]]}}}):
   ...   repr(doc)
   ...
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
   "{u'loc': [2, 5], u'_id': ObjectId('...')}"
+  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
 
 Or circle (specified by center point and radius):
 
@@ -87,8 +85,8 @@ Or circle (specified by center point and radius):
   ...   repr(doc)
   ...
   "{u'loc': [1, 2], u'_id': ObjectId('...')}"
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
   "{u'loc': [2, 5], u'_id': ObjectId('...')}"
+  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
 
 geoNear queries are also supported using :class:`~bson.son.SON`::
 
