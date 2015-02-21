@@ -277,7 +277,8 @@ class TestLegacy(IntegrationTest):
 
         db.drop_collection("test")
         oid = db.test.insert({"_id": oid, "one": 1}, w=0)
-        self.assertEqual(1, db.test.count())
+        wait_until(lambda: 1 == db.test.count(), 'insert 1 document')
+
         docs[0].pop("_id")
         docs[2]["_id"] = oid
 
@@ -287,8 +288,7 @@ class TestLegacy(IntegrationTest):
         self.assertEqual(3, db.test.count())
         db.test.insert(docs, manipulate=False, continue_on_error=True, w=0)
 
-        wait_until(lambda: 6 == db.test.count(),
-                   'insert 3 documents')
+        wait_until(lambda: 6 == db.test.count(), 'insert 3 documents')
 
     def test_acknowledged_insert(self):
         # Tests legacy insert.
