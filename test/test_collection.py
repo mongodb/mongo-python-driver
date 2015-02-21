@@ -602,7 +602,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(document["_id"], result.inserted_id)
         self.assertFalse(result.acknowledged)
         # The insert failed duplicate key...
-        self.assertEqual(2, db.test.count())
+        wait_until(lambda: 2 == db.test.count(), 'forcing duplicate key error')
 
     def test_insert_many(self):
         db = self.db
