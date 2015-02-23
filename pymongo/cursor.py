@@ -236,6 +236,7 @@ class Cursor(object):
         return self._clone(True)
 
     def _clone(self, deepcopy=True):
+        """Internal clone helper."""
         clone = self._clone_base()
         values_to_clone = ("spec", "projection", "skip", "limit",
                            "max_time_ms", "comment", "max", "min",
@@ -800,7 +801,7 @@ class Cursor(object):
         self.__spec["$where"] = code
         return self
 
-    def __send_message(self, message):
+    def __send_message(self, msg):
         """Send a query or getmore message and handles the response.
 
         If message is ``None`` this is an exhaust cursor, which reads
@@ -811,7 +812,7 @@ class Cursor(object):
         """
         client = self.__collection.database.connection
 
-        if message:
+        if msg:
             kwargs = {
                 "read_preference": self.__read_preference,
                 "exhaust": self.__exhaust,
@@ -820,7 +821,7 @@ class Cursor(object):
                 kwargs["address"] = self.__address
 
             try:
-                response = client._send_message_with_response(message, **kwargs)
+                response = client._send_message_with_response(msg, **kwargs)
                 self.__address = response.address
                 if self.__exhaust:
                     # 'response' is an ExhaustResponse.
@@ -873,7 +874,7 @@ class Cursor(object):
         self.__id = doc["cursor_id"]
 
         # starting from doesn't get set on getmore's for tailable cursors
-        if not (self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]):
+        if not self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]:
             assert doc["starting_from"] == self.__retrieved, (
                 "Result batch started from %s, expected %s" % (
                     doc['starting_from'], self.__retrieved))
@@ -970,20 +971,20 @@ class Cursor(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         if self.__empty:
             raise StopIteration
-        db = self.__collection.database
+        _db = self.__collection.database
         if len(self.__data) or self._refresh():
             if self.__manipulate:
-                return db._fix_outgoing(self.__data.popleft(),
-                                        self.__collection)
+                return _db._fix_outgoing(self.__data.popleft(),
+                                         self.__collection)
             else:
                 return self.__data.popleft()
         else:
             raise StopIteration
 
-    __next__ = next
+    next = __next__
 
     def __enter__(self):
         return self

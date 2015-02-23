@@ -116,6 +116,7 @@ class Database(common.BaseObject):
         """
         base = SONManipulator()
         def method_overwritten(instance, method):
+            """Test if this method has been overridden."""
             return (getattr(
                 instance, method).__func__ != getattr(base, method).__func__)
 
@@ -188,9 +189,8 @@ class Database(common.BaseObject):
 
     def __eq__(self, other):
         if isinstance(other, Database):
-            us = (self.__connection, self.__name)
-            them = (other.__connection, other.__name)
-            return us == them
+            return (self.__connection == other.connection and
+                    self.__name == other.name)
         return NotImplemented
 
     def __ne__(self, other):
@@ -296,11 +296,13 @@ class Database(common.BaseObject):
                           read_preference, write_concern, **kwargs)
 
     def _apply_incoming_manipulators(self, son, collection):
+        """Apply incoming manipulators to `son`."""
         for manipulator in self.__incoming_manipulators:
             son = manipulator.transform_incoming(son, collection)
         return son
 
     def _apply_incoming_copying_manipulators(self, son, collection):
+        """Apply incoming copying manipulators to `son`."""
         for manipulator in self.__incoming_copying_manipulators:
             son = manipulator.transform_incoming(son, collection)
         return son
@@ -523,7 +525,7 @@ class Database(common.BaseObject):
                 if "result" in res:
                     info = res["result"]
                     if (info.find("exception") != -1 or
-                        info.find("corrupt") != -1):
+                            info.find("corrupt") != -1):
                         raise CollectionInvalid("%s invalid: "
                                                 "%s" % (name, info))
                 elif not res.get("valid", False):
@@ -694,12 +696,13 @@ class Database(common.BaseObject):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         raise TypeError("'Database' object is not iterable")
 
-    __next__ = next
+    next = __next__
 
     def _default_role(self, read_only):
+        """Return the default user role for this database."""
         if self.name == "admin":
             if read_only:
                 return "readAnyDatabase"
@@ -775,7 +778,7 @@ class Database(common.BaseObject):
             # First admin user add fails gle from mongos 2.0.x
             # and 2.2.x.
             elif (exc.details and
-                    'getlasterror' in exc.details.get('note', '')):
+                  'getlasterror' in exc.details.get('note', '')):
                 pass
             else:
                 raise

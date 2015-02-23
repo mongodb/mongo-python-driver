@@ -819,7 +819,7 @@ class TestClient(IntegrationTest):
         with client_knobs(server_wait_time=0.01):
             with self.assertRaises(AutoReconnect):
                 self.client._send_message_with_response(
-                    message=message.get_more('collection', 101, 1234),
+                    msg=message.get_more('collection', 101, 1234),
                     address=('not-a-member', 27017))
 
     @client_context.require_replica_set
@@ -830,7 +830,7 @@ class TestClient(IntegrationTest):
         with client_knobs(server_wait_time=0.01):
             with self.assertRaises(AutoReconnect):
                 self.client._send_message(
-                    message=message.kill_cursors([1234]),
+                    msg=message.kill_cursors([1234]),
                     check_primary=False,
                     address=('not-a-member', 27017))
 

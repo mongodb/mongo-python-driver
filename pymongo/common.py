@@ -298,6 +298,7 @@ def validate_auth_mechanism_properties(option, value):
 
 
 def validate_document_class(option, value):
+    """Validate the document_class option."""
     if not issubclass(value, collections.MutableMapping):
         raise ConfigurationError("%s must be a sublass of "
                                  "collections.MutableMapping" % (option,))

@@ -37,15 +37,19 @@ from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 from pymongo.options import ReturnDocument, _WriteOp
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import *
+from pymongo.results import (BulkWriteResult,
+                             DeleteResult,
+                             InsertOneResult,
+                             InsertManyResult,
+                             UpdateResult)
 from pymongo.write_concern import WriteConcern
 
 
 try:
     from collections import OrderedDict
-    ordered_types = (SON, OrderedDict)
+    _ORDERED_TYPES = (SON, OrderedDict)
 except ImportError:
-    ordered_types = SON
+    _ORDERED_TYPES = (SON,)
 
 _NO_OBJ_ERROR = "No matching object found"
 
@@ -146,7 +150,7 @@ class Collection(common.BaseObject):
     def _command(
             self, command, read_preference=None, codec_options=None, **kwargs):
         """Internal command helper.
-        
+
         :Parameters:
           - `command` - The command itself, as a SON instance.
           - `read_preference` (optional) - An subclass of
@@ -200,9 +204,8 @@ class Collection(common.BaseObject):
 
     def __eq__(self, other):
         if isinstance(other, Collection):
-            us = (self.__database, self.__name)
-            them = (other.__database, other.__name)
-            return us == them
+            return (self.__database == other.database and
+                    self.__name == other.name)
         return NotImplemented
 
     def __ne__(self, other):
@@ -334,20 +337,24 @@ class Collection(common.BaseObject):
 
         if manipulate:
             def gen():
-                db = self.__database
+                """Generator that applies SON manipulators to each document
+                and adds _id if necessary.
+                """
+                _db = self.__database
                 for doc in docs:
                     # Apply user-configured SON manipulators. This order of
                     # operations is required for backwards compatibility,
                     # see PYTHON-709.
-                    doc = db._apply_incoming_manipulators(doc, self)
+                    doc = _db._apply_incoming_manipulators(doc, self)
                     if '_id' not in doc:
                         doc['_id'] = ObjectId()
 
-                    doc = db._apply_incoming_copying_manipulators(doc, self)
+                    doc = _db._apply_incoming_copying_manipulators(doc, self)
                     ids.append(doc['_id'])
                     yield doc
         else:
             def gen():
+                """Generator that only tracks existing _ids."""
                 for doc in docs:
                     ids.append(doc.get('_id'))
                     yield doc
@@ -1312,8 +1319,8 @@ class Collection(common.BaseObject):
             }
         return CommandCursor(self, cursor_info, address)
 
-    # TODO key and condition ought to be optional, but deprecation
-    # could be painful as argument order would have to change.
+    # key and condition ought to be optional, but deprecation
+    # would be painful as argument order would have to change.
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.
 
@@ -1747,10 +1754,10 @@ class Collection(common.BaseObject):
                       ", find_one_and_replace, or find_one_and_update instead",
                       DeprecationWarning, stacklevel=2)
 
-        if (not update and not kwargs.get('remove', None)):
+        if not update and not kwargs.get('remove', None):
             raise ValueError("Must either update or remove")
 
-        if (update and kwargs.get('remove', None)):
+        if update and kwargs.get('remove', None):
             raise ValueError("Can't do both update and remove")
 
         # No need to include empty args
@@ -1766,7 +1773,7 @@ class Collection(common.BaseObject):
                 kwargs['sort'] = helpers._index_document(sort)
             # Accept OrderedDict, SON, and dict with len == 1 so we
             # don't break existing code already using find_and_modify.
-            elif (isinstance(sort, ordered_types) or
+            elif (isinstance(sort, _ORDERED_TYPES) or
                   isinstance(sort, dict) and len(sort) == 1):
                 warnings.warn("Passing mapping types for `sort` is deprecated,"
                               " use a list of (key, direction) pairs instead",
@@ -1774,8 +1781,8 @@ class Collection(common.BaseObject):
                 kwargs['sort'] = sort
             else:
                 raise TypeError("sort must be a list of (key, direction) "
-                                 "pairs, a dict of len 1, or an instance of "
-                                 "SON or OrderedDict")
+                                "pairs, a dict of len 1, or an instance of "
+                                "SON or OrderedDict")
 
 
         fields = kwargs.pop("fields", None)
@@ -1806,10 +1813,10 @@ class Collection(common.BaseObject):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         raise TypeError("'Collection' object is not iterable")
 
-    __next__ = next
+    next = __next__
 
     def __call__(self, *args, **kwargs):
         """This is only here so that some API misusages are easier to debug.

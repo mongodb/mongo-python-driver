@@ -46,7 +46,6 @@ from pymongo import (common,
                      helpers,
                      message,
                      periodic_executor,
-                     pool,
                      uri_parser)
 from pymongo.client_options import ClientOptions
 from pymongo.cursor_manager import CursorManager
@@ -383,22 +382,22 @@ class MongoClient(common.BaseObject):
                 index in cache[dbname][coll] and
                 now < cache[dbname][coll][index])
 
-    def _cache_index(self, database, collection, index, cache_for):
+    def _cache_index(self, dbname, collection, index, cache_for):
         """Add an index to the index cache for ensure_index operations."""
         now = datetime.datetime.utcnow()
         expire = datetime.timedelta(seconds=cache_for) + now
 
         if database not in self.__index_cache:
-            self.__index_cache[database] = {}
-            self.__index_cache[database][collection] = {}
-            self.__index_cache[database][collection][index] = expire
+            self.__index_cache[dbname] = {}
+            self.__index_cache[dbname][collection] = {}
+            self.__index_cache[dbname][collection][index] = expire
 
-        elif collection not in self.__index_cache[database]:
-            self.__index_cache[database][collection] = {}
-            self.__index_cache[database][collection][index] = expire
+        elif collection not in self.__index_cache[dbname]:
+            self.__index_cache[dbname][collection] = {}
+            self.__index_cache[dbname][collection][index] = expire
 
         else:
-            self.__index_cache[database][collection][index] = expire
+            self.__index_cache[dbname][collection][index] = expire
 
     def _purge_index(self, database_name,
                      collection_name=None, index_name=None):
@@ -631,12 +630,12 @@ class MongoClient(common.BaseObject):
         """
         topology = self._get_topology()  # Starts monitors if necessary.
         try:
-            s = topology.select_server(writable_server_selector)
+            svr = topology.select_server(writable_server_selector)
 
             # When directly connected to a secondary, arbiter, etc.,
             # select_server returns it, whatever the selector. Check
             # again if the server is writable.
-            return s.description.is_writable
+            return svr.description.is_writable
         except ConnectionFailure:
             return False
 
@@ -764,7 +763,7 @@ class MongoClient(common.BaseObject):
         raise OperationFailure(details["err"], code, result)
 
     def _send_message(
-            self, message, with_last_error=False, command=False,
+            self, msg, with_last_error=False, command=False,
             check_primary=True, address=None):
         """Send a message to MongoDB, optionally returning response as a dict.
 
@@ -775,7 +774,7 @@ class MongoClient(common.BaseObject):
         is ``False``.
 
         :Parameters:
-          - `message`: (request_id, data).
+          - `msg`: (request_id, data).
           - `with_last_error` (optional): check getLastError status after
             sending the message.
           - `check_primary` (optional): don't try to write to a non-primary;
@@ -809,7 +808,7 @@ class MongoClient(common.BaseObject):
             response = self._reset_on_error(
                 server,
                 server.send_message_with_response,
-                message,
+                msg,
                 self.__all_credentials)
 
             try:
@@ -825,15 +824,15 @@ class MongoClient(common.BaseObject):
             self._reset_on_error(
                 server,
                 server.send_message,
-                message,
+                msg,
                 self.__all_credentials)
 
     def _send_message_with_response(
-            self, message, read_preference=None, exhaust=False, address=None):
+            self, msg, read_preference=None, exhaust=False, address=None):
         """Send a message to MongoDB and return a Response.
 
         :Parameters:
-          - `message`: (request_id, data, max_doc_size) or (request_id, data).
+          - `msg`: (request_id, data, max_doc_size) or (request_id, data).
           - `read_preference` (optional): A ReadPreference.
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
@@ -857,11 +856,11 @@ class MongoClient(common.BaseObject):
         return self._reset_on_error(
             server,
             server.send_message_with_response,
-            message,
+            msg,
             self.__all_credentials,
             exhaust)
 
-    def _reset_on_error(self, server, fn, *args, **kwargs):
+    def _reset_on_error(self, server, func, *args, **kwargs):
         """Execute an operation. Reset the server on network error.
 
         Returns fn()'s return value on success. On error, clears the server's
@@ -870,7 +869,7 @@ class MongoClient(common.BaseObject):
         Re-raises any exception thrown by fn().
         """
         try:
-            return fn(*args, **kwargs)
+            return func(*args, **kwargs)
         except NetworkTimeout:
             # The socket has been closed. Don't reset the server.
             raise
@@ -976,6 +975,7 @@ class MongoClient(common.BaseObject):
 
     # This method is run periodically by a background thread.
     def _process_kill_cursors_queue(self):
+        """Process any pending kill cursors requests."""
         address_to_cursor_ids = defaultdict(list)
 
         # Other threads or the GC may append to the queue concurrently.
@@ -1005,8 +1005,9 @@ class MongoClient(common.BaseObject):
     def database_names(self):
         """Get a list of the names of all databases on the connected server."""
         return [db["name"] for db in
-                self.admin.command("listDatabases",
-                read_preference=ReadPreference.PRIMARY)["databases"]]
+                self.admin.command(
+                    "listDatabases",
+                    read_preference=ReadPreference.PRIMARY)["databases"]]
 
     def drop_database(self, name_or_database):
         """Drop a database.
@@ -1112,7 +1113,7 @@ class MongoClient(common.BaseObject):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         raise TypeError("'MongoClient' object is not iterable")
 
-    __next__ = next
+    next = __next__
