@@ -126,12 +126,21 @@ class ExecutionTimeout(OperationFailure):
     """
 
 
-class TimeoutError(OperationFailure):
-    """DEPRECATED - will be removed in PyMongo 3.0. See WTimeoutError instead.
+class WriteConcernError(OperationFailure):
+    """Base exception type for errors raised due to write concern.
+
+    .. versionadded:: 3.0
     """
 
 
-class WTimeoutError(TimeoutError):
+class WriteError(OperationFailure):
+    """Base exception type for errors raised during write operations.
+
+    .. versionadded:: 3.0
+    """
+
+
+class WTimeoutError(WriteConcernError):
     """Raised when a database operation times out (i.e. wtimeout expires)
     before replication completes.
 
@@ -142,7 +151,7 @@ class WTimeoutError(TimeoutError):
     """
 
 
-class DuplicateKeyError(OperationFailure):
+class DuplicateKeyError(WriteError):
     """Raised when an insert or update fails due to a duplicate key error."""
 
 

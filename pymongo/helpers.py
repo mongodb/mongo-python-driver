@@ -24,10 +24,12 @@ from bson.py3compat import itervalues, string_type, iteritems
 from bson.son import SON
 from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
-                            OperationFailure,
                             ExecutionTimeout,
-                            WTimeoutError,
-                            NotMasterError)
+                            NotMasterError,
+                            OperationFailure,
+                            WriteError,
+                            WriteConcernError,
+                            WTimeoutError)
 from pymongo.message import query
 
 
@@ -244,13 +246,15 @@ def _check_write_command_response(results):
             error["index"] += offset
             if error.get("code") == 11000:
                 raise DuplicateKeyError(error.get("errmsg"), 11000, error)
+            raise WriteError(error.get("errmsg"), error.get("code"), error)
         else:
             error = result["writeConcernError"]
             if "errInfo" in error and error["errInfo"].get('wtimeout'):
                 # Make sure we raise WTimeoutError
-                raise WTimeoutError(error.get("errmsg"),
-                                    error.get("code"), error)
-        raise OperationFailure(error.get("errmsg"), error.get("code"), error)
+                raise WTimeoutError(
+                    error.get("errmsg"), error.get("code"), error)
+            raise WriteConcernError(
+                error.get("errmsg"), error.get("code"), error)
 
 
 def _fields_list_to_dict(fields, option_name):

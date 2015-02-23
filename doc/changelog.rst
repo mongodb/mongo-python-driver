@@ -87,7 +87,7 @@ now accepts an `address` parameter.
 :mod:`~pymongo.errors` Changes
 ..............................
 
-The exception class ``UnsupportedOption`` is deleted.
+The exception classes ``UnsupportedOption`` and ``TimeoutError`` are deleted.
 
 :mod:`~gridfs` Changes
 ......................
