@@ -16,7 +16,7 @@
    .. autodata:: pymongo.cursor.TAILABLE_AWAIT
    .. autodata:: pymongo.cursor.EXHAUST
 
-   .. autoclass:: pymongo.collection.Collection(database, name[, create=False[, **kwargs]])
+   .. autoclass:: pymongo.collection.Collection(database, name, create=False, **kwargs)
 
       .. describe:: c[name] || c.name
 
@@ -41,8 +41,8 @@
       .. automethod:: delete_one
       .. automethod:: delete_many
       .. automethod:: aggregate
-      .. automethod:: find([filter=None[, projection=None[, skip=0[, limit=0[, no_cursor_timeout=False[, cursor_type=NON_TAILABLE[, sort=None[, allow_partial_results=False[, oplog_replay=False[, modifiers=None[, manipulate=True]]]]]]]]]]])
-      .. automethod:: find_one([filter_or_id=None[, *args[, **kwargs]]])
+      .. automethod:: find(filter=None, projection=None, skip=0, limit=0, no_cursor_timeout=False, cursor_type=NON_TAILABLE, sort=None, allow_partial_results=False, oplog_replay=False, modifiers=None, manipulate=True)
+      .. automethod:: find_one(filter_or_id=None, *args, **kwargs)
       .. automethod:: find_one_and_delete
       .. automethod:: find_one_and_replace(filter, replacement, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)
       .. automethod:: find_one_and_update(filter, update, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)
@@ -63,9 +63,9 @@
       .. automethod:: parallel_scan
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
-      .. automethod:: insert(doc_or_docs[, manipulate=True[, check_keys=True[, continue_on_error=False[, **kwargs]]]])
-      .. automethod:: save(to_save[, manipulate=True[, check_keys=True[, **kwargs]]])
-      .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, multi=False[, check_keys=True[, **kwargs]]]]])
-      .. automethod:: remove([spec_or_id=None[, multi=True[, **kwargs]]])
+      .. automethod:: insert(doc_or_docs, manipulate=True, check_keys=True, continue_on_error=False, **kwargs)
+      .. automethod:: save(to_save, manipulate=True, check_keys=True, **kwargs)
+      .. automethod:: update(spec, document, upsert=False, manipulate=False, multi=False, check_keys=True, **kwargs)
+      .. automethod:: remove(spec_or_id=None, multi=True, **kwargs)
       .. automethod:: find_and_modify
 
