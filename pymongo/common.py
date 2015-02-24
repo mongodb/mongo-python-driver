@@ -101,16 +101,20 @@ _UUID_REPRESENTATIONS = {
 
 
 def validate_boolean(option, value):
-    """Validates that 'value' is 'true' or 'false'.
-    """
+    """Validates that 'value' is True or False."""
     if isinstance(value, bool):
         return value
-    elif isinstance(value, string_type):
+    raise TypeError("%s must be True or False" % (option,))
+
+
+def validate_boolean_or_string(option, value):
+    """Validates that value is True, False, 'true', or 'false'."""
+    if isinstance(value, string_type):
         if value not in ('true', 'false'):
             raise ConfigurationError("The value of %s must be "
                                      "'true' or 'false'" % (option,))
         return value == 'true'
-    raise TypeError("Wrong type for %s, value must be a boolean" % (option,))
+    return validate_boolean(option, value)
 
 
 def validate_integer(option, value):
@@ -300,9 +304,47 @@ def validate_auth_mechanism_properties(option, value):
 def validate_document_class(option, value):
     """Validate the document_class option."""
     if not issubclass(value, collections.MutableMapping):
-        raise ConfigurationError("%s must be a sublass of "
+        raise ConfigurationError("%s must be dict, bson.son.SON, or another "
+                                 "sublass of "
                                  "collections.MutableMapping" % (option,))
     return value
+
+
+def validate_is_mapping(option, value):
+    """Validate the type of method arguments that expect a document."""
+    if not isinstance(value, collections.Mapping):
+        raise TypeError("%s must be an instance of dict, bson.son.SON, or "
+                        "other type that inherits from "
+                        "collections.Mapping" % (option,))
+
+
+def validate_is_mutable_mapping(option, value):
+    """Validate the type of method arguments that expect a mutable document."""
+    if not isinstance(value, collections.MutableMapping):
+        raise TypeError("%s must be an instance of dict, bson.son.SON, or "
+                        "other type that inherits from "
+                        "collections.MutableMapping" % (option,))
+
+
+def validate_ok_for_replace(replacement):
+    """Validate a replacement document."""
+    validate_is_mapping("replacement", replacement)
+    # Replacement can be {}
+    if replacement:
+        first = next(iter(replacement))
+        if first.startswith('$'):
+            raise ValueError('replacement can not include $ operators')
+
+
+def validate_ok_for_update(update):
+    """Validate an update document."""
+    validate_is_mapping("update", update)
+    # Update can not be {}
+    if not update:
+        raise ValueError('update only works with $ operators')
+    first = next(iter(update))
+    if not first.startswith('$'):
+        raise ValueError('update only works with $ operators')
 
 
 # journal is an alias for j,
@@ -312,16 +354,16 @@ VALIDATORS = {
     'w': validate_int_or_basestring,
     'wtimeout': validate_integer,
     'wtimeoutms': validate_integer,
-    'fsync': validate_boolean,
-    'j': validate_boolean,
-    'journal': validate_boolean,
+    'fsync': validate_boolean_or_string,
+    'j': validate_boolean_or_string,
+    'journal': validate_boolean_or_string,
     'connecttimeoutms': validate_timeout_or_none,
     'max_pool_size': validate_positive_integer_or_none,
-    'socketkeepalive': validate_boolean,
+    'socketkeepalive': validate_boolean_or_string,
     'sockettimeoutms': validate_timeout_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,
     'waitqueuemultiple': validate_positive_integer_or_none,
-    'ssl': validate_boolean,
+    'ssl': validate_boolean_or_string,
     'ssl_keyfile': validate_readable,
     'ssl_certfile': validate_readable,
     'ssl_cert_reqs': validate_cert_reqs,
@@ -334,7 +376,7 @@ VALIDATORS = {
     'authsource': validate_string,
     'authmechanismproperties': validate_auth_mechanism_properties,
     'document_class': validate_document_class,
-    'tz_aware': validate_boolean,
+    'tz_aware': validate_boolean_or_string,
     'uuidrepresentation': validate_uuid_representation,
 }
 

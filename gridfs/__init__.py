@@ -20,6 +20,8 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 .. mongodoc:: gridfs
 """
 
+from collections import Mapping
+
 from gridfs.errors import NoFile
 from gridfs.grid_file import (GridIn,
                               GridOut,
@@ -275,7 +277,7 @@ class GridFS(object):
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to :meth:`find`.
         """
-        if filter is not None and not isinstance(filter, dict):
+        if filter is not None and not isinstance(filter, Mapping):
             filter = {"_id": filter}
 
         for f in self.find(filter, *args, **kwargs):

@@ -14,8 +14,7 @@
 
 """Option class definitions."""
 
-import collections
-
+from pymongo.common import validate_boolean, validate_is_mapping
 
 class ReturnDocument(object):
     """An enum used with
@@ -26,7 +25,7 @@ class ReturnDocument(object):
     """Return the original document before it was updated/replaced, or
     ``None`` if no document matches the query.
     """
-    After = True 
+    After = True
     """Return the updated/replaced or inserted document."""
 
 
@@ -36,10 +35,10 @@ class _WriteOp(object):
     __slots__ = ("_filter", "_doc", "_upsert")
 
     def __init__(self, filter=None, doc=None, upsert=None):
-        if filter is not None and not isinstance(filter, collections.Mapping):
-            raise TypeError("filter must be a mapping type.")
-        if upsert is not None and not isinstance(upsert, bool):
-            raise TypeError("upsert must be True or False")
+        if filter is not None:
+            validate_is_mapping("filter", filter)
+        if upsert is not None:
+            validate_boolean("upsert", upsert)
         self._filter = filter
         self._doc = doc
         self._upsert = upsert

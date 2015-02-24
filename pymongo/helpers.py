@@ -33,29 +33,6 @@ from pymongo.errors import (CursorNotFound,
 from pymongo.message import query
 
 
-def _check_ok_for_replace(replacement):
-    """Validate a replacement document."""
-    if not isinstance(replacement, collections.Mapping):
-        raise TypeError('replacement must be a mapping type.')
-    # Replacement can be {}
-    if replacement:
-        first = next(iter(replacement))
-        if first.startswith('$'):
-            raise ValueError('replacement can not include $ operators')
-
-
-def _check_ok_for_update(update):
-    """Validate an update document."""
-    if not isinstance(update, collections.Mapping):
-        raise TypeError('update must be a mapping type.')
-    # Update can not be {}
-    if not update:
-        raise ValueError('update only works with $ operators')
-    first = next(iter(update))
-    if not first.startswith('$'):
-        raise ValueError('update only works with $ operators')
-
-
 def _index_list(key_or_list, direction=None):
     """Helper to generate a list of (key, direction) pairs.
 

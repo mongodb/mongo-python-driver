@@ -17,7 +17,7 @@
 import copy
 import socket
 
-from collections import deque, Mapping
+from collections import deque
 
 from bson import RE_TYPE
 from bson.code import Code
@@ -26,11 +26,12 @@ from bson.py3compat import (iteritems,
                             string_type)
 from bson.son import SON
 from pymongo import helpers, message
-from pymongo.read_preferences import ReadPreference
+from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
+from pymongo.read_preferences import ReadPreference
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -113,24 +114,19 @@ class Cursor(object):
         if spec is None:
             spec = {}
 
-        if not isinstance(spec, Mapping):
-            raise TypeError("filter must be a mapping type.")
+        validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
         if not isinstance(limit, int):
             raise TypeError("limit must be an instance of int")
-        if not isinstance(no_cursor_timeout, bool):
-            raise TypeError("no_cursor_timeout must be an instance of bool")
+        validate_boolean("no_cursor_timeout", no_cursor_timeout)
         if cursor_type not in (NON_TAILABLE, TAILABLE,
                                TAILABLE_AWAIT, EXHAUST):
             raise ValueError("not a valid value for cursor_type")
-        if not isinstance(allow_partial_results, bool):
-            raise TypeError("allow_partial_results "
-                            "must be an instance of bool")
-        if not isinstance(oplog_replay, bool):
-            raise TypeError("oplog_replay must be an instance of bool")
-        if modifiers is not None and not isinstance(modifiers, Mapping):
-            raise TypeError("modifiers must be a mapping type.")
+        validate_boolean("allow_partial_results", allow_partial_results)
+        validate_boolean("oplog_replay", oplog_replay)
+        if modifiers is not None:
+            validate_is_mapping("modifiers", modifiers)
 
         if projection is not None:
             if not projection:
@@ -666,8 +662,7 @@ class Cursor(object):
         .. versionchanged:: 2.8
            The :meth:`~count` method now supports :meth:`~hint`.
         """
-        if not isinstance(with_limit_and_skip, bool):
-            raise TypeError("with_limit_and_skip must be an instance of bool")
+        validate_boolean("with_limit_and_skip", with_limit_and_skip)
         options = {"query": self.__spec}
         if self.__max_time_ms is not None:
             options["maxTimeMS"] = self.__max_time_ms

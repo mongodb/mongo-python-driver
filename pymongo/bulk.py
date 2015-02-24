@@ -19,11 +19,12 @@
 
 from __future__ import unicode_literals
 
-import collections
-
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import helpers
+from pymongo.common import (validate_is_mapping,
+                            validate_is_mutable_mapping,
+                            validate_ok_for_replace,
+                            validate_ok_for_update)
 from pymongo.errors import (BulkWriteError,
                             DocumentTooLarge,
                             InvalidOperation,
@@ -200,8 +201,7 @@ class _Bulk(object):
     def add_insert(self, document):
         """Add an insert document to the list of ops.
         """
-        if not isinstance(document, collections.MutableMapping):
-            raise TypeError('document must be a mapping type.')
+        validate_is_mutable_mapping("document", document)
         # Generate ObjectId client side.
         if '_id' not in document:
             document['_id'] = ObjectId()
@@ -210,7 +210,7 @@ class _Bulk(object):
     def add_update(self, selector, update, multi=False, upsert=False):
         """Create an update document and add it to the list of ops.
         """
-        helpers._check_ok_for_update(update)
+        validate_ok_for_update(update)
         cmd = SON([('q', selector), ('u', update),
                    ('multi', multi), ('upsert', upsert)])
         self.ops.append((_UPDATE, cmd))
@@ -218,7 +218,7 @@ class _Bulk(object):
     def add_replace(self, selector, replacement, upsert=False):
         """Create a replace document and add it to the list of ops.
         """
-        helpers._check_ok_for_replace(replacement)
+        validate_ok_for_replace(replacement)
         cmd = SON([('q', selector), ('u', replacement),
                    ('multi', False), ('upsert', upsert)])
         self.ops.append((_UPDATE, cmd))
@@ -559,8 +559,7 @@ class BulkOperationBuilder(object):
           - A :class:`BulkWriteOperation` instance, used to add
             update and remove operations to this bulk operation.
         """
-        if not isinstance(selector, collections.Mapping):
-            raise TypeError('selector must be a mapping type.')
+        validate_is_mapping("selector", selector)
         return BulkWriteOperation(selector, self.__bulk)
 
     def insert(self, document):
@@ -578,7 +577,6 @@ class BulkOperationBuilder(object):
           - write_concern (optional): the write concern for this bulk
             execution.
         """
-        if (write_concern and not
-                isinstance(write_concern, collections.Mapping)):
-            raise TypeError('write_concern must be a mapping type.')
+        if write_concern is not None:
+            validate_is_mapping("write_concern", write_concern)
         return self.__bulk.execute(write_concern)

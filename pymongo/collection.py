@@ -395,8 +395,7 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
         """
-        if not isinstance(document, collections.MutableMapping):
-            raise TypeError("document must be a mutable mapping type")
+        common.validate_is_mutable_mapping("document", document)
         if "_id" not in document:
             document["_id"] = ObjectId()
         return InsertOneResult(self._insert(document),
@@ -422,9 +421,7 @@ class Collection(common.BaseObject):
         def gen():
             """A generator that validates documents and handles _ids."""
             for document in documents:
-                if not isinstance(document, collections.MutableMapping):
-                    raise TypeError("document must be a dict or other "
-                                    "subclass of collections.MutableMapping")
+                common.validate_is_mutable_mapping("document", document)
                 if "_id" not in document:
                     document["_id"] = ObjectId()
                 inserted_ids.append(document["_id"])
@@ -438,10 +435,8 @@ class Collection(common.BaseObject):
     def _update(self, filter, document, upsert=False, check_keys=True,
                 multi=False, manipulate=False, write_concern=None):
         """Internal update / replace helper."""
-        if not isinstance(filter, collections.Mapping):
-            raise TypeError("filter must be a mapping type")
-        if not isinstance(upsert, bool):
-            raise TypeError("upsert must be an instance of bool")
+        common.validate_is_mapping("filter", filter)
+        common.validate_boolean("upsert", upsert)
         if manipulate:
             document = self.__database._fix_incoming(document, self)
 
@@ -495,7 +490,7 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
         """
-        helpers._check_ok_for_replace(replacement)
+        common.validate_ok_for_replace(replacement)
         result = self._update(filter, replacement, upsert)
         return UpdateResult(result, self.write_concern.acknowledged)
 
@@ -511,7 +506,7 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
         """
-        helpers._check_ok_for_update(update)
+        common.validate_ok_for_update(update)
         result = self._update(filter, update, upsert, False)
         return UpdateResult(result, self.write_concern.acknowledged)
 
@@ -527,7 +522,7 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
         """
-        helpers._check_ok_for_update(update)
+        common.validate_ok_for_update(update)
         result = self._update(filter, update, upsert, False, True)
         return UpdateResult(result, self.write_concern.acknowledged)
 
@@ -543,8 +538,7 @@ class Collection(common.BaseObject):
 
     def _delete(self, filter, multi, write_concern=None):
         """Internal delete helper."""
-        if not isinstance(filter, collections.Mapping):
-            raise TypeError("filter must be a mapping type")
+        common.validate_is_mapping("filter", filter)
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
@@ -1284,8 +1278,7 @@ class Collection(common.BaseObject):
         use_cursor = kwargs.pop(
             "useCursor",
             ("cursor" in kwargs or client._writable_max_wire_version() > 0))
-        if not isinstance(use_cursor, bool):
-            raise ValueError("useCursor must be a bool")
+        common.validate_boolean("useCursor", use_cursor)
 
         if batch_size is not None and not use_cursor:
             raise ConfigurationError("batchSize requires the use of a cursor")
@@ -1536,8 +1529,7 @@ class Collection(common.BaseObject):
     def __find_and_modify(self, filter, projection, sort, upsert=None,
                           return_document=ReturnDocument.Before, **kwargs):
         """Internal findAndModify helper."""
-        if not isinstance(filter, collections.Mapping):
-            raise TypeError("filter must be a mapping type")
+        common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise ValueError("return_document must be "
                              "ReturnDocument.Before or ReturnDocument.After")
@@ -1551,8 +1543,7 @@ class Collection(common.BaseObject):
         if sort is not None:
             cmd["sort"] = helpers._index_document(sort)
         if upsert is not None:
-            if not isinstance(upsert, bool):
-                raise ValueError("upsert must be True or False")
+            common.validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
         out = self._command(cmd,
                             ReadPreference.PRIMARY,
@@ -1609,7 +1600,7 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
         """
-        helpers._check_ok_for_replace(replacement)
+        common.validate_ok_for_replace(replacement)
         kwargs['update'] = replacement
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document, **kwargs)
@@ -1643,7 +1634,7 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
         """
-        helpers._check_ok_for_update(update)
+        common.validate_ok_for_update(update)
         kwargs['update'] = update
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document, **kwargs)
@@ -1658,8 +1649,7 @@ class Collection(common.BaseObject):
         """
         warnings.warn("save is deprecated. Use insert_one or replace_one "
                       "instead", DeprecationWarning, stacklevel=2)
-        if not isinstance(to_save, collections.MutableMapping):
-            raise TypeError("cannot save object of type %s" % type(to_save))
+        common.validate_is_mutable_mapping("to_save", to_save)
 
         write_concern = None
         if kwargs:
@@ -1701,10 +1691,8 @@ class Collection(common.BaseObject):
         """
         warnings.warn("update is deprecated. Use replace_one, update_one or "
                       "update_many instead.", DeprecationWarning, stacklevel=2)
-        if not isinstance(spec, collections.Mapping):
-            raise TypeError("spec must be a mapping type")
-        if not isinstance(document, collections.Mapping):
-            raise TypeError("document must be a mapping type")
+        common.validate_is_mapping("spec", spec)
+        common.validate_is_mapping("document", document)
         if document:
             # If a top level key begins with '$' this is a modify operation
             # and we should skip key validation. It doesn't matter which key

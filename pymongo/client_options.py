@@ -17,7 +17,7 @@
 from bson.codec_options import _parse_codec_options
 from bson.py3compat import iteritems
 from pymongo.auth import _build_credentials_tuple
-from pymongo.common import validate
+from pymongo.common import validate, validate_boolean
 from pymongo.errors import ConfigurationError
 from pymongo.pool import PoolOptions
 from pymongo.read_preferences import make_read_preference
@@ -57,8 +57,8 @@ def _parse_write_concern(options):
 def _parse_ssl_options(options):
     """Parse ssl options."""
     use_ssl = options.get('ssl')
-    if use_ssl is not None and not isinstance(use_ssl, bool):
-        raise TypeError("ssl must be a boolean")
+    if use_ssl is not None:
+        validate_boolean('ssl', use_ssl)
 
     certfile = options.get('ssl_certfile')
     keyfile = options.get('ssl_keyfile')

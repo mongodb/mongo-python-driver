@@ -55,7 +55,9 @@ def _validate_tag_sets(tag_sets):
     for tags in tag_sets:
         if not isinstance(tags, Mapping):
             raise ConfigurationError(
-                "Tag set %r invalid, must be a mapping." % (tags,))
+                "Tag set %r invalid, must be an instance of dict, "
+                "bson.son.SON or other type that inherits from "
+                "collection.Mapping" % (tags,))
 
     return tag_sets
 
