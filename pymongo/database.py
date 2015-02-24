@@ -109,11 +109,13 @@ class Database(common.BaseObject):
     def add_son_manipulator(self, manipulator):
         """Add a new son manipulator to this database.
 
-        Newly added manipulators will be applied before existing ones.
+        **DEPRECATED** - `add_son_manipulator` is deprecated.
 
-        :Parameters:
-          - `manipulator`: the manipulator to add
+        .. versionchanged:: 3.0
+          Deprecated add_son_manipulator.
         """
+        warnings.warn("add_son_manipulator is deprecated",
+                      DeprecationWarning, stacklevel=2)
         base = SONManipulator()
         def method_overwritten(instance, method):
             """Test if this method has been overridden."""

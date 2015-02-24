@@ -707,8 +707,8 @@ class Collection(common.BaseObject):
             flag.
           - `modifiers` (optional): A dict specifying the MongoDB query
             modifiers that should be used for this query.
-          - `manipulate`: (optional): If True (the default), apply any
-            outgoing SON manipulators before returning.
+          - `manipulate`: (optional): **DEPRECATED** - If True (the default),
+            apply any outgoing SON manipulators before returning.
 
         .. note:: There are a number of caveats to using
            :data:`~pymongo.cursor.EXHAUST` as cursor_type:
@@ -726,9 +726,6 @@ class Collection(common.BaseObject):
             connection will be closed and discarded without being returned to
             the connection pool.
 
-        .. note:: The `manipulate` parameter may default to False in a future
-           release.
-
         .. versionchanged:: 3.0
            Changed the parameter names `spec`, `fields`, `timeout`, and
            `partial` to `filter`, `projection`, `no_cursor_timeout`, and
@@ -741,6 +738,7 @@ class Collection(common.BaseObject):
            regular expressions as :class:`~bson.regex.Regex` objects. Use
            :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
            BSON regular expression to a Python regular expression object.
+           Soft deprecated the `manipulate` option.
 
         .. versionchanged:: 2.7
            Added `compile_re` option. If set to False, PyMongo represented BSON

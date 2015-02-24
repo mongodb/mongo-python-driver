@@ -79,6 +79,11 @@ class TestDeprecations(IntegrationTest):
             DeprecationWarning,
             lambda: self.db.test.find_and_modify({'i': 5}, {}))
 
+    def test_add_son_manipulator_deprecation(self):
+        db = self.client.pymongo_test
+        self.assertRaises(DeprecationWarning,
+                          lambda: db.add_son_manipulator(AutoReference(db)))
+
 
 class TestLegacy(IntegrationTest):
 
