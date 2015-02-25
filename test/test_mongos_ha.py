@@ -85,7 +85,7 @@ class TestMongosHA(MockClientTest):
         wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
 
         # Trigger reconnect.
-        client.disconnect()
+        client.close()
         do_simple_op(client, nthreads)
 
         wait_until(lambda: len(client.nodes) == 3,

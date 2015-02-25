@@ -6,7 +6,6 @@
 
    .. autoclass:: pymongo.mongo_replica_set_client.MongoReplicaSetClient(hosts_or_uri, max_pool_size=100, document_class=dict, tz_aware=False, **kwargs)
 
-      .. automethod:: disconnect
       .. automethod:: close
 
       .. describe:: c[db_name] || c.db_name

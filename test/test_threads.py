@@ -125,7 +125,7 @@ class Disconnect(threading.Thread):
 
     def run(self):
         for _ in range(self.n):
-            self.client.disconnect()
+            self.client.close()
 
         self.passed = True
 
@@ -189,7 +189,7 @@ class TestThreads(IntegrationTest):
         self.db.test.insert_many([{"x": i} for i in range(1000)])
 
         # Start 10 threads that execute a query, and 10 threads that call
-        # client.disconnect() 10 times in a row.
+        # client.close() 10 times in a row.
         threads = [SaveAndFind(self.db.test) for _ in range(10)]
         threads.extend(Disconnect(self.db.connection, 10) for _ in range(10))
 

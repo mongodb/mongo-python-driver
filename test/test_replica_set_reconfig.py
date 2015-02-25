@@ -55,7 +55,7 @@ class TestSecondaryBecomesStandalone(MockClientTest):
         c.kill_host('b:2')
 
         # Force reconnect.
-        c.disconnect()
+        c.close()
 
         with self.assertRaises(AutoReconnect):
             c.db.command('ismaster')
@@ -152,7 +152,7 @@ class TestSecondaryAdded(MockClientTest):
         c.mock_members.append('c:3')
         c.mock_ismaster_hosts.append('c:3')
 
-        c.disconnect()
+        c.close()
         c.db.command('ismaster')
 
         self.assertEqual('a', c.host)

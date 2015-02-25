@@ -40,7 +40,7 @@ ndocs = 20
 
 collection.drop()
 collection.insert_many([{'i': i} for i in range(ndocs)])
-client.disconnect()  # Discard main thread's request socket.
+client.close()  # Discard main thread's request socket.
 
 try:
     from mod_wsgi import version as mod_wsgi_version

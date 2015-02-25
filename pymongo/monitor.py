@@ -76,7 +76,7 @@ class Monitor(object):
         self._executor.open()
 
     def close(self):
-        """Disconnect and stop monitoring.
+        """Close and stop monitoring.
 
         open() restarts the monitor after closing.
         """

@@ -302,16 +302,16 @@ class TestClient(IntegrationTest):
         self.assertNotIn("pymongo_test", dbs)
         self.assertNotIn("pymongo_test2", dbs)
 
-    def test_disconnect(self):
+    def test_close(self):
         coll = self.client.pymongo_test.bar
 
-        self.client.disconnect()
-        self.client.disconnect()
+        self.client.close()
+        self.client.close()
 
         coll.count()
 
-        self.client.disconnect()
-        self.client.disconnect()
+        self.client.close()
+        self.client.close()
 
         coll.count()
 
@@ -975,7 +975,7 @@ class TestClientProperties(MockClientTest):
         c.set_wire_version_range('a:1', 0, 0)
         c.set_wire_version_range('b:2', 0, 0)
         c.set_wire_version_range('c:3', 0, 0)
-        c.disconnect()
+        c.close()
         c.db.command('ismaster')
         used_host = '%s:%s' % (c.host, c.port)
         expected_min, expected_max = c.mock_wire_versions[used_host]
@@ -1081,7 +1081,7 @@ class TestMongoClientFailover(MockClientTest):
             c.kill_host('a:1')
             c.mock_primary = 'b:2'
 
-            c.disconnect()
+            c.close()
             self.assertEqual(0, len(c.nodes))
 
             t = c._get_topology()

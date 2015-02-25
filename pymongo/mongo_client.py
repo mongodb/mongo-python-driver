@@ -241,6 +241,9 @@ class MongoClient(common.BaseObject):
            The ``copy_database`` method is removed, see the
            :doc:`copy_database examples </examples/copydb>` for alternatives.
 
+           The :meth:`MongoClient.disconnect` method is removed; it was a
+           synonym for :meth:`~pymongo.MongoClient.close`.
+
            :class:`~pymongo.mongo_client.MongoClient` no longer returns an
            instance of :class:`~pymongo.database.Database` for attribute names
            with leading underscores. You must use dict-style lookups instead::
@@ -643,23 +646,14 @@ class MongoClient(common.BaseObject):
         except ConnectionFailure:
             return False
 
-    def disconnect(self):
+    def close(self):
         """Disconnect from MongoDB.
 
-        Disconnecting will close all underlying sockets in the connection
-        pools. If this instance is used again it will be automatically
-        re-opened.
+        Close all sockets in the connection pools and stop the monitor threads.
+        If this instance is used again it will be automatically re-opened and
+        the threads restarted.
         """
         self._topology.close()
-
-    def close(self):
-        """Alias for :meth:`disconnect`
-
-        Disconnecting will close all underlying sockets in the connection
-        pools. If this instance is used again it will be automatically
-        re-opened.
-        """
-        self.disconnect()
 
     def set_cursor_manager(self, manager_class):
         """Set this client's cursor manager.
@@ -1079,7 +1073,7 @@ class MongoClient(common.BaseObject):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
+        self.close()
 
     def __iter__(self):
         return self

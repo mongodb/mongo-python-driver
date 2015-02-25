@@ -539,7 +539,7 @@ class TestDatabase(IntegrationTest):
                           other_db.test.insert_one, {})
 
         # Close all sockets.
-        client.disconnect()
+        client.close()
 
         # We should still be able to write to the regular user's db.
         self.assertTrue(users_db.test.delete_many({}))

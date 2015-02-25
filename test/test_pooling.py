@@ -104,7 +104,7 @@ class NonUnique(MongoThread):
 class Disconnect(MongoThread):
     def run_mongo_thread(self):
         for _ in range(N):
-            self.client.disconnect()
+            self.client.close()
 
 
 class SocketGetter(MongoThread):

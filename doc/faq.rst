@@ -69,7 +69,7 @@ A thread that waits more than 100ms (in this example) for a socket raises
 important to bound the duration of operations during a load spike than it is to
 complete every operation.
 
-When :meth:`~pymongo.mongo_client.MongoClient.disconnect` is called by any
+When :meth:`~pymongo.mongo_client.MongoClient.close` is called by any
 thread, all sockets are closed.
 
 Does PyMongo support Python 3?
