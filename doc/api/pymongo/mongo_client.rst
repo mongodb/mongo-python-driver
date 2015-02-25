@@ -8,7 +8,6 @@
 
       .. automethod:: disconnect
       .. automethod:: close
-      .. automethod:: alive
 
       .. describe:: c[db_name] || c.db_name
 

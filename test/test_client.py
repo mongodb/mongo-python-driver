@@ -686,12 +686,6 @@ class TestClient(IntegrationTest):
         new_sock_info = next(iter(pool.sockets))
         self.assertEqual(old_sock_info, new_sock_info)
 
-    def test_alive(self):
-        self.assertTrue(self.client.alive())
-
-        client = MongoClient('doesnt exist', connect=False)
-        self.assertFalse(client.alive())
-
     def test_kill_cursors(self):
         if (client_context.is_mongos
                 and not client_context.version.at_least(2, 4, 7)):

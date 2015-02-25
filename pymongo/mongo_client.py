@@ -220,6 +220,10 @@ class MongoClient(common.BaseObject):
            returns immediately and launches the connection process on
            background threads.
 
+           Therefore the ``alive`` method is removed since it no longer
+           provides meaningful information; even if the client is disconnected,
+           it may discover a server in time to fulfill the next operation.
+
            In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of
            standalone MongoDB servers and used the first it could connect to::
 
@@ -656,39 +660,6 @@ class MongoClient(common.BaseObject):
         re-opened.
         """
         self.disconnect()
-
-    def alive(self):
-        """Return ``False`` if there has been an error communicating with the
-        server, else ``True``.
-
-        This method attempts to check the status of the server (the standalone,
-        replica set primary, or the mongos currently in use) with minimal I/O.
-        Retrieves a socket from the pool and checks whether calling `select`_
-        on it raises an error. If there are currently no idle sockets,
-        :meth:`alive` attempts to actually connect to the server.
-
-        A more certain way to determine server availability is::
-
-            client.admin.command('ping')
-
-        .. _select: http://docs.python.org/2/library/select.html#select.select
-        """
-        # In the common case, a socket is available and was used recently, so
-        # calling select() on it is a reasonable attempt to see if the OS has
-        # reported an error.
-        try:
-            # TODO: Mongos pinning.
-            server = self._topology.select_server(
-                writable_server_selector,
-                server_wait_time=0)
-
-            # Avoid race when other threads log in or out.
-            all_credentials = self.__all_credentials.copy()
-            with server.get_socket(all_credentials) as sock_info:
-                return not socket_closed(sock_info.sock)
-
-        except (socket.error, ConnectionFailure):
-            return False
 
     def set_cursor_manager(self, manager_class):
         """Set this client's cursor manager.

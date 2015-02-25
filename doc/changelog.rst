@@ -44,6 +44,10 @@ returns immediately and launches the connection process on
 background threads. The ``connect`` option is added to control whether
 these threads are started immediately, or when the client is first used.
 
+Therefore the ``alive`` method is removed since it no longer provides meaningful
+information; even if the client is disconnected, it may discover a server in
+time to fulfill the next operation.
+
 In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of standalone
 MongoDB servers and used the first it could connect to::
 
