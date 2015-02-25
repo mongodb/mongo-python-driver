@@ -64,7 +64,7 @@ indefinitely for sockets to become available, unless you set
 
     client = MongoClient(host, port, waitQueueTimeoutMS=100)
 
-A thread that waits more than 100ms (in this example) for a sockets raises
+A thread that waits more than 100ms (in this example) for a socket raises
 :exc:`~pymongo.errors.ConnectionFailure`. Use this option if it is more
 important to bound the duration of operations during a load spike than it is to
 complete every operation.
