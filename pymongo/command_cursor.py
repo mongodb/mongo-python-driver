@@ -49,8 +49,8 @@ class CommandCursor(object):
         """Closes this cursor.
         """
         if self.__id and not self.__killed:
-            client = self.__collection.database.connection
-            client.close_cursor(self.__id, self.__address)
+            self.__collection.database.client.close_cursor(self.__id,
+                                                           self.__address)
         self.__killed = True
 
     def close(self):
@@ -87,7 +87,7 @@ class CommandCursor(object):
     def __send_message(self, msg):
         """Send a getmore message and handle the response.
         """
-        client = self.__collection.database.connection
+        client = self.__collection.database.client
         try:
             response = client._send_message_with_response(
                 msg, address=self.__address)

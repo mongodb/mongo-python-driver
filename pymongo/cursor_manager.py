@@ -15,7 +15,7 @@
 """A manager to handle when cursors are killed after they are closed.
 
 New cursor managers should be defined as subclasses of CursorManager and can be
-installed on a connection by calling
+installed on a client by calling
 :meth:`~pymongo.mongo_client.MongoClient.set_cursor_manager`.
 
 .. versionchanged:: 3.0
@@ -30,13 +30,13 @@ from bson.py3compat import integer_types
 class CursorManager(object):
     """The cursor manager base class."""
 
-    def __init__(self, connection):
+    def __init__(self, client):
         """Instantiate the manager.
 
         :Parameters:
-          - `connection`: a MongoClient
+          - `client`: a MongoClient
         """
-        self.__connection = weakref.ref(connection)
+        self.__client = weakref.ref(client)
 
     def close(self, cursor_id, address):
         """Kill a cursor.
@@ -53,4 +53,4 @@ class CursorManager(object):
         if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an integer")
 
-        self.__connection().kill_cursors([cursor_id], address)
+        self.__client().kill_cursors([cursor_id], address)

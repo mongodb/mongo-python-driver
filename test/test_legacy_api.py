@@ -635,7 +635,7 @@ class TestLegacy(IntegrationTest):
 
     def test_write_large_document(self):
         # Tests legacy insert, save, and update.
-        max_size = self.db.connection.max_bson_size
+        max_size = self.db.client.max_bson_size
         half_size = int(max_size / 2)
         self.assertEqual(max_size, 16777216)
 

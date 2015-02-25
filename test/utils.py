@@ -188,11 +188,11 @@ def drop_collections(db):
 
 
 def remove_all_users(db):
-    if Version.from_client(db.connection).at_least(2, 5, 3, -1):
+    if Version.from_client(db.client).at_least(2, 5, 3, -1):
         db.command("dropAllUsersFromDatabase", 1,
                    writeConcern={"w": client_context.w})
     else:
-        db = db.connection.get_database(
+        db = db.client.get_database(
             db.name, write_concern=WriteConcern(w=client_context.w))
         db.system.users.delete_many({})
 

@@ -70,8 +70,7 @@ class GridFS(object):
         self.__chunks = self.__collection.chunks
 
     def __is_secondary(self):
-        client = self.__database.connection
-        return not client._is_writable()
+        return not self.__database.client._is_writable()
 
     def __ensure_index_files_id(self):
         if not self.__is_secondary():

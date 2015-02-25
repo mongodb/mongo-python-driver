@@ -133,9 +133,9 @@ connect to the replica set and perform a couple of basic operations::
 By checking the host and port, we can see that we're connected to
 *localhost:27017*, which is the current primary::
 
-  >>> db.connection.host
+  >>> db.client.host
   'localhost'
-  >>> db.connection.port
+  >>> db.client.port
   27017
 
 Now let's bring down that node and see what happens when we run our
@@ -161,9 +161,9 @@ the operation will succeed::
 
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
-  >>> db.connection.host
+  >>> db.client.host
   'localhost'
-  >>> db.connection.port
+  >>> db.client.port
   27018
 
 Bring the former primary back up. It will rejoin the set as a secondary.
@@ -315,11 +315,11 @@ Each member of the seed list passed to MongoClient must be a mongos. By checking
 the host, port, and is_mongos attributes we can see that we're connected to
 *localhost:30001*, a mongos::
 
-  >>> db.connection.host
+  >>> db.client.host
   'localhost'
-  >>> db.connection.port
+  >>> db.client.port
   30001
-  >>> db.connection.is_mongos
+  >>> db.client.is_mongos
   True
 
 Now let's shut down that mongos instance and see what happens when we run our
@@ -343,9 +343,9 @@ operation will succeed::
 
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
-  >>> db.connection.host
+  >>> db.client.host
   'localhost'
-  >>> db.connection.port
+  >>> db.client.port
   30002
-  >>> db.connection.is_mongos
+  >>> db.client.is_mongos
   True

@@ -762,9 +762,9 @@ class TestReplicaSetAuth(HATestCase):
 
     def test_auth_during_failover(self):
         self.assertTrue(self.db.authenticate('user', 'userpass'))
-        db = self.db.connection.get_database(
+        db = self.db.client.get_database(
             self.db.name, write_concern=WriteConcern(w=3, wtimeout=3000))
-        self.assertTrue(db.foo.insert_one({'foo': 'bar'})
+        self.assertTrue(db.foo.insert_one({'foo': 'bar'}))
         self.db.logout()
         self.assertRaises(OperationFailure, self.db.foo.find_one)
 
@@ -829,7 +829,7 @@ class TestMongosHighAvailability(HATestCase):
 
     def test_mongos_ha(self):
         coll = self.client[self.dbname].test
-        coll.insert_one({'foo': 'bar'}))
+        coll.insert_one({'foo': 'bar'})
 
         first = '%s:%d' % (self.client.host, self.client.port)
         ha_tools.kill_mongos(first)

@@ -163,7 +163,7 @@ class Collection(common.BaseObject):
         :Returns:
           (result document, address of server the command was run on)
         """
-        return _command(self.__database.connection,
+        return _command(self.__database.client,
                         self.__database.name + ".$cmd",
                         command,
                         read_preference or self.read_preference,
@@ -327,7 +327,7 @@ class Collection(common.BaseObject):
     def _insert(self, docs, ordered=True,
                 check_keys=True, manipulate=False, write_concern=None):
         """Internal insert helper."""
-        client = self.database.connection
+        client = self.database.client
         return_one = False
         if isinstance(docs, collections.MutableMapping):
             return_one = True
@@ -443,7 +443,7 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
-        client = self.database.connection
+        client = self.database.client
         if client._writable_max_wire_version() > 1 and safe:
             # Update command
             command = SON([('update', self.name)])
@@ -542,7 +542,7 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
-        client = self.database.connection
+        client = self.database.client
         if client._writable_max_wire_version() > 1 and safe:
             # Delete command
             command = SON([('delete', self.name)])
@@ -963,8 +963,8 @@ class Collection(common.BaseObject):
             else:
                 raise
 
-        self.__database.connection._cache_index(self.__database.name,
-                                                self.__name, name, cache_for)
+        self.__database.client._cache_index(self.__database.name,
+                                            self.__name, name, cache_for)
 
         return name
 
@@ -1062,8 +1062,8 @@ class Collection(common.BaseObject):
             keys = helpers._index_list(key_or_list)
             name = kwargs["name"] = _gen_index_name(keys)
 
-        if not self.__database.connection._cached(self.__database.name,
-                                                  self.__name, name):
+        if not self.__database.client._cached(self.__database.name,
+                                              self.__name, name):
             return self.create_index(key_or_list, cache_for, **kwargs)
         return None
 
@@ -1073,8 +1073,7 @@ class Collection(common.BaseObject):
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error.
         """
-        self.__database.connection._purge_index(self.__database.name,
-                                                self.__name)
+        self.__database.client._purge_index(self.__database.name, self.__name)
         self.drop_index("*")
 
     def drop_index(self, index_or_name):
@@ -1104,8 +1103,8 @@ class Collection(common.BaseObject):
         if not isinstance(name, string_type):
             raise TypeError("index_or_name must be an index name or list")
 
-        self.__database.connection._purge_index(self.__database.name,
-                                                self.__name, name)
+        self.__database.client._purge_index(
+            self.__database.name, self.__name, name)
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         self._command(
             cmd, ReadPreference.PRIMARY, allowable_errors=["ns not found"])
@@ -1139,7 +1138,7 @@ class Collection(common.BaseObject):
         {u'_id_': {u'key': [(u'_id', 1)]},
          u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
         """
-        client = self.__database.connection
+        client = self.__database.client
         if client._writable_max_wire_version() > 2:
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             res, addr = self._command(cmd,
@@ -1172,7 +1171,7 @@ class Collection(common.BaseObject):
         information on the possible options. Returns an empty
         dictionary if the collection has not been created yet.
         """
-        client = self.__database.connection
+        client = self.__database.client
 
         result = None
         if client._writable_max_wire_version() > 2:
@@ -1268,7 +1267,7 @@ class Collection(common.BaseObject):
         cmd = SON([("aggregate", self.__name),
                    ("pipeline", pipeline)])
 
-        client = self.database.connection
+        client = self.database.client
 
         # Remove things that are not command options.
         batch_size = kwargs.pop("batchSize", None)
@@ -1389,7 +1388,7 @@ class Collection(common.BaseObject):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
-        _command(self.__database.connection, "admin.$cmd", cmd,
+        _command(self.__database.client, "admin.$cmd", cmd,
                  ReadPreference.PRIMARY, CodecOptions())
 
     def distinct(self, key, filter=None, **kwargs):
@@ -1485,7 +1484,7 @@ class Collection(common.BaseObject):
         elif isinstance(response['result'], dict):
             dbase = response['result']['db']
             coll = response['result']['collection']
-            return self.__database.connection[dbase][coll]
+            return self.__database.client[dbase][coll]
         else:
             return self.__database[response["result"]]
 

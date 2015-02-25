@@ -824,7 +824,7 @@ class TestBulk(BulkTestBase):
             result)
 
     def test_large_inserts_ordered(self):
-        big = 'x' * self.coll.database.connection.max_bson_size
+        big = 'x' * self.coll.database.client.max_bson_size
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'b': 1, 'a': 1})
         batch.insert({'big': big})
@@ -856,7 +856,7 @@ class TestBulk(BulkTestBase):
         self.assertEqual(6, self.coll.count())
 
     def test_large_inserts_unordered(self):
-        big = 'x' * self.coll.database.connection.max_bson_size
+        big = 'x' * self.coll.database.client.max_bson_size
         batch = self.coll.initialize_unordered_bulk_op()
         batch.insert({'b': 1, 'a': 1})
         batch.insert({'big': big})

@@ -999,7 +999,7 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_no_mongos
     def test_comment(self):
-        if server_started_with_auth(self.db.connection):
+        if server_started_with_auth(self.db.client):
             raise SkipTest("SERVER-4754 - This test uses profiling.")
 
         def run_with_profiling(func):
@@ -1056,8 +1056,8 @@ class TestCursor(IntegrationTest):
         db.test.insert_many([{'_id': i} for i in range(200)])
 
         class CManager(CursorManager):
-            def __init__(self, connection):
-                super(CManager, self).__init__(connection)
+            def __init__(self, client):
+                super(CManager, self).__init__(client)
 
             def close(self, dummy, dummy2):
                 # Do absolutely nothing...

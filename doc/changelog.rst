@@ -88,6 +88,12 @@ The second parameter to :meth:`~pymongo.MongoClient.close_cursor` is renamed
 from ``_conn_id`` to ``address``. :meth:`~pymongo.MongoClient.kill_cursors`
 now accepts an `address` parameter.
 
+:class:`~pymongo.database.Database` changes
+...........................................
+
+The ``connection`` property is renamed to
+:attr:`~pymongo.database.Database.client`.
+
 :mod:`~pymongo.errors` Changes
 ..............................
 

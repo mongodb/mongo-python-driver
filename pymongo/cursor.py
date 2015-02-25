@@ -154,7 +154,7 @@ class Cursor(object):
         self.__exhaust = False
         self.__exhaust_mgr = None
         if cursor_type == EXHAUST:
-            if self.__collection.database.connection.is_mongos:
+            if self.__collection.database.client.is_mongos:
                 raise InvalidOperation('Exhaust cursors are '
                                        'not supported by mongos')
             if limit:
@@ -261,8 +261,8 @@ class Cursor(object):
                 # to stop the server from sending more data.
                 self.__exhaust_mgr.sock.close()
             else:
-                connection = self.__collection.database.connection
-                connection.close_cursor(self.__id, self.__address)
+                self.__collection.database.client.close_cursor(self.__id,
+                                                               self.__address)
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
         self.__killed = True
@@ -298,7 +298,7 @@ class Cursor(object):
         # PRIMARY to avoid problems with mongos versions that
         # don't support read preferences.
         rpref = self.__read_preference
-        if (self.__collection.database.connection.is_mongos and
+        if (self.__collection.database.client.is_mongos and
                 rpref != ReadPreference.PRIMARY):
 
             # For maximum backwards compatibility, don't set $readPreference
@@ -356,7 +356,7 @@ class Cursor(object):
         if mask & _QUERY_OPTIONS["exhaust"]:
             if self.__limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
-            if self.__collection.database.connection.is_mongos:
+            if self.__collection.database.client.is_mongos:
                 raise InvalidOperation('Exhaust cursors are '
                                        'not supported by mongos')
             self.__exhaust = True
@@ -805,7 +805,7 @@ class Cursor(object):
 
         Can raise ConnectionFailure.
         """
-        client = self.__collection.database.connection
+        client = self.__collection.database.client
 
         if msg:
             kwargs = {

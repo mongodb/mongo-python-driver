@@ -258,7 +258,7 @@ class _Bulk(object):
     def execute_command(self, generator, write_concern):
         """Execute using write commands.
         """
-        client = self.collection.database.connection
+        client = self.collection.database.client
         # nModified is only reported for write commands, not legacy ops.
         full_result = {
             "writeErrors": [],
@@ -337,7 +337,7 @@ class _Bulk(object):
         """
         # We have to do this here since Collection._insert
         # throws away results and we need to check for jnote.
-        client = self.collection.database.connection
+        client = self.collection.database.client
         return client._send_message(
             insert(self.name, [operation], True, True,
                    write_concern, False, self.collection.codec_options), True)
@@ -419,7 +419,7 @@ class _Bulk(object):
             raise InvalidOperation('Bulk operations can '
                                    'only be executed once.')
         self.executed = True
-        client = self.collection.database.connection
+        client = self.collection.database.client
         write_concern = (WriteConcern(**write_concern) if
                          write_concern else self.collection.write_concern)
 

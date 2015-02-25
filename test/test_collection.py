@@ -594,8 +594,8 @@ class TestCollection(IntegrationTest):
         self.assertIsNotNone(db.test.find_one({"_id": document["_id"]}))
         self.assertEqual(2, db.test.count())
 
-        db = db.connection.get_database(db.name,
-                                        write_concern=WriteConcern(w=0))
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
         result = db.test.insert_one(document)
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertTrue(isinstance(result.inserted_id, ObjectId))
@@ -632,8 +632,8 @@ class TestCollection(IntegrationTest):
             self.assertEqual(1, db.test.count({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
-        db = db.connection.get_database(db.name,
-                                        write_concern=WriteConcern(w=0))
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
         docs = [{} for _ in range(5)]
         result = db.test.insert_many(docs)
         self.assertTrue(isinstance(result, InsertManyResult))
@@ -659,8 +659,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, self.db.test.count())
 
-        db = self.db.connection.get_database(self.db.name,
-                                             write_concern=WriteConcern(w=0))
+        db = self.db.client.get_database(self.db.name,
+                                         write_concern=WriteConcern(w=0))
         result = db.test.delete_one({"z": 1})
         self.assertTrue(isinstance(result, DeleteResult))
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
@@ -681,8 +681,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
         self.assertEqual(0, self.db.test.count({"x": 1}))
 
-        db = self.db.connection.get_database(self.db.name,
-                                             write_concern=WriteConcern(w=0))
+        db = self.db.client.get_database(self.db.name,
+                                         write_concern=WriteConcern(w=0))
         result = db.test.delete_many({"y": 1})
         self.assertTrue(isinstance(result, DeleteResult))
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
@@ -899,8 +899,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count({"y": 2}))
 
-        db = db.connection.get_database(db.name,
-                                        write_concern=WriteConcern(w=0))
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
         result = db.test.replace_one({"x": 0}, {"y": 0})
         self.assertTrue(isinstance(result, UpdateResult))
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
@@ -941,8 +941,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result.upserted_id, ObjectId))
         self.assertTrue(result.acknowledged)
 
-        db = db.connection.get_database(db.name,
-                                        write_concern=WriteConcern(w=0))
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
         result = db.test.update_one({"x": 0}, {"$inc": {"x": 1}})
         self.assertTrue(isinstance(result, UpdateResult))
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
@@ -984,8 +984,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result.upserted_id, ObjectId))
         self.assertTrue(result.acknowledged)
 
-        db = db.connection.get_database(db.name,
-                                        write_concern=WriteConcern(w=0))
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
         result = db.test.update_many({"x": 0}, {"$inc": {"x": 1}})
         self.assertTrue(isinstance(result, UpdateResult))
         self.assertRaises(InvalidOperation, lambda: result.matched_count)
@@ -1372,7 +1372,7 @@ class TestCollection(IntegrationTest):
         list(self.db.test.find(no_cursor_timeout=False))
 
     def test_exhaust(self):
-        if is_mongos(self.db.connection):
+        if is_mongos(self.db.client):
             self.assertRaises(InvalidOperation,
                               self.db.test.find, cursor_type=EXHAUST)
             return

@@ -50,9 +50,9 @@ class Database(common.BaseObject):
     """A Mongo database.
     """
 
-    def __init__(self, connection, name, codec_options=None,
+    def __init__(self, client, name, codec_options=None,
                  read_preference=None, write_concern=None):
-        """Get a database by connection and name.
+        """Get a database by client and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
         :class:`basestring` (:class:`str` in python 3). Raises
@@ -60,16 +60,16 @@ class Database(common.BaseObject):
         database name.
 
         :Parameters:
-          - `connection`: A client instance.
+          - `client`: A :class:`~pymongo.mongo_client.MongoClient` instance.
           - `name`: The database name.
           - `codec_options` (optional): An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) connection.codec_options is used.
+            default) client.codec_options is used.
           - `read_preference` (optional): The read preference to use. If
-            ``None`` (the default) connection.read_preference is used.
+            ``None`` (the default) client.read_preference is used.
           - `write_concern` (optional): An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) connection.write_concern is used.
+            default) client.write_concern is used.
 
         .. mongodoc:: databases
 
@@ -86,9 +86,9 @@ class Database(common.BaseObject):
                db.__my_collection__
         """
         super(Database, self).__init__(
-            codec_options or connection.codec_options,
-            read_preference or connection.read_preference,
-            write_concern or connection.write_concern)
+            codec_options or client.codec_options,
+            read_preference or client.read_preference,
+            write_concern or client.write_concern)
 
         if not isinstance(name, string_type):
             raise TypeError("name must be an instance "
@@ -99,7 +99,7 @@ class Database(common.BaseObject):
 
         self.__name = _unicode(name)
         self.__cmd_name = _unicode(name + ".$cmd")
-        self.__connection = connection
+        self.__client = client
 
         self.__incoming_manipulators = []
         self.__incoming_copying_manipulators = []
@@ -142,9 +142,9 @@ class Database(common.BaseObject):
         return SystemJS(self)
 
     @property
-    def connection(self):
+    def client(self):
         """The client instance for this :class:`Database`."""
-        return self.__connection
+        return self.__client
 
     @property
     def name(self):
@@ -191,7 +191,7 @@ class Database(common.BaseObject):
 
     def __eq__(self, other):
         if isinstance(other, Database):
-            return (self.__connection == other.connection and
+            return (self.__client == other.client and
                     self.__name == other.name)
         return NotImplemented
 
@@ -199,7 +199,7 @@ class Database(common.BaseObject):
         return not self == other
 
     def __repr__(self):
-        return "Database(%r, %r)" % (self.__connection, self.__name)
+        return "Database(%r, %r)" % (self.__client, self.__name)
 
     def __getattr__(self, name):
         """Get a collection of this database by name.
@@ -341,7 +341,7 @@ class Database(common.BaseObject):
             command = SON([(command, value)])
         command.update(kwargs)
 
-        return helpers._command(self.__connection,
+        return helpers._command(self.__client,
                                 self.__cmd_name,
                                 command,
                                 read_preference,
@@ -440,7 +440,7 @@ class Database(common.BaseObject):
           - `include_system_collections` (optional): if ``False`` list
             will not include system collections (e.g ``system.indexes``)
         """
-        client = self.__connection
+        client = self.__client
 
         if client._writable_max_wire_version() > 2:
             res, addr = self._command("listCollections", cursor={})
@@ -478,7 +478,7 @@ class Database(common.BaseObject):
             raise TypeError("name_or_collection must be an "
                             "instance of %s" % (string_type.__name__,))
 
-        self.__connection._purge_index(self.__name, name)
+        self.__client._purge_index(self.__name, name)
 
         self.command("drop", _unicode(name), allowable_errors=["ns not found"])
 
@@ -633,9 +633,9 @@ class Database(common.BaseObject):
         if error_msg.startswith("not master"):
             # Reset primary server and request check, if another thread isn't
             # doing so already.
-            primary = self.connection.primary
+            primary = self.__client.primary
             if primary:
-                self.connection._reset_server_and_request_check(primary)
+                self.__client._reset_server_and_request_check(primary)
         return error
 
     def last_status(self):
@@ -944,7 +944,7 @@ class Database(common.BaseObject):
             password,
             validated_options)
 
-        self.connection._cache_credentials(
+        self.client._cache_credentials(
             self.name,
             credentials,
             connect=True)
@@ -954,7 +954,7 @@ class Database(common.BaseObject):
     def logout(self):
         """Deauthorize use of this database for this client instance."""
         # Sockets will be deauthenticated as they are used.
-        self.connection._purge_credentials(self.name)
+        self.client._purge_credentials(self.name)
 
     def dereference(self, dbref, **kwargs):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
@@ -1012,7 +1012,7 @@ class Database(common.BaseObject):
         raise TypeError("'Database' object is not callable. If you meant to "
                         "call the '%s' method on a '%s' object it is "
                         "failing because no such method exists." % (
-                            self.__name, self.__connection.__class__.__name__))
+                            self.__name, self.__client.__class__.__name__))
 
 
 class SystemJS(object):
@@ -1041,7 +1041,7 @@ class SystemJS(object):
           0
         """
         if not database.write_concern.acknowledged:
-            database = database.connection.get_database(
+            database = database.client.get_database(
                 database.name, write_concern=WriteConcern())
         # can't just assign it since we've overridden __setattr__
         object.__setattr__(self, "_db", database)

@@ -59,8 +59,8 @@ class TestCursorManager(IntegrationTest):
         test_case = self
 
         class CM(CursorManager):
-            def __init__(self, connection):
-                super(CM, self).__init__(connection)
+            def __init__(self, client):
+                super(CM, self).__init__(client)
 
             def close(self, cursor_id, address):
                 test_case.close_was_called = True

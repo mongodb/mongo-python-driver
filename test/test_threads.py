@@ -191,7 +191,7 @@ class TestThreads(IntegrationTest):
         # Start 10 threads that execute a query, and 10 threads that call
         # client.close() 10 times in a row.
         threads = [SaveAndFind(self.db.test) for _ in range(10)]
-        threads.extend(Disconnect(self.db.connection, 10) for _ in range(10))
+        threads.extend(Disconnect(self.db.client, 10) for _ in range(10))
 
         with frequent_thread_switches():
             # Frequent thread switches hurt performance badly enough to
