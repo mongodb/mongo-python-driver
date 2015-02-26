@@ -111,8 +111,8 @@ def validate_boolean_or_string(option, value):
     """Validates that value is True, False, 'true', or 'false'."""
     if isinstance(value, string_type):
         if value not in ('true', 'false'):
-            raise ConfigurationError("The value of %s must be "
-                                     "'true' or 'false'" % (option,))
+            raise ValueError("The value of %s must be "
+                             "'true' or 'false'" % (option,))
         return value == 'true'
     return validate_boolean(option, value)
 
@@ -124,8 +124,8 @@ def validate_integer(option, value):
         return value
     elif isinstance(value, string_type):
         if not value.isdigit():
-            raise ConfigurationError("The value of %s must be "
-                                     "an integer" % (option,))
+            raise ValueError("The value of %s must be "
+                             "an integer" % (option,))
         return int(value)
     raise TypeError("Wrong type for %s, value must be an integer" % (option,))
 
@@ -135,8 +135,8 @@ def validate_positive_integer(option, value):
     """
     val = validate_integer(option, value)
     if val < 0:
-        raise ConfigurationError("The value of %s must be "
-                                 "a positive integer" % (option,))
+        raise ValueError("The value of %s must be "
+                         "a positive integer" % (option,))
     return val
 
 
@@ -195,17 +195,19 @@ def validate_positive_float(option, value):
     """Validates that 'value' is a float, or can be converted to one, and is
        positive.
     """
-    err = ConfigurationError("%s must be a positive int or float" % (option,))
+    errmsg = "%s must be an integer or float" % (option,)
     try:
         value = float(value)
-    except (ValueError, TypeError):
-        raise err
+    except ValueError:
+        raise ValueError(errmsg)
+    except TypeError:
+        raise TypeError(errmsg)
 
     # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
     # one billion - this is a reasonable approximation for infinity
     if not 0 < value < 1e9:
-        raise err
-
+        raise ValueError("%s must be greater than 0 and "
+                         "less than one billion" % (option,))
     return value
 
 
@@ -222,8 +224,7 @@ def validate_read_preference(dummy, value):
     """Validate a read preference.
     """
     if not isinstance(value, ServerMode):
-        raise ConfigurationError("%r is not a "
-                                 "valid read preference." % (value,))
+        raise TypeError("%r is not a read preference." % (value,))
     return value
 
 
@@ -233,7 +234,7 @@ def validate_read_preference_mode(dummy, name):
     try:
         return read_pref_mode_from_name(name)
     except ValueError:
-        raise ConfigurationError("Not a valid read preference")
+        raise ValueError("%s is not a valid read preference" % (name,))
 
 
 def validate_auth_mechanism(option, value):
@@ -243,8 +244,7 @@ def validate_auth_mechanism(option, value):
     # unsupported, may be removed at any time. You have
     # been warned.
     if value not in MECHANISMS and value != 'CRAM-MD5':
-        raise ConfigurationError("%s must be in "
-                                 "%s" % (option, MECHANISMS))
+        raise ValueError("%s must be in %s" % (option, tuple(MECHANISMS)))
     return value
 
 
@@ -254,9 +254,9 @@ def validate_uuid_representation(dummy, value):
     try:
         return _UUID_REPRESENTATIONS[value]
     except KeyError:
-        raise ConfigurationError("%s is an invalid UUID representation. "
-                                 "Must be one of "
-                                 "%s" % (value, tuple(_UUID_REPRESENTATIONS)))
+        raise ValueError("%s is an invalid UUID representation. "
+                         "Must be one of "
+                         "%s" % (value, tuple(_UUID_REPRESENTATIONS)))
 
 
 def validate_read_preference_tags(name, value):
@@ -274,8 +274,8 @@ def validate_read_preference_tags(name, value):
             tag_sets.append(dict([tag.split(":")
                                   for tag in tag_set.split(",")]))
         except Exception:
-            raise ConfigurationError("%r not a valid "
-                                     "value for %s" % (tag_set, name))
+            raise ValueError("%r not a valid "
+                             "value for %s" % (tag_set, name))
     return tag_sets
 
 
@@ -290,23 +290,22 @@ def validate_auth_mechanism_properties(option, value):
         try:
             key, val = opt.split(':')
             if key not in _MECHANISM_PROPS:
-                raise ConfigurationError("%s is not a supported auth "
-                                         "mechanism property. Must be one of "
-                                         "%s." % (key, tuple(_MECHANISM_PROPS)))
+                raise ValueError("%s is not a supported auth "
+                                 "mechanism property. Must be one of "
+                                 "%s." % (key, tuple(_MECHANISM_PROPS)))
             props[key] = val
         except ValueError:
-            raise ConfigurationError("auth mechanism properties must be "
-                                     "key:value pairs like SERVICE_NAME:"
-                                     "mongodb, not %s." % (opt,))
+            raise ValueError("auth mechanism properties must be "
+                             "key:value pairs like SERVICE_NAME:"
+                             "mongodb, not %s." % (opt,))
     return props
 
 
 def validate_document_class(option, value):
     """Validate the document_class option."""
     if not issubclass(value, collections.MutableMapping):
-        raise ConfigurationError("%s must be dict, bson.son.SON, or another "
-                                 "sublass of "
-                                 "collections.MutableMapping" % (option,))
+        raise TypeError("%s must be dict, bson.son.SON, or another "
+                        "sublass of collections.MutableMapping" % (option,))
     return value
 
 

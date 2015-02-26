@@ -506,16 +506,16 @@ class TestClient(IntegrationTest):
         c = connected(rs_or_single_client(socketTimeoutMS=None))
         self.assertEqual(None, get_pool(c).opts.socket_timeout)
 
-        self.assertRaises(ConfigurationError,
+        self.assertRaises(ValueError,
                           rs_or_single_client, socketTimeoutMS=0)
 
-        self.assertRaises(ConfigurationError,
+        self.assertRaises(ValueError,
                           rs_or_single_client, socketTimeoutMS=-1)
 
-        self.assertRaises(ConfigurationError,
+        self.assertRaises(ValueError,
                           rs_or_single_client, socketTimeoutMS=1e10)
 
-        self.assertRaises(ConfigurationError,
+        self.assertRaises(ValueError,
                           rs_or_single_client, socketTimeoutMS='foo')
 
     def test_socket_timeout(self):
@@ -550,7 +550,7 @@ class TestClient(IntegrationTest):
         self.assertTrue(get_pool(client).opts.socket_keepalive)
 
     def test_tz_aware(self):
-        self.assertRaises(ConfigurationError, MongoClient, tz_aware='foo')
+        self.assertRaises(ValueError, MongoClient, tz_aware='foo')
 
         aware = rs_or_single_client(tz_aware=True)
         naive = self.client

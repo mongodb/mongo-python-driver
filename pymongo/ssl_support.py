@@ -38,9 +38,9 @@ if HAVE_SSL:
             return value
         elif value in (CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED):
             return value
-        raise ConfigurationError("The value of %s must be one of: "
-                                 "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
-                                 "`ssl.CERT_REQUIRED" % (option,))
+        raise ValueError("The value of %s must be one of: "
+                         "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
+                         "`ssl.CERT_REQUIRED" % (option,))
 
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""

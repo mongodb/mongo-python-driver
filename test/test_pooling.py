@@ -169,11 +169,11 @@ class _TestPoolingBase(unittest.TestCase):
 class TestPooling(_TestPoolingBase):
     def test_max_pool_size_validation(self):
         self.assertRaises(
-            ConfigurationError, MongoClient, host=host, port=port,
+            ValueError, MongoClient, host=host, port=port,
             max_pool_size=-1)
 
         self.assertRaises(
-            ConfigurationError, MongoClient, host=host, port=port,
+            ValueError, MongoClient, host=host, port=port,
             max_pool_size='foo')
 
         c = MongoClient(host=host, port=port, max_pool_size=100)

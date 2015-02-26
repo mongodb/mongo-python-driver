@@ -19,7 +19,7 @@ from pymongo.errors import ConfigurationError
 
 class WriteConcern(object):
     """WriteConcern
-    
+
     :Parameters:
         - `w`: (integer or string) Used with replication, write operations
           will block until they have been replicated to the specified number
@@ -53,17 +53,17 @@ class WriteConcern(object):
 
         if wtimeout is not None:
             if not isinstance(wtimeout, integer_types):
-                raise ConfigurationError("wtimeout must be an integer")
+                raise TypeError("wtimeout must be an integer")
             self.__document["wtimeout"] = wtimeout
 
         if j is not None:
             if not isinstance(j, bool):
-                raise ConfigurationError("j must be True or False")
+                raise TypeError("j must be True or False")
             self.__document["j"] = j
 
         if fsync is not None:
             if not isinstance(fsync, bool):
-                raise ConfigurationError("fsync must be True or False")
+                raise TypeError("fsync must be True or False")
             if j and fsync:
                 raise ConfigurationError("Can't set both j "
                                          "and fsync at the same time")
@@ -76,7 +76,7 @@ class WriteConcern(object):
             if isinstance(w, integer_types):
                 self.__acknowledged = w > 0
             elif not isinstance(w, string_type):
-                raise ConfigurationError("w must be an integer or string")
+                raise TypeError("w must be an integer or string")
             self.__document["w"] = w
 
     @property

@@ -21,12 +21,6 @@ import sys
 sys.path[0:0] = [""]
 
 try:
-    from ssl import CertificateError
-except ImportError:
-    # Backport.
-    from pymongo.ssl_match_hostname import CertificateError
-
-try:
     from urllib.parse import quote_plus
 except ImportError:
     # Python 2
@@ -134,7 +128,7 @@ class TestClientSSL(unittest.TestCase):
 
     def test_config_ssl(self):
         # Tests various ssl configurations
-        self.assertRaises(ConfigurationError, MongoClient, ssl='foo')
+        self.assertRaises(ValueError, MongoClient, ssl='foo')
         self.assertRaises(ConfigurationError,
                           MongoClient,
                           ssl=False,

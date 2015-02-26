@@ -104,9 +104,9 @@ def parse_ipv6_literal_host(entity, default_port):
                           specified in entity.
     """
     if entity.find(']') == -1:
-        raise ConfigurationError("an IPv6 address literal must be "
-                                 "enclosed in '[' and ']' according "
-                                 "to RFC 2732.")
+        raise ValueError("an IPv6 address literal must be "
+                         "enclosed in '[' and ']' according "
+                         "to RFC 2732.")
     i = entity.find(']:')
     if i == -1:
         return entity[1:-1], default_port
@@ -131,14 +131,14 @@ def parse_host(entity, default_port=DEFAULT_PORT):
         host, port = parse_ipv6_literal_host(entity, default_port)
     elif entity.find(':') != -1:
         if entity.count(':') > 1:
-            raise ConfigurationError("Reserved characters such as ':' must be "
-                                     "escaped according RFC 2396. An IPv6 "
-                                     "address literal must be enclosed in '[' "
-                                     "and ']' according to RFC 2732.")
+            raise ValueError("Reserved characters such as ':' must be "
+                             "escaped according RFC 2396. An IPv6 "
+                             "address literal must be enclosed in '[' "
+                             "and ']' according to RFC 2732.")
         host, port = host.split(':', 1)
     if isinstance(port, string_type):
         if not port.isdigit():
-            raise ConfigurationError("Port number must be an integer.")
+            raise ValueError("Port number must be an integer.")
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:

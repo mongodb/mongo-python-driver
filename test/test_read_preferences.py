@@ -97,7 +97,7 @@ class TestReadPreferences(TestReadPreferencesBase):
                 rs_client(read_preference=mode).read_preference)
 
         self.assertRaises(
-            ConfigurationError,
+            TypeError,
             rs_client, read_preference='foo')
 
     def test_tag_sets_validation(self):
@@ -124,14 +124,14 @@ class TestReadPreferences(TestReadPreferencesBase):
             [{'k': 'v'}, {}],
             rs_client(read_preference=S).read_preference.tag_sets)
 
-        self.assertRaises(ConfigurationError, Secondary, tag_sets=[])
+        self.assertRaises(ValueError, Secondary, tag_sets=[])
 
         # One dict not ok, must be a list of dicts
-        self.assertRaises(ConfigurationError, Secondary, tag_sets={'k': 'v'})
+        self.assertRaises(TypeError, Secondary, tag_sets={'k': 'v'})
 
-        self.assertRaises(ConfigurationError, Secondary, tag_sets='foo')
+        self.assertRaises(TypeError, Secondary, tag_sets='foo')
 
-        self.assertRaises(ConfigurationError, Secondary, tag_sets=['foo'])
+        self.assertRaises(TypeError, Secondary, tag_sets=['foo'])
 
     def test_threshold_validation(self):
         self.assertEqual(17, rs_client(
@@ -147,8 +147,8 @@ class TestReadPreferences(TestReadPreferencesBase):
         ).local_threshold_ms)
 
     def test_primary(self):
-        self.assertReadsFrom('primary',
-            read_preference=ReadPreference.PRIMARY)
+        self.assertReadsFrom(
+            'primary', read_preference=ReadPreference.PRIMARY)
 
     def test_primary_with_tags(self):
         # Tags not allowed with PRIMARY
@@ -157,16 +157,16 @@ class TestReadPreferences(TestReadPreferencesBase):
             rs_client, tag_sets=[{'dc': 'ny'}])
 
     def test_primary_preferred(self):
-        self.assertReadsFrom('primary',
-            read_preference=ReadPreference.PRIMARY_PREFERRED)
+        self.assertReadsFrom(
+            'primary', read_preference=ReadPreference.PRIMARY_PREFERRED)
 
     def test_secondary(self):
-        self.assertReadsFrom('secondary',
-            read_preference=ReadPreference.SECONDARY)
+        self.assertReadsFrom(
+            'secondary', read_preference=ReadPreference.SECONDARY)
 
     def test_secondary_preferred(self):
-        self.assertReadsFrom('secondary',
-            read_preference=ReadPreference.SECONDARY_PREFERRED)
+        self.assertReadsFrom(
+            'secondary', read_preference=ReadPreference.SECONDARY_PREFERRED)
 
     def test_nearest(self):
         # With high localThresholdMS, expect to read from any
@@ -194,7 +194,8 @@ class TestReadPreferences(TestReadPreferencesBase):
                           server.description.round_trip_time)
             for server in c._get_topology().select_servers(any_server_selector))
 
-        self.assertFalse(not_used,
+        self.assertFalse(
+            not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
             " but didn't use %s\nlatencies: %s" % (not_used, latencies))
 
@@ -396,14 +397,11 @@ class TestMongosConnection(IntegrationTest):
 
         # Test non-PRIMARY modes which can be combined with tags
         for mode, mongos_mode in (
-            (PrimaryPreferred, 'primaryPreferred'),
-            (Secondary, 'secondary'),
-            (SecondaryPreferred, 'secondaryPreferred'),
-            (Nearest, 'nearest'),
-        ):
-            for tag_sets in (
-                None, [{}]
-            ):
+                (PrimaryPreferred, 'primaryPreferred'),
+                (Secondary, 'secondary'),
+                (SecondaryPreferred, 'secondaryPreferred'),
+                (Nearest, 'nearest')):
+            for tag_sets in (None, [{}]):
                 # Create a client e.g. with read_preference=NEAREST
                 c = connected(single_client(
                     host, port, read_preference=mode(tag_sets=tag_sets)))
@@ -441,10 +439,9 @@ class TestMongosConnection(IntegrationTest):
                         '$readPreference' in cursor._Cursor__query_spec())
 
             for tag_sets in (
-                [{'dc': 'la'}],
-                [{'dc': 'la'}, {'dc': 'sf'}],
-                [{'dc': 'la'}, {'dc': 'sf'}, {}],
-            ):
+                    [{'dc': 'la'}],
+                    [{'dc': 'la'}, {'dc': 'sf'}],
+                    [{'dc': 'la'}, {'dc': 'sf'}, {}]):
                 c = connected(single_client(
                     host, port, read_preference=mode(tag_sets=tag_sets)))
 

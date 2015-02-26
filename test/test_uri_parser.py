@@ -79,16 +79,16 @@ class TestURI(unittest.TestCase):
                          split_hosts('/tmp/mongodb-27017.sock'))
         self.assertEqual([('/tmp/mongodb-27017.sock', None),
                           ('example.com', 27017)],
-                        split_hosts('/tmp/mongodb-27017.sock,'
-                                    'example.com:27017'))
+                         split_hosts('/tmp/mongodb-27017.sock,'
+                                     'example.com:27017'))
         self.assertEqual([('example.com', 27017),
                           ('/tmp/mongodb-27017.sock', None)],
-                        split_hosts('example.com:27017,'
-                                    '/tmp/mongodb-27017.sock'))
-        self.assertRaises(ConfigurationError, split_hosts, '::1', 27017)
-        self.assertRaises(ConfigurationError, split_hosts, '[::1:27017')
-        self.assertRaises(ConfigurationError, split_hosts, '::1')
-        self.assertRaises(ConfigurationError, split_hosts, '::1]:27017')
+                         split_hosts('example.com:27017,'
+                                     '/tmp/mongodb-27017.sock'))
+        self.assertRaises(ValueError, split_hosts, '::1', 27017)
+        self.assertRaises(ValueError, split_hosts, '[::1:27017')
+        self.assertRaises(ValueError, split_hosts, '::1')
+        self.assertRaises(ValueError, split_hosts, '::1]:27017')
         self.assertEqual([('::1', 27017)], split_hosts('[::1]:27017'))
         self.assertEqual([('::1', 27017)], split_hosts('[::1]'))
 
@@ -96,19 +96,19 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ConfigurationError, split_options, 'foo')
         self.assertRaises(ConfigurationError, split_options, 'foo=bar')
         self.assertRaises(ConfigurationError, split_options, 'foo=bar;foo')
-        self.assertRaises(ConfigurationError, split_options, 'socketTimeoutMS=foo')
-        self.assertRaises(ConfigurationError, split_options, 'socketTimeoutMS=0.0')
-        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=foo')
-        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=0.0')
-        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=1e100000')
-        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=-1e100000')
+        self.assertRaises(ValueError, split_options, 'socketTimeoutMS=foo')
+        self.assertRaises(ValueError, split_options, 'socketTimeoutMS=0.0')
+        self.assertRaises(ValueError, split_options, 'connectTimeoutMS=foo')
+        self.assertRaises(ValueError, split_options, 'connectTimeoutMS=0.0')
+        self.assertRaises(ValueError, split_options, 'connectTimeoutMS=1e100000')
+        self.assertRaises(ValueError, split_options, 'connectTimeoutMS=-1e100000')
 
         # On most platforms float('inf') and float('-inf') represent
         # +/- infinity, although on Python 2.4 and 2.5 on Windows those
         # expressions are invalid
         if not (sys.platform == "win32" and sys.version_info <= (2, 5)):
-            self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=inf')
-            self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=-inf')
+            self.assertRaises(ValueError, split_options, 'connectTimeoutMS=inf')
+            self.assertRaises(ValueError, split_options, 'connectTimeoutMS=-inf')
 
         self.assertTrue(split_options('socketTimeoutMS=300'))
         self.assertTrue(split_options('connectTimeoutMS=300'))
@@ -121,11 +121,11 @@ class TestURI(unittest.TestCase):
         self.assertTrue(isinstance(split_options('w=5.5')['w'], string_type))
         self.assertTrue(split_options('w=foo'))
         self.assertTrue(split_options('w=majority'))
-        self.assertRaises(ConfigurationError, split_options, 'wtimeoutms=foo')
-        self.assertRaises(ConfigurationError, split_options, 'wtimeoutms=5.5')
+        self.assertRaises(ValueError, split_options, 'wtimeoutms=foo')
+        self.assertRaises(ValueError, split_options, 'wtimeoutms=5.5')
         self.assertTrue(split_options('wtimeoutms=500'))
-        self.assertRaises(ConfigurationError, split_options, 'fsync=foo')
-        self.assertRaises(ConfigurationError, split_options, 'fsync=5.5')
+        self.assertRaises(ValueError, split_options, 'fsync=foo')
+        self.assertRaises(ValueError, split_options, 'fsync=5.5')
         self.assertEqual({'fsync': True}, split_options('fsync=true'))
         self.assertEqual({'fsync': False}, split_options('fsync=false'))
         self.assertEqual({'authmechanism': 'GSSAPI'},
@@ -134,7 +134,7 @@ class TestURI(unittest.TestCase):
                          split_options('authMechanism=MONGODB-CR'))
         self.assertEqual({'authmechanism': 'SCRAM-SHA-1'},
                          split_options('authMechanism=SCRAM-SHA-1'))
-        self.assertRaises(ConfigurationError,
+        self.assertRaises(ValueError,
                           split_options, 'authMechanism=foo')
         self.assertEqual({'authsource': 'foobar'}, split_options('authSource=foobar'))
         # maxPoolSize isn't yet a documented URI option.
@@ -143,7 +143,7 @@ class TestURI(unittest.TestCase):
     def test_parse_uri(self):
         self.assertRaises(InvalidURI, parse_uri, "http://foobar.com")
         self.assertRaises(InvalidURI, parse_uri, "http://foo@foobar.com")
-        self.assertRaises(ConfigurationError,
+        self.assertRaises(ValueError,
                           parse_uri, "mongodb://::1", 27017)
 
         orig = {
@@ -368,7 +368,7 @@ class TestURI(unittest.TestCase):
                                    "@localhost/foo?uuidrepresentation="
                                    "javaLegacy"))
 
-        self.assertRaises(ConfigurationError, parse_uri,
+        self.assertRaises(ValueError, parse_uri,
                           "mongodb://user%40domain.com:password"
                           "@localhost/foo?uuidrepresentation=notAnOption")
 
