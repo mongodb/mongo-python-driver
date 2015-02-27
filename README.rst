@@ -155,7 +155,11 @@ run the tests under Python 2.6.
 
 To verify that PyMongo works with Gevent's monkey-patching::
 
-    $ python -m gevent.monkey setup.py test
+    $ python green_framework_test.py gevent
+
+Or with Eventlet's:
+
+    $ python green_framework_test.py eventlet
 
 .. _sphinx: http://sphinx.pocoo.org/
 .. _unittest2: https://pypi.python.org/pypi/unittest2

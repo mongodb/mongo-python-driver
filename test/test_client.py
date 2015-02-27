@@ -435,17 +435,12 @@ class TestClient(IntegrationTest):
         def f(pipe):
             try:
                 kill_cursors_executor = self.client._kill_cursors_executor
-                assert not kill_cursors_executor._thread.is_alive()
-
                 servers = self.client._topology.select_servers(
                     any_server_selector)
 
                 # In child, only the thread that called fork() is alive.
-                assert not any(s._monitor._executor._thread.is_alive()
-                               for s in servers)
-
+                # The first operation should revive the rest.
                 db.test.find_one()
-
                 wait_until(
                     lambda: all(s._monitor._executor._thread.is_alive()
                                 for s in servers),
