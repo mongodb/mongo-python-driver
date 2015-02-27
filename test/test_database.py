@@ -366,7 +366,7 @@ class TestDatabase(IntegrationTest):
         # Configuration errors
         self.assertRaises(ValueError, auth_db.add_user, "user", '')
         self.assertRaises(TypeError, auth_db.add_user, "user", 'password', 15)
-        self.assertRaises(ConfigurationError, auth_db.add_user,
+        self.assertRaises(TypeError, auth_db.add_user,
                           "user", 'password', 'True')
         self.assertRaises(ConfigurationError, auth_db.add_user,
                           "user", 'password', True, roles=['read'])
