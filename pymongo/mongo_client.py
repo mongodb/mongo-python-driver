@@ -132,7 +132,7 @@ class MongoClient(common.BaseObject):
             free sockets. Defaults to ``None`` (no timeout).
           - `waitQueueMultiple`: (integer or None) Multiplied by max_pool_size
             to give the number of threads allowed to wait for a socket at one
-            time. Defaults to ``None`` (no waiters).
+            time. Defaults to ``None`` (no limit).
           - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
             packets on connected sockets. Defaults to ``False`` (do not send
             keep-alive packets).
