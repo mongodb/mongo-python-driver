@@ -83,17 +83,7 @@ class TopologyDescription(object):
 
     def reset_server(self, address):
         """A copy of this description, with one server marked Unknown."""
-        sds = self.server_descriptions()
-
-        # The default ServerDescription's type is Unknown.
-        sds[address] = ServerDescription(address)
-
-        if self._topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
-            topology_type = _check_has_primary(sds)
-        else:
-            topology_type = self._topology_type
-
-        return TopologyDescription(topology_type, sds, self._replica_set_name)
+        return updated_topology_description(self, ServerDescription(address))
 
     def reset(self):
         """A copy of this description, with all servers marked Unknown."""
