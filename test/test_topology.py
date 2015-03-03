@@ -36,7 +36,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.settings import TopologySettings
-from test import client_knobs, SkipTest, unittest
+from test import client_knobs, unittest
 from test.utils import wait_until
 
 
