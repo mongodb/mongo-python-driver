@@ -290,12 +290,31 @@ class Collection(common.BaseObject):
         Write operations are passed as a list using the write operation classes
         from the :mod:`~pymongo.options` module::
 
-          >>> # DeleteOne, UpdateOne, and UpdateMany are also available.
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
           ...
-          >>> from pymongo.options import InsertOne, DeleteMany, ReplaceOne
-          >>> requests = [InsertOne({'foo': 1}), DeleteMany({'bar': 2}),
-          ...             ReplaceOne({'bar': 1}, {'bim': 2}, upsert=True)]
-          >>> coll.bulk_write(requests)
+          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634ef')}
+          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634f0')}
+          >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
+          ...
+          >>> from pymongo.options import InsertOne, DeleteOne, ReplaceOne
+          >>> requests = [InsertOne({'y': 1}), DeleteOne({'x': 1}),
+          ...             ReplaceOne({'w': 1}, {'z': 1}, upsert=True)]
+          >>> result = db.test.bulk_write(requests)
+          >>> result.inserted_count
+          1
+          >>> result.deleted_count
+          1
+          >>> result.modified_count
+          0
+          >>> result.upserted_ids
+          {2: ObjectId('54f62ee28891e756a6e1abd5')}
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634f0')}
+          {u'y': 1, u'_id': ObjectId('54f62ee2fba5226811f634f1')}
+          {u'z': 1, u'_id': ObjectId('54f62ee28891e756a6e1abd5')}
 
         :Parameters:
           - `requests`: A list of write operations (see examples above).
@@ -387,6 +406,14 @@ class Collection(common.BaseObject):
     def insert_one(self, document):
         """Insert a single document.
 
+          >>> db.test.count({'x': 1})
+          0
+          >>> result = db.test.insert_one({'x': 1})
+          >>> result.inserted_id
+          ObjectId('54f112defba522406c9cc208')
+          >>> db.test.find_one({'x': 1})
+          {u'x': 1, u'_id': ObjectId('54f112defba522406c9cc208')}
+
         :Parameters:
           - `document`: The document to insert. Must be a mutable mapping
             type. If the document does not have an _id field one will be
@@ -394,6 +421,8 @@ class Collection(common.BaseObject):
 
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
+
+        .. versionadded:: 3.0
         """
         common.validate_is_mutable_mapping("document", document)
         if "_id" not in document:
@@ -403,6 +432,14 @@ class Collection(common.BaseObject):
 
     def insert_many(self, documents, ordered=True):
         """Insert a list of documents.
+
+          >>> db.test.count()
+          0
+          >>> result = db.test.insert_many([{'x': i} for i in range(2)])
+          >>> result.inserted_ids
+          [ObjectId('54f113fffba522406c9cc20e'), ObjectId('54f113fffba522406c9cc20f')]
+          >>> db.test.count()
+          2
 
         :Parameters:
           - `documents`: A list of documents to insert.
@@ -414,6 +451,8 @@ class Collection(common.BaseObject):
 
         :Returns:
           An instance of :class:`~pymongo.results.InsertManyResult`.
+
+        .. versionadded:: 3.0
         """
         if not isinstance(documents, list) or not documents:
             raise TypeError("documents must be a non-empty list")
@@ -481,6 +520,33 @@ class Collection(common.BaseObject):
     def replace_one(self, filter, replacement, upsert=False):
         """Replace a single document matching the filter.
 
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': ObjectId('54f4c5befba5220aa4d6dee7')}
+          >>> result = db.test.replace_one({'x': 1}, {'y': 1})
+          >>> result.matched_count
+          1
+          >>> result.modified_count
+          1
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'y': 1, u'_id': ObjectId('54f4c5befba5220aa4d6dee7')}
+
+        The *upsert* option can be used to insert a new document if a matching
+        document does not exist.
+
+          >>> result = db.test.replace_one({'x': 1}, {'x': 1}, True)
+          >>> result.matched_count
+          0
+          >>> result.modified_count
+          0
+          >>> result.upserted_id
+          ObjectId('54f11e5c8891e756a6e1abd4')
+          >>> db.test.find_one({'x': 1})
+          {u'x': 1, u'_id': ObjectId('54f11e5c8891e756a6e1abd4')}
+
         :Parameters:
           - `filter`: A query that matches the document to replace.
           - `replacement`: The new document.
@@ -489,6 +555,8 @@ class Collection(common.BaseObject):
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. versionadded:: 3.0
         """
         common.validate_ok_for_replace(replacement)
         result = self._update(filter, replacement, upsert)
@@ -496,6 +564,24 @@ class Collection(common.BaseObject):
 
     def update_one(self, filter, update, upsert=False):
         """Update a single document matching the filter.
+
+          >>> for doc in db.test.find():
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+          >>> result = db.test.update_one({'x': 1}, {'$inc': {'x': 3}})
+          >>> result.matched_count
+          1
+          >>> result.modified_count
+          1
+          >>> for doc in db.test.find():
+          ...     print(doc)
+          ...
+          {u'x': 4, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
 
         :Parameters:
           - `filter`: A query that matches the document to update.
@@ -505,6 +591,8 @@ class Collection(common.BaseObject):
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
         result = self._update(filter, update, upsert, False)
@@ -512,6 +600,24 @@ class Collection(common.BaseObject):
 
     def update_many(self, filter, update, upsert=False):
         """Update one or more documents that match the filter.
+
+          >>> for doc in db.test.find():
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+          >>> result = db.test.update_many({'x': 1}, {'$inc': {'x': 3}})
+          >>> result.matched_count
+          3
+          >>> result.modified_count
+          3
+          >>> for doc in db.test.find():
+          ...     print(doc)
+          ...
+          {u'x': 4, u'_id': 0}
+          {u'x': 4, u'_id': 1}
+          {u'x': 4, u'_id': 2}
 
         :Parameters:
           - `filter`: A query that matches the documents to update.
@@ -521,6 +627,8 @@ class Collection(common.BaseObject):
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
         result = self._update(filter, update, upsert, False, True)
@@ -569,10 +677,20 @@ class Collection(common.BaseObject):
     def delete_one(self, filter):
         """Delete a single document matching the filter.
 
+          >>> db.test.count({'x': 1})
+          3
+          >>> result = db.test.delete_one({'x': 1})
+          >>> result.deleted_count
+          1
+          >>> db.test.count({'x': 1})
+          2
+
         :Parameters:
           - `filter`: A query that matches the document to delete.
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
+
+        .. versionadded:: 3.0
         """
         return DeleteResult(self._delete(filter, False),
                             self.write_concern.acknowledged)
@@ -580,10 +698,20 @@ class Collection(common.BaseObject):
     def delete_many(self, filter):
         """Delete one or more documents matching the filter.
 
+          >>> db.test.count({'x': 1})
+          3
+          >>> result = db.test.delete_many({'x': 1})
+          >>> result.deleted_count
+          3
+          >>> db.test.count({'x': 1})
+          0
+
         :Parameters:
           - `filter`: A query that matches the documents to delete.
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
+
+        .. versionadded:: 3.0
         """
         return DeleteResult(self._delete(filter, True),
                             self.write_concern.acknowledged)
@@ -1553,6 +1681,30 @@ class Collection(common.BaseObject):
                             projection=None, sort=None, **kwargs):
         """Finds a single document and deletes it, returning the document.
 
+          >>> db.test.count({'x': 1})
+          2
+          >>> db.test.find_one_and_delete({'x': 1})
+          {u'x': 1, u'_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
+          >>> db.test.count({'x': 1})
+          1
+
+        If multiple documents match *filter*, a *sort* can be applied.
+
+          >>> for doc in db.test.find({'x': 1}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+          >>> db.test.find_one_and_delete(
+          ...     {'x': 1}, sort=[('_id', pymongo.DESCENDING)])
+          {u'x': 1, u'_id': 2}
+
+        The *projection* option can be used to limit the fields returned.
+
+          >>> db.test.find_one_and_delete({'x': 1}, projection={'_id': False})
+          {u'x': 1}
+
         :Parameters:
           - `filter`: A query that matches the document to delete.
           - `projection` (optional): a list of field names that should be
@@ -1566,6 +1718,8 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+
+        .. versionadded:: 3.0
         """
         kwargs['remove'] = True
         return self.__find_and_modify(filter, projection, sort, **kwargs)
@@ -1575,6 +1729,25 @@ class Collection(common.BaseObject):
                              return_document=ReturnDocument.Before, **kwargs):
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
+
+        The `find_one_and_replace` method differs from `find_one_and_update`
+        by replacing the document matched by *filter*, rather than modifying
+        the existing document.
+
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+          >>> db.test.find_one_and_replace({'x': 1}, {'y': 1})
+          {u'x': 1, u'_id': 0}
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'y': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
 
         :Parameters:
           - `filter`: A query that matches the document to replace.
@@ -1598,6 +1771,8 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+
+        .. versionadded:: 3.0
         """
         common.validate_ok_for_replace(replacement)
         kwargs['update'] = replacement
@@ -1609,6 +1784,56 @@ class Collection(common.BaseObject):
                             return_document=ReturnDocument.Before, **kwargs):
         """Finds a single document and updates it, returning either the
         original or the updated document.
+
+          >>> db.test.find_one_and_update(
+          ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
+          {u'_id': 665, u'done': False, u'count': 25}}
+
+        By default `find_one_and_update` returns the original version of the
+        document before the update was applied. To return the updated version
+        of the document instead, use the *return_document* option.
+
+          >>> from pymongo.options import ReturnDocument
+          >>> db.example.find_one_and_update(
+          ...     {'_id': 'userid'},
+          ...     {'$inc': {'seq': 1}},
+          ...     return_document=ReturnDocument.After)
+          {u'_id': u'userid', u'seq': 1}
+
+        You can limit the fields returned with the *projection* option.
+
+          >>> db.example.find_one_and_update(
+          ...     {'_id': 'userid'},
+          ...     {'$inc': {'seq': 1}},
+          ...     projection={'seq': True, '_id': False},
+          ...     return_document=ReturnDocument.After)
+          {u'seq': 2}
+
+        The *upsert* option can be used to create the document if it doesn't
+        already exist.
+
+          >>> db.example.delete_many({}).deleted_count
+          1
+          >>> db.example.find_one_and_update(
+          ...     {'_id': 'userid'},
+          ...     {'$inc': {'seq': 1}},
+          ...     projection={'seq': True, '_id': False},
+          ...     upsert=True,
+          ...     return_document=ReturnDocument.After)
+          {u'seq': 1}
+
+        If multiple documents match *filter*, a *sort* can be applied.
+
+          >>> for doc in db.test.find({'done': True}):
+          ...     print(doc)
+          ...
+          {u'_id': 665, u'done': True, u'result': {u'count': 26}}
+          {u'_id': 701, u'done': True, u'result': {u'count': 17}}
+          >>> db.test.find_one_and_update(
+          ...     {'done': True},
+          ...     {'$set': {'final': True}},
+          ...     sort=[('_id', pymongo.DESCENDING)])
+          {u'_id': 701, u'done': True, u'result': {u'count': 17}}
 
         :Parameters:
           - `filter`: A query that matches the document to update.
@@ -1632,6 +1857,8 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+
+        .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
         kwargs['update'] = update
