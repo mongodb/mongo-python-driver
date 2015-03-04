@@ -201,6 +201,12 @@ class MongoClient(common.BaseObject):
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``. Defaults to ``None``.
+          - `ssl_match_hostname`: If ``True`` (the default), and
+            `ssl_cert_reqs` is not ``ssl.CERT_NONE``, enables hostname
+            verification using the :func:`~ssl.match_hostname` function from
+            python's :mod:`~ssl` module. Think very carefully before setting
+            this to ``False`` as that could make your application vulnerable to
+            man-in-the-middle attacks.
 
         .. mongodoc:: connections
 

@@ -367,6 +367,7 @@ VALIDATORS = {
     'ssl_certfile': validate_readable,
     'ssl_cert_reqs': validate_cert_reqs,
     'ssl_ca_certs': validate_readable,
+    'ssl_match_hostname': validate_boolean,
     'read_preference': validate_read_preference,
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,

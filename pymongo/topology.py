@@ -323,6 +323,7 @@ class Topology(object):
             PoolOptions(connect_timeout=options.connect_timeout,
                         socket_timeout=options.connect_timeout,
                         ssl_context=options.ssl_context,
+                        ssl_match_hostname=options.ssl_match_hostname,
                         socket_keepalive=True))
 
     def _error_message(self, selector):

@@ -44,12 +44,12 @@ class PoolOptions(object):
 
     __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
-                 '__ssl_context', '__socket_keepalive')
+                 '__ssl_context', '__ssl_match_hostname', '__socket_keepalive')
 
     def __init__(self, max_pool_size=100, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
-                 socket_keepalive=False):
+                 ssl_match_hostname=True, socket_keepalive=False):
 
         self.__max_pool_size = max_pool_size
         self.__connect_timeout = connect_timeout
@@ -57,6 +57,7 @@ class PoolOptions(object):
         self.__wait_queue_timeout = wait_queue_timeout
         self.__wait_queue_multiple = wait_queue_multiple
         self.__ssl_context = ssl_context
+        self.__ssl_match_hostname = ssl_match_hostname
         self.__socket_keepalive = socket_keepalive
 
     @property
@@ -98,6 +99,12 @@ class PoolOptions(object):
         """An SSLContext instance or None.
         """
         return self.__ssl_context
+
+    @property
+    def ssl_match_hostname(self):
+        """Call ssl.match_hostname if cert_reqs is not ssl.CERT_NONE.
+        """
+        return self.__ssl_match_hostname
 
     @property
     def socket_keepalive(self):
@@ -294,7 +301,7 @@ def _configured_socket(address, options):
             sock.close()
             raise ConnectionFailure("SSL handshake failed. MongoDB may "
                                     "not be configured with SSL support.")
-        if ssl_context.verify_mode:
+        if ssl_context.verify_mode and options.ssl_match_hostname:
             try:
                 match_hostname(sock.getpeercert(), hostname=address[0])
             except CertificateError:

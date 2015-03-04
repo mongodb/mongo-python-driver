@@ -64,6 +64,7 @@ def _parse_ssl_options(options):
     keyfile = options.get('ssl_keyfile')
     ca_certs = options.get('ssl_ca_certs')
     cert_reqs = options.get('ssl_cert_reqs')
+    match_hostname = options.get('ssl_match_hostname', True)
 
     ssl_kwarg_keys = [k for k in options
                       if k.startswith('ssl_') and options[k]]
@@ -84,8 +85,9 @@ def _parse_ssl_options(options):
         use_ssl = True
 
     if use_ssl is True:
-        return get_ssl_context(certfile, keyfile, ca_certs, cert_reqs)
-    return None
+        ctx = get_ssl_context(certfile, keyfile, ca_certs, cert_reqs)
+        return ctx, match_hostname
+    return None, match_hostname
 
 
 def _parse_pool_options(options):
@@ -96,11 +98,11 @@ def _parse_pool_options(options):
     socket_timeout = options.get('sockettimeoutms')
     wait_queue_timeout = options.get('waitqueuetimeoutms')
     wait_queue_multiple = options.get('waitqueuemultiple')
-    ssl_context = _parse_ssl_options(options)
+    ssl_context, ssl_match_hostname = _parse_ssl_options(options)
     return PoolOptions(max_pool_size,
                        connect_timeout, socket_timeout,
                        wait_queue_timeout, wait_queue_multiple,
-                       ssl_context, socket_keepalive)
+                       ssl_context, ssl_match_hostname, socket_keepalive)
 
 
 class ClientOptions(object):
