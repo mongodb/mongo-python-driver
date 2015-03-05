@@ -1814,7 +1814,7 @@ class Collection(common.BaseObject):
           >>> db.example.find_one_and_update(
           ...     {'_id': 'userid'},
           ...     {'$inc': {'seq': 1}},
-          ...     return_document=ReturnDocument.After)
+          ...     return_document=ReturnDocument.AFTER)
           {u'_id': u'userid', u'seq': 1}
 
         You can limit the fields returned with the *projection* option.
@@ -1823,7 +1823,7 @@ class Collection(common.BaseObject):
           ...     {'_id': 'userid'},
           ...     {'$inc': {'seq': 1}},
           ...     projection={'seq': True, '_id': False},
-          ...     return_document=ReturnDocument.After)
+          ...     return_document=ReturnDocument.AFTER)
           {u'seq': 2}
 
         The *upsert* option can be used to create the document if it doesn't
@@ -1836,7 +1836,7 @@ class Collection(common.BaseObject):
           ...     {'$inc': {'seq': 1}},
           ...     projection={'seq': True, '_id': False},
           ...     upsert=True,
-          ...     return_document=ReturnDocument.After)
+          ...     return_document=ReturnDocument.AFTER)
           {u'seq': 1}
 
         If multiple documents match *filter*, a *sort* can be applied.
