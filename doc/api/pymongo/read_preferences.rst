@@ -15,5 +15,11 @@
    .. autoclass:: pymongo.read_preferences.Nearest
       :inherited-members:
 
-   .. autodata:: ReadPreference
+   .. autoclass:: ReadPreference
+
+      .. autoattribute:: PRIMARY
+      .. autoattribute:: PRIMARY_PREFERRED
+      .. autoattribute:: SECONDARY
+      .. autoattribute:: SECONDARY_PREFERRED
+      .. autoattribute:: NEAREST
 

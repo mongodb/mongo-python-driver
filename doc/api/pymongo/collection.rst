@@ -11,10 +11,13 @@
    .. autodata:: pymongo.GEOSPHERE
    .. autodata:: pymongo.HASHED
    .. autodata:: pymongo.TEXT
-   .. autodata:: pymongo.cursor.NON_TAILABLE
-   .. autodata:: pymongo.cursor.TAILABLE
-   .. autodata:: pymongo.cursor.TAILABLE_AWAIT
-   .. autodata:: pymongo.cursor.EXHAUST
+
+   .. autoclass:: pymongo.collection.ReturnDocument
+
+      .. autoattribute:: BEFORE
+         :annotation:
+      .. autoattribute:: AFTER
+         :annotation:
 
    .. autoclass:: pymongo.collection.Collection(database, name, create=False, **kwargs)
 
@@ -41,7 +44,7 @@
       .. automethod:: delete_one
       .. automethod:: delete_many
       .. automethod:: aggregate
-      .. automethod:: find(filter=None, projection=None, skip=0, limit=0, no_cursor_timeout=False, cursor_type=NON_TAILABLE, sort=None, allow_partial_results=False, oplog_replay=False, modifiers=None, manipulate=True)
+      .. automethod:: find(filter=None, projection=None, skip=0, limit=0, no_cursor_timeout=False, cursor_type=CursorType.NON_TAILABLE, sort=None, allow_partial_results=False, oplog_replay=False, modifiers=None, manipulate=True)
       .. automethod:: find_one(filter_or_id=None, *args, **kwargs)
       .. automethod:: find_one_and_delete
       .. automethod:: find_one_and_replace(filter, replacement, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)

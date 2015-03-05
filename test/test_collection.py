@@ -32,15 +32,14 @@ from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import MongoClient
-from pymongo.collection import Collection
+from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import EXHAUST
+from pymongo.cursor import CursorType
 from pymongo.errors import (DuplicateKeyError,
                             InvalidDocument,
                             InvalidName,
                             InvalidOperation,
                             OperationFailure)
-from pymongo.options import ReturnDocument
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (InsertOneResult,
                              InsertManyResult,
@@ -1374,13 +1373,16 @@ class TestCollection(IntegrationTest):
     def test_exhaust(self):
         if is_mongos(self.db.client):
             self.assertRaises(InvalidOperation,
-                              self.db.test.find, cursor_type=EXHAUST)
+                              self.db.test.find,
+                              cursor_type=CursorType.EXHAUST)
             return
 
         # Limit is incompatible with exhaust.
         self.assertRaises(InvalidOperation,
-                          self.db.test.find, cursor_type=EXHAUST, limit=5)
-        cur = self.db.test.find(cursor_type=EXHAUST)
+                          self.db.test.find,
+                          cursor_type=CursorType.EXHAUST,
+                          limit=5)
+        cur = self.db.test.find(cursor_type=CursorType.EXHAUST)
         self.assertRaises(InvalidOperation, cur.limit, 5)
         cur = self.db.test.find(limit=5)
         self.assertRaises(InvalidOperation, cur.add_option, 64)
@@ -1396,7 +1398,7 @@ class TestCollection(IntegrationTest):
         socks = get_pool(client).sockets
 
         # Make sure the socket is returned after exhaustion.
-        cur = client[self.db.name].test.find(cursor_type=EXHAUST)
+        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
         next(cur)
         self.assertEqual(0, len(socks))
         for _ in cur:
@@ -1404,14 +1406,14 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, len(socks))
 
         # Same as previous but don't call next()
-        for _ in client[self.db.name].test.find(cursor_type=EXHAUST):
+        for _ in client[self.db.name].test.find(cursor_type=CursorType.EXHAUST):
             pass
         self.assertEqual(1, len(socks))
 
         # If the Cursor instance is discarded before being
         # completely iterated we have to close and
         # discard the socket.
-        cur = client[self.db.name].test.find(cursor_type=EXHAUST)
+        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
         next(cur)
         self.assertEqual(0, len(socks))
         if sys.platform.startswith('java') or 'PyPy' in sys.version:
@@ -1606,7 +1608,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual({'_id': 1, 'i': 3},
                          c.find_one_and_update(
                              {'_id': 1}, {'$inc': {'i': 1}},
-                             return_document=ReturnDocument.After))
+                             return_document=ReturnDocument.AFTER))
 
         self.assertEqual({'_id': 1, 'i': 3},
                          c.find_one_and_delete({'_id': 1}))
@@ -1617,23 +1619,23 @@ class TestCollection(IntegrationTest):
         self.assertEqual({'_id': 1, 'i': 1},
                          c.find_one_and_update(
                              {'_id': 1}, {'$inc': {'i': 1}},
-                             return_document=ReturnDocument.After,
+                             return_document=ReturnDocument.AFTER,
                              upsert=True))
         self.assertEqual({'_id': 1, 'i': 2},
                          c.find_one_and_update(
                              {'_id': 1}, {'$inc': {'i': 1}},
-                             return_document=ReturnDocument.After))
+                             return_document=ReturnDocument.AFTER))
 
         self.assertEqual({'_id': 1, 'i': 3},
                          c.find_one_and_replace(
                              {'_id': 1}, {'i': 3, 'j': 1},
                              projection=['i'],
-                             return_document=ReturnDocument.After))
+                             return_document=ReturnDocument.AFTER))
         self.assertEqual({'i': 4},
                          c.find_one_and_update(
                              {'_id': 1}, {'$inc': {'i': 1}},
                              projection={'i': 1, '_id': 0},
-                             return_document=ReturnDocument.After))
+                             return_document=ReturnDocument.AFTER))
 
         c.drop()
         for j in range(5):

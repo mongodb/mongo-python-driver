@@ -12,21 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Option class definitions."""
+"""Operation class definitions."""
 
 from pymongo.common import validate_boolean, validate_is_mapping
-
-class ReturnDocument(object):
-    """An enum used with
-    :meth:`~pymongo.collection.Collection.find_one_and_replace` and
-    :meth:`~pymongo.collection.Collection.find_one_and_update`.
-    """
-    Before = False
-    """Return the original document before it was updated/replaced, or
-    ``None`` if no document matches the query.
-    """
-    After = True
-    """Return the updated/replaced or inserted document."""
 
 
 class _WriteOp(object):

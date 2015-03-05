@@ -38,7 +38,8 @@ class _WriteResult(object):
 
 
 class InsertOneResult(_WriteResult):
-    """The return type for :meth:`Collection.insert_one`."""
+    """The return type for :meth:`~pymongo.collection.Collection.insert_one`.
+    """
 
     __slots__ = ("__inserted_id", "__acknowledged")
 
@@ -75,8 +76,10 @@ class InsertManyResult(_WriteResult):
 
 
 class UpdateResult(_WriteResult):
-    """The return type for :meth:`~pymongo.collection.Collection.update_one`
-    and :meth:`~pymongo.collection.Collection.update_many`"""
+    """The return type for :meth:`~pymongo.collection.Collection.update_one`,
+    :meth:`~pymongo.collection.Collection.update_many`, and
+    :meth:`~pymongo.collection.Collection.replace_one`.
+    """
 
     __slots__ = ("__raw_result", "__acknowledged")
 

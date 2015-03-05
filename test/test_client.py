@@ -32,7 +32,7 @@ from bson.py3compat import thread, u
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo import auth, message
-from pymongo.cursor import EXHAUST
+from pymongo.cursor import CursorType
 from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -756,7 +756,7 @@ class TestClient(IntegrationTest):
         # Cause a network error.
         sock_info = one(pool.sockets)
         sock_info.sock.close()
-        cursor = collection.find(cursor_type=EXHAUST)
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
         with self.assertRaises(ConnectionFailure):
             next(cursor)
 
@@ -848,7 +848,8 @@ class TestExhaustCursor(IntegrationTest):
         # This will cause OperationFailure in all mongo versions since
         # the value for $orderby must be a document.
         cursor = collection.find(
-            SON([('$query', {}), ('$orderby', True)]), cursor_type=EXHAUST)
+            SON([('$query', {}), ('$orderby', True)]),
+            cursor_type=CursorType.EXHAUST)
 
         self.assertRaises(OperationFailure, cursor.next)
         self.assertFalse(sock_info.closed)
@@ -871,7 +872,7 @@ class TestExhaustCursor(IntegrationTest):
         pool._check_interval_seconds = None  # Never check.
         sock_info = one(pool.sockets)
 
-        cursor = collection.find(cursor_type=EXHAUST)
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
 
         # Initial query succeeds.
         cursor.next()
@@ -907,7 +908,7 @@ class TestExhaustCursor(IntegrationTest):
         sock_info = one(pool.sockets)
         sock_info.sock.close()
 
-        cursor = collection.find(cursor_type=EXHAUST)
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
         self.assertRaises(ConnectionFailure, cursor.next)
         self.assertTrue(sock_info.closed)
 
@@ -925,7 +926,7 @@ class TestExhaustCursor(IntegrationTest):
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
 
-        cursor = collection.find(cursor_type=EXHAUST)
+        cursor = collection.find(cursor_type=CursorType.EXHAUST)
 
         # Initial query succeeds.
         cursor.next()

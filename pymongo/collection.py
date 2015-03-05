@@ -35,7 +35,7 @@ from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
-from pymongo.options import ReturnDocument, _WriteOp
+from pymongo.operations import _WriteOp
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (BulkWriteResult,
                              DeleteResult,
@@ -44,7 +44,6 @@ from pymongo.results import (BulkWriteResult,
                              UpdateResult)
 from pymongo.write_concern import WriteConcern
 
-
 try:
     from collections import OrderedDict
     _ORDERED_TYPES = (SON, OrderedDict)
@@ -52,6 +51,19 @@ except ImportError:
     _ORDERED_TYPES = (SON,)
 
 _NO_OBJ_ERROR = "No matching object found"
+
+
+class ReturnDocument(object):
+    """An enum used with
+    :meth:`~pymongo.collection.Collection.find_one_and_replace` and
+    :meth:`~pymongo.collection.Collection.find_one_and_update`.
+    """
+    BEFORE = False
+    """Return the original document before it was updated/replaced, or
+    ``None`` if no document matches the query.
+    """
+    AFTER = True
+    """Return the updated/replaced or inserted document."""
 
 
 def _gen_index_name(keys):
@@ -287,8 +299,13 @@ class Collection(common.BaseObject):
     def bulk_write(self, requests, ordered=True):
         """Send a batch of write operations to the server.
 
-        Write operations are passed as a list using the write operation classes
-        from the :mod:`~pymongo.options` module::
+        Requests are passed as a list of write operation instances (
+        :class:`~pymongo.operations.InsertOne`,
+        :class:`~pymongo.operations.UpdateOne`,
+        :class:`~pymongo.operations.UpdateMany`,
+        :class:`~pymongo.operations.ReplaceOne`,
+        :class:`~pymongo.operations.DeleteOne`, or
+        :class:`~pymongo.operations.DeleteMany`).
 
           >>> for doc in db.test.find({}):
           ...     print(doc)
@@ -297,7 +314,7 @@ class Collection(common.BaseObject):
           {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634f0')}
           >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
           ...
-          >>> from pymongo.options import InsertOne, DeleteOne, ReplaceOne
+          >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
           >>> requests = [InsertOne({'y': 1}), DeleteOne({'x': 1}),
           ...             ReplaceOne({'w': 1}, {'z': 1}, upsert=True)]
           >>> result = db.test.bulk_write(requests)
@@ -797,27 +814,27 @@ class Collection(common.BaseObject):
             time out on the server. Care should be taken to ensure that
             cursors with no_cursor_timeout turned on are properly closed.
           - `cursor_type` (optional): the type of cursor to return. The valid
-            options are:
+            options are defined by :class:`~pymongo.cursor.CursorType`:
 
-            - :data:`~pymongo.cursor.NON_TAILABLE` - the result of this find
-              call will return a standard cursor over the result set.
-            - :data:`~pymongo.cursor.TAILABLE` - the result of this find call
-              will be a tailable cursor - tailable cursors are only for use
-              with capped collections. They are not closed when the last data
-              is retrieved but are kept open and the cursor location marks the
-              final document position. If more data is received iteration of
-              the cursor will continue from the last document received. For
-              details, see the `tailable cursor documentation
+            - :attr:`~pymongo.cursor.CursorType.NON_TAILABLE` - the result of
+              this find call will return a standard cursor over the result set.
+            - :attr:`~pymongo.cursor.CursorType.TAILABLE` - the result of this
+              find call will be a tailable cursor - tailable cursors are only
+              for use with capped collections. They are not closed when the
+              last data is retrieved but are kept open and the cursor location
+              marks the final document position. If more data is received
+              iteration of the cursor will continue from the last document
+              received. For details, see the `tailable cursor documentation
               <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
-            - :data:`~pymongo.cursor.TAILABLE_AWAIT` - the result of this find
-              call will be a tailable cursor with the await flag set. The
-              server will wait for a few seconds after returning the full
-              result set so that it can capture and return additional data
+            - :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` - the result
+              of this find call will be a tailable cursor with the await flag
+              set. The server will wait for a few seconds after returning the
+              full result set so that it can capture and return additional data
               added during the query.
-            - :data:`~pymongo.cursor.EXHAUST` - the result of this find call
-              will be an exhaust cursor. MongoDB will stream batched results to
-              the client without waiting for the client to request each batch,
-              reducing latency. See notes on compatibility below.
+            - :attr:`~pymongo.cursor.CursorType.EXHAUST` - the result of this
+              find call will be an exhaust cursor. MongoDB will stream batched
+              results to the client without waiting for the client to request
+              each batch, reducing latency. See notes on compatibility below.
 
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for this query. See
@@ -833,7 +850,7 @@ class Collection(common.BaseObject):
             apply any outgoing SON manipulators before returning.
 
         .. note:: There are a number of caveats to using
-           :data:`~pymongo.cursor.EXHAUST` as cursor_type:
+           :attr:`~pymongo.cursor.CursorType.EXHAUST` as cursor_type:
 
             1. The `limit` option can not be used with an exhaust cursor.
 
@@ -841,8 +858,8 @@ class Collection(common.BaseObject):
             used with a sharded cluster.
 
             3. A :class:`~pymongo.cursor.Cursor` instance created with the
-            cursor.EXHAUST cursor_type requires an exclusive
-            :class:`~socket.socket` connection to MongoDB. If the
+            :attr:`~pymongo.cursor.CursorType.EXHAUST` cursor_type requires an
+            exclusive :class:`~socket.socket` connection to MongoDB. If the
             :class:`~pymongo.cursor.Cursor` is discarded without being
             completely iterated the underlying :class:`~socket.socket`
             connection will be closed and discarded without being returned to
@@ -1654,12 +1671,12 @@ class Collection(common.BaseObject):
             return res.get("results")
 
     def __find_and_modify(self, filter, projection, sort, upsert=None,
-                          return_document=ReturnDocument.Before, **kwargs):
+                          return_document=ReturnDocument.BEFORE, **kwargs):
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise ValueError("return_document must be "
-                             "ReturnDocument.Before or ReturnDocument.After")
+                             "ReturnDocument.BEFORE or ReturnDocument.AFTER")
         cmd = SON([("findAndModify", self.__name),
                    ("query", filter),
                    ("new", return_document)])
@@ -1726,13 +1743,13 @@ class Collection(common.BaseObject):
 
     def find_one_and_replace(self, filter, replacement,
                              projection=None, sort=None, upsert=False,
-                             return_document=ReturnDocument.Before, **kwargs):
+                             return_document=ReturnDocument.BEFORE, **kwargs):
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
-        The `find_one_and_replace` method differs from `find_one_and_update`
-        by replacing the document matched by *filter*, rather than modifying
-        the existing document.
+        The :meth:`find_one_and_replace` method differs from
+        :meth:`find_one_and_update` by replacing the document matched by
+        *filter*, rather than modifying the existing document.
 
           >>> for doc in db.test.find({}):
           ...     print(doc)
@@ -1763,10 +1780,10 @@ class Collection(common.BaseObject):
           - `upsert` (optional): When ``True``, inserts a new document if no
             document matches the query. Defaults to ``False``.
           - `return_document`: If
-            :attr:`~pymongo.options.ReturnDocument.Before` (the default),
+            :attr:`ReturnDocument.BEFORE` (the default),
             returns the original document before it was replaced, or ``None``
             if no document matches. If
-            :attr:`~pymongo.options.ReturnDocument.After`, returns the replaced
+            :attr:`ReturnDocument.AFTER`, returns the replaced
             or inserted document.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
@@ -1781,7 +1798,7 @@ class Collection(common.BaseObject):
 
     def find_one_and_update(self, filter, update,
                             projection=None, sort=None, upsert=False,
-                            return_document=ReturnDocument.Before, **kwargs):
+                            return_document=ReturnDocument.BEFORE, **kwargs):
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -1789,11 +1806,11 @@ class Collection(common.BaseObject):
           ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
           {u'_id': 665, u'done': False, u'count': 25}}
 
-        By default `find_one_and_update` returns the original version of the
-        document before the update was applied. To return the updated version
-        of the document instead, use the *return_document* option.
+        By default :meth:`find_one_and_update` returns the original version of
+        the document before the update was applied. To return the updated
+        version of the document instead, use the *return_document* option.
 
-          >>> from pymongo.options import ReturnDocument
+          >>> from pymongo import ReturnDocument
           >>> db.example.find_one_and_update(
           ...     {'_id': 'userid'},
           ...     {'$inc': {'seq': 1}},
@@ -1849,10 +1866,10 @@ class Collection(common.BaseObject):
           - `upsert` (optional): When ``True``, inserts a new document if no
             document matches the query. Defaults to ``False``.
           - `return_document`: If
-            :attr:`~pymongo.options.ReturnDocument.Before` (the default),
+            :attr:`ReturnDocument.BEFORE` (the default),
             returns the original document before it was updated, or ``None``
             if no document matches. If
-            :attr:`~pymongo.options.ReturnDocument.After`, returns the updated
+            :attr:`ReturnDocument.AFTER`, returns the updated
             or inserted document.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with

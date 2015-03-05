@@ -43,32 +43,33 @@ _QUERY_OPTIONS = {
     "partial": 128}
 
 
-NON_TAILABLE = 0
-"""The standard cursor type."""
+class CursorType(object):
+    NON_TAILABLE = 0
+    """The standard cursor type."""
 
-TAILABLE = _QUERY_OPTIONS["tailable_cursor"]
-"""The tailable cursor type.
+    TAILABLE = _QUERY_OPTIONS["tailable_cursor"]
+    """The tailable cursor type.
 
-Tailable cursors are only for use with capped collections. They are not closed
-when the last data is retrieved but are kept open and the cursor location marks
-the final document position. If more data is received iteration of the cursor
-will continue from the last document received.
-"""
+    Tailable cursors are only for use with capped collections. They are not
+    closed when the last data is retrieved but are kept open and the cursor
+    location marks the final document position. If more data is received
+    iteration of the cursor will continue from the last document received.
+    """
 
-TAILABLE_AWAIT = TAILABLE | _QUERY_OPTIONS["await_data"]
-"""A tailable cursor with the await option set.
+    TAILABLE_AWAIT = TAILABLE | _QUERY_OPTIONS["await_data"]
+    """A tailable cursor with the await option set.
 
-Creates a tailable cursor that will wait for a few seconds after returning the
-full result set so that it can capture and return additional data added during
-the query.
-"""
+    Creates a tailable cursor that will wait for a few seconds after returning
+    the full result set so that it can capture and return additional data added
+    during the query.
+    """
 
-EXHAUST = _QUERY_OPTIONS["exhaust"]
-"""An exhaust cursor.
+    EXHAUST = _QUERY_OPTIONS["exhaust"]
+    """An exhaust cursor.
 
-MongoDB will stream batched results to the client without waiting for the
-client to request each batch, reducing latency.
-"""
+    MongoDB will stream batched results to the client without waiting for the
+    client to request each batch, reducing latency.
+    """
 
 
 # This has to be an old style class due to
@@ -98,7 +99,8 @@ class Cursor(object):
     """
 
     def __init__(self, collection, filter=None, projection=None, skip=0,
-                 limit=0, no_cursor_timeout=False, cursor_type=NON_TAILABLE,
+                 limit=0, no_cursor_timeout=False,
+                 cursor_type=CursorType.NON_TAILABLE,
                  sort=None, allow_partial_results=False, oplog_replay=False,
                  modifiers=None, manipulate=True):
         """Create a new cursor.
@@ -120,8 +122,8 @@ class Cursor(object):
         if not isinstance(limit, int):
             raise TypeError("limit must be an instance of int")
         validate_boolean("no_cursor_timeout", no_cursor_timeout)
-        if cursor_type not in (NON_TAILABLE, TAILABLE,
-                               TAILABLE_AWAIT, EXHAUST):
+        if cursor_type not in (CursorType.NON_TAILABLE, CursorType.TAILABLE,
+                               CursorType.TAILABLE_AWAIT, CursorType.EXHAUST):
             raise ValueError("not a valid value for cursor_type")
         validate_boolean("allow_partial_results", allow_partial_results)
         validate_boolean("oplog_replay", oplog_replay)
@@ -153,7 +155,7 @@ class Cursor(object):
         # Exhaust cursor support
         self.__exhaust = False
         self.__exhaust_mgr = None
-        if cursor_type == EXHAUST:
+        if cursor_type == CursorType.EXHAUST:
             if self.__collection.database.client.is_mongos:
                 raise InvalidOperation('Exhaust cursors are '
                                        'not supported by mongos')

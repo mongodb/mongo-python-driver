@@ -22,7 +22,7 @@ from bson import InvalidDocument, SON
 from bson.objectid import ObjectId
 from bson.py3compat import string_type
 from pymongo import MongoClient
-from pymongo.options import *
+from pymongo.operations import *
 from pymongo.common import partition_node
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,

@@ -30,7 +30,7 @@ from pymongo import (MongoClient,
                      ALL,
                      OFF)
 from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import TAILABLE, TAILABLE_AWAIT, EXHAUST
+from pymongo.cursor import CursorType
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
@@ -68,17 +68,18 @@ class TestCursorNoConnect(unittest.TestCase):
         cursor = self.db.test.find()
         self.assertEqual(0, cursor._Cursor__query_flags)
         cursor.add_option(2)
-        cursor2 = self.db.test.find(cursor_type=TAILABLE)
+        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE)
         self.assertEqual(2, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
         cursor.add_option(32)
-        cursor2 = self.db.test.find(cursor_type=TAILABLE_AWAIT)
+        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
         self.assertEqual(34, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
         cursor.add_option(128)
-        cursor2 = self.db.test.find(cursor_type=TAILABLE_AWAIT).add_option(128)
+        cursor2 = self.db.test.find(
+            cursor_type=CursorType.TAILABLE_AWAIT).add_option(128)
         self.assertEqual(162, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
@@ -88,12 +89,12 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertEqual(162, cursor._Cursor__query_flags)
 
         cursor.remove_option(128)
-        cursor2 = self.db.test.find(cursor_type=TAILABLE_AWAIT)
+        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
         self.assertEqual(34, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
         cursor.remove_option(32)
-        cursor2 = self.db.test.find(cursor_type=TAILABLE)
+        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE)
         self.assertEqual(2, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
@@ -112,7 +113,7 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertEqual(0, cursor._Cursor__query_flags)
 
         # Tailable / Await data
-        cursor = self.db.test.find(cursor_type=TAILABLE_AWAIT)
+        cursor = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
         self.assertEqual(34, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(34)
         self.assertEqual(cursor._Cursor__query_flags,
@@ -121,7 +122,7 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertEqual(2, cursor._Cursor__query_flags)
 
         # Exhaust - which mongos doesn't support
-        cursor = self.db.test.find(cursor_type=EXHAUST)
+        cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
         self.assertEqual(64, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(64)
         self.assertEqual(cursor._Cursor__query_flags,
@@ -723,7 +724,7 @@ class TestCursor(IntegrationTest):
         cursor = self.db.test.find({"x": re.compile("^hello.*")},
                                    skip=1,
                                    no_cursor_timeout=True,
-                                   cursor_type=TAILABLE_AWAIT,
+                                   cursor_type=CursorType.TAILABLE_AWAIT,
                                    allow_partial_results=True,
                                    manipulate=False,
                                    projection={'_id': False}).limit(2)
@@ -916,7 +917,7 @@ class TestCursor(IntegrationTest):
         db.drop_collection("test")
         db.create_collection("test", capped=True, size=1000, max=3)
         self.addCleanup(db.drop_collection, "test")
-        cursor = db.test.find(cursor_type=TAILABLE)
+        cursor = db.test.find(cursor_type=CursorType.TAILABLE)
 
         db.test.insert_one({"x": 1})
         count = 0

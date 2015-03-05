@@ -91,7 +91,11 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
 
 class TestReadPreferences(TestReadPreferencesBase):
     def test_mode_validation(self):
-        for mode in ReadPreference:
+        for mode in (ReadPreference.PRIMARY,
+                     ReadPreference.PRIMARY_PREFERRED,
+                     ReadPreference.SECONDARY,
+                     ReadPreference.SECONDARY_PREFERRED,
+                     ReadPreference.NEAREST):
             self.assertEqual(
                 mode,
                 rs_client(read_preference=mode).read_preference)

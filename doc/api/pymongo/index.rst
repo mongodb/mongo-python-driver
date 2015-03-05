@@ -40,7 +40,7 @@ Sub-modules:
    message
    mongo_client
    mongo_replica_set_client
-   options
+   operations
    pool
    read_preferences
    results
