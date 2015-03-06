@@ -36,7 +36,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.settings import TopologySettings
-from test import client_knobs, SkipTest, unittest
+from test import client_knobs, unittest
 from test.utils import wait_until
 
 
@@ -573,30 +573,6 @@ class TestTopologyErrors(TopologyTest):
         t.request_check_all()
         self.assertEqual(3, ismaster_count[0])
         self.assertEqual(SERVER_TYPE.Standalone, get_type(t, 'a'))
-
-    def test_selection_failure(self):
-        if sys.platform == 'win32':
-            raise SkipTest('timing unreliable on Windows')
-
-        # While ismaster fails, ensure it's called about every 10 ms.
-        ismaster_count = [0]
-
-        class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info):
-                ismaster_count[0] += 1
-                raise socket.error('my error')
-
-        t = create_mock_topology(monitor_class=TestMonitor)
-
-        with self.assertRaisesRegex(ConnectionFailure, 'my error'):
-            # Add slop to prevent rounding error.
-            t.select_servers(any_server_selector,
-                             server_selection_timeout=0.5)
-
-        self.assertTrue(
-            25 <= ismaster_count[0] <= 100,
-            "Expected ismaster to be attempted about 50 times, not %d" %
-            ismaster_count[0])
 
     def test_internal_monitor_error(self):
         exception = AssertionError('internal error')
