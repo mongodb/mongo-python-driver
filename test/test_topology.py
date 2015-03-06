@@ -93,19 +93,16 @@ address = ('a', 27017)
 def create_mock_topology(
         seeds=None,
         replica_set_name=None,
-        monitor_class=MockMonitor,
-        condition_class=None,
-        timer=None):
+        monitor_class=MockMonitor):
     partitioned_seeds = list(imap(common.partition_node, seeds or ['a']))
     topology_settings = TopologySettings(
         partitioned_seeds,
         replica_set_name=replica_set_name,
         pool_class=MockPool,
-        monitor_class=monitor_class,
-        condition_class=condition_class,
-        timer=timer)
+        monitor_class=monitor_class)
 
     t = Topology(topology_settings)
+    t.open()
     return t
 
 
@@ -546,7 +543,6 @@ class TestTopologyErrors(TopologyTest):
                     raise socket.error()
 
         t = create_mock_topology(monitor_class=TestMonitor)
-        t.open()
         server = wait_for_master(t)
         self.assertEqual(1, ismaster_count[0])
         pool_id = server.pool.pool_id
@@ -568,7 +564,6 @@ class TestTopologyErrors(TopologyTest):
                     raise socket.error()
 
         t = create_mock_topology(monitor_class=TestMonitor)
-        t.open()
         server = wait_for_master(t)
         self.assertEqual(1, ismaster_count[0])
         self.assertEqual(SERVER_TYPE.Standalone,
@@ -580,36 +575,28 @@ class TestTopologyErrors(TopologyTest):
         self.assertEqual(SERVER_TYPE.Standalone, get_type(t, 'a'))
 
     def test_selection_failure(self):
+        if sys.platform == 'win32':
+            raise SkipTest('timing unreliable on Windows')
+
         # While ismaster fails, ensure it's called about every 10 ms.
-        timeouts = []
-
-        class TestCondition(threading._Condition):
-            def wait(self, timeout=None):
-                assert timeout is not None
-                timeouts.append(timeout)
-                super(TestCondition, self).wait(timeout)
-
-        def timer():
-            return sum(timeouts)
+        ismaster_count = [0]
 
         class TestMonitor(Monitor):
             def _check_with_socket(self, sock_info):
+                ismaster_count[0] += 1
                 raise socket.error('my error')
 
-        t = create_mock_topology(monitor_class=TestMonitor,
-                                 condition_class=TestCondition,
-                                 timer=timer)
+        t = create_mock_topology(monitor_class=TestMonitor)
 
         with self.assertRaisesRegex(ConnectionFailure, 'my error'):
             # Add slop to prevent rounding error.
             t.select_servers(any_server_selector,
-                             server_selection_timeout=0.101)
+                             server_selection_timeout=0.5)
 
-        self.assertEqual(
-            11,
-            len(timeouts),
-            "Expected ismaster to be attempted 101 times, not %d" %
-            len(timeouts))
+        self.assertTrue(
+            25 <= ismaster_count[0] <= 100,
+            "Expected ismaster to be attempted about 50 times, not %d" %
+            ismaster_count[0])
 
     def test_internal_monitor_error(self):
         exception = AssertionError('internal error')
