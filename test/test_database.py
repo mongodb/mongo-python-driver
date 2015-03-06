@@ -43,9 +43,6 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidName,
                             OperationFailure)
 from pymongo.read_preferences import ReadPreference
-from pymongo.son_manipulator import (AutoReference,
-                                     NamespaceInjector,
-                                     ObjectIdShuffler)
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   SkipTest,
@@ -120,23 +117,6 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
     def test_iteration(self):
         self.assertRaises(TypeError, next, self.client.pymongo_test)
-
-    def test_manipulator_properties(self):
-        db = self.client.foo
-        self.assertEqual([], db.incoming_manipulators)
-        self.assertEqual([], db.incoming_copying_manipulators)
-        self.assertEqual([], db.outgoing_manipulators)
-        self.assertEqual([], db.outgoing_copying_manipulators)
-        db.add_son_manipulator(AutoReference(db))
-        db.add_son_manipulator(NamespaceInjector())
-        db.add_son_manipulator(ObjectIdShuffler())
-        self.assertEqual(1, len(db.incoming_manipulators))
-        self.assertEqual(db.incoming_manipulators, ['NamespaceInjector'])
-        self.assertEqual(2, len(db.incoming_copying_manipulators))
-        for name in db.incoming_copying_manipulators:
-            self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
-        self.assertEqual([], db.outgoing_manipulators)
-        self.assertEqual(['AutoReference'], db.outgoing_copying_manipulators)
 
 
 class TestDatabase(IntegrationTest):

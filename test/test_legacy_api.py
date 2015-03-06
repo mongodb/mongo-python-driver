@@ -35,6 +35,7 @@ from pymongo.errors import (ConfigurationError,
                             WTimeoutError)
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
+                                     ObjectIdShuffler,
                                      SONManipulator)
 from pymongo.write_concern import WriteConcern
 from test import client_context, qcheck, unittest
@@ -538,7 +539,7 @@ class TestLegacy(IntegrationTest):
         self.assertEqual(self.db.test.find_one()["_id"], _id)
         self.assertTrue(isinstance(_id, ObjectId))
 
-        # Save a doc with explicit id 
+        # Save a doc with explicit id
         self.db.test.save({"_id": "explicit_id", "hello": "bar"})
         doc = self.db.test.find_one({"_id": "explicit_id"})
         self.assertEqual(doc['_id'], 'explicit_id')
@@ -551,7 +552,7 @@ class TestLegacy(IntegrationTest):
         self.db.test.save({'_id': 'explicit_id', 'hello': 'baz'})
         self.assertEqual(2, self.db.test.count())
         self.assertEqual(
-            'baz', 
+            'baz',
             self.db.test.find_one({'_id': 'explicit_id'})['hello']
         )
 
@@ -990,6 +991,23 @@ class TestLegacy(IntegrationTest):
 
         self.assertEqual(2, c.find_one(manipulate=True)['foo'])
         c.drop()
+
+    def test_manipulator_properties(self):
+        db = self.client.foo
+        self.assertEqual([], db.incoming_manipulators)
+        self.assertEqual([], db.incoming_copying_manipulators)
+        self.assertEqual([], db.outgoing_manipulators)
+        self.assertEqual([], db.outgoing_copying_manipulators)
+        db.add_son_manipulator(AutoReference(db))
+        db.add_son_manipulator(NamespaceInjector())
+        db.add_son_manipulator(ObjectIdShuffler())
+        self.assertEqual(1, len(db.incoming_manipulators))
+        self.assertEqual(db.incoming_manipulators, ['NamespaceInjector'])
+        self.assertEqual(2, len(db.incoming_copying_manipulators))
+        for name in db.incoming_copying_manipulators:
+            self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
+        self.assertEqual([], db.outgoing_manipulators)
+        self.assertEqual(['AutoReference'], db.outgoing_copying_manipulators)
 
 
 if __name__ == "__main__":
