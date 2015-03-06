@@ -872,12 +872,12 @@ class Collection(common.BaseObject):
            Added the `cursor_type`, `oplog_replay`, and `modifiers` options.
            Removed the `network_timeout`, `read_preference`, `tag_sets`,
            `secondary_acceptable_latency_ms`, `max_scan`, `snapshot`,
-           `tailable`, `await_data`, `exhaust`, and `as_class` parameters.
-           Removed `compile_re` option: PyMongo now always represents BSON
-           regular expressions as :class:`~bson.regex.Regex` objects. Use
-           :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
-           BSON regular expression to a Python regular expression object.
-           Soft deprecated the `manipulate` option.
+           `tailable`, `await_data`, `exhaust`, `as_class`, and slave_okay
+           parameters. Removed `compile_re` option: PyMongo now always
+           represents BSON regular expressions as :class:`~bson.regex.Regex`
+           objects. Use :meth:`~bson.regex.Regex.try_compile` to attempt to
+           convert from a BSON regular expression to a Python regular
+           expression object. Soft deprecated the `manipulate` option.
 
         .. versionchanged:: 2.7
            Added `compile_re` option. If set to False, PyMongo represented BSON
@@ -1888,7 +1888,8 @@ class Collection(common.BaseObject):
         **DEPRECATED** - Use :meth:`insert_one` or :meth:`replace_one` instead.
 
         .. versionchanged:: 3.0
-           Removed the `safe` parameter
+           Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
+           operations.
         """
         warnings.warn("save is deprecated. Use insert_one or replace_one "
                       "instead", DeprecationWarning, stacklevel=2)
@@ -1912,7 +1913,8 @@ class Collection(common.BaseObject):
         **DEPRECATED** - Use :meth:`insert_one` or :meth:`insert_many` instead.
 
         .. versionchanged:: 3.0
-           Removed the `safe` parameter
+           Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
+           operations.
         """
         warnings.warn("insert is deprecated. Use insert_one or insert_many "
                       "instead.", DeprecationWarning, stacklevel=2)
@@ -1930,7 +1932,8 @@ class Collection(common.BaseObject):
         :meth:`update_many` instead.
 
         .. versionchanged:: 3.0
-           Removed the `safe` parameter
+           Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
+           operations.
         """
         warnings.warn("update is deprecated. Use replace_one, update_one or "
                       "update_many instead.", DeprecationWarning, stacklevel=2)
@@ -1958,7 +1961,8 @@ class Collection(common.BaseObject):
         **DEPRECATED** - Use :meth:`delete_one` or :meth:`delete_many` instead.
 
         .. versionchanged:: 3.0
-           Removed the `safe` parameter
+           Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
+           operations.
         """
         warnings.warn("remove is deprecated. Use delete_one or delete_many "
                       "instead.", DeprecationWarning, stacklevel=2)

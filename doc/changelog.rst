@@ -22,8 +22,8 @@ Gevent simply call ``gevent.monkey.patch_all()``.
 For more information,
 see :doc:`PyMongo's Gevent documentation <examples/gevent>`.
 
-:class:`~pymongo.MongoClient` Changes
-.....................................
+:class:`~pymongo.mongo_client.MongoClient` changes
+..................................................
 
 :class:`~pymongo.mongo_client.MongoClient` is now the one and only
 client class for a standalone server, mongos, or replica set.
@@ -48,8 +48,8 @@ Therefore the ``alive`` method is removed since it no longer provides meaningful
 information; even if the client is disconnected, it may discover a server in
 time to fulfill the next operation.
 
-In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of standalone
-MongoDB servers and used the first it could connect to::
+In PyMongo 2.x, :class:`~pymongo.mongo_client.MongoClient` accepted a list of
+standalone MongoDB servers and used the first it could connect to::
 
     MongoClient(['host1.com:27017', 'host2.com:27017'])
 
@@ -66,10 +66,50 @@ in PyMongo 3.0, do not override the default write concern with ``w=0``, and
 do not override the default :ref:`read preference <secondary-reads>` of
 PRIMARY.
 
+Support for the ``slaveOk`` (or ``slave_okay``), ``safe``, and
+``network_timeout`` options has been removed. Use
+:attr:`~pymongo.read_preferences.ReadPreference.SECONDARY_PREFERRED` instead of
+slave_okay. Accept the default write concern, acknowledged writes, instead of
+setting safe=True. Use socketTimeoutMS in place of network_timeout (note that
+network_timeout was in seconds, where as socketTimeoutMS is milliseconds).
+
 The ``copy_database`` method is removed, see the
 :doc:`copy_database examples </examples/copydb>` for alternatives.
 
-:class:`~pymongo.cursor.Cursor` Changes
+The ``disconnect`` method is removed. Use
+:meth:`~pymongo.mongo_client.MongoClient.close` instead.
+
+The ``get_lasterror_options``, ``set_lasterror_options``, and
+``unset_lasterror_options`` methods are removed. Write concern options
+can be passed to :class:`~pymongo.mongo_client.MongoClient` as keyword
+arguments or MongoDB URI options.
+
+The :meth:`~pymongo.mongo_client.MongoClient.get_database` method is added for
+getting a Database instance with its options configured differently than the
+MongoClient's.
+
+The following attributes have been added:
+
+- :attr:`~pymongo.mongo_client.MongoClient.codec_options`
+
+The following attributes are now read-only:
+
+- :attr:`~pymongo.mongo_client.MongoClient.read_preference`
+- :attr:`~pymongo.mongo_client.MongoClient.write_concern`
+
+The following attributes have been removed:
+
+- :attr:`~pymongo.mongo_client.MongoClient.safe`
+- :attr:`~pymongo.mongo_client.MongoClient.slave_okay`
+- :attr:`~pymongo.mongo_client.MongoClient.tag_sets`
+
+The following attributes have been renamed:
+
+- :attr:`~pymongo.mongo_client.MongoClient.secondary_acceptable_latency_ms` is
+  now :attr:`~pymongo.mongo_client.MongoClient.local_threshold_ms` and is now
+  read-only.
+
+:class:`~pymongo.cursor.Cursor` changes
 .......................................
 
 The ``conn_id`` property is renamed to :attr:`~pymongo.cursor.Cursor.address`.
@@ -77,16 +117,17 @@ The ``conn_id`` property is renamed to :attr:`~pymongo.cursor.Cursor.address`.
 Cursor management changes
 .........................
 
-:class:`~pymongo.cursor_manager.CursorManager`  and
-:meth:`~pymongo.MongoClient.set_cursor_manager` are no longer deprecated.
-If you subclass :class:`~pymongo.cursor_manager.CursorManager` your
-implementation of :meth:`~pymongo.cursor_manager.CursorManager.close` must now
-take a second parameter, `address`. The ``BatchCursorManager`` class is
-removed.
+:class:`~pymongo.cursor_manager.CursorManager` and
+:meth:`~pymongo.mongo_client.MongoClient.set_cursor_manager` are no longer
+deprecated. If you subclass :class:`~pymongo.cursor_manager.CursorManager`
+your implementation of :meth:`~pymongo.cursor_manager.CursorManager.close`
+must now take a second parameter, `address`. The ``BatchCursorManager`` class
+is removed.
 
-The second parameter to :meth:`~pymongo.MongoClient.close_cursor` is renamed
-from ``_conn_id`` to ``address``. :meth:`~pymongo.MongoClient.kill_cursors`
-now accepts an `address` parameter.
+The second parameter to :meth:`~pymongo.mongo_client.MongoClient.close_cursor`
+is renamed from ``_conn_id`` to ``address``.
+:meth:`~pymongo.mongo_client.MongoClient.kill_cursors` now accepts an `address`
+parameter.
 
 :class:`~pymongo.database.Database` changes
 ...........................................
@@ -94,19 +135,175 @@ now accepts an `address` parameter.
 The ``connection`` property is renamed to
 :attr:`~pymongo.database.Database.client`.
 
-:mod:`~pymongo.errors` Changes
+The following attributes have been added:
+
+- :attr:`~pymongo.database.Database.codec_options`
+
+The following attributes are now read-only:
+
+- :attr:`~pymongo.database.Database.read_preference`
+- :attr:`~pymongo.database.Database.write_concern`
+
+Use :meth:`~pymongo.mongo_client.MongoClient.get_database` for getting a
+Database instance with its options configured differently than the
+MongoClient's.
+
+The following attributes have been removed:
+
+- :attr:`~pymongo.database.Database.safe`
+- :attr:`~pymongo.database.Database.secondary_acceptable_latency_ms`
+- :attr:`~pymongo.database.Database.slave_okay`
+- :attr:`~pymongo.database.Database.tag_sets`
+
+The following methods have been added:
+
+- :meth:`~pymongo.database.Database.get_collection`
+
+The following methods have been changed:
+
+- :meth:`~pymongo.database.Database.command`. Support for `as_class`,
+  `uuid_subtype`, `tag_sets`, and `secondary_acceptable_latency_ms` have been
+  removed. You can instead pass an instance of
+  :class:`~bson.codec_options.CodecOptions` as `codec_options` and an instance
+  of a read preference class from :mod:`~pymongo.read_preferences` as
+  `read_preference`. The `fields` and `compile_re` options are also removed.
+  The `fields` options was undocumented and never really worked. Regular
+  expressions are always decoded to :class:`~bson.regex.Regex`.
+
+The following methods have been deprecated:
+
+- :meth:`~pymongo.database.Database.add_son_manipulator`
+
+The following methods have been removed:
+
+The ``get_lasterror_options``, ``set_lasterror_options``, and
+``unset_lasterror_options`` methods have been removed. Use
+:class:`~pymongo.write_concern.WriteConcern` with
+:meth:`~pymongo.mongo_client.MongoClient.get_database` instead.
+
+:class:`~pymongo.collection.Collection` changes
+...............................................
+
+The following attributes have been added:
+
+- :attr:`~pymongo.collection.Collection.codec_options`
+
+The following attributes are now read-only:
+
+- :attr:`~pymongo.collection.Collection.read_preference`
+- :attr:`~pymongo.collection.Collection.write_concern`
+
+Use :meth:`~pymongo.database.Database.get_collection` or
+:meth:`~pymongo.collection.Collection.with_options` for getting a Collection
+instance with its options configured differently than the Database's.
+
+The following attributes have been removed:
+
+- :attr:`~pymongo.collection.Collection.safe`
+- :attr:`~pymongo.collection.Collection.secondary_acceptable_latency_ms`
+- :attr:`~pymongo.collection.Collection.slave_okay`
+- :attr:`~pymongo.collection.Collection.tag_sets`
+
+The following methods have been added:
+
+- :meth:`~pymongo.collection.Collection.bulk_write`
+- :meth:`~pymongo.collection.Collection.insert_one`
+- :meth:`~pymongo.collection.Collection.insert_many`
+- :meth:`~pymongo.collection.Collection.update_one`
+- :meth:`~pymongo.collection.Collection.update_many`
+- :meth:`~pymongo.collection.Collection.replace_one`
+- :meth:`~pymongo.collection.Collection.delete_one`
+- :meth:`~pymongo.collection.Collection.delete_many`
+- :meth:`~pymongo.collection.Collection.find_one_and_delete`
+- :meth:`~pymongo.collection.Collection.find_one_and_replace`
+- :meth:`~pymongo.collection.Collection.find_one_and_update`
+- :meth:`~pymongo.collection.Collection.with_options`
+
+The following methods have changed:
+
+- :meth:`~pymongo.collection.Collection.aggregate` now **always** returns an
+  instance of :class:`~pymongo.command_cursor.CommandCursor`. See the
+  documentation for all options.
+- :meth:`~pymongo.collection.Collection.count` now optionally takes a filter
+  argument, as well as other options supported by the count command.
+- :meth:`~pymongo.collection.Collection.distinct` now optionally takes a filter
+  argument.
+
+The following methods are deprecated:
+
+- :meth:`~pymongo.collection.Collection.save`
+- :meth:`~pymongo.collection.Collection.insert`
+- :meth:`~pymongo.collection.Collection.update`
+- :meth:`~pymongo.collection.Collection.remove`
+- :meth:`~pymongo.collection.Collection.find_and_modify`
+
+The following methods have been removed:
+
+The ``get_lasterror_options``, ``set_lasterror_options``, and
+``unset_lasterror_options`` methods have been removed. Use
+:class:`~pymongo.write_concern.WriteConcern` with
+:meth:`~pymongo.collection.Collection.with_options` instead.
+
+Changes to :meth:`~pymongo.collection.Collection.find` and :meth:`~pymongo.collection.Collection.find_one`
+``````````````````````````````````````````````````````````````````````````````````````````````````````````
+
+The following find/find_one options have been renamed:
+
+These renames only affect your code if you passed these as keyword arguments,
+like find(fields=['fieldname']). If you passed only positional parameters these
+changes are not significant for your application.
+
+- spec -> filter
+- fields -> projection
+- timeout -> no_cursor_timeout
+- partial -> allow_partial_results
+
+The following find/find_one options have been added:
+
+- cursor_type (see :class:`~pymongo.cursor.CursorType` for values)
+- oplog_replay
+- modifiers
+
+The following find/find_one options have been removed:
+
+- network_timeout (use :meth:`~pymongo.cursor.Cursor.max_time_ms` instead)
+- slave_okay (use one of the read preference classes from
+  :mod:`~pymongo.read_preferences` and
+  :meth:`~pymongo.collection.Collection.with_options` instead)
+- read_preference (use :meth:`~pymongo.collection.Collection.with_options`
+  instead)
+- tag_sets (use one of the read preference classes from
+  :mod:`~pymongo.read_preferences` and
+  :meth:`~pymongo.collection.Collection.with_options` instead)
+- secondary_acceptable_latency_ms (use the `localThresholdMS` URI option
+  instead)
+- max_scan (use the new `modifiers` option instead)
+- snapshot (use the new `modifiers` option instead)
+- tailable (use the new `cursor_type` option instead)
+- await_data (use the new `cursor_type` option instead)
+- exhaust (use the new `cursor_type` option instead)
+- as_class (use :meth:`~pymongo.collection.Collection.with_options` with
+  :class:`~bson.codec_options.CodecOptions` instead)
+- compile_re (BSON regular expressions are always decoded to
+  :class:`~bson.regex.Regex`)
+
+The following find/find_one options are deprecated:
+
+- manipulate
+
+:mod:`~pymongo.errors` changes
 ..............................
 
 The exception classes ``UnsupportedOption`` and ``TimeoutError`` are deleted.
 
-:mod:`~gridfs` Changes
+:mod:`~gridfs` changes
 ......................
 
 Since PyMongo 1.6, methods ``open`` and ``close`` of :class:`~gridfs.GridFS`
 raised an ``UnsupportedAPI`` exception, as did the entire ``GridFile`` class.
 The unsupported methods, the class, and the exception are all deleted.
 
-:mod:`~bson` Changes
+:mod:`~bson` changes
 ....................
 
 The `compile_re` option is removed from all methods
