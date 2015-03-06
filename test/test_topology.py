@@ -583,26 +583,11 @@ class TestTopologyErrors(TopologyTest):
         # While ismaster fails, ensure it's called about every 10 ms.
         timeouts = []
 
-        class TestCondition(object):
-            def __init__(self, lock=None):
-                self.condition = threading.Condition(lock)
-
-            def acquire(self):
-                return self.condition.acquire()
-
-            def release(self):
-                self.condition.release()
-
+        class TestCondition(threading._Condition):
             def wait(self, timeout=None):
                 assert timeout is not None
                 timeouts.append(timeout)
-                self.condition.wait(timeout)
-
-            def notify(self, n=1):
-                self.condition.notify(n)
-
-            def notify_all(self):
-                self.condition.notify_all()
+                super(TestCondition, self).wait(timeout)
 
         def timer():
             return sum(timeouts)
