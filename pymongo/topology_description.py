@@ -166,7 +166,7 @@ def updated_topology_description(topology_description, server_description):
             topology_type = _SERVER_TYPE_TO_TOPOLOGY_TYPE[server_type]
 
     if topology_type == TOPOLOGY_TYPE.Sharded:
-        if server_type != SERVER_TYPE.Mongos:
+        if server_type not in (SERVER_TYPE.Mongos, SERVER_TYPE.Unknown):
             sds.pop(address)
 
     elif topology_type == TOPOLOGY_TYPE.ReplicaSetNoPrimary:
