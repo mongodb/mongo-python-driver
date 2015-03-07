@@ -34,11 +34,11 @@ home = os.environ.get('HOME')
 default_dbpath = os.path.join(home, 'data', 'pymongo_high_availability')
 dbpath = os.environ.get('DBPATH', default_dbpath)
 default_logpath = os.path.join(home, 'log', 'pymongo_high_availability')
-logpath = os.environ.get('LOGPATH', default_logpath)
+logpath = os.path.expanduser(os.environ.get('LOGPATH', default_logpath))
 hostname = os.environ.get('HOSTNAME', 'localhost')
 port = int(os.environ.get('DBPORT', 27017))
-mongod = os.environ.get('MONGOD', 'mongod')
-mongos = os.environ.get('MONGOS', 'mongos')
+mongod = os.path.expanduser(os.environ.get('MONGOD', 'mongod'))
+mongos = os.path.expanduser(os.environ.get('MONGOS', 'mongos'))
 replica_set_name = os.environ.get('SETNAME', 'repl0')
 ha_tools_debug = bool(os.environ.get('HA_TOOLS_DEBUG'))
 
@@ -198,6 +198,9 @@ def start_replica_set(members, auth=False, fresh=True):
 
 def create_sharded_cluster(num_routers=3):
     global cur_port
+
+    if not os.path.exists(logpath):
+        os.makedirs(logpath)
 
     # Start a config server
     configdb_host = '%s:%d' % (hostname, cur_port)
