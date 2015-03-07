@@ -24,7 +24,7 @@ from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
-from pymongo.errors import AutoReconnect
+from pymongo.errors import AutoReconnect, InvalidOperation
 from pymongo.server import Server
 from pymongo.server_selectors import (address_server_selector,
                                       apply_local_threshold,
@@ -182,6 +182,23 @@ class Topology(object):
 
             descriptions = selector(self._description.known_servers)
             return set([d.address for d in descriptions])
+
+    def get_direct_or_primary(self):
+        """Return the address of a connected primary or standalone, or None.
+
+        Raise InvalidOperation for Sharded topologies.
+        """
+        # Implemented here in Topology instead of MongoClient, so it can lock.
+        with self._lock:
+            topology_type = self._description.topology_type
+            if topology_type == TOPOLOGY_TYPE.Sharded:
+                raise InvalidOperation()
+            if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                                     TOPOLOGY_TYPE.Single):
+                return None
+            descriptions = writable_server_selector(
+                self._description.known_servers)
+            return descriptions[0].address if descriptions else None
 
     def get_secondaries(self):
         """Return set of secondary addresses."""

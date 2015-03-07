@@ -14,9 +14,8 @@
 
 """Tools for connecting to MongoDB.
 
-.. seealso:: :doc:`/examples/high_availability` for an example of how to
-   connect to a replica set, or specify a list of mongos instances for
-   automatic failover.
+.. seealso:: :doc:`/examples/high_availability` for examples of connecting
+   to replica sets or sets of mongos servers.
 
 To get a :class:`~pymongo.database.Database` instance from a
 :class:`MongoClient` use either dictionary-style or attribute-style
@@ -52,6 +51,7 @@ from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             DuplicateKeyError,
+                            InvalidOperation,
                             InvalidURI,
                             NetworkTimeout,
                             NotMasterError,
@@ -237,6 +237,15 @@ class MongoClient(common.BaseObject):
            A list of multiple standalones is no longer supported; if multiple
            servers are listed they must be members of the same replica set, or
            mongoses in the same sharded cluster.
+
+           The behavior for a list of mongoses is changed from "high
+           availability" to "load balancing". Before, the client connected to
+           the lowest-latency mongos in the list, and used it until a network
+           error prompted it to re-evaluate all mongoses' latencies and
+           reconnect to one of them. In PyMongo 3, the client monitors its
+           network latency to all the mongoses continuously, and distributes
+           operations evenly among those with the lowest latency. See
+           :ref:`mongos-load-balancing` for more information.
 
            The ``connect`` option is added.
 
@@ -479,9 +488,19 @@ class MongoClient(common.BaseObject):
     def address(self):
         """(host, port) of the current standalone, primary, or mongos, or None.
 
+        Accessing :attr:`address` raises :exc:`~.errors.InvalidOperation` if
+        the client is load-balancing among mongoses, since there is no single
+        address. Use :attr:`nodes` instead.
+
         .. versionadded:: 3.0
         """
-        return self._server_property('address')
+        try:
+            return self._topology.get_direct_or_primary()
+        except InvalidOperation:
+            # Only one case where Topology throws InvalidOperation.
+            raise InvalidOperation(
+                'Cannot use "address" property when load balancing among'
+                ' mongoses, use "nodes" instead.')
 
     @property
     def primary(self):

@@ -57,6 +57,14 @@ A list of multiple standalones is no longer supported; if multiple servers
 are listed they must be members of the same replica set, or mongoses in the
 same sharded cluster.
 
+The behavior for a list of mongoses is changed from "high availability" to
+"load balancing". Before, the client connected to the lowest-latency mongos in
+the list, and used it until a network error prompted it to re-evaluate all
+mongoses' latencies and reconnect to one of them. In PyMongo 3, the client
+monitors its network latency to all the mongoses continuously, and distributes
+operations evenly among those with the lowest latency.
+See :ref:`mongos-load-balancing` for more information.
+
 The client methods ``start_request``, ``in_request``, and ``end_request``
 are removed, and so is the ``auto_start_request`` option. Requests were
 designed to make read-your-writes consistency more likely with the ``w=0``
@@ -666,8 +674,7 @@ Important New Features:
 
 - Support for expanded read preferences including directing reads to tagged
   servers - See :ref:`secondary-reads` for more information.
-- Support for mongos failover -
-  See :ref:`mongos-high-availability` for more information.
+- Support for mongos failover.
 - A new :meth:`~pymongo.collection.Collection.aggregate` method to support
   MongoDB's new `aggregation framework
   <http://docs.mongodb.org/manual/applications/aggregation/>`_.

@@ -28,12 +28,13 @@ from pymongo.common import partition_node
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             ConnectionFailure,
+                            InvalidOperation,
                             WTimeoutError)
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.write_concern import WriteConcern
-from test import SkipTest, unittest, utils, client_knobs
+from test import unittest, utils, client_knobs
 from test.utils import one, wait_until, connected
 from test.version import Version
 
@@ -814,46 +815,51 @@ class TestAlive(HATestCase):
         self.assertFalse(secondary_cx.alive())
         self.assertFalse(rsc.alive())
 
-        
-class TestMongosHighAvailability(HATestCase):
+
+class TestMongosLoadBalancing(HATestCase):
     def setUp(self):
-        super(TestMongosHighAvailability, self).setUp()
-
-        raise SkipTest(
-            'Mongos HA may be replaced with load balancing in PyMongo 3')
-
+        super(TestMongosLoadBalancing, self).setUp()
         seed_list = ha_tools.create_sharded_cluster()
+        self.assertIsNotNone(seed_list)
         self.dbname = 'pymongo_mongos_ha'
         self.client = MongoClient(seed_list)
         self.client.drop_database(self.dbname)
 
-    def test_mongos_ha(self):
+    def test_mongos_load_balancing(self):
+        wait_until(lambda: len(ha_tools.routers) == len(self.client.nodes),
+                   'discover all mongoses')
+
+        # Can't access "address" when load balancing.
+        with self.assertRaises(InvalidOperation):
+            self.client.address
+
         coll = self.client[self.dbname].test
         coll.insert_one({'foo': 'bar'})
 
-        first = '%s:%d' % (self.client.host, self.client.port)
-        ha_tools.kill_mongos(first)
-        # Fail first attempt
-        self.assertRaises(AutoReconnect, coll.count)
-        # Find new mongos
-        self.assertEqual(1, coll.count())
+        live_routers = list(ha_tools.routers)
+        ha_tools.kill_mongos(live_routers.pop())
+        while live_routers:
+            try:
+                self.assertEqual(1, coll.count())
+            except ConnectionFailure:
+                # If first attempt happened to select the dead mongos.
+                self.assertEqual(1, coll.count())
 
-        second = '%s:%d' % (self.client.host, self.client.port)
-        self.assertNotEqual(first, second)
-        ha_tools.kill_mongos(second)
-        # Fail first attempt
-        self.assertRaises(AutoReconnect, coll.count)
-        # Find new mongos
-        self.assertEqual(1, coll.count())
+            wait_until(lambda: len(live_routers) == len(self.client.nodes),
+                       'remove dead mongos',
+                       timeout=30)
+            ha_tools.kill_mongos(live_routers.pop())
 
-        third = '%s:%d' % (self.client.host, self.client.port)
-        self.assertNotEqual(second, third)
-        ha_tools.kill_mongos(third)
-        # Fail first attempt
-        self.assertRaises(AutoReconnect, coll.count)
+        # Make sure the last one's really dead.
+        time.sleep(1)
 
-        # We've killed all three, restart one.
-        ha_tools.restart_mongos(first)
+        # I'm alone.
+        self.assertRaises(ConnectionFailure, coll.count)
+        wait_until(lambda: 0 == len(self.client.nodes),
+                   'remove dead mongos',
+                   timeout=30)
+
+        ha_tools.restart_mongos(one(ha_tools.routers))
 
         # Find new mongos
         self.assertEqual(1, coll.count())

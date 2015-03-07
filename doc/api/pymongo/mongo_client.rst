@@ -14,6 +14,7 @@
 
          Raises :class:`~pymongo.errors.InvalidName` if an invalid database name is used.
 
+      .. autoattribute:: address
       .. autoattribute:: host
       .. autoattribute:: port
       .. autoattribute:: is_primary

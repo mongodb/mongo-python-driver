@@ -256,6 +256,8 @@ from any member that matches the mode, ignoring tags."
 
 See :mod:`~pymongo.read_preferences` for more information.
 
+.. _distributes reads to secondaries:
+
 **local_threshold_ms**:
 
 If multiple members match the mode and tag sets, PyMongo reads
@@ -288,64 +290,36 @@ monitor the replica set for changes in:
 Replica-set monitoring ensures queries are continually routed to the proper
 members as the state of the replica set changes.
 
-.. _mongos-high-availability:
+.. _mongos-load-balancing:
 
-High Availability and mongos
-----------------------------
-
-.. warning:: The documentation below is obsolete. It awaits a new
-   spec for how MongoDB drivers connect to multiple mongoses.
+mongos Load Balancing
+---------------------
 
 An instance of :class:`~pymongo.mongo_client.MongoClient` can be configured
-to automatically connect to a different mongos if the instance it is
-currently connected to fails. If a failure occurs, PyMongo will attempt
-to find the nearest mongos to perform subsequent operations. As with a
-replica set this can't happen completely transparently. Here we'll perform
-an example failover to illustrate how everything behaves. First, we'll
-connect to a sharded cluster, using a seed list, and perform a couple of
-basic operations::
+with a list of mongos servers:
 
-  >>> db = MongoClient('localhost:30000,localhost:30001,localhost:30002').test
-  >>> db.test.insert_one({'x': 1})
-  ObjectId('...')
-  >>> db.test.find_one()
-  {u'x': 1, u'_id': ObjectId('...')}
+  >>> client = MongoClient('mongodb://host1,host2,host3')
 
-Each member of the seed list passed to MongoClient must be a mongos. By checking
-the host, port, and is_mongos attributes we can see that we're connected to
-*localhost:30001*, a mongos::
+Each member of the list must be a mongos server. The client continuously
+monitors all the mongoses' availability, and its network latency to each.
 
-  >>> db.client.host
-  'localhost'
-  >>> db.client.port
-  30001
-  >>> db.client.is_mongos
-  True
+PyMongo distributes operations evenly among the set of mongoses within its
+``localThresholdMS`` (similar to how it `distributes reads to secondaries`_
+in a replica set). By default the threshold is 15 ms.
 
-Now let's shut down that mongos instance and see what happens when we run our
-query again::
+The lowest-latency server, and all servers with latencies no more than
+``localThresholdMS`` beyond the lowest-latency server's, receive
+operations equally. For example, if we have three mongoses:
 
-  >>> db.test.find_one()
-  Traceback (most recent call last):
-  pymongo.errors.AutoReconnect: ...
+  - host1: 20 ms
+  - host2: 35 ms
+  - host3: 40 ms
 
-As in the replica set example earlier in this document, we get
-an :class:`~pymongo.errors.AutoReconnect` exception. This means
-that the driver was not able to connect to the original mongos at port
-30001 (which makes sense, since we shut it down), but that it will
-attempt to connect to a new mongos on subsequent operations. When this
-exception is raised our application code needs to decide whether to retry
-the operation or to simply continue, accepting the fact that the operation
-might have failed.
+By default the ``localThresholdMS`` is 15 ms, so PyMongo uses host1 and host2
+evenly. It uses host1 because its network latency to the driver is shortest. It
+uses host2 because its latency is within 15 ms of the lowest-latency server's.
+But it excuses host3: host3 is 20ms beyond the lowest-latency server.
 
-As long as one of the seed list members is still available the next
-operation will succeed::
+If we set ``localThresholdMS`` to 30 ms all servers are within the threshold:
 
-  >>> db.test.find_one()
-  {u'x': 1, u'_id': ObjectId('...')}
-  >>> db.client.host
-  'localhost'
-  >>> db.client.port
-  30002
-  >>> db.client.is_mongos
-  True
+  >>> client = MongoClient('mongodb://host1,host2,host3/?localThresholdMS=30')

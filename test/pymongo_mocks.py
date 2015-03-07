@@ -78,8 +78,8 @@ class MockMonitor(Monitor):
 
     def _check_once(self):
         address = self._server_description.address
-        response = self.client.mock_is_master('%s:%d' % address)
-        return ServerDescription(address, IsMaster(response), 0)
+        response, rtt = self.client.mock_is_master('%s:%d' % address)
+        return ServerDescription(address, IsMaster(response), rtt)
 
 
 class MockClient(MongoClient):
@@ -117,6 +117,9 @@ class MockClient(MongoClient):
         # Hostname -> max write batch size
         self.mock_max_write_batch_sizes = {}
 
+        # Hostname -> round trip time
+        self.mock_rtts = {}
+
         kwargs['_pool_class'] = partial(MockPool, self)
         kwargs['_monitor_class'] = partial(MockMonitor, self)
 
@@ -137,6 +140,7 @@ class MockClient(MongoClient):
         self.mock_max_write_batch_sizes[host] = size
 
     def mock_is_master(self, host):
+        """Return mock ismaster response (a dict) and round trip time."""
         min_wire_version, max_wire_version = self.mock_wire_versions.get(
             host,
             (common.MIN_WIRE_VERSION, common.MAX_WIRE_VERSION))
@@ -144,19 +148,20 @@ class MockClient(MongoClient):
         max_write_batch_size = self.mock_max_write_batch_sizes.get(
             host, common.MAX_WRITE_BATCH_SIZE)
 
+        rtt = self.mock_rtts.get(host, 0)
+
         # host is like 'a:1'.
         if host in self.mock_down_hosts:
             raise socket.timeout('mock timeout')
 
-        if host in self.mock_standalones:
-            return {
+        elif host in self.mock_standalones:
+            response = {
                 'ok': 1,
                 'ismaster': True,
                 'minWireVersion': min_wire_version,
                 'maxWireVersion': max_wire_version,
                 'maxWriteBatchSize': max_write_batch_size}
-
-        if host in self.mock_members:
+        elif host in self.mock_members:
             ismaster = (host == self.mock_primary)
 
             # Simulate a replica set member.
@@ -172,21 +177,20 @@ class MockClient(MongoClient):
 
             if self.mock_primary:
                 response['primary'] = self.mock_primary
-
-            return response
-
-        if host in self.mock_mongoses:
-            return {
+        elif host in self.mock_mongoses:
+            response = {
                 'ok': 1,
                 'ismaster': True,
                 'minWireVersion': min_wire_version,
                 'maxWireVersion': max_wire_version,
                 'msg': 'isdbgrid',
                 'maxWriteBatchSize': max_write_batch_size}
+        else:
+            # In test_internal_ips(), we try to connect to a host listed
+            # in ismaster['hosts'] but not publicly accessible.
+            raise socket.error('Unknown host: %s' % host)
 
-        # In test_internal_ips(), we try to connect to a host listed
-        # in ismaster['hosts'] but not publicly accessible.
-        raise socket.error('Unknown host: %s' % host)
+        return response, rtt
 
     def _process_kill_cursors_queue(self):
         # Avoid the background thread causing races, e.g. a surprising
