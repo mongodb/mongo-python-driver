@@ -325,25 +325,6 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                                                        read_preference=mode())
             self._test_fn(server_type, func)
 
-    @client_context.require_version_min(2, 5, 2)
-    def test_aggregate_command_with_out(self):
-        # Tests aggregate command when pipeline contains $out.
-        db = self.c.get_database(
-            "pymongo_test", write_concern=WriteConcern(w=self.w))
-        db.test.insert_one({"x": 1, "y": 1})
-        db.test.insert_one({"x": 1, "y": 2})
-        db.test.insert_one({"x": 2, "y": 1})
-        db.test.insert_one({"x": 2, "y": 2})
-
-        # Test aggregate when sent through the collection aggregate
-        # function. Aggregate with $out always goes to primary, doesn't obey
-        # read prefs.
-        self._test_coll_helper(False, self.c.pymongo_test.test, 'aggregate',
-                               [{"$match": {"x": 2}}, {"$out": "agg_out"}])
-
-        self.c.pymongo_test.drop_collection("test")
-        self.c.pymongo_test.drop_collection("agg_out")
-
     def test_create_collection(self):
         # Collections should be created on primary, obviously
         self._test_primary_helper(
@@ -370,7 +351,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
                                'function() { }', 'function() { }', 'mr_out')
 
-        self._test_coll_helper(True, self.c.pymongo_test.test, 'map_reduce',
+        self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
                                'function() { }', 'function() { }',
                                {'inline': 1})
 

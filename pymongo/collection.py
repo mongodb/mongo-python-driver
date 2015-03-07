@@ -1369,6 +1369,13 @@ class Collection(common.BaseObject):
             of useCursor, if provided, will be obeyed regardless of server
             version.
 
+        The :meth:`aggregate` method obeys the :attr:`read_preference` of this
+        :class:`Collection`. Please note that using the ``$out`` pipeline stage
+        requires a read preference of
+        :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` (the default).
+        The server will raise an error if the ``$out`` pipeline stage is used
+        with any other read preference.
+
         .. warning:: When upgrading a pre-MongoDB 2.6 sharded cluster to any
            newer version the useCursor option **must** be set to ``False``
            until all shards have been upgraded.
@@ -1376,9 +1383,6 @@ class Collection(common.BaseObject):
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead. An
            example is included in the :ref:`aggregate-examples` documentation.
-
-        The :meth:`aggregate` method obeys the :attr:`read_preference` of this
-        :class:`Collection`.
 
         :Parameters:
           - `pipeline`: a list of aggregation pipeline stages
@@ -1398,6 +1402,8 @@ class Collection(common.BaseObject):
         .. versionchanged:: 2.6
            Added cursor support.
         .. versionadded:: 2.3
+
+        .. seealso:: :doc:`/examples/aggregation`
 
         .. _aggregate command:
             http://docs.mongodb.org/manual/applications/aggregation
@@ -1434,14 +1440,7 @@ class Collection(common.BaseObject):
 
         cmd.update(kwargs)
 
-        # XXX: Keep doing this automatically?
-        read_preference = self.read_preference
-        for stage in pipeline:
-            if '$out' in stage:
-                read_preference = ReadPreference.PRIMARY
-                break
-
-        result, address = self._command(cmd, read_preference)
+        result, address = self._command(cmd)
 
         if "cursor" in result:
             cursor_info = result["cursor"]
@@ -1579,9 +1578,6 @@ class Collection(common.BaseObject):
         the results of the operation. Otherwise, returns the full
         response from the server to the `map reduce command`_.
 
-        The :meth:`map_reduce` method obeys the :attr:`read_preference` of this
-        :class:`Collection`.
-
         :Parameters:
           - `map`: map function (as a JavaScript string)
           - `reduce`: reduce function (as a JavaScript string)
@@ -1597,6 +1593,11 @@ class Collection(common.BaseObject):
             helper method, e.g.::
 
             >>> db.test.map_reduce(map, reduce, "myresults", limit=2)
+
+        .. note:: The :meth:`map_reduce` method does **not** obey the
+           :attr:`read_preference` of this :class:`Collection`. To run
+           mapReduce on a secondary use the :meth:`inline_map_reduce` method
+           instead.
 
         .. seealso:: :doc:`/examples/aggregation`
 
@@ -1617,12 +1618,7 @@ class Collection(common.BaseObject):
                    ("out", out)])
         cmd.update(kwargs)
 
-        # XXX: Keep doing this automatically?
-        read_preference = self.read_preference
-        if not isinstance(out, collections.Mapping) or not out.get('inline'):
-            read_preference = ReadPreference.PRIMARY
-
-        response = self._command(cmd, read_preference)[0]
+        response = self._command(cmd, ReadPreference.PRIMARY)[0]
 
         if full_response or not response.get('result'):
             return response
