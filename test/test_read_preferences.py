@@ -95,7 +95,7 @@ class TestSingleSlaveOk(TestReadPreferencesBase):
 
         host, port = next(iter(self.client.secondaries))
         # Direct connection to a secondary.
-        client = MongoClient(host, port)
+        client = single_client(host, port)
         self.assertFalse(client.is_primary)
 
         # Regardless of read preference, we should be able to do
