@@ -294,8 +294,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
     def test_not_master_error(self):
         secondary_address = one(self.secondaries)
         direct_client = single_client(*secondary_address)
-        with self.assertRaises(NotMasterError):
-            direct_client.pymongo_test.command('count', 'collection')
 
         with self.assertRaises(NotMasterError):
             direct_client.pymongo_test.collection.insert_one({})

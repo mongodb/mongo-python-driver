@@ -56,6 +56,48 @@ _OP_MAP = {
 }
 
 
+class _Query(object):
+    """A query operation."""
+
+    __slots__ = (
+        'flags', 'ns', 'ntoskip', 'ntoreturn', 'spec', 'fields', 'options')
+
+    def __init__(
+            self, flags, ns, ntoskip, ntoreturn, spec, fields, options):
+        self.flags = flags
+        self.ns = ns
+        self.ntoskip = ntoskip
+        self.ntoreturn = ntoreturn
+        self.spec = spec
+        self.fields = fields
+        self.options = options
+
+    def get_message(self, set_slave_ok):
+        """Get a query message, possibly setting the slaveOk bit."""
+        if set_slave_ok:
+            # Set the slaveOk bit.
+            flags = self.flags | 4
+        else:
+            flags = self.flags
+        return query(flags, self.ns, self.ntoskip,
+                     self.ntoreturn, self.spec, self.fields, self.options)
+
+
+class _GetMore(object):
+    """A getmore operation."""
+
+    __slots__ = ('ns', 'ntoreturn', 'cursor_id')
+
+    def __init__(self, ns, ntoreturn, cursor_id):
+        self.ns = ns
+        self.ntoreturn = ntoreturn
+        self.cursor_id = cursor_id
+
+    def get_message(self, dummy):
+        """Get a getmore message."""
+        return get_more(self.ns, self.ntoreturn, self.cursor_id)
+
+
 def __last_error(namespace, args):
     """Data to send to do a lastError.
     """

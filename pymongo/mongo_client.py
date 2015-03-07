@@ -33,7 +33,6 @@ access:
 """
 
 import datetime
-import socket
 import threading
 import warnings
 import weakref
@@ -49,8 +48,6 @@ from pymongo import (common,
                      uri_parser)
 from pymongo.client_options import ClientOptions
 from pymongo.cursor_manager import CursorManager
-from pymongo.network import socket_closed
-from pymongo.topology import Topology
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -63,6 +60,8 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (writable_preferred_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
+from pymongo.topology import Topology
+from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.settings import TopologySettings
 
 
@@ -798,12 +797,12 @@ class MongoClient(common.BaseObject):
                 msg,
                 self.__all_credentials)
 
-    def _send_message_with_response(
-            self, msg, read_preference=None, exhaust=False, address=None):
+    def _send_message_with_response(self, operation, read_preference=None,
+                                    exhaust=False, address=None):
         """Send a message to MongoDB and return a Response.
 
         :Parameters:
-          - `msg`: (request_id, data, max_doc_size) or (request_id, data).
+          - `operation`: a _Query or _GetMore object.
           - `read_preference` (optional): A ReadPreference.
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
@@ -824,10 +823,18 @@ class MongoClient(common.BaseObject):
             selector = read_preference or writable_server_selector
             server = topology.select_server(selector)
 
+        # A _Query's slaveOk bit is already set for queries with non-primary
+        # read preference. If this is a direct connection to a mongod, override
+        # and *always* set the slaveOk bit. See bullet point 2 in
+        # server-selection.rst#topology-type-single.
+        set_slave_ok = (
+            topology.description.topology_type == TOPOLOGY_TYPE.Single
+            and server.description.server_type != SERVER_TYPE.Mongos)
+
         return self._reset_on_error(
             server,
             server.send_message_with_response,
-            msg,
+            operation.get_message(set_slave_ok),
             self.__all_credentials,
             exhaust)
 

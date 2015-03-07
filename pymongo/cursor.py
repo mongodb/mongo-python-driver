@@ -25,12 +25,13 @@ from bson.py3compat import (iteritems,
                             integer_types,
                             string_type)
 from bson.son import SON
-from pymongo import helpers, message
+from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
+from pymongo.message import _GetMore, _Query
 from pymongo.read_preferences import ReadPreference
 
 _QUERY_OPTIONS = {
@@ -798,10 +799,10 @@ class Cursor(object):
         self.__spec["$where"] = code
         return self
 
-    def __send_message(self, msg):
-        """Send a query or getmore message and handles the response.
+    def __send_message(self, operation):
+        """Send a query or getmore operation and handles the response.
 
-        If message is ``None`` this is an exhaust cursor, which reads
+        If operation is ``None`` this is an exhaust cursor, which reads
         the next result batch off the exhaust socket instead of
         sending getMore messages to the server.
 
@@ -809,7 +810,7 @@ class Cursor(object):
         """
         client = self.__collection.database.client
 
-        if msg:
+        if operation:
             kwargs = {
                 "read_preference": self.__read_preference,
                 "exhaust": self.__exhaust,
@@ -818,7 +819,8 @@ class Cursor(object):
                 kwargs["address"] = self.__address
 
             try:
-                response = client._send_message_with_response(msg, **kwargs)
+                response = client._send_message_with_response(operation,
+                                                              **kwargs)
                 self.__address = response.address
                 if self.__exhaust:
                     # 'response' is an ExhaustResponse.
@@ -904,12 +906,13 @@ class Cursor(object):
                     ntoreturn = min(self.__limit, self.__batch_size)
                 else:
                     ntoreturn = self.__limit
-            self.__send_message(
-                message.query(self.__query_flags,
-                              self.__collection.full_name,
-                              self.__skip, ntoreturn,
-                              self.__query_spec(), self.__projection,
-                              self.__codec_options))
+            self.__send_message(_Query(self.__query_flags,
+                                       self.__collection.full_name,
+                                       self.__skip,
+                                       ntoreturn,
+                                       self.__query_spec(),
+                                       self.__projection,
+                                       self.__codec_options))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More
@@ -924,9 +927,9 @@ class Cursor(object):
             if self.__exhaust:
                 self.__send_message(None)
             else:
-                self.__send_message(
-                    message.get_more(self.__collection.full_name,
-                                     limit, self.__id))
+                self.__send_message(_GetMore(self.__collection.full_name,
+                                             limit,
+                                             self.__id))
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True

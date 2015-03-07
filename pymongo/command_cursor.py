@@ -17,8 +17,9 @@
 from collections import deque
 
 from bson.py3compat import integer_types
-from pymongo import helpers, message
+from pymongo import helpers
 from pymongo.errors import AutoReconnect, CursorNotFound, NotMasterError
+from pymongo.message import _GetMore
 
 
 class CommandCursor(object):
@@ -84,13 +85,13 @@ class CommandCursor(object):
         self.__batch_size = batch_size == 1 and 2 or batch_size
         return self
 
-    def __send_message(self, msg):
+    def __send_message(self, operation):
         """Send a getmore message and handle the response.
         """
         client = self.__collection.database.client
         try:
             response = client._send_message_with_response(
-                msg, address=self.__address)
+                operation, address=self.__address)
         except AutoReconnect:
             # Don't try to send kill cursors on another socket
             # or to another server. It can cause a _pinValue
@@ -133,8 +134,7 @@ class CommandCursor(object):
 
         if self.__id:  # Get More
             self.__send_message(
-                message.get_more(self.__ns,
-                                 self.__batch_size, self.__id))
+                _GetMore(self.__ns, self.__batch_size, self.__id))
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True

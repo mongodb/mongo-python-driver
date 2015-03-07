@@ -30,7 +30,7 @@ from pymongo.errors import (CursorNotFound,
                             WriteError,
                             WriteConcernError,
                             WTimeoutError)
-from pymongo.message import query
+from pymongo.message import _Query
 
 
 def _index_list(key_or_list, direction=None):
@@ -190,9 +190,8 @@ def _command(client, namespace, command, read_preference,
     if read_preference.mode:
         query_opts = 4
 
-    msg = query(query_opts, namespace, 0, -1,
-                command, None, codec_options)
-    response = client._send_message_with_response(msg, read_preference)
+    query = _Query(query_opts, namespace, 0, -1, command, None, codec_options)
+    response = client._send_message_with_response(query, read_preference)
     result = _unpack_response(response.data, None, codec_options)['data'][0]
     if check:
         msg = "command %s on namespace %s failed: %%s" % (

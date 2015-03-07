@@ -89,6 +89,39 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
             used, expected))
 
 
+class TestSingleSlaveOk(TestReadPreferencesBase):
+
+    def test_reads_from_secondary(self):
+
+        host, port = next(iter(self.client.secondaries))
+        # Direct connection to a secondary.
+        client = MongoClient(host, port)
+        self.assertFalse(client.is_primary)
+
+        # Regardless of read preference, we should be able to do
+        # "reads" with a direct connection to a secondary.
+        # See server-selection.rst#topology-type-single.
+        self.assertEqual(client.read_preference, ReadPreference.PRIMARY)
+
+        db = client.pymongo_test
+        coll = db.test
+
+        # Test find and find_one.
+        self.assertIsNotNone(coll.find_one())
+        self.assertEqual(10, len(list(coll.find())))
+
+        # Test some database helpers.
+        self.assertIsNotNone(db.collection_names())
+        self.assertIsNotNone(db.validate_collection("test"))
+        self.assertIsNotNone(db.command("count", "test"))
+
+        # Test some collection helpers.
+        self.assertEqual(10, coll.count())
+        self.assertEqual(10, len(coll.distinct("_id")))
+        self.assertIsNotNone(coll.aggregate([]))
+        self.assertIsNotNone(coll.index_information())
+
+
 class TestReadPreferences(TestReadPreferencesBase):
     def test_mode_validation(self):
         for mode in (ReadPreference.PRIMARY,
