@@ -36,13 +36,11 @@ def create_test(scenario_def):
     def run_scenario(self):
         moving_average = MovingAverage()
 
-        moving_average.add_sample(scenario_def['avg_rtt_ms'])
-        if str(scenario_def['avg_rtt_ms']) == "NULL":
-            moving_average.reset()
+        if scenario_def['avg_rtt_ms'] != "NULL":
+            moving_average.add_sample(scenario_def['avg_rtt_ms'])
 
-        moving_average.add_sample(scenario_def['new_rtt_ms'])
-        if str(scenario_def['new_rtt_ms']) == "NULL":
-            moving_average.reset()
+        if scenario_def['new_rtt_ms'] != "NULL":
+            moving_average.add_sample(scenario_def['new_rtt_ms'])
 
         self.assertAlmostEqual(moving_average.get(),
                                scenario_def['new_avg_rtt'])
