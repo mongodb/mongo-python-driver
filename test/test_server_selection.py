@@ -142,14 +142,11 @@ def create_test(scenario_def):
             if mode_string:
                 mode_string = mode_string[:1].lower() + mode_string[1:]
 
-
-            mode = read_preferences.ReadPreference[
-                read_preferences.read_pref_mode_from_name(mode_string)]
+            mode = read_preferences.read_pref_mode_from_name(mode_string)
+            tag_sets = None
             if scenario_def['read_preference']['tag_sets'][0]:
-                instance = mode.__class__(
-                    tag_sets=scenario_def['read_preference']['tag_sets'])
-            else:
-                instance = mode
+                tag_sets = scenario_def['read_preference']['tag_sets']
+            instance = read_preferences.make_read_preference(mode, tag_sets)
 
         # Select servers.
         if not scenario_def['suitable_servers']:
