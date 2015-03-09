@@ -601,12 +601,12 @@ Bye"""))
         outfile.readchunk()
 
     def test_grid_in_lazy_connect(self):
-        with client_knobs(server_selection_timeout=0.01):
-            client = MongoClient('badhost', connect=False)
-            fs = client.db.fs
-            infile = GridIn(fs, file_id=-1, chunk_size=1)
-            self.assertRaises(ConnectionFailure, infile.write, b'data')
-            self.assertRaises(ConnectionFailure, infile.close)
+        client = MongoClient('badhost', connect=False,
+                             serverSelectionTimeoutMS=10)
+        fs = client.db.fs
+        infile = GridIn(fs, file_id=-1, chunk_size=1)
+        self.assertRaises(ConnectionFailure, infile.write, b'data')
+        self.assertRaises(ConnectionFailure, infile.close)
 
     def test_unacknowledged(self):
         # w=0 is prohibited.

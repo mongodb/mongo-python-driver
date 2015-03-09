@@ -80,7 +80,8 @@ class ClientUnitTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.client = MongoClient(host, port, connect=False)
+        cls.client = MongoClient(host, port, connect=False,
+                                 serverSelectionTimeoutMS=100)
 
     def test_keyword_arg_defaults(self):
         client = MongoClient(socketTimeoutMS=None,
@@ -95,7 +96,8 @@ class ClientUnitTest(unittest.TestCase):
                              ssl_certfile=None,
                              ssl_cert_reqs=0,  # ssl.CERT_NONE
                              ssl_ca_certs=None,
-                             connect=False)
+                             connect=False,
+                             serverSelectionTimeoutMS=12000)
 
         options = client._MongoClient__options
         pool_opts = options.pool_options
@@ -108,6 +110,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(None, pool_opts.ssl_context)
         self.assertEqual(None, options.replica_set_name)
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
+        self.assertAlmostEqual(12, client.server_selection_timeout)
 
     def test_types(self):
         self.assertRaises(TypeError, MongoClient, 1)
@@ -183,9 +186,8 @@ class TestClient(IntegrationTest):
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"
         MongoClient.PORT = 123456789
-        with client_knobs(server_selection_timeout=0.01):
-            with self.assertRaises(AutoReconnect):
-                connected(MongoClient())
+        with self.assertRaises(AutoReconnect):
+            connected(MongoClient(serverSelectionTimeoutMS=10))
 
         # Override the defaults. No error.
         connected(MongoClient(host, port))
@@ -228,15 +230,15 @@ class TestClient(IntegrationTest):
         self.assertTrue(c.min_wire_version >= 0)
 
         bad_host = "somedomainthatdoesntexist.org"
-        with client_knobs(server_selection_timeout=0.01):
-            c = MongoClient(bad_host, port, connectTimeoutMS=1)
-            self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
+        c = MongoClient(bad_host, port, connectTimeoutMS=1,
+                        serverSelectionTimeoutMS=10)
+        self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_init_disconnected_with_auth(self):
         uri = "mongodb://user:pass@somedomainthatdoesntexist"
-        with client_knobs(server_selection_timeout=0.01):
-            c = MongoClient(uri, connectTimeoutMS=1)
-            self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
+        c = MongoClient(uri, connectTimeoutMS=1,
+                        serverSelectionTimeoutMS=10)
+        self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_equality(self):
         c = connected(rs_or_single_client())
@@ -246,9 +248,9 @@ class TestClient(IntegrationTest):
         self.assertFalse(client_context.rs_or_standalone_client != c)
 
     def test_host_w_port(self):
-        with client_knobs(server_selection_timeout=0.01):
-            with self.assertRaises(AutoReconnect):
-                connected(MongoClient("%s:1234567" % host, connectTimeoutMS=1))
+        with self.assertRaises(AutoReconnect):
+            connected(MongoClient("%s:1234567" % host, connectTimeoutMS=1,
+                                  serverSelectionTimeoutMS=10))
 
     def test_repr(self):
         # Making host a str avoids the 'u' prefix in Python 2, so the repr is
@@ -404,10 +406,10 @@ class TestClient(IntegrationTest):
         self.assertTrue("pymongo_test" in dbs)
 
         # Confirm it fails with a missing socket.
-        with client_knobs(server_selection_timeout=0.1):
-            self.assertRaises(
-                ConnectionFailure,
-                connected, MongoClient("mongodb:///tmp/non-existent.sock"))
+        self.assertRaises(
+            ConnectionFailure,
+            connected, MongoClient("mongodb:///tmp/non-existent.sock",
+                                   serverSelectionTimeoutMS=100))
 
     def test_fork(self):
         # Test using a client before and after a fork.
@@ -724,9 +726,9 @@ class TestClient(IntegrationTest):
         wait_until(raises_cursor_not_found, 'close cursor')
 
     def test_kill_cursors_with_server_unavailable(self):
-        with client_knobs(server_selection_timeout=0,
-                          kill_cursor_frequency=9999999):
-            client = MongoClient('doesnt exist', connect=False)
+        with client_knobs(kill_cursor_frequency=9999999):
+            client = MongoClient('doesnt exist', connect=False,
+                                 serverSelectionTimeoutMS=0)
 
             # Wait for the first tick of the periodic kill-cursors to pass.
             time.sleep(1)
@@ -808,34 +810,38 @@ class TestClient(IntegrationTest):
 
     @client_context.require_no_replica_set
     def test_connect_to_standalone_using_replica_set_name(self):
-        with client_knobs(server_selection_timeout=0.1):
-            client = MongoClient(pair, replicaSet='anything')
+        client = MongoClient(pair, replicaSet='anything',
+                             serverSelectionTimeoutMS=100)
 
-            with self.assertRaises(AutoReconnect):
-                client.test.test.find_one()
+        with self.assertRaises(AutoReconnect):
+            client.test.test.find_one()
 
     @client_context.require_replica_set
     def test_stale_getmore(self):
         # A cursor is created, but its member goes down and is removed from
         # the topology before the getMore message is sent. Test that
         # MongoClient._send_message_with_response handles the error.
-        with client_knobs(server_selection_timeout=0.01):
-            with self.assertRaises(AutoReconnect):
-                self.client._send_message_with_response(
-                    operation=message._GetMore('collection', 101, 1234),
-                    address=('not-a-member', 27017))
+        with self.assertRaises(AutoReconnect):
+            client = MongoClient(host, port, connect=False,
+                                 serverSelectionTimeoutMS=100,
+                                 replicaSet=client_context.replica_set_name)
+            client._send_message_with_response(
+                operation=message._GetMore('collection', 101, 1234),
+                address=('not-a-member', 27017))
 
     @client_context.require_replica_set
     def test_stale_killcursors(self):
         # A cursor is created, but its member goes down and is removed from
         # the topology before the killCursors message is sent. Test that
         # MongoClient._send_message handles the error.
-        with client_knobs(server_selection_timeout=0.01):
-            with self.assertRaises(AutoReconnect):
-                self.client._send_message(
-                    msg=message.kill_cursors([1234]),
-                    check_primary=False,
-                    address=('not-a-member', 27017))
+        with self.assertRaises(AutoReconnect):
+            client = MongoClient(host, port, connect=False,
+                                 serverSelectionTimeoutMS=100,
+                                 replicaSet=client_context.replica_set_name)
+            client._send_message(
+                msg=message.kill_cursors([1234]),
+                check_primary=False,
+                address=('not-a-member', 27017))
 
 
 class TestExhaustCursor(IntegrationTest):

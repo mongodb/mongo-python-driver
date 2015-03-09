@@ -31,8 +31,7 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
 from pymongo.ssl_support import HAVE_SSL
-from test import (client_knobs,
-                  host,
+from test import (host,
                   pair,
                   port,
                   SkipTest,
@@ -85,8 +84,8 @@ if HAVE_SSL:
 
     # Is MongoDB configured for SSL?
     try:
-        with client_knobs(server_selection_timeout=0.1):
-            connected(MongoClient(host, port, ssl=True))
+        connected(MongoClient(host, port, ssl=True,
+                              serverSelectionTimeoutMS=100))
 
         SIMPLE_SSL = True
     except ConnectionFailure:
@@ -95,9 +94,9 @@ if HAVE_SSL:
     # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
     # mongodb jstests/lib?
     try:
-        with client_knobs(server_selection_timeout=0.1):
-            ssl_client = connected(MongoClient(
-                host, port, ssl=True, ssl_certfile=CLIENT_PEM))
+        ssl_client = connected(MongoClient(
+            host, port, ssl=True, ssl_certfile=CLIENT_PEM,
+            serverSelectionTimeoutMS=100))
 
         CERT_SSL = True
     except ConnectionFailure:
@@ -338,38 +337,41 @@ class TestSSL(unittest.TestCase):
 
         response = ssl_client.admin.command('ismaster')
 
-        with client_knobs(server_wait_time=0.1):
-            with self.assertRaises(ConnectionFailure):
-                connected(MongoClient(pair,
-                                      ssl=True,
-                                      ssl_certfile=CLIENT_PEM,
-                                      ssl_cert_reqs=ssl.CERT_REQUIRED,
-                                      ssl_ca_certs=CA_PEM))
-
+        with self.assertRaises(ConnectionFailure):
             connected(MongoClient(pair,
                                   ssl=True,
                                   ssl_certfile=CLIENT_PEM,
                                   ssl_cert_reqs=ssl.CERT_REQUIRED,
                                   ssl_ca_certs=CA_PEM,
-                                  ssl_match_hostname=False))
+                                  serverSelectionTimeoutMS=100))
+
+        connected(MongoClient(pair,
+                              ssl=True,
+                              ssl_certfile=CLIENT_PEM,
+                              ssl_cert_reqs=ssl.CERT_REQUIRED,
+                              ssl_ca_certs=CA_PEM,
+                              ssl_match_hostname=False,
+                              serverSelectionTimeoutMS=100))
 
 
-            if 'setName' in response:
-                with self.assertRaises(ConnectionFailure):
-                    connected(MongoClient(pair,
-                                          replicaSet=response['setName'],
-                                          ssl=True,
-                                          ssl_certfile=CLIENT_PEM,
-                                          ssl_cert_reqs=ssl.CERT_REQUIRED,
-                                          ssl_ca_certs=CA_PEM))
-
+        if 'setName' in response:
+            with self.assertRaises(ConnectionFailure):
                 connected(MongoClient(pair,
                                       replicaSet=response['setName'],
                                       ssl=True,
                                       ssl_certfile=CLIENT_PEM,
                                       ssl_cert_reqs=ssl.CERT_REQUIRED,
                                       ssl_ca_certs=CA_PEM,
-                                      ssl_match_hostname=False))
+                                      serverSelectionTimeoutMS=100))
+
+            connected(MongoClient(pair,
+                                  replicaSet=response['setName'],
+                                  ssl=True,
+                                  ssl_certfile=CLIENT_PEM,
+                                  ssl_cert_reqs=ssl.CERT_REQUIRED,
+                                  ssl_ca_certs=CA_PEM,
+                                  ssl_match_hostname=False,
+                                  serverSelectionTimeoutMS=100))
 
 
     def test_mongodb_x509_auth(self):
@@ -436,16 +438,16 @@ class TestSSL(unittest.TestCase):
         # These tests will raise SSLError (>= 3.2) or ConnectionFailure
         # (2.x) depending on where OpenSSL first sees the PEM file.
         try:
-            with client_knobs(server_selection_timeout=0.1):
-                connected(MongoClient(uri, ssl=True, ssl_certfile=CA_PEM))
+            connected(MongoClient(uri, ssl=True, ssl_certfile=CA_PEM,
+                                  serverSelectionTimeoutMS=100))
         except (ssl.SSLError, ConnectionFailure):
             pass
         else:
             self.fail("Invalid certificate accepted.")
 
         try:
-            with client_knobs(server_selection_timeout=0.1):
-                connected(MongoClient(pair, ssl=True, ssl_certfile=CA_PEM))
+            connected(MongoClient(pair, ssl=True, ssl_certfile=CA_PEM,
+                                  serverSelectionTimeoutMS=100))
         except (ssl.SSLError, ConnectionFailure):
             pass
         else:

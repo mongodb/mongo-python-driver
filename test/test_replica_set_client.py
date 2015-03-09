@@ -91,11 +91,11 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
                 MongoReplicaSetClient()
 
     def test_connect(self):
-        with client_knobs(server_selection_timeout=0.1):
-            client = MongoClient(pair, replicaSet='fdlksjfdslkjfd')
+        client = MongoClient(pair, replicaSet='fdlksjfdslkjfd',
+                             serverSelectionTimeoutMS=100)
 
-            with self.assertRaises(ConnectionFailure):
-                client.test.test.find_one()
+        with self.assertRaises(ConnectionFailure):
+            client.test.test.find_one()
 
     def test_repr(self):
         with ignore_deprecations():
@@ -165,22 +165,22 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         c.close()
 
     def test_auto_reconnect_exception_when_read_preference_is_secondary(self):
-        with client_knobs(server_selection_timeout=0.1):
-            c = MongoClient(pair, replicaSet=self.name)
-            db = c.pymongo_test
+        c = MongoClient(pair, replicaSet=self.name,
+                        serverSelectionTimeoutMS=100)
+        db = c.pymongo_test
 
-            def raise_socket_error(*args, **kwargs):
-                raise socket.error
+        def raise_socket_error(*args, **kwargs):
+            raise socket.error
 
-            old_sendall = socket.socket.sendall
-            socket.socket.sendall = raise_socket_error
+        old_sendall = socket.socket.sendall
+        socket.socket.sendall = raise_socket_error
 
-            try:
-                cursor = db.get_collection(
-                    "test", read_preference=ReadPreference.SECONDARY).find()
-                self.assertRaises(AutoReconnect, cursor.next)
-            finally:
-                socket.socket.sendall = old_sendall
+        try:
+            cursor = db.get_collection(
+                "test", read_preference=ReadPreference.SECONDARY).find()
+            self.assertRaises(AutoReconnect, cursor.next)
+        finally:
+            socket.socket.sendall = old_sendall
 
     def test_timeout_does_not_mark_member_down(self):
         # If a query times out, the client shouldn't mark the member "down".

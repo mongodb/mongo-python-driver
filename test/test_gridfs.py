@@ -374,15 +374,15 @@ class TestGridfs(IntegrationTest):
         self.assertTrue(iterate_file(f))
 
     def test_gridfs_lazy_connect(self):
-        with client_knobs(server_selection_timeout=0.01):
-            client = MongoClient('badhost', connect=False)
-            db = client.db
-            gfs = gridfs.GridFS(db)
-            self.assertRaises(ConnectionFailure, gfs.list)
+        client = MongoClient('badhost', connect=False,
+                             serverSelectionTimeoutMS=10)
+        db = client.db
+        gfs = gridfs.GridFS(db)
+        self.assertRaises(ConnectionFailure, gfs.list)
 
-            fs = gridfs.GridFS(db)
-            f = fs.new_file()  # Still no connection.
-            self.assertRaises(ConnectionFailure, f.close)
+        fs = gridfs.GridFS(db)
+        f = fs.new_file()  # Still no connection.
+        self.assertRaises(ConnectionFailure, f.close)
 
     def test_gridfs_find(self):
         self.fs.put(b"test2", filename="two")
