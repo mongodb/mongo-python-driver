@@ -58,21 +58,16 @@ class client_knobs(object):
     def __init__(
             self,
             heartbeat_frequency=None,
-            kill_cursor_frequency=None,
-            server_selection_timeout=None):
+            kill_cursor_frequency=None):
         self.heartbeat_frequency = heartbeat_frequency
         self.kill_cursor_frequency = kill_cursor_frequency
-        self.server_selection_timeout = server_selection_timeout
 
         self.old_heartbeat_frequency = None
         self.old_kill_cursor_frequency = None
-        self.old_server_selection_timeout = None
 
     def enable(self):
         self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
         self.old_kill_cursor_frequency = common.KILL_CURSOR_FREQUENCY
-        self.old_server_selection_timeout = \
-            common.SERVER_SELECTION_TIMEOUT
 
         if self.heartbeat_frequency is not None:
             common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
@@ -80,18 +75,12 @@ class client_knobs(object):
         if self.kill_cursor_frequency is not None:
             common.KILL_CURSOR_FREQUENCY = self.kill_cursor_frequency
 
-        if self.server_selection_timeout is not None:
-            common.SERVER_SELECTION_TIMEOUT = \
-                self.server_selection_timeout
-
     def __enter__(self):
         self.enable()
 
     def disable(self):
         common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
         common.KILL_CURSOR_FREQUENCY = self.old_kill_cursor_frequency
-        common.SERVER_SELECTION_TIMEOUT = \
-            self.old_server_selection_timeout
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable()
@@ -116,10 +105,11 @@ class ClientContext(object):
         self.has_ipv6 = False
 
         try:
-            with client_knobs(server_selection_timeout=0.1):
-                client = pymongo.MongoClient(host, port)
-                client.admin.command('ismaster')  # Can we connect?
-
+            client = pymongo.MongoClient(host, port,
+                                         serverSelectionTimeoutMS=100)
+            client.admin.command('ismaster')  # Can we connect?
+            
+            # If so, then reset client to defaults.
             self.client = pymongo.MongoClient(host, port)
 
         except pymongo.errors.ConnectionFailure:
@@ -342,16 +332,14 @@ class MockClientTest(unittest.TestCase):
     This class is *not* an IntegrationTest: if properly written, MockClient
     tests do not require a running server.
 
-    The class temporarily overrides HEARTBEAT_FREQUENCY and
-    SERVER_SELECTION_TIMEOUT to speed up tests.
+    The class temporarily overrides HEARTBEAT_FREQUENCY to speed up tests.
     """
 
     def setUp(self):
         super(MockClientTest, self).setUp()
 
         self.client_knobs = client_knobs(
-            heartbeat_frequency=0.001,
-            server_selection_timeout=0.1)
+            heartbeat_frequency=0.001)
 
         self.client_knobs.enable()
 

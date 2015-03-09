@@ -17,7 +17,6 @@
 import threading
 
 from test import (client_context,
-                  client_knobs,
                   db_user,
                   db_pwd,
                   IntegrationTest,
@@ -197,15 +196,14 @@ class TestThreads(IntegrationTest):
             # Frequent thread switches hurt performance badly enough to
             # prevent reconnection within 5 seconds, especially in Python 2
             # on a Windows build slave.
-            with client_knobs(server_selection_timeout=30):
-                for t in threads:
-                    t.start()
+            for t in threads:
+                t.start()
 
-                for t in threads:
-                    t.join(30)
+            for t in threads:
+                t.join(30)
 
-                for t in threads:
-                    self.assertTrue(t.passed)
+            for t in threads:
+                self.assertTrue(t.passed)
 
 
 class TestThreadsAuth(IntegrationTest):

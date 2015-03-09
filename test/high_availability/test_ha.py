@@ -72,9 +72,7 @@ class HATestCase(unittest.TestCase):
             # Disable periodic monitoring.
             heartbeat_frequency = 1e6
 
-        self.knobs = client_knobs(
-            heartbeat_frequency=heartbeat_frequency,
-            server_selection_timeout=self.server_selection_timeout)
+        self.knobs = client_knobs(heartbeat_frequency=heartbeat_frequency)
 
         self.knobs.enable()
 
@@ -96,7 +94,10 @@ class TestDirectConnection(HATestCase):
         self.seed, self.name = res
 
     def test_secondary_connection(self):
-        self.c = MongoClient(self.seed, replicaSet=self.name)
+        self.c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         wait_until(lambda: len(self.c.secondaries), "discover secondary")
         # Wait for replication...
         w = len(self.c.secondaries) + 1
@@ -123,7 +124,11 @@ class TestDirectConnection(HATestCase):
             {'read_preference': SECONDARY_PREFERRED},
             {'read_preference': NEAREST},
         ]:
-            client = MongoClient(primary_host, primary_port, **kwargs)
+            client = MongoClient(
+                primary_host,
+                primary_port,
+                serverSelectionTimeoutMS=self.server_selection_timeout,
+                **kwargs)
             wait_until(lambda: primary_host == client.host,
                        "connect to primary")
 
@@ -133,7 +138,11 @@ class TestDirectConnection(HATestCase):
             # Direct connection to primary can be queried with any read pref
             self.assertTrue(client.pymongo_test.test.find_one())
 
-            client = MongoClient(secondary_host, secondary_port, **kwargs)
+            client = MongoClient(
+                secondary_host,
+                secondary_port,
+                serverSelectionTimeoutMS=self.server_selection_timeout,
+                **kwargs)
             wait_until(lambda: secondary_host == client.host,
                        "connect to secondary")
 
@@ -163,7 +172,11 @@ class TestDirectConnection(HATestCase):
                     'have raised exception' % (client,))
 
             # Test direct connection to an arbiter
-            client = MongoClient(arbiter_host, arbiter_port, **kwargs)
+            client = MongoClient(
+                arbiter_host,
+                arbiter_port,
+                serverSelectionTimeoutMS=self.server_selection_timeout,
+                **kwargs)
             wait_until(lambda: arbiter_host == client.host,
                        "connect to arbiter")
 
@@ -198,7 +211,10 @@ class TestPassiveAndHidden(HATestCase):
         self.seed, self.name = res
 
     def test_passive_and_hidden(self):
-        self.c = MongoClient(self.seed, replicaSet=self.name)
+        self.c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
 
         passives = ha_tools.get_passives()
         passives = partition_nodes(passives)
@@ -225,7 +241,10 @@ class TestMonitorRemovesRecoveringMember(HATestCase):
         self.seed, self.name = res
 
     def test_monitor_removes_recovering_member(self):
-        self.c = MongoClient(self.seed, replicaSet=self.name)
+        self.c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
 
         secondaries = ha_tools.get_secondaries()
 
@@ -259,7 +278,10 @@ class TestTriggeredRefresh(HATestCase):
         # we'll create a separate client for each
         self.c_find_one, self.c_count = [
             MongoClient(
-                self.seed, replicaSet=self.name, read_preference=SECONDARY)
+                self.seed,
+                replicaSet=self.name,
+                read_preference=SECONDARY,
+                serverSelectionTimeoutMS=self.server_selection_timeout)
             for _ in xrange(2)]
 
         # We've started the primary and one secondary
@@ -293,8 +315,14 @@ class TestTriggeredRefresh(HATestCase):
         self.assertEqual(partition_node(primary), self.c_count.primary)
 
     def test_stepdown_triggers_refresh(self):
-        c_find_one = MongoClient(self.seed, replicaSet=self.name)
-        c_count = MongoClient(self.seed, replicaSet=self.name)
+        c_find_one = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
+        c_count = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
 
         # We've started the primary and one secondary
         wait_until(lambda: len(c_find_one.secondaries), "discover secondary")
@@ -325,7 +353,10 @@ class TestHealthMonitor(HATestCase):
         self.seed, self.name = res
 
     def test_primary_failure(self):
-        c = MongoClient(self.seed, replicaSet=self.name)
+        c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: len(c.secondaries) == 2, "discover secondaries")
         old_primary = c.primary
@@ -342,7 +373,10 @@ class TestHealthMonitor(HATestCase):
                    timeout=30)
 
     def test_secondary_failure(self):
-        c = MongoClient(self.seed, replicaSet=self.name)
+        c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: len(c.secondaries) == 2, "discover secondaries")
         primary = c.primary
@@ -364,7 +398,10 @@ class TestHealthMonitor(HATestCase):
                    timeout=30)
 
     def test_primary_stepdown(self):
-        c = MongoClient(self.seed, replicaSet=self.name)
+        c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: len(c.secondaries) == 2, "discover secondaries")
 
@@ -392,7 +429,10 @@ class TestWritesWithFailover(HATestCase):
         self.seed, self.name = res
 
     def test_writes_with_failover(self):
-        c = MongoClient(self.seed, replicaSet=self.name)
+        c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: len(c.secondaries) == 2, "discover secondaries")
         primary = c.primary
@@ -437,7 +477,10 @@ class TestReadWithFailover(HATestCase):
         self.seed, self.name = res
 
     def test_read_with_failover(self):
-        c = MongoClient(self.seed, replicaSet=self.name)
+        c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: len(c.secondaries) == 2, "discover secondaries")
 
@@ -513,7 +556,10 @@ class TestReadPreference(HATestCase):
         self.other_secondary_tags = ha_tools.get_tags(other_secondary)
         self.other_secondary_dc = {'dc': self.other_secondary_tags['dc']}
 
-        self.c = MongoClient(self.seed, replicaSet=self.name)
+        self.c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         self.w = len(self.c.secondaries) + 1
         self.db = self.c.get_database("pymongo_test",
                                       write_concern=WriteConcern(w=self.w))
@@ -538,7 +584,10 @@ class TestReadPreference(HATestCase):
         #
         # For each state, we verify the behavior of PRIMARY,
         # PRIMARY_PREFERRED, SECONDARY, SECONDARY_PREFERRED, and NEAREST
-        c = MongoClient(self.seed, replicaSet=self.name)
+        c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: len(c.secondaries) == 2, "discover secondaries")
 
@@ -751,7 +800,10 @@ class TestReplicaSetAuth(HATestCase):
         ]
 
         res = ha_tools.start_replica_set(members, auth=True)
-        self.c = MongoClient(res[0], replicaSet=res[1])
+        self.c = MongoClient(
+            res[0],
+            replicaSet=res[1],
+            serverSelectionTimeoutMS=self.server_selection_timeout)
 
         # Add an admin user to enable auth
         self.c.admin.add_user('admin', 'adminpass')
@@ -793,9 +845,19 @@ class TestAlive(HATestCase):
     def test_alive(self):
         primary = ha_tools.get_primary()
         secondary = ha_tools.get_random_secondary()
-        primary_cx = connected(MongoClient(primary))
-        secondary_cx = connected(MongoClient(secondary))
-        rsc = connected(MongoClient(self.seed, replicaSet=self.name))
+        primary_cx = connected(
+            MongoClient(
+                primary,
+                serverSelectionTimeoutMS=self.server_selection_timeout)),
+        secondary_cx = connected(
+            MongoClient(
+                secondary,
+                serverSelectionTimeoutMS=self.server_selection_timeout))
+        rsc = connected(
+            MongoClient(
+                self.seed,
+                replicaSet=self.name,
+                serverSelectionTimeoutMS=self.server_selection_timeout))
 
         self.assertTrue(primary_cx.alive())
         self.assertTrue(secondary_cx.alive())
@@ -822,7 +884,9 @@ class TestMongosLoadBalancing(HATestCase):
         seed_list = ha_tools.create_sharded_cluster()
         self.assertIsNotNone(seed_list)
         self.dbname = 'pymongo_mongos_ha'
-        self.client = MongoClient(seed_list)
+        self.client = MongoClient(
+            seed_list,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         self.client.drop_database(self.dbname)
 
     def test_mongos_load_balancing(self):
@@ -873,7 +937,10 @@ class TestLastErrorDefaults(HATestCase):
         members = [{}, {}]
         res = ha_tools.start_replica_set(members)
         self.seed, self.name = res
-        self.c = MongoClient(self.seed, replicaSet=self.name)
+        self.c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
 
     def test_get_last_error_defaults(self):
         replset = self.c.local.system.replset.find_one()
@@ -905,7 +972,10 @@ class TestShipOfTheseus(HATestCase):
         self.seed, self.name = res
 
     def test_ship_of_theseus(self):
-        c = MongoClient(self.seed, replicaSet=self.name)
+        c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout))
         db = c.get_database(
             "pymongo_test",
             write_concern=WriteConcern(w=len(c.secondaries) + 1))
@@ -996,7 +1066,10 @@ class TestLastError(HATestCase):
         self.seed, self.name = res
 
     def test_last_error(self):
-        c = MongoClient(self.seed, replicaSet=self.name)
+        c = MongoClient(
+            self.seed,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         wait_until(lambda: c.primary, "discover primary")
         wait_until(lambda: c.secondaries, "discover secondary")
         ha_tools.stepdown_primary()
