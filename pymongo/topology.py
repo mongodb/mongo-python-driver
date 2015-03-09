@@ -178,7 +178,7 @@ class Topology(object):
             topology_type = self._description.topology_type
             if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
                                      TOPOLOGY_TYPE.ReplicaSetNoPrimary):
-                return []
+                return set()
 
             descriptions = selector(self._description.known_servers)
             return set([d.address for d in descriptions])

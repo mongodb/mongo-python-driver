@@ -43,7 +43,7 @@ class CodecOptions(_options_base):
     def __new__(cls, as_class=dict,
                 tz_aware=False, uuid_representation=PYTHON_LEGACY):
         if not issubclass(as_class, MutableMapping):
-            raise TypeError("document_class must be dict, bson.son.SON, or "
+            raise TypeError("as_class must be dict, bson.son.SON, or "
                             "another subclass of collections.MutableMapping")
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")

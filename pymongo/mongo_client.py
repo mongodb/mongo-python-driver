@@ -264,7 +264,7 @@ class MongoClient(common.BaseObject):
 
                client['__my_database__']
 
-           Not:
+           Not::
 
                client.__my_database__
         """
@@ -463,28 +463,6 @@ class MongoClient(common.BaseObject):
             return default
 
     @property
-    def host(self):
-        """Hostname of the standalone, primary, or mongos currently in use.
-
-        .. warning:: An application that accesses :attr:`host` and :attr:`port`
-           is vulnerable to a race condition, if the client switches to a
-           new primary or mongos in between. Use :attr:`address` instead.
-        """
-        address = self.address
-        return address[0] if address else None
-
-    @property
-    def port(self):
-        """Port of the standalone, primary, or mongos currently in use.
-
-        .. warning:: An application that accesses :attr:`host` and :attr:`port`
-           is vulnerable to a race condition, if the client switches to a
-           new primary or mongos in between. Use :attr:`address` instead.
-        """
-        address = self.address
-        return address[1] if address else None
-
-    @property
     def address(self):
         """(host, port) of the current standalone, primary, or mongos, or None.
 
@@ -506,7 +484,9 @@ class MongoClient(common.BaseObject):
     def primary(self):
         """The (host, port) of the current primary of the replica set.
 
-        Returns None if there is no primary.
+        Returns ``None`` if this client is not connected to a replica set,
+        there is no primary, or this client was created without the
+        `replicaSet` option.
 
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0 when
@@ -518,7 +498,9 @@ class MongoClient(common.BaseObject):
     def secondaries(self):
         """The secondary members known to this client.
 
-        A sequence of (host, port) pairs.
+        A sequence of (host, port) pairs. Empty if this client is not
+        connected to a replica set, there are no visible secondaries, or this
+        client was created without the `replicaSet` option.
 
         .. versionadded:: 3.0
            MongoClient gained this property in version 3.0 when
@@ -531,13 +513,14 @@ class MongoClient(common.BaseObject):
         """Arbiters in the replica set.
 
         A sequence of (host, port) pairs. Empty if this client is not
-        connected to a replica set.
+        connected to a replica set, there are no arbiters, or this client was
+        created without the `replicaSet` option.
         """
         return self._topology.get_arbiters()
 
     @property
     def is_primary(self):
-        """If the current server can accept writes.
+        """If this client if connected to a server that can accept writes.
 
         True if the current server is a standalone, mongos, or the primary of
         a replica set.
@@ -570,32 +553,6 @@ class MongoClient(common.BaseObject):
         """
         description = self._topology.description
         return frozenset(s.address for s in description.known_servers)
-
-    @property
-    def document_class(self):
-        """Default class to use for documents returned from this client.
-
-        .. versionchanged:: 3.0
-           Now read-only.
-        """
-        return self.__options.codec_options.as_class
-
-    def get_document_class(self):
-        """Default class to use for documents returned from this client.
-
-        Deprecated; use the document_class property instead.
-        """
-        warnings.warn('get_document_class() is deprecated, use the'
-                      ' document_class property',
-                      DeprecationWarning, stacklevel=2)
-
-        return self.__options.codec_options.as_class
-
-    @property
-    def tz_aware(self):
-        """Does this client return timezone-aware datetimes?
-        """
-        return self.__options.codec_options.tz_aware
 
     @property
     def max_bson_size(self):

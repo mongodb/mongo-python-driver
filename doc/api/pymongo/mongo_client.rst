@@ -15,14 +15,10 @@
          Raises :class:`~pymongo.errors.InvalidName` if an invalid database name is used.
 
       .. autoattribute:: address
-      .. autoattribute:: host
-      .. autoattribute:: port
       .. autoattribute:: is_primary
       .. autoattribute:: is_mongos
       .. autoattribute:: max_pool_size
       .. autoattribute:: nodes
-      .. autoattribute:: document_class
-      .. autoattribute:: tz_aware
       .. autoattribute:: max_bson_size
       .. autoattribute:: max_message_size
       .. autoattribute:: min_wire_version

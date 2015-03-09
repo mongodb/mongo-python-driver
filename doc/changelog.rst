@@ -87,6 +87,9 @@ The ``copy_database`` method is removed, see the
 The ``disconnect`` method is removed. Use
 :meth:`~pymongo.mongo_client.MongoClient.close` instead.
 
+The ``get_document_class`` method is removed. Use
+:attr:`~pymongo.mongo_client.MongoClient.codec_options` instead.
+
 The ``get_lasterror_options``, ``set_lasterror_options``, and
 ``unset_lasterror_options`` methods are removed. Write concern options
 can be passed to :class:`~pymongo.mongo_client.MongoClient` as keyword
@@ -96,7 +99,7 @@ The :meth:`~pymongo.mongo_client.MongoClient.get_database` method is added for
 getting a Database instance with its options configured differently than the
 MongoClient's.
 
-The following attributes have been added:
+The following read-only attributes have been added:
 
 - :attr:`~pymongo.mongo_client.MongoClient.codec_options`
 
@@ -107,9 +110,17 @@ The following attributes are now read-only:
 
 The following attributes have been removed:
 
+- :attr:`~pymongo.mongo_client.MongoClient.document_class`
+  (use :attr:`~pymongo.mongo_client.MongoClient.codec_options` instead)
+- :attr:`~pymongo.mongo_client.MongoClient.host`
+  (use :attr:`~pymongo.mongo_client.MongoClient.address` instead)
+- :attr:`~pymongo.mongo_client.MongoClient.port`
+  (use :attr:`~pymongo.mongo_client.MongoClient.address` instead)
 - :attr:`~pymongo.mongo_client.MongoClient.safe`
 - :attr:`~pymongo.mongo_client.MongoClient.slave_okay`
 - :attr:`~pymongo.mongo_client.MongoClient.tag_sets`
+- :attr:`~pymongo.mongo_client.MongoClient.tz_aware`
+  (use :attr:`~pymongo.mongo_client.MongoClient.codec_options` instead)
 
 The following attributes have been renamed:
 
@@ -143,7 +154,7 @@ parameter.
 The ``connection`` property is renamed to
 :attr:`~pymongo.database.Database.client`.
 
-The following attributes have been added:
+The following read-only attributes have been added:
 
 - :attr:`~pymongo.database.Database.codec_options`
 
@@ -192,7 +203,7 @@ The ``get_lasterror_options``, ``set_lasterror_options``, and
 :class:`~pymongo.collection.Collection` changes
 ...............................................
 
-The following attributes have been added:
+The following read-only attributes have been added:
 
 - :attr:`~pymongo.collection.Collection.codec_options`
 

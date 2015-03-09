@@ -43,8 +43,8 @@ class TestSecondaryBecomesStandalone(MockClientTest):
             replicaSet='rs')
 
         # MongoClient connects to primary by default.
-        wait_until(lambda: c.host == 'a', 'connect to primary')
-        self.assertEqual(1, c.port)
+        wait_until(lambda: c.address is not None, 'connect to primary')
+        self.assertEqual(c.address, ('a', 1))
 
         # C is brought up as a standalone.
         c.mock_members.remove('c:3')
@@ -60,8 +60,7 @@ class TestSecondaryBecomesStandalone(MockClientTest):
         with self.assertRaises(AutoReconnect):
             c.db.command('ismaster')
 
-        self.assertEqual(None, c.host)
-        self.assertEqual(None, c.port)
+        self.assertEqual(c.address, None)
 
     def test_replica_set_client(self):
         c = MockClient(
@@ -144,8 +143,7 @@ class TestSecondaryAdded(MockClientTest):
         wait_until(lambda: len(c.nodes) == 2, 'discover both nodes')
 
         # MongoClient connects to primary by default.
-        self.assertEqual('a', c.host)
-        self.assertEqual(1, c.port)
+        self.assertEqual(c.address, ('a', 1))
         self.assertEqual(set([('a', 1), ('b', 2)]), c.nodes)
 
         # C is added.
@@ -155,8 +153,7 @@ class TestSecondaryAdded(MockClientTest):
         c.close()
         c.db.command('ismaster')
 
-        self.assertEqual('a', c.host)
-        self.assertEqual(1, c.port)
+        self.assertEqual(c.address, ('a', 1))
 
         wait_until(lambda: set([('a', 1), ('b', 2), ('c', 3)]) == c.nodes,
                    'reconnect to both secondaries')

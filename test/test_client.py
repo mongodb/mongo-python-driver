@@ -206,16 +206,11 @@ class TestClient(IntegrationTest):
         self.assertIsInstance(c.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
-        with ignore_deprecations():
-            self.assertEqual(dict, c.get_document_class())
-
-        self.assertIsInstance(c.tz_aware, bool)
+        self.assertEqual(c.codec_options, CodecOptions())
         self.assertIsInstance(c.max_bson_size, int)
         self.assertIsInstance(c.min_wire_version, int)
         self.assertIsInstance(c.max_wire_version, int)
         self.assertIsInstance(c.max_write_batch_size, int)
-        self.assertEqual(None, c.host)
-        self.assertEqual(None, c.port)
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
 
@@ -272,8 +267,7 @@ class TestClient(IntegrationTest):
             self.assertIn("%s:%d" % node, repr(self.client))
 
     def test_getters(self):
-        self.assertEqual(client_context.client.host, host)
-        self.assertEqual(client_context.client.port, port)
+        self.assertEqual(client_context.client.address, (host, port))
         self.assertEqual(client_context.nodes, self.client.nodes)
 
     def test_database_names(self):
@@ -470,23 +464,16 @@ class TestClient(IntegrationTest):
         db = c.pymongo_test
         db.test.insert_one({"x": 1})
 
-        self.assertEqual(dict, c.document_class)
+        self.assertEqual(dict, c.codec_options.as_class)
         self.assertTrue(isinstance(db.test.find_one(), dict))
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
         c = rs_or_single_client(document_class=SON)
         db = c.pymongo_test
 
-        self.assertEqual(SON, c.document_class)
+        self.assertEqual(SON, c.codec_options.as_class)
         self.assertTrue(isinstance(db.test.find_one(), SON))
 
-        # document_class is read-only in PyMongo 3.0.
-        with self.assertRaises(AttributeError):
-            c.document_class = dict
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            self.assertRaises(DeprecationWarning, c.get_document_class)
 
     def test_timeouts(self):
         client = rs_or_single_client(connectTimeoutMS=10500)
@@ -1070,8 +1057,7 @@ class TestMongoClientFailover(MockClientTest):
                 replicaSet='rs')
 
             wait_until(lambda: len(c.nodes) == 3, 'connect')
-            self.assertEqual('a', c.host)
-            self.assertEqual(1, c.port)
+            self.assertEqual(c.address, ('a', 1))
 
             # Fail over.
             c.kill_host('a:1')
@@ -1082,8 +1068,7 @@ class TestMongoClientFailover(MockClientTest):
 
             t = c._get_topology()
             t.select_servers(writable_server_selector)  # Reconnect.
-            self.assertEqual('b', c.host)
-            self.assertEqual(2, c.port)
+            self.assertEqual(c.address, ('b', 2))
 
             # a:1 not longer in nodes.
             self.assertLess(len(c.nodes), 3)
@@ -1113,8 +1098,7 @@ class TestMongoClientFailover(MockClientTest):
         # But it can reconnect.
         c.revive_host('a:1')
         c._get_topology().select_servers(writable_server_selector)
-        self.assertEqual('a', c.host)
-        self.assertEqual(1, c.port)
+        self.assertEqual(c.address, ('a', 1))
 
     def test_network_error_on_operation(self):
         # Verify only the disconnected server is reset by a network failure.

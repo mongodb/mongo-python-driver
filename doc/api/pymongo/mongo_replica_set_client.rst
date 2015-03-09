@@ -17,10 +17,7 @@
       .. autoattribute:: primary
       .. autoattribute:: secondaries
       .. autoattribute:: arbiters
-      .. autoattribute:: is_mongos
       .. autoattribute:: max_pool_size
-      .. autoattribute:: document_class
-      .. autoattribute:: tz_aware
       .. autoattribute:: max_bson_size
       .. autoattribute:: max_message_size
       .. autoattribute:: min_wire_version
@@ -32,4 +29,7 @@
       .. automethod:: database_names
       .. automethod:: drop_database
       .. automethod:: get_default_database
+      .. automethod:: get_database
       .. automethod:: close_cursor
+      .. automethod:: kill_cursors
+      .. automethod:: set_cursor_manager

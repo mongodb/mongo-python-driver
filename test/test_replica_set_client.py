@@ -21,6 +21,7 @@ import time
 
 sys.path[0:0] = [""]
 
+from bson.codec_options import CodecOptions
 from bson.py3compat import u
 from bson.son import SON
 from pymongo.common import partition_node
@@ -124,12 +125,11 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         self.assertEqual(c.secondaries, self.secondaries)
         self.assertEqual(c.arbiters, self.arbiters)
         self.assertEqual(c.max_pool_size, 100)
-        self.assertEqual(c.document_class, dict)
-        self.assertEqual(c.tz_aware, False)
 
         # Make sure MongoClient's properties are copied to Database and
         # Collection.
         for obj in c, c.pymongo_test, c.pymongo_test.test:
+            self.assertEqual(obj.codec_options, CodecOptions())
             self.assertEqual(obj.read_preference, ReadPreference.PRIMARY)
             self.assertEqual(obj.write_concern, WriteConcern())
 
@@ -143,14 +143,14 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             pair, replicaSet=self.name, max_pool_size=25,
             document_class=SON, tz_aware=True,
             read_preference=secondary,
-            localThresholdMS=77)
+            localThresholdMS=77, j=True)
 
         self.assertEqual(c.max_pool_size, 25)
-        self.assertEqual(c.document_class, SON)
-        self.assertEqual(c.tz_aware, True)
 
         for obj in c, c.pymongo_test, c.pymongo_test.test:
+            self.assertEqual(obj.codec_options, CodecOptions(SON, True))
             self.assertEqual(obj.read_preference, secondary)
+            self.assertEqual(obj.write_concern, WriteConcern(j=True))
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(
