@@ -213,18 +213,18 @@ package::
 
   $ sudo easy_install pymongo-2.6.3-py2.7-linux-x86_64.egg
 
-Installing a release candidate
-------------------------------
+Installing a beta or release candidate
+--------------------------------------
 
-MongoDB, Inc. may occasionally tag a release candidate for testing by the
-community before final release. These releases will not be uploaded to pypi
+MongoDB, Inc. may occasionally tag a beta or release candidate for testing by
+the community before final release. These releases will not be uploaded to pypi
 but can be found on the
 `github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
 They can be installed by passing the full URL for the tag to pip::
 
-  $ pip install https://github.com/mongodb/mongo-python-driver/archive/2.8rc0.tar.gz
+  $ pip install https://github.com/mongodb/mongo-python-driver/archive/3.0b0.tar.gz
 
 or easy_install::
 
-  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/2.8rc0.tar.gz
+  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/3.0b0.tar.gz
 
