@@ -205,7 +205,8 @@ class TestSingleServerTopology(TopologyTest):
             # Can't select a server while the only server is of type Unknown.
             with self.assertRaisesRegex(ConnectionFailure,
                                         'No servers found yet'):
-                t.select_servers(any_server_selector, server_wait_time=0)
+                t.select_servers(any_server_selector,
+                                 server_selection_timeout=0)
 
             got_ismaster(t, address, ismaster_response)
 
@@ -256,7 +257,8 @@ class TestSingleServerTopology(TopologyTest):
 
         def raises_err():
             try:
-                t.select_server(writable_server_selector, server_wait_time=0.1)
+                t.select_server(writable_server_selector,
+                                server_selection_timeout=0.1)
             except ConnectionFailure:
                 return True
             else:
@@ -517,7 +519,7 @@ def wait_for_master(topology):
     If the monitor is currently calling ismaster, a blocking call to
     select_server from this thread can trigger a spurious wake of the monitor
     thread. In applications this is harmless but it would break some tests,
-    so we pass server_wait_time=0 and poll instead.
+    so we pass server_selection_timeout=0 and poll instead.
     """
     def get_master():
         try:
@@ -615,7 +617,8 @@ class TestTopologyErrors(TopologyTest):
 
         with self.assertRaisesRegex(ConnectionFailure, 'my error'):
             # Add slop to prevent rounding error.
-            t.select_servers(any_server_selector, server_wait_time=0.101)
+            t.select_servers(any_server_selector,
+                             server_selection_timeout=0.101)
 
         self.assertEqual(
             11,
@@ -632,13 +635,14 @@ class TestTopologyErrors(TopologyTest):
 
         t = create_mock_topology(monitor_class=TestMonitor)
         with self.assertRaisesRegex(ConnectionFailure, 'internal error'):
-            t.select_server(any_server_selector, server_wait_time=0.5)
+            t.select_server(any_server_selector,
+                            server_selection_timeout=0.5)
 
 
 class TestServerSelectionErrors(TopologyTest):
     def assertMessage(self, message, topology, selector=any_server_selector):
         with self.assertRaises(ConnectionFailure) as context:
-            topology.select_server(selector, server_wait_time=0)
+            topology.select_server(selector, server_selection_timeout=0)
 
         self.assertEqual(message, str(context.exception))
 

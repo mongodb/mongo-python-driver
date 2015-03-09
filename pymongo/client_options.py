@@ -18,6 +18,7 @@ from bson.codec_options import _parse_codec_options
 from bson.py3compat import iteritems
 from pymongo.auth import _build_credentials_tuple
 from pymongo.common import validate, validate_boolean
+from pymongo import common
 from pymongo.errors import ConfigurationError
 from pymongo.pool import PoolOptions
 from pymongo.read_preferences import make_read_preference
@@ -116,6 +117,10 @@ class ClientOptions(object):
         self.__credentials = _parse_credentials(
             username, password, database, options)
         self.__local_threshold_ms = options.get('localthresholdms', 15)
+        # self.__server_selection_timeout is in seconds. Must use full name for
+        # common.SERVER_SELECTION_TIMEOUT because it is set directly by tests.
+        self.__server_selection_timeout = options.get(
+            'serverselectiontimeoutms', common.SERVER_SELECTION_TIMEOUT)
         self.__pool_options = _parse_pool_options(options)
         self.__read_preference = _parse_read_preference(options)
         self.__replica_set_name = options.get('replicaset')
@@ -135,6 +140,11 @@ class ClientOptions(object):
     def local_threshold_ms(self):
         """The local threshold for this instance."""
         return self.__local_threshold_ms
+
+    @property
+    def server_selection_timeout(self):
+        """The server selection timeout for this instance in seconds."""
+        return self.__server_selection_timeout
 
     @property
     def pool_options(self):

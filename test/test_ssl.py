@@ -85,7 +85,7 @@ if HAVE_SSL:
 
     # Is MongoDB configured for SSL?
     try:
-        with client_knobs(server_wait_time=0.1):
+        with client_knobs(server_selection_timeout=0.1):
             connected(MongoClient(host, port, ssl=True))
 
         SIMPLE_SSL = True
@@ -95,7 +95,7 @@ if HAVE_SSL:
     # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
     # mongodb jstests/lib?
     try:
-        with client_knobs(server_wait_time=0.1):
+        with client_knobs(server_selection_timeout=0.1):
             ssl_client = connected(MongoClient(
                 host, port, ssl=True, ssl_certfile=CLIENT_PEM))
 
@@ -436,7 +436,7 @@ class TestSSL(unittest.TestCase):
         # These tests will raise SSLError (>= 3.2) or ConnectionFailure
         # (2.x) depending on where OpenSSL first sees the PEM file.
         try:
-            with client_knobs(server_wait_time=0.1):
+            with client_knobs(server_selection_timeout=0.1):
                 connected(MongoClient(uri, ssl=True, ssl_certfile=CA_PEM))
         except (ssl.SSLError, ConnectionFailure):
             pass
@@ -444,7 +444,7 @@ class TestSSL(unittest.TestCase):
             self.fail("Invalid certificate accepted.")
 
         try:
-            with client_knobs(server_wait_time=0.1):
+            with client_knobs(server_selection_timeout=0.1):
                 connected(MongoClient(pair, ssl=True, ssl_certfile=CA_PEM))
         except (ssl.SSLError, ConnectionFailure):
             pass

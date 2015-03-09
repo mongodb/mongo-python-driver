@@ -24,7 +24,7 @@ from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
-from pymongo.errors import AutoReconnect, InvalidOperation
+from pymongo.errors import ServerSelectionTimeoutError, InvalidOperation
 from pymongo.server import Server
 from pymongo.server_selectors import (address_server_selector,
                                       apply_local_threshold,
@@ -58,36 +58,38 @@ class Topology(object):
         with self._lock:
             self._ensure_opened()
 
-    def select_servers(self, selector, server_wait_time=None):
+    def select_servers(self, selector, server_selection_timeout=None):
         """Return a list of Servers matching selector, or time out.
 
         :Parameters:
           - `selector`: function that takes a list of Servers and returns
             a subset of them.
-          - `server_wait_time` (optional): maximum seconds to wait. If not
-            provided, the default value common.SERVER_WAIT_TIME is used.
+          - `server_selection_timeout` (optional): maximum seconds to wait.
+            If not provided, the default value common.SERVER_SELECTION_TIMEOUT
+            is used.
 
         Calls self.open() if needed.
 
-        Raises exc:`AutoReconnect` after `server_wait_time` if no
-        matching servers are found.
+        Raises exc:`ServerSelectionTimeoutError` after
+        `server_selection_timeout` if no matching servers are found.
         """
-        if server_wait_time is None:
-            wait_time = common.SERVER_WAIT_TIME
+        if server_selection_timeout is None:
+            server_timeout = self._settings.server_selection_timeout
         else:
-            wait_time = server_wait_time
+            server_timeout = server_selection_timeout
 
         with self._lock:
             self._description.check_compatible()
 
             now = self._settings.timer()
-            end_time = now + wait_time
+            end_time = now + server_timeout
             server_descriptions = self._apply_selector(selector)
 
             while not server_descriptions:
                 # No suitable servers.
-                if wait_time == 0 or now > end_time:
-                    raise AutoReconnect(self._error_message(selector))
+                if server_timeout == 0 or now > end_time:
+                    raise ServerSelectionTimeoutError(
+                        self._error_message(selector))
 
                 self._ensure_opened()
                 self._request_check_all()
@@ -104,29 +106,32 @@ class Topology(object):
             return [self.get_server_by_address(sd.address)
                     for sd in server_descriptions]
 
-    def select_server(self, selector, server_wait_time=None):
+    def select_server(self, selector, server_selection_timeout=None):
         """Like select_servers, but choose a random server if several match."""
-        return random.choice(self.select_servers(selector, server_wait_time))
+        return random.choice(self.select_servers(selector,
+                                                 server_selection_timeout))
 
-    def select_server_by_address(self, address, server_wait_time=None):
+    def select_server_by_address(self, address,
+                                 server_selection_timeout=None):
         """Return a Server for "address", reconnecting if necessary.
 
         If the server's type is not known, request an immediate check of all
-        servers. Time out after "server_wait_time" if the server cannot be
-        reached.
+        servers. Time out after "server_selection_timeout" if the server
+        cannot be reached.
 
         :Parameters:
           - `address`: A (host, port) pair.
-          - `server_wait_time` (optional): maximum seconds to wait. If not
-            provided, the default value common.SERVER_WAIT_TIME is used.
+          - `server_selection_timeout` (optional): maximum seconds to wait.
+            If not provided, the default value
+            common.SERVER_SELECTION_TIMEOUT is used.
 
         Calls self.open() if needed.
 
-        Raises exc:`AutoReconnect` after `server_wait_time` if no
-        matching servers are found.
+        Raises exc:`ServerSelectionTimeoutError` after
+        `server_selection_timeout` if no matching servers are found.
         """
         selector = partial(address_server_selector, address)
-        return self.select_server(selector, server_wait_time)
+        return self.select_server(selector, server_selection_timeout)
 
     def on_change(self, server_description):
         """Process a new ServerDescription after an ismaster call completes."""

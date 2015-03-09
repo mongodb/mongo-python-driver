@@ -91,7 +91,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
                 MongoReplicaSetClient()
 
     def test_connect(self):
-        with client_knobs(server_wait_time=0.1):
+        with client_knobs(server_selection_timeout=0.1):
             client = MongoClient(pair, replicaSet='fdlksjfdslkjfd')
 
             with self.assertRaises(ConnectionFailure):
@@ -165,7 +165,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         c.close()
 
     def test_auto_reconnect_exception_when_read_preference_is_secondary(self):
-        with client_knobs(server_wait_time=0.1):
+        with client_knobs(server_selection_timeout=0.1):
             c = MongoClient(pair, replicaSet=self.name)
             db = c.pymongo_test
 
