@@ -1288,7 +1288,7 @@ class Collection(common.BaseObject):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             res, addr = self._command(cmd,
                                       ReadPreference.PRIMARY,
-                                      CodecOptions(as_class=SON))
+                                      CodecOptions(document_class=SON))
             # MongoDB 2.8rc2
             if "indexes" in res:
                 raw = res["indexes"]
@@ -1298,7 +1298,7 @@ class Collection(common.BaseObject):
         else:
             raw = self.__database.get_collection(
                 "system.indexes",
-                codec_options=CodecOptions(as_class=SON),
+                codec_options=CodecOptions(document_class=SON),
                 read_preference=ReadPreference.PRIMARY).find(
                     {"ns": self.__full_name}, {"ns": 0})
         info = {}

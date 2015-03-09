@@ -53,7 +53,7 @@ typedef int Py_ssize_t;
 #endif
 
 typedef struct codec_options_t {
-    PyObject* as_class;
+    PyObject* document_class;
     unsigned char tz_aware;
     unsigned char uuid_rep;
 } codec_options_t;

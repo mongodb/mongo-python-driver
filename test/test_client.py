@@ -41,8 +41,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             CursorNotFound,
                             NetworkTimeout,
-                            InvalidURI,
-                            ServerSelectionTimeoutError)
+                            InvalidURI)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import SocketInfo
 from pymongo.read_preferences import ReadPreference
@@ -462,14 +461,14 @@ class TestClient(IntegrationTest):
         db = c.pymongo_test
         db.test.insert_one({"x": 1})
 
-        self.assertEqual(dict, c.codec_options.as_class)
+        self.assertEqual(dict, c.codec_options.document_class)
         self.assertTrue(isinstance(db.test.find_one(), dict))
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
         c = rs_or_single_client(document_class=SON)
         db = c.pymongo_test
 
-        self.assertEqual(SON, c.codec_options.as_class)
+        self.assertEqual(SON, c.codec_options.document_class)
         self.assertTrue(isinstance(db.test.find_one(), SON))
 
 

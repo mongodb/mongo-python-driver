@@ -141,9 +141,9 @@ collection, configured to use :class:`~bson.son.SON` instead of dict:
 .. doctest:: key-order
 
   >>> from bson import CodecOptions, SON
-  >>> opts = CodecOptions(as_class=SON)
+  >>> opts = CodecOptions(document_class=SON)
   >>> opts  # doctest: +NORMALIZE_WHITESPACE
-  CodecOptions(as_class=<class 'bson.son.SON'>,
+  CodecOptions(document_class=<class 'bson.son.SON'>,
                tz_aware=False,
                uuid_representation=PYTHON_LEGACY)
   >>> collection_son = collection.with_options(codec_options=opts)

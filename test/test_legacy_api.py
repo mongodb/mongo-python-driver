@@ -120,7 +120,7 @@ class TestLegacy(IntegrationTest):
             doc_class = SON
 
         db = self.client.get_database(
-            db.name, codec_options=CodecOptions(as_class=doc_class))
+            db.name, codec_options=CodecOptions(document_class=doc_class))
 
         def remove_insert_find_one(doc):
             db.test.remove({})
@@ -770,7 +770,7 @@ class TestLegacy(IntegrationTest):
                                    new=True, fields={'i': 1})
         self.assertFalse(isinstance(result, ExtendedDict))
         c = self.db.get_collection(
-            "test", codec_options=CodecOptions(as_class=ExtendedDict))
+            "test", codec_options=CodecOptions(document_class=ExtendedDict))
         result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                    new=True, fields={'i': 1})
         self.assertTrue(isinstance(result, ExtendedDict))

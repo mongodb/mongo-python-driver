@@ -113,26 +113,26 @@ _downcast_and_check(Py_ssize_t size, int extra) {
 /* Fill out a codec_options_t* from a CodecOptions object. Use with the "O&"
  * format spec in PyArg_ParseTuple.
  *
- * Return 1 on success. options->as_class is a new reference.
+ * Return 1 on success. options->document_class is a new reference.
  * Return 0 on failure.
  */
 int convert_codec_options(PyObject* options_obj, void* p) {
     codec_options_t* options = (codec_options_t*)p;
     if (!PyArg_ParseTuple(options_obj, "Obb",
-                          &options->as_class,
+                          &options->document_class,
                           &options->tz_aware,
                           &options->uuid_rep)) {
         return 0;
     }
 
-    Py_INCREF(options->as_class);
+    Py_INCREF(options->document_class);
     return 1;
 }
 
 /* Fill out a codec_options_t* with default options. */
 void default_codec_options(codec_options_t* options) {
-    options->as_class = (PyObject*)&PyDict_Type;
-    Py_INCREF(options->as_class);
+    options->document_class = (PyObject*)&PyDict_Type;
+    Py_INCREF(options->document_class);
 
     // TODO: set to "1". PYTHON-526, setting tz_aware=True by default.
     options->tz_aware = 0;
@@ -140,7 +140,7 @@ void default_codec_options(codec_options_t* options) {
 }
 
 void destroy_codec_options(codec_options_t* options) {
-    Py_CLEAR(options->as_class);
+    Py_CLEAR(options->document_class);
 }
 
 static PyObject* elements_to_dict(PyObject* self, const char* string,
@@ -2223,7 +2223,7 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
                                    unsigned max,
                                    const codec_options_t* options) {
     unsigned position = 0;
-    PyObject* dict = PyObject_CallObject(options->as_class, NULL);
+    PyObject* dict = PyObject_CallObject(options->document_class, NULL);
     if (!dict) {
         return NULL;
     }

@@ -132,7 +132,7 @@ class TestBSON(unittest.TestCase):
 
         def encode_then_decode(doc):
             return doc_class(doc) == BSON.encode(doc).decode(
-                CodecOptions(as_class=doc_class))
+                CodecOptions(document_class=doc_class))
 
         qcheck.check_unittest(self, encode_then_decode,
                               qcheck.gen_mongo_dict(3))
@@ -590,16 +590,17 @@ class TestBSON(unittest.TestCase):
         self.assertIsInstance(BSON.encode({}).decode(), dict)
         self.assertNotIsInstance(BSON.encode({}).decode(), SON)
         self.assertIsInstance(
-            BSON.encode({}).decode(CodecOptions(as_class=SON)),
+            BSON.encode({}).decode(CodecOptions(document_class=SON)),
             SON)
 
         self.assertEqual(
             1,
-            BSON.encode({"x": 1}).decode(CodecOptions(as_class=SON))["x"])
+            BSON.encode({"x": 1}).decode(
+                CodecOptions(document_class=SON))["x"])
 
         x = BSON.encode({"x": [{"y": 1}]})
-        self.assertIsInstance(x.decode(CodecOptions(as_class=SON))["x"][0],
-                              SON)
+        self.assertIsInstance(
+            x.decode(CodecOptions(document_class=SON))["x"][0], SON)
 
     def test_subclasses(self):
         # make sure we can serialize subclasses of native Python types.
@@ -630,7 +631,7 @@ class TestBSON(unittest.TestCase):
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(
             d,
-            BSON.encode(d).decode(CodecOptions(as_class=OrderedDict)))
+            BSON.encode(d).decode(CodecOptions(document_class=OrderedDict)))
 
     def test_bson_regex(self):
         # Invalid Python regex, though valid PCRE.
@@ -764,9 +765,9 @@ class TestBSON(unittest.TestCase):
 
 
 class TestCodecOptions(unittest.TestCase):
-    def test_as_class(self):
-        self.assertRaises(TypeError, CodecOptions, as_class=object)
-        self.assertIs(SON, CodecOptions(as_class=SON).as_class)
+    def test_document_class(self):
+        self.assertRaises(TypeError, CodecOptions, document_class=object)
+        self.assertIs(SON, CodecOptions(document_class=SON).document_class)
 
     def test_tz_aware(self):
         self.assertRaises(TypeError, CodecOptions, tz_aware=1)
@@ -779,15 +780,15 @@ class TestCodecOptions(unittest.TestCase):
         self.assertRaises(ValueError, CodecOptions, uuid_representation=2)
 
     def test_codec_options_repr(self):
-        r = ('CodecOptions(as_class=dict, tz_aware=False, '
+        r = ('CodecOptions(document_class=dict, tz_aware=False, '
              'uuid_representation=PYTHON_LEGACY)')
         self.assertEqual(r, repr(CodecOptions()))
 
     def test_decode_all_defaults(self):
-        # Test decode_all()'s default as_class is dict and tz_aware is False.
-        # The default uuid_representation is PYTHON_LEGACY but this decodes
-        # same as STANDARD, so all this test proves about UUID decoding is
-        # that it's not CSHARP_LEGACY or JAVA_LEGACY.
+        # Test decode_all()'s default document_class is dict and tz_aware is
+        # False. The default uuid_representation is PYTHON_LEGACY but this
+        # decodes same as STANDARD, so all this test proves about UUID decoding
+        # is that it's not CSHARP_LEGACY or JAVA_LEGACY.
         doc = {'sub_document': {},
                'uuid': uuid.uuid4(),
                'dt': datetime.datetime.utcnow()}

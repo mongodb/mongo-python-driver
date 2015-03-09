@@ -123,7 +123,7 @@ def _get_string(data, position, obj_end, dummy):
 
 
 def _get_object(data, position, obj_end, opts):
-    """Decode a BSON subdocument to opts.as_class or bson.dbref.DBRef."""
+    """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size = _UNPACK_INT(data[position:position + 4])[0]
     end = position + obj_size - 1
     if data[end:position + obj_size] != b"\x00":
@@ -235,7 +235,7 @@ def _get_code_w_scope(data, position, obj_end, opts):
     return Code(code, scope), position
 
 
-def _get_regex(data, position, dummy, opts):
+def _get_regex(data, position, dummy0, dummy1):
     """Decode a BSON regex to bson.regex.Regex or a python pattern object."""
     pattern, position = _get_c_string(data, position)
     bson_flags, position = _get_c_string(data, position)
@@ -303,7 +303,7 @@ def _element_to_dict(data, position, obj_end, opts):
 
 def _elements_to_dict(data, position, obj_end, opts):
     """Decode a BSON document."""
-    result = opts.as_class()
+    result = opts.document_class()
     end = obj_end - 1
     while position < end:
         (key, value, position) = _element_to_dict(data, position, obj_end, opts)
@@ -312,11 +312,11 @@ def _elements_to_dict(data, position, obj_end, opts):
 
 
 def _bson_to_dict(data, opts):
-    """Decode a BSON string to as_class."""
+    """Decode a BSON string to document_class."""
     try:
         obj_size = _UNPACK_INT(data[:4])[0]
-    except struct.error as e:
-        raise InvalidBSON(str(e))
+    except struct.error as exc:
+        raise InvalidBSON(str(exc))
     if obj_size != len(data):
         raise InvalidBSON("invalid object size")
     if data[obj_size - 1:obj_size] != b"\x00":
@@ -900,7 +900,7 @@ class BSON(bytes):
             >>> data = bson.BSON.encode({'a': 1})
             >>> decoded_doc = bson.BSON.decode(data)
             <type 'dict'>
-            >>> options = CodecOptions(as_class=collections.OrderedDict)
+            >>> options = CodecOptions(document_class=collections.OrderedDict)
             >>> decoded_doc = bson.BSON.decode(data, codec_options=options)
             >>> type(decoded_doc)
             <class 'collections.OrderedDict'>
