@@ -63,7 +63,6 @@ from test import (client_context,
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
-                        ignore_deprecations,
                         remove_all_users,
                         server_is_master_with_slave,
                         get_pool,
@@ -218,11 +217,9 @@ class TestClient(IntegrationTest):
 
         if client_context.is_rs:
             # The primary's host and port are from the replica set config.
-            self.assertIsNotNone(c.host)
-            self.assertIsNotNone(c.port)
+            self.assertIsNotNone(c.address)
         else:
-            self.assertEqual(host, c.host)
-            self.assertEqual(port, c.port)
+            self.assertEqual(c.address, (host, port))
 
         if client_context.version.at_least(2, 5, 4, -1):
             self.assertTrue(c.max_wire_version > 0)
@@ -677,7 +674,7 @@ class TestClient(IntegrationTest):
 
         self.collection = self.client.pymongo_test.test
         self.collection.drop()
-        
+
         self.collection.insert_many([{'_id': i} for i in range(200)])
         cursor = self.collection.find().batch_size(1)
         next(cursor)
@@ -950,7 +947,7 @@ class TestClientProperties(MockClientTest):
         c.db.command('ismaster')  # Connect.
 
         # Which member did we use?
-        used_host = '%s:%s' % (c.host, c.port)
+        used_host = '%s:%s' % c.address
         expected_min, expected_max = c.mock_wire_versions[used_host]
         self.assertEqual(expected_min, c.min_wire_version)
         self.assertEqual(expected_max, c.max_wire_version)
@@ -960,7 +957,7 @@ class TestClientProperties(MockClientTest):
         c.set_wire_version_range('c:3', 0, 0)
         c.close()
         c.db.command('ismaster')
-        used_host = '%s:%s' % (c.host, c.port)
+        used_host = '%s:%s' % c.address
         expected_min, expected_max = c.mock_wire_versions[used_host]
         self.assertEqual(expected_min, c.min_wire_version)
         self.assertEqual(expected_max, c.max_wire_version)
