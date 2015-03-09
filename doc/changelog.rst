@@ -4,6 +4,32 @@ Changelog
 Changes in Version 3.0
 ----------------------
 
+PyMongo 3.0 is a partial rewrite of PyMongo bringing a large number of
+improvements:
+
+- A unified client class. MongoClient is the one and only client class for
+  connecting to a standalone mongod, replica set, or sharded cluster. Migrating
+  from a standalone, to a replica set, to a sharded cluster can be accomplished
+  with only a simple URI change.
+- MongoClient is much more responsive to configuration changes in your MongoDB
+  deployment. All connected servers are monitored in a non-blocking manner.
+  Slow to respond or down servers no longer block server discovery, reducing
+  application startup time and time to respond to new or reconfigured
+  servers and replica set failovers.
+- A unified CRUD API. All official MongoDB drivers now implement a standard
+  CRUD API allowing polyglot developers to move from language to language
+  with ease.
+- Single source support for python 2.x and 3.x. PyMongo no longer relies on
+  2to3 to support python 3.
+- A rewritten pure python BSON implementation, improving performance
+  with pypy and cpython deployments without support for C extensions.
+- Better support for greenlet based async frameworks including eventlet.
+- Immutable client, database, and collection classes, avoiding a host of thread
+  safety issues in client applications.
+
+PyMongo 3.0 brings a large number of API changes. Be sure to read the changes
+listed below before upgrading from PyMongo 2.x.
+
 .. warning:: PyMongo no longer supports Python 2.4, 2.5, or 3.1. If you
   must use PyMongo with these versions of Python the 2.x branch of PyMongo
   will be minimally supported for some time.
