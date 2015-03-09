@@ -41,7 +41,8 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             CursorNotFound,
                             NetworkTimeout,
-                            InvalidURI)
+                            InvalidURI,
+                            ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import SocketInfo
 from pymongo.read_preferences import ReadPreference
@@ -183,7 +184,7 @@ class TestClient(IntegrationTest):
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"
         MongoClient.PORT = 123456789
-        with client_knobs(server_wait_time=0.01):
+        with client_knobs(server_selection_timeout=0.01):
             with self.assertRaises(AutoReconnect):
                 connected(MongoClient())
 
@@ -228,13 +229,13 @@ class TestClient(IntegrationTest):
         self.assertTrue(c.min_wire_version >= 0)
 
         bad_host = "somedomainthatdoesntexist.org"
-        with client_knobs(server_wait_time=0.01):
+        with client_knobs(server_selection_timeout=0.01):
             c = MongoClient(bad_host, port, connectTimeoutMS=1)
             self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_init_disconnected_with_auth(self):
         uri = "mongodb://user:pass@somedomainthatdoesntexist"
-        with client_knobs(server_wait_time=0.01):
+        with client_knobs(server_selection_timeout=0.01):
             c = MongoClient(uri, connectTimeoutMS=1)
             self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
@@ -246,7 +247,7 @@ class TestClient(IntegrationTest):
         self.assertFalse(client_context.rs_or_standalone_client != c)
 
     def test_host_w_port(self):
-        with client_knobs(server_wait_time=0.01):
+        with client_knobs(server_selection_timeout=0.01):
             with self.assertRaises(AutoReconnect):
                 connected(MongoClient("%s:1234567" % host, connectTimeoutMS=1))
 
@@ -404,7 +405,7 @@ class TestClient(IntegrationTest):
         self.assertTrue("pymongo_test" in dbs)
 
         # Confirm it fails with a missing socket.
-        with client_knobs(server_wait_time=0.1):
+        with client_knobs(server_selection_timeout=0.1):
             self.assertRaises(
                 ConnectionFailure,
                 connected, MongoClient("mongodb:///tmp/non-existent.sock"))
@@ -513,6 +514,35 @@ class TestClient(IntegrationTest):
             return doc["x"]
         self.assertEqual(1, get_x(no_timeout.pymongo_test))
         self.assertRaises(NetworkTimeout, get_x, timeout.pymongo_test)
+
+    def test_server_selection_timeout(self):
+        client = MongoClient(serverSelectionTimeoutMS=100, connect=False)
+        self.assertAlmostEqual(0.1, client.server_selection_timeout)
+
+        client = MongoClient(serverSelectionTimeoutMS=0, connect=False)
+        self.assertAlmostEqual(0, client.server_selection_timeout)
+
+        self.assertRaises(ValueError, MongoClient,
+                          serverSelectionTimeoutMS="foo", connect=False)
+        self.assertRaises(ValueError, MongoClient,
+                          serverSelectionTimeoutMS=-1, connect=False)
+        self.assertRaises(ConfigurationError, MongoClient,
+                          serverSelectionTimeoutMS=None, connect=False)
+
+        client = MongoClient(
+            'mongodb://localhost/?serverSelectionTimeoutMS=100', connect=False)
+        self.assertAlmostEqual(0.1, client.server_selection_timeout)
+
+        client = MongoClient(
+            'mongodb://localhost/?serverSelectionTimeoutMS=0', connect=False)
+        self.assertAlmostEqual(0, client.server_selection_timeout)
+
+        self.assertRaises(ValueError, MongoClient,
+                          'mongodb://localhost/?serverSelectionTimeoutMS=-1',
+                          connect=False)
+        self.assertRaises(ValueError, MongoClient,
+                          'mongodb://localhost/?serverSelectionTimeoutMS=',
+                          connect=False)
 
     def test_waitQueueTimeoutMS(self):
         client = rs_or_single_client(waitQueueTimeoutMS=2000)
@@ -695,7 +725,8 @@ class TestClient(IntegrationTest):
         wait_until(raises_cursor_not_found, 'close cursor')
 
     def test_kill_cursors_with_server_unavailable(self):
-        with client_knobs(server_wait_time=0, kill_cursor_frequency=9999999):
+        with client_knobs(server_selection_timeout=0,
+                          kill_cursor_frequency=9999999):
             client = MongoClient('doesnt exist', connect=False)
 
             # Wait for the first tick of the periodic kill-cursors to pass.
@@ -778,7 +809,7 @@ class TestClient(IntegrationTest):
 
     @client_context.require_no_replica_set
     def test_connect_to_standalone_using_replica_set_name(self):
-        with client_knobs(server_wait_time=0.1):
+        with client_knobs(server_selection_timeout=0.1):
             client = MongoClient(pair, replicaSet='anything')
 
             with self.assertRaises(AutoReconnect):
@@ -789,7 +820,7 @@ class TestClient(IntegrationTest):
         # A cursor is created, but its member goes down and is removed from
         # the topology before the getMore message is sent. Test that
         # MongoClient._send_message_with_response handles the error.
-        with client_knobs(server_wait_time=0.01):
+        with client_knobs(server_selection_timeout=0.01):
             with self.assertRaises(AutoReconnect):
                 self.client._send_message_with_response(
                     operation=message._GetMore('collection', 101, 1234),
@@ -800,7 +831,7 @@ class TestClient(IntegrationTest):
         # A cursor is created, but its member goes down and is removed from
         # the topology before the killCursors message is sent. Test that
         # MongoClient._send_message handles the error.
-        with client_knobs(server_wait_time=0.01):
+        with client_knobs(server_selection_timeout=0.01):
             with self.assertRaises(AutoReconnect):
                 self.client._send_message(
                     msg=message.kill_cursors([1234]),

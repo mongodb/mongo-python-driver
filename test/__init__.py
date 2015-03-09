@@ -59,19 +59,20 @@ class client_knobs(object):
             self,
             heartbeat_frequency=None,
             kill_cursor_frequency=None,
-            server_wait_time=None):
+            server_selection_timeout=None):
         self.heartbeat_frequency = heartbeat_frequency
         self.kill_cursor_frequency = kill_cursor_frequency
-        self.server_wait_time = server_wait_time
+        self.server_selection_timeout = server_selection_timeout
 
         self.old_heartbeat_frequency = None
         self.old_kill_cursor_frequency = None
-        self.old_server_wait_time = None
+        self.old_server_selection_timeout = None
 
     def enable(self):
         self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
         self.old_kill_cursor_frequency = common.KILL_CURSOR_FREQUENCY
-        self.old_server_wait_time = common.SERVER_WAIT_TIME
+        self.old_server_selection_timeout = \
+            common.SERVER_SELECTION_TIMEOUT
 
         if self.heartbeat_frequency is not None:
             common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
@@ -79,8 +80,9 @@ class client_knobs(object):
         if self.kill_cursor_frequency is not None:
             common.KILL_CURSOR_FREQUENCY = self.kill_cursor_frequency
 
-        if self.server_wait_time is not None:
-            common.SERVER_WAIT_TIME = self.server_wait_time
+        if self.server_selection_timeout is not None:
+            common.SERVER_SELECTION_TIMEOUT = \
+                self.server_selection_timeout
 
     def __enter__(self):
         self.enable()
@@ -88,7 +90,8 @@ class client_knobs(object):
     def disable(self):
         common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
         common.KILL_CURSOR_FREQUENCY = self.old_kill_cursor_frequency
-        common.SERVER_WAIT_TIME = self.old_server_wait_time
+        common.SERVER_SELECTION_TIMEOUT = \
+            self.old_server_selection_timeout
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable()
@@ -113,11 +116,12 @@ class ClientContext(object):
         self.has_ipv6 = False
 
         try:
-            with client_knobs(server_wait_time=0.1):
+            with client_knobs(server_selection_timeout=0.1):
                 client = pymongo.MongoClient(host, port)
                 client.admin.command('ismaster')  # Can we connect?
 
-            self.client = client
+            self.client = pymongo.MongoClient(host, port)
+
         except pymongo.errors.ConnectionFailure:
             self.client = None
         else:
@@ -338,8 +342,8 @@ class MockClientTest(unittest.TestCase):
     This class is *not* an IntegrationTest: if properly written, MockClient
     tests do not require a running server.
 
-    The class temporarily overrides HEARTBEAT_FREQUENCY and SERVER_WAIT_TIME
-    to speed up tests.
+    The class temporarily overrides HEARTBEAT_FREQUENCY and
+    SERVER_SELECTION_TIMEOUT to speed up tests.
     """
 
     def setUp(self):
@@ -347,7 +351,7 @@ class MockClientTest(unittest.TestCase):
 
         self.client_knobs = client_knobs(
             heartbeat_frequency=0.001,
-            server_wait_time=0.1)
+            server_selection_timeout=0.1)
 
         self.client_knobs.enable()
 

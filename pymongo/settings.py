@@ -17,6 +17,7 @@
 import threading
 
 from pymongo import monitor, pool
+from pymongo.common import SERVER_SELECTION_TIMEOUT
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.monotonic import time as _time
 from pymongo.pool import PoolOptions
@@ -33,6 +34,7 @@ class TopologySettings(object):
         monitor_class=None,
         condition_class=None,
         local_threshold_ms=15,
+        server_selection_timeout=SERVER_SELECTION_TIMEOUT,
         timer=None,
     ):
         """Represent MongoClient's configuration.
@@ -46,6 +48,7 @@ class TopologySettings(object):
         self._monitor_class = monitor_class or monitor.Monitor
         self._condition_class = condition_class or threading.Condition
         self._local_threshold_ms = local_threshold_ms
+        self._server_selection_timeout = server_selection_timeout
         self._timer = timer or _time
         self._direct = (len(self._seeds) == 1 and not replica_set_name)
 
@@ -77,6 +80,10 @@ class TopologySettings(object):
     @property
     def local_threshold_ms(self):
         return self._local_threshold_ms
+
+    @property
+    def server_selection_timeout(self):
+        return self._server_selection_timeout
 
     @property
     def timer(self):

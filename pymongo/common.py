@@ -47,9 +47,9 @@ KILL_CURSOR_FREQUENCY = 1
 
 # How long to wait, in seconds, for a suitable server to be found before
 # aborting an operation. For example, if the client attempts an insert
-# during a replica set election, SERVER_WAIT_TIME governs the longest it
-# is willing to wait for a new primary to be found.
-SERVER_WAIT_TIME = 5
+# during a replica set election, SERVER_SELECTION_TIMEOUT governs the
+# longest it is willing to wait for a new primary to be found.
+SERVER_SELECTION_TIMEOUT = 30
 
 # Spec requires at least 10ms between ismaster calls.
 MIN_HEARTBEAT_INTERVAL = 0.01
@@ -220,6 +220,19 @@ def validate_timeout_or_none(option, value):
     return validate_positive_float(option, value) / 1000.0
 
 
+def validate_timeout_or_zero(option, value):
+    """Validates a timeout specified in milliseconds returning
+    a value in floating point seconds for the case where None is an error
+    and 0 is valid. Setting the timeout to nothing in the URI string is a
+    config error.
+    """
+    if value is None:
+        raise ConfigurationError("%s cannot be None" % (option, ))
+    if value==0 or value=="0":
+        return 0
+    return validate_positive_float(option, value) / 1000.0
+
+
 def validate_read_preference(dummy, value):
     """Validate a read preference.
     """
@@ -372,6 +385,7 @@ VALIDATORS = {
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
     'localthresholdms': validate_positive_float,
+    'serverselectiontimeoutms': validate_timeout_or_zero,
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_string,
     'authmechanismproperties': validate_auth_mechanism_properties,

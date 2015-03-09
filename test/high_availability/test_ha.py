@@ -63,7 +63,7 @@ class HATestCase(unittest.TestCase):
     enable_heartbeat = True
 
     # Override this to speed up connection-failure tests.
-    server_wait_time = common.SERVER_WAIT_TIME
+    server_selection_timeout = common.SERVER_SELECTION_TIMEOUT
 
     def setUp(self):
         if self.enable_heartbeat:
@@ -74,7 +74,7 @@ class HATestCase(unittest.TestCase):
 
         self.knobs = client_knobs(
             heartbeat_frequency=heartbeat_frequency,
-            server_wait_time=self.server_wait_time)
+            server_selection_timeout=self.server_selection_timeout)
 
         self.knobs.enable()
 
@@ -468,7 +468,7 @@ class TestReadWithFailover(HATestCase):
 class TestReadPreference(HATestCase):
 
     # Speed up assertReadFrom() when no server is suitable.
-    server_wait_time = 0.001
+    server_selection_timeout = 0.001
 
     def setUp(self):
         super(TestReadPreference, self).setUp()

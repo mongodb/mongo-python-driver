@@ -152,19 +152,19 @@ def create_test(scenario_def):
         if not scenario_def['suitable_servers']:
             self.assertRaises(AutoReconnect, top_suitable.select_server,
                               instance,
-                              server_wait_time=0)
+                              server_selection_timeout=0)
             return
 
         if not scenario_def['in_latency_window']:
             self.assertRaises(AutoReconnect, top_latency.select_server,
                               instance,
-                              server_wait_time=0)
+                              server_selection_timeout=0)
             return
 
         actual_suitable_s = top_suitable.select_servers(instance,
-                                                        server_wait_time=0)
+                                                    server_selection_timeout=0)
         actual_latency_s = top_latency.select_servers(instance,
-                                                      server_wait_time=0)
+                                                    server_selection_timeout=0)
 
         expected_suitable_servers = {}
         for server in scenario_def['suitable_servers']:

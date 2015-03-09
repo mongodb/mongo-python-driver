@@ -337,7 +337,8 @@ class MongoClient(common.BaseObject):
             pool_options=options.pool_options,
             monitor_class=monitor_class,
             condition_class=condition_class,
-            local_threshold_ms=options.local_threshold_ms)
+            local_threshold_ms=options.local_threshold_ms,
+            server_selection_timeout=options.server_selection_timeout)
 
         self._topology = Topology(self._topology_settings)
         if connect:
@@ -456,7 +457,7 @@ class MongoClient(common.BaseObject):
         """
         try:
             server = self._topology.select_server(
-                writable_server_selector, server_wait_time=0)
+                writable_server_selector, server_selection_timeout=0)
 
             return getattr(server.description, attr_name)
         except ConnectionFailure:
@@ -603,6 +604,11 @@ class MongoClient(common.BaseObject):
     def local_threshold_ms(self):
         """The local threshold for this instance."""
         return self.__options.local_threshold_ms
+
+    @property
+    def server_selection_timeout(self):
+        """The server selection timeout for this instance in seconds."""
+        return self.__options.server_selection_timeout
 
     def _writable_max_wire_version(self):
         """Connect to a writable server and get its max wire protocol version.

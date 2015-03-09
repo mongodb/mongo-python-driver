@@ -197,7 +197,7 @@ class TestThreads(IntegrationTest):
             # Frequent thread switches hurt performance badly enough to
             # prevent reconnection within 5 seconds, especially in Python 2
             # on a Windows build slave.
-            with client_knobs(server_wait_time=30):
+            with client_knobs(server_selection_timeout=30):
                 for t in threads:
                     t.start()
 

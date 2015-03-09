@@ -601,7 +601,7 @@ Bye"""))
         outfile.readchunk()
 
     def test_grid_in_lazy_connect(self):
-        with client_knobs(server_wait_time=0.01):
+        with client_knobs(server_selection_timeout=0.01):
             client = MongoClient('badhost', connect=False)
             fs = client.db.fs
             infile = GridIn(fs, file_id=-1, chunk_size=1)
