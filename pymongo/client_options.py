@@ -92,7 +92,7 @@ def _parse_ssl_options(options):
 
 def _parse_pool_options(options):
     """Parse connection pool options."""
-    max_pool_size = options.get('max_pool_size')
+    max_pool_size = options.get('maxpoolsize', 100)
     connect_timeout = options.get('connecttimeoutms', 20.0)
     socket_keepalive = options.get('socketkeepalive', False)
     socket_timeout = options.get('sockettimeoutms')

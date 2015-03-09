@@ -81,6 +81,10 @@ slave_okay. Accept the default write concern, acknowledged writes, instead of
 setting safe=True. Use socketTimeoutMS in place of network_timeout (note that
 network_timeout was in seconds, where as socketTimeoutMS is milliseconds).
 
+The ``max_pool_size`` option has been removed. It is replaced by the
+``maxPoolSize`` MongoDB URI option. ``maxPoolSize`` is now a supported URI
+option in PyMongo and can be passed as a keyword argument.
+
 The ``copy_database`` method is removed, see the
 :doc:`copy_database examples </examples/copydb>` for alternatives.
 

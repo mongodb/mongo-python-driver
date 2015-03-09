@@ -67,7 +67,7 @@ class TestCursorManager(IntegrationTest):
                 super(CM, self).close(cursor_id, address)
 
         with client_knobs(kill_cursor_frequency=0.01):
-            client = rs_or_single_client(max_pool_size=1)
+            client = rs_or_single_client(maxPoolSize=1)
             client.set_cursor_manager(CM)
 
             # Create a cursor on the same client so we're certain the getMore

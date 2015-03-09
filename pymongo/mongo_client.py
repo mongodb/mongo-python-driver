@@ -73,7 +73,6 @@ class MongoClient(common.BaseObject):
             self,
             host=None,
             port=None,
-            max_pool_size=100,
             document_class=dict,
             tz_aware=False,
             connect=True,
@@ -104,10 +103,6 @@ class MongoClient(common.BaseObject):
             it must be enclosed in '[' and ']' characters following
             the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
-          - `max_pool_size` (optional): The maximum number of connections
-            that the pool will open simultaneously. If this is set, operations
-            will block if there are `max_pool_size` outstanding connections
-            from the pool. Defaults to 100.
           - `document_class` (optional): default class to use for
             documents returned from queries on this client
           - `tz_aware` (optional): if ``True``,
@@ -120,6 +115,10 @@ class MongoClient(common.BaseObject):
 
           | **Other optional parameters can be passed as keyword arguments:**
 
+          - `maxPoolSize` (optional): The maximum number of connections
+            that the pool will open simultaneously. If this is set, operations
+            will block if there are `maxPoolSize` outstanding connections
+            from the pool. Defaults to 100.
           - `socketTimeoutMS`: (integer or None) How long (in milliseconds) a
             send or receive on a socket can take before timing out. Defaults to
             ``None`` (no timeout).
@@ -129,7 +128,7 @@ class MongoClient(common.BaseObject):
           - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
             a thread will wait for a socket from the pool if the pool has no
             free sockets. Defaults to ``None`` (no timeout).
-          - `waitQueueMultiple`: (integer or None) Multiplied by max_pool_size
+          - `waitQueueMultiple`: (integer or None) Multiplied by maxPoolSize
             to give the number of threads allowed to wait for a socket at one
             time. Defaults to ``None`` (no limit).
           - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
@@ -306,7 +305,6 @@ class MongoClient(common.BaseObject):
         monitor_class = kwargs.pop('_monitor_class', None)
         condition_class = kwargs.pop('_condition_class', None)
 
-        kwargs['max_pool_size'] = max_pool_size
         kwargs['document_class'] = document_class
         kwargs['tz_aware'] = tz_aware
         opts.update(kwargs)

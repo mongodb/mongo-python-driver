@@ -273,7 +273,7 @@ class TestDatabase(IntegrationTest):
     def test_errors(self):
         with ignore_deprecations():
             # We must call getlasterror, etc. on same socket as last operation.
-            db = rs_or_single_client(max_pool_size=1).pymongo_test
+            db = rs_or_single_client(maxPoolSize=1).pymongo_test
             db.reset_error_history()
             self.assertEqual(None, db.error())
             self.assertEqual(None, db.previous_error())

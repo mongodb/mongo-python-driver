@@ -1394,7 +1394,7 @@ class TestCollection(IntegrationTest):
         # Insert enough documents to require more than one batch
         self.db.test.insert_many([{'i': i} for i in range(150)])
 
-        client = rs_or_single_client(max_pool_size=1)
+        client = rs_or_single_client(maxPoolSize=1)
         socks = get_pool(client).sockets
 
         # Make sure the socket is returned after exhaustion.

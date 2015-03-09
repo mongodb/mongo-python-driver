@@ -519,7 +519,7 @@ class TestClient(IntegrationTest):
         self.assertEqual(get_pool(client).opts.wait_queue_timeout, 2)
 
     def test_waitQueueMultiple(self):
-        client = rs_or_single_client(max_pool_size=3, waitQueueMultiple=2)
+        client = rs_or_single_client(maxPoolSize=3, waitQueueMultiple=2)
         pool = get_pool(client)
         self.assertEqual(pool.opts.wait_queue_multiple, 2)
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
@@ -729,7 +729,7 @@ class TestClient(IntegrationTest):
     def test_exhaust_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = rs_or_single_client(max_pool_size=1)
+        client = rs_or_single_client(maxPoolSize=1)
         collection = client.pymongo_test.test
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -755,7 +755,7 @@ class TestClient(IntegrationTest):
         # when authenticating a new socket with cached credentials.
 
         # Get a client with one socket so we detect if it's leaked.
-        c = connected(rs_or_single_client(max_pool_size=1,
+        c = connected(rs_or_single_client(maxPoolSize=1,
                                           waitQueueTimeoutMS=1))
 
         # Simulate an authenticate() call on a different socket.
@@ -823,7 +823,7 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_query_server_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = connected(rs_or_single_client(max_pool_size=1))
+        client = connected(rs_or_single_client(maxPoolSize=1))
 
         collection = client.pymongo_test.test
         pool = get_pool(client)
@@ -845,7 +845,7 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_getmore_server_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
         # out on success but it's checked in on error to avoid semaphore leaks.
-        client = rs_or_single_client(max_pool_size=1)
+        client = rs_or_single_client(maxPoolSize=1)
         collection = client.pymongo_test.test
         collection.drop()
 
@@ -883,7 +883,7 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = connected(rs_or_single_client(max_pool_size=1))
+        client = connected(rs_or_single_client(maxPoolSize=1))
         collection = client.pymongo_test.test
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -903,7 +903,7 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_getmore_network_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
         # out on success but it's checked in on error to avoid semaphore leaks.
-        client = rs_or_single_client(max_pool_size=1)
+        client = rs_or_single_client(maxPoolSize=1)
         collection = client.pymongo_test.test
         collection.drop()
         collection.insert_many([{} for _ in range(200)])  # More than one batch.

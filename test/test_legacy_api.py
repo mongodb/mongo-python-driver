@@ -864,7 +864,7 @@ class TestLegacy(IntegrationTest):
     def test_last_status(self):
         # Tests many legacy API elements.
         # We must call getlasterror on same socket as the last operation.
-        db = rs_or_single_client(max_pool_size=1).pymongo_test
+        db = rs_or_single_client(maxPoolSize=1).pymongo_test
         db.test.remove({})
         db.test.save({"i": 1})
 

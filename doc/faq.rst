@@ -22,7 +22,7 @@ thread-affinity for sockets.
 The client instance opens one additional socket per server in your MongoDB
 topology for monitoring the server's state.
 
-The size of each connection pool is capped at ``max_pool_size``, which defaults
+The size of each connection pool is capped at ``maxPoolSize``, which defaults
 to 100. When a thread in your application begins an operation on MongoDB, if
 all other sockets are in use and the pool has reached its maximum, the
 thread pauses, waiting for a socket to be returned to the pool by another
@@ -38,20 +38,20 @@ operations. It is a common mistake to create a new client for each request,
 which is very inefficient.
 
 To support extremely high numbers of concurrent MongoDB operations within one
-process, increase ``max_pool_size``::
+process, increase ``maxPoolSize``::
 
-    client = MongoClient(host, port, max_pool_size=200)
+    client = MongoClient(host, port, maxPoolSize=200)
 
 ... or make it unbounded::
 
-    client = MongoClient(host, port, max_pool_size=None)
+    client = MongoClient(host, port, maxPoolSize=None)
 
 By default, any number of threads are allowed to wait for sockets to become
 available, and they can wait any length of time. Override ``waitQueueMultiple``
 to cap the number of waiting threads. E.g., to keep the number of waiters less
 than or equal to 500::
 
-    client = MongoClient(host, port, max_pool_size=50, waitQueueMultiple=10)
+    client = MongoClient(host, port, maxPoolSize=50, waitQueueMultiple=10)
 
 When 500 threads are waiting for a socket, the 501st that needs a socket
 raises :exc:`~pymongo.errors.ExceededMaxWaiters`. Use this option to

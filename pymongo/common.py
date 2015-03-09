@@ -357,7 +357,7 @@ VALIDATORS = {
     'j': validate_boolean_or_string,
     'journal': validate_boolean_or_string,
     'connecttimeoutms': validate_timeout_or_none,
-    'max_pool_size': validate_positive_integer_or_none,
+    'maxpoolsize': validate_positive_integer_or_none,
     'socketkeepalive': validate_boolean_or_string,
     'sockettimeoutms': validate_timeout_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,

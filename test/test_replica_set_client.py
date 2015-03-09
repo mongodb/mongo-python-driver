@@ -140,7 +140,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
         secondary = Secondary(tag_sets=tag_sets)
         c = MongoClient(
-            pair, replicaSet=self.name, max_pool_size=25,
+            pair, replicaSet=self.name, maxPoolSize=25,
             document_class=SON, tz_aware=True,
             read_preference=secondary,
             localThresholdMS=77, j=True)

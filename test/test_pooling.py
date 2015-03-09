@@ -170,13 +170,13 @@ class TestPooling(_TestPoolingBase):
     def test_max_pool_size_validation(self):
         self.assertRaises(
             ValueError, MongoClient, host=host, port=port,
-            max_pool_size=-1)
+            maxPoolSize=-1)
 
         self.assertRaises(
             ValueError, MongoClient, host=host, port=port,
-            max_pool_size='foo')
+            maxPoolSize='foo')
 
-        c = MongoClient(host=host, port=port, max_pool_size=100)
+        c = MongoClient(host=host, port=port, maxPoolSize=100)
         self.assertEqual(c.max_pool_size, 100)
 
     def test_no_disconnect(self):
@@ -418,7 +418,7 @@ class TestPooling(_TestPoolingBase):
 class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):
         max_pool_size = 4
-        c = rs_or_single_client(max_pool_size=max_pool_size)
+        c = rs_or_single_client(maxPoolSize=max_pool_size)
         collection = c[DB].test
 
         # Need one document.
@@ -453,7 +453,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
 
     def test_max_pool_size_none(self):
-        c = rs_or_single_client(max_pool_size=None)
+        c = rs_or_single_client(maxPoolSize=None)
         collection = c[DB].test
 
         # Need one document.

@@ -334,7 +334,7 @@ class Topology(object):
 
         # According to the Server Discovery And Monitoring Spec, monitors use
         # connect_timeout for both connect_timeout and socket_timeout. The
-        # pool only has one socket so max_pool_size and so on aren't needed.
+        # pool only has one socket so maxPoolSize and so on aren't needed.
         return self._settings.pool_class(
             address,
             PoolOptions(connect_timeout=options.connect_timeout,
