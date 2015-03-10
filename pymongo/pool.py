@@ -210,11 +210,9 @@ class SocketInfo(object):
             pass
         
     @property
-    def min_wire_version(self):
-        return self.ismaster.min_wire_version
-        
-    @property
     def max_wire_version(self):
+        assert self.ismaster is not None, (
+            'max_wire_version on a SocketInfo created without handshake')
         return self.ismaster.max_wire_version
 
     def __eq__(self, other):
@@ -315,11 +313,12 @@ def _configured_socket(address, options):
 # Do *not* explicitly inherit from object or Jython won't call __del__
 # http://bugs.jython.org/issue1057
 class Pool:
-    def __init__(self, address, options):
+    def __init__(self, address, options, handshake=True):
         """
         :Parameters:
           - `address`: a (hostname, port) tuple
           - `options`: a PoolOptions instance
+          - `handshake`: whether to call ismaster for each new SocketInfo
         """
         # Check a socket's health with socket_closed() every once in a while.
         # Can override for testing: 0 to always check, None to never check.
@@ -334,6 +333,7 @@ class Pool:
         self.pid = os.getpid()
         self.address = address
         self.opts = options
+        self.handshake = handshake
 
         if (self.opts.wait_queue_multiple is None or
                 self.opts.max_pool_size is None):
@@ -360,12 +360,14 @@ class Pool:
            return_socket() when you're done with it.
         """
         sock = _configured_socket(self.address, self.opts)
-        try:
-            ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1}))
-        except:
-            sock.close()
-            raise
-
+        if self.handshake:
+            try:
+                ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1}))
+            except:
+                sock.close()
+                raise
+        else:
+            ismaster = None
         return SocketInfo(sock, self, ismaster, host=self.address[0])
 
     @contextlib.contextmanager

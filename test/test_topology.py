@@ -159,6 +159,9 @@ class TestTopologyConfiguration(TopologyTest):
         self.assertEqual(1, monitor._pool.opts.connect_timeout)
         self.assertEqual(1, monitor._pool.opts.socket_timeout)
 
+        # The monitor, not its pool, is responsible for calling ismaster.
+        self.assertFalse(monitor._pool.handshake)
+
 
 class TestSingleServerTopology(TopologyTest):
     def test_direct_connection(self):

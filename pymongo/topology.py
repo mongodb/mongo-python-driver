@@ -341,13 +341,15 @@ class Topology(object):
         # According to the Server Discovery And Monitoring Spec, monitors use
         # connect_timeout for both connect_timeout and socket_timeout. The
         # pool only has one socket so maxPoolSize and so on aren't needed.
-        return self._settings.pool_class(
-            address,
-            PoolOptions(connect_timeout=options.connect_timeout,
-                        socket_timeout=options.connect_timeout,
-                        ssl_context=options.ssl_context,
-                        ssl_match_hostname=options.ssl_match_hostname,
-                        socket_keepalive=True))
+        monitor_pool_options = PoolOptions(
+            connect_timeout=options.connect_timeout,
+            socket_timeout=options.connect_timeout,
+            ssl_context=options.ssl_context,
+            ssl_match_hostname=options.ssl_match_hostname,
+            socket_keepalive=True)
+
+        return self._settings.pool_class(address, monitor_pool_options,
+                                         handshake=False)
 
     def _error_message(self, selector):
         """Format an error message if server selection fails.
