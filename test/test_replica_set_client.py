@@ -357,7 +357,8 @@ class TestReplicaSetClientInternalIPs(MockClientTest):
                 mongoses=[],
                 ismaster_hosts=['internal-ip:27017'],
                 host='a:1',
-                replicaSet='rs'))
+                replicaSet='rs',
+                serverSelectionTimeoutMS=100))
 
         self.assertEqual(
             "Could not reach any servers in [('internal-ip', 27017)]."

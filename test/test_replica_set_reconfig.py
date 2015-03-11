@@ -40,7 +40,8 @@ class TestSecondaryBecomesStandalone(MockClientTest):
             members=['a:1', 'b:2', 'c:3'],
             mongoses=[],
             host='a:1,b:2,c:3',
-            replicaSet='rs')
+            replicaSet='rs',
+            serverSelectionTimeoutMS=100)
 
         # MongoClient connects to primary by default.
         wait_until(lambda: c.address is not None, 'connect to primary')
