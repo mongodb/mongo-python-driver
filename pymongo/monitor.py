@@ -151,7 +151,7 @@ class Monitor(object):
     def _check_with_socket(self, sock_info):
         """Return (IsMaster, round_trip_time).
 
-        Can raise socket.error or PyMongoError.
+        Can raise ConnectionFailure or OperationFailure.
         """
         start = _time()
         request_id, msg, _ = message.query(

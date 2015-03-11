@@ -19,7 +19,7 @@ import threading
 
 from bson.py3compat import u, itervalues
 from pymongo import auth, thread_util
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import AutoReconnect, ConnectionFailure, NetworkTimeout
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
 from pymongo.network import (command,
@@ -38,6 +38,16 @@ try:
 except ImportError:
     # These don't require the ssl module
     from pymongo.ssl_match_hostname import match_hostname, CertificateError
+
+
+def _raise_connection_failure(address, error):
+    """Convert a socket.error to ConnectionFailure and raise it."""
+    host, port = address
+    msg = '%s:%d: %s' % (host, port, error)
+    if isinstance(error, socket.timeout):
+        raise NetworkTimeout(msg)
+    else:
+        raise AutoReconnect(msg)
 
 
 class PoolOptions(object):
@@ -121,11 +131,11 @@ class SocketInfo(object):
       - `sock`: a raw socket object
       - `pool`: a Pool instance
       - `ismaster`: an IsMaster instance, response to ismaster call on `sock`
-      - `host`: a string, the server's hostname (without port)
+      - `address`: the server's (host, port)
     """
-    def __init__(self, sock, pool, ismaster, host):
+    def __init__(self, sock, pool, ismaster, address):
         self.sock = sock
-        self.host = host
+        self.address = address
         self.authset = set()
         self.closed = False
         self.last_checkout = _time()
@@ -136,7 +146,7 @@ class SocketInfo(object):
         self.pool_id = pool.pool_id
 
     def command(self, dbname, spec):
-        """Execute a command or raise socket.error or OperationFailure.
+        """Execute a command or raise ConnectionFailure or OperationFailure.
 
         :Parameters:
           - `dbname`: name of the database on which to run the command
@@ -144,37 +154,34 @@ class SocketInfo(object):
         """
         try:
             return command(self.sock, dbname, spec)
-        except socket.error:
-            self.close()
-            raise
+        except socket.error as error:
+            self._raise_connection_failure(error)
 
     def send_message(self, message):
-        """Send a raw BSON message or raise socket.error.
+        """Send a raw BSON message or raise ConnectionFailure.
 
         If a network exception is raised, the socket is closed.
         """
         try:
             self.sock.sendall(message)
-        except:
-            self.close()
-            raise
+        except socket.error as error:
+            self._raise_connection_failure(error)
 
     def receive_message(self, operation, request_id):
-        """Receive a raw BSON message or raise socket.error.
+        """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
         """
         try:
             return receive_message(self.sock, operation, request_id)
-        except:
-            self.close()
-            raise
+        except socket.error as error:
+            self._raise_connection_failure(error)
 
     def check_auth(self, all_credentials):
         """Update this socket's authentication.
 
         Log in or out to bring this socket's credentials up to date with
-        those provided. Can raise socket.error or OperationFailure.
+        those provided. Can raise ConnectionFailure or OperationFailure.
 
         :Parameters:
           - `all_credentials`: dict, maps auth source to MongoCredential.
@@ -194,6 +201,8 @@ class SocketInfo(object):
 
     def authenticate(self, credentials):
         """Log in to the server and store these credentials in `authset`.
+
+        Can raise ConnectionFailure or OperationFailure.
 
         :Parameters:
           - `credentials`: A MongoCredential.
@@ -215,6 +224,10 @@ class SocketInfo(object):
             'max_wire_version on a SocketInfo created without handshake')
         return self.ismaster.max_wire_version
 
+    def _raise_connection_failure(self, error):
+        self.close()
+        _raise_connection_failure(self.address, error)
+
     def __eq__(self, other):
         return self.sock == other.sock
 
@@ -235,6 +248,8 @@ class SocketInfo(object):
 def _create_connection(address, options):
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
+    Can raise socket.error.
+
     This is a modified version of create_connection from CPython >= 2.6.
     """
     host, port = address
@@ -248,9 +263,9 @@ def _create_connection(address, options):
         try:
             sock.connect(host)
             return sock
-        except socket.error as e:
+        except socket.error:
             sock.close()
-            raise e
+            raise
 
     # Don't try IPv6 if we don't support it. Also skip it if host
     # is 'localhost' (::1 is fine). Avoids slow connect issues
@@ -286,6 +301,8 @@ def _create_connection(address, options):
 
 def _configured_socket(address, options):
     """Given (host, port) and PoolOptions, return a configured socket.
+
+    Can raise socket.error, ConnectionFailure, or CertificateError.
 
     Sets socket's SSL and timeout options.
     """
@@ -355,20 +372,25 @@ class Pool:
             sock_info.close()
 
     def connect(self):
-        """Connect to Mongo and return a new (connected) socket. Note that the
-           pool does not keep a reference to the socket -- you must call
-           return_socket() when you're done with it.
+        """Connect to Mongo and return a new SocketInfo.
+
+        Can raise ConnectionFailure or CertificateError.
+
+        Note that the pool does not keep a reference to the socket -- you
+        must call return_socket() when you're done with it.
         """
-        sock = _configured_socket(self.address, self.opts)
-        if self.handshake:
-            try:
+        sock = None
+        try:
+            sock = _configured_socket(self.address, self.opts)
+            if self.handshake:
                 ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1}))
-            except:
+            else:
+                ismaster = None
+            return SocketInfo(sock, self, ismaster, self.address)
+        except socket.error as error:
+            if sock is not None:
                 sock.close()
-                raise
-        else:
-            ismaster = None
-        return SocketInfo(sock, self, ismaster, host=self.address[0])
+            _raise_connection_failure(self.address, error)
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
@@ -387,6 +409,8 @@ class Pool:
         using the correct authentication mechanism for the server's wire
         protocol version.
 
+        Can raise ConnectionFailure or OperationFailure.
+
         :Parameters:
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `checkout` (optional): keep socket checked out.
@@ -397,13 +421,8 @@ class Pool:
         try:
             sock_info.check_auth(all_credentials)
             yield sock_info
-        except (socket.error, ConnectionFailure):
-            sock_info.close()
-
-            # Decrement semaphore.
-            self.return_socket(sock_info)
-            raise
         except:
+            # Exception in caller. Decrement semaphore.
             self.return_socket(sock_info)
             raise
         else:
@@ -411,6 +430,7 @@ class Pool:
                 self.return_socket(sock_info)
 
     def _get_socket_no_auth(self):
+        """Get or create a SocketInfo. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
         # what could go wrong otherwise
@@ -430,9 +450,11 @@ class Pool:
                 with self.lock:
                     sock_info, from_pool = self.sockets.pop(), True
             except KeyError:
+                # Can raise ConnectionFailure or CertificateError.
                 sock_info, from_pool = self.connect(), False
 
             if from_pool:
+                # Can raise ConnectionFailure.
                 sock_info = self._check(sock_info)
 
         except:
@@ -460,7 +482,7 @@ class Pool:
         the last time this socket was used, or if the socket has been closed by
         some external network error, and if so, attempts to create a new socket.
         If this connection attempt fails we reset the pool and reraise the
-        error.
+        ConnectionFailure.
 
         Checking sockets lets us avoid seeing *some*
         :class:`~pymongo.errors.AutoReconnect` exceptions on server

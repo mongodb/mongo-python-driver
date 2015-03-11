@@ -18,7 +18,6 @@ import sys
 
 sys.path[0:0] = [""]
 
-import socket
 import threading
 
 from bson.py3compat import imap
@@ -27,7 +26,8 @@ from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
-from pymongo.errors import (ConfigurationError,
+from pymongo.errors import (AutoReconnect,
+                            ConfigurationError,
                             ConnectionFailure)
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
@@ -239,7 +239,7 @@ class TestSingleServerTopology(TopologyTest):
                 if available:
                     return IsMaster({'ok': 1}), round_trip_time
                 else:
-                    raise socket.error()
+                    raise AutoReconnect('mock monitor error')
 
         t = create_mock_topology(monitor_class=TestMonitor)
         s = t.select_server(writable_server_selector)
@@ -543,7 +543,7 @@ class TestTopologyErrors(TopologyTest):
                 if ismaster_count[0] == 1:
                     return IsMaster({'ok': 1}), 0
                 else:
-                    raise socket.error()
+                    raise AutoReconnect('mock monitor error')
 
         t = create_mock_topology(monitor_class=TestMonitor)
         server = wait_for_master(t)
@@ -564,7 +564,7 @@ class TestTopologyErrors(TopologyTest):
                 if ismaster_count[0] in (1, 3):
                     return IsMaster({'ok': 1}), 0
                 else:
-                    raise socket.error()
+                    raise AutoReconnect('mock monitor error')
 
         t = create_mock_topology(monitor_class=TestMonitor)
         server = wait_for_master(t)

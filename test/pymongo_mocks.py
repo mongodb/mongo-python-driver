@@ -15,12 +15,12 @@
 """Tools for mocking parts of PyMongo to test other parts."""
 
 import contextlib
-import socket
 from functools import partial
 import weakref
 
 from pymongo import common
 from pymongo import MongoClient
+from pymongo.errors import AutoReconnect, NetworkTimeout
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
 from pymongo.pool import Pool, PoolOptions
@@ -46,7 +46,7 @@ class MockPool(Pool):
         client = self.client
         host_and_port = '%s:%s' % (self.mock_host, self.mock_port)
         if host_and_port in client.mock_down_hosts:
-            raise socket.error('mock error')
+            raise AutoReconnect('mock error')
 
         assert host_and_port in (
             client.mock_standalones
@@ -152,7 +152,7 @@ class MockClient(MongoClient):
 
         # host is like 'a:1'.
         if host in self.mock_down_hosts:
-            raise socket.timeout('mock timeout')
+            raise NetworkTimeout('mock timeout')
 
         elif host in self.mock_standalones:
             response = {
@@ -188,7 +188,7 @@ class MockClient(MongoClient):
         else:
             # In test_internal_ips(), we try to connect to a host listed
             # in ismaster['hosts'] but not publicly accessible.
-            raise socket.error('Unknown host: %s' % host)
+            raise AutoReconnect('Unknown host: %s' % host)
 
         return response, rtt
 

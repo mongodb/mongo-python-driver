@@ -15,9 +15,8 @@
 """Communicate with one MongoDB server in a topology."""
 
 import contextlib
-import socket
 
-from pymongo.errors import AutoReconnect, DocumentTooLarge, NetworkTimeout
+from pymongo.errors import DocumentTooLarge
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
 
@@ -62,11 +61,8 @@ class Server(object):
           - `all_credentials`: dict, maps auth source to MongoCredential.
         """
         request_id, data = self._check_bson_size(message)
-        try:
-            with self.get_socket(all_credentials) as sock_info:
-                sock_info.send_message(data)
-        except socket.error as exc:
-            self._raise_connection_failure(exc)
+        with self.get_socket(all_credentials) as sock_info:
+            sock_info.send_message(data)
 
     def send_message_with_response(
             self,
@@ -84,22 +80,19 @@ class Server(object):
             It is returned along with its Pool in the Response.
         """
         request_id, data = self._check_bson_size(message)
-        try:
-            with self.get_socket(all_credentials, exhaust) as sock_info:
-                sock_info.send_message(data)
-                response_data = sock_info.receive_message(1, request_id)
-                if exhaust:
-                    return ExhaustResponse(
-                        data=response_data,
-                        address=self._description.address,
-                        socket_info=sock_info,
-                        pool=self._pool)
-                else:
-                    return Response(
-                        data=response_data,
-                        address=self._description.address)
-        except socket.error as exc:
-            self._raise_connection_failure(exc)
+        with self.get_socket(all_credentials, exhaust) as sock_info:
+            sock_info.send_message(data)
+            response_data = sock_info.receive_message(1, request_id)
+            if exhaust:
+                return ExhaustResponse(
+                    data=response_data,
+                    address=self._description.address,
+                    socket_info=sock_info,
+                    pool=self._pool)
+            else:
+                return Response(
+                    data=response_data,
+                    address=self._description.address)
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
@@ -139,15 +132,6 @@ class Server(object):
         else:
             # get_more and kill_cursors messages don't include BSON documents.
             return message
-
-    def _raise_connection_failure(self, exc):
-        host, port = self._description.address
-        msg = '%s:%d: %s' % (host, port, exc)
-
-        if isinstance(exc, socket.timeout):
-            raise NetworkTimeout(msg)
-        else:
-            raise AutoReconnect(msg)
 
     def __str__(self):
         d = self._description

@@ -15,8 +15,6 @@
 """Cursor class to iterate over Mongo query results."""
 
 import copy
-import socket
-
 from collections import deque
 
 from bson import RE_TYPE
@@ -28,6 +26,7 @@ from bson.son import SON
 from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.errors import (AutoReconnect,
+                            ConnectionFailure,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
@@ -839,9 +838,9 @@ class Cursor(object):
             # Exhaust cursor - no getMore message.
             try:
                 data = self.__exhaust_mgr.sock.receive_message(1, None)
-            except socket.error as exc:
+            except ConnectionFailure:
                 self.__die()
-                raise AutoReconnect(str(exc))
+                raise
 
         try:
             doc = helpers._unpack_response(response=data,

@@ -16,13 +16,12 @@
 
 import gc
 import random
-import socket
 import sys
 import threading
 import time
 
 from pymongo import MongoClient
-from pymongo.errors import (ConfigurationError,
+from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             DuplicateKeyError,
                             ExceededMaxWaiters)
@@ -265,7 +264,7 @@ class TestPooling(_TestPoolingBase):
 
         # Swap pool's address with a bad one.
         address, cx_pool.address = cx_pool.address, ('foo.com', 1234)
-        with self.assertRaises(socket.error):
+        with self.assertRaises(AutoReconnect):
             with cx_pool.get_socket({}):
                 pass
 
@@ -495,11 +494,17 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         # First call to get_socket fails; if pool doesn't release its semaphore
         # then the second call raises "ConnectionFailure: Timed out waiting for
-        # socket from pool" instead of the socket.error.
+        # socket from pool" instead of AutoReconnect.
         for i in range(2):
-            with self.assertRaises(socket.error):
+            with self.assertRaises(AutoReconnect) as context:
                 with test_pool.get_socket({}, checkout=True):
                     pass
+
+            # Testing for AutoReconnect instead of ConnectionFailure, above,
+            # is sufficient right *now* to catch a semaphore leak. But that
+            # seems error-prone, so check the message too.
+            self.assertNotIn('waiting for socket from pool',
+                             str(context.exception))
 
 
 if __name__ == "__main__":
