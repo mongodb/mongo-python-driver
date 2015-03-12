@@ -53,7 +53,6 @@ from test.utils import (connected,
                         rs_client,
                         single_client,
                         wait_until)
-from test.version import Version
 
 
 class TestReplicaSetClientBase(IntegrationTest):

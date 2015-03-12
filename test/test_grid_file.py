@@ -33,8 +33,7 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
 from gridfs.errors import NoFile
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ConnectionFailure
-from test import (client_knobs,
-                  IntegrationTest,
+from test import (IntegrationTest,
                   host,
                   port,
                   unittest,

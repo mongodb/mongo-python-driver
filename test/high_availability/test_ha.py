@@ -19,7 +19,6 @@
 # a replica set. Thus each method asserts everything we want to assert for a
 # given replica-set configuration.
 
-import itertools
 import time
 
 import ha_tools
@@ -36,7 +35,6 @@ from pymongo.server_description import ServerDescription
 from pymongo.write_concern import WriteConcern
 from test import unittest, utils, client_knobs
 from test.utils import one, wait_until, connected
-from test.version import Version
 
 
 

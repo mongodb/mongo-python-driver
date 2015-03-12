@@ -16,7 +16,6 @@
 
 import sys
 import threading
-import time
 
 sys.path[0:0] = [""]
 

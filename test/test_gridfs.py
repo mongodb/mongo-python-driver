@@ -32,7 +32,6 @@ from gridfs.errors import (FileExists,
                            NoFile)
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test import (client_context,
-                  client_knobs,
                   unittest,
                   host,
                   port,
