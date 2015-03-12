@@ -973,7 +973,7 @@ class TestShipOfTheseus(HATestCase):
         c = MongoClient(
             self.seed,
             replicaSet=self.name,
-            serverSelectionTimeoutMS=self.server_selection_timeout))
+            serverSelectionTimeoutMS=self.server_selection_timeout)
         db = c.get_database(
             "pymongo_test",
             write_concern=WriteConcern(w=len(c.secondaries) + 1))
