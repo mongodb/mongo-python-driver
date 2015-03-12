@@ -19,7 +19,10 @@ import threading
 
 from bson.py3compat import u, itervalues
 from pymongo import auth, thread_util
-from pymongo.errors import AutoReconnect, ConnectionFailure, NetworkTimeout
+from pymongo.errors import (AutoReconnect,
+                            ConnectionFailure,
+                            NetworkTimeout,
+                            OperationFailure)
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
 from pymongo.network import (command,
@@ -154,7 +157,10 @@ class SocketInfo(object):
         """
         try:
             return command(self.sock, dbname, spec)
-        except socket.error as error:
+        except OperationFailure:
+            raise
+        # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
+        except BaseException as error:
             self._raise_connection_failure(error)
 
     def send_message(self, message):
@@ -164,7 +170,7 @@ class SocketInfo(object):
         """
         try:
             self.sock.sendall(message)
-        except socket.error as error:
+        except BaseException as error:
             self._raise_connection_failure(error)
 
     def receive_message(self, operation, request_id):
@@ -174,7 +180,7 @@ class SocketInfo(object):
         """
         try:
             return receive_message(self.sock, operation, request_id)
-        except socket.error as error:
+        except BaseException as error:
             self._raise_connection_failure(error)
 
     def check_auth(self, all_credentials):
@@ -225,8 +231,24 @@ class SocketInfo(object):
         return self.ismaster.max_wire_version
 
     def _raise_connection_failure(self, error):
+        # Catch *all* exceptions from socket methods and close the socket. In
+        # regular Python, socket operations only raise socket.error, even if
+        # the underlying cause was a Ctrl-C: a signal raised during socket.recv
+        # is expressed as an EINTR error from poll. See internal_select_ex() in
+        # socketmodule.c. All error codes from poll become socket.error at
+        # first. Eventually in PyEval_EvalFrameEx the interpreter checks for
+        # signals and throws KeyboardInterrupt into the current frame on the
+        # main thread.
+        #
+        # But in Gevent and Eventlet, the polling mechanism (epoll, kqueue,
+        # ...) is called in Python code, which experiences the signal as a
+        # KeyboardInterrupt from the start, rather than as an initial
+        # socket.error, so we catch that, close the socket, and reraise it.
         self.close()
-        _raise_connection_failure(self.address, error)
+        if isinstance(error, socket.error):
+            _raise_connection_failure(self.address, error)
+        else:
+            raise error
 
     def __eq__(self, other):
         return self.sock == other.sock
