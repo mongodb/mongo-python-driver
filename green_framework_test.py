@@ -45,13 +45,13 @@ PyMongo, not necessarily that it is officially supported.
 """ % ", ".join(sorted(FRAMEWORKS)))
 
 
-def run(framework_name):
+def run(framework_name, *args):
     """Run tests with monkey-patching enabled. Can raise ImportError."""
     # Monkey-patch.
     FRAMEWORKS[framework_name]()
 
     # Run the tests.
-    sys.argv[:] = ['setup.py', 'test']
+    sys.argv[:] = ['setup.py', 'test'] + list(args)
     import setup
 
 
@@ -80,7 +80,7 @@ python %s --help-frameworks.""" % (sys.argv[0], sys.argv[0])
         else:
             assert False, "unhandled option"
 
-    if len(args) != 1:
+    if not args:
         print(usage)
         sys.exit(1)
 
@@ -89,7 +89,8 @@ python %s --help-frameworks.""" % (sys.argv[0], sys.argv[0])
         list_frameworks()
         sys.exit(1)
 
-    run(args[0])
+    run(args[0],    # Framework name.
+        *args[1:])  # Command line args to setup.py, like what test to run.
 
 
 if __name__ == '__main__':
