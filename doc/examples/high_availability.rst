@@ -93,16 +93,16 @@ the following connects to the replica set we just created::
   >>> MongoClient('mongodb://localhost:27017,localhost:27018/?replicaSet=foo')
   MongoClient(['localhost:27017', 'localhost:27018'])
 
-The nodes passed to :meth:`~pymongo.mongo_client.MongoClient` are called
+The addresses passed to :meth:`~pymongo.mongo_client.MongoClient` are called
 the *seeds*. As long as at least one of the seeds is online, MongoClient
 discovers all the members in the replica set, and determines which is the
-current primary and which are secondaries.
+current primary and which are secondaries or arbiters.
 
 The :class:`~pymongo.mongo_client.MongoClient` constructor is non-blocking:
 the constructor returns immediately while the client connects to the replica
 set using background threads. Note how, if you create a client and immediately
 print its string representation, the client only prints the single host it
-knows about. If you wait a moment, it to discovers the whole replica set:
+knows about. If you wait a moment, it discovers the whole replica set:
 
   >>> from time import sleep
   >>> c = MongoClient(replicaset='foo'); print c; sleep(0.1); print c
@@ -125,7 +125,7 @@ example failover to illustrate how everything behaves. First, we'll
 connect to the replica set and perform a couple of basic operations::
 
   >>> db = MongoClient("localhost", replicaSet='foo').test
-  >>> db.test.insert_one({"x": 1})
+  >>> db.test.insert_one({"x": 1}).inserted_id
   ObjectId('...')
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
@@ -133,10 +133,8 @@ connect to the replica set and perform a couple of basic operations::
 By checking the host and port, we can see that we're connected to
 *localhost:27017*, which is the current primary::
 
-  >>> db.client.host
-  'localhost'
-  >>> db.client.port
-  27017
+  >>> db.client.address
+  ('localhost', 27017)
 
 Now let's bring down that node and see what happens when we run our
 query again::
@@ -155,16 +153,14 @@ might have failed.
 
 On subsequent attempts to run the query we might continue to see this
 exception. Eventually, however, the replica set will failover and
-elect a new primary (this should take a couple of seconds in
+elect a new primary (this should take no more than a couple of seconds in
 general). At that point the driver will connect to the new primary and
 the operation will succeed::
 
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
-  >>> db.client.host
-  'localhost'
-  >>> db.client.port
-  27018
+  >>> db.client.address
+  ('localhost', 27018)
 
 Bring the former primary back up. It will rejoin the set as a secondary.
 Now we can move to the next section: distributing reads to secondaries.
@@ -176,59 +172,85 @@ Secondary Reads
 
 By default an instance of MongoClient sends queries to
 the primary member of the replica set. To use secondaries for queries
-we have to change the :class:`~pymongo.read_preferences.ReadPreference`::
+we have to change the read preference::
 
-  >>> from pymongo.read_preferences import ReadPreference
   >>> client = MongoClient(
   ...     'localhost:27017',
   ...     replicaSet='foo',
-  ...     read_preference=ReadPreference.SECONDARY_PREFERRED)
-  >>> db = client.test
+  ...     readPreference='secondaryPreferred')
+  >>> client.read_preference
+  SecondaryPreferred(tag_sets=None)
 
 Now all queries will be sent to the secondary members of the set. If there are
 no secondary members the primary will be used as a fallback. If you have
 queries you would prefer to never send to the primary you can specify that
-using the ``SECONDARY`` read preference.
+using the ``secondary`` read preference.
 
-The Read preference can be set when you create a
-:class:`~pymongo.mongo_client.MongoClient`, or when you execute a
-:meth:`~pymongo.collection.Collection.find`,
-:meth:`~pymongo.collection.Collection.find_one`,
-or a command::
+By default the read preference of a :class:`~pymongo.database.Database` is
+inherited from its MongoClient, and the read preference of a
+:class:`~pymongo.collection.Collection` is inherited from its Database. To use
+a different read preference use the
+:meth:`~pymongo.mongo_client.MongoClient.get_database` method, or the
+:meth:`~pymongo.database.Database.get_collection` method::
 
-  >>> db.test.find_one(read_preference=ReadPreference.PRIMARY)
-  {u'x': 1, u'_id': ObjectId('...')}
-  >>> for doc in db.test.find(read_preference=ReadPreference.SECONDARY):
-  ...     print doc
-  {u'x': 1, u'_id': ObjectId('...')}
+  >>> from pymongo import ReadPreference
+  >>> client.read_preference
+  SecondaryPreferred(tag_sets=None)
+  >>> db = client.get_database('test', read_preference=ReadPreference.SECONDARY)
+  >>> db.read_preference
+  Secondary(tag_sets=None)
+  >>> coll = db.get_collection('test', read_preference=ReadPreference.PRIMARY)
+  >>> coll.read_preference
+  Primary()
+
+You can also change the read preference of an existing
+:class:`~pymongo.collection.Collection` with the
+:meth:`~pymongo.collection.Collection.with_options` method::
+
+  >>> coll2 = coll.with_options(read_preference=ReadPreference.NEAREST)
+  >>> coll.read_preference
+  Primary()
+  >>> coll2.read_preference
+  Nearest(tag_sets=None)
+
+Note that since most database commands can only be sent to the primary of a
+replica set, the :meth:`~pymongo.database.Database.command` method does not obey
+the Database's :attr:`~pymongo.database.Database.read_preference`, but you can
+pass an explicit read preference to the method::
+
   >>> db.command('dbstats', read_preference=ReadPreference.NEAREST)
   {...}
 
-Reads are configured using three options: **read_preference**, **tag_sets**,
-and **local_threshold_ms**.
+Reads are configured using three options: **read preference**, **tag sets**,
+and **local threshold**.
 
-**read_preference**:
+**Read preference**:
 
-- ``PRIMARY``: Read from the primary. This is the default, and provides the
-  strongest consistency. If no primary is available, raise
+Read preference is configured using one of the classes from
+:mod:`~pymongo.read_preferences` (:class:`~pymongo.read_preferences.Primary`,
+:class:`~pymongo.read_preferences.PrimaryPreferred`,
+:class:`~pymongo.read_preferences.Secondary`,
+:class:`~pymongo.read_preferences.SecondaryPreferred`, or
+:class:`~pymongo.read_preferences.Nearest`). For convenience, we also provide
+:class:`~pymongo.read_preferences.ReadPreference` with the following
+attributes:
+
+- ``PRIMARY``: Read from the primary. This is the default read preference,
+  and provides the strongest consistency. If no primary is available, raise
   :class:`~pymongo.errors.AutoReconnect`.
 
-- ``PRIMARY_PREFERRED``: Read from the primary if available, or if there is
-  none, read from a secondary matching your choice of ``tag_sets`` and
-  ``local_threshold_ms``.
+- ``PRIMARY_PREFERRED``: Read from the primary if available, otherwise read
+  from a secondary.
 
-- ``SECONDARY``: Read from a secondary matching your choice of ``tag_sets`` and
-  ``local_threshold_ms``. If no matching secondary is available,
+- ``SECONDARY``: Read from a secondary. If no matching secondary is available,
   raise :class:`~pymongo.errors.AutoReconnect`.
 
-- ``SECONDARY_PREFERRED``: Read from a secondary matching your choice of
-  ``tag_sets`` and ``local_threshold_ms`` if available, otherwise
-  from primary (regardless of the primary's tags and local threshold).
+- ``SECONDARY_PREFERRED``: Read from a secondary if available, otherwise
+  from the primary.
 
-- ``NEAREST``: Read from any member matching your choice of ``tag_sets`` and
-  ``local_threshold_ms``.
+- ``NEAREST``: Read from any available member.
 
-**tag_sets**:
+**Tag sets**:
 
 Replica-set members can be `tagged
 <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_ according to any
@@ -240,14 +262,13 @@ PyMongo tries each set of tags in turn until it finds a set of
 tags with at least one matching member. For example, to prefer reads from the
 New York data center, but fall back to the San Francisco data center, tag your
 replica set members according to their location and create a
-MongoClient like so:
+MongoClient like so::
 
   >>> from pymongo.read_preferences import Secondary
-  >>> rsc = MongoClient(
-  ...     'localhost:27017',
-  ...     replicaSet='foo'
-  ...     read_preference=Secondary(tag_sets=[{'dc': 'ny'}, {'dc': 'sf'}])
-  ... )
+  >>> db = client.get_database(
+  ...     'test', read_preference=Secondary([{'dc': 'ny'}, {'dc': 'sf'}]))
+  >>> db.read_preference
+  Secondary(tag_sets=[{'dc': 'ny'}, {'dc': 'sf'}])
 
 MongoClient tries to find secondaries in New York, then San Francisco,
 and raises :class:`~pymongo.errors.AutoReconnect` if none are available. As an
@@ -258,18 +279,24 @@ See :mod:`~pymongo.read_preferences` for more information.
 
 .. _distributes reads to secondaries:
 
-**local_threshold_ms**:
+**Local threshold**:
 
-If multiple members match the mode and tag sets, PyMongo reads
+If multiple members match the read preference and tag sets, PyMongo reads
 from among the nearest members, chosen according to ping time. By default,
 only members whose ping times are within 15 milliseconds of the nearest
 are used for queries. You can choose to distribute reads among members with
-higher latencies by setting ``local_threshold_ms`` to a larger
-number. In that case, PyMongo distributes reads among matching
-members within ``local_threshold_ms`` of the closest member's
-ping time.
+higher latencies by setting ``localThresholdMS`` to a larger
+number::
 
-.. note:: ``local_threshold_ms`` is ignored when talking to a
+  >>> client = pymongo.MongoClient(
+  ...     replicaSet='repl0',
+  ...     readPreference='secondaryPreferred',
+  ...     localThresholdMS=35)
+
+In this case, PyMongo distributes reads among matching members within 35
+milliseconds of the closest member's ping time.
+
+.. note:: ``localThresholdMS`` is ignored when talking to a
   replica set *through* a mongos. The equivalent is the localThreshold_ command
   line option.
 

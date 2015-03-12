@@ -606,7 +606,7 @@ class TestServerSelectionErrors(TopologyTest):
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertMessage('No replica set members match selector "Primary"',
+        self.assertMessage('No replica set members match selector "Primary()"',
                            t, ReadPreference.PRIMARY)
 
         self.assertMessage('No primary available for writes',

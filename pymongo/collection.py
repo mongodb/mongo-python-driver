@@ -165,8 +165,8 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `command` - The command itself, as a SON instance.
-          - `read_preference` (optional) - An subclass of
-            :class:`~pymongo.read_preferences.ServerMode`.
+          - `read_preference` (optional) - The read preference for this
+            command. See :mod:`~pymongo.read_preferences` for options.
           - `codec_options` (optional) - An instance of
             :class:`~bson.codec_options.CodecOptions`.
           - `**kwargs` - any optional keyword arguments accepted by

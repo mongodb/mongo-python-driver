@@ -62,7 +62,7 @@ def _validate_tag_sets(tag_sets):
     return tag_sets
 
 
-class ServerMode(object):
+class _ServerMode(object):
     """Base class for all read preferences.
     """
 
@@ -116,7 +116,7 @@ class ServerMode(object):
             self.name, self.__tag_sets)
 
     def __eq__(self, other):
-        if isinstance(other, ServerMode):
+        if isinstance(other, _ServerMode):
             return (self.mode == other.mode and
                     self.tag_sets == other.tag_sets)
         raise NotImplementedError
@@ -125,7 +125,7 @@ class ServerMode(object):
         return not self == other
 
 
-class Primary(ServerMode):
+class Primary(_ServerMode):
     """Primary read preference.
 
     * When directly connected to one mongod queries are allowed if the server
@@ -143,15 +143,15 @@ class Primary(ServerMode):
         return writable_server_selector(server_descriptions)
 
     def __repr__(self):
-        return "Primary"
+        return "Primary()"
 
     def __eq__(self, other):
-        if isinstance(other, ServerMode):
+        if isinstance(other, _ServerMode):
             return other.mode == _PRIMARY
         raise NotImplementedError
 
 
-class PrimaryPreferred(ServerMode):
+class PrimaryPreferred(_ServerMode):
     """PrimaryPreferred read preference.
 
     * When directly connected to one mongod queries are allowed to standalone
@@ -180,7 +180,7 @@ class PrimaryPreferred(ServerMode):
                 server_descriptions)
 
 
-class Secondary(ServerMode):
+class Secondary(_ServerMode):
     """Secondary read preference.
 
     * When directly connected to one mongod queries are allowed to standalone
@@ -204,7 +204,7 @@ class Secondary(ServerMode):
             server_descriptions)
 
 
-class SecondaryPreferred(ServerMode):
+class SecondaryPreferred(_ServerMode):
     """SecondaryPreferred read preference.
 
     * When directly connected to one mongod queries are allowed to standalone
@@ -233,7 +233,7 @@ class SecondaryPreferred(ServerMode):
             return writable_server_selector(server_descriptions)
 
 
-class Nearest(ServerMode):
+class Nearest(_ServerMode):
     """Nearest read preference.
 
     * When directly connected to one mongod queries are allowed to standalone

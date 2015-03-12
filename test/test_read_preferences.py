@@ -25,7 +25,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import (ReadPreference, MovingAverage,
                                       Primary, PrimaryPreferred,
                                       Secondary, SecondaryPreferred,
-                                      Nearest, ServerMode)
+                                      Nearest, _ServerMode)
 from pymongo.server_selectors import any_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
@@ -139,11 +139,11 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_tag_sets_validation(self):
         # Can't use tags with PRIMARY
-        self.assertRaises(ConfigurationError, ServerMode,
+        self.assertRaises(ConfigurationError, _ServerMode,
                           0, tag_sets=[{'k': 'v'}])
 
         # ... but empty tag sets are ok with PRIMARY
-        self.assertRaises(ConfigurationError, ServerMode,
+        self.assertRaises(ConfigurationError, _ServerMode,
                           0, tag_sets=[{}])
 
         S = Secondary(tag_sets=[{}])

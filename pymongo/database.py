@@ -395,6 +395,7 @@ class Database(common.BaseObject):
           - `allowable_errors`: if `check` is ``True``, error messages
             in this list will be ignored by error-checking
           - `read_preference`: The read preference for this operation.
+            See :mod:`~pymongo.read_preferences` for options.
           - `codec_options`: A :class:`~bson.codec_options.CodecOptions`
             instance.
           - `**kwargs` (optional): additional keyword arguments will

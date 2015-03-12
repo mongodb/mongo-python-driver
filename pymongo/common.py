@@ -24,7 +24,7 @@ from bson.py3compat import string_type, integer_types
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import (read_pref_mode_from_name,
-                                      ServerMode)
+                                      _ServerMode)
 from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern
 
@@ -236,7 +236,7 @@ def validate_timeout_or_zero(option, value):
 def validate_read_preference(dummy, value):
     """Validate a read preference.
     """
-    if not isinstance(value, ServerMode):
+    if not isinstance(value, _ServerMode):
         raise TypeError("%r is not a read preference." % (value,))
     return value
 
@@ -441,9 +441,10 @@ class BaseObject(object):
                             "bson.codec_options.CodecOptions")
         self.__codec_options = codec_options
 
-        # TODO: Better error reporting for read preference.
-        if not isinstance(read_preference, ServerMode):
-            raise TypeError("read_preference is invalid")
+        if not isinstance(read_preference, _ServerMode):
+            raise TypeError("%r is not valid for read_preference. See "
+                            "pymongo.read_preferences for valid "
+                            "options." % (read_preference,))
         self.__read_preference = read_preference
 
         if not isinstance(write_concern, WriteConcern):
@@ -466,8 +467,7 @@ class BaseObject(object):
     def read_preference(self):
         """The read preference mode for this instance.
 
-        See :class:`~pymongo.read_preferences.ReadPreference` for
-        available options.
+        See :mod:`~pymongo.read_preferences` for available options.
 
         .. versionadded:: 2.1
         """
