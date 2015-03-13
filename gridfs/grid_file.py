@@ -461,6 +461,8 @@ class GridOut(object):
         data = StringIO()
         while received < size:
             chunk_data = self.readchunk()
+            if len(chunk_data) == 0:
+                raise CorruptGridFile("error reading chunk")
             received += len(chunk_data)
             data.write(chunk_data)
 
