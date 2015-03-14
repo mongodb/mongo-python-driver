@@ -277,6 +277,10 @@ The following methods have changed:
   argument, as well as other options supported by the count command.
 - :meth:`~pymongo.collection.Collection.distinct` now optionally takes a filter
   argument.
+- :meth:`~pymongo.collection.Collection.create_index` no longer caches
+  indexes, therefore the `cache_for` parameter has been removed. It also
+  no longer supports the `bucket_size` and `drop_dups` aliases for `bucketSize`
+  and `dropDups`.
 
 The following methods are deprecated:
 
@@ -285,6 +289,7 @@ The following methods are deprecated:
 - :meth:`~pymongo.collection.Collection.update`
 - :meth:`~pymongo.collection.Collection.remove`
 - :meth:`~pymongo.collection.Collection.find_and_modify`
+- :meth:`~pymongo.collection.Collection.ensure_index`
 
 The following methods have been removed:
 

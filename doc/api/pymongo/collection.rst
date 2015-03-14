@@ -52,7 +52,6 @@
       .. automethod:: count
       .. automethod:: distinct
       .. automethod:: create_index
-      .. automethod:: ensure_index
       .. automethod:: drop_index
       .. automethod:: drop_indexes
       .. automethod:: reindex
@@ -71,4 +70,5 @@
       .. automethod:: update(spec, document, upsert=False, manipulate=False, multi=False, check_keys=True, **kwargs)
       .. automethod:: remove(spec_or_id=None, multi=True, **kwargs)
       .. automethod:: find_and_modify
+      .. automethod:: ensure_index
 

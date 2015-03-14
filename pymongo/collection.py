@@ -984,7 +984,31 @@ class Collection(common.BaseObject):
             return 0
         return int(res["n"])
 
-    def create_index(self, key_or_list, cache_for=300, **kwargs):
+    def __create_index(self, keys, index_options):
+        """Internal create index helper.
+
+        :Parameters:
+          - `keys`: a list of tuples [(key, type), (key, type), ...]
+          - `index_options`: a dict of index options.
+        """
+        index_doc = helpers._index_document(keys)
+        index = {"key": index_doc}
+        index.update(index_options)
+
+        cmd = SON([('createIndexes', self.name), ('indexes', [index])])
+        try:
+            self._command(cmd, ReadPreference.PRIMARY)
+        except OperationFailure as exc:
+            if exc.code in common.COMMAND_NOT_FOUND_CODES:
+                index["ns"] = self.__full_name
+                wcn = (self.write_concern if
+                       self.write_concern.acknowledged else WriteConcern())
+                self.__database.system.indexes._insert(
+                    index, True, False, False, wcn)
+            else:
+                raise
+
+    def create_index(self, key_or_list, **kwargs):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -1021,7 +1045,7 @@ class Collection(common.BaseObject):
             background
           - `sparse`: if ``True``, omit from the index any documents that lack
             the indexed field
-          - `bucketSize` or `bucket_size`: for use with geoHaystack indexes.
+          - `bucketSize`: for use with geoHaystack indexes.
             Number of documents to group together within a certain proximity
             to a given longitude and latitude.
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
@@ -1032,59 +1056,47 @@ class Collection(common.BaseObject):
             collection. MongoDB will automatically delete documents from
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
-          - `dropDups` or `drop_dups` (**deprecated**): if ``True`` duplicate
-            values are dropped during index creation when creating a unique
-            index
 
         See the MongoDB documentation for a full list of supported options by
         server version.
 
-        .. warning:: `dropDups` / `drop_dups` is no longer supported by
-          MongoDB starting with server version 2.7.5. The option is silently
-          ignored by the server and unique index builds using the option will
-          fail if a duplicate value is detected.
+        .. warning:: `dropDups` is not supported by MongoDB 2.7.5 or newer. The
+          option is silently ignored by the server and unique index builds
+          using the option will fail if a duplicate value is detected.
 
         .. note:: `expireAfterSeconds` requires server version **>= 2.1.2**
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
             pairs specifying the index to create
-          - `cache_for` (optional): time window (in seconds) during which
-            this index will be recognized by subsequent calls to
-            :meth:`ensure_index` - see documentation for
-            :meth:`ensure_index` for details
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
-          - `ttl` (deprecated): Use `cache_for` instead.
 
-        .. versionchanged:: 2.3
-            The `ttl` parameter has been deprecated to avoid confusion with
-            TTL collections.  Use `cache_for` instead.
-
-        .. versionchanged:: 2.2
-           Removed deprecated argument: deprecated_unique
-
-        .. seealso:: :meth:`ensure_index`
+        .. versionchanged:: 3.0
+            Removed the `cache_for` option. :meth:`create_index` no longer
+            caches index names. Removed support for the drop_dups and
+            bucket_size aliases.
 
         .. mongodoc:: indexes
         """
+        keys = helpers._index_list(key_or_list)
+        name = kwargs.setdefault("name", _gen_index_name(keys))
+        self.__create_index(keys, kwargs)
+        return name
 
-        if 'ttl' in kwargs:
-            cache_for = kwargs.pop('ttl')
-            warnings.warn("ttl is deprecated. Please use cache_for instead.",
-                          DeprecationWarning, stacklevel=2)
+    def ensure_index(self, key_or_list, cache_for=300, **kwargs):
+        """**DEPRECATED** - Ensures that an index exists on this collection.
 
+        .. versionchanged:: 3.0
+            **DEPRECATED**
+        """
+        warnings.warn("ensure_index is deprecated. Use create_index instead.",
+                      DeprecationWarning, stacklevel=2)
         # The types supported by datetime.timedelta.
         if not (isinstance(cache_for, integer_types) or
                 isinstance(cache_for, float)):
             raise TypeError("cache_for must be an integer or float.")
-
-        keys = helpers._index_list(key_or_list)
-        index_doc = helpers._index_document(keys)
-
-        name = "name" in kwargs and kwargs["name"] or _gen_index_name(keys)
-        index = {"key": index_doc, "name": name}
 
         if "drop_dups" in kwargs:
             kwargs["dropDups"] = kwargs.pop("drop_dups")
@@ -1092,124 +1104,15 @@ class Collection(common.BaseObject):
         if "bucket_size" in kwargs:
             kwargs["bucketSize"] = kwargs.pop("bucket_size")
 
-        index.update(kwargs)
-
-        cmd = SON([('createIndexes', self.name), ('indexes', [index])])
-
-        try:
-            self._command(cmd, ReadPreference.PRIMARY)
-        except OperationFailure as exc:
-            if exc.code in common.COMMAND_NOT_FOUND_CODES:
-                index["ns"] = self.__full_name
-                wcn = (self.write_concern if
-                       self.write_concern.acknowledged else WriteConcern())
-                self.__database.system.indexes._insert(
-                    index, True, False, False, wcn)
-            else:
-                raise
-
-        self.__database.client._cache_index(self.__database.name,
-                                            self.__name, name, cache_for)
-
-        return name
-
-    def ensure_index(self, key_or_list, cache_for=300, **kwargs):
-        """Ensures that an index exists on this collection.
-
-        Takes either a single key or a list of (key, direction) pairs.
-        The key(s) must be an instance of :class:`basestring`
-        (:class:`str` in python 3), and the direction(s) must be one of
-        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
-        :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOHAYSTACK`,
-        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`,
-        :data:`pymongo.TEXT`).
-
-        See :meth:`create_index` for detailed examples.
-
-        Unlike :meth:`create_index`, which attempts to create an index
-        unconditionally, :meth:`ensure_index` takes advantage of some
-        caching within the driver such that it only attempts to create
-        indexes that might not already exist. When an index is created
-        (or ensured) by PyMongo it is "remembered" for `cache_for`
-        seconds. Repeated calls to :meth:`ensure_index` within that
-        time limit will be lightweight - they will not attempt to
-        actually create the index.
-
-        Care must be taken when the database is being accessed through
-        multiple clients at once. If an index is created using
-        this client and deleted using another, any call to
-        :meth:`ensure_index` within the cache window will fail to
-        re-create the missing index.
-
-        Returns the specified or generated index name used if
-        :meth:`ensure_index` attempts to create the index. Returns
-        ``None`` if the index is already cached.
-
-        All optional index creation parameters should be passed as
-        keyword arguments to this method. Valid options include, but are not
-        limited to:
-
-          - `name`: custom name to use for this index - if none is
-            given, a name will be generated
-          - `unique`: if ``True`` creates a uniqueness constraint on the index
-          - `background`: if ``True`` this index should be created in the
-            background
-          - `sparse`: if ``True``, omit from the index any documents that lack
-            the indexed field
-          - `bucketSize` or `bucket_size`: for use with geoHaystack indexes.
-            Number of documents to group together within a certain proximity
-            to a given longitude and latitude.
-          - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
-            index
-          - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
-            index
-          - `expireAfterSeconds`: <int> Used to create an expiring (TTL)
-            collection. MongoDB will automatically delete documents from
-            this collection after <int> seconds. The indexed field must
-            be a UTC datetime or the data will not expire.
-          - `dropDups` or `drop_dups` (**deprecated**): if ``True`` duplicate
-            values are dropped during index creation when creating a unique
-            index
-
-        See the MongoDB documentation for a full list of supported options by
-        server version.
-
-        .. warning:: `dropDups` / `drop_dups` is no longer supported by
-          MongoDB starting with server version 2.7.5. The option is silently
-          ignored by the server and unique index builds using the option will
-          fail if a duplicate value is detected.
-
-        .. note:: `expireAfterSeconds` requires server version **>= 2.1.2**
-
-        :Parameters:
-          - `key_or_list`: a single key or a list of (key, direction)
-            pairs specifying the index to create
-          - `cache_for` (optional): time window (in seconds) during which
-            this index will be recognized by subsequent calls to
-            :meth:`ensure_index`
-          - `**kwargs` (optional): any additional index creation
-            options (see the above list) should be passed as keyword
-            arguments
-          - `ttl` (deprecated): Use `cache_for` instead.
-
-        .. versionchanged:: 2.3
-            The `ttl` parameter has been deprecated to avoid confusion with
-            TTL collections.  Use `cache_for` instead.
-
-        .. versionchanged:: 2.2
-           Removed deprecated argument: deprecated_unique
-
-        .. seealso:: :meth:`create_index`
-        """
-        if "name" in kwargs:
-            name = kwargs["name"]
-        else:
-            keys = helpers._index_list(key_or_list)
-            name = kwargs["name"] = _gen_index_name(keys)
+        keys = helpers._index_list(key_or_list)
+        name = kwargs.setdefault("name", _gen_index_name(keys))
 
         if not self.__database.client._cached(self.__database.name,
                                               self.__name, name):
-            return self.create_index(key_or_list, cache_for, **kwargs)
+            self.__create_index(keys, kwargs)
+            self.__database.client._cache_index(self.__database.name,
+                                                self.__name, name, cache_for)
+            return name
         return None
 
     def drop_indexes(self):

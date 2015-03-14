@@ -166,7 +166,7 @@ class GridIn(object):
 
     def _ensure_index(self):
         if not object.__getattribute__(self, "_ensured_index"):
-            self._coll.chunks.ensure_index(
+            self._coll.chunks.create_index(
                 [("files_id", ASCENDING), ("n", ASCENDING)],
                 unique=True)
             object.__setattr__(self, "_ensured_index", True)

@@ -318,7 +318,7 @@ class TestCursor(IntegrationTest):
     def test_max(self):
         db = self.db
         db.test.drop()
-        db.test.ensure_index([("j", ASCENDING)])
+        db.test.create_index([("j", ASCENDING)])
 
         db.test.insert_many([{"j": j, "k": j} for j in range(10)])
 
@@ -330,7 +330,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(list(cursor)), 3)
 
         # Compound index.
-        db.test.ensure_index([("j", ASCENDING), ("k", ASCENDING)])
+        db.test.create_index([("j", ASCENDING), ("k", ASCENDING)])
         cursor = db.test.find().max([("j", 3), ("k", 3)])
         self.assertEqual(len(list(cursor)), 3)
 
@@ -348,7 +348,7 @@ class TestCursor(IntegrationTest):
     def test_min(self):
         db = self.db
         db.test.drop()
-        db.test.ensure_index([("j", ASCENDING)])
+        db.test.create_index([("j", ASCENDING)])
 
         db.test.insert_many([{"j": j, "k": j} for j in range(10)])
 
@@ -360,7 +360,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(len(list(cursor)), 7)
 
         # Compound index.
-        db.test.ensure_index([("j", ASCENDING), ("k", ASCENDING)])
+        db.test.create_index([("j", ASCENDING), ("k", ASCENDING)])
         cursor = db.test.find().min([("j", 3), ("k", 3)])
         self.assertEqual(len(list(cursor)), 7)
 

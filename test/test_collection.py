@@ -19,8 +19,6 @@
 import re
 import sys
 import threading
-import time
-import warnings
 
 sys.path[0:0] = [""]
 
@@ -47,8 +45,8 @@ from pymongo.results import (InsertOneResult,
                              DeleteResult)
 from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
-from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
-                        ignore_deprecations, rs_or_single_client, wait_until)
+from test.utils import (is_mongos, enable_text_search, get_pool,
+                        rs_or_single_client, wait_until)
 from test import client_context, host, port, unittest
 
 
@@ -124,10 +122,6 @@ class TestCollection(IntegrationTest):
 
         self.assertRaises(TypeError, db.test.create_index, 5)
         self.assertRaises(TypeError, db.test.create_index, {"hello": 1})
-        self.assertRaises(TypeError,
-                          db.test.ensure_index, {"hello": 1}, cache_for='foo')
-        self.assertRaises(TypeError,
-                          db.test.ensure_index, {"hello": 1}, ttl='foo')
         self.assertRaises(ValueError, db.test.create_index, [])
 
         db.test.drop_indexes()
@@ -162,109 +156,6 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({'a': 1})
         self.assertRaises(
             DuplicateKeyError, db.test.create_index, 'a', unique=True)
-
-    def test_ensure_index(self):
-        db = self.db
-
-        self.assertRaises(TypeError, db.test.ensure_index, {"hello": 1})
-        self.assertRaises(TypeError,
-                          db.test.ensure_index, {"hello": 1}, cache_for='foo')
-        self.assertRaises(TypeError,
-                          db.test.ensure_index, {"hello": 1}, ttl='foo')
-
-        db.test.drop_indexes()
-        self.assertEqual("hello_1", db.test.create_index("hello"))
-        self.assertEqual("hello_1", db.test.create_index("hello"))
-
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.test.drop_indexes()
-        self.assertEqual("foo",
-                         db.test.ensure_index("goodbye", name="foo"))
-        self.assertEqual(None, db.test.ensure_index("goodbye", name="foo"))
-
-        db.test.drop_indexes()
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.drop_collection("test")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.create_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", cache_for=1))
-        time.sleep(1.2)
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-
-        db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.create_index("goodbye", cache_for=1))
-        time.sleep(1.2)
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        # Make sure the expiration time is updated.
-        self.assertEqual(None,
-                         db.test.ensure_index("goodbye"))
-
-        # Clean up indexes for later tests
-        db.test.drop_indexes()
-
-    def test_deprecated_ttl_index_kwarg(self):
-        db = self.db
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            self.assertRaises(DeprecationWarning, lambda:
-                              db.test.ensure_index("goodbye", ttl=10))
-
-        with ignore_deprecations():
-            self.assertEqual("goodbye_1",
-                             db.test.ensure_index("goodbye", ttl=10))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-    def test_ensure_unique_index_threaded(self):
-        coll = self.db.test_unique_threaded
-        coll.drop()
-        coll.insert_many([{'foo': i} for i in range(10000)])
-
-        class Indexer(threading.Thread):
-            def run(self):
-                try:
-                    coll.ensure_index('foo', unique=True)
-                    coll.insert_one({'foo': 'bar'})
-                    coll.insert_one({'foo': 'bar'})
-                except OperationFailure:
-                    pass
-
-        threads = []
-        for _ in range(10):
-            t = Indexer()
-            t.setDaemon(True)
-            threads.append(t)
-
-        for i in range(10):
-            threads[i].start()
-
-        joinall(threads)
-
-        self.assertEqual(10001, coll.count())
-        coll.drop()
 
     def test_drop_index(self):
         db = self.db
@@ -364,7 +255,7 @@ class TestCollection(IntegrationTest):
         })
         db.test.create_index(
             [("pos", GEOHAYSTACK), ("type", ASCENDING)],
-            bucket_size=1
+            bucketSize=1
         )
 
         results = db.command(SON([

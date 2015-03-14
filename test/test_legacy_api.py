@@ -16,6 +16,8 @@
 
 import itertools
 import sys
+import threading
+import time
 import warnings
 
 sys.path[0:0] = [""]
@@ -40,7 +42,8 @@ from pymongo.son_manipulator import (AutoReference,
 from pymongo.write_concern import WriteConcern
 from test import client_context, qcheck, unittest
 from test.test_client import IntegrationTest
-from test.utils import (oid_generated_on_client,
+from test.utils import (joinall,
+                        oid_generated_on_client,
                         rs_or_single_client,
                         wait_until)
 
@@ -84,6 +87,14 @@ class TestDeprecations(IntegrationTest):
         db = self.client.pymongo_test
         self.assertRaises(DeprecationWarning,
                           lambda: db.add_son_manipulator(AutoReference(db)))
+
+    def test_ensure_index_deprecation(self):
+        try:
+            self.assertRaises(
+                DeprecationWarning,
+                lambda: self.db.test.ensure_index('i'))
+        finally:
+            self.db.test.drop()
 
 
 class TestLegacy(IntegrationTest):
@@ -1008,6 +1019,85 @@ class TestLegacy(IntegrationTest):
             self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
         self.assertEqual([], db.outgoing_manipulators)
         self.assertEqual(['AutoReference'], db.outgoing_copying_manipulators)
+
+    def test_ensure_index(self):
+        db = self.db
+
+        self.assertRaises(TypeError, db.test.ensure_index, {"hello": 1})
+        self.assertRaises(TypeError,
+                          db.test.ensure_index, {"hello": 1}, cache_for='foo')
+
+        db.test.drop_indexes()
+
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
+
+        db.test.drop_indexes()
+        self.assertEqual("foo",
+                         db.test.ensure_index("goodbye", name="foo"))
+        self.assertEqual(None, db.test.ensure_index("goodbye", name="foo"))
+
+        db.test.drop_indexes()
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
+
+        db.test.drop_index("goodbye_1")
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
+
+        db.drop_collection("test")
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
+
+        db.test.drop_index("goodbye_1")
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
+
+        db.test.drop_index("goodbye_1")
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", cache_for=1))
+        time.sleep(1.2)
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye"))
+        # Make sure the expiration time is updated.
+        self.assertEqual(None,
+                         db.test.ensure_index("goodbye"))
+
+        # Clean up indexes for later tests
+        db.test.drop_indexes()
+
+    def test_ensure_unique_index_threaded(self):
+        coll = self.db.test_unique_threaded
+        coll.drop()
+        coll.insert_many([{'foo': i} for i in range(10000)])
+
+        class Indexer(threading.Thread):
+            def run(self):
+                try:
+                    coll.ensure_index('foo', unique=True)
+                    coll.insert_one({'foo': 'bar'})
+                    coll.insert_one({'foo': 'bar'})
+                except OperationFailure:
+                    pass
+
+        threads = []
+        for _ in range(10):
+            t = Indexer()
+            t.setDaemon(True)
+            threads.append(t)
+
+        for i in range(10):
+            threads[i].start()
+
+        joinall(threads)
+
+        self.assertEqual(10001, coll.count())
+        coll.drop()
 
 
 if __name__ == "__main__":

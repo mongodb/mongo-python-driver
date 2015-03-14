@@ -74,13 +74,13 @@ class GridFS(object):
 
     def __ensure_index_files_id(self):
         if not self.__is_secondary():
-            self.__chunks.ensure_index([("files_id", ASCENDING),
+            self.__chunks.create_index([("files_id", ASCENDING),
                                         ("n", ASCENDING)],
                                        unique=True)
 
     def __ensure_index_filename(self):
         if not self.__is_secondary():
-            self.__files.ensure_index([("filename", ASCENDING),
+            self.__files.create_index([("filename", ASCENDING),
                                        ("uploadDate", DESCENDING)])
 
     def new_file(self, **kwargs):

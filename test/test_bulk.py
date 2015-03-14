@@ -656,7 +656,7 @@ class TestBulk(BulkTestBase):
             result)
 
     def test_single_error_ordered_batch(self):
-        self.coll.ensure_index('a', unique=True)
+        self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'b': 1, 'a': 1})
@@ -690,7 +690,7 @@ class TestBulk(BulkTestBase):
             result)
 
     def test_multiple_error_ordered_batch(self):
-        self.coll.ensure_index('a', unique=True)
+        self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'b': 1, 'a': 1})
@@ -746,7 +746,7 @@ class TestBulk(BulkTestBase):
             result)
 
     def test_single_error_unordered_batch(self):
-        self.coll.ensure_index('a', unique=True)
+        self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
         batch = self.coll.initialize_unordered_bulk_op()
         batch.insert({'b': 1, 'a': 1})
@@ -780,7 +780,7 @@ class TestBulk(BulkTestBase):
             result)
 
     def test_multiple_error_unordered_batch(self):
-        self.coll.ensure_index('a', unique=True)
+        self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
         batch = self.coll.initialize_unordered_bulk_op()
         batch.insert({'b': 1, 'a': 1})
@@ -999,7 +999,7 @@ class TestBulkWriteConcern(BulkTestBase):
         self.assertTrue(isinstance(failed['errmsg'], string_type))
 
         self.coll.delete_many({})
-        self.coll.ensure_index('a', unique=True)
+        self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
 
         # Fail due to write concern support as well
@@ -1065,7 +1065,7 @@ class TestBulkWriteConcern(BulkTestBase):
         self.assertTrue(len(result['writeConcernErrors']) > 1)
 
         self.coll.delete_many({})
-        self.coll.ensure_index('a', unique=True)
+        self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
 
         # Fail due to write concern support as well
