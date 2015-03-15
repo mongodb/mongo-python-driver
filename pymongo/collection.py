@@ -35,7 +35,7 @@ from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
-from pymongo.operations import _WriteOp
+from pymongo.operations import _WriteOp, IndexModel
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (BulkWriteResult,
                              DeleteResult,
@@ -64,12 +64,6 @@ class ReturnDocument(object):
     """
     AFTER = True
     """Return the updated/replaced or inserted document."""
-
-
-def _gen_index_name(keys):
-    """Generate an index name from the set of fields it is over.
-    """
-    return "_".join(["%s_%s" % item for item in keys])
 
 
 class Collection(common.BaseObject):
@@ -984,6 +978,38 @@ class Collection(common.BaseObject):
             return 0
         return int(res["n"])
 
+    def create_indexes(self, indexes):
+        """Create one or more indexes on this collection.
+
+          >>> from pymongo import IndexModel, ASCENDING, DESCENDING
+          >>> index1 = IndexModel([("hello", DESCENDING),
+          ...                      ("world", ASCENDING)], name="hello_world")
+          >>> index2 = IndexModel([("goodbye", DESCENDING)])
+          >>> db.test.create_indexes([index1, index2])
+          ["hello_world"]
+
+        :Parameters:
+          - `indexes`: A list of :class:`~pymongo.operations.IndexModel`
+            instances.
+
+        .. note:: `create_indexes` requires server version **>= 2.6**
+        """
+        if not isinstance(indexes, list):
+            raise TypeError("indexes must be a list")
+        names = []
+        def gen_indexes():
+            for index in indexes:
+                if not isinstance(index, IndexModel):
+                    raise TypeError("%r is not an instance of "
+                                    "pymongo.operations.IndexModel" % (index,))
+                document = index.document
+                names.append(document["name"])
+                yield document
+        cmd = SON([('createIndexes', self.name),
+                   ('indexes', list(gen_indexes()))])
+        self._command(cmd, ReadPreference.PRIMARY)
+        return names
+
     def __create_index(self, keys, index_options):
         """Internal create index helper.
 
@@ -1081,7 +1107,7 @@ class Collection(common.BaseObject):
         .. mongodoc:: indexes
         """
         keys = helpers._index_list(key_or_list)
-        name = kwargs.setdefault("name", _gen_index_name(keys))
+        name = kwargs.setdefault("name", helpers._gen_index_name(keys))
         self.__create_index(keys, kwargs)
         return name
 
@@ -1105,7 +1131,7 @@ class Collection(common.BaseObject):
             kwargs["bucketSize"] = kwargs.pop("bucket_size")
 
         keys = helpers._index_list(key_or_list)
-        name = kwargs.setdefault("name", _gen_index_name(keys))
+        name = kwargs.setdefault("name", helpers._gen_index_name(keys))
 
         if not self.__database.client._cached(self.__database.name,
                                               self.__name, name):
@@ -1146,7 +1172,7 @@ class Collection(common.BaseObject):
         """
         name = index_or_name
         if isinstance(index_or_name, list):
-            name = _gen_index_name(index_or_name)
+            name = helpers._gen_index_name(index_or_name)
 
         if not isinstance(name, string_type):
             raise TypeError("index_or_name must be an index name or list")

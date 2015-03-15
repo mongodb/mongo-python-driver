@@ -38,6 +38,7 @@ from pymongo.errors import (DuplicateKeyError,
                             InvalidName,
                             InvalidOperation,
                             OperationFailure)
+from pymongo.operations import IndexModel
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (InsertOneResult,
                              InsertManyResult,
@@ -116,6 +117,56 @@ class TestCollection(IntegrationTest):
 
         # No exception
         self.db.drop_collection('test')
+
+    @client_context.require_version_min(2, 6)
+    def test_create_indexes(self):
+        db = self.db
+
+        self.assertRaises(TypeError, db.test.create_indexes, 'foo')
+        self.assertRaises(TypeError, db.test.create_indexes, ['foo'])
+        self.assertRaises(TypeError, IndexModel, 5)
+        self.assertRaises(ValueError, IndexModel, [])
+
+        db.test.drop_indexes()
+        db.test.insert_one({})
+        self.assertEqual(len(db.test.index_information()), 1)
+
+        db.test.create_indexes([IndexModel("hello")])
+        db.test.create_indexes([IndexModel([("hello", DESCENDING),
+                                            ("world", ASCENDING)])])
+
+        # Tuple instead of list.
+        db.test.create_indexes([IndexModel((("world", ASCENDING),))])
+
+        self.assertEqual(len(db.test.index_information()), 4)
+
+        db.test.drop_indexes()
+        names = db.test.create_indexes([IndexModel([("hello", DESCENDING),
+                                                    ("world", ASCENDING)],
+                                                   name="hello_world")])
+        self.assertEqual(names, ["hello_world"])
+
+        db.test.drop_indexes()
+        self.assertEqual(len(db.test.index_information()), 1)
+        db.test.create_indexes([IndexModel("hello")])
+        self.assertTrue("hello_1" in db.test.index_information())
+
+        db.test.drop_indexes()
+        self.assertEqual(len(db.test.index_information()), 1)
+        names = db.test.create_indexes([IndexModel([("hello", DESCENDING),
+                                                    ("world", ASCENDING)]),
+                                        IndexModel("hello")])
+        info = db.test.index_information()
+        for name in names:
+            self.assertTrue(name in info)
+
+        db.test.drop()
+        db.test.insert_one({'a': 1})
+        db.test.insert_one({'a': 1})
+        self.assertRaises(
+            DuplicateKeyError,
+            db.test.create_indexes,
+            [IndexModel('a', unique=True)])
 
     def test_create_index(self):
         db = self.db

@@ -52,6 +52,7 @@
       .. automethod:: count
       .. automethod:: distinct
       .. automethod:: create_index
+      .. automethod:: create_indexes
       .. automethod:: drop_index
       .. automethod:: drop_indexes
       .. automethod:: reindex

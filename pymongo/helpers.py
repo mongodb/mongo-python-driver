@@ -33,6 +33,11 @@ from pymongo.errors import (CursorNotFound,
 from pymongo.message import _Query
 
 
+def _gen_index_name(keys):
+    """Generate an index name from the set of fields it is over."""
+    return "_".join(["%s_%s" % item for item in keys])
+
+
 def _index_list(key_or_list, direction=None):
     """Helper to generate a list of (key, direction) pairs.
 
