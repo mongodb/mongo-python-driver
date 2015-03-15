@@ -370,7 +370,7 @@ class TestCollection(IntegrationTest):
         self._drop_dups_setup(db)
 
         # No error, just drop the duplicate
-        db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True)
+        db.test.create_index([('i', ASCENDING)], unique=True, dropDups=True)
 
         # Duplicate was dropped
         self.assertEqual(3, db.test.count())
@@ -388,7 +388,7 @@ class TestCollection(IntegrationTest):
             db.test.create_index(
                 [('i', ASCENDING)],
                 unique=True,
-                drop_dups=False
+                dropDups=False
             )
         self.assertRaises(DuplicateKeyError, test_create)
 
