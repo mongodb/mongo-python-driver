@@ -992,7 +992,11 @@ class Collection(common.BaseObject):
           - `indexes`: A list of :class:`~pymongo.operations.IndexModel`
             instances.
 
-        .. note:: `create_indexes` requires server version **>= 2.6**
+        .. note:: `create_indexes` uses the ``createIndexes`` command
+           introduced in MongoDB **2.6** and cannot be used with earlier
+           versions.
+
+        .. versionadded:: 3.0
         """
         if not isinstance(indexes, list):
             raise TypeError("indexes must be a list")
@@ -1034,7 +1038,7 @@ class Collection(common.BaseObject):
             else:
                 raise
 
-    def create_index(self, key_or_list, **kwargs):
+    def create_index(self, keys, **kwargs):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -1065,19 +1069,19 @@ class Collection(common.BaseObject):
         Valid options include, but are not limited to:
 
           - `name`: custom name to use for this index - if none is
-            given, a name will be generated
-          - `unique`: if ``True`` creates a uniqueness constraint on the index
+            given, a name will be generated.
+          - `unique`: if ``True`` creates a uniqueness constraint on the index.
           - `background`: if ``True`` this index should be created in the
-            background
+            background.
           - `sparse`: if ``True``, omit from the index any documents that lack
-            the indexed field
+            the indexed field.
           - `bucketSize`: for use with geoHaystack indexes.
             Number of documents to group together within a certain proximity
             to a given longitude and latitude.
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
-            index
+            index.
           - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
-            index
+            index.
           - `expireAfterSeconds`: <int> Used to create an expiring (TTL)
             collection. MongoDB will automatically delete documents from
             this collection after <int> seconds. The indexed field must
@@ -1090,23 +1094,23 @@ class Collection(common.BaseObject):
           option is silently ignored by the server and unique index builds
           using the option will fail if a duplicate value is detected.
 
-        .. note:: `expireAfterSeconds` requires server version **>= 2.1.2**
+        .. note:: `expireAfterSeconds` requires server version **>= 2.2**
 
         :Parameters:
-          - `key_or_list`: a single key or a list of (key, direction)
+          - `keys`: a single key or a list of (key, direction)
             pairs specifying the index to create
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
 
         .. versionchanged:: 3.0
-            Removed the `cache_for` option. :meth:`create_index` no longer
-            caches index names. Removed support for the drop_dups and
-            bucket_size aliases.
+            Renamed `key_or_list` to `keys`. Removed the `cache_for` option.
+            :meth:`create_index` no longer caches index names. Removed support
+            for the drop_dups and bucket_size aliases.
 
         .. mongodoc:: indexes
         """
-        keys = helpers._index_list(key_or_list)
+        keys = helpers._index_list(keys)
         name = kwargs.setdefault("name", helpers._gen_index_name(keys))
         self.__create_index(keys, kwargs)
         return name
@@ -1194,7 +1198,19 @@ class Collection(common.BaseObject):
         return self._command(cmd, ReadPreference.PRIMARY)[0]
 
     def list_indexes(self):
-        """Get a cursor over the indexes for this collection."""
+        """Get a cursor over the index documents for this collection.
+
+          >>> for index in db.test.list_indexes():
+          ...     print(index)
+          ...
+          SON([(u'v', 1), (u'key', SON([(u'_id', 1)])),
+               (u'name', u'_id_'), (u'ns', u'test.test')])
+
+        :Returns:
+          An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+
+        .. versionadded:: 3.0
+        """
         client = self.__database.client
         if client._writable_max_wire_version() > 2:
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
