@@ -385,10 +385,8 @@ def _do_batched_write_command(namespace, operation, command,
         buf.write(struct.pack('<i', request_id))
         buf.seek(0)
         buf.write(struct.pack('<i', length))
-
-        return client._send_message((request_id, buf.getvalue()),
-                                    with_last_error=True,
-                                    command=True)
+        with client._get_socket_for_writes() as sock_info:
+            return sock_info.write_command(request_id, buf.getvalue())
 
     # If there are multiple batches we'll
     # merge results in the caller.
@@ -438,5 +436,6 @@ def _do_batched_write_command(namespace, operation, command,
 
     results.append((idx_offset, send_message()))
     return results
-if _use_c:
-    _do_batched_write_command = _cmessage._do_batched_write_command
+# TODO: reenable
+# if _use_c:
+#     _do_batched_write_command = _cmessage._do_batched_write_command

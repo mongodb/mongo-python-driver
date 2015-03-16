@@ -212,6 +212,24 @@ class SocketInfo(object):
             response = self.receive_message(1, request_id)
             return helpers._check_gle_response(response)
 
+    def write_command(self, request_id, msg):
+        """Send "insert" etc. command, returning response as a dict.
+
+        Can raise ConnectionFailure or OperationFailure.
+
+        :Parameters:
+          - `request_id`: an int.
+          - `msg`: bytes, the command message.
+        """
+        self.send_message(msg, 0)
+        response = helpers._unpack_response(self.receive_message(1, request_id))
+        assert response['number_returned'] == 1
+        result = response['data'][0]
+
+        # Raises NotMasterError or OperationFailure.
+        helpers._check_command_response(result)
+        return result
+
     def check_auth(self, all_credentials):
         """Update this socket's authentication.
 
