@@ -31,6 +31,7 @@ access:
   Database(MongoClient('localhost', 27017), u'test-database')
 """
 
+import contextlib
 import datetime
 import threading
 import warnings
@@ -671,7 +672,22 @@ class MongoClient(common.BaseObject):
         self._topology.open()
         return self._topology
 
+    @contextlib.contextmanager
+    def _get_socket_for_writes(self):
+        server = self._get_topology().select_server(writable_server_selector)
+        with server.get_socket(self.__all_credentials) as sock_info:
+            # TODO: refactor with _reset_on_error
+            try:
+                yield sock_info
+            except NetworkTimeout:
+                # The socket has been closed. Don't reset the server.
+                raise
+            except ConnectionFailure:
+                self.__reset_server(server.description.address)
+                raise
+
     def __check_gle_response(self, response, is_command):
+        # TODO: remove
         """Check a response to a lastError message for errors.
 
         `response` is a byte string representing a response to the message.

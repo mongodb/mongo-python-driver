@@ -46,12 +46,20 @@ def _get_server_type(doc):
 
 
 class IsMaster(object):
-    __slots__ = ('_doc', '_server_type')
+    __slots__ = ('_doc', '_server_type', '_is_writable', '_is_readable')
 
     def __init__(self, doc):
         """Parse an ismaster response from the server."""
         self._server_type = _get_server_type(doc)
         self._doc = doc
+        self._is_writable = self._server_type in (
+            SERVER_TYPE.RSPrimary,
+            SERVER_TYPE.Standalone,
+            SERVER_TYPE.Mongos)
+
+        self._is_readable = (
+            self.server_type == SERVER_TYPE.RSSecondary
+            or self._is_writable)
 
     @property
     def server_type(self):
@@ -102,3 +110,11 @@ class IsMaster(object):
     @property
     def max_wire_version(self):
         return self._doc.get('maxWireVersion', common.MAX_WIRE_VERSION)
+
+    @property
+    def is_writable(self):
+        return self._is_writable
+
+    @property
+    def is_readable(self):
+        return self._is_readable

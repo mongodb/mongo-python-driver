@@ -280,8 +280,9 @@ def _do_batched_insert(collection_name, docs, check_keys,
         if has_docs:
             # We have enough data, send this message.
             try:
-                client._send_message(_insert_message(data.getvalue(),
-                                                     send_safe), send_safe)
+                request_id, msg = _insert_message(data.getvalue(), send_safe)
+                with client._get_socket_for_writes() as sock_info:
+                    sock_info.legacy_write(msg, request_id, send_safe)
             # Exception type could be OperationFailure or a subtype
             # (e.g. DuplicateKeyError)
             except OperationFailure as exc:
@@ -311,13 +312,16 @@ def _do_batched_insert(collection_name, docs, check_keys,
     if not has_docs:
         raise InvalidOperation("cannot do an empty bulk insert")
 
-    client._send_message(_insert_message(data.getvalue(), safe), safe)
+    request_id, msg = _insert_message(data.getvalue(), safe)
+    with client._get_socket_for_writes() as sock_info:
+        sock_info.legacy_write(msg, request_id, safe)
 
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:
         raise last_error
-if _use_c:
-    _do_batched_insert = _cmessage._do_batched_insert
+# TODO: reenable
+# if _use_c:
+#     _do_batched_insert = _cmessage._do_batched_insert
 
 
 def _do_batched_write_command(namespace, operation, command,

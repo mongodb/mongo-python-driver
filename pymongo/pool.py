@@ -18,10 +18,11 @@ import socket
 import threading
 
 from bson.py3compat import u, itervalues
-from pymongo import auth, thread_util
+from pymongo import auth, helpers, thread_util
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             NetworkTimeout,
+                            NotMasterError,
                             OperationFailure)
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
@@ -182,6 +183,26 @@ class SocketInfo(object):
             return receive_message(self.sock, operation, request_id)
         except BaseException as error:
             self._raise_connection_failure(error)
+
+    def legacy_write(self, message, request_id, with_last_error):
+        """Send OP_INSERT, etc., optionally returning response as a dict.
+
+        Can raise ConnectionFailure or OperationFailure.
+
+        :Parameters:
+          - `message`: bytes, an OP_INSERT, OP_UPDATE, or OP_DELETE message,
+            perhaps with a getlasterror command appended.
+          - `request_id`: an int.
+          - `with_last_error`: True if a getlasterror command is appended.
+        """
+        if not with_last_error and not self.ismaster.is_writable:
+            # Write won't succeed, bail as if we'd done a getlasterror.
+            raise NotMasterError("not master")
+
+        self.send_message(message)
+        if with_last_error:
+            response = self.receive_message(1, request_id)
+            return helpers._check_gle_response(response)
 
     def check_auth(self, all_credentials):
         """Update this socket's authentication.
