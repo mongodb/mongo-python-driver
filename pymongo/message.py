@@ -330,8 +330,8 @@ def _do_batched_write_command(namespace, operation, command,
     """
     max_bson_size = client.max_bson_size
     max_write_batch_size = client.max_write_batch_size
-    # Max BSON object size + 16k - 2 bytes for ending NUL bytes
-    # XXX: This should come from the server - SERVER-10643
+    # Max BSON object size + 16k - 2 bytes for ending NUL bytes.
+    # Server guarantees there is enough room: SERVER-10643.
     max_cmd_size = max_bson_size + 16382
 
     ordered = command.get('ordered', True)
