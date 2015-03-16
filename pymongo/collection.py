@@ -1193,6 +1193,27 @@ class Collection(common.BaseObject):
         cmd = SON([("reIndex", self.__name)])
         return self._command(cmd, ReadPreference.PRIMARY)[0]
 
+    def list_indexes(self):
+        """Get a cursor over the indexes for this collection."""
+        client = self.__database.client
+        if client._writable_max_wire_version() > 2:
+            cmd = SON([("listIndexes", self.__name), ("cursor", {})])
+            res, addr = self._command(cmd,
+                                      ReadPreference.PRIMARY,
+                                      CodecOptions(SON))
+            cursor = res["cursor"]
+        else:
+            namespace = "%s.%s" % (self.__database.name, "system.indexes")
+            res, addr = helpers._first_batch(
+                client, namespace, {"ns": self.__full_name},
+                0, ReadPreference.PRIMARY, CodecOptions(SON))
+            cursor = {
+                "id": res["cursor_id"],
+                "firstBatch": res["data"],
+                "ns": namespace,
+            }
+        return CommandCursor(self, cursor, addr)
+
     def index_information(self):
         """Get information on this collection's indexes.
 
@@ -1212,26 +1233,9 @@ class Collection(common.BaseObject):
         {u'_id_': {u'key': [(u'_id', 1)]},
          u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
         """
-        client = self.__database.client
-        if client._writable_max_wire_version() > 2:
-            cmd = SON([("listIndexes", self.__name), ("cursor", {})])
-            res, addr = self._command(cmd,
-                                      ReadPreference.PRIMARY,
-                                      CodecOptions(document_class=SON))
-            # MongoDB 2.8rc2
-            if "indexes" in res:
-                raw = res["indexes"]
-            # >= MongoDB 2.8rc3
-            else:
-                raw = CommandCursor(self, res["cursor"], addr)
-        else:
-            raw = self.__database.get_collection(
-                "system.indexes",
-                codec_options=CodecOptions(document_class=SON),
-                read_preference=ReadPreference.PRIMARY).find(
-                    {"ns": self.__full_name}, {"ns": 0})
+        cursor = self.list_indexes()
         info = {}
-        for index in raw:
+        for index in cursor:
             index["key"] = index["key"].items()
             index = dict(index)
             info[index.pop("name")] = index

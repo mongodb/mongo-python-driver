@@ -56,6 +56,7 @@
       .. automethod:: drop_index
       .. automethod:: drop_indexes
       .. automethod:: reindex
+      .. automethod:: list_indexes
       .. automethod:: index_information
       .. automethod:: drop
       .. automethod:: rename

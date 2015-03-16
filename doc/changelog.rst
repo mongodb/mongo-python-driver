@@ -268,6 +268,7 @@ The following methods have been added:
 - :meth:`~pymongo.collection.Collection.find_one_and_update`
 - :meth:`~pymongo.collection.Collection.with_options`
 - :meth:`~pymongo.collection.Collection.create_indexes`
+- :meth:`~pymongo.collection.Collection.list_indexes`
 
 The following methods have changed:
 

@@ -184,10 +184,9 @@ def _check_command_response(response, msg=None, allowable_errors=None):
             raise OperationFailure(msg % errmsg, code, response)
 
 
-def _command(client, namespace, command, read_preference,
-             codec_options, check=True, allowable_errors=None):
-    """Internal command helper."""
-
+def _first_batch(client, namespace, query,
+                 limit, read_preference, codec_options):
+    """Simple query helper for retrieving a first (and possibly only) batch."""
     query_opts = 0
     # XXX: Set slaveOkay flag when read preference mode is anything other
     # than primary (0). Make this more clear when we finish refactoring
@@ -195,18 +194,28 @@ def _command(client, namespace, command, read_preference,
     if read_preference.mode:
         query_opts = 4
 
-    query = _Query(query_opts, namespace, 0, -1, command, None, codec_options)
+    query = _Query(
+        query_opts, namespace, 0, limit, query, None, codec_options)
     response = client._send_message_with_response(query, read_preference)
-    result = _unpack_response(response.data, None, codec_options)['data'][0]
+    return _unpack_response(
+        response.data, None, codec_options), response.address
+
+
+def _command(client, namespace, command, read_preference,
+             codec_options, check=True, allowable_errors=None):
+    """Internal command helper."""
+    result, addr = _first_batch(
+        client, namespace, command, -1, read_preference, codec_options)
+    result = result["data"][0]
     if check:
         msg = "command %s on namespace %s failed: %%s" % (
             repr(command).replace("%", "%%"), namespace)
         try:
             _check_command_response(result, msg, allowable_errors)
         except NotMasterError:
-            client._reset_server_and_request_check(response.address)
+            client._reset_server_and_request_check(addr)
             raise
-    return result, response.address
+    return result, addr
 
 
 def _check_write_command_response(results):

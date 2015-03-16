@@ -260,6 +260,33 @@ class TestCollection(IntegrationTest):
         else:
             check_result(reindexed)
 
+    def test_list_indexes(self):
+        db = self.db
+        db.test.drop()
+        db.test.insert_one({})  # create collection
+
+        def map_indexes(indexes):
+            return dict([(index["name"], index) for index in indexes])
+
+        indexes = list(db.test.list_indexes())
+        self.assertEqual(len(indexes), 1)
+        self.assertTrue("_id_" in map_indexes(indexes))
+
+        db.test.create_index("hello")
+        indexes = list(db.test.list_indexes())
+        self.assertEqual(len(indexes), 2)
+        self.assertEqual(map_indexes(indexes)["hello_1"]["key"],
+                         SON([("hello", ASCENDING)]))
+
+        db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)],
+                             unique=True)
+        indexes = list(db.test.list_indexes())
+        self.assertEqual(len(indexes), 3)
+        index_map = map_indexes(indexes)
+        self.assertEqual(index_map["hello_-1_world_1"]["key"],
+                         SON([("hello", DESCENDING), ("world", ASCENDING)]))
+        self.assertEqual(True, index_map["hello_-1_world_1"]["unique"])
+
     def test_index_info(self):
         db = self.db
         db.test.drop()
