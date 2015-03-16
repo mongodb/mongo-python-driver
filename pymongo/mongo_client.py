@@ -675,16 +675,16 @@ class MongoClient(common.BaseObject):
     @contextlib.contextmanager
     def _get_socket_for_writes(self):
         server = self._get_topology().select_server(writable_server_selector)
-        with server.get_socket(self.__all_credentials) as sock_info:
-            # TODO: refactor with _reset_on_error
-            try:
+        # TODO: refactor with _reset_on_error
+        try:
+            with server.get_socket(self.__all_credentials) as sock_info:
                 yield sock_info
-            except NetworkTimeout:
-                # The socket has been closed. Don't reset the server.
-                raise
-            except ConnectionFailure:
-                self.__reset_server(server.description.address)
-                raise
+        except NetworkTimeout:
+            # The socket has been closed. Don't reset the server.
+            raise
+        except ConnectionFailure:
+            self.__reset_server(server.description.address)
+            raise
 
     def __check_gle_response(self, response, is_command):
         # TODO: remove

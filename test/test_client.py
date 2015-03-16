@@ -1133,7 +1133,7 @@ class TestMongoClientFailover(MockClientTest):
         c._get_topology().select_servers(writable_server_selector)
         self.assertEqual(c.address, ('a', 1))
 
-    def test_network_error_on_operation(self):
+    def _test_network_error(self, operation_callback):
         # Verify only the disconnected server is reset by a network failure.
 
         # Disable background refresh.
@@ -1155,7 +1155,7 @@ class TestMongoClientFailover(MockClientTest):
             c.kill_host('a:1')
 
             # MongoClient is disconnected from the primary.
-            self.assertRaises(AutoReconnect, c.db.collection.find_one)
+            self.assertRaises(AutoReconnect, operation_callback, c)
 
             # The primary's description is reset.
             server_a = c._get_topology().get_server_by_address(('a', 1))
@@ -1170,6 +1170,27 @@ class TestMongoClientFailover(MockClientTest):
             self.assertEqual(SERVER_TYPE.RSSecondary, sd_b.server_type)
             self.assertEqual(0, sd_b.min_wire_version)
             self.assertEqual(2, sd_b.max_wire_version)
+
+    def test_network_error_on_query(self):
+        callback = lambda client: client.db.collection.find_one()
+        self._test_network_error(callback)
+
+    def test_network_error_on_insert(self):
+        callback = lambda client: client.db.collection.insert_one({})
+        self._test_network_error(callback)
+
+    def test_network_error_on_update(self):
+        callback = lambda client: client.db.collection.update_one(
+            {}, {'$unset': 'x'})
+        self._test_network_error(callback)
+
+    def test_network_error_on_replace(self):
+        callback = lambda client: client.db.collection.replace_one({}, {})
+        self._test_network_error(callback)
+
+    def test_network_error_on_delete(self):
+        callback = lambda client: client.db.collection.delete_many({})
+        self._test_network_error(callback)
 
 
 if __name__ == "__main__":
