@@ -529,10 +529,11 @@ class Collection(common.BaseObject):
 
         else:
             # Legacy OP_UPDATE
-            return client._send_message(
-                message.update(self.__full_name, upsert, multi,
-                               filter, document, safe, concern,
-                               check_keys, self.codec_options), safe)
+            request_id, msg, max_size = message.update(
+                self.__full_name, upsert, multi, filter, document, safe,
+                concern, check_keys, self.codec_options)
+            with client._get_socket_for_writes() as sock_info:
+                return sock_info.legacy_write(request_id, msg, max_size, safe)
 
     def replace_one(self, filter, replacement, upsert=False):
         """Replace a single document matching the filter.
@@ -686,10 +687,11 @@ class Collection(common.BaseObject):
 
         else:
             # Legacy OP_DELETE
-            return client._send_message(
-                message.delete(self.__full_name, filter, safe,
-                               concern, self.codec_options,
-                               int(not multi)), safe)
+            request_id, msg, max_size = message.delete(
+                self.__full_name, filter, safe, concern,
+                self.codec_options, int(not multi))
+            with client._get_socket_for_writes() as sock_info:
+                return sock_info.legacy_write(request_id, msg, max_size, safe)
 
     def delete_one(self, filter):
         """Delete a single document matching the filter.

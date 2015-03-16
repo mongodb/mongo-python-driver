@@ -21,6 +21,7 @@ from bson.py3compat import u, itervalues
 from pymongo import auth, helpers, thread_util
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
+                            DocumentTooLarge,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure)
@@ -164,11 +165,17 @@ class SocketInfo(object):
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def send_message(self, message):
+    def send_message(self, message, max_doc_size):
         """Send a raw BSON message or raise ConnectionFailure.
 
         If a network exception is raised, the socket is closed.
         """
+        if self.ismaster and max_doc_size > self.ismaster.max_bson_size:
+            raise DocumentTooLarge(
+                "BSON document too large (%d bytes) - the connected server"
+                "supports BSON document sizes up to %d bytes." %
+                (max_doc_size, self.ismaster.max_bson_size))
+
         try:
             self.sock.sendall(message)
         except BaseException as error:
@@ -184,22 +191,23 @@ class SocketInfo(object):
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def legacy_write(self, message, request_id, with_last_error):
+    def legacy_write(self, request_id, msg, max_doc_size, with_last_error):
         """Send OP_INSERT, etc., optionally returning response as a dict.
 
         Can raise ConnectionFailure or OperationFailure.
 
         :Parameters:
-          - `message`: bytes, an OP_INSERT, OP_UPDATE, or OP_DELETE message,
-            perhaps with a getlasterror command appended.
           - `request_id`: an int.
+          - `msg`: bytes, an OP_INSERT, OP_UPDATE, or OP_DELETE message,
+            perhaps with a getlasterror command appended.
+          - `max_doc_size`: size in bytes of the largest document in `msg`.
           - `with_last_error`: True if a getlasterror command is appended.
         """
         if not with_last_error and not self.ismaster.is_writable:
             # Write won't succeed, bail as if we'd done a getlasterror.
             raise NotMasterError("not master")
 
-        self.send_message(message)
+        self.send_message(msg, max_doc_size)
         if with_last_error:
             response = self.receive_message(1, request_id)
             return helpers._check_gle_response(response)

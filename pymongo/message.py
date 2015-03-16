@@ -282,7 +282,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
             try:
                 request_id, msg = _insert_message(data.getvalue(), send_safe)
                 with client._get_socket_for_writes() as sock_info:
-                    sock_info.legacy_write(msg, request_id, send_safe)
+                    sock_info.legacy_write(request_id, msg, 0, send_safe)
             # Exception type could be OperationFailure or a subtype
             # (e.g. DuplicateKeyError)
             except OperationFailure as exc:
@@ -314,7 +314,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
 
     request_id, msg = _insert_message(data.getvalue(), safe)
     with client._get_socket_for_writes() as sock_info:
-        sock_info.legacy_write(msg, request_id, safe)
+        sock_info.legacy_write(request_id, msg, 0, safe)
 
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:

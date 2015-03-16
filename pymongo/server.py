@@ -16,7 +16,6 @@
 
 import contextlib
 
-from pymongo.errors import DocumentTooLarge
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
 
@@ -60,9 +59,9 @@ class Server(object):
           - `message`: (request_id, data).
           - `all_credentials`: dict, maps auth source to MongoCredential.
         """
-        request_id, data = self._check_bson_size(message)
+        request_id, data, max_doc_size = self._split_message(message)
         with self.get_socket(all_credentials) as sock_info:
-            sock_info.send_message(data)
+            sock_info.send_message(data, max_doc_size)
 
     def send_message_with_response(
             self,
@@ -79,9 +78,9 @@ class Server(object):
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
         """
-        request_id, data = self._check_bson_size(message)
+        request_id, data, max_doc_size = self._split_message(message)
         with self.get_socket(all_credentials, exhaust) as sock_info:
-            sock_info.send_message(data)
+            sock_info.send_message(data, max_doc_size)
             response_data = sock_info.receive_message(1, request_id)
             if exhaust:
                 return ExhaustResponse(
@@ -112,26 +111,18 @@ class Server(object):
     def pool(self):
         return self._pool
 
-    def _check_bson_size(self, message):
-        """Make sure the message doesn't include BSON documents larger
-        than the server will accept.
+    def _split_message(self, message):
+        """Return request_id, data, max_doc_size.
 
         :Parameters:
           - `message`: (request_id, data, max_doc_size) or (request_id, data)
-
-        Returns request_id, data.
         """
         if len(message) == 3:
-            request_id, data, max_doc_size = message
-            if max_doc_size > self.description.max_bson_size:
-                raise DocumentTooLarge(
-                    "BSON document too large (%d bytes) - the connected server"
-                    "supports BSON document sizes up to %d bytes." %
-                    (max_doc_size, self.description.max_bson_size))
-            return request_id, data
+            return message
         else:
             # get_more and kill_cursors messages don't include BSON documents.
-            return message
+            request_id, data = message
+            return request_id, data, 0
 
     def __str__(self):
         d = self._description
