@@ -102,7 +102,7 @@ class Cursor(object):
                  limit=0, no_cursor_timeout=False,
                  cursor_type=CursorType.NON_TAILABLE,
                  sort=None, allow_partial_results=False, oplog_replay=False,
-                 modifiers=None, manipulate=True):
+                 modifiers=None, batch_size=0, manipulate=True):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -129,6 +129,10 @@ class Cursor(object):
         validate_boolean("oplog_replay", oplog_replay)
         if modifiers is not None:
             validate_is_mapping("modifiers", modifiers)
+        if not isinstance(batch_size, integer_types):
+            raise TypeError("batch_size must be an integer")
+        if batch_size < 0:
+            raise ValueError("batch_size must be >= 0")
 
         if projection is not None:
             if not projection:
@@ -140,7 +144,7 @@ class Cursor(object):
         self.__projection = projection
         self.__skip = skip
         self.__limit = limit
-        self.__batch_size = 0
+        self.__batch_size = batch_size
         self.__modifiers = modifiers and modifiers.copy() or {}
         self.__ordering = sort and helpers._index_document(sort) or None
         self.__max_scan = None

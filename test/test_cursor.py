@@ -426,7 +426,15 @@ class TestCursor(IntegrationTest):
         next(curs)
         self.assertEqual(10, curs._Cursor__retrieved)
 
+        curs = db.test.find(limit=0, batch_size=10)
+        next(curs)
+        self.assertEqual(10, curs._Cursor__retrieved)
+
         curs = db.test.find().limit(-2).batch_size(0)
+        next(curs)
+        self.assertEqual(2, curs._Cursor__retrieved)
+
+        curs = db.test.find(limit=-2, batch_size=0)
         next(curs)
         self.assertEqual(2, curs._Cursor__retrieved)
 
@@ -434,7 +442,15 @@ class TestCursor(IntegrationTest):
         next(curs)
         self.assertEqual(4, curs._Cursor__retrieved)
 
+        curs = db.test.find(limit=-4, batch_size=5)
+        next(curs)
+        self.assertEqual(4, curs._Cursor__retrieved)
+
         curs = db.test.find().limit(50).batch_size(500)
+        next(curs)
+        self.assertEqual(50, curs._Cursor__retrieved)
+
+        curs = db.test.find(limit=50, batch_size=500)
         next(curs)
         self.assertEqual(50, curs._Cursor__retrieved)
 
@@ -442,7 +458,15 @@ class TestCursor(IntegrationTest):
         next(curs)
         self.assertEqual(500, curs._Cursor__retrieved)
 
+        curs = db.test.find(batch_size=500)
+        next(curs)
+        self.assertEqual(500, curs._Cursor__retrieved)
+
         curs = db.test.find().limit(50)
+        next(curs)
+        self.assertEqual(50, curs._Cursor__retrieved)
+
+        curs = db.test.find(limit=50)
         next(curs)
         self.assertEqual(50, curs._Cursor__retrieved)
 
@@ -455,6 +479,10 @@ class TestCursor(IntegrationTest):
         self.assertEqual(101, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(0).batch_size(0)
+        next(curs)
+        self.assertEqual(101, curs._Cursor__retrieved)
+
+        curs = db.test.find(limit=0, batch_size=0)
         next(curs)
         self.assertEqual(101, curs._Cursor__retrieved)
 

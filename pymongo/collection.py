@@ -840,7 +840,9 @@ class Collection(common.BaseObject):
             flag.
           - `modifiers` (optional): A dict specifying the MongoDB query
             modifiers that should be used for this query.
-          - `manipulate`: (optional): **DEPRECATED** - If True (the default),
+          - `batch_size` (optional): Limits the number of documents returned in
+            a single batch.
+          - `manipulate` (optional): **DEPRECATED** - If True (the default),
             apply any outgoing SON manipulators before returning.
 
         .. note:: There are a number of caveats to using
