@@ -523,7 +523,7 @@ class Collection(common.BaseObject):
                     result['updatedExisting'] = False
                     # MongoDB >= 2.6.0 returns the upsert _id in an array
                     # element. Break it out for backward compatibility.
-                    if isinstance(result.get('upserted'), list):
+                    if 'upserted' in result:
                         result['upserted'] = result['upserted'][0]['_id']
 
                 return result
