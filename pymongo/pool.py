@@ -135,7 +135,7 @@ class SocketInfo(object):
     :Parameters:
       - `sock`: a raw socket object
       - `pool`: a Pool instance
-      - `ismaster`: an IsMaster instance, response to ismaster call on `sock`
+      - `ismaster`: optional IsMaster instance, response to ismaster on `sock`
       - `address`: the server's (host, port)
     """
     def __init__(self, sock, pool, ismaster, address):
@@ -144,7 +144,12 @@ class SocketInfo(object):
         self.authset = set()
         self.closed = False
         self.last_checkout = _time()
-        self.ismaster = ismaster
+        self.is_writable = ismaster.is_writable if ismaster else None
+        self.max_wire_version = ismaster.max_wire_version if ismaster else None
+        self.max_bson_size = ismaster.max_bson_size if ismaster else None
+        self.max_message_size = ismaster.max_message_size if ismaster else None
+        self.max_write_batch_size = (
+            ismaster.max_write_batch_size if ismaster else None)
 
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
@@ -170,11 +175,12 @@ class SocketInfo(object):
 
         If a network exception is raised, the socket is closed.
         """
-        if self.ismaster and max_doc_size > self.ismaster.max_bson_size:
+        if (self.max_bson_size is not None
+                and max_doc_size > self.max_bson_size):
             raise DocumentTooLarge(
                 "BSON document too large (%d bytes) - the connected server"
                 "supports BSON document sizes up to %d bytes." %
-                (max_doc_size, self.ismaster.max_bson_size))
+                (max_doc_size, self.max_bson_size))
 
         try:
             self.sock.sendall(message)
@@ -203,7 +209,7 @@ class SocketInfo(object):
           - `max_doc_size`: size in bytes of the largest document in `msg`.
           - `with_last_error`: True if a getlasterror command is appended.
         """
-        if not with_last_error and not self.ismaster.is_writable:
+        if not with_last_error and not self.is_writable:
             # Write won't succeed, bail as if we'd done a getlasterror.
             raise NotMasterError("not master")
 
@@ -271,27 +277,6 @@ class SocketInfo(object):
         except:
             pass
         
-    @property
-    def max_wire_version(self):
-        return self._ismaster_property('max_wire_version')
-
-    @property
-    def max_bson_size(self):
-        return self._ismaster_property('max_bson_size')
-
-    @property
-    def max_message_size(self):
-        return self._ismaster_property('max_message_size')
-
-    @property
-    def max_write_batch_size(self):
-        return self._ismaster_property('max_write_batch_size')
-
-    def _ismaster_property(self, attr):
-        assert self.ismaster is not None, (
-            '%s on a SocketInfo created without handshake' % attr)
-        return getattr(self.ismaster, attr)
-
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In
         # regular Python, socket operations only raise socket.error, even if
