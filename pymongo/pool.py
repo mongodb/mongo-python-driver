@@ -273,9 +273,24 @@ class SocketInfo(object):
         
     @property
     def max_wire_version(self):
+        return self._ismaster_property('max_wire_version')
+
+    @property
+    def max_bson_size(self):
+        return self._ismaster_property('max_bson_size')
+
+    @property
+    def max_message_size(self):
+        return self._ismaster_property('max_message_size')
+
+    @property
+    def max_write_batch_size(self):
+        return self._ismaster_property('max_write_batch_size')
+
+    def _ismaster_property(self, attr):
         assert self.ismaster is not None, (
-            'max_wire_version on a SocketInfo created without handshake')
-        return self.ismaster.max_wire_version
+            '%s on a SocketInfo created without handshake' % attr)
+        return getattr(self.ismaster, attr)
 
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In

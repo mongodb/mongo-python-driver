@@ -398,23 +398,24 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
-        if client._writable_max_wire_version() > 1 and safe:
-            # Insert command
-            command = SON([('insert', self.name),
-                           ('ordered', ordered)])
+        with client._get_socket_for_writes() as sock_info:
+            if sock_info.max_wire_version > 1 and safe:
+                # Insert command.
+                command = SON([('insert', self.name),
+                               ('ordered', ordered)])
 
-            if concern:
-                command['writeConcern'] = concern
+                if concern:
+                    command['writeConcern'] = concern
 
-            results = message._do_batched_write_command(
-                self.database.name + ".$cmd", _INSERT, command,
-                gen(), check_keys, self.codec_options, client)
-            _check_write_command_response(results)
-        else:
-            # Legacy batched OP_INSERT
-            message._do_batched_insert(self.__full_name, gen(), check_keys,
-                                       safe, concern, not ordered,
-                                       self.codec_options, client)
+                results = message._do_batched_write_command(
+                    self.database.name + ".$cmd", _INSERT, command,
+                    gen(), check_keys, self.codec_options, sock_info)
+                _check_write_command_response(results)
+            else:
+                # Legacy batched OP_INSERT.
+                message._do_batched_insert(self.__full_name, gen(), check_keys,
+                                           safe, concern, not ordered,
+                                           self.codec_options, sock_info)
         if return_one:
             return ids[0]
         else:
@@ -499,40 +500,39 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
-        client = self.database.client
-        if client._writable_max_wire_version() > 1 and safe:
-            # Update command
-            command = SON([('update', self.name)])
-            if concern:
-                command['writeConcern'] = concern
+        with self.database.client._get_socket_for_writes() as sock_info:
+            if sock_info.max_wire_version > 1 and safe:
+                # Update command.
+                command = SON([('update', self.name)])
+                if concern:
+                    command['writeConcern'] = concern
 
-            docs = [SON([('q', filter), ('u', document),
-                         ('multi', multi), ('upsert', upsert)])]
+                docs = [SON([('q', filter), ('u', document),
+                             ('multi', multi), ('upsert', upsert)])]
 
-            results = message._do_batched_write_command(
-                self.database.name + '.$cmd', _UPDATE, command,
-                docs, check_keys, self.codec_options, client)
-            _check_write_command_response(results)
+                results = message._do_batched_write_command(
+                    self.database.name + '.$cmd', _UPDATE, command,
+                    docs, check_keys, self.codec_options, sock_info)
+                _check_write_command_response(results)
 
-            _, result = results[0]
-            # Add the updatedExisting field for compatibility
-            if result.get('n') and 'upserted' not in result:
-                result['updatedExisting'] = True
+                _, result = results[0]
+                # Add the updatedExisting field for compatibility.
+                if result.get('n') and 'upserted' not in result:
+                    result['updatedExisting'] = True
+                else:
+                    result['updatedExisting'] = False
+                    # MongoDB >= 2.6.0 returns the upsert _id in an array
+                    # element. Break it out for backward compatibility.
+                    if isinstance(result.get('upserted'), list):
+                        result['upserted'] = result['upserted'][0]['_id']
+
+                return result
+
             else:
-                result['updatedExisting'] = False
-                # MongoDB >= 2.6.0 returns the upsert _id in an array
-                # element. Break it out for backward compatibility.
-                if isinstance(result.get('upserted'), list):
-                    result['upserted'] = result['upserted'][0]['_id']
-
-            return result
-
-        else:
-            # Legacy OP_UPDATE
-            request_id, msg, max_size = message.update(
-                self.__full_name, upsert, multi, filter, document, safe,
-                concern, check_keys, self.codec_options)
-            with client._get_socket_for_writes() as sock_info:
+                # Legacy OP_UPDATE.
+                request_id, msg, max_size = message.update(
+                    self.__full_name, upsert, multi, filter, document, safe,
+                    concern, check_keys, self.codec_options)
                 return sock_info.legacy_write(request_id, msg, max_size, safe)
 
     def replace_one(self, filter, replacement, upsert=False):
@@ -668,29 +668,28 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
-        client = self.database.client
-        if client._writable_max_wire_version() > 1 and safe:
-            # Delete command
-            command = SON([('delete', self.name)])
-            if concern:
-                command['writeConcern'] = concern
+        with self.database.client._get_socket_for_writes() as sock_info:
+            if sock_info.max_wire_version > 1 and safe:
+                # Delete command.
+                command = SON([('delete', self.name)])
+                if concern:
+                    command['writeConcern'] = concern
 
-            docs = [SON([('q', filter), ('limit', int(not multi))])]
+                docs = [SON([('q', filter), ('limit', int(not multi))])]
 
-            results = message._do_batched_write_command(
-                self.database.name + '.$cmd', _DELETE, command,
-                docs, False, self.codec_options, client)
-            _check_write_command_response(results)
+                results = message._do_batched_write_command(
+                    self.database.name + '.$cmd', _DELETE, command,
+                    docs, False, self.codec_options, sock_info)
+                _check_write_command_response(results)
 
-            _, result = results[0]
-            return result
+                _, result = results[0]
+                return result
 
-        else:
-            # Legacy OP_DELETE
-            request_id, msg, max_size = message.delete(
-                self.__full_name, filter, safe, concern,
-                self.codec_options, int(not multi))
-            with client._get_socket_for_writes() as sock_info:
+            else:
+                # Legacy OP_DELETE.
+                request_id, msg, max_size = message.delete(
+                    self.__full_name, filter, safe, concern,
+                    self.codec_options, int(not multi))
                 return sock_info.legacy_write(request_id, msg, max_size, safe)
 
     def delete_one(self, filter):

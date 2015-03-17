@@ -276,9 +276,10 @@ class _Bulk(object):
             if write_concern.document:
                 cmd['writeConcern'] = write_concern.document
 
-            results = _do_batched_write_command(
-                self.namespace, run.op_type, cmd,
-                run.ops, True, self.collection.codec_options, client)
+            with client._get_socket_for_writes() as sock_info:
+                results = _do_batched_write_command(
+                    self.namespace, run.op_type, cmd,
+                    run.ops, True, self.collection.codec_options, sock_info)
 
             _merge_command(run, full_result, results)
             # We're supposed to continue if errors are

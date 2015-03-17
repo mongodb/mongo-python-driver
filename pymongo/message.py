@@ -246,7 +246,8 @@ def kill_cursors(cursor_ids):
 
 
 def _do_batched_insert(collection_name, docs, check_keys,
-                       safe, last_error_args, continue_on_error, opts, client):
+                       safe, last_error_args, continue_on_error, opts,
+                       sock_info):
     """Insert `docs` using multiple batches.
     """
     def _insert_message(insert_message, send_safe):
@@ -269,10 +270,10 @@ def _do_batched_insert(collection_name, docs, check_keys,
     for doc in docs:
         encoded = bson.BSON.encode(doc, check_keys, opts)
         encoded_length = len(encoded)
-        too_large = (encoded_length > client.max_bson_size)
+        too_large = (encoded_length > sock_info.max_bson_size)
 
         message_length += encoded_length
-        if message_length < client.max_message_size and not too_large:
+        if message_length < sock_info.max_message_size and not too_large:
             data.write(encoded)
             has_docs = True
             continue
@@ -281,8 +282,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
             # We have enough data, send this message.
             try:
                 request_id, msg = _insert_message(data.getvalue(), send_safe)
-                with client._get_socket_for_writes() as sock_info:
-                    sock_info.legacy_write(request_id, msg, 0, send_safe)
+                sock_info.legacy_write(request_id, msg, 0, send_safe)
             # Exception type could be OperationFailure or a subtype
             # (e.g. DuplicateKeyError)
             except OperationFailure as exc:
@@ -302,7 +302,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
                                    " - the connected server supports"
                                    " BSON document sizes up to %d"
                                    " bytes." %
-                                   (encoded_length, client.max_bson_size))
+                                   (encoded_length, sock_info.max_bson_size))
 
         message_length = begin_loc + encoded_length
         data.seek(begin_loc)
@@ -313,8 +313,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
         raise InvalidOperation("cannot do an empty bulk insert")
 
     request_id, msg = _insert_message(data.getvalue(), safe)
-    with client._get_socket_for_writes() as sock_info:
-        sock_info.legacy_write(request_id, msg, 0, safe)
+    sock_info.legacy_write(request_id, msg, 0, safe)
 
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:
@@ -325,11 +324,11 @@ def _do_batched_insert(collection_name, docs, check_keys,
 
 
 def _do_batched_write_command(namespace, operation, command,
-                              docs, check_keys, opts, client):
+                              docs, check_keys, opts, sock_info):
     """Execute a batch of insert, update, or delete commands.
     """
-    max_bson_size = client.max_bson_size
-    max_write_batch_size = client.max_write_batch_size
+    max_bson_size = sock_info.max_bson_size
+    max_write_batch_size = sock_info.max_write_batch_size
     # Max BSON object size + 16k - 2 bytes for ending NUL bytes.
     # Server guarantees there is enough room: SERVER-10643.
     max_cmd_size = max_bson_size + 16382
@@ -385,8 +384,7 @@ def _do_batched_write_command(namespace, operation, command,
         buf.write(struct.pack('<i', request_id))
         buf.seek(0)
         buf.write(struct.pack('<i', length))
-        with client._get_socket_for_writes() as sock_info:
-            return sock_info.write_command(request_id, buf.getvalue())
+        return sock_info.write_command(request_id, buf.getvalue())
 
     # If there are multiple batches we'll
     # merge results in the caller.
