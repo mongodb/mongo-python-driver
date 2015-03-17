@@ -1402,7 +1402,8 @@ class Collection(common.BaseObject):
                 "firstBatch": result["result"],
                 "ns": self.full_name,
             }
-        return CommandCursor(self, cursor_info, address)
+        return CommandCursor(
+            self, cursor_info, address).batch_size(batch_size or 0)
 
     # key and condition ought to be optional, but deprecation
     # would be painful as argument order would have to change.

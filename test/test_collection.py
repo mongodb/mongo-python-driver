@@ -1086,6 +1086,21 @@ class TestCollection(IntegrationTest):
                 expected_sum,
                 sum(doc['_id'] for doc in cursor))
 
+        # Test that batchSize is handled properly.
+        cursor = db.test.aggregate([], batchSize=5)
+        self.assertEqual(5, len(cursor._CommandCursor__data))
+        # Force a getMore
+        cursor._CommandCursor__data.clear()
+        next(cursor)
+        # startingFrom for a command cursor doesn't include the initial batch
+        # returned by the command.
+        self.assertEqual(5, cursor._CommandCursor__retrieved)
+        # batchSize - 1
+        self.assertEqual(4, len(cursor._CommandCursor__data))
+        # Exhaust the cursor. There shouldn't be any errors.
+        for doc in cursor:
+            pass
+
     @client_context.require_version_min(2, 5, 5)
     @client_context.require_no_mongos
     def test_parallel_scan(self):
