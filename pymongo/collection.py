@@ -1309,16 +1309,17 @@ class Collection(common.BaseObject):
           - `allowDiskUse` (bool): Enables writing to temporary files. When set
             to True, aggregation stages can write data to the _tmp subdirectory
             of the --dbpath directory. The default is False.
-          - `batchSize` (int): The number of documents to return per batch.
-            Requires results to be returned from the server as a cursor.
-          - `maxTimeMS` (int): The maximum amount of time to allow the query to
-            run in milliseconds.
-          - `useCursor` (bool): Indicates if the *server* should return results
-            using a cursor. The default value for `useCursor` depends on
-            the version of the server. For MongoDB versions previous to 2.6
-            the default is False. Otherwise the default is True. The value
-            of useCursor, if provided, will be obeyed regardless of server
-            version.
+          - `maxTimeMS` (int): The maximum amount of time to allow the operation
+            to run in milliseconds.
+          - `batchSize` (int): The maximum number of documents to return per
+            batch. Ignored if the connected mongod or mongos does not support
+            returning aggregate results using a cursor, or `useCursor` is
+            ``False``.
+          - `useCursor` (bool): Requests that the `server` provide results
+            using a cursor, if possible. Ignored if the connected mongod or
+            mongos does not support returning aggregate results using a cursor.
+            The default is ``True``. Set this to ``False`` when upgrading a 2.4
+            or older sharded cluster to 2.6 or newer (see the warning below).
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`. Please note that using the ``$out`` pipeline stage
@@ -1327,9 +1328,9 @@ class Collection(common.BaseObject):
         The server will raise an error if the ``$out`` pipeline stage is used
         with any other read preference.
 
-        .. warning:: When upgrading a pre-MongoDB 2.6 sharded cluster to any
-           newer version the useCursor option **must** be set to ``False``
-           until all shards have been upgraded.
+        .. warning:: When upgrading a 2.4 or older sharded cluster to 2.6 or
+           newer the `useCursor` option **must** be set to ``False``
+           until all shards have been upgraded to 2.6 or newer.
 
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead. An
@@ -1372,22 +1373,18 @@ class Collection(common.BaseObject):
         client = self.database.client
 
         # Remove things that are not command options.
-        batch_size = kwargs.pop("batchSize", None)
-        # If useCursor is True or the "cursor" aggregate option is passed
-        # as a keyword argument we obey the user's wishes, regardless of
-        # server version.
-        use_cursor = kwargs.pop(
-            "useCursor",
-            ("cursor" in kwargs or client._writable_max_wire_version() > 0))
-        common.validate_boolean("useCursor", use_cursor)
-
-        if batch_size is not None and not use_cursor:
-            raise ConfigurationError("batchSize requires the use of a cursor")
-
-        if use_cursor and "cursor" not in kwargs:
-            kwargs["cursor"] = {}
-        if batch_size is not None:
-            kwargs["cursor"]["batchSize"] = batch_size
+        batch_size = common.validate_positive_integer_or_none(
+            "batchSize", kwargs.pop("batchSize", None))
+        use_cursor = common.validate_boolean(
+            "useCursor", kwargs.pop("useCursor", True))
+        # If the server does not support the "cursor" option we
+        # ignore useCursor and batchSize.
+        if client._writable_max_wire_version() > 0:
+            if use_cursor:
+                if "cursor" not in kwargs:
+                    kwargs["cursor"] = {}
+                if batch_size is not None:
+                    kwargs["cursor"]["batchSize"] = batch_size
 
         cmd.update(kwargs)
 
