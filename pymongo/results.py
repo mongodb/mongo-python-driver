@@ -33,7 +33,21 @@ class _WriteResult(object):
 
     @property
     def acknowledged(self):
-        """Is this the result of an acknowledged write operation?"""
+        """Is this the result of an acknowledged write operation?
+
+        The :attr:`acknowledged` attribute will be ``False`` when using
+        ``WriteConcern(w=0)``, otherwise ``True``.
+
+        .. note::
+          If the :attr:`acknowledged` attribute is ``False`` all other
+          attibutes of this class will raise
+          :class:`~pymongo.errors.InvalidOperation` when accessed. Values for
+          other attributes cannot be determined if the write operation was
+          unacknowledged.
+
+        .. seealso::
+          :class:`~pymongo.write_concern.WriteConcern`
+        """
         return self.__acknowledged
 
 
