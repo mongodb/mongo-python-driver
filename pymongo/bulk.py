@@ -307,30 +307,25 @@ class _Bulk(object):
                                      run.ops,
                                      self.ordered,
                                      write_concern=write_concern)
+                    elif run.op_type == _UPDATE:
+                        for operation in run.ops:
+                            doc = operation['u']
+                            check_keys = True
+                            if doc and next(iter(doc)).startswith('$'):
+                                check_keys = False
+                            coll._update(sock_info,
+                                         operation['q'],
+                                         doc,
+                                         operation['upsert'],
+                                         check_keys,
+                                         operation['multi'],
+                                         write_concern=write_concern)
                     else:
-                        try:
-                            if run.op_type == _UPDATE:
-                                for operation in run.ops:
-                                    doc = operation['u']
-                                    check_keys = True
-                                    if doc and next(iter(doc)).startswith('$'):
-                                        check_keys = False
-                                    coll._update(sock_info,
-                                                 operation['q'],
-                                                 doc,
-                                                 operation['upsert'],
-                                                 check_keys,
-                                                 operation['multi'],
-                                                 write_concern=write_concern)
-                            else:
-                                for operation in run.ops:
-                                    coll._delete(sock_info,
-                                                 operation['q'],
-                                                 not operation['limit'],
-                                                 write_concern)
-                        except OperationFailure:
-                            if self.ordered:
-                                return
+                        for operation in run.ops:
+                            coll._delete(sock_info,
+                                         operation['q'],
+                                         not operation['limit'],
+                                         write_concern)
             except OperationFailure:
                 if self.ordered:
                     break
