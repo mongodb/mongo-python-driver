@@ -360,10 +360,9 @@ class Collection(common.BaseObject):
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
 
-    def _insert(self, docs, ordered=True,
+    def _insert(self, sock_info, docs, ordered=True,
                 check_keys=True, manipulate=False, write_concern=None):
         """Internal insert helper."""
-        client = self.database.client
         return_one = False
         if isinstance(docs, collections.MutableMapping):
             return_one = True
@@ -398,24 +397,23 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
-        with client._get_socket_for_writes() as sock_info:
-            if sock_info.max_wire_version > 1 and safe:
-                # Insert command.
-                command = SON([('insert', self.name),
-                               ('ordered', ordered)])
+        if sock_info.max_wire_version > 1 and safe:
+            # Insert command.
+            command = SON([('insert', self.name),
+                           ('ordered', ordered)])
 
-                if concern:
-                    command['writeConcern'] = concern
+            if concern:
+                command['writeConcern'] = concern
 
-                results = message._do_batched_write_command(
-                    self.database.name + ".$cmd", _INSERT, command,
-                    gen(), check_keys, self.codec_options, sock_info)
-                _check_write_command_response(results)
-            else:
-                # Legacy batched OP_INSERT.
-                message._do_batched_insert(self.__full_name, gen(), check_keys,
-                                           safe, concern, not ordered,
-                                           self.codec_options, sock_info)
+            results = message._do_batched_write_command(
+                self.database.name + ".$cmd", _INSERT, command,
+                gen(), check_keys, self.codec_options, sock_info)
+            _check_write_command_response(results)
+        else:
+            # Legacy batched OP_INSERT.
+            message._do_batched_insert(self.__full_name, gen(), check_keys,
+                                       safe, concern, not ordered,
+                                       self.codec_options, sock_info)
         if return_one:
             return ids[0]
         else:
@@ -445,8 +443,9 @@ class Collection(common.BaseObject):
         common.validate_is_mutable_mapping("document", document)
         if "_id" not in document:
             document["_id"] = ObjectId()
-        return InsertOneResult(self._insert(document),
-                               self.write_concern.acknowledged)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            return InsertOneResult(self._insert(sock_info, document),
+                                   self.write_concern.acknowledged)
 
     def insert_many(self, documents, ordered=True):
         """Insert a list of documents.
@@ -489,8 +488,9 @@ class Collection(common.BaseObject):
         blk.execute(self.write_concern.document)
         return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
 
-    def _update(self, filter, document, upsert=False, check_keys=True,
-                multi=False, manipulate=False, write_concern=None):
+    def _update(self, sock_info, filter, document, upsert=False,
+                check_keys=True, multi=False, manipulate=False,
+                write_concern=None):
         """Internal update / replace helper."""
         common.validate_is_mapping("filter", filter)
         common.validate_boolean("upsert", upsert)
@@ -500,40 +500,39 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
-        with self.database.client._get_socket_for_writes() as sock_info:
-            if sock_info.max_wire_version > 1 and safe:
-                # Update command.
-                command = SON([('update', self.name)])
-                if concern:
-                    command['writeConcern'] = concern
+        if sock_info.max_wire_version > 1 and safe:
+            # Update command.
+            command = SON([('update', self.name)])
+            if concern:
+                command['writeConcern'] = concern
 
-                docs = [SON([('q', filter), ('u', document),
-                             ('multi', multi), ('upsert', upsert)])]
+            docs = [SON([('q', filter), ('u', document),
+                         ('multi', multi), ('upsert', upsert)])]
 
-                results = message._do_batched_write_command(
-                    self.database.name + '.$cmd', _UPDATE, command,
-                    docs, check_keys, self.codec_options, sock_info)
-                _check_write_command_response(results)
+            results = message._do_batched_write_command(
+                self.database.name + '.$cmd', _UPDATE, command,
+                docs, check_keys, self.codec_options, sock_info)
+            _check_write_command_response(results)
 
-                _, result = results[0]
-                # Add the updatedExisting field for compatibility.
-                if result.get('n') and 'upserted' not in result:
-                    result['updatedExisting'] = True
-                else:
-                    result['updatedExisting'] = False
-                    # MongoDB >= 2.6.0 returns the upsert _id in an array
-                    # element. Break it out for backward compatibility.
-                    if 'upserted' in result:
-                        result['upserted'] = result['upserted'][0]['_id']
-
-                return result
-
+            _, result = results[0]
+            # Add the updatedExisting field for compatibility.
+            if result.get('n') and 'upserted' not in result:
+                result['updatedExisting'] = True
             else:
-                # Legacy OP_UPDATE.
-                request_id, msg, max_size = message.update(
-                    self.__full_name, upsert, multi, filter, document, safe,
-                    concern, check_keys, self.codec_options)
-                return sock_info.legacy_write(request_id, msg, max_size, safe)
+                result['updatedExisting'] = False
+                # MongoDB >= 2.6.0 returns the upsert _id in an array
+                # element. Break it out for backward compatibility.
+                if 'upserted' in result:
+                    result['upserted'] = result['upserted'][0]['_id']
+
+            return result
+
+        else:
+            # Legacy OP_UPDATE.
+            request_id, msg, max_size = message.update(
+                self.__full_name, upsert, multi, filter, document, safe,
+                concern, check_keys, self.codec_options)
+            return sock_info.legacy_write(request_id, msg, max_size, safe)
 
     def replace_one(self, filter, replacement, upsert=False):
         """Replace a single document matching the filter.
@@ -577,7 +576,8 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_replace(replacement)
-        result = self._update(filter, replacement, upsert)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            result = self._update(sock_info, filter, replacement, upsert)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False):
@@ -613,7 +613,9 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
-        result = self._update(filter, update, upsert, False)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            result = self._update(sock_info, filter, update,
+                                  upsert, check_keys=False)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False):
@@ -649,7 +651,9 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
-        result = self._update(filter, update, upsert, False, True)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            result = self._update(sock_info, filter, update, upsert,
+                                  check_keys=False, multi=True)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def drop(self):
@@ -662,35 +666,34 @@ class Collection(common.BaseObject):
         """
         self.__database.drop_collection(self.__name)
 
-    def _delete(self, filter, multi, write_concern=None):
+    def _delete(self, sock_info, filter, multi, write_concern=None):
         """Internal delete helper."""
         common.validate_is_mapping("filter", filter)
         concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
-        with self.database.client._get_socket_for_writes() as sock_info:
-            if sock_info.max_wire_version > 1 and safe:
-                # Delete command.
-                command = SON([('delete', self.name)])
-                if concern:
-                    command['writeConcern'] = concern
+        if sock_info.max_wire_version > 1 and safe:
+            # Delete command.
+            command = SON([('delete', self.name)])
+            if concern:
+                command['writeConcern'] = concern
 
-                docs = [SON([('q', filter), ('limit', int(not multi))])]
+            docs = [SON([('q', filter), ('limit', int(not multi))])]
 
-                results = message._do_batched_write_command(
-                    self.database.name + '.$cmd', _DELETE, command,
-                    docs, False, self.codec_options, sock_info)
-                _check_write_command_response(results)
+            results = message._do_batched_write_command(
+                self.database.name + '.$cmd', _DELETE, command,
+                docs, False, self.codec_options, sock_info)
+            _check_write_command_response(results)
 
-                _, result = results[0]
-                return result
+            _, result = results[0]
+            return result
 
-            else:
-                # Legacy OP_DELETE.
-                request_id, msg, max_size = message.delete(
-                    self.__full_name, filter, safe, concern,
-                    self.codec_options, int(not multi))
-                return sock_info.legacy_write(request_id, msg, max_size, safe)
+        else:
+            # Legacy OP_DELETE.
+            request_id, msg, max_size = message.delete(
+                self.__full_name, filter, safe, concern,
+                self.codec_options, int(not multi))
+            return sock_info.legacy_write(request_id, msg, max_size, safe)
 
     def delete_one(self, filter):
         """Delete a single document matching the filter.
@@ -710,8 +713,9 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        return DeleteResult(self._delete(filter, False),
-                            self.write_concern.acknowledged)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            return DeleteResult(self._delete(sock_info, filter, False),
+                                self.write_concern.acknowledged)
 
     def delete_many(self, filter):
         """Delete one or more documents matching the filter.
@@ -731,8 +735,9 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        return DeleteResult(self._delete(filter, True),
-                            self.write_concern.acknowledged)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            return DeleteResult(self._delete(sock_info, filter, True),
+                                self.write_concern.acknowledged)
 
     def find_one(self, filter=None, *args, **kwargs):
         """Get a single document from the database.
@@ -1004,8 +1009,10 @@ class Collection(common.BaseObject):
                 index["ns"] = self.__full_name
                 wcn = (self.write_concern if
                        self.write_concern.acknowledged else WriteConcern())
-                self.__database.system.indexes._insert(
-                    index, True, False, False, wcn)
+                client = self.__database.client
+                with client._get_socket_for_writes() as sock_info:
+                    self.__database.system.indexes._insert(
+                        sock_info, index, True, False, False, wcn)
             else:
                 raise
 
@@ -1799,12 +1806,13 @@ class Collection(common.BaseObject):
         if kwargs:
             write_concern = WriteConcern(**kwargs)
 
-        if "_id" not in to_save:
-            return self._insert(to_save, True,
-                                check_keys, manipulate, write_concern)
-        else:
-            self._update({"_id": to_save["_id"]}, to_save, True,
-                         check_keys, False, manipulate, write_concern)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            if "_id" not in to_save:
+                return self._insert(sock_info, to_save, True,
+                                    check_keys, manipulate, write_concern)
+            else:
+                self._update(sock_info, {"_id": to_save["_id"]}, to_save, True,
+                             check_keys, False, manipulate, write_concern)
 
     def insert(self, doc_or_docs, manipulate=True,
                check_keys=True, continue_on_error=False, **kwargs):
@@ -1821,8 +1829,9 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        return self._insert(doc_or_docs, not continue_on_error,
-                            check_keys, manipulate, write_concern)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            return self._insert(sock_info, doc_or_docs, not continue_on_error,
+                                check_keys, manipulate, write_concern)
 
     def update(self, spec, document, upsert=False, manipulate=False,
                multi=False, check_keys=True, **kwargs):
@@ -1852,8 +1861,9 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        return self._update(spec, document, upsert,
-                            check_keys, multi, manipulate, write_concern)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            return self._update(sock_info, spec, document, upsert,
+                                check_keys, multi, manipulate, write_concern)
 
     def remove(self, spec_or_id=None, multi=True, **kwargs):
         """Remove a document(s) from this collection.
@@ -1873,7 +1883,8 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        return self._delete(spec_or_id, multi, write_concern)
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            return self._delete(sock_info, spec_or_id, multi, write_concern)
 
     def find_and_modify(self, query={}, update=None,
                         upsert=False, sort=None, full_response=False,

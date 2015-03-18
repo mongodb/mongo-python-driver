@@ -963,6 +963,7 @@ class MongoClient(common.BaseObject):
 
         for address, cursor_ids in address_to_cursor_ids.items():
             try:
+                # TODO: reimplement for PYTHON-857?
                 self._send_message(
                     message.kill_cursors(cursor_ids),
                     address=address,

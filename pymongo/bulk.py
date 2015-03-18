@@ -30,7 +30,7 @@ from pymongo.errors import (BulkWriteError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
-                             insert, _do_batched_write_command)
+                             _do_batched_write_command)
 from pymongo.write_concern import WriteConcern
 
 
@@ -105,11 +105,7 @@ def _merge_legacy(run, full_result, result, index):
                 error["errInfo"] = result["errInfo"]
             full_result["writeErrors"].append(error)
             return
-
-    if run.op_type == _INSERT:
-        full_result['nInserted'] += 1
-
-    elif run.op_type == _UPDATE:
+    if run.op_type == _UPDATE:
         if "upserted" in result:
             doc = {"index": run.index(index), "_id": result["upserted"]}
             full_result["upserted"].append(doc)
@@ -304,28 +300,34 @@ class _Bulk(object):
 
         for run in generator:
             try:
-                if run.op_type == _INSERT:
-                    coll._insert(run.ops,
-                                 self.ordered,
-                                 write_concern=write_concern)
-                else:
-                    for operation in run.ops:
+                client = coll.database.client
+                with client._get_socket_for_writes() as sock_info:
+                    if run.op_type == _INSERT:
+                        coll._insert(sock_info,
+                                     run.ops,
+                                     self.ordered,
+                                     write_concern=write_concern)
+                    else:
                         try:
                             if run.op_type == _UPDATE:
-                                doc = operation['u']
-                                check_keys = True
-                                if doc and next(iter(doc)).startswith('$'):
-                                    check_keys = False
-                                coll._update(operation['q'],
-                                             doc,
-                                             operation['upsert'],
-                                             check_keys,
-                                             operation['multi'],
-                                             write_concern=write_concern)
+                                for operation in run.ops:
+                                    doc = operation['u']
+                                    check_keys = True
+                                    if doc and next(iter(doc)).startswith('$'):
+                                        check_keys = False
+                                    coll._update(sock_info,
+                                                 operation['q'],
+                                                 doc,
+                                                 operation['upsert'],
+                                                 check_keys,
+                                                 operation['multi'],
+                                                 write_concern=write_concern)
                             else:
-                                coll._delete(operation['q'],
-                                             not operation['limit'],
-                                             write_concern)
+                                for operation in run.ops:
+                                    coll._delete(sock_info,
+                                                 operation['q'],
+                                                 not operation['limit'],
+                                                 write_concern)
                         except OperationFailure:
                             if self.ordered:
                                 return
@@ -333,20 +335,11 @@ class _Bulk(object):
                 if self.ordered:
                     break
 
-    def legacy_insert(self, operation, write_concern):
-        """Do a legacy insert and return the result.
-        """
-        # We have to do this here since Collection._insert
-        # throws away results and we need to check for jnote.
-        client = self.collection.database.client
-        return client._send_message(
-            insert(self.name, [operation], True, True,
-                   write_concern, False, self.collection.codec_options), True)
-
     def execute_legacy(self, generator, write_concern):
         """Execute using legacy wire protocol ops.
         """
         coll = self.collection
+        client = coll.database.client
         full_result = {
             "writeErrors": [],
             "writeConcernErrors": [],
@@ -360,28 +353,34 @@ class _Bulk(object):
         for run in generator:
             for idx, operation in enumerate(run.ops):
                 try:
-                    # To do per-operation reporting we have to do ops one
-                    # at a time. That means the performance of bulk insert
-                    # will be slower here than calling Collection.insert()
-                    if run.op_type == _INSERT:
-                        result = self.legacy_insert(operation,
-                                                    write_concern.document)
-                    elif run.op_type == _UPDATE:
-                        doc = operation['u']
-                        check_keys = True
-                        if doc and next(iter(doc)).startswith('$'):
-                            check_keys = False
-                        result = coll._update(operation['q'],
-                                              doc,
-                                              operation['upsert'],
-                                              check_keys,
-                                              operation['multi'],
-                                              write_concern=write_concern)
-                    else:
-                        result = coll._delete(operation['q'],
-                                              not operation['limit'],
-                                              write_concern)
-                    _merge_legacy(run, full_result, result, idx)
+                    with client._get_socket_for_writes() as sock_info:
+                        # To do per-operation reporting we have to do ops one
+                        # at a time. That means the performance of bulk insert
+                        # will be slower here than calling Collection.insert()
+                        if run.op_type == _INSERT:
+                            coll._insert(sock_info,
+                                         operation,
+                                         write_concern=write_concern)
+                            full_result['nInserted'] += 1
+                        else:
+                            if run.op_type == _UPDATE:
+                                doc = operation['u']
+                                check_keys = True
+                                if doc and next(iter(doc)).startswith('$'):
+                                    check_keys = False
+                                result = coll._update(sock_info,
+                                                      operation['q'],
+                                                      doc,
+                                                      operation['upsert'],
+                                                      check_keys,
+                                                      operation['multi'],
+                                                      write_concern=write_concern)
+                            else:
+                                result = coll._delete(sock_info,
+                                                      operation['q'],
+                                                      not operation['limit'],
+                                                      write_concern)
+                            _merge_legacy(run, full_result, result, idx)
                 except DocumentTooLarge as exc:
                     # MongoDB 2.6 uses error code 2 for "too large".
                     error = _make_error(
@@ -429,6 +428,7 @@ class _Bulk(object):
         else:
             generator = self.gen_unordered()
 
+        # TODO: get a socket here, before checking wire version
         if not write_concern.acknowledged:
             self.execute_no_results(generator)
         elif client._writable_max_wire_version() > 1:
