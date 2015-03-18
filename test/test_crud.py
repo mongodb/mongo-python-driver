@@ -132,8 +132,7 @@ def create_tests():
                         "FindOneAndReplace" in desc and "with upsert" in desc):
                     new_test = client_context.require_version_min(2, 6, 0)(
                         create_test(scenario_def, test, False))
-                elif (desc == "Aggregate with $out" or
-                        desc == "Aggregate with multiple stages"):
+                elif desc == "Aggregate with $out":
                     new_test = client_context.require_version_min(2, 6, 0)(
                         create_test(scenario_def, test, True))
                 else:
