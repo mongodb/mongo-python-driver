@@ -251,10 +251,9 @@ class _Bulk(object):
             if run.ops:
                 yield run
 
-    def execute_command(self, generator, write_concern):
+    def execute_command(self, sock_info, generator, write_concern):
         """Execute using write commands.
         """
-        client = self.collection.database.client
         # nModified is only reported for write commands, not legacy ops.
         full_result = {
             "writeErrors": [],
@@ -272,10 +271,9 @@ class _Bulk(object):
             if write_concern.document:
                 cmd['writeConcern'] = write_concern.document
 
-            with client._get_socket_for_writes() as sock_info:
-                results = _do_batched_write_command(
-                    self.namespace, run.op_type, cmd,
-                    run.ops, True, self.collection.codec_options, sock_info)
+            results = _do_batched_write_command(
+                self.namespace, run.op_type, cmd,
+                run.ops, True, self.collection.codec_options, sock_info)
 
             _merge_command(run, full_result, results)
             # We're supposed to continue if errors are
@@ -290,7 +288,7 @@ class _Bulk(object):
             raise BulkWriteError(full_result)
         return full_result
 
-    def execute_no_results(self, generator):
+    def execute_no_results(self, sock_info, generator):
         """Execute all operations, returning no results (w=0).
         """
         coll = self.collection
@@ -300,41 +298,38 @@ class _Bulk(object):
 
         for run in generator:
             try:
-                client = coll.database.client
-                with client._get_socket_for_writes() as sock_info:
-                    if run.op_type == _INSERT:
-                        coll._insert(sock_info,
-                                     run.ops,
-                                     self.ordered,
+                if run.op_type == _INSERT:
+                    coll._insert(sock_info,
+                                 run.ops,
+                                 self.ordered,
+                                 write_concern=write_concern)
+                elif run.op_type == _UPDATE:
+                    for operation in run.ops:
+                        doc = operation['u']
+                        check_keys = True
+                        if doc and next(iter(doc)).startswith('$'):
+                            check_keys = False
+                        coll._update(sock_info,
+                                     operation['q'],
+                                     doc,
+                                     operation['upsert'],
+                                     check_keys,
+                                     operation['multi'],
                                      write_concern=write_concern)
-                    elif run.op_type == _UPDATE:
-                        for operation in run.ops:
-                            doc = operation['u']
-                            check_keys = True
-                            if doc and next(iter(doc)).startswith('$'):
-                                check_keys = False
-                            coll._update(sock_info,
-                                         operation['q'],
-                                         doc,
-                                         operation['upsert'],
-                                         check_keys,
-                                         operation['multi'],
-                                         write_concern=write_concern)
-                    else:
-                        for operation in run.ops:
-                            coll._delete(sock_info,
-                                         operation['q'],
-                                         not operation['limit'],
-                                         write_concern)
+                else:
+                    for operation in run.ops:
+                        coll._delete(sock_info,
+                                     operation['q'],
+                                     not operation['limit'],
+                                     write_concern)
             except OperationFailure:
                 if self.ordered:
                     break
 
-    def execute_legacy(self, generator, write_concern):
+    def execute_legacy(self, sock_info, generator, write_concern):
         """Execute using legacy wire protocol ops.
         """
         coll = self.collection
-        client = coll.database.client
         full_result = {
             "writeErrors": [],
             "writeConcernErrors": [],
@@ -348,34 +343,33 @@ class _Bulk(object):
         for run in generator:
             for idx, operation in enumerate(run.ops):
                 try:
-                    with client._get_socket_for_writes() as sock_info:
-                        # To do per-operation reporting we have to do ops one
-                        # at a time. That means the performance of bulk insert
-                        # will be slower here than calling Collection.insert()
-                        if run.op_type == _INSERT:
-                            coll._insert(sock_info,
-                                         operation,
-                                         write_concern=write_concern)
-                            full_result['nInserted'] += 1
+                    # To do per-operation reporting we have to do ops one
+                    # at a time. That means the performance of bulk insert
+                    # will be slower here than calling Collection.insert()
+                    if run.op_type == _INSERT:
+                        coll._insert(sock_info,
+                                     operation,
+                                     write_concern=write_concern)
+                        full_result['nInserted'] += 1
+                    else:
+                        if run.op_type == _UPDATE:
+                            doc = operation['u']
+                            check_keys = True
+                            if doc and next(iter(doc)).startswith('$'):
+                                check_keys = False
+                            result = coll._update(sock_info,
+                                                  operation['q'],
+                                                  doc,
+                                                  operation['upsert'],
+                                                  check_keys,
+                                                  operation['multi'],
+                                                  write_concern=write_concern)
                         else:
-                            if run.op_type == _UPDATE:
-                                doc = operation['u']
-                                check_keys = True
-                                if doc and next(iter(doc)).startswith('$'):
-                                    check_keys = False
-                                result = coll._update(sock_info,
-                                                      operation['q'],
-                                                      doc,
-                                                      operation['upsert'],
-                                                      check_keys,
-                                                      operation['multi'],
-                                                      write_concern=write_concern)
-                            else:
-                                result = coll._delete(sock_info,
-                                                      operation['q'],
-                                                      not operation['limit'],
-                                                      write_concern)
-                            _merge_legacy(run, full_result, result, idx)
+                            result = coll._delete(sock_info,
+                                                  operation['q'],
+                                                  not operation['limit'],
+                                                  write_concern)
+                        _merge_legacy(run, full_result, result, idx)
                 except DocumentTooLarge as exc:
                     # MongoDB 2.6 uses error code 2 for "too large".
                     error = _make_error(
@@ -414,7 +408,6 @@ class _Bulk(object):
             raise InvalidOperation('Bulk operations can '
                                    'only be executed once.')
         self.executed = True
-        client = self.collection.database.client
         write_concern = (WriteConcern(**write_concern) if
                          write_concern else self.collection.write_concern)
 
@@ -423,13 +416,14 @@ class _Bulk(object):
         else:
             generator = self.gen_unordered()
 
-        # TODO: get a socket here, before checking wire version
-        if not write_concern.acknowledged:
-            self.execute_no_results(generator)
-        elif client._writable_max_wire_version() > 1:
-            return self.execute_command(generator, write_concern)
-        else:
-            return self.execute_legacy(generator, write_concern)
+        client = self.collection.database.client
+        with client._get_socket_for_writes() as sock_info:
+            if not write_concern.acknowledged:
+                self.execute_no_results(sock_info, generator)
+            elif sock_info.max_wire_version > 1:
+                return self.execute_command(sock_info, generator, write_concern)
+            else:
+                return self.execute_legacy(sock_info, generator, write_concern)
 
 
 class BulkUpsertOperation(object):
