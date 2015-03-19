@@ -82,8 +82,12 @@ class WriteConcern(object):
     @property
     def document(self):
         """The document representation of this write concern.
+
+        .. note::
+          :class:`WriteConcern` is immutable. Mutating the value of
+          :attr:`document` does not mutate this :class:`WriteConcern`.
         """
-        return self.__document
+        return self.__document.copy()
 
     @property
     def acknowledged(self):
