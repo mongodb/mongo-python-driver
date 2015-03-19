@@ -42,7 +42,6 @@ from bson.py3compat import (integer_types,
                             string_type)
 from pymongo import (common,
                      database,
-                     helpers,
                      message,
                      periodic_executor,
                      uri_parser)
@@ -51,7 +50,6 @@ from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
-                            DuplicateKeyError,
                             InvalidOperation,
                             InvalidURI,
                             NetworkTimeout,
@@ -710,48 +708,6 @@ class MongoClient(common.BaseObject):
         except ConnectionFailure:
             self.__reset_server(server.description.address)
             raise
-
-    def __check_gle_response(self, response, is_command):
-        # TODO: remove
-        """Check a response to a lastError message for errors.
-
-        `response` is a byte string representing a response to the message.
-        If it represents an error response we raise OperationFailure.
-
-        Return the response as a document.
-        """
-        response = helpers._unpack_response(response)
-
-        assert response["number_returned"] == 1
-        result = response["data"][0]
-
-        # Raises NotMasterError or OperationFailure.
-        helpers._check_command_response(result)
-
-        # write commands - skip getLastError checking
-        if is_command:
-            return result
-
-        # getLastError
-        error_msg = result.get("err", "")
-        if error_msg is None:
-            return result
-        if error_msg.startswith("not master"):
-            raise NotMasterError(error_msg)
-
-        details = result
-        # mongos returns the error code in an error object
-        # for some errors.
-        if "errObjects" in result:
-            for errobj in result["errObjects"]:
-                if errobj.get("err") == error_msg:
-                    details = errobj
-                    break
-
-        code = details.get("code")
-        if code in (11000, 11001, 12582):
-            raise DuplicateKeyError(details["err"], code, result)
-        raise OperationFailure(details["err"], code, result)
 
     def _send_message(
             self, msg, with_last_error=False, command=False,
