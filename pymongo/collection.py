@@ -241,6 +241,15 @@ class Collection(common.BaseObject):
             self, codec_options=None, read_preference=None, write_concern=None):
         """Get a clone of this collection changing the specified settings.
 
+          >>> coll1.read_preference
+          Primary()
+          >>> from pymongo import ReadPreference
+          >>> coll2 = coll.with_options(read_preference=ReadPreference.SECONDARY)
+          >>> coll1.read_preference
+          Primary()
+          >>> coll2.read_preference
+          Secondary(tag_sets=None)
+
         :Parameters:
           - `codec_options` (optional): An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
@@ -248,7 +257,8 @@ class Collection(common.BaseObject):
             is used.
           - `read_preference` (optional): The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`Collection` is used.
+            :class:`Collection` is used. See :mod:`~pymongo.read_preferences`
+            for options.
           - `write_concern` (optional): An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) the :attr:`write_concern` of this :class:`Collection`

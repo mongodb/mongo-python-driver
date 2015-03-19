@@ -109,7 +109,7 @@ class _ServerMode(object):
            .. seealso:: `Data-Center Awareness
                <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_
         """
-        return self.__tag_sets or [{}]
+        return list(self.__tag_sets) if self.__tag_sets else [{}]
 
     def __repr__(self):
         return "%s(tag_sets=%r)" % (

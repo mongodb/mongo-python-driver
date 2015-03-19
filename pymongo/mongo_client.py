@@ -1012,6 +1012,21 @@ class MongoClient(common.BaseObject):
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
 
+        Useful for creating a :class:`~pymongo.database.Database` with
+        different codec options, read preference, and/or write concern from
+        this :class:`MongoClient`.
+
+          >>> client.read_preference
+          Primary()
+          >>> db1 = client.test
+          >>> db1.read_preference
+          Primary()
+          >>> from pymongo import ReadPreference
+          >>> db2 = client.get_database(
+          ...     'test', read_preference=ReadPreference.SECONDARY)
+          >>> db2.read_preference
+          Secondary(tag_sets=None)
+
         :Parameters:
           - `name`: The name of the database - a string.
           - `codec_options` (optional): An instance of
@@ -1020,7 +1035,8 @@ class MongoClient(common.BaseObject):
             used.
           - `read_preference` (optional): The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`MongoClient` is used.
+            :class:`MongoClient` is used. See :mod:`~pymongo.read_preferences`
+            for options.
           - `write_concern` (optional): An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) the :attr:`write_concern` of this :class:`MongoClient` is

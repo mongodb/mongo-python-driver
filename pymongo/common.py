@@ -454,22 +454,27 @@ class BaseObject(object):
 
     @property
     def codec_options(self):
-        """An instance of :class:`~bson.codec_options.CodecOptions`."""
+        """Read only access to the :class:`~bson.codec_options.CodecOptions`
+        of this instance.
+        """
         return self.__codec_options
 
     @property
     def write_concern(self):
-        """The :class:`~pymongo.write_concern.WriteConcern` for this instance.
+        """Read only access to the :class:`~pymongo.write_concern.WriteConcern`
+        of this instance.
+
+        .. versionchanged:: 3.0
+          The :attr:`write_concern` attribute is now read only.
         """
         return self.__write_concern
 
     @property
     def read_preference(self):
-        """The read preference mode for this instance.
+        """Read only access to the read preference of this instance.
 
-        See :mod:`~pymongo.read_preferences` for available options.
-
-        .. versionadded:: 2.1
+        .. versionchanged:: 3.0
+          The :attr:`read_preference` attribute is now read only.
         """
         return self.__read_preference
 

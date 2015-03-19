@@ -230,6 +230,21 @@ class Database(common.BaseObject):
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
+        Useful for creating a :class:`~pymongo.collection.Collection` with
+        different codec options, read preference, and/or write concern from
+        this :class:`Database`.
+
+          >>> db.read_preference
+          Primary()
+          >>> coll1 = db.test
+          >>> coll1.read_preference
+          Primary()
+          >>> from pymongo import ReadPreference
+          >>> coll2 = db.get_collection(
+          ...     'test', read_preference=ReadPreference.SECONDARY)
+          >>> coll2.read_preference
+          Secondary(tag_sets=None)
+
         :Parameters:
           - `name`: The name of the collection - a string.
           - `codec_options` (optional): An instance of
@@ -238,7 +253,8 @@ class Database(common.BaseObject):
             used.
           - `read_preference` (optional): The read preference to use. If
             ``None`` (the default) the :attr:`read_preference` of this
-            :class:`Database` is used.
+            :class:`Database` is used. See :mod:`~pymongo.read_preferences`
+            for options.
           - `write_concern` (optional): An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) the :attr:`write_concern` of this :class:`Database` is
