@@ -30,7 +30,6 @@ from pymongo.errors import (CursorNotFound,
                             WriteError,
                             WriteConcernError,
                             WTimeoutError)
-from pymongo.message import _Query
 
 
 def _index_list(key_or_list, direction=None):
@@ -218,31 +217,6 @@ def _check_gle_response(response):
     if code in (11000, 11001, 12582):
         raise DuplicateKeyError(details["err"], code, result)
     raise OperationFailure(details["err"], code, result)
-
-
-def _command(client, namespace, command, read_preference,
-             codec_options, check=True, allowable_errors=None):
-    """Internal command helper."""
-
-    query_opts = 0
-    # XXX: Set slaveOkay flag when read preference mode is anything other
-    # than primary (0). Make this more clear when we finish refactoring
-    # read preferences.
-    if read_preference.mode:
-        query_opts = 4
-
-    query = _Query(query_opts, namespace, 0, -1, command, None, codec_options)
-    response = client._send_message_with_response(query, read_preference)
-    result = _unpack_response(response.data, None, codec_options)['data'][0]
-    if check:
-        msg = "command %s on namespace %s failed: %%s" % (
-            repr(command).replace("%", "%%"), namespace)
-        try:
-            _check_command_response(result, msg, allowable_errors)
-        except NotMasterError:
-            client._reset_server_and_request_check(response.address)
-            raise
-    return result, response.address
 
 
 def _check_write_command_response(results):

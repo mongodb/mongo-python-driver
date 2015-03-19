@@ -158,6 +158,7 @@ class Monitor(object):
             0, 'admin.$cmd', 0, -1, {'ismaster': 1},
             None, DEFAULT_CODEC_OPTIONS)
 
+        # TODO: use sock_info.command()
         sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)

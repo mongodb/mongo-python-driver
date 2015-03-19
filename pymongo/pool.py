@@ -17,6 +17,7 @@ import os
 import socket
 import threading
 
+from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import u, itervalues
 from pymongo import auth, helpers, thread_util
 from pymongo.errors import (AutoReconnect,
@@ -30,6 +31,7 @@ from pymongo.monotonic import time as _time
 from pymongo.network import (command,
                              receive_message,
                              socket_closed)
+from pymongo.server_type import SERVER_TYPE
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
@@ -151,19 +153,31 @@ class SocketInfo(object):
         self.max_write_batch_size = (
             ismaster.max_write_batch_size if ismaster else None)
 
+        if ismaster:
+            self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
+        else:
+            self.is_mongos = None
+
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
         self.pool_id = pool.pool_id
 
-    def command(self, dbname, spec):
+    def command(self, dbname, spec, slave_ok=False,
+                codec_options=DEFAULT_CODEC_OPTIONS, check=True,
+                allowable_errors=None):
         """Execute a command or raise ConnectionFailure or OperationFailure.
 
         :Parameters:
           - `dbname`: name of the database on which to run the command
           - `spec`: a command document as a dict, SON, or mapping object
+          - `slave_ok`: whether to set the SlaveOkay wire protocol bit
+          - `codec_options`: a CodecOptions instance
+          - `check`: raise OperationFailure if there are errors
+          - `allowable_errors`: errors to ignore if `check` is True
         """
         try:
-            return command(self.sock, dbname, spec)
+            return command(self.sock, dbname, spec, slave_ok, codec_options,
+                           check, allowable_errors)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
@@ -452,7 +466,8 @@ class Pool:
         try:
             sock = _configured_socket(self.address, self.opts)
             if self.handshake:
-                ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1}))
+                ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1},
+                                            False, DEFAULT_CODEC_OPTIONS))
             else:
                 ismaster = None
             return SocketInfo(sock, self, ismaster, self.address)

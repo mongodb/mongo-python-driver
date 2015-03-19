@@ -22,7 +22,7 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
-from pymongo import auth, common, helpers
+from pymongo import auth, common
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
@@ -98,7 +98,6 @@ class Database(common.BaseObject):
             _check_name(name)
 
         self.__name = _unicode(name)
-        self.__cmd_name = _unicode(name + ".$cmd")
         self.__client = client
 
         self.__incoming_manipulators = []
@@ -341,13 +340,16 @@ class Database(common.BaseObject):
             command = SON([(command, value)])
         command.update(kwargs)
 
-        return helpers._command(self.__client,
-                                self.__cmd_name,
-                                command,
-                                read_preference,
-                                codec_options,
-                                check,
-                                allowable_errors)
+        client = self.__client
+        with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
+            result = sock_info.command(self.__name,
+                                       command,
+                                       slave_ok,
+                                       codec_options,
+                                       check,
+                                       allowable_errors)
+
+            return result, sock_info.address
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,

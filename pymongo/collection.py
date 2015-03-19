@@ -33,7 +33,7 @@ from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
-from pymongo.helpers import _check_write_command_response, _command
+from pymongo.helpers import _check_write_command_response
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 from pymongo.operations import _WriteOp
 from pymongo.read_preferences import ReadPreference
@@ -159,8 +159,8 @@ class Collection(common.BaseObject):
         if create or kwargs:
             self.__create(kwargs)
 
-    def _command(
-            self, command, read_preference=None, codec_options=None, **kwargs):
+    def _command(self, command, read_preference=None, codec_options=None,
+                 check=True, allowable_errors=None):
         """Internal command helper.
 
         :Parameters:
@@ -169,18 +169,23 @@ class Collection(common.BaseObject):
             command. See :mod:`~pymongo.read_preferences` for options.
           - `codec_options` (optional) - An instance of
             :class:`~bson.codec_options.CodecOptions`.
-          - `**kwargs` - any optional keyword arguments accepted by
-            :func:`~pymongo.helpers._command`.
+          - `check`: raise OperationFailure if there are errors
+          - `allowable_errors`: errors to ignore if `check` is True
 
         :Returns:
           (result document, address of server the command was run on)
         """
-        return _command(self.__database.client,
-                        self.__database.name + ".$cmd",
-                        command,
-                        read_preference or self.read_preference,
-                        codec_options or self.codec_options,
-                        **kwargs)
+        client = self.__database.client
+        preference = read_preference or self.read_preference
+        with client._socket_for_reads(preference) as (sock_info, slave_ok):
+            result = sock_info.command(self.__database.name,
+                                       command,
+                                       slave_ok,
+                                       codec_options or self.codec_options,
+                                       check,
+                                       allowable_errors)
+
+            return result, sock_info.address
 
     def __create(self, options):
         """Sends a create command with the given options.
@@ -1443,8 +1448,8 @@ class Collection(common.BaseObject):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
-        _command(self.__database.client, "admin.$cmd", cmd,
-                 ReadPreference.PRIMARY, CodecOptions())
+        with self.__database.client._get_socket_for_writes() as sock_info:
+            sock_info.command('admin', cmd)
 
     def distinct(self, key, filter=None, **kwargs):
         """Get a list of distinct values for `key` among all documents

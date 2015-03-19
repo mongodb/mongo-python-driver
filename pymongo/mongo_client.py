@@ -675,10 +675,35 @@ class MongoClient(common.BaseObject):
     @contextlib.contextmanager
     def _get_socket_for_writes(self):
         server = self._get_topology().select_server(writable_server_selector)
-        # TODO: refactor with _reset_on_error
+        # TODO: refactor with _reset_on_error, rename _socket_for_writes
         try:
             with server.get_socket(self.__all_credentials) as sock_info:
                 yield sock_info
+        except NetworkTimeout:
+            # The socket has been closed. Don't reset the server.
+            raise
+        except ConnectionFailure:
+            self.__reset_server(server.description.address)
+            raise
+
+    @contextlib.contextmanager
+    def _socket_for_reads(self, read_preference):
+        # TODO: refactor with _reset_on_error and _get_socket_for_writes
+        # Get a socket for a server matching the read preference, and yield
+        # sock_info, set_slave_ok.
+        # See bullet point 2 in server-selection.rst#topology-type-single:
+        # Set SlaveOkay for direct connection to mongod, or non-primary
+        # read preference.
+        topology = self._get_topology()
+        preference = read_preference or ReadPreference.PRIMARY
+        server = topology.select_server(preference)
+        # Thread safe: if the type is single it cannot change.
+        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
+        try:
+            with server.get_socket(self.__all_credentials) as sock_info:
+                slave_ok = (single and not sock_info.is_mongos) or (
+                    preference != ReadPreference.PRIMARY)
+                yield sock_info, slave_ok
         except NetworkTimeout:
             # The socket has been closed. Don't reset the server.
             raise
