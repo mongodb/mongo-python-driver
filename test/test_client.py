@@ -829,20 +829,6 @@ class TestClient(IntegrationTest):
                 operation=message._GetMore('collection', 101, 1234),
                 address=('not-a-member', 27017))
 
-    @client_context.require_replica_set
-    def test_stale_killcursors(self):
-        # A cursor is created, but its member goes down and is removed from
-        # the topology before the killCursors message is sent. Test that
-        # MongoClient._send_message handles the error.
-        with self.assertRaises(AutoReconnect):
-            client = MongoClient(host, port, connect=False,
-                                 serverSelectionTimeoutMS=100,
-                                 replicaSet=client_context.replica_set_name)
-            client._send_message(
-                msg=message.kill_cursors([1234]),
-                check_primary=False,
-                address=('not-a-member', 27017))
-
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""
