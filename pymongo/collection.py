@@ -910,26 +910,27 @@ class Collection(common.BaseObject):
         sets.
 
         For example, to process each document in a collection using some
-        thread-safe ``process_document()`` function::
+        thread-safe ``process_document()`` function:
 
-            def process_cursor(cursor):
-                for document in cursor:
-                    # Some thread-safe processing function:
-                    process_document(document)
-
-            # Get up to 4 cursors.
-            cursors = collection.parallel_scan(4)
-            threads = [
-                threading.Thread(target=process_cursor, args=(cursor,))
-                for cursor in cursors]
-
-            for thread in threads:
-                thread.start()
-
-            for thread in threads:
-                thread.join()
-
-            # All documents have now been processed.
+          >>> def process_cursor(cursor):
+          ...     for document in cursor:
+          ...     # Some thread-safe processing function:
+          ...     process_document(document)
+          >>>
+          >>> # Get up to 4 cursors.
+          ...
+          >>> cursors = collection.parallel_scan(4)
+          >>> threads = [
+          ...     threading.Thread(target=process_cursor, args=(cursor,))
+          ...     for cursor in cursors]
+          >>>
+          >>> for thread in threads:
+          ...     thread.start()
+          >>>
+          >>> for thread in threads:
+          ...     thread.join()
+          >>>
+          >>> # All documents have now been processed.
 
         The :meth:`parallel_scan` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
@@ -942,7 +943,6 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.0
            Removed support for arbitrary keyword arguments, since
            the parallelCollectionScan command has no optional arguments.
-
         """
         cmd = SON([('parallelCollectionScan', self.__name),
                    ('numCursors', num_cursors)])
