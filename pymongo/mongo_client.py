@@ -680,6 +680,9 @@ class MongoClient(common.BaseObject):
         except NetworkTimeout:
             # The socket has been closed. Don't reset the server.
             raise
+        except NotMasterError:
+            self._reset_server_and_request_check(server.description.address)
+            raise
         except ConnectionFailure:
             self.__reset_server(server.description.address)
             raise
@@ -704,6 +707,9 @@ class MongoClient(common.BaseObject):
                 yield sock_info, slave_ok
         except NetworkTimeout:
             # The socket has been closed. Don't reset the server.
+            raise
+        except NotMasterError:
+            self._reset_server_and_request_check(server.description.address)
             raise
         except ConnectionFailure:
             self.__reset_server(server.description.address)
