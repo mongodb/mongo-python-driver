@@ -188,18 +188,23 @@ def object_hook(dct, compile_re=True):
             micros = int(dtm[20:23]) * 1000
             aware = naive.replace(microsecond=micros, tzinfo=utc)
             offset = dtm[23:]
-            if not offset:
-                # No offset, assume UTC.
+            if not offset or offset == 'Z':
+                # UTC
                 return aware
-            elif len(offset) == 5:
-                # Offset from mongoexport is in format (+|-)HHMM
-                secs = (int(offset[1:3]) * 3600 + int(offset[3:]) * 60)
+            else:
+                if len(offset) == 5:
+                    # Offset from mongoexport is in format (+|-)HHMM
+                    secs = (int(offset[1:3]) * 3600 + int(offset[3:]) * 60)
+                elif ':' in offset and len(offset) == 6:
+                    # RFC-3339 format (+|-)HH:MM
+                    hours, minutes = offset[1:].split(':')
+                    secs = (int(hours) * 3600 + int(minutes) * 60)
+                else:
+                    # Not RFC-3339 compliant or mongoexport output.
+                    raise ValueError("invalid format for offset")
                 if offset[0] == "-":
                     secs *= -1
                 return aware - datetime.timedelta(seconds=secs)
-            else:
-                # Some other tool created this, or mongoexport changed again?
-                raise ValueError("invalid format for offset")
         # mongoexport 2.6 and newer, time before the epoch (SERVER-15275)
         elif isinstance(dtm, dict):
             secs = float(dtm["$numberLong"]) / 1000.0
