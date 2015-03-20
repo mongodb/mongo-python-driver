@@ -417,7 +417,7 @@ class _Bulk(object):
             generator = self.gen_unordered()
 
         client = self.collection.database.client
-        with client._get_socket_for_writes() as sock_info:
+        with client._socket_for_writes() as sock_info:
             if not write_concern.acknowledged:
                 self.execute_no_results(sock_info, generator)
             elif sock_info.max_wire_version > 1:

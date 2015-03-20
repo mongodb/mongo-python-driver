@@ -694,7 +694,7 @@ class MongoClient(common.BaseObject):
             self.__reset_server(server.description.address)
             raise
 
-    def _get_socket_for_writes(self):
+    def _socket_for_writes(self):
         return self._get_socket(writable_server_selector)
 
     @contextlib.contextmanager

@@ -448,7 +448,7 @@ class Collection(common.BaseObject):
         common.validate_is_mutable_mapping("document", document)
         if "_id" not in document:
             document["_id"] = ObjectId()
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             return InsertOneResult(self._insert(sock_info, document),
                                    self.write_concern.acknowledged)
 
@@ -581,7 +581,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_replace(replacement)
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, replacement, upsert)
         return UpdateResult(result, self.write_concern.acknowledged)
 
@@ -618,7 +618,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update,
                                   upsert, check_keys=False)
         return UpdateResult(result, self.write_concern.acknowledged)
@@ -656,7 +656,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
                                   check_keys=False, multi=True)
         return UpdateResult(result, self.write_concern.acknowledged)
@@ -718,7 +718,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             return DeleteResult(self._delete(sock_info, filter, False),
                                 self.write_concern.acknowledged)
 
@@ -740,7 +740,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             return DeleteResult(self._delete(sock_info, filter, True),
                                 self.write_concern.acknowledged)
 
@@ -1015,7 +1015,7 @@ class Collection(common.BaseObject):
                 wcn = (self.write_concern if
                        self.write_concern.acknowledged else WriteConcern())
                 client = self.__database.client
-                with client._get_socket_for_writes() as sock_info:
+                with client._socket_for_writes() as sock_info:
                     self.__database.system.indexes._insert(
                         sock_info, index, True, False, False, wcn)
             else:
@@ -1448,7 +1448,7 @@ class Collection(common.BaseObject):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             sock_info.command('admin', cmd)
 
     def distinct(self, key, filter=None, **kwargs):
@@ -1811,7 +1811,7 @@ class Collection(common.BaseObject):
         if kwargs:
             write_concern = WriteConcern(**kwargs)
 
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             if "_id" not in to_save:
                 return self._insert(sock_info, to_save, True,
                                     check_keys, manipulate, write_concern)
@@ -1834,7 +1834,7 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             return self._insert(sock_info, doc_or_docs, not continue_on_error,
                                 check_keys, manipulate, write_concern)
 
@@ -1866,7 +1866,7 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             return self._update(sock_info, spec, document, upsert,
                                 check_keys, multi, manipulate, write_concern)
 
@@ -1888,7 +1888,7 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        with self.__database.client._get_socket_for_writes() as sock_info:
+        with self.__database.client._socket_for_writes() as sock_info:
             return self._delete(sock_info, spec_or_id, multi, write_concern)
 
     def find_and_modify(self, query={}, update=None,
