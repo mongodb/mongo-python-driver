@@ -856,14 +856,14 @@ class Collection(common.BaseObject):
             apply any outgoing SON manipulators before returning.
 
         .. note:: There are a number of caveats to using
-           :attr:`~pymongo.cursor.CursorType.EXHAUST` as cursor_type:
+          :attr:`~pymongo.cursor.CursorType.EXHAUST` as cursor_type:
 
-            1. The `limit` option can not be used with an exhaust cursor.
+          - The `limit` option can not be used with an exhaust cursor.
 
-            2. Exhaust cursors are not supported by mongos and can not be
+          - Exhaust cursors are not supported by mongos and can not be
             used with a sharded cluster.
 
-            3. A :class:`~pymongo.cursor.Cursor` instance created with the
+          - A :class:`~pymongo.cursor.Cursor` instance created with the
             :attr:`~pymongo.cursor.CursorType.EXHAUST` cursor_type requires an
             exclusive :class:`~socket.socket` connection to MongoDB. If the
             :class:`~pymongo.cursor.Cursor` is discarded without being
