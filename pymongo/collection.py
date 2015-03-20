@@ -159,33 +159,42 @@ class Collection(common.BaseObject):
         if create or kwargs:
             self.__create(kwargs)
 
-    def _command(self, command, read_preference=None, codec_options=None,
+    def _socket_for_reads(self):
+        return self.__database.client._socket_for_reads(self.read_preference)
+
+    def _socket_for_primary_reads(self):
+        return self.__database.client._socket_for_reads(ReadPreference.PRIMARY)
+
+    def _socket_for_writes(self):
+        return self.__database.client._socket_for_writes()
+
+    def _command(self, sock_info, command, slave_ok=False, codec_options=None,
                  check=True, allowable_errors=None):
         """Internal command helper.
 
         :Parameters:
+          - `sock_info` - A SocketInfo instance.
           - `command` - The command itself, as a SON instance.
-          - `read_preference` (optional) - The read preference for this
-            command. See :mod:`~pymongo.read_preferences` for options.
+          - `slave_ok`: whether to set the SlaveOkay wire protocol bit.
           - `codec_options` (optional) - An instance of
             :class:`~bson.codec_options.CodecOptions`.
           - `check`: raise OperationFailure if there are errors
           - `allowable_errors`: errors to ignore if `check` is True
 
         :Returns:
+
+            # todo: don't return address
+
           (result document, address of server the command was run on)
         """
-        client = self.__database.client
-        preference = read_preference or self.read_preference
-        with client._socket_for_reads(preference) as (sock_info, slave_ok):
-            result = sock_info.command(self.__database.name,
-                                       command,
-                                       slave_ok,
-                                       codec_options or self.codec_options,
-                                       check,
-                                       allowable_errors)
+        result = sock_info.command(self.__database.name,
+                                   command,
+                                   slave_ok,
+                                   codec_options or self.codec_options,
+                                   check,
+                                   allowable_errors)
 
-            return result, sock_info.address
+        return result, sock_info.address
 
     def __create(self, options):
         """Sends a create command with the given options.
@@ -195,7 +204,8 @@ class Collection(common.BaseObject):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        self._command(cmd, ReadPreference.PRIMARY)
+        with self._socket_for_writes() as sock_info:
+            self._command(sock_info, cmd)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -448,7 +458,7 @@ class Collection(common.BaseObject):
         common.validate_is_mutable_mapping("document", document)
         if "_id" not in document:
             document["_id"] = ObjectId()
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             return InsertOneResult(self._insert(sock_info, document),
                                    self.write_concern.acknowledged)
 
@@ -581,7 +591,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_replace(replacement)
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, replacement, upsert)
         return UpdateResult(result, self.write_concern.acknowledged)
 
@@ -618,7 +628,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update,
                                   upsert, check_keys=False)
         return UpdateResult(result, self.write_concern.acknowledged)
@@ -656,7 +666,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
                                   check_keys=False, multi=True)
         return UpdateResult(result, self.write_concern.acknowledged)
@@ -718,7 +728,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             return DeleteResult(self._delete(sock_info, filter, False),
                                 self.write_concern.acknowledged)
 
@@ -740,7 +750,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             return DeleteResult(self._delete(sock_info, filter, True),
                                 self.write_concern.acknowledged)
 
@@ -952,7 +962,8 @@ class Collection(common.BaseObject):
         cmd = SON([('parallelCollectionScan', self.__name),
                    ('numCursors', num_cursors)])
 
-        result, address = self._command(cmd)
+        with self._socket_for_reads() as (sock_info, slave_ok):
+            result, address = self._command(sock_info, cmd, slave_ok)
 
         return [CommandCursor(self,
                               cursor['cursor'],
@@ -989,8 +1000,9 @@ class Collection(common.BaseObject):
         if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
         cmd.update(kwargs)
-        res = self._command(cmd,
-                            allowable_errors=["ns missing"])[0]
+        with self._socket_for_reads() as (sock_info, slave_ok):
+            res = self._command(sock_info, cmd, slave_ok,
+                                allowable_errors=["ns missing"])[0]
         if res.get("errmsg", "") == "ns missing":
             return 0
         return int(res["n"])
@@ -1006,20 +1018,19 @@ class Collection(common.BaseObject):
         index = {"key": index_doc}
         index.update(index_options)
 
-        cmd = SON([('createIndexes', self.name), ('indexes', [index])])
-        try:
-            self._command(cmd, ReadPreference.PRIMARY)
-        except OperationFailure as exc:
-            if exc.code in common.COMMAND_NOT_FOUND_CODES:
-                index["ns"] = self.__full_name
-                wcn = (self.write_concern if
-                       self.write_concern.acknowledged else WriteConcern())
-                client = self.__database.client
-                with client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
+            cmd = SON([('createIndexes', self.name), ('indexes', [index])])
+            try:
+                self._command(sock_info, cmd)
+            except OperationFailure as exc:
+                if exc.code in common.COMMAND_NOT_FOUND_CODES:
+                    index["ns"] = self.__full_name
+                    wcn = (self.write_concern if
+                           self.write_concern.acknowledged else WriteConcern())
                     self.__database.system.indexes._insert(
                         sock_info, index, True, False, False, wcn)
-            else:
-                raise
+                else:
+                    raise
 
     def create_index(self, key_or_list, **kwargs):
         """Creates an index on this collection.
@@ -1167,8 +1178,8 @@ class Collection(common.BaseObject):
         self.__database.client._purge_index(
             self.__database.name, self.__name, name)
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
-        self._command(
-            cmd, ReadPreference.PRIMARY, allowable_errors=["ns not found"])
+        with self._socket_for_writes() as sock_info:
+            self._command(sock_info, cmd, allowable_errors=["ns not found"])
 
     def reindex(self):
         """Rebuilds all indexes on this collection.
@@ -1178,7 +1189,8 @@ class Collection(common.BaseObject):
            collections.
         """
         cmd = SON([("reIndex", self.__name)])
-        return self._command(cmd, ReadPreference.PRIMARY)[0]
+        with self._socket_for_writes() as sock_info:
+            return self._command(sock_info, cmd)[0]
 
     def index_information(self):
         """Get information on this collection's indexes.
@@ -1199,24 +1211,24 @@ class Collection(common.BaseObject):
         {u'_id_': {u'key': [(u'_id', 1)]},
          u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
         """
-        client = self.__database.client
-        if client._writable_max_wire_version() > 2:
-            cmd = SON([("listIndexes", self.__name), ("cursor", {})])
-            res, addr = self._command(cmd,
-                                      ReadPreference.PRIMARY,
-                                      CodecOptions(document_class=SON))
-            # MongoDB 2.8rc2
-            if "indexes" in res:
-                raw = res["indexes"]
-            # >= MongoDB 2.8rc3
+        with self._socket_for_primary_reads() as (sock_info, slave_ok):
+            if sock_info.max_wire_version > 2:
+                cmd = SON([("listIndexes", self.__name), ("cursor", {})])
+                res, addr = self._command(sock_info, cmd, slave_ok,
+                                          CodecOptions(document_class=SON))
+                # MongoDB 2.8rc2
+                if "indexes" in res:
+                    raw = res["indexes"]
+                # >= MongoDB 2.8rc3
+                else:
+                    raw = CommandCursor(self, res["cursor"], addr)
             else:
-                raw = CommandCursor(self, res["cursor"], addr)
-        else:
-            raw = self.__database.get_collection(
-                "system.indexes",
-                codec_options=CodecOptions(document_class=SON),
-                read_preference=ReadPreference.PRIMARY).find(
-                    {"ns": self.__full_name}, {"ns": 0})
+                # TODO: query on the sock_info itself
+                raw = self.__database.get_collection(
+                    "system.indexes",
+                    codec_options=CodecOptions(document_class=SON),
+                    read_preference=ReadPreference.PRIMARY).find(
+                        {"ns": self.__full_name}, {"ns": 0})
         info = {}
         for index in raw:
             index["key"] = index["key"].items()
@@ -1232,28 +1244,29 @@ class Collection(common.BaseObject):
         information on the possible options. Returns an empty
         dictionary if the collection has not been created yet.
         """
-        client = self.__database.client
-
-        result = None
-        if client._writable_max_wire_version() > 2:
-            cmd = SON([("listCollections", self.__name),
-                       ("filter", {"name": self.__name}),
-                       ("cursor", {})])
-            res, addr = self._command(cmd, ReadPreference.PRIMARY)
-            # MongoDB 2.8rc2
-            if "collections" in res:
-                results = res["collections"]
-            # >= MongoDB 2.8rc3
+        with self._socket_for_primary_reads() as (sock_info, slave_ok):
+            result = None
+            if sock_info.max_wire_version > 2:
+                cmd = SON([("listCollections", self.__name),
+                           ("filter", {"name": self.__name}),
+                           ("cursor", {})])
+                res, addr = self._command(sock_info, cmd, slave_ok)
+                # MongoDB 2.8rc2
+                if "collections" in res:
+                    results = res["collections"]
+                # >= MongoDB 2.8rc3
+                else:
+                    results = CommandCursor(self, res["cursor"], addr)
+                for doc in results:
+                    result = doc
+                    break
             else:
-                results = CommandCursor(self, res["cursor"], addr)
-            for doc in results:
-                result = doc
-                break
-        else:
-            result = self.__database.get_collection(
-                "system.namespaces",
-                read_preference=ReadPreference.PRIMARY).find_one(
-                    {"name": self.__full_name})
+                # TODO: query on the sock_info itself
+                # TODO: test all these wp-dependent operations
+                result = self.__database.get_collection(
+                    "system.namespaces",
+                    read_preference=ReadPreference.PRIMARY).find_one(
+                        {"name": self.__full_name})
 
         if not result:
             return {}
@@ -1334,40 +1347,40 @@ class Collection(common.BaseObject):
         cmd = SON([("aggregate", self.__name),
                    ("pipeline", pipeline)])
 
-        client = self.database.client
+        with self._socket_for_reads() as (sock_info, slave_ok):
+            # Remove things that are not command options.
+            batch_size = kwargs.pop("batchSize", None)
+            # If useCursor is True or the "cursor" aggregate option is passed
+            # as a keyword argument we obey the user's wishes, regardless of
+            # server version.
+            use_cursor = kwargs.pop(
+                "useCursor",
+                ("cursor" in kwargs or sock_info.max_wire_version > 0))
+            common.validate_boolean("useCursor", use_cursor)
 
-        # Remove things that are not command options.
-        batch_size = kwargs.pop("batchSize", None)
-        # If useCursor is True or the "cursor" aggregate option is passed
-        # as a keyword argument we obey the user's wishes, regardless of
-        # server version.
-        use_cursor = kwargs.pop(
-            "useCursor",
-            ("cursor" in kwargs or client._writable_max_wire_version() > 0))
-        common.validate_boolean("useCursor", use_cursor)
+            if batch_size is not None and not use_cursor:
+                raise ConfigurationError(
+                    "batchSize requires the use of a cursor")
 
-        if batch_size is not None and not use_cursor:
-            raise ConfigurationError("batchSize requires the use of a cursor")
+            if use_cursor and "cursor" not in kwargs:
+                kwargs["cursor"] = {}
+            if batch_size is not None:
+                kwargs["cursor"]["batchSize"] = batch_size
 
-        if use_cursor and "cursor" not in kwargs:
-            kwargs["cursor"] = {}
-        if batch_size is not None:
-            kwargs["cursor"]["batchSize"] = batch_size
+            cmd.update(kwargs)
 
-        cmd.update(kwargs)
+            result, address = self._command(sock_info, cmd, slave_ok)
 
-        result, address = self._command(cmd)
-
-        if "cursor" in result:
-            cursor_info = result["cursor"]
-        else:
-            # Pre-MongoDB 2.6. Fake a cursor.
-            cursor_info = {
-                "id": 0,
-                "firstBatch": result["result"],
-                "ns": self.full_name,
-            }
-        return CommandCursor(self, cursor_info, address)
+            if "cursor" in result:
+                cursor_info = result["cursor"]
+            else:
+                # Pre-MongoDB 2.6. Fake a cursor.
+                cursor_info = {
+                    "id": 0,
+                    "firstBatch": result["result"],
+                    "ns": self.full_name,
+                }
+            return CommandCursor(self, cursor_info, address)
 
     # key and condition ought to be optional, but deprecation
     # would be painful as argument order would have to change.
@@ -1417,7 +1430,8 @@ class Collection(common.BaseObject):
         cmd = SON([("group", group)])
         cmd.update(kwargs)
 
-        return self._command(cmd)[0]["retval"]
+        with self._socket_for_reads() as (sock_info, slave_ok):
+            return self._command(sock_info, cmd, slave_ok)[0]["retval"]
 
     def rename(self, new_name, **kwargs):
         """Rename this collection.
@@ -1448,7 +1462,7 @@ class Collection(common.BaseObject):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             sock_info.command('admin', cmd)
 
     def distinct(self, key, filter=None, **kwargs):
@@ -1484,7 +1498,8 @@ class Collection(common.BaseObject):
                 raise ConfigurationError("can't pass both filter and query")
             kwargs["query"] = filter
         cmd.update(kwargs)
-        return self._command(cmd)[0]["values"]
+        with self._socket_for_reads() as (sock_info, slave_ok):
+            return self._command(sock_info, cmd, slave_ok)[0]["values"]
 
     def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.
@@ -1534,7 +1549,8 @@ class Collection(common.BaseObject):
                    ("out", out)])
         cmd.update(kwargs)
 
-        response = self._command(cmd, ReadPreference.PRIMARY)[0]
+        with self._socket_for_writes() as sock_info:
+            response = self._command(sock_info, cmd)[0]
 
         if full_response or not response.get('result'):
             return response
@@ -1575,7 +1591,8 @@ class Collection(common.BaseObject):
                    ("reduce", reduce),
                    ("out", {"inline": 1})])
         cmd.update(kwargs)
-        res = self._command(cmd)[0]
+        with self._socket_for_reads() as (sock_info, slave_ok):
+            res = self._command(sock_info, cmd, slave_ok)[0]
 
         if full_response:
             return res
@@ -1601,9 +1618,9 @@ class Collection(common.BaseObject):
         if upsert is not None:
             common.validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
-        out = self._command(cmd,
-                            ReadPreference.PRIMARY,
-                            allowable_errors=[_NO_OBJ_ERROR])[0]
+        with self._socket_for_writes() as sock_info:
+            out = self._command(sock_info, cmd,
+                                allowable_errors=[_NO_OBJ_ERROR])[0]
         return out.get("value")
 
     def find_one_and_delete(self, filter,
@@ -1811,7 +1828,7 @@ class Collection(common.BaseObject):
         if kwargs:
             write_concern = WriteConcern(**kwargs)
 
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             if "_id" not in to_save:
                 return self._insert(sock_info, to_save, True,
                                     check_keys, manipulate, write_concern)
@@ -1834,7 +1851,7 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             return self._insert(sock_info, doc_or_docs, not continue_on_error,
                                 check_keys, manipulate, write_concern)
 
@@ -1866,7 +1883,7 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             return self._update(sock_info, spec, document, upsert,
                                 check_keys, multi, manipulate, write_concern)
 
@@ -1888,7 +1905,7 @@ class Collection(common.BaseObject):
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        with self.__database.client._socket_for_writes() as sock_info:
+        with self._socket_for_writes() as sock_info:
             return self._delete(sock_info, spec_or_id, multi, write_concern)
 
     def find_and_modify(self, query={}, update=None,
@@ -1940,9 +1957,9 @@ class Collection(common.BaseObject):
 
         cmd = SON([("findAndModify", self.__name)])
         cmd.update(kwargs)
-        out = self._command(cmd,
-                            ReadPreference.PRIMARY,
-                            allowable_errors=[_NO_OBJ_ERROR])[0]
+        with self._socket_for_writes() as sock_info:
+            out = self._command(sock_info, cmd,
+                                allowable_errors=[_NO_OBJ_ERROR])[0]
 
         if not out['ok']:
             if out["errmsg"] == _NO_OBJ_ERROR:

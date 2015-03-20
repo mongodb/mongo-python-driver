@@ -607,15 +607,6 @@ class MongoClient(common.BaseObject):
         """The server selection timeout for this instance in seconds."""
         return self.__options.server_selection_timeout
 
-    def _writable_max_wire_version(self):
-        """Connect to a writable server and get its max wire protocol version.
-
-        Can raise ConnectionFailure.
-        """
-        topology = self._get_topology()  # Starts monitors if necessary.
-        server = topology.select_server(writable_server_selector)
-        return server.description.max_wire_version
-
     def _is_writable(self):
         """Attempt to connect to a writable server, or return False.
         """

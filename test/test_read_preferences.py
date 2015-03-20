@@ -355,12 +355,19 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             write_concern=WriteConcern(w=self.w))
         coll.insert_one({})
 
-        self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
-                               'function() { }', 'function() { }', 'mr_out')
+        self.c.has_read_from.clear()
+        self.c.pymongo_test.test.map_reduce('function() { }',
+                                            'function() { }',
+                                            'mr_out')
 
-        self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
-                               'function() { }', 'function() { }',
-                               {'inline': 1})
+        # Didn't call _socket_for_reads() at all.
+        self.assertEqual(0, len(self.c.has_read_from))
+
+        self.c.pymongo_test.test.map_reduce('function() { }',
+                                            'function() { }',
+                                            {'inline': 1})
+
+        self.assertEqual(0, len(self.c.has_read_from))
 
     def test_inline_map_reduce(self):
         # mapreduce fails if no collection
