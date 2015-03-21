@@ -51,8 +51,8 @@ KILL_CURSOR_FREQUENCY = 1
 # longest it is willing to wait for a new primary to be found.
 SERVER_SELECTION_TIMEOUT = 30
 
-# Spec requires at least 10ms between ismaster calls.
-MIN_HEARTBEAT_INTERVAL = 0.01
+# Spec requires at least 500ms between ismaster calls.
+MIN_HEARTBEAT_INTERVAL = 0.5
 
 # mongod/s 2.6 and above return code 59 when a
 # command doesn't exist. mongod versions previous
