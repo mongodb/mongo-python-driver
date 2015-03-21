@@ -1549,8 +1549,8 @@ class Collection(common.BaseObject):
                    ("out", out)])
         cmd.update(kwargs)
 
-        with self._socket_for_writes() as sock_info:
-            response = self._command(sock_info, cmd)[0]
+        with self._socket_for_primary_reads() as (sock_info, slave_ok):
+            response = self._command(sock_info, cmd, slave_ok)[0]
 
         if full_response or not response.get('result'):
             return response
