@@ -16,6 +16,7 @@
 
 import collections
 import struct
+from pymongo.message import _Query
 
 import bson
 import pymongo
@@ -30,7 +31,6 @@ from pymongo.errors import (CursorNotFound,
                             WriteError,
                             WriteConcernError,
                             WTimeoutError)
-from pymongo.message import _Query
 
 
 def _gen_index_name(keys):
@@ -136,6 +136,7 @@ def _check_command_response(response, msg=None, allowable_errors=None):
                                response.get("code"),
                                response)
 
+    # TODO: remove, this is moving to _check_gle_response
     if response.get("wtimeout", False):
         # MongoDB versions before 1.8.0 return the error message in an "errmsg"
         # field. If "errmsg" exists "err" will also exist set to None, so we
@@ -184,38 +185,58 @@ def _check_command_response(response, msg=None, allowable_errors=None):
             raise OperationFailure(msg % errmsg, code, response)
 
 
-def _first_batch(client, namespace, query,
+def _check_gle_response(response):
+    """Return getlasterror response as a dict, or raise OperationFailure."""
+    response = _unpack_response(response)
+
+    assert response["number_returned"] == 1
+    result = response["data"][0]
+
+    # Did getlasterror itself fail?
+    _check_command_response(result)
+
+    if result.get("wtimeout", False):
+        # MongoDB versions before 1.8.0 return the error message in an "errmsg"
+        # field. If "errmsg" exists "err" will also exist set to None, so we
+        # have to check for "errmsg" first.
+        raise WTimeoutError(result.get("errmsg", result.get("err")),
+                            result.get("code"),
+                            result)
+
+    error_msg = result.get("err", "")
+    if error_msg is None:
+        return result
+
+    if error_msg.startswith("not master"):
+        raise NotMasterError(error_msg)
+
+    details = result
+
+    # mongos returns the error code in an error object for some errors.
+    if "errObjects" in result:
+        for errobj in result["errObjects"]:
+            if errobj.get("err") == error_msg:
+                details = errobj
+                break
+
+    code = details.get("code")
+    if code in (11000, 11001, 12582):
+        raise DuplicateKeyError(details["err"], code, result)
+    raise OperationFailure(details["err"], code, result)
+
+
+def _first_batch(sock_info, namespace, query,
                  limit, read_preference, codec_options):
     """Simple query helper for retrieving a first (and possibly only) batch."""
-    query_opts = 0
+    query = _Query(0, namespace, 0, limit, query, None, codec_options)
+
     # XXX: Set slaveOkay flag when read preference mode is anything other
     # than primary (0). Make this more clear when we finish refactoring
     # read preferences.
-    if read_preference.mode:
-        query_opts = 4
-
-    query = _Query(
-        query_opts, namespace, 0, limit, query, None, codec_options)
-    response = client._send_message_with_response(query, read_preference)
-    return _unpack_response(
-        response.data, None, codec_options), response.address
-
-
-def _command(client, namespace, command, read_preference,
-             codec_options, check=True, allowable_errors=None):
-    """Internal command helper."""
-    result, addr = _first_batch(
-        client, namespace, command, -1, read_preference, codec_options)
-    result = result["data"][0]
-    if check:
-        msg = "command %s on namespace %s failed: %%s" % (
-            repr(command).replace("%", "%%"), namespace)
-        try:
-            _check_command_response(result, msg, allowable_errors)
-        except NotMasterError:
-            client._reset_server_and_request_check(addr)
-            raise
-    return result, addr
+    request_id, msg, max_doc_size = query.get_message(read_preference.mode)
+    sock_info.send_message(msg, max_doc_size)
+    response = sock_info.receive_message(1, request_id)
+    return _unpack_response(response, None, codec_options)
 
 
 def _check_write_command_response(results):

@@ -17,17 +17,21 @@ import os
 import socket
 import threading
 
+from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import u, itervalues
-from pymongo import auth, thread_util
+from pymongo import auth, helpers, thread_util
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
+                            DocumentTooLarge,
                             NetworkTimeout,
+                            NotMasterError,
                             OperationFailure)
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
 from pymongo.network import (command,
                              receive_message,
                              socket_closed)
+from pymongo.server_type import SERVER_TYPE
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
@@ -133,7 +137,7 @@ class SocketInfo(object):
     :Parameters:
       - `sock`: a raw socket object
       - `pool`: a Pool instance
-      - `ismaster`: an IsMaster instance, response to ismaster call on `sock`
+      - `ismaster`: optional IsMaster instance, response to ismaster on `sock`
       - `address`: the server's (host, port)
     """
     def __init__(self, sock, pool, ismaster, address):
@@ -142,32 +146,56 @@ class SocketInfo(object):
         self.authset = set()
         self.closed = False
         self.last_checkout = _time()
-        self.ismaster = ismaster
+        self.is_writable = ismaster.is_writable if ismaster else None
+        self.max_wire_version = ismaster.max_wire_version if ismaster else None
+        self.max_bson_size = ismaster.max_bson_size if ismaster else None
+        self.max_message_size = ismaster.max_message_size if ismaster else None
+        self.max_write_batch_size = (
+            ismaster.max_write_batch_size if ismaster else None)
+
+        if ismaster:
+            self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
+        else:
+            self.is_mongos = None
 
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
         self.pool_id = pool.pool_id
 
-    def command(self, dbname, spec):
+    def command(self, dbname, spec, slave_ok=False,
+                codec_options=DEFAULT_CODEC_OPTIONS, check=True,
+                allowable_errors=None):
         """Execute a command or raise ConnectionFailure or OperationFailure.
 
         :Parameters:
           - `dbname`: name of the database on which to run the command
           - `spec`: a command document as a dict, SON, or mapping object
+          - `slave_ok`: whether to set the SlaveOkay wire protocol bit
+          - `codec_options`: a CodecOptions instance
+          - `check`: raise OperationFailure if there are errors
+          - `allowable_errors`: errors to ignore if `check` is True
         """
         try:
-            return command(self.sock, dbname, spec)
+            return command(self.sock, dbname, spec, slave_ok, codec_options,
+                           check, allowable_errors)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def send_message(self, message):
+    def send_message(self, message, max_doc_size):
         """Send a raw BSON message or raise ConnectionFailure.
 
         If a network exception is raised, the socket is closed.
         """
+        if (self.max_bson_size is not None
+                and max_doc_size > self.max_bson_size):
+            raise DocumentTooLarge(
+                "BSON document too large (%d bytes) - the connected server"
+                "supports BSON document sizes up to %d bytes." %
+                (max_doc_size, self.max_bson_size))
+
         try:
             self.sock.sendall(message)
         except BaseException as error:
@@ -182,6 +210,45 @@ class SocketInfo(object):
             return receive_message(self.sock, operation, request_id)
         except BaseException as error:
             self._raise_connection_failure(error)
+
+    def legacy_write(self, request_id, msg, max_doc_size, with_last_error):
+        """Send OP_INSERT, etc., optionally returning response as a dict.
+
+        Can raise ConnectionFailure or OperationFailure.
+
+        :Parameters:
+          - `request_id`: an int.
+          - `msg`: bytes, an OP_INSERT, OP_UPDATE, or OP_DELETE message,
+            perhaps with a getlasterror command appended.
+          - `max_doc_size`: size in bytes of the largest document in `msg`.
+          - `with_last_error`: True if a getlasterror command is appended.
+        """
+        if not with_last_error and not self.is_writable:
+            # Write won't succeed, bail as if we'd done a getlasterror.
+            raise NotMasterError("not master")
+
+        self.send_message(msg, max_doc_size)
+        if with_last_error:
+            response = self.receive_message(1, request_id)
+            return helpers._check_gle_response(response)
+
+    def write_command(self, request_id, msg):
+        """Send "insert" etc. command, returning response as a dict.
+
+        Can raise ConnectionFailure or OperationFailure.
+
+        :Parameters:
+          - `request_id`: an int.
+          - `msg`: bytes, the command message.
+        """
+        self.send_message(msg, 0)
+        response = helpers._unpack_response(self.receive_message(1, request_id))
+        assert response['number_returned'] == 1
+        result = response['data'][0]
+
+        # Raises NotMasterError or OperationFailure.
+        helpers._check_command_response(result)
+        return result
 
     def check_auth(self, all_credentials):
         """Update this socket's authentication.
@@ -224,12 +291,6 @@ class SocketInfo(object):
         except:
             pass
         
-    @property
-    def max_wire_version(self):
-        assert self.ismaster is not None, (
-            'max_wire_version on a SocketInfo created without handshake')
-        return self.ismaster.max_wire_version
-
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In
         # regular Python, socket operations only raise socket.error, even if
@@ -405,7 +466,8 @@ class Pool:
         try:
             sock = _configured_socket(self.address, self.opts)
             if self.handshake:
-                ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1}))
+                ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1},
+                                            False, DEFAULT_CODEC_OPTIONS))
             else:
                 ismaster = None
             return SocketInfo(sock, self, ismaster, self.address)

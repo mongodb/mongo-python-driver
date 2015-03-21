@@ -31,6 +31,7 @@ access:
   Database(MongoClient('localhost', 27017), u'test-database')
 """
 
+import contextlib
 import datetime
 import threading
 import warnings
@@ -41,7 +42,6 @@ from bson.py3compat import (integer_types,
                             string_type)
 from pymongo import (common,
                      database,
-                     helpers,
                      message,
                      periodic_executor,
                      uri_parser)
@@ -50,7 +50,6 @@ from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
-                            DuplicateKeyError,
                             InvalidOperation,
                             InvalidURI,
                             NetworkTimeout,
@@ -608,15 +607,6 @@ class MongoClient(common.BaseObject):
         """The server selection timeout for this instance in seconds."""
         return self.__options.server_selection_timeout
 
-    def _writable_max_wire_version(self):
-        """Connect to a writable server and get its max wire protocol version.
-
-        Can raise ConnectionFailure.
-        """
-        topology = self._get_topology()  # Starts monitors if necessary.
-        server = topology.select_server(writable_server_selector)
-        return server.description.max_wire_version
-
     def _is_writable(self):
         """Attempt to connect to a writable server, or return False.
         """
@@ -671,111 +661,48 @@ class MongoClient(common.BaseObject):
         self._topology.open()
         return self._topology
 
-    def __check_gle_response(self, response, is_command):
-        """Check a response to a lastError message for errors.
+    @contextlib.contextmanager
+    def _get_socket(self, selector):
+        server = self._get_topology().select_server(selector)
+        try:
+            with server.get_socket(self.__all_credentials) as sock_info:
+                yield sock_info
+        except NetworkTimeout:
+            # The socket has been closed. Don't reset the server.
+            # Server Discovery And Monitoring Spec: "When an application
+            # operation fails because of any network error besides a socket
+            # timeout...."
+            raise
+        except NotMasterError:
+            # "When the client sees a "not master" error it MUST replace the
+            # server's description with type Unknown. It MUST request an
+            # immediate check of the server."
+            self._reset_server_and_request_check(server.description.address)
+            raise
+        except ConnectionFailure:
+            # "Client MUST replace the server's description with type Unknown
+            # ... MUST NOT request an immediate check of the server."
+            self.__reset_server(server.description.address)
+            raise
 
-        `response` is a byte string representing a response to the message.
-        If it represents an error response we raise OperationFailure.
+    def _socket_for_writes(self):
+        return self._get_socket(writable_server_selector)
 
-        Return the response as a document.
-        """
-        response = helpers._unpack_response(response)
-
-        assert response["number_returned"] == 1
-        result = response["data"][0]
-
-        # Raises NotMasterError or OperationFailure.
-        helpers._check_command_response(result)
-
-        # write commands - skip getLastError checking
-        if is_command:
-            return result
-
-        # getLastError
-        error_msg = result.get("err", "")
-        if error_msg is None:
-            return result
-        if error_msg.startswith("not master"):
-            raise NotMasterError(error_msg)
-
-        details = result
-        # mongos returns the error code in an error object
-        # for some errors.
-        if "errObjects" in result:
-            for errobj in result["errObjects"]:
-                if errobj.get("err") == error_msg:
-                    details = errobj
-                    break
-
-        code = details.get("code")
-        if code in (11000, 11001, 12582):
-            raise DuplicateKeyError(details["err"], code, result)
-        raise OperationFailure(details["err"], code, result)
-
-    def _send_message(
-            self, msg, with_last_error=False, command=False,
-            check_primary=True, address=None):
-        """Send a message to MongoDB, optionally returning response as a dict.
-
-        Raises ConnectionFailure if the message cannot be sent. Raises
-        OperationFailure if `with_last_error` is ``True`` and the
-        response to the getLastError call returns an error. Return the
-        response from lastError, or ``None`` if `with_last_error`
-        is ``False``.
-
-        :Parameters:
-          - `msg`: (request_id, data).
-          - `with_last_error` (optional): check getLastError status after
-            sending the message.
-          - `check_primary` (optional): don't try to write to a non-primary;
-            see kill_cursors for an exception to this rule.
-          - `command` (optional): True for a write command.
-          - `address` (optional): Optional address when sending a message
-            to a specific server, used for killCursors.
-        """
-        with self.__lock:
-            # If needed, restart kill-cursors thread after a fork.
-            self._kill_cursors_executor.open()
-
+    @contextlib.contextmanager
+    def _socket_for_reads(self, read_preference):
+        preference = read_preference or ReadPreference.PRIMARY
+        # Get a socket for a server matching the read preference, and yield
+        # sock_info, slave_ok. Server Selection Spec: "slaveOK must be sent to
+        # mongods with topology type Single. If the server type is Mongos,
+        # follow the rules for passing read preference to mongos, even for
+        # topology type Single."
+        # Thread safe: if the type is single it cannot change.
         topology = self._get_topology()
-        if address:
-            assert not check_primary, "Can't use check_primary with address"
-            server = topology.select_server_by_address(address)
-            if not server:
-                raise AutoReconnect('server %s:%d no longer available'
-                                    % address)
-        else:
-            server = topology.select_server(writable_server_selector)
-
-        is_writable = server.description.is_writable
-        if check_primary and not with_last_error and not is_writable:
-            # When directly connected to a single server, we select it even
-            # if it isn't writable. The write won't succeed, so bail as if
-            # we'd done a getLastError.
-            raise NotMasterError("not master")
-
-        if with_last_error or command:
-            response = self._reset_on_error(
-                server,
-                server.send_message_with_response,
-                msg,
-                self.__all_credentials)
-
-            try:
-                return self.__check_gle_response(response.data, command)
-            except NotMasterError:
-                self._reset_server_and_request_check(
-                    server.description.address)
-
-                raise
-
-        else:
-            # Send the message. No response.
-            self._reset_on_error(
-                server,
-                server.send_message,
-                msg,
-                self.__all_credentials)
+        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
+        with self._get_socket(read_preference) as sock_info:
+            slave_ok = (single and not sock_info.is_mongos) or (
+                preference != ReadPreference.PRIMARY)
+            yield sock_info, slave_ok
 
     def _send_message_with_response(self, operation, read_preference=None,
                                     exhaust=False, address=None):
@@ -895,7 +822,9 @@ class MongoClient(common.BaseObject):
 
         :Parameters:
           - `cursor_id`: id of cursor to close
-          - `address` (optional): (host, port) pair of the cursor's server
+          - `address` (optional): (host, port) pair of the cursor's server.
+          If it is not provided, the client attempts to close the cursor on
+          the primary or standalone, or a mongos server.
 
         .. versionchanged:: 3.0
            Added ``address`` parameter.
@@ -918,7 +847,9 @@ class MongoClient(common.BaseObject):
 
         :Parameters:
           - `cursor_ids`: list of cursor ids to kill
-          - `address` (optional): (host, port) of server to send message to
+          - `address` (optional): (host, port) pair of the cursor's server.
+          If it is not provided, the client attempts to close the cursor on
+          the primary or standalone, or a mongos server.
 
         .. versionchanged:: 3.0
            Now accepts an `address` argument. Schedules the cursors to be
@@ -945,15 +876,23 @@ class MongoClient(common.BaseObject):
 
             address_to_cursor_ids[address].extend(cursor_ids)
 
-        for address, cursor_ids in address_to_cursor_ids.items():
-            try:
-                self._send_message(
-                    message.kill_cursors(cursor_ids),
-                    address=address,
-                    check_primary=False)
-            except ConnectionFailure as exc:
-                warnings.warn("couldn't close cursor on %s: %s"
-                              % (address, exc))
+        # Don't re-open topology if it's closed and there's no pending cursors.
+        if address_to_cursor_ids:
+            topology = self._get_topology()
+            for address, cursor_ids in address_to_cursor_ids.items():
+                try:
+                    if address:
+                        server = topology.select_server_by_address(address)
+                    else:
+                        # Application called close_cursor() with no address.
+                        server = topology.select_server(
+                            writable_server_selector)
+
+                    server.send_message(message.kill_cursors(cursor_ids),
+                                        self.__all_credentials)
+                except ConnectionFailure as exc:
+                    warnings.warn("couldn't close cursor on %s: %s"
+                                  % (address, exc))
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""

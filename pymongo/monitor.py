@@ -154,11 +154,12 @@ class Monitor(object):
         Can raise ConnectionFailure or OperationFailure.
         """
         start = _time()
-        request_id, msg, _ = message.query(
+        request_id, msg, max_doc_size = message.query(
             0, 'admin.$cmd', 0, -1, {'ismaster': 1},
             None, DEFAULT_CODEC_OPTIONS)
 
-        sock_info.send_message(msg)
+        # TODO: use sock_info.command()
+        sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)
         return IsMaster(result['data'][0]), _time() - start

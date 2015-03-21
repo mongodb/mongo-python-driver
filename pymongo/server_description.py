@@ -54,16 +54,8 @@ class ServerDescription(object):
         self._max_write_batch_size = ismaster.max_write_batch_size
         self._min_wire_version = ismaster.min_wire_version
         self._max_wire_version = ismaster.max_wire_version
-
-        self._is_writable = self.server_type in (
-            SERVER_TYPE.RSPrimary,
-            SERVER_TYPE.Standalone,
-            SERVER_TYPE.Mongos)
-
-        self._is_readable = (
-            self.server_type == SERVER_TYPE.RSSecondary
-            or self._is_writable)
-
+        self._is_writable = ismaster.is_writable
+        self._is_readable = ismaster.is_readable
         self._round_trip_time = round_trip_time
         self._error = error
 

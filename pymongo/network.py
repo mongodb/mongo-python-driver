@@ -17,31 +17,38 @@
 import select
 import struct
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import helpers, message
 from pymongo.errors import AutoReconnect
 
 _UNPACK_INT = struct.Struct("<i").unpack
 
 
-def command(sock, dbname, spec):
+def command(sock, dbname, spec, slave_ok, codec_options, check=True,
+            allowable_errors=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
       - `sock`: a raw socket object
       - `dbname`: name of the database on which to run the command
       - `spec`: a command document as a dict, SON, or mapping object
+      - `slave_ok`: whether to set the SlaveOkay wire protocol bit
+      - `codec_options`: a CodecOptions instance
+      - `check`: raise OperationFailure if there are errors
+      - `allowable_errors`: errors to ignore if `check` is True
     """
     ns = dbname + '.$cmd'
-    request_id, msg, _ = message.query(0, ns, 0, -1, spec,
-                                       None, DEFAULT_CODEC_OPTIONS)
+    flags = 4 if slave_ok else 0
+    request_id, msg, _ = message.query(flags, ns, 0, -1, spec,
+                                       None, codec_options)
     sock.sendall(msg)
     response = receive_message(sock, 1, request_id)
-    unpacked = helpers._unpack_response(response)['data'][0]
+    unpacked = helpers._unpack_response(response, codec_options=codec_options)
+    response_doc = unpacked['data'][0]
     msg = "command %s on namespace %s failed: %%s" % (
         repr(spec).replace("%", "%%"), ns)
-    helpers._check_command_response(unpacked, msg)
-    return unpacked
+    if check:
+        helpers._check_command_response(response_doc, msg, allowable_errors)
+    return response_doc
 
 
 def receive_message(sock, operation, request_id):

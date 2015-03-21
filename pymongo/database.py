@@ -22,7 +22,7 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
-from pymongo import auth, common, helpers
+from pymongo import auth, common
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
@@ -98,7 +98,6 @@ class Database(common.BaseObject):
             _check_name(name)
 
         self.__name = _unicode(name)
-        self.__cmd_name = _unicode(name + ".$cmd")
         self.__client = client
 
         self.__incoming_manipulators = []
@@ -349,21 +348,22 @@ class Database(common.BaseObject):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
-    def _command(self, command, value=1, check=True,
-                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
-                 codec_options=CodecOptions(), **kwargs):
+    def _command(self, sock_info, command, slave_ok=False, value=1, check=True,
+                 allowable_errors=None, codec_options=CodecOptions(), **kwargs):
         """Internal command helper."""
         if isinstance(command, string_type):
             command = SON([(command, value)])
         command.update(kwargs)
 
-        return helpers._command(self.__client,
-                                self.__cmd_name,
-                                command,
-                                read_preference,
-                                codec_options,
-                                check,
-                                allowable_errors)
+        result = sock_info.command(self.__name,
+                                   command,
+                                   slave_ok,
+                                   codec_options,
+                                   check,
+                                   allowable_errors)
+
+        # TODO: don't return address, caller knows it
+        return result, sock_info.address
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
@@ -447,8 +447,10 @@ class Database(common.BaseObject):
 
         .. mongodoc:: commands
         """
-        return self._command(command, value, check, allowable_errors,
-                             read_preference, codec_options, **kwargs)[0]
+        client = self.__client
+        with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
+            return self._command(sock_info, command, slave_ok, value, check,
+                                 allowable_errors, codec_options, **kwargs)[0]
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.
@@ -459,22 +461,27 @@ class Database(common.BaseObject):
         """
         client = self.__client
 
-        if client._writable_max_wire_version() > 2:
-            res, addr = self._command("listCollections", cursor={})
-            # MongoDB 2.8rc2
-            if "collections" in res:
-                results = res["collections"]
-            # >= MongoDB 2.8rc3
+        with client._socket_for_reads(
+                ReadPreference.PRIMARY) as (sock_info, slave_ok):
+
+            if sock_info.max_wire_version > 2:
+                res, addr = self._command(sock_info, "listCollections",
+                                          slave_ok, cursor={})
+                # MongoDB 2.8rc2
+                if "collections" in res:
+                    results = res["collections"]
+                # >= MongoDB 2.8rc3
+                else:
+                    results = CommandCursor(self["$cmd"], res["cursor"], addr)
+                names = [result["name"] for result in results]
             else:
-                results = CommandCursor(self["$cmd"], res["cursor"], addr)
-            names = [result["name"] for result in results]
-        else:
-            names = [result["name"] for result
-                     in self.get_collection(
-                         "system.namespaces",
-                         read_preference=ReadPreference.PRIMARY).find()]
-            names = [n[len(self.__name) + 1:] for n in names
-                     if n.startswith(self.__name + ".") and "$" not in n]
+                # TODO: query on the sock_info itself
+                names = [result["name"] for result
+                         in self.get_collection(
+                             "system.namespaces",
+                             read_preference=ReadPreference.PRIMARY).find()]
+                names = [n[len(self.__name) + 1:] for n in names
+                         if n.startswith(self.__name + ".") and "$" not in n]
 
         if not include_system_collections:
             names = [n for n in names if not n.startswith("system.")]

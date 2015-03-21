@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Test the replica_set_connection module."""
+
+import contextlib
 import random
 import sys
 
@@ -242,11 +244,16 @@ class ReadPrefTester(MongoClient):
         self.has_read_from = set()
         super(ReadPrefTester, self).__init__(*args, **kwargs)
 
-    def _reset_on_error(self, server, fn, *args, **kwargs):
-        self.has_read_from.add(server)
-        return super(ReadPrefTester, self)._reset_on_error(
-            server, fn, *args, **kwargs)
+    @contextlib.contextmanager
+    def _socket_for_reads(self, read_preference):
+        context = super(ReadPrefTester, self)._socket_for_reads(read_preference)
+        with context as (sock_info, slave_ok):
+            self.record_a_read(sock_info.address)
+            yield sock_info, slave_ok
 
+    def record_a_read(self, address):
+        server = self._get_topology().select_server_by_address(address, 0)
+        self.has_read_from.add(server)
 
 _PREF_MAP = [
     (Primary, SERVER_TYPE.RSPrimary),
@@ -348,12 +355,19 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             write_concern=WriteConcern(w=self.w))
         coll.insert_one({})
 
-        self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
-                               'function() { }', 'function() { }', 'mr_out')
+        self.c.has_read_from.clear()
+        self.c.pymongo_test.test.map_reduce('function() { }',
+                                            'function() { }',
+                                            'mr_out')
 
-        self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
-                               'function() { }', 'function() { }',
-                               {'inline': 1})
+        # Didn't call _socket_for_reads() at all.
+        self.assertEqual(0, len(self.c.has_read_from))
+
+        self.c.pymongo_test.test.map_reduce('function() { }',
+                                            'function() { }',
+                                            {'inline': 1})
+
+        self.assertEqual(0, len(self.c.has_read_from))
 
     def test_inline_map_reduce(self):
         # mapreduce fails if no collection
