@@ -16,10 +16,11 @@
 
 HAVE_SSL = True
 try:
-    from ssl import CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED, PROTOCOL_SSLv23
+    import ssl
 except ImportError:
     HAVE_SSL = False
 
+from bson.py3compat import string_type
 from pymongo.errors import ConfigurationError
 
 if HAVE_SSL:
@@ -36,7 +37,10 @@ if HAVE_SSL:
         """
         if value is None:
             return value
-        elif value in (CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED):
+        elif isinstance(value, string_type) and hasattr(ssl, value):
+            value = getattr(ssl, value)
+
+        if value in (ssl.CERT_NONE, ssl.CERT_OPTIONAL, ssl.CERT_REQUIRED):
             return value
         raise ValueError("The value of %s must be one of: "
                          "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
@@ -45,7 +49,7 @@ if HAVE_SSL:
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
         certfile, keyfile, ca_certs, cert_reqs = args
-        ctx = SSLContext(PROTOCOL_SSLv23)
+        ctx = SSLContext(ssl.PROTOCOL_SSLv23)
         if certfile is not None:
             ctx.load_cert_chain(certfile, keyfile)
         if ca_certs is not None:
