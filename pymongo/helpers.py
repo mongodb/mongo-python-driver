@@ -226,14 +226,10 @@ def _check_gle_response(response):
 
 
 def _first_batch(sock_info, namespace, query,
-                 limit, read_preference, codec_options):
+                 limit, slave_ok, codec_options):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(0, namespace, 0, limit, query, None, codec_options)
-
-    # XXX: Set slaveOkay flag when read preference mode is anything other
-    # than primary (0). Make this more clear when we finish refactoring
-    # read preferences.
-    request_id, msg, max_doc_size = query.get_message(read_preference.mode)
+    request_id, msg, max_doc_size = query.get_message(slave_ok)
     sock_info.send_message(msg, max_doc_size)
     response = sock_info.receive_message(1, request_id)
     return _unpack_response(response, None, codec_options)

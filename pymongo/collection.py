@@ -1259,7 +1259,7 @@ class Collection(common.BaseObject):
                 namespace = "%s.%s" % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
                     sock_info, namespace, {"ns": self.__full_name},
-                    0, ReadPreference.PRIMARY, CodecOptions(SON))
+                    0, slave_ok, CodecOptions(SON))
                 cursor = {
                     "id": res["cursor_id"],
                     "firstBatch": res["data"],
