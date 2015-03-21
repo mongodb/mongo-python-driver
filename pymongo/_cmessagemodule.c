@@ -578,12 +578,11 @@ _set_document_too_large(int size, long max) {
 }
 
 static PyObject*
-_send_insert(PyObject* self, PyObject* client,
+_send_insert(PyObject* self, PyObject* sock_info,
              PyObject* gle_args, buffer_t buffer,
              char* coll_name, int coll_len, int request_id, int safe,
              codec_options_t* options) {
 
-    PyObject* result;
     if (safe) {
         if (!add_last_error(self, buffer, request_id,
                             coll_name, coll_len, options, gle_args)) {
@@ -591,12 +590,15 @@ _send_insert(PyObject* self, PyObject* client,
         }
     }
 
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
-                           buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
-
-    return PyObject_CallMethod(client, "_send_message", "NN",
-                               result, PyBool_FromLong((long)safe));
+    /* The max_doc_size parameter for legacy_write is the max size of any
+     * document in buffer. We enforced max size already, pass 0 here. */
+    return PyObject_CallMethod(sock_info, "legacy_write",
+                               "i" BYTES_FORMAT_STRING "iN",
+                               request_id,
+                               buffer_get_buffer(buffer),
+                               buffer_get_position(buffer),
+                               0,
+                               PyBool_FromLong((long)safe));
 }
 
 static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
@@ -611,7 +613,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     PyObject* docs;
     PyObject* doc;
     PyObject* iterator;
-    PyObject* client;
+    PyObject* sock_info;
     PyObject* last_error_args;
     PyObject* result;
     PyObject* max_bson_size_obj;
@@ -634,7 +636,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                           &last_error_args,
                           &continue_on_error,
                           convert_codec_options, &options,
-                          &client)) {
+                          &sock_info)) {
         return NULL;
     }
     if (continue_on_error) {
@@ -645,7 +647,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
      * is True it's pointless (and slower) to send GLE.
      */
     send_safe = (safe || !continue_on_error);
-    max_bson_size_obj = PyObject_GetAttrString(client, "max_bson_size");
+    max_bson_size_obj = PyObject_GetAttrString(sock_info, "max_bson_size");
 #if PY_MAJOR_VERSION >= 3
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
 #else
@@ -658,7 +660,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    max_message_size_obj = PyObject_GetAttrString(client, "max_message_size");
+    max_message_size_obj = PyObject_GetAttrString(sock_info, "max_message_size");
 #if PY_MAJOR_VERSION >= 3
     max_message_size = PyLong_AsLong(max_message_size_obj);
 #else
@@ -715,7 +717,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                 message_length = buffer_get_position(buffer) - length_location;
                 memcpy(buffer_get_buffer(buffer) + length_location,
                        &message_length, 4);
-                result = _send_insert(self, client, last_error_args, buffer,
+                result = _send_insert(self, sock_info, last_error_args, buffer,
                                       collection_name, collection_name_length,
                                       request_id, send_safe, &options);
                 if (!result)
@@ -758,7 +760,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             message_length = buffer_get_position(buffer) - length_location;
             memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
-            result = _send_insert(self, client, last_error_args, buffer,
+            result = _send_insert(self, sock_info, last_error_args, buffer,
                                   collection_name, collection_name_length,
                                   request_id, send_safe, &options);
 
@@ -829,7 +831,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
     /* Send the last (or only) batch */
-    result = _send_insert(self, client, last_error_args, buffer,
+    result = _send_insert(self, sock_info, last_error_args, buffer,
                           collection_name, collection_name_length,
                           request_id, safe, &options);
 
@@ -866,10 +868,9 @@ insertfail:
 }
 
 static PyObject*
-_send_write_command(PyObject* client, buffer_t buffer,
+_send_write_command(PyObject* sock_info, buffer_t buffer,
                     int lst_len_loc, int cmd_len_loc, unsigned char* errors) {
 
-    PyObject* msg;
     PyObject* result;
 
     int request_id = rand();
@@ -881,16 +882,12 @@ _send_write_command(PyObject* client, buffer_t buffer,
     memcpy(buffer_get_buffer(buffer), &position, 4);
     memcpy(buffer_get_buffer(buffer) + 4, &request_id, 4);
 
-    /* objectify buffer */
-    msg = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
-                        buffer_get_buffer(buffer),
-                        buffer_get_position(buffer));
-    if (!msg)
-        return NULL;
-
     /* Send the current batch */
-    result = PyObject_CallMethod(client, "_send_message",
-                                 "NOO", msg, Py_True, Py_True);
+    result = PyObject_CallMethod(sock_info, "write_command",
+                                 "i" BYTES_FORMAT_STRING,
+                                 request_id,
+                                 buffer_get_buffer(buffer),
+                                 buffer_get_position(buffer));
     if (result && PyDict_GetItemString(result, "writeErrors"))
         *errors = 1;
     return result;
@@ -949,7 +946,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     PyObject* command;
     PyObject* doc;
     PyObject* docs;
-    PyObject* client;
+    PyObject* sock_info;
     PyObject* iterator;
     PyObject* result;
     PyObject* results;
@@ -963,11 +960,11 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "et#bOObO&O", "utf-8",
                           &ns, &ns_len, &op, &command, &docs, &check_keys,
                           convert_codec_options, &options,
-                          &client)) {
+                          &sock_info)) {
         return NULL;
     }
 
-    max_bson_size_obj = PyObject_GetAttrString(client, "max_bson_size");
+    max_bson_size_obj = PyObject_GetAttrString(sock_info, "max_bson_size");
 #if PY_MAJOR_VERSION >= 3
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
 #else
@@ -985,7 +982,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
      */
     max_cmd_size = max_bson_size + 16382;
 
-    max_write_batch_size_obj = PyObject_GetAttrString(client, "max_write_batch_size");
+    max_write_batch_size_obj = PyObject_GetAttrString(sock_info, "max_write_batch_size");
 #if PY_MAJOR_VERSION >= 3
     max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
 #else
@@ -1148,7 +1145,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
                 goto cmditerfail;
             }
 
-            result = _send_write_command(client, buffer,
+            result = _send_write_command(sock_info, buffer,
                                          lst_len_loc, cmd_len_loc, &errors);
 
             buffer_free(buffer);
@@ -1199,7 +1196,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     if (!buffer_write_bytes(buffer, "\x00\x00", 2))
         goto cmdfail;
 
-    result = _send_write_command(client, buffer,
+    result = _send_write_command(sock_info, buffer,
                                  lst_len_loc, cmd_len_loc, &errors);
     if (!result)
         goto cmdfail;

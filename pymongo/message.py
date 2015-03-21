@@ -318,9 +318,8 @@ def _do_batched_insert(collection_name, docs, check_keys,
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:
         raise last_error
-# TODO: reenable
-# if _use_c:
-#     _do_batched_insert = _cmessage._do_batched_insert
+if _use_c:
+    _do_batched_insert = _cmessage._do_batched_insert
 
 
 def _do_batched_write_command(namespace, operation, command,
@@ -434,6 +433,5 @@ def _do_batched_write_command(namespace, operation, command,
 
     results.append((idx_offset, send_message()))
     return results
-# TODO: reenable
-# if _use_c:
-#     _do_batched_write_command = _cmessage._do_batched_write_command
+if _use_c:
+    _do_batched_write_command = _cmessage._do_batched_write_command
