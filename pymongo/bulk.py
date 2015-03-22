@@ -105,7 +105,9 @@ def _merge_legacy(run, full_result, result, index):
                 error["errInfo"] = result["errInfo"]
             full_result["writeErrors"].append(error)
             return
-    if run.op_type == _UPDATE:
+    if run.op_type == _INSERT:
+        full_result['nInserted'] += 1
+    elif run.op_type == _UPDATE:
         if "upserted" in result:
             doc = {"index": run.index(index), "_id": result["upserted"]}
             full_result["upserted"].append(doc)
@@ -350,26 +352,25 @@ class _Bulk(object):
                         coll._insert(sock_info,
                                      operation,
                                      write_concern=write_concern)
-                        full_result['nInserted'] += 1
+                        result = {}
+                    elif run.op_type == _UPDATE:
+                        doc = operation['u']
+                        check_keys = True
+                        if doc and next(iter(doc)).startswith('$'):
+                            check_keys = False
+                        result = coll._update(sock_info,
+                                              operation['q'],
+                                              doc,
+                                              operation['upsert'],
+                                              check_keys,
+                                              operation['multi'],
+                                              write_concern=write_concern)
                     else:
-                        if run.op_type == _UPDATE:
-                            doc = operation['u']
-                            check_keys = True
-                            if doc and next(iter(doc)).startswith('$'):
-                                check_keys = False
-                            result = coll._update(sock_info,
-                                                  operation['q'],
-                                                  doc,
-                                                  operation['upsert'],
-                                                  check_keys,
-                                                  operation['multi'],
-                                                  write_concern=write_concern)
-                        else:
-                            result = coll._delete(sock_info,
-                                                  operation['q'],
-                                                  not operation['limit'],
-                                                  write_concern)
-                        _merge_legacy(run, full_result, result, idx)
+                        result = coll._delete(sock_info,
+                                              operation['q'],
+                                              not operation['limit'],
+                                              write_concern)
+                    _merge_legacy(run, full_result, result, idx)
                 except DocumentTooLarge as exc:
                     # MongoDB 2.6 uses error code 2 for "too large".
                     error = _make_error(
