@@ -29,6 +29,7 @@ from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
+from pymongo.helpers import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
@@ -452,6 +453,29 @@ class Database(common.BaseObject):
             return self._command(sock_info, command, slave_ok, value, check,
                                  allowable_errors, codec_options, **kwargs)[0]
 
+    def _list_collections(self, criteria=None):
+        """Internal listCollections helper."""
+        criteria = criteria or {}
+        with self.__client._socket_for_reads(
+            ReadPreference.PRIMARY) as (sock_info, slave_okay):
+            if sock_info.max_wire_version > 2:
+                cmd = SON([("listCollections", 1), ("cursor", {})])
+                if criteria:
+                    cmd["filter"] = criteria
+                res, _ = self._command(sock_info, cmd, slave_okay)
+                coll = self["$cmd"]
+                cursor = res["cursor"]
+            else:
+                coll = self["system.namespaces"]
+                res = _first_batch(sock_info, coll.full_name,
+                                   criteria, 0, slave_okay, CodecOptions())
+                cursor = {
+                    "id": res["cursor_id"],
+                    "firstBatch": res["data"],
+                    "ns": coll.full_name,
+                }
+            return CommandCursor(coll, cursor, sock_info.address)
+
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.
 
@@ -459,32 +483,17 @@ class Database(common.BaseObject):
           - `include_system_collections` (optional): if ``False`` list
             will not include system collections (e.g ``system.indexes``)
         """
-        client = self.__client
-
-        with client._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_ok):
-
-            if sock_info.max_wire_version > 2:
-                res, addr = self._command(sock_info, "listCollections",
-                                          slave_ok, cursor={})
-                # MongoDB 2.8rc2
-                if "collections" in res:
-                    results = res["collections"]
-                # >= MongoDB 2.8rc3
-                else:
-                    results = CommandCursor(self["$cmd"], res["cursor"], addr)
-                names = [result["name"] for result in results]
-            else:
-                # TODO: query on the sock_info itself
-                names = [result["name"] for result
-                         in self.get_collection(
-                             "system.namespaces",
-                             read_preference=ReadPreference.PRIMARY).find()]
-                names = [n[len(self.__name) + 1:] for n in names
-                         if n.startswith(self.__name + ".") and "$" not in n]
+        # Filter out index namespaces from MongoDB 2.4 and older.
+        names = [result["name"] for result in self._list_collections()
+                 if "$" not in result["name"]]
+        # MongoDB 2.4 and older return namespaces prefixed with the
+        # database name.
+        names = [name[len(self.__name) + 1:]
+                 if name.startswith(self.__name + ".")
+                 else name for name in names]
 
         if not include_system_collections:
-            names = [n for n in names if not n.startswith("system.")]
+            names = [name for name in names if not name.startswith("system.")]
         return names
 
     def drop_collection(self, name_or_collection):

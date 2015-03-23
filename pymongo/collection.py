@@ -1302,29 +1302,10 @@ class Collection(common.BaseObject):
         information on the possible options. Returns an empty
         dictionary if the collection has not been created yet.
         """
-        with self._socket_for_primary_reads() as (sock_info, slave_ok):
-            result = None
-            if sock_info.max_wire_version > 2:
-                cmd = SON([("listCollections", self.__name),
-                           ("filter", {"name": self.__name}),
-                           ("cursor", {})])
-                res, addr = self._command(sock_info, cmd, slave_ok)
-                # MongoDB 2.8rc2
-                if "collections" in res:
-                    results = res["collections"]
-                # >= MongoDB 2.8rc3
-                else:
-                    results = CommandCursor(self, res["cursor"], addr)
-                for doc in results:
-                    result = doc
-                    break
-            else:
-                # TODO: query on the sock_info itself
-                # TODO: test all these wp-dependent operations
-                result = self.__database.get_collection(
-                    "system.namespaces",
-                    read_preference=ReadPreference.PRIMARY).find_one(
-                        {"name": self.__full_name})
+        result = None
+        for doc in self.__database._list_collections({"name": self.__name}):
+            result = doc
+            break
 
         if not result:
             return {}
