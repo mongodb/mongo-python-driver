@@ -453,28 +453,26 @@ class Database(common.BaseObject):
             return self._command(sock_info, command, slave_ok, value, check,
                                  allowable_errors, codec_options, **kwargs)[0]
 
-    def _list_collections(self, criteria=None):
+    def _list_collections(self, sock_info, slave_okay, criteria=None):
         """Internal listCollections helper."""
         criteria = criteria or {}
-        with self.__client._socket_for_reads(
-            ReadPreference.PRIMARY) as (sock_info, slave_okay):
-            if sock_info.max_wire_version > 2:
-                cmd = SON([("listCollections", 1), ("cursor", {})])
-                if criteria:
-                    cmd["filter"] = criteria
-                res, _ = self._command(sock_info, cmd, slave_okay)
-                coll = self["$cmd"]
-                cursor = res["cursor"]
-            else:
-                coll = self["system.namespaces"]
-                res = _first_batch(sock_info, coll.full_name,
-                                   criteria, 0, slave_okay, CodecOptions())
-                cursor = {
-                    "id": res["cursor_id"],
-                    "firstBatch": res["data"],
-                    "ns": coll.full_name,
-                }
-            return CommandCursor(coll, cursor, sock_info.address)
+        if sock_info.max_wire_version > 2:
+            cmd = SON([("listCollections", 1), ("cursor", {})])
+            if criteria:
+                cmd["filter"] = criteria
+            res, _ = self._command(sock_info, cmd, slave_okay)
+            coll = self["$cmd"]
+            cursor = res["cursor"]
+        else:
+            coll = self["system.namespaces"]
+            res = _first_batch(sock_info, coll.full_name,
+                               criteria, 0, slave_okay, CodecOptions())
+            cursor = {
+                "id": res["cursor_id"],
+                "firstBatch": res["data"],
+                "ns": coll.full_name,
+            }
+        return CommandCursor(coll, cursor, sock_info.address)
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.
@@ -483,14 +481,16 @@ class Database(common.BaseObject):
           - `include_system_collections` (optional): if ``False`` list
             will not include system collections (e.g ``system.indexes``)
         """
-        # Filter out index namespaces from MongoDB 2.4 and older.
-        names = [result["name"] for result in self._list_collections()
-                 if "$" not in result["name"]]
-        # MongoDB 2.4 and older return namespaces prefixed with the
-        # database name.
-        names = [name[len(self.__name) + 1:]
-                 if name.startswith(self.__name + ".")
-                 else name for name in names]
+        with self.__client._socket_for_reads(
+            ReadPreference.PRIMARY) as (sock_info, slave_okay):
+
+            results = self._list_collections(sock_info, slave_okay)
+            names = [result["name"] for result in results]
+            if sock_info.max_wire_version <= 2:
+                # MongoDB 2.4 and older return index namespaces and collection
+                # namespaces prefixed with the database name.
+                names = [n[len(self.__name) + 1:] for n in names
+                         if n.startswith(self.__name + ".") and "$" not in n]
 
         if not include_system_collections:
             names = [name for name in names if not name.startswith("system.")]

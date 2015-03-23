@@ -1302,19 +1302,27 @@ class Collection(common.BaseObject):
         information on the possible options. Returns an empty
         dictionary if the collection has not been created yet.
         """
-        result = None
-        for doc in self.__database._list_collections({"name": self.__name}):
-            result = doc
-            break
+        with self._socket_for_primary_reads() as (sock_info, slave_ok):
+            if sock_info.max_wire_version > 2:
+                criteria = {"name": self.__name}
+            else:
+                criteria = {"name": self.__full_name}
+            cursor = self.__database._list_collections(sock_info,
+                                                       slave_ok,
+                                                       criteria)
+            result = None
+            for doc in cursor:
+                result = doc
+                break
 
-        if not result:
-            return {}
+            if not result:
+                return {}
 
-        options = result.get("options", {})
-        if "create" in options:
-            del options["create"]
+            options = result.get("options", {})
+            if "create" in options:
+                del options["create"]
 
-        return options
+            return options
 
     def aggregate(self, pipeline, **kwargs):
         """Perform an aggregation using the aggregation framework on this
