@@ -950,41 +950,6 @@ class TestExhaustCursor(IntegrationTest):
         self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
 
 
-class TestClientProperties(MockClientTest):
-
-    def test_wire_version_mongos_ha(self):
-        # TODO: Reimplement Mongos HA with PyMongo 3's MongoClient.
-        raise SkipTest('Mongos HA must be reimplemented in PyMongo 3')
-
-        c = MockClient(
-            standalones=[],
-            members=[],
-            mongoses=['a:1', 'b:2', 'c:3'],
-            host='a:1,b:2,c:3',
-            connect=False)
-
-        c.set_wire_version_range('a:1', 2, 5)
-        c.set_wire_version_range('b:2', 2, 2)
-        c.set_wire_version_range('c:3', 1, 1)
-        c.db.command('ismaster')  # Connect.
-
-        # Which member did we use?
-        used_host = '%s:%s' % c.address
-        expected_min, expected_max = c.mock_wire_versions[used_host]
-        self.assertEqual(expected_min, c.min_wire_version)
-        self.assertEqual(expected_max, c.max_wire_version)
-
-        c.set_wire_version_range('a:1', 0, 0)
-        c.set_wire_version_range('b:2', 0, 0)
-        c.set_wire_version_range('c:3', 0, 0)
-        c.close()
-        c.db.command('ismaster')
-        used_host = '%s:%s' % c.address
-        expected_min, expected_max = c.mock_wire_versions[used_host]
-        self.assertEqual(expected_min, c.min_wire_version)
-        self.assertEqual(expected_max, c.max_wire_version)
-
-
 class TestClientLazyConnect(IntegrationTest):
     """Test concurrent operations on a lazily-connecting MongoClient."""
 
