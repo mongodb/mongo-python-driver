@@ -147,8 +147,11 @@ The following attributes have been removed:
 - :attr:`~pymongo.mongo_client.MongoClient.port`
   (use :attr:`~pymongo.mongo_client.MongoClient.address` instead)
 - :attr:`~pymongo.mongo_client.MongoClient.safe`
+  (use :attr:`~pymongo.mongo_client.MongoClient.write_concern` instead)
 - :attr:`~pymongo.mongo_client.MongoClient.slave_okay`
+  (use :attr:`~pymongo.mongo_client.MongoClient.read_preference` instead)
 - :attr:`~pymongo.mongo_client.MongoClient.tag_sets`
+  (use :attr:`~pymongo.mongo_client.MongoClient.read_preference` instead)
 - :attr:`~pymongo.mongo_client.MongoClient.tz_aware`
   (use :attr:`~pymongo.mongo_client.MongoClient.codec_options` instead)
 

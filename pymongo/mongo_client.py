@@ -824,8 +824,8 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `cursor_id`: id of cursor to close
           - `address` (optional): (host, port) pair of the cursor's server.
-          If it is not provided, the client attempts to close the cursor on
-          the primary or standalone, or a mongos server.
+            If it is not provided, the client attempts to close the cursor on
+            the primary or standalone, or a mongos server.
 
         .. versionchanged:: 3.0
            Added ``address`` parameter.
@@ -849,8 +849,8 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `cursor_ids`: list of cursor ids to kill
           - `address` (optional): (host, port) pair of the cursor's server.
-          If it is not provided, the client attempts to close the cursor on
-          the primary or standalone, or a mongos server.
+            If it is not provided, the client attempts to close the cursor on
+            the primary or standalone, or a mongos server.
 
         .. versionchanged:: 3.0
            Now accepts an `address` argument. Schedules the cursors to be
