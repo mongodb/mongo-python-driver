@@ -182,15 +182,13 @@ class Collection(common.BaseObject):
 
           (result document, address of server the command was run on)
         """
-        result = sock_info.command(self.__database.name,
-                                   command,
-                                   slave_ok,
-                                   read_preference or self.read_preference,
-                                   codec_options or self.codec_options,
-                                   check,
-                                   allowable_errors)
-
-        return result, sock_info.address
+        return sock_info.command(self.__database.name,
+                                 command,
+                                 slave_ok,
+                                 read_preference or self.read_preference,
+                                 codec_options or self.codec_options,
+                                 check,
+                                 allowable_errors)
 
     def __create(self, options):
         """Sends a create command with the given options.
@@ -972,11 +970,10 @@ class Collection(common.BaseObject):
                    ('numCursors', num_cursors)])
 
         with self._socket_for_reads() as (sock_info, slave_ok):
-            result, address = self._command(sock_info, cmd, slave_ok)
+            result = self._command(sock_info, cmd, slave_ok)
 
-        return [CommandCursor(self,
-                              cursor['cursor'],
-                              address) for cursor in result['cursors']]
+        return [CommandCursor(self, cursor['cursor'], sock_info.address)
+                for cursor in result['cursors']]
 
     def count(self, filter=None, **kwargs):
         """Get the number of documents in this collection.
@@ -1011,7 +1008,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
         with self._socket_for_reads() as (sock_info, slave_ok):
             res = self._command(sock_info, cmd, slave_ok,
-                                allowable_errors=["ns missing"])[0]
+                                allowable_errors=["ns missing"])
         if res.get("errmsg", "") == "ns missing":
             return 0
         return int(res["n"])
@@ -1242,7 +1239,7 @@ class Collection(common.BaseObject):
         cmd = SON([("reIndex", self.__name)])
         with self._socket_for_writes() as sock_info:
             return self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY)[0]
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY)
 
     def list_indexes(self):
         """Get a cursor over the index documents for this collection.
@@ -1261,10 +1258,9 @@ class Collection(common.BaseObject):
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
             if sock_info.max_wire_version > 2:
                 cmd = SON([("listIndexes", self.__name), ("cursor", {})])
-                res, addr = self._command(sock_info, cmd, slave_ok,
-                                          ReadPreference.PRIMARY,
-                                          CodecOptions(SON))
-                cursor = res["cursor"]
+                cursor = self._command(sock_info, cmd, slave_ok,
+                                       ReadPreference.PRIMARY,
+                                       CodecOptions(SON))["cursor"]
             else:
                 namespace = "%s.%s" % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
@@ -1422,20 +1418,19 @@ class Collection(common.BaseObject):
 
             cmd.update(kwargs)
 
-            result, address = self._command(sock_info, cmd, slave_ok)
+            result = self._command(sock_info, cmd, slave_ok)
 
             if "cursor" in result:
-                cursor_info = result["cursor"]
+                cursor = result["cursor"]
             else:
                 # Pre-MongoDB 2.6. Fake a cursor.
-                cursor_info = {
+                cursor = {
                     "id": 0,
                     "firstBatch": result["result"],
                     "ns": self.full_name,
                 }
             return CommandCursor(
-                self, cursor_info, sock_info.address
-            ).batch_size(batch_size or 0)
+                self, cursor, sock_info.address).batch_size(batch_size or 0)
 
     # key and condition ought to be optional, but deprecation
     # would be painful as argument order would have to change.
@@ -1486,7 +1481,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         with self._socket_for_reads() as (sock_info, slave_ok):
-            return self._command(sock_info, cmd, slave_ok)[0]["retval"]
+            return self._command(sock_info, cmd, slave_ok)["retval"]
 
     def rename(self, new_name, **kwargs):
         """Rename this collection.
@@ -1554,7 +1549,7 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         cmd.update(kwargs)
         with self._socket_for_reads() as (sock_info, slave_ok):
-            return self._command(sock_info, cmd, slave_ok)[0]["values"]
+            return self._command(sock_info, cmd, slave_ok)["values"]
 
     def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.
@@ -1606,7 +1601,7 @@ class Collection(common.BaseObject):
 
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
             response = self._command(
-                sock_info, cmd, slave_ok, ReadPreference.PRIMARY)[0]
+                sock_info, cmd, slave_ok, ReadPreference.PRIMARY)
 
         if full_response or not response.get('result'):
             return response
@@ -1648,7 +1643,7 @@ class Collection(common.BaseObject):
                    ("out", {"inline": 1})])
         cmd.update(kwargs)
         with self._socket_for_reads() as (sock_info, slave_ok):
-            res = self._command(sock_info, cmd, slave_ok)[0]
+            res = self._command(sock_info, cmd, slave_ok)
 
         if full_response:
             return res
@@ -1677,7 +1672,7 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
-                                allowable_errors=[_NO_OBJ_ERROR])[0]
+                                allowable_errors=[_NO_OBJ_ERROR])
         return out.get("value")
 
     def find_one_and_delete(self, filter,
@@ -2017,7 +2012,7 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
-                                allowable_errors=[_NO_OBJ_ERROR])[0]
+                                allowable_errors=[_NO_OBJ_ERROR])
 
         if not out['ok']:
             if out["errmsg"] == _NO_OBJ_ERROR:

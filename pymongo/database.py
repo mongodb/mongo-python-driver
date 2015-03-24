@@ -357,16 +357,13 @@ class Database(common.BaseObject):
             command = SON([(command, value)])
         command.update(kwargs)
 
-        result = sock_info.command(self.__name,
-                                   command,
-                                   slave_ok,
-                                   read_preference,
-                                   codec_options,
-                                   check,
-                                   allowable_errors)
-
-        # TODO: don't return address, caller knows it
-        return result, sock_info.address
+        return sock_info.command(self.__name,
+                                 command,
+                                 slave_ok,
+                                 read_preference,
+                                 codec_options,
+                                 check,
+                                 allowable_errors)
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
@@ -454,7 +451,7 @@ class Database(common.BaseObject):
         with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
             return self._command(sock_info, command, slave_ok, value,
                                  check, allowable_errors, read_preference,
-                                 codec_options, **kwargs)[0]
+                                 codec_options, **kwargs)
 
     def _list_collections(self, sock_info, slave_okay, criteria=None):
         """Internal listCollections helper."""
@@ -463,9 +460,8 @@ class Database(common.BaseObject):
             cmd = SON([("listCollections", 1), ("cursor", {})])
             if criteria:
                 cmd["filter"] = criteria
-            res, _ = self._command(sock_info, cmd, slave_okay)
             coll = self["$cmd"]
-            cursor = res["cursor"]
+            cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
         else:
             coll = self["system.namespaces"]
             res = _first_batch(sock_info, coll.full_name,
