@@ -741,7 +741,8 @@ class MongoClient(common.BaseObject):
         return self._reset_on_error(
             server,
             server.send_message_with_response,
-            operation.get_message(set_slave_ok),
+            operation,
+            set_slave_ok,
             self.__all_credentials,
             exhaust)
 

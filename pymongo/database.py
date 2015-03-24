@@ -350,7 +350,8 @@ class Database(common.BaseObject):
         return son
 
     def _command(self, sock_info, command, slave_ok=False, value=1, check=True,
-                 allowable_errors=None, codec_options=CodecOptions(), **kwargs):
+                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
+                 codec_options=CodecOptions(), **kwargs):
         """Internal command helper."""
         if isinstance(command, string_type):
             command = SON([(command, value)])
@@ -359,6 +360,7 @@ class Database(common.BaseObject):
         result = sock_info.command(self.__name,
                                    command,
                                    slave_ok,
+                                   read_preference,
                                    codec_options,
                                    check,
                                    allowable_errors)
@@ -450,8 +452,9 @@ class Database(common.BaseObject):
         """
         client = self.__client
         with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
-            return self._command(sock_info, command, slave_ok, value, check,
-                                 allowable_errors, codec_options, **kwargs)[0]
+            return self._command(sock_info, command, slave_ok, value,
+                                 check, allowable_errors, read_preference,
+                                 codec_options, **kwargs)[0]
 
     def _list_collections(self, sock_info, slave_okay, criteria=None):
         """Internal listCollections helper."""
@@ -466,7 +469,8 @@ class Database(common.BaseObject):
         else:
             coll = self["system.namespaces"]
             res = _first_batch(sock_info, coll.full_name,
-                               criteria, 0, slave_okay, CodecOptions())
+                               criteria, 0, slave_okay,
+                               CodecOptions(), ReadPreference.PRIMARY)
             cursor = {
                 "id": res["cursor_id"],
                 "firstBatch": res["data"],

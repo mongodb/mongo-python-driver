@@ -300,20 +300,6 @@ class Cursor(object):
             operators["$max"] = self.__max
         if self.__min:
             operators["$min"] = self.__min
-        # Only set $readPreference if it's something other than
-        # PRIMARY to avoid problems with mongos versions that
-        # don't support read preferences.
-        rpref = self.__read_preference
-        if (self.__collection.database.client.is_mongos and
-                rpref != ReadPreference.PRIMARY):
-
-            # For maximum backwards compatibility, don't set $readPreference
-            # for SECONDARY_PREFERRED unless tags are in use. Just rely on
-            # the slaveOkay bit (set automatically if read preference is not
-            # PRIMARY), which has the same behavior.
-            if (rpref.mode != ReadPreference.SECONDARY_PREFERRED.mode or
-                    rpref.tag_sets != [{}]):
-                operators['$readPreference'] = rpref.document
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
@@ -915,7 +901,8 @@ class Cursor(object):
                                        ntoreturn,
                                        self.__query_spec(),
                                        self.__projection,
-                                       self.__codec_options))
+                                       self.__codec_options,
+                                       self.__read_preference))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More

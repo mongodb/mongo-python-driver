@@ -33,6 +33,7 @@ try:
 except ImportError:
     _use_c = False
 from pymongo.errors import DocumentTooLarge, InvalidOperation, OperationFailure
+from pymongo.read_preferences import ReadPreference
 
 
 MAX_INT32 = 2147483647
@@ -56,31 +57,54 @@ _OP_MAP = {
 }
 
 
+def _maybe_add_read_preference(spec, read_preference):
+    """Add $readPreference to spec when appropriate."""
+    mode = read_preference.mode
+    tag_sets = read_preference.tag_sets
+    # Only add $readPreference if it's something other than primary to avoid
+    # problems with mongos versions that don't support read preferences. Also,
+    # for maximum backwards compatibility, don't add $readPreference for
+    # secondaryPreferred unless tags are in use (setting the slaveOkay bit
+    # has the same effect).
+    if mode and (
+        mode != ReadPreference.SECONDARY_PREFERRED.mode or tag_sets != [{}]):
+
+        if "query" not in spec:
+            spec = SON([("$query", spec)])
+        spec["$readPreference"] = read_preference.document
+    return spec
+
+
 class _Query(object):
     """A query operation."""
 
-    __slots__ = (
-        'flags', 'ns', 'ntoskip', 'ntoreturn', 'spec', 'fields', 'options')
+    __slots__ = ('flags', 'ns', 'ntoskip', 'ntoreturn',
+                 'spec', 'fields', 'codec_options', 'read_preference')
 
-    def __init__(
-            self, flags, ns, ntoskip, ntoreturn, spec, fields, options):
+    def __init__(self, flags, ns, ntoskip, ntoreturn,
+                 spec, fields, codec_options, read_preference):
         self.flags = flags
         self.ns = ns
         self.ntoskip = ntoskip
         self.ntoreturn = ntoreturn
         self.spec = spec
         self.fields = fields
-        self.options = options
+        self.codec_options = codec_options
+        self.read_preference = read_preference
 
-    def get_message(self, set_slave_ok):
+    def get_message(self, set_slave_ok, is_mongos):
         """Get a query message, possibly setting the slaveOk bit."""
+        if is_mongos:
+            spec = _maybe_add_read_preference(self.spec, self.read_preference)
+        else:
+            spec = self.spec
         if set_slave_ok:
             # Set the slaveOk bit.
             flags = self.flags | 4
         else:
             flags = self.flags
         return query(flags, self.ns, self.ntoskip,
-                     self.ntoreturn, self.spec, self.fields, self.options)
+                     self.ntoreturn, spec, self.fields, self.codec_options)
 
 
 class _GetMore(object):
@@ -93,7 +117,7 @@ class _GetMore(object):
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
 
-    def get_message(self, dummy):
+    def get_message(self, dummy0, dummy1):
         """Get a getmore message."""
         return get_more(self.ns, self.ntoreturn, self.cursor_id)
 

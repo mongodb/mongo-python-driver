@@ -31,6 +31,7 @@ from pymongo.monotonic import time as _time
 from pymongo.network import (command,
                              receive_message,
                              socket_closed)
+from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
 
 
@@ -163,6 +164,7 @@ class SocketInfo(object):
         self.pool_id = pool.pool_id
 
     def command(self, dbname, spec, slave_ok=False,
+                read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
                 allowable_errors=None):
         """Execute a command or raise ConnectionFailure or OperationFailure.
@@ -171,13 +173,15 @@ class SocketInfo(object):
           - `dbname`: name of the database on which to run the command
           - `spec`: a command document as a dict, SON, or mapping object
           - `slave_ok`: whether to set the SlaveOkay wire protocol bit
+          - `read_preference`: a read preference
           - `codec_options`: a CodecOptions instance
           - `check`: raise OperationFailure if there are errors
           - `allowable_errors`: errors to ignore if `check` is True
         """
         try:
-            return command(self.sock, dbname, spec, slave_ok, codec_options,
-                           check, allowable_errors)
+            return command(self.sock, dbname, spec,
+                           slave_ok, self.is_mongos, read_preference,
+                           codec_options, check, allowable_errors)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
@@ -290,7 +294,7 @@ class SocketInfo(object):
             self.sock.close()
         except:
             pass
-        
+
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In
         # regular Python, socket operations only raise socket.error, even if
@@ -467,7 +471,9 @@ class Pool:
             sock = _configured_socket(self.address, self.opts)
             if self.handshake:
                 ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1},
-                                            False, DEFAULT_CODEC_OPTIONS))
+                                            False, False,
+                                            ReadPreference.PRIMARY,
+                                            DEFAULT_CODEC_OPTIONS))
             else:
                 ismaster = None
             return SocketInfo(sock, self, ismaster, self.address)

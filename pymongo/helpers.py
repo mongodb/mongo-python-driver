@@ -226,10 +226,12 @@ def _check_gle_response(response):
 
 
 def _first_batch(sock_info, namespace, query,
-                 limit, slave_ok, codec_options):
+                 limit, slave_ok, codec_options, read_preference):
     """Simple query helper for retrieving a first (and possibly only) batch."""
-    query = _Query(0, namespace, 0, limit, query, None, codec_options)
-    request_id, msg, max_doc_size = query.get_message(slave_ok)
+    query = _Query(
+        0, namespace, 0, limit, query, None, codec_options, read_preference)
+    request_id, msg, max_doc_size = query.get_message(slave_ok,
+                                                      sock_info.is_mongos)
     sock_info.send_message(msg, max_doc_size)
     response = sock_info.receive_message(1, request_id)
     return _unpack_response(response, None, codec_options)

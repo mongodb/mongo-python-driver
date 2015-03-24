@@ -65,7 +65,8 @@ class Server(object):
 
     def send_message_with_response(
             self,
-            message,
+            operation,
+            set_slave_okay,
             all_credentials,
             exhaust=False):
         """Send a message to MongoDB and return a Response object.
@@ -73,13 +74,16 @@ class Server(object):
         Can raise ConnectionFailure.
 
         :Parameters:
-          - `message`: (request_id, data, max_doc_size) or (request_id, data).
+          - `operation`: A _Query or _GetMore object.
+          - `set_slave_okay`: Pass to operation.get_message.
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
         """
-        request_id, data, max_doc_size = self._split_message(message)
         with self.get_socket(all_credentials, exhaust) as sock_info:
+            message = operation.get_message(
+                set_slave_okay, sock_info.is_mongos)
+            request_id, data, max_doc_size = self._split_message(message)
             sock_info.send_message(data, max_doc_size)
             response_data = sock_info.receive_message(1, request_id)
             if exhaust:

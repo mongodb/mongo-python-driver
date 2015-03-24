@@ -23,21 +23,25 @@ from pymongo.errors import AutoReconnect
 _UNPACK_INT = struct.Struct("<i").unpack
 
 
-def command(sock, dbname, spec, slave_ok, codec_options, check=True,
-            allowable_errors=None):
+def command(sock, dbname, spec, slave_ok, is_mongos, read_preference,
+            codec_options, check=True, allowable_errors=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
-      - `sock`: a raw socket object
+      - `sock`: a raw socket instance
       - `dbname`: name of the database on which to run the command
       - `spec`: a command document as a dict, SON, or mapping object
       - `slave_ok`: whether to set the SlaveOkay wire protocol bit
+      - `is_mongos`: are we connected to a mongos?
+      - `read_preference`: a read preference
       - `codec_options`: a CodecOptions instance
       - `check`: raise OperationFailure if there are errors
       - `allowable_errors`: errors to ignore if `check` is True
     """
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
+    if is_mongos:
+        spec = message._maybe_add_read_preference(spec, read_preference)
     request_id, msg, _ = message.query(flags, ns, 0, -1, spec,
                                        None, codec_options)
     sock.sendall(msg)

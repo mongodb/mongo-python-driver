@@ -162,8 +162,9 @@ class Collection(common.BaseObject):
     def _socket_for_writes(self):
         return self.__database.client._socket_for_writes()
 
-    def _command(self, sock_info, command, slave_ok=False, codec_options=None,
-                 check=True, allowable_errors=None):
+    def _command(self, sock_info, command, slave_ok=False,
+                 read_preference=None,
+                 codec_options=None, check=True, allowable_errors=None):
         """Internal command helper.
 
         :Parameters:
@@ -184,6 +185,7 @@ class Collection(common.BaseObject):
         result = sock_info.command(self.__database.name,
                                    command,
                                    slave_ok,
+                                   read_preference or self.read_preference,
                                    codec_options or self.codec_options,
                                    check,
                                    allowable_errors)
@@ -199,7 +201,8 @@ class Collection(common.BaseObject):
                 options["size"] = float(options["size"])
             cmd.update(options)
         with self._socket_for_writes() as sock_info:
-            self._command(sock_info, cmd)
+            self._command(
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -1047,7 +1050,8 @@ class Collection(common.BaseObject):
         cmd = SON([('createIndexes', self.name),
                    ('indexes', list(gen_indexes()))])
         with self._socket_for_writes() as sock_info:
-            self._command(sock_info, cmd)
+            self._command(
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY)
         return names
 
     def __create_index(self, keys, index_options):
@@ -1064,7 +1068,8 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             cmd = SON([('createIndexes', self.name), ('indexes', [index])])
             try:
-                self._command(sock_info, cmd)
+                self._command(
+                    sock_info, cmd, read_preference=ReadPreference.PRIMARY)
             except OperationFailure as exc:
                 if exc.code in common.COMMAND_NOT_FOUND_CODES:
                     index["ns"] = self.__full_name
@@ -1222,7 +1227,10 @@ class Collection(common.BaseObject):
             self.__database.name, self.__name, name)
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         with self._socket_for_writes() as sock_info:
-            self._command(sock_info, cmd, allowable_errors=["ns not found"])
+            self._command(sock_info,
+                          cmd,
+                          read_preference=ReadPreference.PRIMARY,
+                          allowable_errors=["ns not found"])
 
     def reindex(self):
         """Rebuilds all indexes on this collection.
@@ -1233,7 +1241,8 @@ class Collection(common.BaseObject):
         """
         cmd = SON([("reIndex", self.__name)])
         with self._socket_for_writes() as sock_info:
-            return self._command(sock_info, cmd)[0]
+            return self._command(
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY)[0]
 
     def list_indexes(self):
         """Get a cursor over the index documents for this collection.
@@ -1253,13 +1262,14 @@ class Collection(common.BaseObject):
             if sock_info.max_wire_version > 2:
                 cmd = SON([("listIndexes", self.__name), ("cursor", {})])
                 res, addr = self._command(sock_info, cmd, slave_ok,
+                                          ReadPreference.PRIMARY,
                                           CodecOptions(SON))
                 cursor = res["cursor"]
             else:
                 namespace = "%s.%s" % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
                     sock_info, namespace, {"ns": self.__full_name},
-                    0, slave_ok, CodecOptions(SON))
+                    0, slave_ok, CodecOptions(SON), ReadPreference.PRIMARY)
                 cursor = {
                     "id": res["cursor_id"],
                     "firstBatch": res["data"],
@@ -1595,7 +1605,8 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
-            response = self._command(sock_info, cmd, slave_ok)[0]
+            response = self._command(
+                sock_info, cmd, slave_ok, ReadPreference.PRIMARY)[0]
 
         if full_response or not response.get('result'):
             return response
@@ -1665,6 +1676,7 @@ class Collection(common.BaseObject):
             cmd["upsert"] = upsert
         with self._socket_for_writes() as sock_info:
             out = self._command(sock_info, cmd,
+                                read_preference=ReadPreference.PRIMARY,
                                 allowable_errors=[_NO_OBJ_ERROR])[0]
         return out.get("value")
 
@@ -2004,6 +2016,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
         with self._socket_for_writes() as sock_info:
             out = self._command(sock_info, cmd,
+                                read_preference=ReadPreference.PRIMARY,
                                 allowable_errors=[_NO_OBJ_ERROR])[0]
 
         if not out['ok']:
