@@ -296,10 +296,12 @@ class Topology(object):
             server.request_check()
 
     def _apply_selector(self, selector):
-        if self._description.topology_type in (TOPOLOGY_TYPE.Single,
-                                               TOPOLOGY_TYPE.Sharded):
+        if self._description.topology_type == TOPOLOGY_TYPE.Single:
             # Ignore the selector.
             return self._description.known_servers
+        elif self._description.topology_type == TOPOLOGY_TYPE.Sharded:
+            return apply_local_threshold(self._settings.local_threshold_ms,
+                                         self._description.known_servers)
         else:
             sds = selector(self._description.known_servers)
             return apply_local_threshold(
