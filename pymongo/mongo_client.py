@@ -570,24 +570,6 @@ class MongoClient(common.BaseObject):
             'max_message_size', common.MAX_MESSAGE_SIZE)
 
     @property
-    def min_wire_version(self):
-        """The minWireVersion reported by the server.
-
-        Returns ``0`` when connected to server versions prior to MongoDB 2.6.
-        """
-        return self._server_property(
-            'min_wire_version', common.MIN_WIRE_VERSION)
-
-    @property
-    def max_wire_version(self):
-        """The maxWireVersion reported by the server.
-
-        Returns ``0`` when connected to server versions prior to MongoDB 2.6.
-        """
-        return self._server_property(
-            'max_wire_version', common.MAX_WIRE_VERSION)
-
-    @property
     def max_write_batch_size(self):
         """The maxWriteBatchSize reported by the server.
 

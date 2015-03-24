@@ -320,12 +320,8 @@ class TestReplicaSetWireVersion(MockClientTest):
         c.set_wire_version_range('b:2', 0, 1)
         c.set_wire_version_range('c:3', 1, 2)
         c.db.command('ismaster')  # Connect.
-        self.assertEqual(c.min_wire_version, 1)
-        self.assertEqual(c.max_wire_version, 5)
 
         c.set_wire_version_range('a:1', 2, 2)
-        wait_until(lambda: c.min_wire_version == 2, 'update min_wire_version')
-        self.assertEqual(c.max_wire_version, 2)
 
         # A secondary doesn't overlap with us.
         c.set_wire_version_range('b:2', 5, 6)

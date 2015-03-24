@@ -459,7 +459,8 @@ class TestLegacy(IntegrationTest):
         # Tests legacy update.
         db = self.db
         db.drop_collection("test")
-        used_write_commands = (self.client.max_wire_version > 1)
+        ismaster = self.client.admin.command('ismaster')
+        used_write_commands = (ismaster.get("maxWireVersion", 0) > 1)
 
         db.test.insert({'_id': 1})
         result = db.test.update({'_id': 1}, {'$set': {'x': 1}})

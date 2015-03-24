@@ -21,8 +21,6 @@
       .. autoattribute:: nodes
       .. autoattribute:: max_bson_size
       .. autoattribute:: max_message_size
-      .. autoattribute:: min_wire_version
-      .. autoattribute:: max_wire_version
       .. autoattribute:: local_threshold_ms
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference

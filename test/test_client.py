@@ -209,8 +209,6 @@ class TestClient(IntegrationTest):
 
         self.assertEqual(c.codec_options, CodecOptions())
         self.assertIsInstance(c.max_bson_size, int)
-        self.assertIsInstance(c.min_wire_version, int)
-        self.assertIsInstance(c.max_wire_version, int)
         self.assertIsInstance(c.max_write_batch_size, int)
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
@@ -222,12 +220,6 @@ class TestClient(IntegrationTest):
             self.assertIsNotNone(c.address)
         else:
             self.assertEqual(c.address, (host, port))
-
-        if client_context.version.at_least(2, 5, 4, -1):
-            self.assertTrue(c.max_wire_version > 0)
-        else:
-            self.assertEqual(c.max_wire_version, 0)
-        self.assertTrue(c.min_wire_version >= 0)
 
         bad_host = "somedomainthatdoesntexist.org"
         c = MongoClient(bad_host, port, connectTimeoutMS=1,

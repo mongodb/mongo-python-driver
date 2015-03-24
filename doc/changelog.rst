@@ -144,6 +144,8 @@ The following attributes have been removed:
   (use :attr:`~pymongo.mongo_client.MongoClient.codec_options` instead)
 - :attr:`~pymongo.mongo_client.MongoClient.host`
   (use :attr:`~pymongo.mongo_client.MongoClient.address` instead)
+- :attr:`~pymongo.mongo_client.MongoClient.min_wire_version`
+- :attr:`~pymongo.mongo_client.MongoClient.max_wire_version`
 - :attr:`~pymongo.mongo_client.MongoClient.port`
   (use :attr:`~pymongo.mongo_client.MongoClient.address` instead)
 - :attr:`~pymongo.mongo_client.MongoClient.safe`

@@ -44,7 +44,8 @@ class BulkTestBase(IntegrationTest):
     def setUpClass(cls):
         super(BulkTestBase, cls).setUpClass()
         cls.coll = cls.db.test
-        cls.has_write_commands = (client_context.client.max_wire_version > 1)
+        ismaster = client_context.client.admin.command('ismaster')
+        cls.has_write_commands = (ismaster.get("maxWireVersion", 0) > 1)
 
     def setUp(self):
         super(BulkTestBase, self).setUp()
