@@ -296,7 +296,8 @@ class Topology(object):
             server.request_check()
 
     def _apply_selector(self, selector):
-        if self._description.topology_type == TOPOLOGY_TYPE.Single:
+        if self._description.topology_type in (TOPOLOGY_TYPE.Single,
+                                               TOPOLOGY_TYPE.Sharded):
             # Ignore the selector.
             return self._description.known_servers
         else:
