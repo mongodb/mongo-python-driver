@@ -93,8 +93,8 @@ def _parse_ssl_options(options):
 
 def _parse_pool_options(options):
     """Parse connection pool options."""
-    max_pool_size = options.get('maxpoolsize', 100)
-    connect_timeout = options.get('connecttimeoutms', 20.0)
+    max_pool_size = options.get('maxpoolsize', common.MAX_POOL_SIZE)
+    connect_timeout = options.get('connecttimeoutms', common.CONNECT_TIMEOUT)
     socket_keepalive = options.get('socketkeepalive', False)
     socket_timeout = options.get('sockettimeoutms')
     wait_queue_timeout = options.get('waitqueuetimeoutms')
@@ -116,7 +116,8 @@ class ClientOptions(object):
         self.__codec_options = _parse_codec_options(options)
         self.__credentials = _parse_credentials(
             username, password, database, options)
-        self.__local_threshold_ms = options.get('localthresholdms', 15)
+        self.__local_threshold_ms = options.get(
+            'localthresholdms', common.LOCAL_THRESHOLD_MS)
         # self.__server_selection_timeout is in seconds. Must use full name for
         # common.SERVER_SELECTION_TIMEOUT because it is set directly by tests.
         self.__server_selection_timeout = options.get(

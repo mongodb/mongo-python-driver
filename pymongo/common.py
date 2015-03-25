@@ -54,6 +54,15 @@ SERVER_SELECTION_TIMEOUT = 30
 # Spec requires at least 500ms between ismaster calls.
 MIN_HEARTBEAT_INTERVAL = 0.5
 
+# Default connectTimeout in seconds.
+CONNECT_TIMEOUT = 20.0
+
+# Default value for maxPoolSize.
+MAX_POOL_SIZE = 100
+
+# Default value for localThresholdMS.
+LOCAL_THRESHOLD_MS = 15
+
 # mongod/s 2.6 and above return code 59 when a
 # command doesn't exist. mongod versions previous
 # to 2.6 and mongos 2.4.x return no error code
@@ -228,7 +237,7 @@ def validate_timeout_or_zero(option, value):
     """
     if value is None:
         raise ConfigurationError("%s cannot be None" % (option, ))
-    if value==0 or value=="0":
+    if value == 0 or value == "0":
         return 0
     return validate_positive_float(option, value) / 1000.0
 
