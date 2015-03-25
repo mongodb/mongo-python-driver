@@ -270,8 +270,10 @@ class TestPooling(_TestPoolingBase):
 
         # Back to normal, semaphore was correctly released.
         cx_pool.address = address
-        with cx_pool.get_socket({}, checkout=True):
+        with cx_pool.get_socket({}, checkout=True) as sock_info:
             pass
+
+        sock_info.close()
 
     def test_pool_with_fork(self):
         # Test that separate MongoClients have separate Pools, and that the
