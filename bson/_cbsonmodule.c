@@ -385,6 +385,7 @@ static int _load_python_objects(PyObject* module) {
 
     if (_load_object(&re_compile, "re", "compile")) {
         state->REType = NULL;
+        Py_DECREF(empty_string);
         return 1;
     }
 
@@ -2129,6 +2130,7 @@ static PyObject* get_value(PyObject* self, const char* buffer,
             if (!bson_int64_type)
                 goto invalid;
             if (max < 8) {
+                Py_DECREF(bson_int64_type);
                 goto invalid;
             }
             memcpy(&ll, buffer + *position, 8);
