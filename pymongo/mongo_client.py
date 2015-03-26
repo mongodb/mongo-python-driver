@@ -998,7 +998,9 @@ class MongoClient(common.BaseObject):
     def unlock(self):
         """Unlock a previously locked server.
         """
-        self.admin['$cmd'].sys.unlock.find_one()
+        coll = self.admin.get_collection(
+            "$cmd.sys.unlock", read_preference=ReadPreference.PRIMARY)
+        coll.find_one()
 
     def __enter__(self):
         return self

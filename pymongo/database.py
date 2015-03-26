@@ -581,11 +581,13 @@ class Database(common.BaseObject):
         :Parameters:
           - `include_all` (optional): if ``True`` also list currently
             idle operations in the result
-         """
+        """
+        coll = self.get_collection(
+            "$cmd.sys.inprog", read_preference=ReadPreference.PRIMARY)
         if include_all:
-            return self['$cmd.sys.inprog'].find_one({"$all": True})
+            return coll.find_one({"$all": True})
         else:
-            return self['$cmd.sys.inprog'].find_one()
+            return coll.find_one()
 
     def profiling_level(self):
         """Get the database's current profiling level.
