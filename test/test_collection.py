@@ -20,6 +20,8 @@ import re
 import sys
 import threading
 
+from collections import defaultdict
+
 sys.path[0:0] = [""]
 
 from bson.regex import Regex
@@ -656,6 +658,13 @@ class TestCollection(IntegrationTest):
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
         wait_until(lambda: 0 == db.test.count(), 'delete 2 documents')
+
+    def test_find_by_default_dct(self):
+        db = self.db
+        db.test.insert_one({'foo': 'bar'})
+        dct = defaultdict(dict, [('foo', 'bar')])
+        self.assertIsNotNone(db.test.find_one(dct))
+        self.assertEqual(dct, defaultdict(dict, [('foo', 'bar')]))
 
     def test_find_w_fields(self):
         db = self.db

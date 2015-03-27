@@ -143,6 +143,11 @@ class TestBSON(unittest.TestCase):
     def test_encode_then_decode_any_mapping(self):
         self.check_encode_then_decode(doc_class=NotADict)
 
+    def test_encoding_defaultdict(self):
+        dct = collections.defaultdict(dict, [('foo', 'bar')])
+        BSON.encode(dct)
+        self.assertEqual(dct, collections.defaultdict(dict, [('foo', 'bar')]))
+
     def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
         self.assertRaises(TypeError, is_valid, u("test"))

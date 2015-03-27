@@ -1424,17 +1424,34 @@ int write_dict(PyObject* self, buffer_t buffer,
     }
 
     /* Write _id first if this is a top level doc. */
-    if (top_level && PyMapping_HasKeyString(dict, "_id")) {
-        PyObject* _id = PyMapping_GetItemString(dict, "_id");
-        if (!_id) {
-            return 0;
-        }
-        if (!write_pair(self, buffer, "_id", 3,
-                        _id, check_keys, options, 1)) {
+    if (top_level) {
+        /*
+         * If "dict" is a defaultdict we don't want to call
+         * PyMapping_GetItemString on it. That would **create**
+         * an _id where one didn't previously exist (PYTHON-871).
+         */
+        if (PyDict_Check(dict)) {
+            /* PyDict_GetItemString returns a borrowed reference. */
+            PyObject* _id = PyDict_GetItemString(dict, "_id");
+            if (_id) {
+                if (!write_pair(self, buffer, "_id", 3,
+                                _id, check_keys, options, 1)) {
+                    return 0;
+                }
+            }
+        } else if (PyMapping_HasKeyString(dict, "_id")) {
+            PyObject* _id = PyMapping_GetItemString(dict, "_id");
+            if (!_id) {
+                return 0;
+            }
+            if (!write_pair(self, buffer, "_id", 3,
+                            _id, check_keys, options, 1)) {
+                Py_DECREF(_id);
+                return 0;
+            }
+            /* PyMapping_GetItemString returns a new reference. */
             Py_DECREF(_id);
-            return 0;
         }
-        Py_DECREF(_id);
     }
 
     iter = PyObject_GetIter(dict);
