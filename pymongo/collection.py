@@ -14,8 +14,6 @@
 
 """Collection level utilities for Mongo."""
 
-from __future__ import unicode_literals
-
 import collections
 import warnings
 
@@ -23,7 +21,8 @@ from bson.code import Code
 from bson.objectid import ObjectId
 from bson.py3compat import (_unicode,
                             integer_types,
-                            string_type)
+                            string_type,
+                            u)
 from bson.codec_options import CodecOptions
 from bson.son import SON
 from pymongo import (common,
@@ -51,6 +50,7 @@ except ImportError:
     _ORDERED_TYPES = (SON,)
 
 _NO_OBJ_ERROR = "No matching object found"
+_UJOIN = u("%s.%s")
 
 
 class ReturnDocument(object):
@@ -149,7 +149,7 @@ class Collection(common.BaseObject):
 
         self.__database = database
         self.__name = _unicode(name)
-        self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        self.__full_name = _UJOIN % (self.__database.name, self.__name)
         if create or kwargs:
             self.__create(kwargs)
 
@@ -211,7 +211,7 @@ class Collection(common.BaseObject):
           - `name`: the name of the collection to get
         """
         if name.startswith('_'):
-            full_name = '%s.%s' % (self.__name, name)
+            full_name = _UJOIN % (self.__name, name)
             raise AttributeError(
                 "Collection has no attribute %r. To access the %s"
                 " collection, use database['%s']." % (
@@ -219,7 +219,7 @@ class Collection(common.BaseObject):
         return self.__getitem__(name)
 
     def __getitem__(self, name):
-        return Collection(self.__database, "%s.%s" % (self.__name, name))
+        return Collection(self.__database, _UJOIN % (self.__name, name))
 
     def __repr__(self):
         return "Collection(%r, %r)" % (self.__database, self.__name)
@@ -1262,7 +1262,7 @@ class Collection(common.BaseObject):
                                        ReadPreference.PRIMARY,
                                        CodecOptions(SON))["cursor"]
             else:
-                namespace = "%s.%s" % (self.__database.name, "system.indexes")
+                namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
                     sock_info, namespace, {"ns": self.__full_name},
                     0, slave_ok, CodecOptions(SON), ReadPreference.PRIMARY)

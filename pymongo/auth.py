@@ -14,11 +14,6 @@
 
 """Authentication helpers."""
 
-# TODO: We may not want to do this. It causes issues
-# with passing the string 'sha1' to hashlib.pbkdf2_hmac
-# in cpython 2.x >= 2.8 and pypy >= 2.4.x.
-from __future__ import unicode_literals
-
 import hmac
 
 HAVE_KERBEROS = True
@@ -104,7 +99,7 @@ try:
     from backports.pbkdf2 import pbkdf2_hmac
 
     def _hi(data, salt, iterations):
-        return pbkdf2_hmac(str('sha1'), data, salt, iterations)
+        return pbkdf2_hmac('sha1', data, salt, iterations)
 
 except ImportError:
     try:
@@ -112,7 +107,7 @@ except ImportError:
         from hashlib import pbkdf2_hmac
 
         def _hi(data, salt, iterations):
-            return pbkdf2_hmac(str('sha1'), data, salt, iterations)
+            return pbkdf2_hmac('sha1', data, salt, iterations)
 
     except ImportError:
 

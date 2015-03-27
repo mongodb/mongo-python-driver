@@ -17,9 +17,8 @@
 .. versionadded:: 2.7
 """
 
-from __future__ import unicode_literals
-
 from bson.objectid import ObjectId
+from bson.py3compat import u
 from bson.son import SON
 from pymongo.common import (validate_is_mapping,
                             validate_is_mutable_mapping,
@@ -43,6 +42,16 @@ _UNKNOWN_ERROR = 8
 _WRITE_CONCERN_ERROR = 64
 
 _COMMANDS = ('insert', 'update', 'delete')
+
+
+# These string literals are used when we create fake server return
+# documents client side. We use unicode literals in python 2.x to
+# match the actual return values from the server.
+_UID = u("_id")
+_UCODE = u("code")
+_UERRMSG = u("errmsg")
+_UINDEX = u("index")
+_UOP = u("op")
 
 
 class _Run(object):
@@ -79,10 +88,10 @@ def _make_error(index, code, errmsg, operation):
     """Create and return an error document.
     """
     return {
-        "index": index,
-        "code": code,
-        "errmsg": errmsg,
-        "op": operation
+        _UINDEX: index,
+        _UCODE: code,
+        _UERRMSG: errmsg,
+        _UOP: operation
     }
 
 
@@ -109,7 +118,7 @@ def _merge_legacy(run, full_result, result, index):
         full_result['nInserted'] += 1
     elif run.op_type == _UPDATE:
         if "upserted" in result:
-            doc = {"index": run.index(index), "_id": result["upserted"]}
+            doc = {_UINDEX: run.index(index), _UID: result["upserted"]}
             full_result["upserted"].append(doc)
             full_result['nUpserted'] += affected
         # Versions of MongoDB before 2.6 don't return the _id for an
@@ -119,7 +128,7 @@ def _merge_legacy(run, full_result, result, index):
             # If _id is in both the update document *and* the query spec
             # the update document _id takes precedence.
             _id = op['u'].get('_id', op['q'].get('_id'))
-            doc = {"index": run.index(index), "_id": _id}
+            doc = {_UINDEX: run.index(index), _UID: _id}
             full_result["upserted"].append(doc)
             full_result['nUpserted'] += affected
         else:
@@ -153,7 +162,7 @@ def _merge_command(run, full_result, results):
                 else:
                     n_upserted = 1
                     index = run.index(offset)
-                    doc = {"index": index, "_id": upserted}
+                    doc = {_UINDEX: index, _UID: upserted}
                     full_result["upserted"].append(doc)
                 full_result["nUpserted"] += n_upserted
                 full_result["nMatched"] += (affected - n_upserted)
@@ -175,7 +184,7 @@ def _merge_command(run, full_result, results):
                 idx = doc["index"] + offset
                 doc["index"] = run.index(idx)
                 # Add the failed operation to the error document.
-                doc["op"] = run.ops[idx]
+                doc[_UOP] = run.ops[idx]
             full_result["writeErrors"].extend(write_errors)
 
         wc_error = result.get("writeConcernError")

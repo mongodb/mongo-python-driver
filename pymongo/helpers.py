@@ -21,7 +21,7 @@ from pymongo.message import _Query
 import bson
 import pymongo
 from bson.codec_options import CodecOptions
-from bson.py3compat import itervalues, string_type, iteritems
+from bson.py3compat import itervalues, string_type, iteritems, u
 from bson.son import SON
 from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
@@ -33,9 +33,12 @@ from pymongo.errors import (CursorNotFound,
                             WTimeoutError)
 
 
+_UUNDER = u("_")
+
+
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over."""
-    return "_".join(["%s_%s" % item for item in keys])
+    return _UUNDER.join(["%s_%s" % item for item in keys])
 
 
 def _index_list(key_or_list, direction=None):
