@@ -75,12 +75,6 @@ def _parse_ssl_options(options):
                                  "%s. Please set `ssl=True` or remove."
                                  % ', '.join(ssl_kwarg_keys))
 
-    if cert_reqs and not ca_certs:
-        raise ConfigurationError("If `ssl_cert_reqs` is not "
-                                 "`ssl.CERT_NONE` then you must "
-                                 "include `ssl_ca_certs` to be able "
-                                 "to validate the server.")
-
     if ssl_kwarg_keys and use_ssl is None:
         # ssl options imply ssl = True
         use_ssl = True

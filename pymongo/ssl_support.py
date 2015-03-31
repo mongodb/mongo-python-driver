@@ -14,6 +14,8 @@
 
 """Support for SSL in PyMongo."""
 
+import sys
+
 HAVE_SSL = True
 try:
     import ssl
@@ -46,16 +48,50 @@ if HAVE_SSL:
                          "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
                          "`ssl.CERT_REQUIRED" % (option,))
 
+    # XXX: Possible future work.
+    # - Fallback to certifi or wincertstore to load CA certs?
+    # - Support CRL files? Only supported by CPython >= 2.7.9 and >= 3.4
+    #   http://bugs.python.org/issue8813
+    # - OCSP? Not supported by python at all.
+    #   http://bugs.python.org/issue17123
+    # - Setting OP_NO_COMPRESSION? The server doesn't yet.
+    # - Adding an ssl_context keyword argument to MongoClient? This might
+    #   be useful for sites that have unusual requirements rather than
+    #   trying to expose every SSLContext option through a keyword/uri
+    #   parameter.
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
         certfile, keyfile, ca_certs, cert_reqs = args
+        # Note PROTOCOL_SSLv23 is about the most misleading name imaginable.
+        # This configures the server and client to negotiate the
+        # highest protocol version they both support. A very good thing.
         ctx = SSLContext(ssl.PROTOCOL_SSLv23)
+        if hasattr(ctx, "options"):
+            # Explicitly disable SSLv2 and SSLv3. Note that up to
+            # date versions of MongoDB 2.4 and above already do this,
+            # python disables SSLv2 by default in >= 2.7.7 and >= 3.3.4
+            # and SSLv3 in >= 3.4.3. There is no way for us to do this
+            # explicitly for python 2.6 or 2.7 before 2.7.9.
+            ctx.options |= getattr(ssl, "OP_NO_SSLv2", 0)
+            ctx.options |= getattr(ssl, "OP_NO_SSLv3", 0)
         if certfile is not None:
             ctx.load_cert_chain(certfile, keyfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
-        if cert_reqs is not None:
-            ctx.verify_mode = cert_reqs
+        elif cert_reqs != ssl.CERT_NONE:
+            # CPython >= 2.7.9 or >= 3.4.0, pypy >= 2.5.1
+            if hasattr(ctx, "load_default_certs"):
+                ctx.load_default_certs()
+            # Python >= 3.2.0, useless on Windows.
+            elif (sys.platform != "win32" and
+                  hasattr(ctx, "set_default_verify_paths")):
+                ctx.set_default_verify_paths()
+            else:
+                raise ConfigurationError(
+                    "`ssl_cert_reqs` is not ssl.CERT_NONE and no system "
+                    "CA certificates could be loaded. `ssl_ca_certs` is "
+                    "required.")
+        ctx.verify_mode = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
         return ctx
 else:
     def validate_cert_reqs(option, dummy):

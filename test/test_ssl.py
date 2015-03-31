@@ -85,6 +85,7 @@ if HAVE_SSL:
     # Is MongoDB configured for SSL?
     try:
         connected(MongoClient(host, port, ssl=True,
+                              ssl_cert_reqs=ssl.CERT_NONE,
                               serverSelectionTimeoutMS=100))
 
         SIMPLE_SSL = True
@@ -96,6 +97,7 @@ if HAVE_SSL:
     try:
         ssl_client = connected(MongoClient(
             host, port, ssl=True, ssl_certfile=CLIENT_PEM,
+            ssl_cert_reqs=ssl.CERT_NONE,
             serverSelectionTimeoutMS=100))
 
         CERT_SSL = True
@@ -206,13 +208,14 @@ class TestSSL(unittest.TestCase):
         if not SIMPLE_SSL:
             raise SkipTest("No simple mongod available over SSL")
 
-        client = MongoClient(host, port, ssl=True)
+        client = MongoClient(host, port, ssl=True, ssl_cert_reqs=ssl.CERT_NONE)
         response = client.admin.command('ismaster')
         if 'setName' in response:
             client = MongoClient(pair,
                                  replicaSet=response['setName'],
                                  w=len(response['hosts']),
-                                 ssl=True)
+                                 ssl=True,
+                                 ssl_cert_reqs=ssl.CERT_NONE)
 
         db = client.pymongo_ssl_test
         db.test.drop()
@@ -238,7 +241,9 @@ class TestSSL(unittest.TestCase):
             client = MongoClient(pair,
                                  replicaSet=response['setName'],
                                  w=len(response['hosts']),
-                                 ssl=True, ssl_certfile=CLIENT_PEM)
+                                 ssl=True,
+                                 ssl_cert_reqs=ssl.CERT_NONE,
+                                 ssl_certfile=CLIENT_PEM)
 
         db = client.pymongo_ssl_test
         db.test.drop()
@@ -258,12 +263,15 @@ class TestSSL(unittest.TestCase):
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
-        client = ssl_client
+        client = MongoClient(host, port,
+                             ssl_cert_reqs=ssl.CERT_NONE,
+                             ssl_certfile=CLIENT_PEM)
         response = ssl_client.admin.command('ismaster')
         if 'setName' in response:
             client = MongoClient(pair,
                                  replicaSet=response['setName'],
                                  w=len(response['hosts']),
+                                 ssl_cert_reqs=ssl.CERT_NONE,
                                  ssl_certfile=CLIENT_PEM)
 
         db = client.pymongo_ssl_test
