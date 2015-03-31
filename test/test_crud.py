@@ -26,11 +26,7 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.results import _WriteResult
 
-from test import unittest, ClientContext, IntegrationTest
-
-
-# Reusable client context
-client_context = ClientContext()
+from test import unittest, client_context, IntegrationTest
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
