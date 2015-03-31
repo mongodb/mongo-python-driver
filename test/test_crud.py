@@ -102,7 +102,7 @@ def create_test(scenario_def, test, ignore_result):
             if expected_c is not None:
                 expected_name = expected_c.get('name')
                 if expected_name is not None:
-                    db_coll = db_coll = self.db[expected_name]
+                    db_coll = self.db[expected_name]
                 else:
                     db_coll = self.db.test
                 self.assertEqual(list(db_coll.find()), expected_c['data'])
