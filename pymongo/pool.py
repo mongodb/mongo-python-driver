@@ -399,10 +399,9 @@ def _configured_socket(address, options):
     if ssl_context is not None:
         try:
             sock = ssl_context.wrap_socket(sock)
-        except IOError:
+        except IOError as exc:
             sock.close()
-            raise ConnectionFailure("SSL handshake failed. MongoDB may "
-                                    "not be configured with SSL support.")
+            raise ConnectionFailure("SSL handshake failed: %s" % (str(exc),))
         if ssl_context.verify_mode and options.ssl_match_hostname:
             try:
                 match_hostname(sock.getpeercert(), hostname=address[0])
