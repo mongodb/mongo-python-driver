@@ -454,14 +454,14 @@ class TestSSL(unittest.TestCase):
             raise SkipTest("No hosts entry for 'server'. Cannot validate "
                            "hostname in the certificate")
 
+        if sys.platform == "win32":
+            raise SkipTest("Can't test system ca certs on Windows.")
+
         if sys.version_info < (2, 7, 9):
             raise SkipTest("SSLContext not available.")
 
-        if (sys.platform == "win32"
-                and sys.version_info[0] == 3 and sys.version_info < (3, 4)):
-            raise SkipTest(
-                "Python 3 can't load Windows system certs before 3.4")
 
+        # Tell OpenSSL where CA certificates live.
         os.environ['SSL_CERT_FILE'] = CA_PEM
         try:
             with self.assertRaises(ConnectionFailure):
