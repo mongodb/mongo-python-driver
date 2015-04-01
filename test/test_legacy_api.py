@@ -183,46 +183,48 @@ class TestLegacy(IntegrationTest):
     def test_insert_multiple_with_duplicate(self):
         # Tests legacy insert.
         db = self.db
-        db.drop_collection("test")
-        db.test.ensure_index([('i', ASCENDING)], unique=True)
+        db.drop_collection("test_insert_multiple_with_duplicate")
+        collection = db.test_insert_multiple_with_duplicate
+        collection.ensure_index([('i', ASCENDING)], unique=True)
 
         # No error
-        db.test.insert([{'i': i} for i in range(5, 10)], w=0)
-        wait_until(lambda: 5 == db.test.count(), 'insert 5 documents')
+        collection.insert([{'i': i} for i in range(5, 10)], w=0)
+        wait_until(lambda: 5 == collection.count(), 'insert 5 documents')
 
-        db.test.remove()
+        collection.remove()
 
         # No error
-        db.test.insert([{'i': 1}] * 2, w=0)
-        wait_until(lambda: 1 == db.test.count(), 'insert 1 document')
+        collection.insert([{'i': 1}] * 2, w=0)
+        wait_until(lambda: 1 == collection.count(), 'insert 1 document')
 
         self.assertRaises(
             DuplicateKeyError,
-            lambda: db.test.insert([{'i': 2}] * 2),
+            lambda: collection.insert([{'i': 2}] * 2),
         )
 
-        db.drop_collection("test")
+        db.drop_collection("test_insert_multiple_with_duplicate")
         db = self.client.get_database(
             db.name, write_concern=WriteConcern(w=0))
 
-        db.test.ensure_index([('i', ASCENDING)], unique=True)
+        collection = db.test_insert_multiple_with_duplicate
+        collection.ensure_index([('i', ASCENDING)], unique=True)
 
         # No error.
-        db.test.insert([{'i': 1}] * 2)
-        wait_until(lambda: 1 == db.test.count(), 'insert 1 document')
+        collection.insert([{'i': 1}] * 2)
+        wait_until(lambda: 1 == collection.count(), 'insert 1 document')
 
         # Implied acknowledged.
         self.assertRaises(
             DuplicateKeyError,
-            lambda: db.test.insert([{'i': 2}] * 2, fsync=True),
+            lambda: collection.insert([{'i': 2}] * 2, fsync=True),
         )
 
         # Explicit acknowledged.
         self.assertRaises(
             DuplicateKeyError,
-            lambda: db.test.insert([{'i': 2}] * 2, w=1),
-        )
-        db.drop_collection("test")
+            lambda: collection.insert([{'i': 2}] * 2, w=1))
+
+        db.drop_collection("test_insert_multiple_with_duplicate")
 
     def test_insert_iterables(self):
         # Tests legacy insert.
@@ -272,9 +274,10 @@ class TestLegacy(IntegrationTest):
     def test_continue_on_error(self):
         # Tests legacy insert.
         db = self.db
-        db.drop_collection("test")
-        oid = db.test.insert({"one": 1})
-        self.assertEqual(1, db.test.count())
+        db.drop_collection("test_continue_on_error")
+        collection = db.test_continue_on_error
+        oid = collection.insert({"one": 1})
+        self.assertEqual(1, collection.count())
 
         docs = []
         docs.append({"_id": oid, "two": 2})  # Duplicate _id.
@@ -283,39 +286,40 @@ class TestLegacy(IntegrationTest):
         docs.append({"five": 5})
 
         with self.assertRaises(DuplicateKeyError):
-            db.test.insert(docs, manipulate=False)
+            collection.insert(docs, manipulate=False)
 
-        self.assertEqual(1, db.test.count())
+        self.assertEqual(1, collection.count())
 
         with self.assertRaises(DuplicateKeyError):
-            db.test.insert(docs, manipulate=False, continue_on_error=True)
+            collection.insert(docs, manipulate=False, continue_on_error=True)
 
-        self.assertEqual(4, db.test.count())
+        self.assertEqual(4, collection.count())
 
-        db.drop_collection("test")
-        oid = db.test.insert({"_id": oid, "one": 1}, w=0)
-        wait_until(lambda: 1 == db.test.count(), 'insert 1 document')
+        db.drop_collection("test_continue_on_error")
+        oid = collection.insert({"_id": oid, "one": 1}, w=0)
+        wait_until(lambda: 1 == collection.count(), 'insert 1 document')
 
         docs[0].pop("_id")
         docs[2]["_id"] = oid
 
         with self.assertRaises(DuplicateKeyError):
-            db.test.insert(docs, manipulate=False)
+            collection.insert(docs, manipulate=False)
 
-        self.assertEqual(3, db.test.count())
-        db.test.insert(docs, manipulate=False, continue_on_error=True, w=0)
-
-        wait_until(lambda: 6 == db.test.count(), 'insert 3 documents')
+        self.assertEqual(3, collection.count())
+        collection.insert(docs, manipulate=False, continue_on_error=True, w=0)
+        wait_until(lambda: 6 == collection.count(), 'insert 3 documents')
 
     def test_acknowledged_insert(self):
         # Tests legacy insert.
         db = self.db
-        db.drop_collection("test")
+        db.drop_collection("test_acknowledged_insert")
+        collection = db.test_acknowledged_insert
 
         a = {"hello": "world"}
-        db.test.insert(a)
-        db.test.insert(a, w=0)
-        self.assertRaises(OperationFailure, db.test.insert, a)
+        collection.insert(a)
+        collection.insert(a, w=0)
+        self.assertRaises(OperationFailure,
+                          collection.insert, a)
 
     def test_insert_adds_id(self):
         # Tests legacy insert.
@@ -508,24 +512,25 @@ class TestLegacy(IntegrationTest):
     def test_acknowledged_update(self):
         # Tests legacy update.
         db = self.db
-        db.drop_collection("test")
-        db.test.create_index("x", unique=True)
+        db.drop_collection("test_acknowledged_update")
+        collection = db.test_acknowledged_update
+        collection.create_index("x", unique=True)
 
-        db.test.insert({"x": 5})
-        _id = db.test.insert({"x": 4})
+        collection.insert({"x": 5})
+        _id = collection.insert({"x": 4})
 
         self.assertEqual(
-            None, db.test.update({"_id": _id}, {"$inc": {"x": 1}}, w=0))
+            None, collection.update({"_id": _id}, {"$inc": {"x": 1}}, w=0))
 
-        self.assertRaises(DuplicateKeyError, db.test.update,
+        self.assertRaises(DuplicateKeyError, collection.update,
                           {"_id": _id}, {"$inc": {"x": 1}})
 
-        self.assertEqual(1, db.test.update({"_id": _id},
-                                           {"$inc": {"x": 2}})["n"])
+        self.assertEqual(1, collection.update({"_id": _id},
+                                              {"$inc": {"x": 2}})["n"])
 
-        self.assertEqual(0, db.test.update({"_id": "foo"},
-                                           {"$inc": {"x": 2}})["n"])
-        db.drop_collection("test")
+        self.assertEqual(0, collection.update({"_id": "foo"},
+                                              {"$inc": {"x": 2}})["n"])
+        db.drop_collection("test_acknowledged_update")
 
     def test_update_backward_compat(self):
         # MongoDB versions >= 2.6.0 don't return the updatedExisting field
@@ -544,38 +549,39 @@ class TestLegacy(IntegrationTest):
 
     def test_save(self):
         # Tests legacy save.
-        self.db.drop_collection("test")
+        self.db.drop_collection("test_save")
+        collection = self.db.test_save
 
         # Save a doc with autogenerated id
-        _id = self.db.test.save({"hello": "world"})
-        self.assertEqual(self.db.test.find_one()["_id"], _id)
+        _id = collection.save({"hello": "world"})
+        self.assertEqual(collection.find_one()["_id"], _id)
         self.assertTrue(isinstance(_id, ObjectId))
 
         # Save a doc with explicit id
-        self.db.test.save({"_id": "explicit_id", "hello": "bar"})
-        doc = self.db.test.find_one({"_id": "explicit_id"})
+        collection.save({"_id": "explicit_id", "hello": "bar"})
+        doc = collection.find_one({"_id": "explicit_id"})
         self.assertEqual(doc['_id'], 'explicit_id')
         self.assertEqual(doc['hello'], 'bar')
 
         # Save docs with _id field already present (shouldn't create new docs)
-        self.assertEqual(2, self.db.test.count())
-        self.db.test.save({'_id': _id, 'hello': 'world'})
-        self.assertEqual(2, self.db.test.count())
-        self.db.test.save({'_id': 'explicit_id', 'hello': 'baz'})
-        self.assertEqual(2, self.db.test.count())
+        self.assertEqual(2, collection.count())
+        collection.save({'_id': _id, 'hello': 'world'})
+        self.assertEqual(2, collection.count())
+        collection.save({'_id': 'explicit_id', 'hello': 'baz'})
+        self.assertEqual(2, collection.count())
         self.assertEqual(
             'baz',
-            self.db.test.find_one({'_id': 'explicit_id'})['hello']
+            collection.find_one({'_id': 'explicit_id'})['hello']
         )
 
         # Acknowledged mode.
-        self.db.test.create_index("hello", unique=True)
+        collection.create_index("hello", unique=True)
         # No exception, even though we duplicate the first doc's "hello" value
-        self.db.test.save({'_id': 'explicit_id', 'hello': 'world'}, w=0)
+        collection.save({'_id': 'explicit_id', 'hello': 'world'}, w=0)
 
         self.assertRaises(
             DuplicateKeyError,
-            self.db.test.save,
+            collection.save,
             {'_id': 'explicit_id', 'hello': 'world'})
         self.db.drop_collection("test")
 
@@ -593,14 +599,15 @@ class TestLegacy(IntegrationTest):
     def test_acknowledged_save(self):
         # Tests legacy save.
         db = self.db
-        db.drop_collection("test")
-        db.test.create_index("hello", unique=True)
+        db.drop_collection("test_acknowledged_save")
+        collection = db.test_acknowledged_save
+        collection.create_index("hello", unique=True)
 
-        db.test.save({"hello": "world"})
-        db.test.save({"hello": "world"}, w=0)
-        self.assertRaises(DuplicateKeyError, db.test.save,
+        collection.save({"hello": "world"})
+        collection.save({"hello": "world"}, w=0)
+        self.assertRaises(DuplicateKeyError, collection.save,
                           {"hello": "world"})
-        db.drop_collection("test")
+        db.drop_collection("test_acknowledged_save")
 
     def test_save_adds_id(self):
         # Tests legacy save.
@@ -877,13 +884,14 @@ class TestLegacy(IntegrationTest):
         # Tests many legacy API elements.
         # We must call getlasterror on same socket as the last operation.
         db = rs_or_single_client(maxPoolSize=1).pymongo_test
-        db.test.remove({})
-        db.test.save({"i": 1})
+        collection = db.test_last_status
+        collection.remove({})
+        collection.save({"i": 1})
 
-        db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
+        collection.update({"i": 1}, {"$set": {"i": 2}}, w=0)
         self.assertTrue(db.last_status()["updatedExisting"])
 
-        db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
+        collection.update({"i": 1}, {"$set": {"i": 500}}, w=0)
         self.assertFalse(db.last_status()["updatedExisting"])
 
     def test_auto_ref_and_deref(self):
