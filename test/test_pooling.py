@@ -275,61 +275,6 @@ class TestPooling(_TestPoolingBase):
 
         sock_info.close()
 
-    def test_pool_with_fork(self):
-        # Test that separate MongoClients have separate Pools, and that the
-        # driver can create a new MongoClient after forking
-        if sys.platform == "win32":
-            raise SkipTest("Can't test forking on Windows")
-
-        try:
-            from multiprocessing import Process, Pipe
-        except ImportError:
-            raise SkipTest("No multiprocessing module")
-
-        a = rs_or_single_client()
-        a.pymongo_test.test.drop()
-        a.pymongo_test.test.insert_one({'_id':1})
-        a.pymongo_test.test.find_one()
-        self.assertEqual(1, len(get_pool(a).sockets))
-        a_sock = one(get_pool(a).sockets)
-
-        def loop(pipe):
-            c = rs_or_single_client()
-            c.pymongo_test.test.find_one()
-            self.assertEqual(1, len(get_pool(c).sockets))
-            pipe.send(one(get_pool(c).sockets).sock.getsockname())
-
-        cp1, cc1 = Pipe()
-        cp2, cc2 = Pipe()
-
-        p1 = Process(target=loop, args=(cc1,))
-        p2 = Process(target=loop, args=(cc2,))
-
-        p1.start()
-        p2.start()
-
-        p1.join(1)
-        p2.join(1)
-
-        p1.terminate()
-        p2.terminate()
-
-        p1.join()
-        p2.join()
-
-        cc1.close()
-        cc2.close()
-
-        b_sock = cp1.recv()
-        c_sock = cp2.recv()
-        self.assertTrue(a_sock.sock.getsockname() != b_sock)
-        self.assertTrue(a_sock.sock.getsockname() != c_sock)
-        self.assertTrue(b_sock != c_sock)
-
-        # a_sock, created by parent process, is still in the pool
-        with get_pool(a).get_socket({}) as d_sock:
-            self.assertEqual(a_sock, d_sock)
-
     def test_wait_queue_timeout(self):
         wait_queue_timeout = 2  # Seconds
         pool = self.create_pool(
