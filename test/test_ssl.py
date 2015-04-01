@@ -437,6 +437,56 @@ class TestSSL(unittest.TestCase):
                                   ssl_match_hostname=False,
                                   serverSelectionTimeoutMS=100))
 
+    def test_validation_with_system_ca_certs(self):
+        # Expects the server to be running with the server.pem, ca.pem
+        # and crl.pem provided in mongodb and the server tests eg:
+        #
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
+        #   --sslWeakCertificateValidation
+        #
+        # Also requires an /etc/hosts entry where "server" is resolvable
+        if not CERT_SSL:
+            raise SkipTest("No mongod available over SSL with certs")
+
+        if not SERVER_IS_RESOLVABLE:
+            raise SkipTest("No hosts entry for 'server'. Cannot validate "
+                           "hostname in the certificate")
+
+        if sys.version_info < (2, 7, 9):
+            raise SkipTest("SSLContext not available.")
+
+        if (sys.platform == "win32"
+                and sys.version_info[0] == 3 and sys.version_info < (3, 4)):
+            raise SkipTest(
+                "Python 3 can't load Windows system certs before 3.4")
+
+        os.environ['SSL_CERT_FILE'] = CA_PEM
+        try:
+            with self.assertRaises(ConnectionFailure):
+                # Server cert is verified but hostname matching fails
+                connected(MongoClient(pair,
+                                      ssl=True,
+                                      serverSelectionTimeoutMS=100))
+
+            # Server cert is verified. Disable hostname matching.
+            connected(MongoClient(pair,
+                                  ssl=True,
+                                  ssl_match_hostname=False,
+                                  serverSelectionTimeoutMS=100))
+
+            # Server cert and hostname are verified.
+            connected(MongoClient('server',
+                                  ssl=True,
+                                  serverSelectionTimeoutMS=100))
+
+            # Server cert and hostname are verified.
+            connected(
+                MongoClient(
+                    'mongodb://server/?ssl=true&serverSelectionTimeoutMS=100'))
+        finally:
+            os.environ.pop('SSL_CERT_FILE')
 
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the server.pem, ca.pem
