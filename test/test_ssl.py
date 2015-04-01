@@ -30,7 +30,7 @@ from pymongo import MongoClient
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
-from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
+from pymongo.ssl_support import HAVE_SSL, get_ssl_context, validate_cert_reqs
 from test import (host,
                   pair,
                   port,
@@ -487,6 +487,16 @@ class TestSSL(unittest.TestCase):
                     'mongodb://server/?ssl=true&serverSelectionTimeoutMS=100'))
         finally:
             os.environ.pop('SSL_CERT_FILE')
+
+    def test_system_certs_config_error(self):
+        ctx = get_ssl_context(None, None, None, ssl.CERT_NONE)
+        if sys.platform == "win32" and hasattr(ctx, "load_default_certs"):
+            raise SkipTest("Have SSLContext.load_default_certs")
+        elif hasattr(ctx, "set_default_verify_paths"):
+            raise SkipTest("Have SSLContext.set_default_verify_paths")
+
+        with self.assertRaises(ConfigurationError):
+            MongoClient("mongodb://localhost/?ssl=true")
 
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the server.pem, ca.pem
