@@ -198,7 +198,7 @@ PyMongo source directory::
   $ python setup.py bdist_egg
 
 The egg package can be found in the dist/ subdirectory. The file name will
-resemble “pymongo-3.0b1-py2.7-linux-x86_64.egg” but may have a different name
+resemble “pymongo-3.0rc1-py2.7-linux-x86_64.egg” but may have a different name
 depending on your platform and the version of python you use to compile.
 
 .. warning::
@@ -211,7 +211,7 @@ depending on your platform and the version of python you use to compile.
 Copy this file to the target system and issue the following command to install the
 package::
 
-  $ sudo easy_install pymongo-3.0rc0-py2.7-linux-x86_64.egg
+  $ sudo easy_install pymongo-3.0rc1-py2.7-linux-x86_64.egg
 
 Installing a beta or release candidate
 --------------------------------------
@@ -222,9 +222,9 @@ but can be found on the
 `github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
 They can be installed by passing the full URL for the tag to pip::
 
-  $ pip install https://github.com/mongodb/mongo-python-driver/archive/3.0rc0.tar.gz
+  $ pip install https://github.com/mongodb/mongo-python-driver/archive/3.0rc1.tar.gz
 
 or easy_install::
 
-  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/3.0rc0.tar.gz
+  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/3.0rc1.tar.gz
 
