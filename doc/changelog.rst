@@ -34,6 +34,14 @@ listed below before upgrading from PyMongo 2.x.
   must use PyMongo with these versions of Python the 2.x branch of PyMongo
   will be minimally supported for some time.
 
+SSL/TLS changes
+...............
+
+When `ssl` is ``True`` the `ssl_cert_reqs` option now defaults to
+:attr:`ssl.CERT_REQUIRED` if not provided. PyMongo will attempt to load OS
+provided CA certificates to verify the server, raising
+:exc:`~pymongo.errors.ConfigurationError` if it cannot.
+
 Gevent Support
 ..............
 
