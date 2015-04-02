@@ -41,20 +41,12 @@ class Monitor(object):
         Monitor.
         """
         self._server_description = server_description
-
-        # A weakref callback, takes ref to the freed topology as its parameter.
-        def close(dummy):
-            self.close()
-
-        self._topology = weakref.proxy(topology, close)
         self._pool = pool
         self._settings = topology_settings
         self._avg_round_trip_time = MovingAverage()
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the monitor is freed, stop the executor soon.
-        self_ref = weakref.ref(self, close)
-
         def target():
             monitor = self_ref()
             if monitor is None:
@@ -62,11 +54,17 @@ class Monitor(object):
             Monitor._run(monitor)
             return True
 
-        self._executor = periodic_executor.PeriodicExecutor(
+        executor = periodic_executor.PeriodicExecutor(
             condition_class=self._settings.condition_class,
             interval=common.HEARTBEAT_FREQUENCY,
             min_interval=common.MIN_HEARTBEAT_INTERVAL,
             target=target)
+
+        self._executor = executor
+        
+        # Avoid cycles. When self or topology is freed, stop executor soon.
+        self_ref = weakref.ref(self, executor.close)
+        self._topology = weakref.proxy(topology, executor.close)
 
     def open(self):
         """Start monitoring, or restart after a fork.

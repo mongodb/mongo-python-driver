@@ -344,10 +344,6 @@ class MongoClient(common.BaseObject):
         if connect:
             self._topology.open()
 
-        # We strongly reference the executor and it weakly references us via
-        # this closure. When the client is freed, stop the executor.
-        self_ref = weakref.ref(self)
-
         def target():
             client = self_ref()
             if client is None:
@@ -355,13 +351,17 @@ class MongoClient(common.BaseObject):
             MongoClient._process_kill_cursors_queue(client)
             return True
 
-        self._kill_cursors_executor = periodic_executor.PeriodicExecutor(
+        executor = periodic_executor.PeriodicExecutor(
             condition_class=self._topology_settings.condition_class,
             interval=common.KILL_CURSOR_FREQUENCY,
             min_interval=0,
             target=target)
 
-        self._kill_cursors_executor.open()
+        # We strongly reference the executor and it weakly references us via
+        # this closure. When the client is freed, stop the executor soon.
+        self_ref = weakref.ref(self, executor.close)
+        self._kill_cursors_executor = executor
+        executor.open()
 
     def _cache_credentials(self, source, credentials, connect=False):
         """Save a set of authentication credentials.

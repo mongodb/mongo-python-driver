@@ -62,8 +62,12 @@ class PeriodicExecutor(object):
             _register_executor(self)
             thread.start()
 
-    def close(self):
-        """Stop. To restart, call open()."""
+    def close(self, dummy=None):
+        """Stop. To restart, call open().
+
+        The dummy parameter allows an executor's close method to be a weakref
+        callback; see monitor.py.
+        """
         self._stopped = True
 
         # Wake the thread so it notices that _stopped is True.
