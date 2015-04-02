@@ -20,6 +20,7 @@ import time
 import weakref
 
 from pymongo import thread_util
+from pymongo.monotonic import time as _time
 
 
 class PeriodicExecutor(object):
@@ -67,11 +68,11 @@ class PeriodicExecutor(object):
 
         The dummy parameter allows an executor's close method to be a weakref
         callback; see monitor.py.
+
+        Since this can be called from a weakref callback during garbage
+        collection it must take no locks!
         """
         self._stopped = True
-
-        # Wake the thread so it notices that _stopped is True.
-        self.wake()
 
     def join(self, timeout=None):
         if self._thread is not None:
@@ -97,7 +98,15 @@ class PeriodicExecutor(object):
 
             # Avoid running too frequently if wake() is called very often.
             time.sleep(self._min_interval)
-            self._event.wait(self._interval - self._min_interval)
+
+            # Until the deadline, wake often to check if close() was called.
+            deadline = _time() + self._interval
+            while not self._stopped and _time() < deadline:
+                # Our Event's wait returns True if set, else False.
+                if self._event.wait(0.1):
+                    # Someone called wake().
+                    break
+
             self._event.clear()
 
 
