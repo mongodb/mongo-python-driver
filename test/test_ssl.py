@@ -26,7 +26,7 @@ except ImportError:
     # Python 2
     from urllib import quote_plus
 
-from pymongo import MongoClient
+from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
@@ -73,6 +73,7 @@ def is_server_resolvable():
             return False
     finally:
         socket.setdefaulttimeout(socket_timeout)
+
 
 # Shared ssl-enabled client for the tests
 ssl_client = None
@@ -458,7 +459,7 @@ class TestSSL(unittest.TestCase):
             raise SkipTest("Can't test system ca certs on Windows.")
 
         if sys.version_info < (2, 7, 9):
-            raise SkipTest("SSLContext not available.")
+            raise SkipTest("Can't load system CA certificates.")
 
 
         # Tell OpenSSL where CA certificates live.
@@ -490,13 +491,37 @@ class TestSSL(unittest.TestCase):
 
     def test_system_certs_config_error(self):
         ctx = get_ssl_context(None, None, None, ssl.CERT_NONE)
-        if sys.platform == "win32" and hasattr(ctx, "load_default_certs"):
-            raise SkipTest("Have SSLContext.load_default_certs")
-        elif hasattr(ctx, "set_default_verify_paths"):
-            raise SkipTest("Have SSLContext.set_default_verify_paths")
+        if ((sys.platform != "win32"
+             and hasattr(ctx, "set_default_verify_paths"))
+                or hasattr(ctx, "load_default_certs")):
+            raise SkipTest("Can load system CA certificates.")
 
-        with self.assertRaises(ConfigurationError):
-            MongoClient("mongodb://localhost/?ssl=true")
+        have_certifi = ssl_support.HAVE_CERTIFI
+        # Force the test regardless of environment.
+        ssl_support.HAVE_CERTIFI = False
+        try:
+            with self.assertRaises(ConfigurationError):
+                MongoClient("mongodb://localhost/?ssl=true")
+        finally:
+            ssl_support.HAVE_CERTIFI = have_certifi
+
+    def test_certifi_support(self):
+        if hasattr(ssl, "SSLContext"):
+            # SSLSocket doesn't provide ca_certs attribute on pythons
+            # with SSLContext and SSLContext provides no information
+            # about ca_certs.
+            raise SkipTest("Can't test when SSLContext available.")
+        if not ssl_support.HAVE_CERTIFI:
+            raise SkipTest("Need certifi to test certifi support.")
+
+        ctx = get_ssl_context(None, None, CA_PEM, ssl.CERT_REQUIRED)
+        ssl_sock = ctx.wrap_socket(socket.socket())
+        self.assertEqual(ssl_sock.ca_certs, CA_PEM)
+
+        import certifi
+        ctx = get_ssl_context(None, None, None, None)
+        ssl_sock = ctx.wrap_socket(socket.socket())
+        self.assertEqual(ssl_sock.ca_certs, certifi.where())
 
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the server.pem, ca.pem

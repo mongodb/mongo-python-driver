@@ -22,6 +22,13 @@ try:
 except ImportError:
     HAVE_SSL = False
 
+HAVE_CERTIFI = False
+try:
+    import certifi
+    HAVE_CERTIFI = True
+except ImportError:
+    pass
+
 from bson.py3compat import string_type
 from pymongo.errors import ConfigurationError
 
@@ -49,7 +56,7 @@ if HAVE_SSL:
                          "`ssl.CERT_REQUIRED" % (option,))
 
     # XXX: Possible future work.
-    # - Fallback to certifi or wincertstore to load CA certs?
+    # - Fallback to wincertstore to load CA certs on Windows?
     # - Support CRL files? Only supported by CPython >= 2.7.9 and >= 3.4
     #   http://bugs.python.org/issue8813
     # - OCSP? Not supported by python at all.
@@ -86,6 +93,8 @@ if HAVE_SSL:
             elif (sys.platform != "win32" and
                   hasattr(ctx, "set_default_verify_paths")):
                 ctx.set_default_verify_paths()
+            elif HAVE_CERTIFI:
+                ctx.load_verify_locations(certifi.where())
             else:
                 raise ConfigurationError(
                     "`ssl_cert_reqs` is not ssl.CERT_NONE and no system "
