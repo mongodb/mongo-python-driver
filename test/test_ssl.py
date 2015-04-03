@@ -494,16 +494,20 @@ class TestSSL(unittest.TestCase):
         if ((sys.platform != "win32"
              and hasattr(ctx, "set_default_verify_paths"))
                 or hasattr(ctx, "load_default_certs")):
-            raise SkipTest("Can load system CA certificates.")
+            raise SkipTest(
+                "Can't test when system CA certificates are loadable.")
 
         have_certifi = ssl_support.HAVE_CERTIFI
+        have_wincertstore = ssl_support.HAVE_WINCERTSTORE
         # Force the test regardless of environment.
         ssl_support.HAVE_CERTIFI = False
+        ssl_support.HAVE_WINCERTSTORE = False
         try:
             with self.assertRaises(ConfigurationError):
                 MongoClient("mongodb://localhost/?ssl=true")
         finally:
             ssl_support.HAVE_CERTIFI = have_certifi
+            ssl_support.HAVE_WINCERTSTORE = have_wincertstore
 
     def test_certifi_support(self):
         if hasattr(ssl, "SSLContext"):
@@ -514,14 +518,38 @@ class TestSSL(unittest.TestCase):
         if not ssl_support.HAVE_CERTIFI:
             raise SkipTest("Need certifi to test certifi support.")
 
+        have_wincertstore = ssl_support.HAVE_WINCERTSTORE
+        # Force the test on Windows, regardless of environment.
+        ssl_support.HAVE_WINCERTSTORE = False
+        try:
+            ctx = get_ssl_context(None, None, CA_PEM, ssl.CERT_REQUIRED)
+            ssl_sock = ctx.wrap_socket(socket.socket())
+            self.assertEqual(ssl_sock.ca_certs, CA_PEM)
+
+            ctx = get_ssl_context(None, None, None, None)
+            ssl_sock = ctx.wrap_socket(socket.socket())
+            self.assertEqual(ssl_sock.ca_certs, ssl_support.certifi.where())
+        finally:
+            ssl_support.HAVE_WINCERTSTORE = have_wincertstore
+
+    def test_wincertstore(self):
+        if sys.platform != "win32":
+            raise SkipTest("Only valid on Windows.")
+        if hasattr(ssl, "SSLContext"):
+            # SSLSocket doesn't provide ca_certs attribute on pythons
+            # with SSLContext and SSLContext provides no information
+            # about ca_certs.
+            raise SkipTest("Can't test when SSLContext available.")
+        if not ssl_support.HAVE_WINCERTSTORE:
+            raise SkipTest("Need wincertstore to test wincertstore.")
+
         ctx = get_ssl_context(None, None, CA_PEM, ssl.CERT_REQUIRED)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-        import certifi
         ctx = get_ssl_context(None, None, None, None)
         ssl_sock = ctx.wrap_socket(socket.socket())
-        self.assertEqual(ssl_sock.ca_certs, certifi.where())
+        self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the server.pem, ca.pem

@@ -14,7 +14,9 @@
 
 """Support for SSL in PyMongo."""
 
+import atexit
 import sys
+import threading
 
 HAVE_SSL = True
 try:
@@ -29,8 +31,18 @@ try:
 except ImportError:
     pass
 
+HAVE_WINCERTSTORE = False
+try:
+    from wincertstore import CertFile
+    HAVE_WINCERTSTORE = True
+except ImportError:
+    pass
+
 from bson.py3compat import string_type
 from pymongo.errors import ConfigurationError
+
+_WINCERTSLOCK = threading.Lock()
+_WINCERTS = None
 
 if HAVE_SSL:
     try:
@@ -55,8 +67,18 @@ if HAVE_SSL:
                          "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
                          "`ssl.CERT_REQUIRED" % (option,))
 
+    def _load_wincerts():
+        """Set _WINCERTS to an instance of wincertstore.Certfile."""
+        global _WINCERTS
+
+        certfile = CertFile()
+        certfile.addstore("CA")
+        certfile.addstore("ROOT")
+        atexit.register(certfile.close)
+
+        _WINCERTS = certfile
+
     # XXX: Possible future work.
-    # - Fallback to wincertstore to load CA certs on Windows?
     # - Support CRL files? Only supported by CPython >= 2.7.9 and >= 3.4
     #   http://bugs.python.org/issue8813
     # - OCSP? Not supported by python at all.
@@ -93,6 +115,11 @@ if HAVE_SSL:
             elif (sys.platform != "win32" and
                   hasattr(ctx, "set_default_verify_paths")):
                 ctx.set_default_verify_paths()
+            elif sys.platform == "win32" and HAVE_WINCERTSTORE:
+                with _WINCERTSLOCK:
+                    if _WINCERTS is None:
+                        _load_wincerts()
+                ctx.load_verify_locations(_WINCERTS.name)
             elif HAVE_CERTIFI:
                 ctx.load_verify_locations(certifi.where())
             else:
