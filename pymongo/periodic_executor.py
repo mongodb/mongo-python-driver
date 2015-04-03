@@ -96,11 +96,12 @@ class PeriodicExecutor(object):
                 self._stopped = True
                 raise
 
+            deadline = _time() + self._interval
+
             # Avoid running too frequently if wake() is called very often.
             time.sleep(self._min_interval)
 
             # Until the deadline, wake often to check if close() was called.
-            deadline = _time() + self._interval
             while not self._stopped and _time() < deadline:
                 # Our Event's wait returns True if set, else False.
                 if self._event.wait(0.1):
