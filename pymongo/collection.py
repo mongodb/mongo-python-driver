@@ -260,7 +260,7 @@ class Collection(common.BaseObject):
           >>> coll1.read_preference
           Primary()
           >>> from pymongo import ReadPreference
-          >>> coll2 = coll.with_options(read_preference=ReadPreference.SECONDARY)
+          >>> coll2 = coll1.with_options(read_preference=ReadPreference.SECONDARY)
           >>> coll1.read_preference
           Primary()
           >>> coll2.read_preference
