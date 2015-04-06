@@ -34,6 +34,27 @@ listed below before upgrading from PyMongo 2.x.
   must use PyMongo with these versions of Python the 2.x branch of PyMongo
   will be minimally supported for some time.
 
+SONManipulator changes
+......................
+
+The :class:`~pymongo.son_manipulator.SONManipulator` API has limitations as a
+technique for transforming your data. Instead, it is more flexible and
+straightforward to transform outgoing documents in your own code before passing
+them to PyMongo, and transform incoming documents after receiving them from
+PyMongo.
+
+Thus the :meth:`~pymongo.database.Database.add_son_manipulator` method is
+deprecated. PyMongo 3's new CRUD API does **not** apply SON manipulators to
+documents passed to :meth:`~pymongo.collection.Collection.bulk_write`,
+:meth:`~pymongo.collection.Collection.insert_one`,
+:meth:`~pymongo.collection.Collection.insert_many`,
+:meth:`~pymongo.collection.Collection.update_one`, or
+:meth:`~pymongo.collection.Collection.update_many`. SON manipulators are **not**
+applied to documents returned by the new methods
+:meth:`~pymongo.collection.Collection.find_one_and_delete`,
+:meth:`~pymongo.collection.Collection.find_one_and_replace`, and
+:meth:`~pymongo.collection.Collection.find_one_and_update`.
+
 SSL/TLS changes
 ...............
 
