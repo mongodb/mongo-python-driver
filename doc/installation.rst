@@ -26,12 +26,15 @@ packages:
   where clock adjustments are frequent. Not needed in Python 3.3+.
 - `wincertstore <https://pypi.python.org/pypi/wincertstore>`_ adds support
   for verifying server SSL certificates using Windows provided CA
-  certificates on older versions of python. Not needed or used on Python2
-  2.7.9+ or Python3 3.4.0+.
+  certificates on older versions of python. Not needed or used with versions
+  of Python 2 beginning with 2.7.9, or versions of Python 3 beginning with
+  3.4.0.
 - `certifi <https://pypi.python.org/pypi/certifi>`_ adds support for
   using the Mozilla CA bundle with SSL to verify server certificates. Not
-  needed or used with Python 2.7.9+ on any OS, Python 3.4.0+ on Windows,
-  or Python 3.2.0+ on systems other than Windows.
+  needed or used with versions of Python 2 beginning with 2.7.9 on any OS,
+  versions of Python 3 beginning with Python 3.4.0 on Windows, or versions
+  of Python 3 beginning with Python 3.2.0 on operating systems other than
+  Windows.
 
 Microsoft Windows
 -----------------
