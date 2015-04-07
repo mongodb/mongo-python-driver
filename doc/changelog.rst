@@ -19,9 +19,9 @@ improvements:
 - A unified CRUD API. All official MongoDB drivers now implement a standard
   CRUD API allowing polyglot developers to move from language to language
   with ease.
-- Single source support for python 2.x and 3.x. PyMongo no longer relies on
-  2to3 to support python 3.
-- A rewritten pure python BSON implementation, improving performance
+- Single source support for Python 2.x and 3.x. PyMongo no longer relies on
+  2to3 to support Python 3.
+- A rewritten pure Python BSON implementation, improving performance
   with pypy and cpython deployments without support for C extensions.
 - Better support for greenlet based async frameworks including eventlet.
 - Immutable client, database, and collection classes, avoiding a host of thread
