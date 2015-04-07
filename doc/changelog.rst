@@ -88,7 +88,8 @@ members, and monitor the set for stepdowns, elections, and reconfigs.
 :class:`~pymongo.mongo_client.MongoClient` now also supports the full
 :class:`~pymongo.read_preferences.ReadPreference` API.
 
-The obsolete ``MasterSlaveConnection`` class is removed.
+The obsolete classes ``MasterSlaveConnection``, ``Connection``, and
+``ReplicaSetConnection`` are removed.
 
 The :class:`~pymongo.mongo_client.MongoClient` constructor no
 longer blocks while connecting to the server or servers, and it no
