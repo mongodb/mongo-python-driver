@@ -634,11 +634,16 @@ class TestCursor(IntegrationTest):
         if client_context.version.at_least(2, 6, 0):
             # Count supports hint
             self.assertEqual(0, collection.find({'i': 1}).hint("x_1").count())
+            self.assertEqual(
+                0, collection.find({'i': 1}).hint([("x", 1)]).count())
         else:
             # Hint is ignored
             self.assertEqual(1, collection.find({'i': 1}).hint("x_1").count())
+            self.assertEqual(
+                1, collection.find({'i': 1}).hint([("x", 1)]).count())
 
         self.assertEqual(2, collection.find().hint("x_1").count())
+        self.assertEqual(2, collection.find().hint([("x", 1)]).count())
 
     def test_where(self):
         db = self.db

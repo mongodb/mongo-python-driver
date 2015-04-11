@@ -975,6 +975,15 @@ class Collection(common.BaseObject):
         return [CommandCursor(self, cursor['cursor'], sock_info.address)
                 for cursor in result['cursors']]
 
+    def _count(self, cmd):
+        """Internal count helper."""
+        with self._socket_for_reads() as (sock_info, slave_ok):
+            res = self._command(sock_info, cmd, slave_ok,
+                                allowable_errors=["ns missing"])
+        if res.get("errmsg", "") == "ns missing":
+            return 0
+        return int(res["n"])
+
     def count(self, filter=None, **kwargs):
         """Get the number of documents in this collection.
 
@@ -1006,12 +1015,7 @@ class Collection(common.BaseObject):
         if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
         cmd.update(kwargs)
-        with self._socket_for_reads() as (sock_info, slave_ok):
-            res = self._command(sock_info, cmd, slave_ok,
-                                allowable_errors=["ns missing"])
-        if res.get("errmsg", "") == "ns missing":
-            return 0
-        return int(res["n"])
+        return self._count(cmd)
 
     def create_indexes(self, indexes):
         """Create one or more indexes on this collection.

@@ -655,22 +655,23 @@ class Cursor(object):
            The :meth:`~count` method now supports :meth:`~hint`.
         """
         validate_boolean("with_limit_and_skip", with_limit_and_skip)
-        options = {"query": self.__spec}
+        cmd = SON([("count", self.__collection.name),
+                   ("query", self.__spec)])
         if self.__max_time_ms is not None:
-            options["maxTimeMS"] = self.__max_time_ms
+            cmd["maxTimeMS"] = self.__max_time_ms
         if self.__comment:
-            options["$comment"] = self.__comment
+            cmd["$comment"] = self.__comment
 
         if self.__hint is not None:
-            options["hint"] = self.__hint
+            cmd["hint"] = self.__hint
 
         if with_limit_and_skip:
             if self.__limit:
-                options["limit"] = self.__limit
+                cmd["limit"] = self.__limit
             if self.__skip:
-                options["skip"] = self.__skip
+                cmd["skip"] = self.__skip
 
-        return self.__collection.count(**options)
+        return self.__collection._count(cmd)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
