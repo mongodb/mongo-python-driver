@@ -615,6 +615,16 @@ class TestLegacy(IntegrationTest):
         self.db.test.save(doc)
         self.assertTrue("_id" in doc)
 
+    def test_save_returns_id(self):
+        doc = {"hello": "jesse"}
+        _id = self.db.test.save(doc)
+        self.assertTrue(isinstance(_id, ObjectId))
+        self.assertEqual(_id, doc["_id"])
+        doc["hi"] = "bernie"
+        _id = self.db.test.save(doc)
+        self.assertTrue(isinstance(_id, ObjectId))
+        self.assertEqual(_id, doc["_id"])
+
     def test_remove_one(self):
         # Tests legacy remove.
         self.db.test.remove()

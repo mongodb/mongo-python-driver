@@ -1887,6 +1887,7 @@ class Collection(common.BaseObject):
             else:
                 self._update(sock_info, {"_id": to_save["_id"]}, to_save, True,
                              check_keys, False, manipulate, write_concern)
+                return to_save.get("_id")
 
     def insert(self, doc_or_docs, manipulate=True,
                check_keys=True, continue_on_error=False, **kwargs):
