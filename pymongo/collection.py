@@ -870,8 +870,11 @@ class Collection(common.BaseObject):
             error.
           - `oplog_replay` (optional): If True, set the oplogReplay query
             flag.
-          - `modifiers` (optional): A dict specifying the MongoDB query
-            modifiers that should be used for this query.
+          - `modifiers` (optional): A dict specifying the MongoDB `query
+            modifiers`_ that should be used for this query. For example::
+
+              >>> db.test.find(modifiers={"$maxTimeMS": 500})
+
           - `batch_size` (optional): Limits the number of documents returned in
             a single batch.
           - `manipulate` (optional): **DEPRECATED** - If True (the default),
@@ -918,6 +921,8 @@ class Collection(common.BaseObject):
            The `tag_sets` and `secondary_acceptable_latency_ms` parameters.
 
         .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
+        .. _query modifiers:
+          http://docs.mongodb.org/manual/reference/operator/query-modifier/
 
         .. mongodoc:: find
         """

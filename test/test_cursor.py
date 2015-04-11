@@ -1111,5 +1111,19 @@ class TestCursor(IntegrationTest):
         docs.extend(ccursor)
         self.assertEqual(len(docs), 200)
 
+    def test_modifiers(self):
+        cur = self.db.test.find()
+        self.assertTrue('$query' not in cur._Cursor__query_spec())
+        cur = self.db.test.find().comment("testing").max_time_ms(500)
+        self.assertTrue('$query' in cur._Cursor__query_spec())
+        self.assertEqual(cur._Cursor__query_spec()["$comment"], "testing")
+        self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 500)
+        cur = self.db.test.find(
+            modifiers={"$maxTimeMS": 500, "$comment": "testing"})
+        self.assertTrue('$query' in cur._Cursor__query_spec())
+        self.assertEqual(cur._Cursor__query_spec()["$comment"], "testing")
+        self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 500)
+
+
 if __name__ == "__main__":
     unittest.main()
