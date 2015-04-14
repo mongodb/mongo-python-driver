@@ -977,6 +977,33 @@ class TestLegacy(IntegrationTest):
         out = db.test.find_one()
         self.assertEqual('value', out.get('value'))
 
+    def test_son_manipulator_outgoing(self):
+        class Thing(object):
+            def __init__(self, value):
+                self.value = value
+
+        class ThingTransformer(SONManipulator):
+            def transform_outgoing(self, doc, collection):
+                # We don't want this applied to the command return
+                # value in pymongo.cursor.Cursor.
+                if 'value' in doc:
+                    return Thing(doc['value'])
+                return doc
+
+        db = self.client.foo
+        db.add_son_manipulator(ThingTransformer())
+
+        db.test.delete_many({})
+        db.test.insert_one({'value': 'value'})
+        out = db.test.find_one()
+        self.assertTrue(isinstance(out, Thing))
+        self.assertEqual('value', out.value)
+
+        if client_context.version.at_least(2, 6):
+            out = next(db.test.aggregate([], cursor={}))
+            self.assertTrue(isinstance(out, Thing))
+            self.assertEqual('value', out.value)
+
     def test_son_manipulator_inheritance(self):
         # Tests legacy API elements.
         class Thing(object):

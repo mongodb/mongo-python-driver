@@ -167,7 +167,7 @@ class CommandCursor(object):
         """
         if len(self.__data) or self._refresh():
             coll = self.__collection
-            return coll.database._fix_incoming(self.__data.popleft(), coll)
+            return coll.database._fix_outgoing(self.__data.popleft(), coll)
         else:
             raise StopIteration
 
