@@ -462,17 +462,20 @@ class Database(common.BaseObject):
                 cmd["filter"] = criteria
             coll = self["$cmd"]
             cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
+            return CommandCursor(coll, cursor, sock_info.address)
         else:
             coll = self["system.namespaces"]
             res = _first_batch(sock_info, coll.full_name,
                                criteria, 0, slave_okay,
                                CodecOptions(), ReadPreference.PRIMARY)
+            data = res["data"]
             cursor = {
                 "id": res["cursor_id"],
-                "firstBatch": res["data"],
+                "firstBatch": data,
                 "ns": coll.full_name,
             }
-        return CommandCursor(coll, cursor, sock_info.address)
+            # Need to tell the cursor how many docs were in the first batch.
+            return CommandCursor(coll, cursor, sock_info.address, len(data))
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.

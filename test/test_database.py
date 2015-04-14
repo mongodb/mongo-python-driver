@@ -163,6 +163,16 @@ class TestDatabase(IntegrationTest):
         for coll in colls_without_systems:
             self.assertTrue(not coll.startswith("system."))
 
+        # Force more than one batch.
+        db = self.client.many_collections
+        for i in range(101):
+            db["coll" + str(i)].insert_one({})
+        # No Error
+        try:
+            db.collection_names()
+        finally:
+            self.client.drop_database("many_collections")
+
     def test_drop_collection(self):
         db = Database(self.client, "pymongo_test")
 

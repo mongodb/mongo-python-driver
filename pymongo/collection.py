@@ -1264,23 +1264,31 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
+        codec_options = CodecOptions(SON)
+        coll = self.with_options(codec_options)
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
             if sock_info.max_wire_version > 2:
                 cmd = SON([("listIndexes", self.__name), ("cursor", {})])
                 cursor = self._command(sock_info, cmd, slave_ok,
                                        ReadPreference.PRIMARY,
-                                       CodecOptions(SON))["cursor"]
+                                       codec_options)["cursor"]
+                return CommandCursor(coll, cursor, sock_info.address)
             else:
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
                     sock_info, namespace, {"ns": self.__full_name},
-                    0, slave_ok, CodecOptions(SON), ReadPreference.PRIMARY)
+                    0, slave_ok, codec_options, ReadPreference.PRIMARY)
+                data = res["data"]
                 cursor = {
                     "id": res["cursor_id"],
-                    "firstBatch": res["data"],
+                    "firstBatch": data,
                     "ns": namespace,
                 }
-            return CommandCursor(self, cursor, sock_info.address)
+                # Note that a collection can only have 64 indexes, so we don't
+                # technically have to pass len(data) here. There will never be
+                # an OP_GET_MORE call.
+                return CommandCursor(
+                    coll, cursor, sock_info.address, len(data))
 
     def index_information(self):
         """Get information on this collection's indexes.
