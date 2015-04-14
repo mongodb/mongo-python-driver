@@ -19,20 +19,20 @@ import socket
 import sys
 import unittest
 
+sys.path[0:0] = [""]
+
 try:
     from ssl import CertificateError
 except ImportError:
     # Backport.
     from pymongo.ssl_match_hostname import CertificateError
 
-sys.path[0:0] = [""]
-
 from urllib import quote_plus
 
 from nose.plugins.skip import SkipTest
 
 from pymongo import MongoClient, MongoReplicaSetClient
-from pymongo.common import HAS_SSL
+from pymongo.common import HAS_SSL, validate_cert_reqs
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
@@ -52,9 +52,9 @@ MONGODB_X509_USERNAME = (
 
 # To fully test this start a mongod instance (built with SSL support) like so:
 # mongod --dbpath /path/to/data/directory --sslOnNormalPorts \
-# --sslPEMKeyFile /path/to/mongo/jstests/libs/server.pem \
-# --sslCAFile /path/to/mongo/jstests/libs/ca.pem \
-# --sslCRLFile /path/to/mongo/jstests/libs/crl.pem \
+# --sslPEMKeyFile /path/to/pymongo/test/certificates/server.pem \
+# --sslCAFile /path/to/pymongo/test/certificates/ca.pem \
+# --sslCRLFile /path/to/pymongo/test/certificates/crl.pem \
 # --sslWeakCertificateValidation
 # Also, make sure you have 'server' as an alias for localhost in /etc/hosts
 #
@@ -85,17 +85,19 @@ if HAS_SSL:
         MongoClient(host, port, connectTimeoutMS=100, ssl=True)
         SIMPLE_SSL = True
     except ConnectionFailure:
-        # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
-        # mongodb jstests/lib?
-        try:
-            MongoClient(host, port, connectTimeoutMS=100, ssl=True,
-                        ssl_certfile=CLIENT_PEM)
-            CERT_SSL = True
-        except ConnectionFailure:
-            pass
+        pass
 
-        if CERT_SSL:
-            SERVER_IS_RESOLVABLE = is_server_resolvable()
+    # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
+    # mongodb jstests/lib?
+    try:
+        MongoClient(host, port, connectTimeoutMS=100, ssl=True,
+                    ssl_certfile=CLIENT_PEM)
+        CERT_SSL = True
+    except ConnectionFailure:
+        pass
+
+    if CERT_SSL:
+        SERVER_IS_RESOLVABLE = is_server_resolvable()
 
 
 class TestClientSSL(unittest.TestCase):
@@ -123,7 +125,6 @@ class TestClientSSL(unittest.TestCase):
                           ssl_certfile=CLIENT_PEM)
 
     def test_config_ssl(self):
-        """Tests various ssl configurations"""
         self.assertRaises(ConfigurationError, MongoClient, ssl='foo')
         self.assertRaises(ConfigurationError,
                           MongoClient,
@@ -199,6 +200,39 @@ class TestClientSSL(unittest.TestCase):
                           ssl_keyfile=CLIENT_PEM,
                           ssl_certfile=CLIENT_PEM)
 
+        self.assertRaises(
+            ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', 3)
+        self.assertRaises(
+            ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', -1)
+        self.assertRaises(
+            ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', 'foo')
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', None), None)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', ssl.CERT_NONE),
+            ssl.CERT_NONE)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', ssl.CERT_OPTIONAL),
+            ssl.CERT_OPTIONAL)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', ssl.CERT_REQUIRED),
+            ssl.CERT_REQUIRED)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', 0), ssl.CERT_NONE)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', 1), ssl.CERT_OPTIONAL)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', 2), ssl.CERT_REQUIRED)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', 'CERT_NONE'),
+            ssl.CERT_NONE)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', 'CERT_OPTIONAL'),
+            ssl.CERT_OPTIONAL)
+        self.assertEqual(
+            validate_cert_reqs('ssl_cert_reqs', 'CERT_REQUIRED'),
+            ssl.CERT_REQUIRED)
+
 
 class TestSSL(unittest.TestCase):
 
@@ -234,9 +268,9 @@ class TestSSL(unittest.TestCase):
         # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
-        #   --sslPEMKeyFile=jstests/libs/server.pem
-        #   --sslCAFile=jstests/libs/ca.pem
-        #   --sslCRLFile=jstests/libs/crl.pem
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
         #
         # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
@@ -260,9 +294,9 @@ class TestSSL(unittest.TestCase):
         # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
-        #   --sslPEMKeyFile=jstests/libs/server.pem
-        #   --sslCAFile=jstests/libs/ca.pem
-        #   --sslCRLFile=jstests/libs/crl.pem
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
         #
         # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
@@ -286,9 +320,9 @@ class TestSSL(unittest.TestCase):
         # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
-        #   --sslPEMKeyFile=jstests/libs/server.pem
-        #   --sslCAFile=jstests/libs/ca.pem
-        #   --sslCRLFile=jstests/libs/crl.pem
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
         #
         # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
@@ -323,13 +357,39 @@ class TestSSL(unittest.TestCase):
         self.assertTrue(db.test.find_one()['ssl'])
         client.drop_database('pymongo_ssl_test')
 
+    def test_cert_ssl_uri_support(self):
+        # Expects the server to be running with the server.pem, ca.pem
+        # and crl.pem provided in mongodb and the server tests eg:
+        #
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
+        #
+        # Also requires an /etc/hosts entry where "server" is resolvable
+        if not CERT_SSL:
+            raise SkipTest("No mongod available over SSL with certs")
+
+        if not SERVER_IS_RESOLVABLE:
+            raise SkipTest("No hosts entry for 'server'. Cannot validate "
+                           "hostname in the certificate")
+
+        uri_fmt = ("mongodb://server/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
+                   "=%s&ssl_ca_certs=%s")
+        client = MongoClient(uri_fmt % (CLIENT_PEM, 'CERT_REQUIRED', CA_PEM))
+
+        db = client.pymongo_ssl_test
+        db.test.drop()
+        db.test.insert({'ssl': True})
+        self.assertTrue(db.test.find_one()['ssl'])
+        client.drop_database('pymongo_ssl_test')
+
     def test_cert_ssl_validation_optional(self):
         # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
-        #   --sslPEMKeyFile=jstests/libs/server.pem
-        #   --sslCAFile=jstests/libs/ca.pem
-        #   --sslCRLFile=jstests/libs/crl.pem
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
         #
         # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
@@ -369,9 +429,9 @@ class TestSSL(unittest.TestCase):
         # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
-        #   --sslPEMKeyFile=jstests/libs/server.pem
-        #   --sslCAFile=jstests/libs/ca.pem
-        #   --sslCRLFile=jstests/libs/crl.pem
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
@@ -406,9 +466,9 @@ class TestSSL(unittest.TestCase):
         # and crl.pem provided in mongodb and the server tests as well as
         # --auth
         #
-        #   --sslPEMKeyFile=jstests/libs/server.pem
-        #   --sslCAFile=jstests/libs/ca.pem
-        #   --sslCRLFile=jstests/libs/crl.pem
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
         #   --auth
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")

@@ -20,7 +20,7 @@ import warnings
 
 import pymongo
 from nose.plugins.skip import SkipTest
-from pymongo.errors import OperationFailure
+from pymongo.errors import ConnectionFailure, OperationFailure
 
 # hostnames retrieved by MongoReplicaSetClient from isMaster will be of unicode
 # type in Python 2, so ensure these hostnames are unicodes, too. It makes tests
@@ -42,30 +42,34 @@ db_pwd = unicode(os.environ.get("DB_PASSWORD", "password"))
 class AuthContext(object):
 
     def __init__(self):
-        self.client = pymongo.MongoClient(host, port)
         self.auth_enabled = False
         self.restricted_localhost = False
         try:
-            command_line = self.client.admin.command('getCmdLineOpts')
-            if self._server_started_with_auth(command_line):
-                self.auth_enabled = True
-        except OperationFailure, e:
-            msg = e.details.get('errmsg', '')
-            if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
-                self.auth_enabled = True
-                self.restricted_localhost = True
-            else:
-                raise
-        # See if the user has already been set up.
-        try:
-            self.client.admin.authenticate(db_user, db_pwd)
-            self.user_provided = True
-        except OperationFailure, e:
-            msg = e.details.get('errmsg', '')
-            if e.code == 18 or 'auth fails' in msg:
-                self.user_provided = False
-            else:
-                raise
+            self.client = pymongo.MongoClient(host, port)
+        except ConnectionFailure:
+            self.client = None
+        else:
+            try:
+                command_line = self.client.admin.command('getCmdLineOpts')
+                if self._server_started_with_auth(command_line):
+                    self.auth_enabled = True
+            except OperationFailure, e:
+                msg = e.details.get('errmsg', '')
+                if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
+                    self.auth_enabled = True
+                    self.restricted_localhost = True
+                else:
+                    raise
+            # See if the user has already been set up.
+            try:
+                self.client.admin.authenticate(db_user, db_pwd)
+                self.user_provided = True
+            except OperationFailure, e:
+                msg = e.details.get('errmsg', '')
+                if e.code == 18 or 'auth fails' in msg:
+                    self.user_provided = False
+                else:
+                    raise
 
     def _server_started_with_auth(self, command_line):
         # MongoDB >= 2.0

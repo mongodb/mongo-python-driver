@@ -27,13 +27,11 @@ from bson.code import Code
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.connection import Connection
-from pymongo import common
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from test import host, port, pair, version, skip_restricted_localhost
 from test.utils import catch_warnings, drop_collections
-from ssl import CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
 
 have_uuid = True
 try:
@@ -521,20 +519,6 @@ class TestCommon(unittest.TestCase):
             self.assertTrue(coll.insert(doc))
         finally:
             ctx.exit()
-
-    def test_validate_cert_reqs(self):
-        self.assertRaises(ConfigurationError, common.validate_cert_reqs, 'ssl_cert_reqs', 3)
-        self.assertRaises(ConfigurationError, common.validate_cert_reqs, 'ssl_cert_reqs', -1)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', None), None)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', CERT_NONE), CERT_NONE)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', CERT_OPTIONAL), CERT_OPTIONAL)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', CERT_REQUIRED), CERT_REQUIRED)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', 0), CERT_NONE)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', 1), CERT_OPTIONAL)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', 2), CERT_REQUIRED)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', 'CERT_NONE'), CERT_NONE)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', 'CERT_OPTIONAL'), CERT_OPTIONAL)
-        self.assertEqual(common.validate_cert_reqs('ssl_cert_reqs', 'CERT_REQUIRED'), CERT_REQUIRED)
 
 
 if __name__ == "__main__":

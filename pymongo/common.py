@@ -124,11 +124,10 @@ def validate_cert_reqs(option, value):
     if value is None:
         return value
     if HAS_SSL:
+        if isinstance(value, basestring) and hasattr(ssl, value):
+            value = getattr(ssl, value)
         if value in (ssl.CERT_NONE, ssl.CERT_OPTIONAL, ssl.CERT_REQUIRED):
             return value
-        elif isinstance(value, basestring) and hasattr(ssl, value) and \
-                        getattr(ssl, value) in (ssl.CERT_NONE, ssl.CERT_OPTIONAL, ssl.CERT_REQUIRED):
-            return getattr(ssl, value)
         raise ConfigurationError("The value of %s must be one of: "
                                  "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
                                  "`ssl.CERT_REQUIRED" % (option,))
