@@ -200,38 +200,39 @@ class TestClientSSL(unittest.TestCase):
                           ssl_keyfile=CLIENT_PEM,
                           ssl_certfile=CLIENT_PEM)
 
-        self.assertRaises(
-            ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', 3)
-        self.assertRaises(
-            ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', -1)
-        self.assertRaises(
-            ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', 'foo')
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', None), None)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', ssl.CERT_NONE),
-            ssl.CERT_NONE)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', ssl.CERT_OPTIONAL),
-            ssl.CERT_OPTIONAL)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', ssl.CERT_REQUIRED),
-            ssl.CERT_REQUIRED)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', 0), ssl.CERT_NONE)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', 1), ssl.CERT_OPTIONAL)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', 2), ssl.CERT_REQUIRED)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', 'CERT_NONE'),
-            ssl.CERT_NONE)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', 'CERT_OPTIONAL'),
-            ssl.CERT_OPTIONAL)
-        self.assertEqual(
-            validate_cert_reqs('ssl_cert_reqs', 'CERT_REQUIRED'),
-            ssl.CERT_REQUIRED)
+        if HAS_SSL:
+            self.assertRaises(
+                ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', 3)
+            self.assertRaises(
+                ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', -1)
+            self.assertRaises(
+                ConfigurationError, validate_cert_reqs, 'ssl_cert_reqs', 'foo')
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', None), None)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', ssl.CERT_NONE),
+                ssl.CERT_NONE)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', ssl.CERT_OPTIONAL),
+                ssl.CERT_OPTIONAL)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', ssl.CERT_REQUIRED),
+                ssl.CERT_REQUIRED)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', 0), ssl.CERT_NONE)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', 1), ssl.CERT_OPTIONAL)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', 2), ssl.CERT_REQUIRED)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', 'CERT_NONE'),
+                ssl.CERT_NONE)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', 'CERT_OPTIONAL'),
+                ssl.CERT_OPTIONAL)
+            self.assertEqual(
+                validate_cert_reqs('ssl_cert_reqs', 'CERT_REQUIRED'),
+                ssl.CERT_REQUIRED)
 
 
 class TestSSL(unittest.TestCase):
