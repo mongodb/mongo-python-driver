@@ -759,6 +759,33 @@ class TestDatabase(unittest.TestCase):
         out = db.test.find_one()
         self.assertEqual('value', out.get('value'))
 
+    def test_son_manipulator_outgoing(self):
+        class Thing(object):
+            def __init__(self, value):
+                self.value = value
+
+        class ThingTransformer(SONManipulator):
+            def transform_outgoing(self, doc, collection):
+                # We don't want this applied to the command return
+                # value in pymongo.cursor.Cursor.
+                if 'value' in doc:
+                    return Thing(doc['value'])
+                return doc
+
+        db = self.client.foo
+        db.add_son_manipulator(ThingTransformer())
+
+        db.test.remove()
+        db.test.insert({'value': 'value'})
+        out = db.test.find_one()
+        self.assertTrue(isinstance(out, Thing))
+        self.assertEqual('value', out.value)
+
+        if version.at_least(self.client, (2, 6)):
+            out = db.test.aggregate([], cursor={}).next()
+            self.assertTrue(isinstance(out, Thing))
+            self.assertEqual('value', out.value)
+
     def test_son_manipulator_inheritance(self):
         class Thing(object):
             def __init__(self, value):
