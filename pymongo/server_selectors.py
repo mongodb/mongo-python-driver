@@ -21,10 +21,6 @@ def any_server_selector(server_descriptions):
     return server_descriptions
 
 
-def address_server_selector(address, server_descriptions):
-    return [s for s in server_descriptions if s.address == address]
-
-
 def writable_server_selector(server_descriptions):
     return [s for s in server_descriptions if s.is_writable]
 
