@@ -308,7 +308,8 @@ class Topology(object):
             # Ignore the selector.
             return self._description.known_servers
         elif address:
-            return [self._description.server_descriptions().get(address)]
+            sd = self._description.server_descriptions().get(address)
+            return [sd] if sd else []
         elif self._description.topology_type == TOPOLOGY_TYPE.Sharded:
             return apply_local_threshold(self._settings.local_threshold_ms,
                                          self._description.known_servers)
