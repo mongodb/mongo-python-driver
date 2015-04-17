@@ -1435,7 +1435,6 @@ class TestCollection(unittest.TestCase):
             raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
         self.db.test.remove()
         self.db.test.insert([{} for _ in range(3)])
-        self.addCleanup(self.db.test.remove)
         cursor = self.db.test.aggregate(pipeline=[], cursor={'batchSize': 2})
         n = 0
         while True:
