@@ -1110,6 +1110,7 @@ class TestCollection(IntegrationTest):
         for doc in cursor:
             pass
 
+    @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor_alive(self):
         self.db.test.remove()
         self.db.test.insert_many([{} for _ in range(3)])
