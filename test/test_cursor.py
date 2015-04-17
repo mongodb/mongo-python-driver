@@ -1165,5 +1165,20 @@ self.assertFalse(c2.alive)
             client.set_cursor_manager(CursorManager)
             ctx.exit()
 
+    def test_alive(self):
+        self.db.test.remove()
+        self.db.test.insert([{} for _ in range(3)])
+        self.addCleanup(self.db.test.remove)
+        cursor = self.db.test.find().batch_size(2)
+        n = 0
+        while True:
+            cursor.next()
+            n += 1
+            if 3 == n:
+                self.assertFalse(cursor.alive)
+                break
+
+            self.assertTrue(cursor.alive)
+
 if __name__ == "__main__":
     unittest.main()

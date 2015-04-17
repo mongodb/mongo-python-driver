@@ -977,6 +977,8 @@ class Cursor(object):
             raise
 
         self.__id = response["cursor_id"]
+        if self.__id == 0:
+            self.__killed = True
 
         # starting from doesn't get set on getmore's for tailable cursors
         if not (self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]):
@@ -1049,6 +1051,11 @@ class Cursor(object):
         <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_
         since they will stop iterating even though they *may* return more
         results in the future.
+
+        With regular cursors, simply use a for loop instead of :attr:`alive`::
+
+            for doc in collection.find():
+                print(doc)
 
         .. versionadded:: 1.5
         """

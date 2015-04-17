@@ -40,7 +40,7 @@ class CommandCursor(object):
         )
         self.__retrieved = retrieved
         self.__batch_size = 0
-        self.__killed = False
+        self.__killed = (self.__id == 0)
 
         if "ns" in cursor_info:
             self.__ns = cursor_info["ns"]
@@ -123,6 +123,8 @@ class CommandCursor(object):
             client.disconnect()
             raise
         self.__id = response["cursor_id"]
+        if self.__id == 0:
+            self.__killed = True
 
         assert response["starting_from"] == self.__retrieved, (
             "Result batch started from %s, expected %s" % (
@@ -153,7 +155,14 @@ class CommandCursor(object):
 
     @property
     def alive(self):
-        """Does this cursor have the potential to return more data?"""
+        """Does this cursor have the potential to return more data?
+
+        Even if :attr:`alive` is ``True``, :meth:`.next` can raise
+        :exc:`StopIteration`. Best to use a for loop::
+
+            for doc in collection.aggregate(pipeline):
+                print(doc)
+        """
         return bool(len(self.__data) or (not self.__killed))
 
     @property

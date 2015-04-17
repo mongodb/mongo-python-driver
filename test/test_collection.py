@@ -1430,6 +1430,23 @@ class TestCollection(unittest.TestCase):
                 expected_sum,
                 sum(doc['_id'] for doc in cursor))
 
+    def test_aggregation_cursor_alive(self):
+        if not version.at_least(self.db.connection, (2, 5, 1)):
+            raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
+        self.db.test.remove()
+        self.db.test.insert([{} for _ in range(3)])
+        self.addCleanup(self.db.test.remove)
+        cursor = self.db.test.aggregate(pipeline=[], cursor={'batchSize': 2})
+        n = 0
+        while True:
+            cursor.next()
+            n += 1
+            if 3 == n:
+                self.assertFalse(cursor.alive)
+                break
+
+            self.assertTrue(cursor.alive)
+
     def test_parallel_scan(self):
         if is_mongos(self.db.connection):
             raise SkipTest("mongos does not support parallel_scan")
