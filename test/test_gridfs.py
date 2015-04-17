@@ -122,7 +122,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(0, self.db.fs.files.count())
         self.assertEqual(0, self.db.fs.chunks.count())
         gfs = gridfs.GridFS(self.db)
-        oid = gfs.put("hello", chunkSize=1)
+        oid = gfs.put(b"hello", chunkSize=1)
         self.assertEqual(1, self.db.fs.files.count())
         self.assertEqual(5, self.db.fs.chunks.count())
         gfs.delete(oid)
