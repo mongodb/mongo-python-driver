@@ -1168,7 +1168,6 @@ self.assertFalse(c2.alive)
     def test_alive(self):
         self.db.test.remove()
         self.db.test.insert([{} for _ in range(3)])
-        self.addCleanup(self.db.test.remove)
         cursor = self.db.test.find().batch_size(2)
         n = 0
         while True:
