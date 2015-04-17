@@ -1110,6 +1110,21 @@ class TestCollection(IntegrationTest):
         for doc in cursor:
             pass
 
+    def test_aggregation_cursor_alive(self):
+        self.db.test.remove()
+        self.db.test.insert_many([{} for _ in range(3)])
+        self.addCleanup(self.db.test.remove)
+        cursor = self.db.test.aggregate(pipeline=[], cursor={'batchSize': 2})
+        n = 0
+        while True:
+            cursor.next()
+            n += 1
+            if 3 == n:
+                self.assertFalse(cursor.alive)
+                break
+
+            self.assertTrue(cursor.alive)
+
     @client_context.require_version_min(2, 5, 5)
     @client_context.require_no_mongos
     def test_parallel_scan(self):

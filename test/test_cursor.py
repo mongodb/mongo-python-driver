@@ -1124,6 +1124,21 @@ class TestCursor(IntegrationTest):
         self.assertEqual(cur._Cursor__query_spec()["$comment"], "testing")
         self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 500)
 
+    def test_alive(self):
+        self.db.test.remove()
+        self.db.test.insert_many([{} for _ in range(3)])
+        self.addCleanup(self.db.test.remove)
+        cursor = self.db.test.find().batch_size(2)
+        n = 0
+        while True:
+            cursor.next()
+            n += 1
+            if 3 == n:
+                self.assertFalse(cursor.alive)
+                break
+
+            self.assertTrue(cursor.alive)
+
 
 if __name__ == "__main__":
     unittest.main()
