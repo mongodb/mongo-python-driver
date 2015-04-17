@@ -41,15 +41,9 @@ class GridFS(object):
         Raises :class:`TypeError` if `database` is not an instance of
         :class:`~pymongo.database.Database`.
 
-        The `connect` parameter ensures that the underlying
-        :class:`~pymongo.mongo_client.MongoClient` is connected to a server,
-        and creates an index on the "chunks" collection if needed.
-
         :Parameters:
           - `database`: database to use
           - `collection` (optional): root collection to use
-          - `connect` (optional): whether to begin connecting the client in
-            the background
 
         .. versionchanged:: 3.0
            `database` must use an acknowledged
@@ -235,8 +229,8 @@ class GridFS(object):
           - `file_id`: ``"_id"`` of the file to delete
         """
         self.__ensure_index_files_id()
-        self.__files.delete_many({"_id": file_id})
-        self.__chunks.delete_one({"files_id": file_id})
+        self.__files.delete_one({"_id": file_id})
+        self.__chunks.delete_many({"files_id": file_id})
 
     def list(self):
         """List the names of all files stored in this instance of

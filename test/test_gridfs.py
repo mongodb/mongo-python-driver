@@ -117,6 +117,18 @@ class TestGridfs(IntegrationTest):
         self.assertEqual("foo", oid)
         self.assertEqual(b"hello world", self.fs.get("foo").read())
 
+    def test_multi_chunk_delete(self):
+        self.db.fs.drop()
+        self.assertEqual(0, self.db.fs.files.count())
+        self.assertEqual(0, self.db.fs.chunks.count())
+        gfs = gridfs.GridFS(self.db)
+        oid = gfs.put("hello", chunkSize=1)
+        self.assertEqual(1, self.db.fs.files.count())
+        self.assertEqual(5, self.db.fs.chunks.count())
+        gfs.delete(oid)
+        self.assertEqual(0, self.db.fs.files.count())
+        self.assertEqual(0, self.db.fs.chunks.count())
+
     def test_list(self):
         self.assertEqual([], self.fs.list())
         self.fs.put(b"hello world")
