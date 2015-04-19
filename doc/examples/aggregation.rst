@@ -174,14 +174,13 @@ reduce function.
 Here we are doing a simple group and count of the occurrences of ``x`` values:
 
 .. doctest::
-
+  >>> from bson.code import Code
   >>> reducer = Code("""
   ...                function(obj, prev){
   ...                  prev.count++;
   ...                }
   ...                """)
   ...
-  >>> from bson.son import SON
   >>> results = db.things.group(key={"x":1}, condition={}, initial={"count": 0}, reduce=reducer)
   >>> for doc in results:
   ...   print doc
