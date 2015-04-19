@@ -177,6 +177,7 @@ reduce function.
 Here we are doing a simple group and count of the occurrences of ``x`` values:
 
 .. doctest::
+
   >>> from bson.code import Code
   >>> reducer = Code("""
   ...                function(obj, prev){
