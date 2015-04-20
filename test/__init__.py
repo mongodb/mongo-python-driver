@@ -298,7 +298,7 @@ class ClientContext(object):
                              func=func)
 
     def require_mongos(self, func):
-        """Run a test only if the client is not connected to a mongos."""
+        """Run a test only if the client is connected to a mongos."""
         return self._require(self.is_mongos,
                              "Must be connected to a mongos",
                              func=func)
