@@ -94,6 +94,18 @@ Optional packages:
 - `Monotime <https://pypi.python.org/pypi/Monotime>`_ adds support for
   a monotonic clock, which improves reliability in environments
   where clock adjustments are frequent. Not needed in Python 3.3+.
+- `wincertstore <https://pypi.python.org/pypi/wincertstore>`_ adds support
+  for verifying server SSL certificates using Windows provided CA
+  certificates on older versions of python. Not needed or used with versions
+  of Python 2 beginning with 2.7.9, or versions of Python 3 beginning with
+  3.4.0.
+- `certifi <https://pypi.python.org/pypi/certifi>`_ adds support for
+  using the Mozilla CA bundle with SSL to verify server certificates. Not
+  needed or used with versions of Python 2 beginning with 2.7.9 on any OS,
+  versions of Python 3 beginning with Python 3.4.0 on Windows, or versions
+  of Python 3 beginning with Python 3.2.0 on operating systems other than
+  Windows.
+
 
 Additional dependencies are:
 
@@ -157,7 +169,7 @@ To verify that PyMongo works with Gevent's monkey-patching::
 
     $ python green_framework_test.py gevent
 
-Or with Eventlet's:
+Or with Eventlet's::
 
     $ python green_framework_test.py eventlet
 
