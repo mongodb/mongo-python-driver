@@ -22,7 +22,6 @@ sys.path[0:0] = [""]
 
 from bson.py3compat import MAXSIZE
 from bson.son import SON
-from pymongo.cursor import _QUERY_OPTIONS
 from pymongo.errors import ConfigurationError
 from pymongo.message import _maybe_add_read_preference
 from pymongo.mongo_client import MongoClient
@@ -35,15 +34,14 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
 from test.test_replica_set_client import TestReplicaSetClientBase
-from test import (client_context,
+from test import (SkipTest,
+                  client_context,
                   host,
                   port,
                   unittest,
-                  utils,
-                  IntegrationTest,
                   db_user,
                   db_pwd)
-from test.utils import connected, single_client, one, wait_until, rs_client
+from test.utils import single_client, one, wait_until, rs_client
 from test.version import Version
 
 
