@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.0.1
+------------------------
+
+Version 3.0.1 fixes issues reported since the release of 3.0, most
+importantly a bug in GridFS.delete that could prevent file chunks from
+actually being deleted.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.0.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.0.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/15322
+
 Changes in Version 3.0
 ----------------------
 
