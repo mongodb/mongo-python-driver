@@ -1125,9 +1125,9 @@ class TestCursor(IntegrationTest):
         self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 500)
 
     def test_alive(self):
-        self.db.test.remove()
+        self.db.test.delete_many({})
         self.db.test.insert_many([{} for _ in range(3)])
-        self.addCleanup(self.db.test.remove)
+        self.addCleanup(self.db.test.delete_many, {})
         cursor = self.db.test.find().batch_size(2)
         n = 0
         while True:

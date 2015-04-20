@@ -1112,9 +1112,9 @@ class TestCollection(IntegrationTest):
 
     @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor_alive(self):
-        self.db.test.remove()
+        self.db.test.delete_many({})
         self.db.test.insert_many([{} for _ in range(3)])
-        self.addCleanup(self.db.test.remove)
+        self.addCleanup(self.db.test.delete_many, {})
         cursor = self.db.test.aggregate(pipeline=[], cursor={'batchSize': 2})
         n = 0
         while True:
