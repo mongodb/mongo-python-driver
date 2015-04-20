@@ -69,7 +69,7 @@ def _maybe_add_read_preference(spec, read_preference):
     if mode and (
         mode != ReadPreference.SECONDARY_PREFERRED.mode or tag_sets != [{}]):
 
-        if "query" not in spec:
+        if "$query" not in spec:
             spec = SON([("$query", spec)])
         spec["$readPreference"] = read_preference.document
     return spec

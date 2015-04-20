@@ -297,6 +297,12 @@ class ClientContext(object):
                              "Must be connected to a mongod, not a mongos",
                              func=func)
 
+    def require_mongos(self, func):
+        """Run a test only if the client is not connected to a mongos."""
+        return self._require(self.is_mongos,
+                             "Must be connected to a mongos",
+                             func=func)
+
     def check_auth_with_sharding(self, func):
         """Skip a test when connected to mongos < 2.0 and running with auth."""
         condition = not (self.auth_enabled and

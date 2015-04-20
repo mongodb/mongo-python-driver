@@ -21,8 +21,10 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.py3compat import MAXSIZE
+from bson.son import SON
 from pymongo.cursor import _QUERY_OPTIONS
 from pymongo.errors import ConfigurationError
+from pymongo.message import _maybe_add_read_preference
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import (ReadPreference, MovingAverage,
                                       Primary, PrimaryPreferred,
@@ -399,6 +401,95 @@ class TestMovingAverage(unittest.TestCase):
         self.assertAlmostEqual(12, avg.get())
         avg.add_sample(30)
         self.assertAlmostEqual(15.6, avg.get())
+
+class TestMongosAndReadPreference(unittest.TestCase):
+
+    def test_maybe_add_read_preference(self):
+
+        # Primary doesn't add $readPreference
+        out = _maybe_add_read_preference({}, Primary())
+        self.assertEqual(out, {})
+
+        pref = PrimaryPreferred()
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(
+            out, SON([("$query", {}), ("$readPreference", pref.document)]))
+        pref = PrimaryPreferred(tag_sets=[{'dc': 'nyc'}])
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(
+            out, SON([("$query", {}), ("$readPreference", pref.document)]))
+
+        pref = Secondary()
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(
+            out, SON([("$query", {}), ("$readPreference", pref.document)]))
+        pref = Secondary(tag_sets=[{'dc': 'nyc'}])
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(
+            out, SON([("$query", {}), ("$readPreference", pref.document)]))
+
+        # SecondaryPreferred without tag_sets doesn't add $readPreference
+        pref = SecondaryPreferred()
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(out, {})
+        pref = SecondaryPreferred(tag_sets=[{'dc': 'nyc'}])
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(
+            out, SON([("$query", {}), ("$readPreference", pref.document)]))
+
+        pref = Nearest()
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(
+            out, SON([("$query", {}), ("$readPreference", pref.document)]))
+        pref = Nearest(tag_sets=[{'dc': 'nyc'}])
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(
+            out, SON([("$query", {}), ("$readPreference", pref.document)]))
+
+        criteria = SON([("$query", {}), ("$orderby", SON([("_id", 1)]))])
+        pref = Nearest()
+        out = _maybe_add_read_preference(criteria, pref)
+        self.assertEqual(
+            out,
+            SON([("$query", {}),
+                 ("$orderby", SON([("_id", 1)])),
+                 ("$readPreference", pref.document)]))
+        pref = Nearest(tag_sets=[{'dc': 'nyc'}])
+        out = _maybe_add_read_preference(criteria, pref)
+        self.assertEqual(
+            out,
+            SON([("$query", {}),
+                 ("$orderby", SON([("_id", 1)])),
+                 ("$readPreference", pref.document)]))
+
+    @client_context.require_mongos
+    def test_mongos(self):
+        shard = client_context.client.config.shards.find_one()['host']
+        num_members = shard.count(',') + 1
+        if num_members == 1:
+            raise SkipTest("Need a replica set shard to test.")
+        coll = client_context.client.pymongo_test.get_collection(
+            "test",
+            write_concern=WriteConcern(w=num_members))
+        coll.drop()
+        res = coll.insert_many([{} for _ in range(5)])
+        first_id = res.inserted_ids[0]
+        last_id = res.inserted_ids[-1]
+
+        # Note - this isn't a perfect test since there's no way to
+        # tell what shard member a query ran on.
+        for pref in (Primary(),
+                     PrimaryPreferred(),
+                     Secondary(),
+                     SecondaryPreferred(),
+                     Nearest()):
+            qcoll = coll.with_options(read_preference=pref)
+            results = list(qcoll.find().sort([("_id", 1)]))
+            self.assertEqual(first_id, results[0]["_id"])
+            self.assertEqual(last_id, results[-1]["_id"])
+            results = list(qcoll.find().sort([("_id", -1)]))
+            self.assertEqual(first_id, results[-1]["_id"])
+            self.assertEqual(last_id, results[0]["_id"])
 
 
 if __name__ == "__main__":
