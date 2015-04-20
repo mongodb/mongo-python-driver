@@ -500,6 +500,38 @@ in this release.
 
 .. _PyMongo 2.8 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14223
 
+Changes in Version 2.7.2
+------------------------
+
+Version 2.7.2 includes fixes for upsert reporting in the bulk API for MongoDB
+versions previous to 2.6, a regression in how son manipulators are applied in
+:meth:`~pymongo.collection.Collection.insert`, a few obscure connection pool
+semaphore leaks, and a few other minor issues. See the list of issues resolved
+for full details.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.7.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.7.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14005
+
+Changes in Version 2.7.1
+------------------------
+
+Version 2.7.1 fixes a number of issues reported since the release of 2.7,
+most importantly a fix for creating indexes and manipulating users through
+mongos versions older than 2.4.0.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.7.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.7.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/13823
+
 Changes in Version 2.7
 ----------------------
 
