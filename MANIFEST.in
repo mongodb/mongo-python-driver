@@ -3,6 +3,9 @@ include LICENSE
 include ez_setup.py
 recursive-include doc *.rst
 recursive-include doc *.py
+recursive-include doc *.conf
+recursive-include doc *.css
+recursive-include doc *.js
 recursive-include tools *.py
 include tools/README.rst
 recursive-include test *.pem
