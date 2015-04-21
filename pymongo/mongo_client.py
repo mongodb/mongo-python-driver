@@ -118,12 +118,20 @@ class MongoClient(common.BaseObject):
             that the pool will open simultaneously. If this is set, operations
             will block if there are `maxPoolSize` outstanding connections
             from the pool. Defaults to 100.
-          - `socketTimeoutMS`: (integer or None) How long (in milliseconds) a
-            send or receive on a socket can take before timing out. Defaults to
-            ``None`` (no timeout).
-          - `connectTimeoutMS`: (integer or None) How long (in milliseconds) a
-            connection can take to be opened before timing out. Defaults to
-            ``20000``.
+          - `socketTimeoutMS`: (integer or None) Controls how long (in
+            milliseconds) the driver will wait for a response after sending an
+            ordinary (non-monitoring) database operation before concluding that
+            a network error has occurred. Defaults to ``None`` (no timeout).
+          - `connectTimeoutMS`: (integer or None) Controls how long (in
+            milliseconds) the driver will wait during server monitoring when
+            connecting a new socket to a server before concluding the server
+            is unavailable. Defaults to ``20000`` (20 seconds).
+          - `serverSelectionTimeoutMS`: (integer) Controls how long (in
+            milliseconds) the driver will wait to find an available,
+            appropriate server to carry out a database operation; while it is
+            waiting, multiple server monitoring operations may be carried out,
+            each controlled by `connectTimeoutMS`. Defaults to ``30000`` (30
+            seconds).
           - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
             a thread will wait for a socket from the pool if the pool has no
             free sockets. Defaults to ``None`` (no timeout).
