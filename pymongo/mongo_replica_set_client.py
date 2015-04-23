@@ -1306,7 +1306,9 @@ class MongoReplicaSetClient(common.BaseObject):
 
         try:
             self.__check_auth(sock_info)
-        except OperationFailure:
+        except:
+            # No matter whether an auth failure or network error, increment
+            # the pool's semaphore by returning the socket.
             member.maybe_return_socket(sock_info)
             raise
         return sock_info
