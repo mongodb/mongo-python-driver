@@ -1005,36 +1005,29 @@ class TestReplicaSetClientAuth(TestReplicaSetClientBase, TestRequestMixin):
     def test_auth_network_error(self):
         # Make sure there's no semaphore leak if we get a network error
         # when authenticating a new socket with cached credentials.
-        auth_client = self._get_client()
+        # Get a client with one socket so we detect if it's leaked.
+        c = self._get_client(max_pool_size=1, waitQueueTimeoutMS=1)
 
-        auth_context.client.admin.add_user('admin', 'password')
-        auth_client.admin.authenticate('admin', 'password')
-        try:
-            # Get a client with one socket so we detect if it's leaked.
-            c = self._get_client(max_pool_size=1, waitQueueTimeoutMS=1)
+        # Simulate an authenticate() call on a different socket.
+        credentials = auth._build_credentials_tuple(
+            'DEFAULT', 'admin',
+            unicode(db_user), unicode(db_pwd),
+            {})
 
-            # Simulate an authenticate() call on a different socket.
-            credentials = auth._build_credentials_tuple(
-                'DEFAULT', 'admin',
-                unicode('admin'), unicode('password'),
-                {})
+        c._cache_credentials('test', credentials, connect=False)
 
-            c._cache_credentials('test', credentials, connect=False)
+        # Cause a network error on the actual socket.
+        pool = get_pool(c)
+        socket_info = one(pool.sockets)
+        socket_info.sock.close()
 
-            # Cause a network error on the actual socket.
-            pool = get_pool(c)
-            socket_info = one(pool.sockets)
-            socket_info.sock.close()
+        # In __check_auth, the client authenticates its socket with the
+        # new credential, but gets a socket.error. Should be reraised as
+        # AutoReconnect.
+        self.assertRaises(AutoReconnect, c.test.collection.find_one)
 
-            # In __check_auth, the client authenticates its socket with the
-            # new credential, but gets a socket.error. Should be reraised as
-            # AutoReconnect.
-            self.assertRaises(AutoReconnect, c.test.collection.find_one)
-
-            # No semaphore leak, the pool is allowed to make a new socket.
-            c.test.collection.find_one()
-        finally:
-            auth_client.admin.remove_user('admin')
+        # No semaphore leak, the pool is allowed to make a new socket.
+        c.test.collection.find_one()
 
 
 class TestBulkAuthorization(BulkTestBase):
