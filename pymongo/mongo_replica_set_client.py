@@ -356,7 +356,9 @@ class Monitor(object):
                     self.rsc.refresh()
                 finally:
                     self.refreshed.set()
-            except AutoReconnect:
+            except (AutoReconnect, OperationFailure) as exc:
+                # Set is unreachable, or we experienced a transient auth
+                # failure while a secondary is replicating credentials.
                 pass
 
             # RSC has been collected or there
