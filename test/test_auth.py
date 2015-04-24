@@ -1022,9 +1022,12 @@ class TestReplicaSetClientAuth(TestReplicaSetClientBase, TestRequestMixin):
         socket_info.sock.close()
 
         # In __check_auth, the client authenticates its socket with the
-        # new credential, but gets a socket.error. Should be reraised as
-        # AutoReconnect.
-        self.assertRaises(AutoReconnect, c.test.collection.find_one)
+        # new credential, but gets a socket.error. Reraised as AutoReconnect,
+        # unless periodic monitoring or Pool._check prevent the error.
+        try:
+            c.test.collection.find_one()
+        except AutoReconnect:
+            pass
 
         # No semaphore leak, the pool is allowed to make a new socket.
         c.test.collection.find_one()
