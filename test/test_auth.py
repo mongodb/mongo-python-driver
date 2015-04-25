@@ -1006,7 +1006,11 @@ class TestReplicaSetClientAuth(TestReplicaSetClientBase, TestRequestMixin):
         # Make sure there's no semaphore leak if we get a network error
         # when authenticating a new socket with cached credentials.
         # Get a client with one socket so we detect if it's leaked.
-        c = self._get_client(max_pool_size=1, waitQueueTimeoutMS=1)
+
+        # Generous wait queue timeout in case the main thread contends
+        # with the monitor, though -- a semaphore leak will be detected
+        # eventually, even with a long timeout.
+        c = self._get_client(max_pool_size=1, waitQueueTimeoutMS=10000)
 
         # Simulate an authenticate() call on a different socket.
         credentials = auth._build_credentials_tuple(
