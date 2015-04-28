@@ -42,6 +42,9 @@ from pymongo.errors import AutoReconnect
 
 
 class MasterSlaveConnection(BaseObject):
+
+    _rs_client = True
+
     def __init__(self, master, slaves=[], document_class=dict, tz_aware=False):
         """Create a new Master-Slave connection.
 

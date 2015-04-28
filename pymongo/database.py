@@ -327,7 +327,7 @@ class Database(common.BaseObject):
 
         # Warn if must_use_master will override read_preference.
         if (extra_opts['read_preference'] != ReadPreference.PRIMARY and
-                extra_opts['_must_use_master']):
+                extra_opts['_must_use_master'] and self.connection._rs_client):
             warnings.warn("%s does not support %s read preference "
                           "and will be routed to the primary instead." %
                           (command_name,

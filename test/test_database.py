@@ -694,20 +694,6 @@ class TestDatabase(unittest.TestCase):
         else:
             self.fail('OperationFailure not raised')
 
-    def test_command_read_pref_warning(self):
-        ctx = catch_warnings()
-        try:
-            warnings.simplefilter("error", UserWarning)
-            self.assertRaises(UserWarning, self.client.pymongo_test.command,
-                              'ping', read_preference=ReadPreference.SECONDARY)
-            try:
-                self.client.pymongo_test.command('dbStats',
-                    read_preference=ReadPreference.SECONDARY_PREFERRED)
-            except UserWarning:
-                self.fail("Shouldn't have raised UserWarning.")
-        finally:
-            ctx.exit()
-
     def test_command_max_time_ms(self):
         if not version.at_least(self.client, (2, 5, 3, -1)):
             raise SkipTest("MaxTimeMS requires MongoDB >= 2.5.3")

@@ -87,6 +87,7 @@ class MongoClient(common.BaseObject):
 
     HOST = "localhost"
     PORT = 27017
+    _rs_client = False
 
     def __init__(self, host=None, port=None, max_pool_size=100,
                  document_class=dict, tz_aware=False, _connect=True,

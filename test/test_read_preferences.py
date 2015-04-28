@@ -24,6 +24,8 @@ sys.path[0:0] = [""]
 
 from bson.son import SON
 from pymongo.cursor import _QUERY_OPTIONS
+from pymongo.master_slave_connection import MasterSlaveConnection
+from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import (ReadPreference, modes, MovingAverage,
                                       secondary_ok_commands)
@@ -277,6 +279,38 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                             self.fail(
                                 "Some members not used for NEAREST: %s" % (
                                     unused))
+
+    def test_command_read_pref_warning(self):
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("error", UserWarning)
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertRaises(UserWarning, self.c.pymongo_test.command,
+                              'ping', read_preference=ReadPreference.SECONDARY)
+            try:
+                self.c.pymongo_test.command('dbStats',
+                    read_preference=ReadPreference.SECONDARY_PREFERRED)
+            except UserWarning:
+                self.fail("Shouldn't have raised UserWarning.")
+
+            primary = MongoClient(host, port)
+            try:
+                primary.pymongo_test.command('ping',
+                    read_preference=ReadPreference.SECONDARY_PREFERRED)
+            except UserWarning:
+                self.fail("Shouldn't have raised UserWarning.")
+
+            secondary = MongoClient(*next(iter(self.c.secondaries)))
+            msclient = MasterSlaveConnection(primary, [secondary])
+            self.assertRaises(UserWarning, msclient.pymongo_test.command,
+                              'ping', read_preference=ReadPreference.SECONDARY)
+            try:
+                msclient.pymongo_test.command('dbStats',
+                    read_preference=ReadPreference.SECONDARY_PREFERRED)
+            except UserWarning:
+                self.fail("Shouldn't have raised UserWarning.")
+        finally:
+            ctx.exit()
 
     def test_command(self):
         # Test generic 'command' method. Some commands obey read preference,

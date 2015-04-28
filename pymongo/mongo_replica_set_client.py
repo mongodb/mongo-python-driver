@@ -433,6 +433,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
     # For tests.
     _refresh_timeout_sec = 5
+    _rs_client = True
 
     def __init__(self, hosts_or_uri=None, max_pool_size=100,
                  document_class=dict, tz_aware=False, _connect=True, **kwargs):
