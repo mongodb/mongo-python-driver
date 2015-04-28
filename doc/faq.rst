@@ -98,6 +98,110 @@ For `Twisted <http://twistedmatrix.com/>`_, see `TxMongo
 <http://github.com/fiorix/mongo-async-python-driver>`_. Compared to PyMongo,
 TxMongo is less stable, lacks features, and is less actively maintained.
 
+Key order in subdocuments -- why does my query work in the shell but not PyMongo?
+---------------------------------------------------------------------------------
+
+.. testsetup:: key-order
+
+  from bson.son import SON
+  from pymongo.mongo_client import MongoClient
+
+  collection = MongoClient().test.collection
+  collection.drop()
+  collection.insert({'_id': 1.0,
+                     'subdocument': SON([('b', 1.0), ('a', 1.0)])})
+
+The key-value pairs in a BSON document can have any order (except that ``_id``
+is always first). The mongo shell preserves key order when reading and writing
+data. Observe that "b" comes before "a" when we create the document and when it
+is displayed:
+
+.. code-block:: javascript
+
+  > // mongo shell.
+  > db.collection.insert( { "_id" : 1, "subdocument" : { "b" : 1, "a" : 1 } } )
+  WriteResult({ "nInserted" : 1 })
+  > db.collection.find()
+  { "_id" : 1, "subdocument" : { "b" : 1, "a" : 1 } }
+
+PyMongo represents BSON documents as Python dicts by default, and the order
+of keys in dicts is not defined. That is, a dict declared with the "a" key
+first is the same, to Python, as one with "b" first:
+
+.. doctest:: key-order
+
+  >>> print {'a': 1.0, 'b': 1.0}
+  {'a': 1.0, 'b': 1.0}
+  >>> print {'b': 1.0, 'a': 1.0}
+  {'a': 1.0, 'b': 1.0}
+
+Therefore, Python dicts are not guaranteed to show keys in the order they are
+stored in BSON. Here, "a" is shown before "b":
+
+.. doctest:: key-order
+
+  >>> print collection.find_one()
+  {u'_id': 1.0, u'subdocument': {u'a': 1.0, u'b': 1.0}}
+
+To preserve order when reading BSON, use the :class:`~bson.son.SON` class,
+which is a dict that remembers its key order. Now, documents and subdocuments
+in query results are represented with :class:`~bson.son.SON` objects:
+
+.. doctest:: key-order
+
+  >>> from bson.son import SON
+  >>> print collection.find_one(as_class=SON)
+  SON([(u'_id', 1.0), (u'subdocument', SON([(u'b', 1.0), (u'a', 1.0)]))])
+
+The subdocument's actual storage layout is now visible: "b" is before "a".
+
+Because a dict's key order is not defined, you cannot predict how it will be
+serialized **to** BSON. But MongoDB considers subdocuments equal only if their
+keys have the same order. So if you use a dict to query on a subdocument it may
+not match:
+
+.. doctest:: key-order
+
+  >>> collection.find_one({'subdocument': {'a': 1.0, 'b': 1.0}}) is None
+  True
+
+Swapping the key order in your query makes no difference:
+
+.. doctest:: key-order
+
+  >>> collection.find_one({'subdocument': {'b': 1.0, 'a': 1.0}}) is None
+  True
+
+... because, as we saw above, Python considers the two dicts the same.
+
+There are two solutions. First, you can match the subdocument field-by-field:
+
+.. doctest:: key-order
+
+  >>> collection.find_one({'subdocument.a': 1.0,
+  ...                      'subdocument.b': 1.0})
+  {u'_id': 1.0, u'subdocument': {u'a': 1.0, u'b': 1.0}}
+
+The query matches any subdocument with an "a" of 1.0 and a "b" of 1.0,
+regardless of the order you specify them in Python or the order they are stored
+in BSON. Additionally, this query now matches subdocuments with additional
+keys besides "a" and "b", whereas the previous query required an exact match.
+
+The second solution is to use a :class:`~bson.son.SON` to specify the key order:
+
+.. doctest:: key-order
+
+  >>> query = {'subdocument': SON([('b', 1.0), ('a', 1.0)])}
+  >>> collection.find_one(query)
+  {u'_id': 1.0, u'subdocument': {u'a': 1.0, u'b': 1.0}}
+
+The key order you use when you create a :class:`~bson.son.SON` is preserved
+when it is serialized to BSON and used as a query. Thus you can create a
+subdocument that exactly matches the subdocument in the collection.
+
+.. seealso:: `MongoDB Manual entry on subdocument matching
+   <http://docs.mongodb.org/manual/tutorial/query-documents/#embedded-documents>`_.
+
 What does *CursorNotFound* cursor id not valid at server mean?
 --------------------------------------------------------------
 Cursors in MongoDB can timeout on the server if they've been open for
