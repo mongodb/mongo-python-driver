@@ -300,7 +300,8 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
 
-            secondary = MongoClient(*next(iter(self.c.secondaries)))
+            secondary_addr = iter(self.c.secondaries).next()
+            secondary = MongoClient(*secondary_addr)
             msclient = MasterSlaveConnection(primary, [secondary])
             self.assertRaises(UserWarning, msclient.pymongo_test.command,
                               'ping', read_preference=ReadPreference.SECONDARY)
