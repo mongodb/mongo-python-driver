@@ -14,13 +14,13 @@
 
 """Test the topology module."""
 
-import json
 import os
 import sys
 import threading
 
 sys.path[0:0] = [""]
 
+from bson import json_util
 from pymongo import common
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
@@ -175,7 +175,7 @@ def create_tests():
 
         for filename in filenames:
             with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = json.load(scenario_stream)
+                scenario_def = json_util.loads(scenario_stream.read())
 
             # Construct test from scenario.
             new_test = create_test(scenario_def)

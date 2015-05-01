@@ -112,6 +112,10 @@ class IsMaster(object):
         return self._doc.get('maxWireVersion', common.MAX_WIRE_VERSION)
 
     @property
+    def election_id(self):
+        return self._doc.get('electionId')
+
+    @property
     def is_writable(self):
         return self._is_writable
 

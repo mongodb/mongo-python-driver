@@ -40,7 +40,8 @@ class Topology(object):
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
             topology_settings.get_server_descriptions(),
-            topology_settings.replica_set_name)
+            topology_settings.replica_set_name,
+            None)
 
         self._description = topology_description
         # Store the seed list to help diagnose errors in _error_message().
