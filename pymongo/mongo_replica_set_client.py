@@ -356,9 +356,7 @@ class Monitor(object):
                     self.rsc.refresh()
                 finally:
                     self.refreshed.set()
-            except (AutoReconnect, OperationFailure), exc:
-                # Set is unreachable, or we experienced a transient auth
-                # failure while a secondary is replicating credentials.
+            except (AutoReconnect, OperationFailure):
                 pass
 
             # RSC has been collected or there
@@ -1183,7 +1181,9 @@ class MongoReplicaSetClient(common.BaseObject):
                     if response['ismaster']:
                         writer = node
 
-            except (ConnectionFailure, socket.error), why:
+            except (ConnectionFailure, socket.error, OperationFailure), why:
+                # Member unreachable, or transient auth failure while member
+                # is resyncing credentials.
                 if member:
                     member.discard_socket(sock_info)
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
@@ -1226,7 +1226,9 @@ class MongoReplicaSetClient(common.BaseObject):
 
                 members[host] = new_member
 
-            except (ConnectionFailure, socket.error):
+            except (ConnectionFailure, socket.error, OperationFailure):
+                # Member unreachable, or transient auth failure while member
+                # is resyncing credentials.
                 if member:
                     member.discard_socket(sock_info)
                 continue
