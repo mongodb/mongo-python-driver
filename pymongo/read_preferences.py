@@ -124,6 +124,19 @@ class _ServerMode(object):
     def __ne__(self, other):
         return not self == other
 
+    def __getstate__(self):
+        """Return value of object for pickling.
+
+        Needed explicitly because __slots__() defined.
+        """
+        return {'mode': self.__mode, 'tag_sets': self.__tag_sets}
+
+    def __setstate__(self, value):
+        """Restore from pickling."""
+        self.__mode = value['mode']
+        self.__mongos_mode = _MONGOS_MODES[self.__mode]
+        self.__tag_sets = _validate_tag_sets(value['tag_sets'])
+
 
 class Primary(_ServerMode):
     """Primary read preference.

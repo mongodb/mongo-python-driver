@@ -15,8 +15,10 @@
 """Test the replica_set_connection module."""
 
 import contextlib
+import copy
 import random
 import sys
+import pickle
 
 sys.path[0:0] = [""]
 
@@ -43,6 +45,18 @@ from test import (SkipTest,
                   db_pwd)
 from test.utils import single_client, one, wait_until, rs_client
 from test.version import Version
+
+
+class TestReadPreferenceObjects(unittest.TestCase):
+    prefs = [Primary(), Secondary(), Nearest(tag_sets=[{'a': 1}, {'b': 2}])]
+
+    def test_pickle(self):
+        for pref in self.prefs:
+            self.assertEqual(pref, pickle.loads(pickle.dumps(pref)))
+
+    def test_copy(self):
+        for pref in self.prefs:
+            self.assertEqual(pref, copy.copy(pref))
 
 
 class TestReadPreferencesBase(TestReplicaSetClientBase):
