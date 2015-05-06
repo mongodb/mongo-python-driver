@@ -448,10 +448,12 @@ class Database(common.BaseObject):
         client = self.connection
         client._ensure_connected(True)
 
+        slave_okay = not client._rs_client and not client.is_mongos
         if client.max_wire_version > 2:
             res, addr = self._command("listCollections",
                                       cursor={},
-                                      read_preference=ReadPreference.PRIMARY)
+                                      read_preference=ReadPreference.PRIMARY,
+                                      slave_okay=slave_okay)
             # MongoDB 2.8rc2
             if "collections" in res:
                 results = res["collections"]
@@ -461,7 +463,9 @@ class Database(common.BaseObject):
             names = [result["name"] for result in results]
         else:
             names = [result["name"] for result
-                     in self["system.namespaces"].find(_must_use_master=True)]
+                     in self["system.namespaces"].find(
+                         slave_okay=slave_okay,
+                         _must_use_master=True)]
             names = [n[len(self.__name) + 1:] for n in names
                      if n.startswith(self.__name + ".") and "$" not in n]
 

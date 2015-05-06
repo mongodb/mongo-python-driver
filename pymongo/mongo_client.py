@@ -1373,9 +1373,14 @@ class MongoClient(common.BaseObject):
     def database_names(self):
         """Get a list of the names of all databases on the connected server.
         """
+        # SERVER-15994 changed listDatabases to require slaveOk when run
+        # against a secondary / slave. Passing slave_okay=True makes things
+        # consistent across server versions.
         return [db["name"] for db in
-                self.admin.command("listDatabases",
-                    read_preference=ReadPreference.PRIMARY)["databases"]]
+                self.admin.command(
+                    "listDatabases",
+                    read_preference=ReadPreference.PRIMARY,
+                    slave_okay=not self.is_mongos)["databases"]]
 
     def drop_database(self, name_or_database):
         """Drop a database.

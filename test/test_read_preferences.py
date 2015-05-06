@@ -82,6 +82,24 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
             expected, used))
 
 
+class TestSlaveOkayMetadataCommands(TestReadPreferencesBase):
+
+    def test_slave_okay_metadata_commands(self):
+
+        secondaries = iter(self._get_client().secondaries)
+        host, port = secondaries.next()
+        # Direct connection to a secondary.
+        client = MongoClient(host, port)
+        self.assertFalse(client.is_primary)
+        self.assertEqual(client.read_preference, ReadPreference.PRIMARY)
+
+        # No error.
+        client.database_names()
+        client.pymongo_test.collection_names()
+        client.pymongo_test.test.options()
+        client.pymongo_test.test.index_information()
+
+
 class TestReadPreferences(TestReadPreferencesBase):
     def test_mode_validation(self):
         # 'modes' are imported from read_preferences.py

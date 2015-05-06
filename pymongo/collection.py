@@ -1270,10 +1270,12 @@ class Collection(common.BaseObject):
         client = self.database.connection
         client._ensure_connected(True)
 
+        slave_okay = not client._rs_client and not client.is_mongos
         if client.max_wire_version > 2:
             res, addr = self.__database._command(
                 "listIndexes", self.__name, as_class=SON,
-                cursor={}, read_preference=ReadPreference.PRIMARY)
+                cursor={}, slave_okay=slave_okay,
+                read_preference=ReadPreference.PRIMARY)
             # MongoDB 2.8rc2
             if "indexes" in res:
                 raw = res["indexes"]
@@ -1283,6 +1285,7 @@ class Collection(common.BaseObject):
         else:
             raw = self.__database.system.indexes.find({"ns": self.__full_name},
                                                       {"ns": 0}, as_class=SON,
+                                                      slave_okay=slave_okay,
                                                       _must_use_master=True)
         info = {}
         for index in raw:
@@ -1303,12 +1306,14 @@ class Collection(common.BaseObject):
         client._ensure_connected(True)
 
         result = None
+        slave_okay = not client._rs_client and not client.is_mongos
         if client.max_wire_version > 2:
             res, addr = self.__database._command(
                 "listCollections",
                 cursor={},
                 filter={"name": self.__name},
-                read_preference=ReadPreference.PRIMARY)
+                read_preference=ReadPreference.PRIMARY,
+                slave_okay=slave_okay)
             # MongoDB 2.8rc2
             if "collections" in res:
                 results = res["collections"]
@@ -1320,7 +1325,9 @@ class Collection(common.BaseObject):
                 break
         else:
             result = self.__database.system.namespaces.find_one(
-                {"name": self.__full_name}, _must_use_master=True)
+                {"name": self.__full_name},
+                slave_okay=slave_okay,
+                _must_use_master=True)
 
         if not result:
             return {}
