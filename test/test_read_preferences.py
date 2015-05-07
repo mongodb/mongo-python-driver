@@ -31,7 +31,7 @@ from pymongo.read_preferences import (ReadPreference, MovingAverage,
                                       Primary, PrimaryPreferred,
                                       Secondary, SecondaryPreferred,
                                       Nearest, _ServerMode)
-from pymongo.server_selectors import any_server_selector
+from pymongo.server_selectors import readable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
@@ -97,7 +97,7 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
     def assertReadsFrom(self, expected, **kwargs):
         c = rs_client(**kwargs)
         wait_until(
-            lambda: len(c.nodes) == self.w,
+            lambda: len(c.nodes - c.arbiters) == self.w,
             "discovered all nodes")
 
         used = self.read_from_which_kind(c)
@@ -249,7 +249,8 @@ class TestReadPreferences(TestReadPreferencesBase):
         latencies = ', '.join(
             '%s: %dms' % (server.description.address,
                           server.description.round_trip_time)
-            for server in c._get_topology().select_servers(any_server_selector))
+            for server in c._get_topology().select_servers(
+                readable_server_selector))
 
         self.assertFalse(
             not_used,

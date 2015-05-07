@@ -21,6 +21,10 @@ def any_server_selector(server_descriptions):
     return server_descriptions
 
 
+def readable_server_selector(server_descriptions):
+    return [s for s in server_descriptions if s.is_readable]
+
+
 def writable_server_selector(server_descriptions):
     return [s for s in server_descriptions if s.is_writable]
 
@@ -49,6 +53,11 @@ def single_tag_set_server_selector(tag_set, server_descriptions):
     A server tagged {'a': '1', 'b': '2'} matches the tag set {'a': '1'}.
 
     The empty tag set {} matches any server.
+
+    The `server_descriptions` passed to this function should have
+    non-readable servers (e.g. RSGhost, RSArbiter, Unknown) filtered
+    out (e.g. by readable_server_selector or secondary_server_selector)
+    first.
     """
     def tags_match(server_tags):
         for key, value in tag_set.items():
@@ -68,6 +77,11 @@ def tag_sets_server_selector(tag_sets, server_descriptions):
     [{'a': 'value'}, {}] expresses a preference for servers tagged
     {'a': 'value'}, but accepts any server if none matches the first
     preference.
+
+    The `server_descriptions` passed to this function should have
+    non-readable servers (e.g. RSGhost, RSArbiter, Unknown) filtered
+    out (e.g. by readable_server_selector or secondary_server_selector)
+    first.
     """
     for tag_set in tag_sets:
         selected = single_tag_set_server_selector(tag_set, server_descriptions)
@@ -81,6 +95,11 @@ def apply_local_threshold(latency_ms, server_descriptions):
     """All servers with round trip times within latency_ms of the fastest one.
 
     No ServerDescription's round_trip_time can be None.
+
+    The `server_descriptions` passed to this function should have
+    non-readable servers (e.g. RSGhost, RSArbiter, Unknown) filtered
+    out (e.g. by readable_server_selector or secondary_server_selector)
+    first.
     """
     if not server_descriptions:
         # Avoid ValueError from min() with empty sequence.
@@ -104,4 +123,5 @@ def secondary_with_tags_server_selector(tag_sets, server_descriptions):
 
 def member_with_tags_server_selector(tag_sets, server_descriptions):
     """All near-enough members matching the tag sets."""
-    return tag_sets_server_selector(tag_sets, server_descriptions)
+    return tag_sets_server_selector(
+        tag_sets, readable_server_selector(server_descriptions))
