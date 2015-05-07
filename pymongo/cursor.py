@@ -1057,6 +1057,12 @@ class Cursor(object):
             for doc in collection.find():
                 print(doc)
 
+        .. note:: Even if :attr:`alive` is True, :meth:`next` can raise
+          :exc:`StopIteration`. :attr:`alive` can also be True while iterating
+          a cursor from a failed server. In this case :attr:`alive` will
+          return False after :meth:`next` fails to retrieve the next batch
+          of results from the server.
+
         .. versionadded:: 1.5
         """
         return bool(len(self.__data) or (not self.__killed))
@@ -1077,6 +1083,7 @@ class Cursor(object):
         return self
 
     def next(self):
+        """Advance the cursor."""
         if self.__empty:
             raise StopIteration
         db = self.__collection.database
