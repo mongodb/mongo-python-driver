@@ -113,7 +113,7 @@ def select_member_with_tags(members, tags, secondary_only, latency):
     fastest = min([candidate.get_avg_ping_time() for candidate in candidates])
     near_candidates = [
         candidate for candidate in candidates
-        if candidate.get_avg_ping_time() - fastest < latency / 1000.]
+        if candidate.get_avg_ping_time() - fastest <= latency / 1000.]
 
     return random.choice(near_candidates)
 

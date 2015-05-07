@@ -37,7 +37,7 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from pymongo.member import SECONDARY
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient, Monitor
 from pymongo.mongo_replica_set_client import _partition_node, have_gevent
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
@@ -1024,6 +1024,22 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             "MongoReplicaSetClient didn't detect members are up")
 
         client.close()
+
+    def test_zero_latency(self):
+        orig_interval = Monitor._refresh_interval
+        Monitor._refresh_interval = 1e9
+        try:
+            client = self._get_client()
+            host = read_from_which_host(
+                client, ReadPreference.NEAREST, None, 0)
+            # We'll assume all members have different latency.
+            for _ in range(5):
+                self.assertEqual(
+                    host,
+                    read_from_which_host(
+                        client, ReadPreference.NEAREST, None, 0))
+        finally:
+            Monitor._refresh_interval = orig_interval
 
     def test_pinned_member(self):
         latency = 1000 * 1000

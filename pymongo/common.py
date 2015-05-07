@@ -202,6 +202,15 @@ def validate_timeout_or_none(option, value):
     return validate_positive_float(option, value) / 1000.0
 
 
+def validate_positive_float_or_zero(option, value):
+    """Validates that 'value' is 0 or a positive float or can be converted to
+    0 or a positive float.
+    """
+    if value == 0 or value == "0":
+        return 0
+    return validate_positive_float(option, value)
+
+
 def validate_read_preference(dummy, value):
     """Validate read preference for a ReplicaSetConnection.
     """
@@ -316,8 +325,8 @@ VALIDATORS = {
     'read_preference': validate_read_preference,
     'readpreferencetags': validate_tag_sets,
     'tag_sets': validate_tag_sets,
-    'secondaryacceptablelatencyms': validate_positive_float,
-    'secondary_acceptable_latency_ms': validate_positive_float,
+    'secondaryacceptablelatencyms': validate_positive_float_or_zero,
+    'secondary_acceptable_latency_ms': validate_positive_float_or_zero,
     'auto_start_request': validate_boolean,
     'use_greenlets': validate_boolean,
     'authmechanism': validate_auth_mechanism,
@@ -437,12 +446,10 @@ class BaseObject(object):
                 self.__tag_sets = validate_tag_sets(option, value)
             elif option == 'uuidrepresentation':
                 self.__uuid_subtype = validate_uuid_subtype(option, value)
-            elif option in (
-                'secondaryacceptablelatencyms',
-                'secondary_acceptable_latency_ms'
-            ):
-                self.__secondary_acceptable_latency_ms = \
-                    validate_positive_float(option, value)
+            elif option in ('secondaryacceptablelatencyms',
+                            'secondary_acceptable_latency_ms'):
+                self.__secondary_acceptable_latency_ms = (
+                    validate_positive_float_or_zero(option, value))
             elif option in SAFE_OPTIONS:
                 if option == 'journal':
                     self.__set_safe_option('j', value)
@@ -579,8 +586,9 @@ class BaseObject(object):
 
     def __set_acceptable_latency(self, value):
         """Property setter for secondary_acceptable_latency_ms"""
-        self.__secondary_acceptable_latency_ms = (validate_positive_float(
-            'secondary_acceptable_latency_ms', value))
+        self.__secondary_acceptable_latency_ms = (
+            validate_positive_float_or_zero(
+                'secondary_acceptable_latency_ms', value))
 
     secondary_acceptable_latency_ms = property(
         __get_acceptable_latency, __set_acceptable_latency)

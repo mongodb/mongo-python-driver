@@ -123,6 +123,37 @@ class TestMongosHA(unittest.TestCase):
         # Down host is still in list.
         self.assertEqual(len(mock_hosts), len(client.nodes))
 
+    def test_acceptable_latency(self):
+        client = MockClient(
+            standalones=[],
+            members=[],
+            mongoses=['a:1', 'b:2', 'c:3'],
+            host='a:1,b:2,c:3',
+            secondaryAcceptableLatencyMS=7)
+
+        self.assertEqual(7, client.secondary_acceptable_latency_ms)
+        # No error
+        client.db.collection.find_one()
+
+        client = MockClient(
+            standalones=[],
+            members=[],
+            mongoses=['a:1', 'b:2', 'c:3'],
+            host='a:1,b:2,c:3',
+            secondaryAcceptableLatencyMS=0)
+
+        self.assertEqual(0, client.secondary_acceptable_latency_ms)
+        # No error
+        client.db.collection.find_one()
+        # Our chosen mongos goes down.
+        client.kill_host('%s:%s' % (client.host, client.port))
+        try:
+            client.db.collection.find_one()
+        except:
+            pass
+        # No error
+        client.db.collection.find_one()
+
 
 if __name__ == "__main__":
     unittest.main()

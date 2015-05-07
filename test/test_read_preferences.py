@@ -153,6 +153,14 @@ class TestReadPreferences(TestReadPreferencesBase):
             secondaryacceptablelatencyms=666
         ).secondary_acceptable_latency_ms)
 
+        self.assertEqual(0, self._get_client(
+            secondaryacceptablelatencyms=0
+        ).secondary_acceptable_latency_ms)
+
+        self.assertRaises(ConfigurationError,
+                          self._get_client,
+                          secondaryacceptablelatencyms=-1)
+
     def test_primary(self):
         self.assertReadsFrom('primary',
             read_preference=ReadPreference.PRIMARY)

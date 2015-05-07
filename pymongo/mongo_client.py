@@ -771,7 +771,7 @@ class MongoClient(common.BaseObject):
 
         near_candidates = [
             member for member in candidates
-            if member.ping_time - fastest < latency / 1000.0]
+            if member.ping_time - fastest <= latency / 1000.0]
 
         return random.choice(near_candidates)
 
