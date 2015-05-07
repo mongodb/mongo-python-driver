@@ -16,6 +16,7 @@ Sub-modules:
    codec_options
    dbref
    errors
+   int64
    json_util
    max_key
    min_key

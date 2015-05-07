@@ -424,6 +424,12 @@ patterns, see `PYTHON-500`_. Use :meth:`~bson.regex.Regex.try_compile` to
 attempt to convert from a BSON regular expression to a Python regular
 expression object.
 
+PyMongo now decodes the int64 BSON type to :class:`~bson.int64.Int64`, a
+trivial wrapper around long (in python 2.x) or int (in python 3.x). This
+allows BSON int64 to be round tripped without losing type information in
+python 3. Note that if you store a python long (or a python int larger than
+4 bytes) it will be returned from PyMongo as :class:`~bson.int64.Int64`.
+
 The `as_class`, `tz_aware`, and `uuid_subtype` options are removed from all
 BSON encoding and decoding methods. Use
 :class:`~bson.codec_options.CodecOptions` to configure these options. The
