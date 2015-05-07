@@ -18,6 +18,7 @@
 
 import copy
 import datetime
+import random
 import signal
 import socket
 import sys
@@ -36,7 +37,7 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
-from pymongo.member import SECONDARY
+from pymongo.member import SECONDARY, Member
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient, Monitor
 from pymongo.mongo_replica_set_client import _partition_node, have_gevent
 from pymongo.database import Database
@@ -1028,11 +1029,16 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
     def test_zero_latency(self):
         orig_interval = Monitor._refresh_interval
         Monitor._refresh_interval = 1e9
+        ping_times = set()
+        # Generate unique ping times.
+        while len(ping_times) < len(self.hosts):
+            ping_times.add(random.random())
+        for ping_time, host in zip(ping_times, self.hosts):
+            Member._host_to_ping_time[host] = ping_time
         try:
             client = self._get_client()
             host = read_from_which_host(
                 client, ReadPreference.NEAREST, None, 0)
-            # We'll assume all members have different latency.
             for _ in range(5):
                 self.assertEqual(
                     host,
@@ -1040,6 +1046,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                         client, ReadPreference.NEAREST, None, 0))
         finally:
             Monitor._refresh_interval = orig_interval
+            Member._host_to_ping_time.clear()
 
     def test_pinned_member(self):
         latency = 1000 * 1000
