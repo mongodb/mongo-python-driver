@@ -147,11 +147,16 @@ class CommandCursor(object):
     def alive(self):
         """Does this cursor have the potential to return more data?
 
-        Even if :attr:`alive` is ``True``, :meth:`.next` can raise
+        Even if :attr:`alive` is ``True``, :meth:`next` can raise
         :exc:`StopIteration`. Best to use a for loop::
 
             for doc in collection.aggregate(pipeline):
                 print(doc)
+
+        .. note:: :attr:`alive` can be True while iterating a cursor from
+          a failed server. In this case :attr:`alive` will return False after
+          :meth:`next` fails to retrieve the next batch of results from the
+          server.
         """
         return bool(len(self.__data) or (not self.__killed))
 
@@ -172,8 +177,7 @@ class CommandCursor(object):
         return self
 
     def next(self):
-        """Advance the cursor.
-        """
+        """Advance the cursor."""
         if len(self.__data) or self._refresh():
             coll = self.__collection
             return coll.database._fix_outgoing(self.__data.popleft(), coll)
