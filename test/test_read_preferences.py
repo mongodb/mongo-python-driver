@@ -31,6 +31,7 @@ from pymongo.read_preferences import (ReadPreference, MovingAverage,
                                       Primary, PrimaryPreferred,
                                       Secondary, SecondaryPreferred,
                                       Nearest, _ServerMode)
+from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
@@ -202,6 +203,29 @@ class TestReadPreferences(TestReadPreferencesBase):
         self.assertEqual(666, rs_client(
             localthresholdms=666
         ).local_threshold_ms)
+
+        self.assertEqual(0, rs_client(
+            localthresholdms=0
+        ).local_threshold_ms)
+
+        self.assertRaises(ValueError,
+                          rs_client,
+                          localthresholdms=-1)
+
+    def test_zero_latency(self):
+        ping_times = set()
+        # Generate unique ping times.
+        while len(ping_times) < len(self.client.nodes):
+            ping_times.add(random.random())
+        for ping_time, host in zip(ping_times, self.client.nodes):
+            ServerDescription._host_to_round_trip_time[host] = ping_time
+        try:
+            client = rs_client(readPreference='nearest', localThresholdMS=0)
+            host = self.read_from_which_host(client)
+            for _ in range(5):
+                self.assertEqual(host, self.read_from_which_host(client))
+        finally:
+            ServerDescription._host_to_round_trip_time.clear()
 
     def test_primary(self):
         self.assertReadsFrom(

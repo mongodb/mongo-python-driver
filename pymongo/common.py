@@ -220,6 +220,15 @@ def validate_positive_float(option, value):
     return value
 
 
+def validate_positive_float_or_zero(option, value):
+    """Validates that 'value' is 0 or a positive float, or can be converted to
+    0 or a positive float.
+    """
+    if value == 0 or value == "0":
+        return 0
+    return validate_positive_float(option, value)
+
+
 def validate_timeout_or_none(option, value):
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds.
@@ -393,7 +402,7 @@ VALIDATORS = {
     'read_preference': validate_read_preference,
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
-    'localthresholdms': validate_positive_float,
+    'localthresholdms': validate_positive_float_or_zero,
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_string,

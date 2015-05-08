@@ -75,7 +75,7 @@ class TestMongosLoadBalancing(MockClientTest):
         # Latencies in seconds.
         mock_client.mock_rtts['a:1'] = 0.020
         mock_client.mock_rtts['b:2'] = 0.025
-        mock_client.mock_rtts['c:3'] = 0.040
+        mock_client.mock_rtts['c:3'] = 0.045
         return mock_client
 
     def test_lazy_connect(self):
@@ -140,12 +140,29 @@ class TestMongosLoadBalancing(MockClientTest):
 
     def test_local_threshold(self):
         client = connected(self.mock_client(localThresholdMS=30))
+        self.assertEqual(30, client.local_threshold_ms)
         wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
         topology = client._topology
 
         # All are within a 30-ms latency window, see self.mock_client().
         self.assertEqual(set([('a', 1), ('b', 2), ('c', 3)]),
                          writable_addresses(topology))
+
+        # No error
+        client.db.collection.find_one()
+
+        client = connected(self.mock_client(localThresholdMS=0))
+        self.assertEqual(0, client.local_threshold_ms)
+        # No error
+        client.db.collection.find_one()
+        # Our chosen mongos goes down.
+        client.kill_host('%s:%s' % next(iter(client.nodes)))
+        try:
+            client.db.collection.find_one()
+        except:
+            pass
+        # No error
+        client.db.collection.find_one()
 
     def test_load_balancing(self):
         # Although the server selection JSON tests already prove that
@@ -167,7 +184,7 @@ class TestMongosLoadBalancing(MockClientTest):
         self.assertEqual(set([('a', 1), ('b', 2)]),
                          writable_addresses(topology))
 
-        client.mock_rtts['a:1'] = 0.040
+        client.mock_rtts['a:1'] = 0.045
 
         # Discover only b is within latency window.
         wait_until(lambda: set([('b', 2)]) == writable_addresses(topology),

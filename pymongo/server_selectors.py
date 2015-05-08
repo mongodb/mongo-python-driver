@@ -112,7 +112,7 @@ def apply_local_threshold(latency_ms, server_descriptions):
     fastest = min(s.round_trip_time for s in server_descriptions)
     return [
         s for s in server_descriptions
-        if (s.round_trip_time - fastest) < latency_ms / 1000.]
+        if (s.round_trip_time - fastest) <= latency_ms / 1000.]
 
 
 def secondary_with_tags_server_selector(tag_sets, server_descriptions):
