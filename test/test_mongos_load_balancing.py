@@ -149,20 +149,20 @@ class TestMongosLoadBalancing(MockClientTest):
                          writable_addresses(topology))
 
         # No error
-        client.db.collection.find_one()
+        client.admin.command('ismaster')
 
         client = connected(self.mock_client(localThresholdMS=0))
         self.assertEqual(0, client.local_threshold_ms)
         # No error
-        client.db.collection.find_one()
+        client.db.command('ismaster')
         # Our chosen mongos goes down.
         client.kill_host('%s:%s' % next(iter(client.nodes)))
         try:
-            client.db.collection.find_one()
+            client.db.command('ismaster')
         except:
             pass
         # No error
-        client.db.collection.find_one()
+        client.db.command('ismaster')
 
     def test_load_balancing(self):
         # Although the server selection JSON tests already prove that

@@ -44,7 +44,7 @@ from test import (SkipTest,
                   unittest,
                   db_user,
                   db_pwd)
-from test.utils import single_client, one, wait_until, rs_client
+from test.utils import connected, single_client, one, wait_until, rs_client
 from test.version import Version
 
 
@@ -220,7 +220,11 @@ class TestReadPreferences(TestReadPreferencesBase):
         for ping_time, host in zip(ping_times, self.client.nodes):
             ServerDescription._host_to_round_trip_time[host] = ping_time
         try:
-            client = rs_client(readPreference='nearest', localThresholdMS=0)
+            client = connected(
+                rs_client(readPreference='nearest', localThresholdMS=0))
+            wait_until(
+                lambda: client.nodes == self.client.nodes,
+                "discovered all nodes")
             host = self.read_from_which_host(client)
             for _ in range(5):
                 self.assertEqual(host, self.read_from_which_host(client))
