@@ -555,10 +555,14 @@ class MongoClient(common.BaseObject):
 
     @property
     def nodes(self):
-        """List of all connected servers.
+        """Set of all currently connected servers.
 
-        Nodes are either specified when this instance was created,
-        or discovered through the replica set discovery mechanism.
+        .. warning:: When connected to a replica set the value of :attr:`nodes`
+          can change over time as :class:`MongoClient`'s view of the replica
+          set changes. :attr:`nodes` can also be an empty set when
+          :class:`MongoClient` is first instantiated and hasn't yet connected
+          to any servers, or a network partition causes it to lose connection
+          to all servers.
         """
         description = self._topology.description
         return frozenset(s.address for s in description.known_servers)
