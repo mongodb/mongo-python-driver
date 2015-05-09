@@ -835,8 +835,7 @@ class Cursor(object):
 
         try:
             doc = helpers._unpack_response(response=data,
-                                           cursor_id=self.__id,
-                                           codec_options=self.__codec_options)
+                                           cursor_id=self.__id)
         except OperationFailure:
             self.__killed = True
 
@@ -871,7 +870,7 @@ class Cursor(object):
                     doc['starting_from'], self.__retrieved))
 
         self.__retrieved += doc["number_returned"]
-        self.__data = deque(doc["data"])
+        self.__data = deque(doc["data"].decode(self.__codec_options))
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()

@@ -160,4 +160,4 @@ class Monitor(object):
         sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)
-        return IsMaster(result['data'][0]), _time() - start
+        return IsMaster(result['data'].popleft().decode()), _time() - start

@@ -84,7 +84,99 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
+class _BSONListIterator(object):
+    def __init__(self, bsondata):
+        self.index = 0
+        self.offset = 0
+        self._data = bsondata
+
+    def next(self):
+        if self.offset == len(self._data):
+            raise StopIteration()
+
+        obj_size = struct.Struct("<i").unpack(
+            self._data[self.offset:self.offset + 4])[0]
+        elements = self._data[self.offset:self.offset + obj_size]
+        self.offset += obj_size
+        self.index += 1
+
+        return bson.BSON(elements)
+
+
+class BSONList(object):
+    """
+    Allows treating concatenated BSON objects as a immutable sequence of
+    bson.BSON(), performing the minimum copying, deserialisation and parsing for
+    the sake of efficiency.
+    """
+    __slots__ = ['_data', '_length']
+
+    def __init__(self, data=None, length=None):
+        if data is None and length is None:
+            self._data = buffer(b'')
+            self._length = 0
+        elif data is not None and length is not None:
+            self._data = data
+            self._length = length
+        else:
+            raise ValueError(
+                "BSONList: length parameter is mandatory if data is given")
+
+    def __add__(self, other):
+        if not isinstance(other, BSONList):
+            raise TypeError(
+                "You can only concatenate another BSONList to a BSONList")
+
+        return BSONList(self._data + other._data, self._length + other._length)
+
+    def __iter__(self):
+        return _BSONListIterator(self._data)
+
+    def __len__(self):
+        return self._length
+
+    def __eq__(self, other):
+        return (isinstance(other, BSONList)
+                and self._length == other._length
+                and self._data == other._data)
+
+    def split(self, iterator):
+        """
+        Splits the list at the iterator, returning a new list containing the
+        elements to the left of the iterator, removing these elements from the
+        left of this list.
+
+        Note: This invalidates the iterator and any other iterators on this
+        BSONList.
+        """
+        if not isinstance(iterator, _BSONListIterator):
+            raise TypeError("BSONList.shrink must take a BSONList iterator")
+        if self._data is not iterator._data:
+            raise ValueError("BSONList.shrink_left: iterator is invalid")
+
+        left = BSONList(buffer(self._data, 0, iterator.offset), iterator.index)
+        self._length -= iterator.index
+        self._data = buffer(self._data, iterator.offset)
+        return left
+
+    def decode(self, codec_options=bson.DEFAULT_CODEC_OPTIONS):
+        # Have to convert to bytes here because the C extension requires it.
+        # TODO: Remove this copy once the C BSON extension understands the
+        # buffer protocol.
+        return bson.decode_all(bytes(self._data), codec_options)
+
+    def popleft(self):
+        if self._length == 0:
+            raise IndexError("popleft from empty BSONList")
+        it = iter(self)
+        data = it.next()
+        self._length -= 1
+        self._data = buffer(self._data, it.offset)
+
+        return data
+
+
+def _unpack_response(response, cursor_id=None):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary
@@ -98,8 +190,6 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
       - `cursor_id` (optional): cursor_id we sent to get this response -
         used for raising an informative exception when we get cursor id not
         valid at server response
-      - `codec_options` (optional): an instance of
-        :class:`~bson.codec_options.CodecOptions`
     """
     response_flag = struct.unpack("<i", response[:4])[0]
     if response_flag & 1:
@@ -125,8 +215,7 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
     result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
     result["starting_from"] = struct.unpack("<i", response[12:16])[0]
     result["number_returned"] = struct.unpack("<i", response[16:20])[0]
-    result["data"] = bson.decode_all(response[20:], codec_options)
-    assert len(result["data"]) == result["number_returned"]
+    result["data"] = BSONList(buffer(response, 20), result["number_returned"])
     return result
 
 
@@ -193,7 +282,7 @@ def _check_gle_response(response):
     response = _unpack_response(response)
 
     assert response["number_returned"] == 1
-    result = response["data"][0]
+    result = response["data"].popleft().decode()
 
     # Did getlasterror itself fail?
     _check_command_response(result)
@@ -237,7 +326,7 @@ def _first_batch(sock_info, namespace, query,
                                                       sock_info.is_mongos)
     sock_info.send_message(msg, max_doc_size)
     response = sock_info.receive_message(1, request_id)
-    return _unpack_response(response, None, codec_options)
+    return _unpack_response(response, None)
 
 
 def _check_write_command_response(results):

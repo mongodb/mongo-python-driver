@@ -248,7 +248,7 @@ class SocketInfo(object):
         self.send_message(msg, 0)
         response = helpers._unpack_response(self.receive_message(1, request_id))
         assert response['number_returned'] == 1
-        result = response['data'][0]
+        result = bson.popleft().decode()
 
         # Raises NotMasterError or OperationFailure.
         helpers._check_command_response(result)

@@ -1278,7 +1278,7 @@ class Collection(common.BaseObject):
                 res = helpers._first_batch(
                     sock_info, namespace, {"ns": self.__full_name},
                     0, slave_ok, codec_options, ReadPreference.PRIMARY)
-                data = res["data"]
+                data = res["data"].decode(codec_options)
                 cursor = {
                     "id": res["cursor_id"],
                     "firstBatch": data,
