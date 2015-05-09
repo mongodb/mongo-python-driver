@@ -175,7 +175,7 @@ class Cursor(object):
         # it anytime we change __limit.
         self.__empty = False
 
-        self.__data = deque()
+        self.__data = helpers.BSONList()
         self.__address = None
         self.__retrieved = 0
         self.__killed = False
@@ -219,7 +219,7 @@ class Cursor(object):
         be sent to the server, even if the resultant data has already been
         retrieved by this cursor.
         """
-        self.__data = deque()
+        self.__data = helpers.BSONList()
         self.__id = None
         self.__address = None
         self.__retrieved = 0
@@ -870,7 +870,7 @@ class Cursor(object):
                     doc['starting_from'], self.__retrieved))
 
         self.__retrieved += doc["number_returned"]
-        self.__data = deque(doc["data"].decode(self.__codec_options))
+        self.__data = doc["data"]
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()
@@ -981,10 +981,11 @@ class Cursor(object):
         _db = self.__collection.database
         if len(self.__data) or self._refresh():
             if self.__manipulate:
-                return _db._fix_outgoing(self.__data.popleft(),
-                                         self.__collection)
+                return _db._fix_outgoing(
+                    self.__data.popleft().decode(self.__codec_options),
+                    self.__collection)
             else:
-                return self.__data.popleft()
+                return self.__data.popleft().decode(self.__codec_options)
         else:
             raise StopIteration
 
