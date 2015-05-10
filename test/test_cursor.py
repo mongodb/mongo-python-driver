@@ -1139,6 +1139,45 @@ class TestCursor(IntegrationTest):
 
             self.assertTrue(cursor.alive)
 
+    def test_pop_bson_left(self):
+        self.db.test.delete_many({})
+        self.db.test.insert_many([{"n": n} for n in range(10)])
+        ALL = list(self.db.test.find())
+        for batch_size in [1, 3, 20]:
+
+            def find():
+                return self.db.test.find(batch_size=batch_size)
+
+            self.assertEqual(len(find().pop_bson_left()), 1)
+            self.assertEqual(len(find().pop_bson_left(count=5)), 5)
+            self.assertEqual(len(find().pop_bson_left(count=10)), 10)
+            self.assertEqual(len(find().pop_bson_left(count=20)), 10)
+
+            self.assertEqual(
+                ALL, find().pop_bson_left(count=10).decode())
+            self.assertEqual(
+                ALL, [x.decode() for x in find().pop_bson_left(count=10)])
+            bsonlist = find().pop_bson_left(count=10)
+            self.assertEqual(
+                ALL, [bsonlist.popleft().decode() for x in range(10)])
+
+            bsonlist = find().pop_bson_left(count=10)
+            iterator = iter(bsonlist)
+            for _ in range(5):
+                iterator.next()
+            first_elements = bsonlist.split(iterator)
+            self.assertEqual(len(first_elements), 5)
+            self.assertEqual(len(bsonlist), 5)
+            self.assertEqual(ALL, (first_elements + bsonlist).decode())
+            self.assertEqual(
+                ALL, first_elements.decode() + bsonlist.decode())
+
+            cursor = find()
+            self.assertEqual(
+                ALL, cursor.pop_bson_left(count=5).decode() +
+                cursor.pop_bson_left(count=5).decode())
+
+            self.assertEqual(len(cursor.pop_bson_left()), 0)
 
 if __name__ == "__main__":
     unittest.main()
