@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Version 2.8.1
+------------------------
+
+Version 2.8.1 fixes a number of issues reported since the release of PyMongo
+2.8. It is a recommended upgrade for all users of PyMongo 2.x.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.8.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.8.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/15324
+
 Changes in Version 2.8
 ----------------------
 
