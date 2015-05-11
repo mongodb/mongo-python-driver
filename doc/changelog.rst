@@ -1,6 +1,24 @@
 Changelog
 =========
 
+Changes in Version 3.0.2
+------------------------
+
+Version 3.0.2 fixes issues reported since the release of 3.0.1, most
+importantly a bug that could route operations to replica set members
+that are not in primary or secondary state when using
+:class:`~pymongo.read_preferences.PrimaryPreferred` or
+:class:`~pymongo.read_preferences.Nearest`. It is a recommended upgrade for
+all users of PyMongo 3.0.x.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.0.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.0.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/15430
+
 Changes in Version 3.0.1
 ------------------------
 
