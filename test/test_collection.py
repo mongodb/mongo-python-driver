@@ -2420,6 +2420,9 @@ class TestCollection(unittest.TestCase):
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            new=True))
 
+    def test_client_alias(self):
+        self.assertEqual(self.db.client, self.db.connection)
+
 
 if __name__ == "__main__":
     unittest.main()

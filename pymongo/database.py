@@ -119,6 +119,15 @@ class Database(common.BaseObject):
         return self.__connection
 
     @property
+    def client(self):
+        """The client instance for this :class:`Database`.
+
+        .. versionadded:: 2.9
+           ``client`` is an alias for ``connection``.
+        """
+        return self.__connection
+
+    @property
     def name(self):
         """The name of this :class:`Database`.
 
