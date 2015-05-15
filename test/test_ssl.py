@@ -462,6 +462,37 @@ class TestSSL(unittest.TestCase):
             except CertificateError:
                 pass
 
+    def test_cert_ssl_validation_hostname_no_verify(self):
+        # Expects the server to be running with the server.pem, ca.pem
+        # and crl.pem provided in mongodb and the server tests eg:
+        #
+        #   --sslPEMKeyFile=jstests/libs/server.pem
+        #   --sslCAFile=jstests/libs/ca.pem
+        #   --sslCRLFile=jstests/libs/crl.pem
+        if not CERT_SSL:
+            raise SkipTest("No mongod available over SSL with certs")
+
+        client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
+        response = client.admin.command('ismaster')
+        if 'setName' in response:
+            if response['primary'].split(":")[0] != 'server':
+                raise SkipTest("No hosts in the replicaset for 'server'. ")
+
+            client = MongoReplicaSetClient('server',
+                                           replicaSet="environment_data",
+                                           w=len(response['hosts']),
+                                           ssl=True,
+                                           ssl_certfile=CLIENT_PEM,
+                                           ssl_cert_reqs=ssl.CERT_REQUIRED,
+                                           ssl_ca_certs=CA_PEM,
+                                           ssl_validate_hostname=False)
+
+        db = client.pymongo_ssl_test
+        db.test.drop()
+        self.assertTrue(db.test.insert({'ssl': True}))
+        self.assertTrue(db.test.find_one()['ssl'])
+        client.drop_database('pymongo_ssl_test')
+
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests as well as
