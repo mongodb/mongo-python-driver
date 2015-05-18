@@ -214,6 +214,8 @@ def default(obj):
         # TODO share this code w/ bson.py?
         if obj.utcoffset() is not None:
             obj = obj - obj.utcoffset()
+        if obj.year == 0000:
+            obj = datetime.datetime(0001,01,01)
         millis = int(calendar.timegm(obj.timetuple()) * 1000 +
                      obj.microsecond / 1000)
         return {"$date": millis}
