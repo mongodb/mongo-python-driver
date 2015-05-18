@@ -241,8 +241,9 @@ def _authenticate_gssapi(credentials, sock_info):
         gsn = credentials.mechanism_properties.service_name
         # Starting here and continuing through the while loop below - establish
         # the security context. See RFC 4752, Section 3.1, first paragraph.
+        host = sock_info.address[0]
         result, ctx = kerberos.authGSSClientInit(
-            gsn + '@' + sock_info.host, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
+            gsn + '@' + host, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
 
         if result != kerberos.AUTH_GSS_COMPLETE:
             raise OperationFailure('Kerberos context failed to initialize.')
