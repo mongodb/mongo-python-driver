@@ -100,7 +100,7 @@ _RE_OPT_TABLE = {
 }
 
 
-def dumps(obj, *args, **kwargs):
+def dumps(obj,altdefault=None, *args, **kwargs):
     """Helper function that wraps :class:`json.dumps`.
 
     Recursive function that handles all BSON types including
@@ -110,7 +110,7 @@ def dumps(obj, *args, **kwargs):
        Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
        instances.
     """
-    return json.dumps(_json_convert(obj), *args, **kwargs)
+    return json.dumps(_json_convert(obj,altdefault), *args, **kwargs)
 
 
 def loads(s, *args, **kwargs):
@@ -122,19 +122,20 @@ def loads(s, *args, **kwargs):
     return json.loads(s, *args, **kwargs)
 
 
-def _json_convert(obj):
+def _json_convert(obj,altdefault=None):
     """Recursive helper method that converts BSON types so they can be
     converted into json.
     """
     if hasattr(obj, 'iteritems') or hasattr(obj, 'items'):  # PY3 support
-        return SON(((k, _json_convert(v)) for k, v in iteritems(obj)))
+        return SON(((k, _json_convert(v,altdefault)) for k, v in iteritems(obj)))
     elif hasattr(obj, '__iter__') and not isinstance(obj, (text_type, bytes)):
-        return list((_json_convert(v) for v in obj))
+        return list((_json_convert(v,altdefault) for v in obj))
     try:
+        if altdefault and callable(altdefault):
+            return altdefault(obj)
         return default(obj)
     except TypeError:
         return obj
-
 
 def object_hook(dct):
     if "$oid" in dct:
@@ -214,8 +215,6 @@ def default(obj):
         # TODO share this code w/ bson.py?
         if obj.utcoffset() is not None:
             obj = obj - obj.utcoffset()
-        if obj.year == 0000:
-            obj = datetime.datetime(0001,01,01)
         millis = int(calendar.timegm(obj.timetuple()) * 1000 +
                      obj.microsecond / 1000)
         return {"$date": millis}
