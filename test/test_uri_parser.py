@@ -102,6 +102,10 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ValueError, split_options, 'connectTimeoutMS=0.0')
         self.assertRaises(ValueError, split_options, 'connectTimeoutMS=1e100000')
         self.assertRaises(ValueError, split_options, 'connectTimeoutMS=-1e100000')
+        self.assertRaises(ValueError, split_options, 'ssl=foo')
+        self.assertTrue(split_options('ssl=true'))
+        self.assertRaises(ValueError, split_options, 'ssl_match_hostname=foo')
+        self.assertTrue(split_options('ssl_match_hostname=true'))
 
         # On most platforms float('inf') and float('-inf') represent
         # +/- infinity, although on Python 2.4 and 2.5 on Windows those
