@@ -24,7 +24,7 @@ from pymongo import (bulk,
                      helpers,
                      message)
 from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import Cursor
+from pymongo.cursor import Cursor, CursorType
 from pymongo.errors import InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.message import _INSERT, _UPDATE, _DELETE
@@ -793,9 +793,6 @@ class Collection(common.BaseObject):
             results if some shards are down instead of returning an error.
           - `manipulate`: (optional): If True (the default), apply any
             outgoing SON manipulators before returning.
-          - `network_timeout` (optional): specify a timeout to use for
-            this query, which will override the
-            :class:`~pymongo.mongo_client.MongoClient`-level default
           - `read_preference` (optional): The read preference for
             this query.
           - `tag_sets` (optional): The tag sets for this query.
@@ -804,12 +801,63 @@ class Collection(common.BaseObject):
             the nearest member may accept reads. Default 15 milliseconds.
             **Ignored by mongos** and must be configured on the command line.
             See the localThreshold_ option for more information.
-          - `compile_re` (optional): if ``False``, don't attempt to compile
-            BSON regex objects into Python regexes. Return instances of
-            :class:`~bson.regex.Regex` instead.
           - `exhaust` (optional): If ``True`` create an "exhaust" cursor.
             MongoDB will stream batched results to the client without waiting
             for the client to request each batch, reducing latency.
+          - `compile_re` (optional): if ``False``, don't attempt to compile
+            BSON regex objects into Python regexes. Return instances of
+            :class:`~bson.regex.Regex` instead.
+          - `oplog_replay` (optional): If True, set the oplogReplay query
+            flag.
+          - `modifiers` (optional): A dict specifying the MongoDB `query
+            modifiers`_ that should be used for this query. For example::
+
+            >>> db.test.find(modifiers={"$maxTimeMS": 500})
+
+          - `network_timeout` (optional): specify a timeout to use for
+            this query, which will override the
+            :class:`~pymongo.mongo_client.MongoClient`-level default
+          - `filter` (optional): a SON object specifying elements which
+            must be present for a document to be included in the
+            result set. Takes precedence over `spec`.
+          - `projection` (optional): a list of field names that should be
+            returned in the result set or a dict specifying the fields
+            to include or exclude. If `projection` is a list "_id" will
+            always be returned. Use a dict to exclude fields from
+            the result (e.g. projection={'_id': False}). Takes precedence
+            over `fields`.
+          - `no_cursor_timeout` (optional): if False (the default), any
+            returned cursor is closed by the server after 10 minutes of
+            inactivity. If set to True, the returned cursor will never
+            time out on the server. Care should be taken to ensure that
+            cursors with no_cursor_timeout turned on are properly closed.
+            Takes precedence over `timeout`.
+          - `allow_partial_results` (optional): if True, mongos will return
+            partial results if some shards are down instead of returning an
+            error. Takes precedence over `partial`.
+          - `cursor_type` (optional): the type of cursor to return. Takes
+            precedence over `tailable`, `await_data` and `exhaust`. The valid
+            options are defined by :class:`~pymongo.cursor.CursorType`:
+
+            - :attr:`~pymongo.cursor.CursorType.NON_TAILABLE` - the result of
+              this find call will return a standard cursor over the result set.
+            - :attr:`~pymongo.cursor.CursorType.TAILABLE` - the result of this
+              find call will be a tailable cursor - tailable cursors are only
+              for use with capped collections. They are not closed when the
+              last data is retrieved but are kept open and the cursor location
+              marks the final document position. If more data is received
+              iteration of the cursor will continue from the last document
+              received. For details, see the `tailable cursor documentation
+              <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
+            - :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` - the result
+              of this find call will be a tailable cursor with the await flag
+              set. The server will wait for a few seconds after returning the
+              full result set so that it can capture and return additional data
+              added during the query.
+            - :attr:`~pymongo.cursor.CursorType.EXHAUST` - the result of this
+              find call will be an exhaust cursor. MongoDB will stream batched
+              results to the client without waiting for the client to request
+              each batch, reducing latency. See notes on compatibility below.
 
         .. note:: There are a number of caveats to using the `exhaust`
            parameter:
@@ -839,6 +887,10 @@ class Collection(common.BaseObject):
 
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
+
+        .. versionadded:: 2.9
+           The ``filter``, ``projection``, ``no_cursor_timeout``,
+           ``allow_partial_results``, ``cursor_type``, ``modifiers`` parameters.
 
         .. versionadded:: 2.7
            The ``compile_re`` parameter.

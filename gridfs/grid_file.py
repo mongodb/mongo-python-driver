@@ -630,7 +630,8 @@ class GridOutCursor(Cursor):
     def __init__(self, collection, spec=None, skip=0, limit=0,
                  timeout=True, sort=None, max_scan=None,
                  read_preference=None, tag_sets=None,
-                 secondary_acceptable_latency_ms=None, compile_re=True):
+                 secondary_acceptable_latency_ms=None, compile_re=True,
+                 filter=None, no_cursor_timeout=None):
         """Create a new cursor, similar to the normal
         :class:`~pymongo.cursor.Cursor`.
 
@@ -650,11 +651,18 @@ class GridOutCursor(Cursor):
         latency = (secondary_acceptable_latency_ms
                    or collection.files.secondary_acceptable_latency_ms)
 
+        # If backported args are set, pass them to Cursor.
+        extra_args = {}
+        if filter is not None:
+            extra_args["filter"] = filter
+        if no_cursor_timeout is not None:
+            extra_args["no_cursor_timeout"] = no_cursor_timeout
+
         super(GridOutCursor, self).__init__(
             collection.files, spec, skip=skip, limit=limit, timeout=timeout,
             sort=sort, max_scan=max_scan, read_preference=read_preference,
             secondary_acceptable_latency_ms=latency, compile_re=compile_re,
-            tag_sets=tag_sets)
+            tag_sets=tag_sets, **extra_args)
 
     def next(self):
         """Get next GridOut object from cursor.

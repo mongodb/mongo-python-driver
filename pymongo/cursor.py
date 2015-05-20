@@ -103,8 +103,9 @@ class Cursor(object):
                  await_data=False, partial=False, manipulate=True,
                  read_preference=ReadPreference.PRIMARY,
                  tag_sets=[{}], secondary_acceptable_latency_ms=None,
-                 exhaust=False, compile_re=True, _must_use_master=False,
-                 _uuid_subtype=None, **kwargs):
+                 exhaust=False, compile_re=True, oplog_replay=False,
+                 modifiers=None, _must_use_master=False, _uuid_subtype=None,
+                 **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -112,6 +113,37 @@ class Cursor(object):
 
         .. mongodoc:: cursors
         """
+
+        # Backport aliases.
+        if 'filter' in kwargs:
+            spec = kwargs['filter']
+        if 'projection' in kwargs:
+            fields = kwargs['projection']
+        if 'no_cursor_timeout' in kwargs:
+            timeout = not kwargs['no_cursor_timeout']
+        if 'allow_partial_results' in kwargs:
+            partial = kwargs['allow_partial_results']
+
+        if 'cursor_type' in kwargs:
+            crt = kwargs['cursor_type']
+            if crt not in (CursorType.NON_TAILABLE, CursorType.TAILABLE,
+                          CursorType.TAILABLE_AWAIT, CursorType.EXHAUST):
+                raise ValueError("not a valid value for cursor_type")
+            exhaust = crt == CursorType.EXHAUST
+            tailable = crt == CursorType.TAILABLE
+            if crt == CursorType.TAILABLE_AWAIT:
+                await_data = True
+                tailable = True
+
+        if modifiers is not None:
+            if not isinstance(modifiers, dict):
+                raise TypeError("%s must be an instance of dict or subclass"
+                                % (modifiers,))
+            if '$snapshot' in modifiers:
+                snapshot = modifiers['$snapshot']
+            if '$maxScan' in modifiers:
+                max_scan = modifiers['$maxScan']
+
         self.__id = None
 
         if spec is None:
@@ -137,6 +169,8 @@ class Cursor(object):
             raise TypeError("partial must be an instance of bool")
         if not isinstance(exhaust, bool):
             raise TypeError("exhaust must be an instance of bool")
+        if not isinstance(oplog_replay, bool):
+            raise TypeError("oplog_replay must be an instance of bool")
 
         if fields is not None:
             if not fields:
@@ -156,6 +190,8 @@ class Cursor(object):
         self.__batch_size = 0
         self.__max = None
         self.__min = None
+        self.__modifiers = modifiers and modifiers.copy() or {}
+
 
         # Exhaust cursor support
         if self.__collection.database.connection.is_mongos and exhaust:
@@ -207,6 +243,8 @@ class Cursor(object):
             self.__query_flags |= _QUERY_OPTIONS["exhaust"]
         if partial:
             self.__query_flags |= _QUERY_OPTIONS["partial"]
+        if oplog_replay:
+            self.__query_flags |= _QUERY_OPTIONS["oplog_replay"]
 
         # this is for passing network_timeout through if it's specified
         # need to use kwargs as None is a legit value for network_timeout
@@ -277,7 +315,7 @@ class Cursor(object):
                            "manipulate", "read_preference", "tag_sets",
                            "secondary_acceptable_latency_ms",
                            "must_use_master", "uuid_subtype", "compile_re",
-                           "query_flags", "kwargs")
+                           "query_flags", "modifiers", "kwargs")
         data = dict((k, v) for k, v in self.__dict__.iteritems()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
@@ -319,7 +357,7 @@ class Cursor(object):
     def __query_spec(self):
         """Get the spec to use for a query.
         """
-        operators = {}
+        operators = self.__modifiers.copy()
         if self.__ordering:
             operators["$orderby"] = self.__ordering
         if self.__explain:
