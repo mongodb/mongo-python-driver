@@ -114,7 +114,7 @@ class Database(common.BaseObject):
         """The client instance for this :class:`Database`.
 
         .. versionchanged:: 1.3
-           ``connection`` is now a property rather than a method.
+           :attr:`connection` is now a property rather than a method.
         """
         return self.__connection
 
@@ -123,7 +123,7 @@ class Database(common.BaseObject):
         """The client instance for this :class:`Database`.
 
         .. versionadded:: 2.9
-           ``client`` is an alias for ``connection``.
+           :attr:`client` is an alias for :attr:`connection`.
         """
         return self.__connection
 
