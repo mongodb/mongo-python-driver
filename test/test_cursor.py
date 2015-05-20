@@ -37,6 +37,8 @@ from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
+from pymongo.cursor import CursorType
+
 from test import version, skip_restricted_localhost
 from test.test_client import get_client
 from test.utils import (catch_warnings, is_mongos,
@@ -674,6 +676,7 @@ class TestCursor(unittest.TestCase):
                                    partial=True,
                                    manipulate=False,
                                    compile_re=False,
+                                   modifiers={"$maxTimeMS": 500},
                                    fields={'_id': False}).limit(2)
         cursor.min([('a', 1)]).max([('b', 3)])
         cursor.add_option(128)
@@ -699,6 +702,8 @@ class TestCursor(unittest.TestCase):
                          cursor2._Cursor__min)
         self.assertEqual(cursor._Cursor__max,
                          cursor2._Cursor__max)
+        self.assertEqual(cursor._Cursor__modifiers,
+                         cursor2._Cursor__modifiers)
 
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
@@ -831,6 +836,127 @@ class TestCursor(unittest.TestCase):
                          cursor2._Cursor__query_options())
         cursor.remove_option(128)
         self.assertEqual(0, cursor._Cursor__query_options())
+
+    def test_backport_no_cursor_timeout(self):
+        # Test backport of "no_cursor_timeout".
+        cursor = self.db.test.find(no_cursor_timeout=True)
+        self.assertEqual(16, cursor._Cursor__query_options())
+        cursor2 = self.db.test.find().add_option(16)
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+        cursor.remove_option(16)
+        self.assertEqual(0, cursor._Cursor__query_options())
+
+        cursor = self.db.test.find(no_cursor_timeout=True, timeout=True)
+        self.assertEqual(16, cursor._Cursor__query_options())
+        cursor2 = self.db.test.find().add_option(16)
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+        cursor.remove_option(16)
+        self.assertEqual(0, cursor._Cursor__query_options())
+
+    def test_backport_allow_partial_results(self):
+        # Test backport of "allow_partial_results"
+        cursor = self.db.test.find(allow_partial_results=True)
+        self.assertEqual(128, cursor._Cursor__query_options())
+        cursor2 = self.db.test.find().add_option(128)
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+        cursor.remove_option(128)
+        self.assertEqual(0, cursor._Cursor__query_options())
+
+        cursor = self.db.test.find(allow_partial_results=True, partial=False)
+        self.assertEqual(128, cursor._Cursor__query_options())
+        cursor2 = self.db.test.find().add_option(128)
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+        cursor.remove_option(128)
+        self.assertEqual(0, cursor._Cursor__query_options())
+
+    def test_backport_cursor_type(self):
+        # Test cursor_types works for NON_TAILABLE
+        cursor = self.db.test.find()
+        self.assertEqual(0, cursor._Cursor__query_options())
+        cursor2 = self.db.test.find(cursor_type=CursorType.NON_TAILABLE)
+        self.assertEqual(0, cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+
+        # Test cursor_types has precedence over "tailable".
+        cursor = self.db.test.find()
+        self.assertEqual(0, cursor._Cursor__query_options())
+        cursor2 = self.db.test.find(cursor_type=CursorType.NON_TAILABLE,
+                                    tailable=True)
+        self.assertEqual(0, cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+
+        # Test cursor_types works for TAILABLE and TAILABLE_AWAIT.
+        cursor = self.db.test.find()
+        self.assertEqual(0, cursor._Cursor__query_options())
+        cursor.add_option(2)
+        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE)
+        self.assertEqual(2, cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+        cursor.add_option(32)
+        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
+        self.assertEqual(34, cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+
+        # Test cursor_types has precedence over "tailable" and "await_data".
+        cursor = self.db.test.find()
+        self.assertEqual(0, cursor._Cursor__query_options())
+        cursor.add_option(2)
+        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE,
+                                    tailable=False)
+        self.assertEqual(2, cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+        cursor.add_option(32)
+        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT,
+                                    tailable=False, await_data=False)
+        self.assertEqual(34, cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_options(),
+                         cursor2._Cursor__query_options())
+
+        # Test cursor_types works for EXHAUST - which mongos doesn't support
+        if not is_mongos(self.db.connection):
+            cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
+            self.assertEqual(64, cursor._Cursor__query_options())
+            cursor2 = self.db.test.find().add_option(64)
+            self.assertEqual(cursor._Cursor__query_options(),
+                             cursor2._Cursor__query_options())
+            self.assertTrue(cursor._Cursor__exhaust)
+            cursor.remove_option(64)
+            self.assertEqual(0, cursor._Cursor__query_options())
+            self.assertFalse(cursor._Cursor__exhaust)
+
+            # Test cursor_type has precedence over "exhaust"
+            cursor = self.db.test.find(cursor_type=CursorType.EXHAUST,
+                                       exhaust=False)
+            self.assertEqual(64, cursor._Cursor__query_options())
+            cursor2 = self.db.test.find().add_option(64)
+            self.assertEqual(cursor._Cursor__query_options(),
+                             cursor2._Cursor__query_options())
+            self.assertTrue(cursor._Cursor__exhaust)
+            cursor.remove_option(64)
+            self.assertEqual(0, cursor._Cursor__query_options())
+            self.assertFalse(cursor._Cursor__exhaust)
+
+    def test_backport_modifiers(self):
+        cur = self.db.test.find()
+        self.assertTrue('$query' not in cur._Cursor__query_spec())
+        cur = self.db.test.find().comment("testing").max_time_ms(500)
+        self.assertTrue('$query' in cur._Cursor__query_spec())
+        self.assertEqual(cur._Cursor__query_spec()["$comment"], "testing")
+        self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 500)
+        cur = self.db.test.find(
+            modifiers={"$maxTimeMS": 500, "$comment": "testing"})
+        self.assertTrue('$query' in cur._Cursor__query_spec())
+        self.assertEqual(cur._Cursor__query_spec()["$comment"], "testing")
+        self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 500)
 
     def test_count_with_fields(self):
         self.db.test.drop()

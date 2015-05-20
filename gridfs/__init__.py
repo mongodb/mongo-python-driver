@@ -360,6 +360,15 @@ class GridFS(object):
           - `compile_re` (optional): if ``False``, don't attempt to compile
             BSON regex objects into Python regexes. Return instances of
             :class:`~bson.regex.Regex` instead.
+          - `filter` (optional): a SON object specifying elements which
+            must be present for a document to be included in the
+            result set. Takes precedence over `spec`.
+          - `no_cursor_timeout` (optional): if False (the default), any
+            returned cursor is closed by the server after 10 minutes of
+            inactivity. If set to True, the returned cursor will never
+            time out on the server. Care should be taken to ensure that
+            cursors with no_cursor_timeout turned on are properly closed.
+            Takes precedence over `timeout`.
 
         Raises :class:`TypeError` if any of the arguments are of
         improper type. Returns an instance of

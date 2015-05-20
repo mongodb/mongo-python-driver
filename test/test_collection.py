@@ -2423,6 +2423,32 @@ class TestCollection(unittest.TestCase):
     def test_client_alias(self):
         self.assertEqual(self.db.client, self.db.connection)
 
+    def test_backport_filter(self):
+        c = self.db.test
+        c.drop()
+        c.insert([{'_id': 1, 'i': 1}, {'_id': 2, 'i': 2}])
+
+        # Test filter.
+        res = list(c.find(spec={"i": 1}))
+        res2 = list(c.find(filter={"i": 1}))
+        res3 = list(c.find(spec={"i": 2}, filter={"i": 1}))
+
+        self.assertEqual(res, res2)
+        self.assertEqual(res2, res3)
+
+    def test_backport_projection(self):
+        c = self.db.test
+        c.drop()
+        c.insert([{'_id': 1, 'i': 1}, {'_id': 2, 'i': 2}])
+
+        # Test projection.
+        res = list(c.find(fields={"_id": False}))
+        res2 = list(c.find(projection={"_id": False}))
+        res3 = list(c.find(fields={"_id": True}, projection={"_id": False}))
+
+        self.assertEqual(res, res2)
+        self.assertEqual(res2, res3)
+
 
 if __name__ == "__main__":
     unittest.main()

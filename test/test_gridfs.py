@@ -400,6 +400,40 @@ class TestGridfs(unittest.TestCase):
         cursor.close()
         self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
 
+    def test_gridfs_backport(self):
+        # Test "filter" works and has precedence over "spec".
+        self.fs.put(b("test2"), filename="two")
+        time.sleep(0.01)
+        self.fs.put(b("test2+"), filename="two")
+        time.sleep(0.01)
+        self.fs.put(b("test1"), filename="one")
+        time.sleep(0.01)
+        self.fs.put(b("test2++"), filename="two")
+        fn1 = self.fs.find(spec={"filename":"two"}).count()
+        fn2 = self.fs.find(filter={"filename":"two"}).count()
+
+        fn3 = self.fs.find(spec={"filename":"one"},
+                           filter={"filename":"two"}).count()
+        self.assertEqual(3, fn1)
+        self.assertEqual(fn1, fn2)
+        self.assertEqual(fn2, fn3)
+
+        # Test "no_cursor_timeout" doesn't break anything.
+        cursor = self.fs.find(no_cursor_timeout=True).sort(
+            "uploadDate", -1).skip(1).limit(2)
+        # 2to3 hint...
+        gout = cursor.next()
+        self.assertEqual(b("test1"), gout.read())
+        cursor.rewind()
+        gout = cursor.next()
+        self.assertEqual(b("test1"), gout.read())
+        gout = cursor.next()
+        self.assertEqual(b("test2+"), gout.read())
+        self.assertRaises(StopIteration, cursor.next)
+        cursor.close()
+        self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
+
+
     def test_gridfs_find_one(self):
         self.assertEqual(None, self.fs.find_one())
 
