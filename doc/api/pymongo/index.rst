@@ -13,7 +13,10 @@
 
       Alias for :class:`pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
 
-   .. autoclass:: pymongo.read_preferences.ReadPreference
+   .. data:: ReadPreference
+
+      Alias for :class:`pymongo.read_preferences.ReadPreference`
+
    .. autofunction:: has_c
    .. data:: MIN_SUPPORTED_WIRE_VERSION
 
@@ -40,6 +43,7 @@ Sub-modules:
    mongo_client
    mongo_replica_set_client
    pool
+   read_preferences
    replica_set_connection
    son_manipulator
    cursor_manager

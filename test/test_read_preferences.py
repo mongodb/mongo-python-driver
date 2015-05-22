@@ -13,6 +13,9 @@
 # limitations under the License.
 
 """Test the replica_set_connection module."""
+
+import copy
+import pickle
 import random
 import sys
 import unittest
@@ -28,7 +31,9 @@ from pymongo.master_slave_connection import MasterSlaveConnection
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import (ReadPreference, modes, MovingAverage,
-                                      secondary_ok_commands)
+                                      secondary_ok_commands, Primary,
+                                      PrimaryPreferred, Secondary,
+                                      SecondaryPreferred, Nearest)
 from pymongo.errors import ConfigurationError
 
 from test.test_replica_set_client import TestReplicaSetClientBase
@@ -709,6 +714,102 @@ class TestMongosConnection(unittest.TestCase):
             command = SON([(cmd, 1)])
             cursor = c.pymongo_test["$cmd"].find(command.copy())
             self.assertEqual(command, cursor._Cursor__query_spec())
+
+
+class TestServerModes(unittest.TestCase):
+    prefs = [Primary(), Secondary(), Nearest(tag_sets=[{'a': 1}, {'b': 2}])]
+
+    def test_primary(self):
+        pref = Primary()
+        self.assertEqual(pref.mode, 0)
+        self.assertEqual(pref.name, 'Primary')
+        self.assertEqual(pref.document, {'mode': 'primary'})
+        self.assertEqual(pref.tag_sets, [{}])
+        self.assertEqual(pref, Primary())
+        self.assertNotEqual(pref, PrimaryPreferred())
+
+    def test_primary_preferred(self):
+        pref = PrimaryPreferred()
+        self.assertEqual(pref.mode, 1)
+        self.assertEqual(pref.name, 'PrimaryPreferred')
+        self.assertEqual(pref.document, {'mode': 'primaryPreferred'})
+        self.assertEqual(pref.tag_sets, [{}])
+        self.assertEqual(pref, PrimaryPreferred())
+        self.assertNotEqual(pref, Primary())
+
+        pref = PrimaryPreferred([{"dc": "ny"}])
+        self.assertEqual(pref.document,
+                         {'mode': 'primaryPreferred', 'tags': [{"dc": "ny"}]})
+        self.assertEqual(pref.tag_sets, [{"dc": "ny"}])
+        self.assertEqual(pref, PrimaryPreferred([{"dc": "ny"}]))
+        self.assertNotEqual(pref, PrimaryPreferred())
+        self.assertNotEqual(pref, PrimaryPreferred([{"dc": "sf"}]))
+
+    def test_secondary(self):
+        pref = Secondary()
+        self.assertEqual(pref.mode, 2)
+        self.assertEqual(pref.name, 'Secondary')
+        self.assertEqual(pref.document, {'mode': 'secondary'})
+        self.assertEqual(pref.tag_sets, [{}])
+        self.assertEqual(pref, Secondary())
+        self.assertNotEqual(pref, Primary())
+
+        pref = Secondary([{"dc": "ny"}])
+        self.assertEqual(pref.document,
+                         {'mode': 'secondary', 'tags': [{"dc": "ny"}]})
+        self.assertEqual(pref.tag_sets, [{"dc": "ny"}])
+        self.assertEqual(pref, Secondary([{"dc": "ny"}]))
+        self.assertNotEqual(pref, Secondary())
+        self.assertNotEqual(pref, Secondary([{"dc": "sf"}]))
+
+    def test_secondary_preferred(self):
+        pref = SecondaryPreferred()
+        self.assertEqual(pref.mode, 3)
+        self.assertEqual(pref.name, 'SecondaryPreferred')
+        self.assertEqual(pref.document, {'mode': 'secondaryPreferred'})
+        self.assertEqual(pref.tag_sets, [{}])
+        self.assertEqual(pref, SecondaryPreferred())
+        self.assertNotEqual(pref, Primary())
+
+        pref = SecondaryPreferred([{"dc": "ny"}])
+        self.assertEqual(pref.document,
+                         {'mode': 'secondaryPreferred', 'tags': [{"dc": "ny"}]})
+        self.assertEqual(pref.tag_sets, [{"dc": "ny"}])
+        self.assertEqual(pref, SecondaryPreferred([{"dc": "ny"}]))
+        self.assertNotEqual(pref, SecondaryPreferred())
+        self.assertNotEqual(pref, SecondaryPreferred([{"dc": "sf"}]))
+
+    def test_nearest(self):
+        pref = Nearest()
+        self.assertEqual(pref.mode, 4)
+        self.assertEqual(pref.name, 'Nearest')
+        self.assertEqual(pref.document, {'mode': 'nearest'})
+        self.assertEqual(pref.tag_sets, [{}])
+        self.assertEqual(pref, Nearest())
+        self.assertNotEqual(pref, Primary())
+
+        pref = Nearest([{"dc": "ny"}])
+        self.assertEqual(pref.document,
+                         {'mode': 'nearest', 'tags': [{"dc": "ny"}]})
+        self.assertEqual(pref.tag_sets, [{"dc": "ny"}])
+        self.assertEqual(pref, Nearest([{"dc": "ny"}]))
+        self.assertNotEqual(pref, Nearest())
+        self.assertNotEqual(pref, Nearest([{"dc": "sf"}]))
+
+    def test_pickle(self):
+        for pref in self.prefs:
+            self.assertEqual(pref, pickle.loads(pickle.dumps(pref)))
+
+    def test_copy(self):
+        for pref in self.prefs:
+            self.assertEqual(pref, copy.copy(pref))
+
+    def test_tag_sets_validation(self):
+        self.assertRaises(TypeError, Secondary, {})
+        self.assertRaises(ValueError, Secondary, [])
+        self.assertRaises(TypeError, Secondary, ["foo"])
+        self.assertRaises(TypeError, Secondary, [{"dc": "ny"}, "foo"])
+
 
 if __name__ == "__main__":
     unittest.main()
