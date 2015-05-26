@@ -34,6 +34,30 @@ _QUERY_OPTIONS = {
     "exhaust": 64,
     "partial": 128}
 
+class CursorType(object):
+    NON_TAILABLE = 0
+    """The standard cursor type."""
+
+    TAILABLE = _QUERY_OPTIONS["tailable_cursor"]
+    """The tailable cursor type.
+    Tailable cursors are only for use with capped collections. They are not
+    closed when the last data is retrieved but are kept open and the cursor
+    location marks the final document position. If more data is received
+    iteration of the cursor will continue from the last document received.
+    """
+
+    TAILABLE_AWAIT = TAILABLE | _QUERY_OPTIONS["await_data"]
+    """A tailable cursor with the await option set.
+    Creates a tailable cursor that will wait for a few seconds after returning
+    the full result set so that it can capture and return additional data added
+    during the query.
+    """
+
+    EXHAUST = _QUERY_OPTIONS["exhaust"]
+    """An exhaust cursor.
+    MongoDB will stream batched results to the client without waiting for the
+    client to request each batch, reducing latency.
+    """
 
 # This has to be an old style class due to
 # http://bugs.jython.org/issue1057
