@@ -4,7 +4,7 @@
 .. automodule:: pymongo.cursor
    :synopsis: Tools for iterating over MongoDB query results
 
-  .. autoclass:: pymongo.cursor.CursorType
+   .. autoclass:: pymongo.cursor.CursorType
 
       .. autoattribute:: NON_TAILABLE
          :annotation:
