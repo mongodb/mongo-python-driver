@@ -33,9 +33,10 @@ directly to the master and each slave with instances of
 
 import warnings
 
+from bson.codec_options import CodecOptions
 from pymongo import helpers, thread_util
 from pymongo import ReadPreference
-from pymongo.common import BaseObject
+from pymongo.common import BaseObject, validate_boolean
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.errors import AutoReconnect
@@ -85,15 +86,16 @@ class MasterSlaveConnection(BaseObject):
                       " removed in PyMongo 3.0.",
                       DeprecationWarning, stacklevel=2)
 
+        validate_boolean('tz_aware', tz_aware)
+        codec_options = CodecOptions(document_class, tz_aware)
         super(MasterSlaveConnection,
               self).__init__(read_preference=ReadPreference.SECONDARY,
                              safe=master.safe,
+                             codec_options=codec_options,
                              **master.write_concern)
 
         self.__master = master
         self.__slaves = slaves
-        self.__document_class = document_class
-        self.__tz_aware = tz_aware
         self.__request_counter = thread_util.Counter(master.use_greenlets)
 
     @property
@@ -122,10 +124,12 @@ class MasterSlaveConnection(BaseObject):
         return self.master.use_greenlets
 
     def get_document_class(self):
-        return self.__document_class
+        return self._codec_options.document_class
 
     def set_document_class(self, klass):
-        self.__document_class = klass
+        tz_aware = self._codec_options.tz_aware
+        uuid_rep = self._codec_options.uuid_representation
+        self._codec_options = CodecOptions(klass, tz_aware, uuid_rep)
 
     document_class = property(get_document_class, set_document_class,
                               doc="""Default class to use for documents
@@ -133,7 +137,7 @@ class MasterSlaveConnection(BaseObject):
 
     @property
     def tz_aware(self):
-        return self.__tz_aware
+        return self._codec_options.tz_aware
 
     @property
     def max_bson_size(self):

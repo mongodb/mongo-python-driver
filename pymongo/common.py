@@ -16,13 +16,14 @@
 """Functions and classes common to multiple pymongo modules."""
 import sys
 import warnings
-from pymongo import read_preferences
 
+from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
+                         JAVA_LEGACY, CSHARP_LEGACY)
+from bson.codec_options import CodecOptions
+from pymongo import read_preferences
 from pymongo.auth import MECHANISMS
 from pymongo.read_preferences import ReadPreference
 from pymongo.errors import ConfigurationError
-from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
-                         JAVA_LEGACY, CSHARP_LEGACY)
 
 HAS_SSL = True
 try:
@@ -395,12 +396,12 @@ class BaseObject(object):
 
     def __init__(self, **options):
 
+        self._codec_options = None
         self.__slave_okay = False
         self.__read_pref = ReadPreference.PRIMARY
         self.__tag_sets = [{}]
         self.__secondary_acceptable_latency_ms = 15
         self.__safe = None
-        self.__uuid_subtype = OLD_UUID_SUBTYPE
         self.__write_concern = WriteConcern()
         self.__set_options(options)
         if (self.__read_pref == ReadPreference.PRIMARY
@@ -444,8 +445,8 @@ class BaseObject(object):
                 self.__read_pref = validate_read_preference(option, value)
             elif option in ('tag_sets', 'readpreferencetags'):
                 self.__tag_sets = validate_tag_sets(option, value)
-            elif option == 'uuidrepresentation':
-                self.__uuid_subtype = validate_uuid_subtype(option, value)
+            elif option == 'codec_options':
+                self._codec_options = value
             elif option in ('secondaryacceptablelatencyms',
                             'secondary_acceptable_latency_ms'):
                 self.__secondary_acceptable_latency_ms = (
@@ -457,6 +458,15 @@ class BaseObject(object):
                     self.__set_safe_option('wtimeout', value)
                 else:
                     self.__set_safe_option(option, value)
+
+    @property
+    def codec_options(self):
+        """Read only access to the :class:`~bson.codec_options.CodecOptions`
+        of this instance.
+
+        .. versionadded:: 2.9
+        """
+        return self._codec_options
 
     def __set_write_concern(self, value):
         """Property setter for write_concern."""
@@ -622,11 +632,14 @@ class BaseObject(object):
         subtype 4. It can also be used to force legacy byte order and subtype
         compatibility with the Java and C# drivers. See the :mod:`bson.binary`
         module for all options."""
-        return self.__uuid_subtype
+        return self._codec_options.uuid_representation
 
     def __set_uuid_subtype(self, value):
         """Sets the BSON Binary subtype to be used when storing UUIDs."""
-        self.__uuid_subtype = validate_uuid_subtype("uuid_subtype", value)
+        as_class = self._codec_options.document_class
+        tz_aware = self._codec_options.tz_aware
+        uuid_rep = validate_uuid_subtype("uuid_subtype", value)
+        self._codec_options = CodecOptions(as_class, tz_aware, uuid_rep)
 
     uuid_subtype = property(__get_uuid_subtype, __set_uuid_subtype)
 

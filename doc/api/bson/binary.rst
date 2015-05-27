@@ -9,6 +9,8 @@
    .. autodata:: OLD_BINARY_SUBTYPE
    .. autodata:: OLD_UUID_SUBTYPE
    .. autodata:: UUID_SUBTYPE
+   .. autodata:: STANDARD
+   .. autodata:: PYTHON_LEGACY
    .. autodata:: JAVA_LEGACY
    .. autodata:: CSHARP_LEGACY
    .. autodata:: MD5_SUBTYPE

@@ -30,6 +30,7 @@
       .. autoattribute:: min_wire_version
       .. autoattribute:: max_wire_version
       .. autoattribute:: auto_start_request
+      .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
       .. autoattribute:: secondary_acceptable_latency_ms

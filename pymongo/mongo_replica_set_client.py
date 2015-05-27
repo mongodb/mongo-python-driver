@@ -40,6 +40,8 @@ import time
 import warnings
 import weakref
 
+from bson.binary import PYTHON_LEGACY
+from bson.codec_options import CodecOptions
 from bson.py3compat import b
 from pymongo import (auth,
                      common,
@@ -59,7 +61,6 @@ from pymongo.errors import (AutoReconnect,
                             DuplicateKeyError,
                             OperationFailure,
                             InvalidOperation)
-from pymongo.read_preferences import ReadPreference
 from pymongo.thread_util import DummyLock
 
 EMPTY = b("")
@@ -593,8 +594,6 @@ class MongoReplicaSetClient(common.BaseObject):
 
         self.__max_pool_size = common.validate_positive_integer_or_none(
             'max_pool_size', max_pool_size)
-        self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
-        self.__document_class = document_class
         self.__monitor = None
         self.__closed = False
 
@@ -630,6 +629,11 @@ class MongoReplicaSetClient(common.BaseObject):
             option, value = common.validate(option, value)
             self.__opts[option] = value
         self.__opts.update(options)
+
+        common.validate_boolean('tz_aware', tz_aware)
+        uuid_representation = options.pop('uuidrepresentation', PYTHON_LEGACY)
+        self.__opts['codec_options'] = CodecOptions(
+            document_class, tz_aware, uuid_representation)
 
         self.__use_greenlets = self.__opts.get('use_greenlets', False)
         if self.__use_greenlets and not have_gevent:
@@ -927,11 +931,13 @@ class MongoReplicaSetClient(common.BaseObject):
 
     def get_document_class(self):
         """document_class getter"""
-        return self.__document_class
+        return self._codec_options.document_class
 
     def set_document_class(self, klass):
         """document_class setter"""
-        self.__document_class = klass
+        tz_aware = self._codec_options.tz_aware
+        uuid_rep = self._codec_options.uuid_representation
+        self._codec_options = CodecOptions(klass, tz_aware, uuid_rep)
 
     document_class = property(get_document_class, set_document_class,
                               doc="""Default class to use for documents
@@ -942,7 +948,7 @@ class MongoReplicaSetClient(common.BaseObject):
     def tz_aware(self):
         """Does this client return timezone-aware datetimes?
         """
-        return self.__tz_aware
+        return self._codec_options.tz_aware
 
     @property
     def max_bson_size(self):

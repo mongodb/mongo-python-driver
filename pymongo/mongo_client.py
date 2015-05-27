@@ -42,6 +42,8 @@ import threading
 import time
 import warnings
 
+from bson.binary import PYTHON_LEGACY
+from bson.codec_options import CodecOptions
 from bson.py3compat import b
 from pymongo import (auth,
                      common,
@@ -292,6 +294,11 @@ class MongoClient(common.BaseObject):
             options[option] = value
         options.update(opts)
 
+        common.validate_boolean('tz_aware', tz_aware)
+        uuid_representation = options.pop('uuidrepresentation', PYTHON_LEGACY)
+        options['codec_options'] = CodecOptions(
+            document_class, tz_aware, uuid_representation)
+
         self.__max_pool_size = common.validate_positive_integer_or_none(
             'max_pool_size', max_pool_size)
 
@@ -356,8 +363,6 @@ class MongoClient(common.BaseObject):
             self.__event_class = event_class
 
         self.__future_member = None
-        self.__document_class = document_class
-        self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
         self.__auto_start_request = options.get('auto_start_request', False)
 
         # cache of existing indexes used by ensure_index ops
@@ -606,10 +611,12 @@ class MongoClient(common.BaseObject):
         return self.__auto_start_request
 
     def get_document_class(self):
-        return self.__document_class
+        return self._codec_options.document_class
 
     def set_document_class(self, klass):
-        self.__document_class = klass
+        tz_aware = self._codec_options.tz_aware
+        uuid_rep = self._codec_options.uuid_representation
+        self._codec_options = CodecOptions(klass, tz_aware, uuid_rep)
 
     document_class = property(get_document_class, set_document_class,
                               doc="""Default class to use for documents
@@ -624,7 +631,7 @@ class MongoClient(common.BaseObject):
 
         .. versionadded:: 1.8
         """
-        return self.__tz_aware
+        return self._codec_options.tz_aware
 
     @property
     def max_bson_size(self):

@@ -57,7 +57,7 @@ class Database(common.BaseObject):
                              secondary_acceptable_latency_ms=(
                                  connection.secondary_acceptable_latency_ms),
                              safe=connection.safe,
-                             uuidrepresentation=connection.uuid_subtype,
+                             codec_options=connection.codec_options,
                              **connection.write_concern)
 
         if not isinstance(name, basestring):

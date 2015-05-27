@@ -11,14 +11,15 @@ Sub-modules:
    :maxdepth: 2
 
    binary
-   regex
    code
+   codec_options
    dbref
    errors
    json_util
    max_key
    min_key
    objectid
+   regex
    son
    timestamp
    tz_util

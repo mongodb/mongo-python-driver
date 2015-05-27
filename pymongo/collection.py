@@ -93,7 +93,7 @@ class Collection(common.BaseObject):
             secondary_acceptable_latency_ms=(
                 database.secondary_acceptable_latency_ms),
             safe=database.safe,
-            uuidrepresentation=database.uuid_subtype,
+            codec_options=database.codec_options,
             **database.write_concern)
 
         if not isinstance(name, basestring):

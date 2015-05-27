@@ -23,6 +23,7 @@
          .. note::  Use dictionary style access if `collection_name` is an
             attribute of the :class:`Database` class eg: db[`collection_name`].
 
+      .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
       .. autoattribute:: secondary_acceptable_latency_ms
