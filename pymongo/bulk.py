@@ -19,9 +19,10 @@
 
 from bson.objectid import ObjectId
 from bson.py3compat import u
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.common import (validate_is_mapping,
-                            validate_is_mutable_mapping,
+                            validate_is_document_type,
                             validate_ok_for_replace,
                             validate_ok_for_update)
 from pymongo.errors import (BulkWriteError,
@@ -213,9 +214,9 @@ class _Bulk(object):
     def add_insert(self, document):
         """Add an insert document to the list of ops.
         """
-        validate_is_mutable_mapping("document", document)
+        validate_is_document_type("document", document)
         # Generate ObjectId client side.
-        if '_id' not in document:
+        if not (isinstance(document, RawBSONDocument) or '_id' in document):
             document['_id'] = ObjectId()
         self.ops.append((_INSERT, document))
 

@@ -23,6 +23,14 @@ from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          PYTHON_LEGACY,
                          UUID_REPRESENTATION_NAMES)
 
+_RAW_BSON_DOCUMENT_MARKER = 101
+
+
+def _raw_document_class(document_class):
+    """Determine if a document_class is a RawBSONDocument class."""
+    marker = getattr(document_class, '_type_marker', None)
+    return marker == _RAW_BSON_DOCUMENT_MARKER
+
 
 _options_base = namedtuple(
     'CodecOptions',
@@ -61,9 +69,11 @@ class CodecOptions(_options_base):
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
                 unicode_decode_error_handler="strict",
                 tzinfo=None):
-        if not issubclass(document_class, MutableMapping):
-            raise TypeError("document_class must be dict, bson.son.SON, or "
-                            "another subclass of collections.MutableMapping")
+        if not (issubclass(document_class, MutableMapping) or
+                _raw_document_class(document_class)):
+            raise TypeError("document_class must be dict, bson.son.SON, "
+                            "bson.raw_bson_document.RawBSONDocument, or a "
+                            "sublass of collections.MutableMapping")
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:

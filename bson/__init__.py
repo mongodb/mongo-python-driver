@@ -31,7 +31,8 @@ from bson.binary import (Binary, OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY,
                          UUIDLegacy)
 from bson.code import Code
-from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
+from bson.codec_options import (
+    CodecOptions, DEFAULT_CODEC_OPTIONS, _raw_document_class)
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
                          InvalidDocument,
@@ -132,6 +133,10 @@ def _get_object(data, position, obj_end, opts):
         raise InvalidBSON("bad eoo")
     if end >= obj_end:
         raise InvalidBSON("invalid object length")
+    if _raw_document_class(opts.document_class):
+        return (opts.document_class(data[position:end + 1], opts),
+                position + obj_size)
+
     obj = _elements_to_dict(data, position + 4, end, opts)
 
     position += obj_size
@@ -147,6 +152,7 @@ def _get_array(data, position, obj_end, opts):
     end = position + size - 1
     if data[end:end + 1] != b"\x00":
         raise InvalidBSON("bad eoo")
+
     position += 4
     end -= 1
     result = []
@@ -304,14 +310,21 @@ def _element_to_dict(data, position, obj_end, opts):
     value, position = _ELEMENT_GETTER[element_type](data,
                                                     position, obj_end, opts)
     return element_name, value, position
+if _USE_C:
+    _element_to_dict = _cbson._element_to_dict
+
+
+def _iterate_elements(data, position, obj_end, opts):
+    end = obj_end - 1
+    while position < end:
+        (key, value, position) = _element_to_dict(data, position, obj_end, opts)
+        yield key, value
 
 
 def _elements_to_dict(data, position, obj_end, opts):
     """Decode a BSON document."""
     result = opts.document_class()
-    end = obj_end - 1
-    while position < end:
-        (key, value, position) = _element_to_dict(data, position, obj_end, opts)
+    for key, value in _iterate_elements(data, position, obj_end, opts):
         result[key] = value
     return result
 
@@ -327,6 +340,8 @@ def _bson_to_dict(data, opts):
     if data[obj_size - 1:obj_size] != b"\x00":
         raise InvalidBSON("bad eoo")
     try:
+        if _raw_document_class(opts.document_class):
+            return opts.document_class(data, opts)
         return _elements_to_dict(data, 4, obj_size - 1, opts)
     except InvalidBSON:
         raise
@@ -429,6 +444,8 @@ else:
 
 def _encode_mapping(name, value, check_keys, opts):
     """Encode a mapping type."""
+    if _raw_document_class(value):
+        return b'\x03' + name + value.raw
     data = b"".join([_element_to_bson(key, val, check_keys, opts)
                      for key, val in iteritems(value)])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
@@ -694,6 +711,8 @@ def _element_to_bson(key, value, check_keys, opts):
 
 def _dict_to_bson(doc, check_keys, opts, top_level=True):
     """Encode a document to BSON."""
+    if _raw_document_class(doc):
+        return doc.raw
     try:
         elements = []
         if top_level and "_id" in doc:
@@ -751,6 +770,7 @@ def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
     docs = []
     position = 0
     end = len(data) - 1
+    use_raw = _raw_document_class(codec_options.document_class)
     try:
         while position < end:
             obj_size = _UNPACK_INT(data[position:position + 4])[0]
@@ -759,10 +779,15 @@ def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
             obj_end = position + obj_size - 1
             if data[obj_end:position + obj_size] != b"\x00":
                 raise InvalidBSON("bad eoo")
-            docs.append(_elements_to_dict(data,
-                                          position + 4,
-                                          obj_end,
-                                          codec_options))
+            if use_raw:
+                docs.append(
+                    codec_options.document_class(
+                        data[position:obj_end + 1], codec_options))
+            else:
+                docs.append(_elements_to_dict(data,
+                                              position + 4,
+                                              obj_end,
+                                              codec_options))
             position += obj_size
         return docs
     except InvalidBSON:

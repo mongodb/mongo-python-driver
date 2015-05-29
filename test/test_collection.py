@@ -24,8 +24,12 @@ from collections import defaultdict
 
 sys.path[0:0] = [""]
 
+import bson
+
+from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.py3compat import u, itervalues
 from bson.son import SON
@@ -656,6 +660,12 @@ class TestCollection(IntegrationTest):
         # The insert failed duplicate key...
         wait_until(lambda: 2 == db.test.count(), 'forcing duplicate key error')
 
+        document = RawBSONDocument(
+            bson.BSON.encode({'_id': ObjectId(), 'foo': 'bar'}))
+        result = db.test.insert_one(document)
+        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertEqual(result.inserted_id, None)
+
     def test_insert_many(self):
         db = self.db
         db.test.drop()
@@ -684,13 +694,20 @@ class TestCollection(IntegrationTest):
             self.assertEqual(1, db.test.count({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
+        docs = [RawBSONDocument(bson.BSON.encode({"_id": i + 5}))
+                for i in range(5)]
+        result = db.test.insert_many(docs)
+        self.assertTrue(isinstance(result, InsertManyResult))
+        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertEqual([], result.inserted_ids)
+
         db = db.client.get_database(db.name,
                                     write_concern=WriteConcern(w=0))
         docs = [{} for _ in range(5)]
         result = db.test.insert_many(docs)
         self.assertTrue(isinstance(result, InsertManyResult))
         self.assertFalse(result.acknowledged)
-        self.assertEqual(15, db.test.count())
+        self.assertEqual(20, db.test.count())
 
     def test_delete_one(self):
         self.db.test.drop()
@@ -1160,6 +1177,17 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"x": 1}))
         self.assertEqual(db.test.find_one(id1)["y"], 1)
 
+        replacement = RawBSONDocument(bson.BSON.encode({"_id": id1, "z": 1}))
+        result = db.test.replace_one({"y": 1}, replacement, True)
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIsNone(result.upserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, db.test.count({"z": 1}))
+        self.assertEqual(0, db.test.count({"y": 1}))
+        self.assertEqual(db.test.find_one(id1)["z"], 1)
+
         result = db.test.replace_one({"x": 2}, {"y": 2}, True)
         self.assertTrue(isinstance(result, UpdateResult))
         self.assertEqual(0, result.matched_count)
@@ -1353,6 +1381,23 @@ class TestCollection(IntegrationTest):
 
         self.assertTrue(isinstance(result, CommandCursor))
         self.assertEqual([{'foo': [1, 2]}], list(result))
+
+    def test_aggregate_raw_bson(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert_one({'foo': [1, 2]})
+
+        self.assertRaises(TypeError, db.test.aggregate, "wow")
+
+        pipeline = {"$project": {"_id": False, "foo": True}}
+        result = db.get_collection(
+            'test',
+            codec_options=CodecOptions(document_class=RawBSONDocument)
+        ).aggregate([pipeline], useCursor=False)
+        self.assertTrue(isinstance(result, CommandCursor))
+        first_result = next(result)
+        self.assertIsInstance(first_result, RawBSONDocument)
+        self.assertEqual([1, 2], list(first_result['foo']))
 
     @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor_validation(self):

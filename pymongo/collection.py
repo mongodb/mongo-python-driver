@@ -24,6 +24,7 @@ from bson.py3compat import (_unicode,
                             integer_types,
                             string_type,
                             u)
+from bson.raw_bson import RawBSONDocument
 from bson.codec_options import CodecOptions
 from bson.son import SON
 from pymongo import (common,
@@ -489,7 +490,7 @@ class Collection(common.BaseObject):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
-            if '_id' not in doc:
+            if not isinstance(doc, RawBSONDocument) and '_id' not in doc:
                 doc['_id'] = ObjectId()
             doc = self.__database._apply_incoming_copying_manipulators(doc,
                                                                        self)
@@ -516,13 +517,14 @@ class Collection(common.BaseObject):
                 sock_info, 'insert', command, acknowledged, op_id,
                 bypass_doc_val, message.insert, self.__full_name, [doc],
                 check_keys, acknowledged, concern, False, self.codec_options)
-        return doc.get('_id')
+        if not isinstance(doc, RawBSONDocument):
+            return doc.get('_id')
 
     def _insert(self, sock_info, docs, ordered=True, check_keys=True,
                 manipulate=False, write_concern=None, op_id=None,
                 bypass_doc_val=False):
         """Internal insert helper."""
-        if isinstance(docs, collections.MutableMapping):
+        if isinstance(docs, collections.Mapping):
             return self._insert_one(
                 sock_info, docs, ordered,
                 check_keys, manipulate, write_concern, op_id, bypass_doc_val)
@@ -540,7 +542,7 @@ class Collection(common.BaseObject):
                     # operations is required for backwards compatibility,
                     # see PYTHON-709.
                     doc = _db._apply_incoming_manipulators(doc, self)
-                    if '_id' not in doc:
+                    if not (isinstance(doc, RawBSONDocument) or '_id' in doc):
                         doc['_id'] = ObjectId()
 
                     doc = _db._apply_incoming_copying_manipulators(doc, self)
@@ -550,7 +552,9 @@ class Collection(common.BaseObject):
             def gen():
                 """Generator that only tracks existing _ids."""
                 for doc in docs:
-                    ids.append(doc.get('_id'))
+                    # Don't inflate RawBSONDocument by touching fields.
+                    if not isinstance(doc, RawBSONDocument):
+                        ids.append(doc.get('_id'))
                     yield doc
 
         concern = (write_concern or self.write_concern).document
@@ -612,8 +616,8 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        common.validate_is_mutable_mapping("document", document)
-        if "_id" not in document:
+        common.validate_is_document_type("document", document)
+        if not (isinstance(document, RawBSONDocument) or "_id" in document):
             document["_id"] = ObjectId()
         with self._socket_for_writes() as sock_info:
             return InsertOneResult(
@@ -663,10 +667,11 @@ class Collection(common.BaseObject):
         def gen():
             """A generator that validates documents and handles _ids."""
             for document in documents:
-                common.validate_is_mutable_mapping("document", document)
-                if "_id" not in document:
-                    document["_id"] = ObjectId()
-                inserted_ids.append(document["_id"])
+                common.validate_is_document_type("document", document)
+                if not isinstance(document, RawBSONDocument):
+                    if "_id" not in document:
+                        document["_id"] = ObjectId()
+                    inserted_ids.append(document["_id"])
                 yield (message._INSERT, document)
 
         blk = _Bulk(self, ordered, bypass_document_validation)
@@ -1189,6 +1194,8 @@ class Collection(common.BaseObject):
         with self._socket_for_reads() as (sock_info, slave_ok):
             res = self._command(sock_info, cmd, slave_ok,
                                 allowable_errors=["ns missing"],
+                                codec_options=self.codec_options._replace(
+                                    document_class=dict),
                                 read_concern=self.read_concern)
         if res.get("errmsg", "") == "ns missing":
             return 0
@@ -2158,14 +2165,14 @@ class Collection(common.BaseObject):
         """
         warnings.warn("save is deprecated. Use insert_one or replace_one "
                       "instead", DeprecationWarning, stacklevel=2)
-        common.validate_is_mutable_mapping("to_save", to_save)
+        common.validate_is_document_type("to_save", to_save)
 
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
 
         with self._socket_for_writes() as sock_info:
-            if "_id" not in to_save:
+            if not (isinstance(to_save, RawBSONDocument) or "_id" in to_save):
                 return self._insert(sock_info, to_save, True,
                                     check_keys, manipulate, write_concern)
             else:

@@ -52,12 +52,20 @@ typedef int Py_ssize_t;
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 
+#if PY_MAJOR_VERSION >= 3
+#define BYTES_FORMAT_STRING "y#"
+#else
+#define BYTES_FORMAT_STRING "s#"
+#endif
+
 typedef struct codec_options_t {
     PyObject* document_class;
     unsigned char tz_aware;
     unsigned char uuid_rep;
     char* unicode_decode_error_handler;
     PyObject* tzinfo;
+    PyObject* options_obj;
+    unsigned char is_raw_bson;
 } codec_options_t;
 
 /* C API functions */
