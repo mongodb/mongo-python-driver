@@ -328,6 +328,7 @@ VALIDATORS = {
     'tag_sets': validate_tag_sets,
     'secondaryacceptablelatencyms': validate_positive_float_or_zero,
     'secondary_acceptable_latency_ms': validate_positive_float_or_zero,
+    'localthresholdms': validate_positive_float_or_zero,
     'auto_start_request': validate_boolean,
     'use_greenlets': validate_boolean,
     'authmechanism': validate_auth_mechanism,

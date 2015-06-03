@@ -138,6 +138,8 @@ class TestURI(unittest.TestCase):
         self.assertEqual({'authsource': 'foobar'}, split_options('authSource=foobar'))
         # maxPoolSize isn't yet a documented URI option.
         self.assertRaises(ConfigurationError, split_options, 'maxpoolsize=50')
+        self.assertEqual({'localthresholdms': 300},
+                         split_options('localThresholdMS=300'))
 
     def test_parse_uri(self):
         self.assertRaises(InvalidURI, parse_uri, "http://foobar.com")

@@ -166,6 +166,27 @@ class TestReadPreferences(TestReadPreferencesBase):
                           self._get_client,
                           secondaryacceptablelatencyms=-1)
 
+    def test_backport_latency_validation(self):
+        self.assertEqual(17, self._get_client(
+            localThresholdMS=17
+        ).secondary_acceptable_latency_ms)
+
+        self.assertEqual(42, self._get_client(
+            secondaryAcceptableLatencyMS=42
+        ).local_threshold_ms)
+
+        self.assertEqual(666, self._get_client(
+            localThresholdMS=666
+        ).local_threshold_ms)
+
+        self.assertEqual(0, self._get_client(
+            localthresholdms=0
+        ).local_threshold_ms)
+
+        self.assertRaises(ConfigurationError,
+                          self._get_client,
+                          localthresholdms=-1)
+
     def test_primary(self):
         self.assertReadsFrom('primary',
             read_preference=ReadPreference.PRIMARY)
