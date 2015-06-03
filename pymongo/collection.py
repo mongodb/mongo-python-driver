@@ -915,7 +915,10 @@ class Collection(common.BaseObject):
            The `tailable` parameter.
 
         .. mongodoc:: find
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+        .. _localThreshold:
+          http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+        .. _query modifiers:
+          http://docs.mongodb.org/manual/reference/operator/query-modifier
         """
         if not 'slave_okay' in kwargs:
             kwargs['slave_okay'] = self.slave_okay
