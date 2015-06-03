@@ -154,6 +154,44 @@ class TestMongosHA(unittest.TestCase):
         # No error
         client.db.collection.find_one()
 
+    def test_backport_localthresholdms_kwarg(self):
+        # Test that localThresholdMS takes precedence over
+        # secondaryAcceptableLatencyMS.
+        client = MockClient(
+            standalones=[],
+            members=[],
+            mongoses=['a:1', 'b:2', 'c:3'],
+            host='a:1,b:2,c:3',
+            localThresholdMS=7,
+            secondaryAcceptableLatencyMS=0)
+
+        self.assertEqual(7, client.secondary_acceptable_latency_ms)
+        self.assertEqual(7, client.local_threshold_ms)
+        # No error
+        client.db.collection.find_one()
+
+        client = MockClient(
+            standalones=[],
+            members=[],
+            mongoses=['a:1', 'b:2', 'c:3'],
+            host='a:1,b:2,c:3',
+            localThresholdMS=0,
+            secondaryAcceptableLatencyMS=15)
+
+        self.assertEqual(0, client.secondary_acceptable_latency_ms)
+        self.assertEqual(0, client.local_threshold_ms)
+
+        # Test that using localThresholdMS works in the same way as using
+        # secondaryAcceptableLatencyMS.
+        client.db.collection.find_one()
+        # Our chosen mongos goes down.
+        client.kill_host('%s:%s' % (client.host, client.port))
+        try:
+            client.db.collection.find_one()
+        except:
+            pass
+        # No error
+        client.db.collection.find_one()
 
 if __name__ == "__main__":
     unittest.main()

@@ -206,6 +206,14 @@ class MongoClient(common.BaseObject):
             set, ``{}``, means "read from any member that matches the mode,
             ignoring tags. Defaults to ``[{}]``, meaning "ignore members'
             tags."
+          - `secondaryAcceptableLatencyMS`: (integer) Any replica-set member
+            whose ping time is within secondary_acceptable_latency_ms of the
+            nearest member may accept reads. Default 15 milliseconds.
+            **Ignored by mongos** and must be configured on the command line.
+            See the localThreshold_ option for more information.
+          - `localThresholdMS`: (integer) Alias for
+            secondaryAcceptableLatencyMS. Takes precedence over
+            secondaryAcceptableLatencyMS.
 
           | **SSL configuration:**
 
@@ -293,6 +301,11 @@ class MongoClient(common.BaseObject):
             option, value = common.validate(option, value)
             options[option] = value
         options.update(opts)
+
+        # localthresholdms takes precedence over secondaryacceptablelatencyms.
+        if "localthresholdms" in options:
+            options["secondaryacceptablelatencyms"] = (
+                options["localthresholdms"])
 
         common.validate_boolean('tz_aware', tz_aware)
         uuid_representation = options.pop('uuidrepresentation', PYTHON_LEGACY)
@@ -687,6 +700,14 @@ class MongoClient(common.BaseObject):
         """
         return self.__member_property(
             'max_write_batch_size', common.MAX_WRITE_BATCH_SIZE)
+
+    @property
+    def local_threshold_ms(self):
+        """Alias for secondary_acceptable_latency_ms.
+
+        .. versionadded:: 2.9
+        """
+        return self.secondary_acceptable_latency_ms
 
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server. May raise AutoReconnect.
