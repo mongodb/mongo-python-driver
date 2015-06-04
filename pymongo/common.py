@@ -335,7 +335,8 @@ VALIDATORS = {
     'gssapiservicename': validate_basestring,
     'authmechanismproperties': validate_auth_mechanism_properties,
     'uuidrepresentation': validate_uuid_representation,
-    'socketkeepalive': validate_boolean
+    'socketkeepalive': validate_boolean,
+    'maxpoolsize': validate_positive_integer_or_none
 }
 
 

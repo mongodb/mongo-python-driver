@@ -402,6 +402,20 @@ class _TestPooling(_TestPoolingBase):
         c = MongoClient(host=host, port=port, max_pool_size=100)
         self.assertEqual(c.max_pool_size, 100)
 
+    def test_maxpoolsize_validation(self):
+        self.assertRaises(
+            ConfigurationError, MongoClient, host=host, port=port,
+            maxpoolsize=-1
+        )
+
+        self.assertRaises(
+            ConfigurationError, MongoClient, host=host, port=port,
+            maxpoolsize='foo'
+        )
+
+        c = MongoClient(host=host, port=port, maxpoolsize=100)
+        self.assertEqual(c.max_pool_size, 100)
+
     def test_no_disconnect(self):
         run_cases(self, [NoRequest, NonUnique, Unique, SaveAndFind])
 

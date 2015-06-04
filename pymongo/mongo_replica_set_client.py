@@ -490,6 +490,8 @@ class MongoReplicaSetClient(common.BaseObject):
             precedence.
           - `port`: For compatibility with :class:`~mongo_client.MongoClient`.
             The default port number to use for hosts.
+          - `maxpoolsize` (optional): Alias for max_pool_size. Takes
+            precendence over max_pool_size.
           - `socketTimeoutMS`: (integer or None) How long (in milliseconds) a
             send or receive on a socket can take before timing out. Defaults to
             ``None`` (no timeout).
@@ -592,8 +594,6 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__index_cache = {}
         self.__auth_credentials = {}
 
-        self.__max_pool_size = common.validate_positive_integer_or_none(
-            'max_pool_size', max_pool_size)
         self.__monitor = None
         self.__closed = False
 
@@ -629,6 +629,11 @@ class MongoReplicaSetClient(common.BaseObject):
             option, value = common.validate(option, value)
             self.__opts[option] = value
         self.__opts.update(options)
+
+        self.__max_pool_size = self.__opts.get(
+            'maxpoolsize',
+            common.validate_positive_integer_or_none('max_pool_size',
+                                                     max_pool_size))
 
         common.validate_boolean('tz_aware', tz_aware)
         uuid_representation = options.pop('uuidrepresentation', PYTHON_LEGACY)
