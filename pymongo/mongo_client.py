@@ -140,6 +140,8 @@ class MongoClient(common.BaseObject):
 
           | **Other optional parameters can be passed as keyword arguments:**
 
+          - `maxPoolSize` (optional): Alias for max_pool_size. Takes
+            precedence over max_pool_size.
           - `socketTimeoutMS`: (integer or None) How long (in milliseconds) a
             send or receive on a socket can take before timing out. Defaults to
             ``None`` (no timeout).
@@ -312,8 +314,10 @@ class MongoClient(common.BaseObject):
         options['codec_options'] = CodecOptions(
             document_class, tz_aware, uuid_representation)
 
-        self.__max_pool_size = common.validate_positive_integer_or_none(
-            'max_pool_size', max_pool_size)
+        self.__max_pool_size = options.get(
+            'maxpoolsize',
+            common.validate_positive_integer_or_none('max_pool_size',
+                                                     max_pool_size))
 
         self.__cursor_manager = CursorManager(self)
 

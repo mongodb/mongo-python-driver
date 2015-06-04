@@ -331,6 +331,31 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         finally:
             ctx.exit()
 
+    def test_backport_maxpoolsize_uri(self):
+        uri = "mongodb://%s:%s" % (host, port)
+        mps_uri = ("mongodb://%s:%d/?maxPoolSize=10" % (host, port))
+
+        client = MongoClient(uri)
+        self.assertEqual(client.max_pool_size, 100)
+
+        client = MongoClient(uri, maxPoolSize=10)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoClient(uri, max_pool_size=8, maxPoolSize=10)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoClient(mps_uri)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoClient(mps_uri, maxPoolSize=8)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoClient(mps_uri, max_pool_size=8)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoClient(mps_uri, max_pool_size=6, maxPoolSize=8)
+        self.assertEqual(client.max_pool_size, 10)
+
     def test_backport_localthresholdms_uri(self):
         uri = "mongodb://%s:%s" % (host, port)
         lt_uri = "mongodb://%s:%d/?localThresholdMS=10" % (host, port)
