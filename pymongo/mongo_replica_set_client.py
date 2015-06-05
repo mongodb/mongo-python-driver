@@ -550,11 +550,14 @@ class MongoReplicaSetClient(common.BaseObject):
             ignoring tags." :class:`MongoReplicaSetClient` tries each set of
             tags in turn until it finds a set of tags with at least one matching
             member. Defaults to ``[{}]``, meaning "ignore members' tags."
-          - `secondary_acceptable_latency_ms`: (integer) Any replica-set member
-            whose ping time is within secondary_acceptable_latency_ms of the
+          - `secondaryAcceptableLatencyMS`: (integer) Any replica-set member
+            whose ping time is within secondaryAcceptableLatencyMS of the
             nearest member may accept reads. Default 15 milliseconds.
             **Ignored by mongos** and must be configured on the command line.
             See the localThreshold_ option for more information.
+          - `localThresholdMS`: (integer) Alias for
+            secondaryAcceptableLatencyMS. Takes precedence over
+            secondaryAcceptableLatencyMS.
 
           | **SSL configuration:**
 
@@ -688,6 +691,11 @@ class MongoReplicaSetClient(common.BaseObject):
                                      "are using a python version previous to "
                                      "2.6 you must install the ssl package "
                                      "from PyPI.")
+
+        # localThresholdMS takes precedence over secondaryAcceptableLatencyMS
+        if "localthresholdms" in self.__opts:
+            self.__opts["secondaryacceptablelatencyms"] = (
+                self.__opts["localthresholdms"])
 
         super(MongoReplicaSetClient, self).__init__(**self.__opts)
         if self.slave_okay:
@@ -1016,6 +1024,14 @@ class MongoReplicaSetClient(common.BaseObject):
     def auto_start_request(self):
         """**DEPRECATED** Is auto_start_request enabled?"""
         return self.__auto_start_request
+
+    @property
+    def local_threshold_ms(self):
+        """Alias for secondary_acceptable_latency_ms.
+
+        .. versionadded:: 2.9
+        """
+        return self.secondary_acceptable_latency_ms
 
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
