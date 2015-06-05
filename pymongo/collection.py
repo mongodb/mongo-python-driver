@@ -1448,13 +1448,27 @@ class Collection(common.BaseObject):
             '_use_master': use_master}
 
         command_kwargs.update(kwargs)
+
+        # If the server version can't support 'cursor'.
+        if self.database.connection.max_wire_version < 1:
+            command_kwargs.pop('cursor', None)
+
         result, conn_id = self.__database._command(
             "aggregate", self.__name, **command_kwargs)
 
-        if 'cursor' in result:
+        if "cursor" in kwargs:
+            if 'cursor' in result:
+                cursor = result['cursor']
+            else:
+                # Pre-MongoDB 2.6. Fake a cursor.
+                cursor = {
+                    "id": 0,
+                    "firstBatch": result["result"],
+                    "ns": self.full_name,
+                }
             return CommandCursor(
                 self,
-                result['cursor'],
+                cursor,
                 conn_id,
                 command_kwargs.get('compile_re', True))
         else:
