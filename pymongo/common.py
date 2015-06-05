@@ -98,12 +98,22 @@ def validate_integer(option, value):
 
 
 def validate_positive_integer(option, value):
-    """Validate that 'value' is a positive integer.
+    """Validate that 'value' is a positive integer, which does not include 0.
+    """
+    val = validate_integer(option, value)
+    if val <= 0:
+        raise ConfigurationError("The value of %s must be "
+                                 "a positive integer" % (option,))
+    return val
+
+
+def validate_non_negative_integer(option, value):
+    """Validate that 'value' is a positive integer or 0.
     """
     val = validate_integer(option, value)
     if val < 0:
         raise ConfigurationError("The value of %s must be "
-                                 "a positive integer" % (option,))
+                                 "a non negative integer" % (option,))
     return val
 
 
@@ -136,6 +146,14 @@ def validate_cert_reqs(option, value):
         raise ConfigurationError("The value of %s is set but can't be "
                                  "validated. The ssl module is not available"
                                  % (option,))
+
+
+def validate_non_negative_integer_or_none(option, value):
+    """Validate that 'value' is a positive integer or 0 or None.
+    """
+    if value is None:
+        return value
+    return validate_non_negative_integer(option, value)
 
 
 def validate_positive_integer_or_none(option, value):
@@ -316,7 +334,7 @@ VALIDATORS = {
     'connecttimeoutms': validate_timeout_or_none,
     'sockettimeoutms': validate_timeout_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,
-    'waitqueuemultiple': validate_positive_integer_or_none,
+    'waitqueuemultiple': validate_non_negative_integer_or_none,
     'ssl': validate_boolean,
     'ssl_keyfile': validate_readable,
     'ssl_certfile': validate_readable,

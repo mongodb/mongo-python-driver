@@ -106,6 +106,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         self.assertRaises(ConfigurationError, MongoClient, [])
 
+    def test_max_pool_size_zero(self):
+        self.assertRaises(ConfigurationError, MongoClient, maxPoolSize=0)
+
     def test_constants(self):
         MongoClient.HOST = host
         MongoClient.PORT = port
