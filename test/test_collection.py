@@ -1398,16 +1398,19 @@ class TestCollection(unittest.TestCase):
         self.assertTrue(isinstance(result['result'][0]['r'], Regex))
 
     def test_aggregation_cursor_validation(self):
-        if not version.at_least(self.db.connection, (2, 5, 1)):
-            raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
+        # Regardless of version, should return CommandCursor when given
+        # "cursor" kwarg.
         db = self.db
         projection = {'$project': {'_id': '$_id'}}
         cursor = db.test.aggregate(projection, cursor={})
         self.assertTrue(isinstance(cursor, CommandCursor))
 
+        db = self.db
+        projection = {'$project': {'_id': '$_id'}}
+        cursor = db.test.aggregate(projection)
+        self.assertFalse(isinstance(cursor, CommandCursor))
+
     def test_aggregation_cursor(self):
-        if not version.at_least(self.db.connection, (2, 5, 1)):
-            raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
         db = self.db
         if self.setname:
             db = MongoReplicaSetClient(host=self.client.host,
@@ -1431,8 +1434,6 @@ class TestCollection(unittest.TestCase):
                 sum(doc['_id'] for doc in cursor))
 
     def test_aggregation_cursor_alive(self):
-        if not version.at_least(self.db.connection, (2, 5, 1)):
-            raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
         self.db.test.remove()
         self.db.test.insert([{} for _ in range(3)])
         cursor = self.db.test.aggregate(pipeline=[], cursor={'batchSize': 2})
