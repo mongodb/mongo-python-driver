@@ -1461,12 +1461,19 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         header = self.__recv_data(16, sock)
         length = struct.unpack("<i", header[:4])[0]
+
+        assert operation == struct.unpack("<i", header[12:])[0], (
+            "wire protocol error: unknown opcode %r" % (operation,))
+
         # No rqst_id for exhaust cursor "getMore".
         if rqst_id is not None:
             resp_id = struct.unpack("<i", header[8:12])[0]
-            assert rqst_id == resp_id, "ids don't match %r %r" % (rqst_id,
-                                                                  resp_id)
-        assert operation == struct.unpack("<i", header[12:])[0]
+            assert rqst_id == resp_id, (
+                "wire protocol error: got response id %r but expected %r"
+                % (resp_id, rqst_id))
+
+        assert length > 16, ("wire protocol error: message length is shorter"
+                             " than standard message header: %r" % (length,))
 
         return self.__recv_data(length - 16, sock)
 
