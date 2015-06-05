@@ -140,12 +140,22 @@ def validate_integer(option, value):
 
 
 def validate_positive_integer(option, value):
-    """Validate that 'value' is a positive integer.
+    """Validate that 'value' is a positive integer, which does not include 0.
+    """
+    val = validate_integer(option, value)
+    if val <= 0:
+        raise ValueError("The value of %s must be "
+                         "a positive integer" % (option,))
+    return val
+
+
+def validate_non_negative_integer(option, value):
+    """Validate that 'value' is a positive integer or 0.
     """
     val = validate_integer(option, value)
     if val < 0:
         raise ValueError("The value of %s must be "
-                         "a positive integer" % (option,))
+                         "a non negative integer" % (option,))
     return val
 
 
@@ -167,6 +177,14 @@ def validate_positive_integer_or_none(option, value):
     if value is None:
         return value
     return validate_positive_integer(option, value)
+
+
+def validate_non_negative_integer_or_none(option, value):
+    """Validate that 'value' is a positive integer or 0 or None.
+    """
+    if value is None:
+        return value
+    return validate_non_negative_integer(option, value)
 
 
 def validate_string(option, value):
@@ -392,7 +410,7 @@ VALIDATORS = {
     'socketkeepalive': validate_boolean_or_string,
     'sockettimeoutms': validate_timeout_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,
-    'waitqueuemultiple': validate_positive_integer_or_none,
+    'waitqueuemultiple': validate_non_negative_integer_or_none,
     'ssl': validate_boolean_or_string,
     'ssl_keyfile': validate_readable,
     'ssl_certfile': validate_readable,

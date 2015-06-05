@@ -117,7 +117,7 @@ class MongoClient(common.BaseObject):
           - `maxPoolSize` (optional): The maximum number of connections
             that the pool will open simultaneously. If this is set, operations
             will block if there are `maxPoolSize` outstanding connections
-            from the pool. Defaults to 100.
+            from the pool. Defaults to 100. Cannot be 0.
           - `socketTimeoutMS`: (integer or None) Controls how long (in
             milliseconds) the driver will wait for a response after sending an
             ordinary (non-monitoring) database operation before concluding that
