@@ -471,7 +471,7 @@ class MongoReplicaSetClient(common.BaseObject):
           - `max_pool_size` (optional): The maximum number of connections
             each pool will open simultaneously. If this is set, operations
             will block if there are `max_pool_size` outstanding connections
-            from the pool. Defaults to 100.
+            from the pool. Defaults to 100. Cannot be 0.
           - `document_class` (optional): default class to use for
             documents returned from queries on this client
           - `tz_aware` (optional): if ``True``,
@@ -635,8 +635,8 @@ class MongoReplicaSetClient(common.BaseObject):
 
         self.__max_pool_size = self.__opts.get(
             'maxpoolsize',
-            common.validate_positive_integer_or_none('max_pool_size',
-                                                     max_pool_size))
+            common.validate_positive_integer_or_none(
+                'max_pool_size', max_pool_size))
 
         common.validate_boolean('tz_aware', tz_aware)
         uuid_representation = options.pop('uuidrepresentation', PYTHON_LEGACY)
