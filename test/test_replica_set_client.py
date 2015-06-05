@@ -692,6 +692,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(pool.wait_queue_multiple, 2)
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
+    def test_waitQueueMultiple_backport_maxpoolsize(self):
+        client = self._get_client(maxpoolsize=3, waitQueueMultiple=2)
+        pool = get_pool(client)
+        self.assertEqual(pool.wait_queue_multiple, 2)
+        self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
+
     def test_socketKeepAlive(self):
         client = self._get_client(socketKeepAlive=True)
         pool = get_pool(client)
@@ -742,6 +748,32 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_bernie" in dbs)
         client.close()
+
+    def test_backport_repl_maxpoolsize_uri(self):
+        uri = "mongodb://%s/?replicaSet=%s" % (pair, self.name)
+        mps_uri = ("mongodb://%s/?replicaSet=%s;maxPoolSize=10"
+                   % (pair, self.name))
+
+        client = MongoReplicaSetClient(uri)
+        self.assertEqual(client.max_pool_size, 100)
+
+        client = MongoReplicaSetClient(uri, maxPoolSize=10)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoReplicaSetClient(uri, max_pool_size=8, maxPoolSize=10)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoReplicaSetClient(mps_uri)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoReplicaSetClient(mps_uri, max_pool_size=8)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoReplicaSetClient(mps_uri, maxPoolSize=8)
+        self.assertEqual(client.max_pool_size, 10)
+
+        client = MongoReplicaSetClient(mps_uri, max_pool_size=6, maxPoolSize=8)
+        self.assertEqual(client.max_pool_size, 10)
 
     def _test_kill_cursor_explicit(self, read_pref):
         c = self._get_client(read_preference=read_pref)
