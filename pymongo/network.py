@@ -60,9 +60,9 @@ def receive_message(sock, operation, request_id):
     header = _receive_data_on_socket(sock, 16)
     length = _UNPACK_INT(header[:4])[0]
 
-    assert operation == _UNPACK_INT(header[12:])[0], (
-        "wire protocol error: unknown opcode %r" % (operation,))
-
+    actual_op = _UNPACK_INT(header[12:])[0]
+    assert operation == actual_op, ("wire protocol error: "
+                                   "unknown opcode %r" % (actual_op,))
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         response_id = _UNPACK_INT(header[8:12])[0]
