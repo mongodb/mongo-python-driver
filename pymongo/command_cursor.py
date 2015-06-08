@@ -117,10 +117,6 @@ class CommandCursor(object):
         if self.__id == 0:
             self.__killed = True
 
-        assert doc["starting_from"] == self.__retrieved, (
-            "Result batch started from %s, expected %s" % (
-                doc['starting_from'], self.__retrieved))
-
         self.__retrieved += doc["number_returned"]
         self.__data = deque(doc["data"])
 
