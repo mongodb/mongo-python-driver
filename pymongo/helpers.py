@@ -270,7 +270,7 @@ def _check_write_command_response(results):
 
 
 def _fields_list_to_dict(fields, option_name):
-    """Takes a list of field names and returns a matching dictionary.
+    """Takes a sequence of field names and returns a matching dictionary.
 
     ["a", "b"] becomes {"a": 1, "b": 1}
 
@@ -280,7 +280,7 @@ def _fields_list_to_dict(fields, option_name):
     """
     if isinstance(fields, collections.Mapping):
         return fields
-    elif isinstance(fields, list):
+    elif isinstance(fields, collections.Sequence):
         if not all(isinstance(field, string_type) for field in fields):
             raise TypeError("%s must be a list of key names, each an "
                             "instance of %s" % (option_name,
