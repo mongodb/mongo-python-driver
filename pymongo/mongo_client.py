@@ -1173,8 +1173,9 @@ class MongoClient(common.BaseObject):
         header = self.__receive_data_on_socket(16, sock_info)
         length = struct.unpack("<i", header[:4])[0]
 
-        assert operation == struct.unpack("<i", header[12:])[0], (
-            "wire protocol error: unknown opcode %r" % (operation,))
+        actual_op = struct.unpack("<i", header[12:])[0]
+        assert actual_op == operation, (
+            "wire protocol error: unknown opcode %r" % (actual_op,))
 
         # No rqst_id for exhaust cursor "getMore".
         if rqst_id is not None:
