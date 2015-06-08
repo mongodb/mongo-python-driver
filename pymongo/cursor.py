@@ -864,12 +864,6 @@ class Cursor(object):
         if self.__id == 0:
             self.__killed = True
 
-        # starting from doesn't get set on getmore's for tailable cursors
-        if not self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]:
-            assert doc["starting_from"] == self.__retrieved, (
-                "Result batch started from %s, expected %s" % (
-                    doc['starting_from'], self.__retrieved))
-
         self.__retrieved += doc["number_returned"]
         self.__data = deque(doc["data"])
 
