@@ -1419,6 +1419,10 @@ class Collection(common.BaseObject):
             for doc in cursor:
                 print doc
 
+        .. versionchanged:: 2.9
+           The :meth:`aggregate` helper always returns a
+           :class:`~pymongo.command_cursor.CommandCursor` when the cursor
+           option is passed, regardless of MongoDB server version.
         .. versionchanged:: 2.7
            When the cursor option is used, return
            :class:`~pymongo.command_cursor.CommandCursor` instead of
