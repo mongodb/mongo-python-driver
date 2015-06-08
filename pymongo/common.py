@@ -580,8 +580,8 @@ class BaseObject(object):
 
     def __get_acceptable_latency(self):
         """Any replica-set member whose ping time is within
-        secondary_acceptable_latency_ms of the nearest member may accept
-        reads. Defaults to 15 milliseconds.
+        :attr:`secondary_acceptable_latency_ms` of the nearest member may
+        accept reads. Defaults to 15 milliseconds.
 
         See :class:`~pymongo.read_preferences.ReadPreference`.
 

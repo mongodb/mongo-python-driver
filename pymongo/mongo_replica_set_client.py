@@ -1027,7 +1027,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
     @property
     def local_threshold_ms(self):
-        """Alias for secondary_acceptable_latency_ms.
+        """Alias for :attr:`secondary_acceptable_latency_ms`.
 
         .. versionadded:: 2.9
         """

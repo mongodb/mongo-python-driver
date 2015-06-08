@@ -207,7 +207,7 @@ class MongoClient(common.BaseObject):
             ignoring tags. Defaults to ``[{}]``, meaning "ignore members'
             tags."
           - `secondaryAcceptableLatencyMS`: (integer) Any replica-set member
-            whose ping time is within secondary_acceptable_latency_ms of the
+            whose ping time is within secondaryAcceptableLatencyMS of the
             nearest member may accept reads. Default 15 milliseconds.
             **Ignored by mongos** and must be configured on the command line.
             See the localThreshold_ option for more information.
@@ -703,7 +703,7 @@ class MongoClient(common.BaseObject):
 
     @property
     def local_threshold_ms(self):
-        """Alias for secondary_acceptable_latency_ms.
+        """Alias for :attr:`secondary_acceptable_latency_ms`.
 
         .. versionadded:: 2.9
         """
