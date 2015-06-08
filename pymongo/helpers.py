@@ -280,12 +280,13 @@ def _fields_list_to_dict(fields, option_name):
     """
     if isinstance(fields, collections.Mapping):
         return fields
-    elif isinstance(fields, collections.Sequence):
+
+    if isinstance(fields, collections.Sequence):
         if not all(isinstance(field, string_type) for field in fields):
             raise TypeError("%s must be a list of key names, each an "
                             "instance of %s" % (option_name,
                                                 string_type.__name__))
         return dict.fromkeys(fields, 1)
-    else:
-        raise TypeError("%s must be a mapping or "
-                        "list of key names" % (option_name,))
+
+    raise TypeError("%s must be a mapping or "
+                    "list of key names" % (option_name,))
