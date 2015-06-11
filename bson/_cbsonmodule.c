@@ -2299,6 +2299,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
 }
 
 static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
+    PyObject* options = Py_None;
     int size;
     Py_ssize_t total_size;
     const char* string;
@@ -2311,9 +2312,17 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     unsigned char compile_re = 1;
 
     if (!PyArg_ParseTuple(
-            args, "O|Obbb",
-            &bson, &as_class, &tz_aware, &uuid_subtype, &compile_re)) {
+            args, "O|ObbbO",
+            &bson, &as_class, &tz_aware, &uuid_subtype, &compile_re,
+            &options)) {
         return NULL;
+    }
+
+    if (options != Py_None) {
+        if (!PyArg_ParseTuple(options, "Obb",
+                              &as_class, &tz_aware, &uuid_subtype)) {
+            return NULL;
+        }
     }
 
 #if PY_MAJOR_VERSION >= 3
