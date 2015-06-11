@@ -416,7 +416,10 @@ class BaseObject(object):
 
     def __init__(self, **options):
 
-        self._codec_options = None
+        self._codec_options = options.get('codec_options')
+        if not isinstance(self._codec_options, CodecOptions):
+            raise TypeError("codec_options must be an instance of "
+                            "bson.codec_options.CodecOptions")
         self.__slave_okay = False
         self.__read_pref = ReadPreference.PRIMARY
         self.__tag_sets = [{}]
@@ -465,8 +468,6 @@ class BaseObject(object):
                 self.__read_pref = validate_read_preference(option, value)
             elif option in ('tag_sets', 'readpreferencetags'):
                 self.__tag_sets = validate_tag_sets(option, value)
-            elif option == 'codec_options':
-                self._codec_options = value
             elif option in ('secondaryacceptablelatencyms',
                             'secondary_acceptable_latency_ms'):
                 self.__secondary_acceptable_latency_ms = (

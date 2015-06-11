@@ -18,6 +18,7 @@ import warnings
 
 from bson.binary import OLD_UUID_SUBTYPE
 from bson.code import Code
+from bson.codec_options import CodecOptions as _CodecOptions
 from bson.dbref import DBRef
 from bson.son import SON
 from pymongo import auth, common, helpers
@@ -28,7 +29,8 @@ from pymongo.errors import (CollectionInvalid,
                             OperationFailure)
 from pymongo.read_preferences import (modes,
                                       secondary_ok_commands,
-                                      ReadPreference)
+                                      ReadPreference,
+                                      _ServerMode)
 from pymongo.son_manipulator import SONManipulator
 
 
@@ -36,7 +38,8 @@ class Database(common.BaseObject):
     """A Mongo database.
     """
 
-    def __init__(self, connection, name):
+    def __init__(self, connection, name, codec_options=None,
+                 read_preference=None, write_concern=None):
         """Get a database by connection and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -47,18 +50,32 @@ class Database(common.BaseObject):
         :Parameters:
           - `connection`: a client instance
           - `name`: database name
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) connection.codec_options is used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) connection.read_preference is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) connection.write_concern is used.
 
         .. mongodoc:: databases
+
+        .. versionchanged:: 2.9
+           Added the codec_options, read_preference, and write_concern options.
         """
-        super(Database,
-              self).__init__(slave_okay=connection.slave_okay,
-                             read_preference=connection.read_preference,
-                             tag_sets=connection.tag_sets,
-                             secondary_acceptable_latency_ms=(
-                                 connection.secondary_acceptable_latency_ms),
-                             safe=connection.safe,
-                             codec_options=connection.codec_options,
-                             **connection.write_concern)
+        opts, mode, tags, wc_doc = helpers._get_common_options(
+            connection, codec_options, read_preference, write_concern)
+        salms = connection.secondary_acceptable_latency_ms
+
+        super(Database, self).__init__(
+            codec_options=opts,
+            read_preference=mode,
+            tag_sets=tags,
+            secondary_acceptable_latency_ms=salms,
+            slave_okay=connection.slave_okay,
+            safe=connection.safe,
+            **wc_doc)
 
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance "
@@ -209,7 +226,48 @@ class Database(common.BaseObject):
         """
         return self.__getattr__(name)
 
-    def create_collection(self, name, **kwargs):
+    def get_collection(self, name, codec_options=None,
+                       read_preference=None, write_concern=None):
+        """Get a :class:`~pymongo.collection.Collection` with the given name
+        and options.
+
+        Useful for creating a :class:`~pymongo.collection.Collection` with
+        different codec options, read preference, and/or write concern from
+        this :class:`Database`.
+
+          >>> from pymongo import ReadPreference
+          >>> db.read_preference == ReadPreference.PRIMARY
+          True
+          >>> coll1 = db.test
+          >>> coll1.read_preference == ReadPreference.PRIMARY
+          True
+          >>> coll2 = db.get_collection(
+          ...     'test', read_preference=ReadPreference.SECONDARY)
+          >>> coll2.read_preference == SECONDARY
+          True
+
+        :Parameters:
+          - `name`: The name of the collection - a string.
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`Database` is
+            used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`Database` is used. See :mod:`~pymongo.read_preferences`
+            for options.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`Database` is
+            used.
+
+        .. versionadded:: 2.9
+        """
+        return Collection(
+            self, name, False, codec_options, read_preference, write_concern)
+
+    def create_collection(self, name, codec_options=None,
+                          read_preference=None, write_concern=None, **kwargs):
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -232,8 +290,22 @@ class Database(common.BaseObject):
 
         :Parameters:
           - `name`: the name of the collection to create
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`Database` is
+            used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`Database` is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`Database` is
+            used.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 2.9
+           Added the codec_options, read_preference, and write_concern options.
 
         .. versionchanged:: 2.2
            Removed deprecated argument: options
@@ -241,13 +313,11 @@ class Database(common.BaseObject):
         .. versionchanged:: 1.5
            deprecating `options` in favor of kwargs
         """
-        opts = {"create": True}
-        opts.update(kwargs)
-
         if name in self.collection_names():
             raise CollectionInvalid("collection %s already exists" % name)
 
-        return Collection(self, name, **opts)
+        return Collection(self, name, True, codec_options,
+                          read_preference, write_concern, **kwargs)
 
     def _apply_incoming_manipulators(self, son, collection):
         for manipulator in self.__incoming_manipulators:
@@ -285,7 +355,8 @@ class Database(common.BaseObject):
 
     def _command(self, command, value=1,
                  check=True, allowable_errors=None,
-                 uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True, **kwargs):
+                 uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+                 read_preference=None, codec_options=None, **kwargs):
         """Internal command helper.
         """
 
@@ -310,19 +381,34 @@ class Database(common.BaseObject):
                     must_use_master = True
                     break
 
+        if codec_options is None or 'as_class' in kwargs:
+            opts = {}
+            if 'as_class' in kwargs:
+                opts['document_class'] = kwargs.pop('as_class')
+            # 'as_class' must be in kwargs so don't use document_class
+            if codec_options:
+                opts['tz_aware'] = codec_options.tz_aware
+                opts['uuid_representation'] = codec_options.uuid_representation
+            else:
+                opts['uuid_representation'] = uuid_subtype
+            codec_options = _CodecOptions(**opts)
+
         extra_opts = {
-            'as_class': kwargs.pop('as_class', None),
             'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
+            '_codec_options': codec_options,
             '_must_use_master': must_use_master,
-            '_uuid_subtype': uuid_subtype
         }
 
-        extra_opts['read_preference'] = kwargs.pop(
-            'read_preference',
-            self.read_preference)
-        extra_opts['tag_sets'] = kwargs.pop(
-            'tag_sets',
-            self.tag_sets)
+        if isinstance(read_preference, _ServerMode):
+            extra_opts['read_preference'] = read_preference.mode
+            extra_opts['tag_sets'] = read_preference.tag_sets
+        else:
+            if read_preference is None:
+                read_preference = self.read_preference
+            extra_opts['read_preference'] = read_preference
+            extra_opts['tag_sets'] = kwargs.pop(
+                'tag_sets',
+                self.tag_sets)
         extra_opts['secondary_acceptable_latency_ms'] = kwargs.pop(
             'secondary_acceptable_latency_ms',
             self.secondary_acceptable_latency_ms)
@@ -357,7 +443,8 @@ class Database(common.BaseObject):
 
     def command(self, command, value=1,
                 check=True, allowable_errors=[],
-                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True, **kwargs):
+                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+                read_preference=None, codec_options=None, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -445,7 +532,8 @@ class Database(common.BaseObject):
         .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         return self._command(command, value, check, allowable_errors,
-                             uuid_subtype, compile_re, **kwargs)[0]
+                             uuid_subtype, compile_re, read_preference,
+                             codec_options, **kwargs)[0]
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.

@@ -29,6 +29,8 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+from bson.binary import JAVA_LEGACY, PYTHON_LEGACY
+from bson.codec_options import CodecOptions
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
@@ -40,7 +42,8 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure)
-from pymongo.read_preferences import ReadPreference
+from pymongo.read_preferences import ReadPreference, Secondary
+from pymongo.write_concern import WriteConcern
 from test import version, host, port, pair, skip_restricted_localhost
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
@@ -225,6 +228,28 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue(isinstance(client.test, Database))
         self.assertEqual(client.test, client["test"])
         self.assertEqual(client.test, Database(client, "test"))
+
+    def test_get_database(self):
+        client = MongoClient(host, port, _connect=False)
+        codec_options = CodecOptions(
+            tz_aware=True, uuid_representation=JAVA_LEGACY)
+        write_concern = WriteConcern(w=2, j=True)
+        db = client.get_database(
+            'foo', codec_options, ReadPreference.SECONDARY, write_concern)
+        self.assertEqual('foo', db.name)
+        self.assertEqual(codec_options, db.codec_options)
+        self.assertEqual(JAVA_LEGACY, db.uuid_subtype)
+        self.assertEqual(ReadPreference.SECONDARY, db.read_preference)
+        self.assertEqual([{}], db.tag_sets)
+        self.assertEqual(write_concern.document, db.write_concern)
+
+        pref = Secondary([{"dc": "sf"}])
+        db = client.get_database('foo', read_preference=pref)
+        self.assertEqual(pref.mode, db.read_preference)
+        self.assertEqual(pref.tag_sets, db.tag_sets)
+        self.assertEqual({}, db.write_concern)
+        self.assertEqual(CodecOptions(), db.codec_options)
+        self.assertEqual(PYTHON_LEGACY, db.uuid_subtype)
 
     def test_database_names(self):
         client = MongoClient(host, port)
@@ -526,6 +551,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
         c.document_class = SON
+        db = c.pymongo_test
 
         self.assertEqual(SON, c.document_class)
         self.assertTrue(isinstance(db.test.find_one(), SON))
@@ -539,6 +565,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
         c.document_class = dict
+        db = c.pymongo_test
 
         self.assertEqual(dict, c.document_class)
         self.assertTrue(isinstance(db.test.find_one(), dict))

@@ -24,7 +24,7 @@ from pymongo import (bulk,
                      helpers,
                      message)
 from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import Cursor, CursorType
+from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.message import _INSERT, _UPDATE, _DELETE
@@ -48,7 +48,8 @@ class Collection(common.BaseObject):
     """A Mongo collection.
     """
 
-    def __init__(self, database, name, create=False, **kwargs):
+    def __init__(self, database, name, create=False, codec_options=None,
+                 read_preference=None, write_concern=None, **kwargs):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -69,8 +70,19 @@ class Collection(common.BaseObject):
           - `name`: the name of the collection to get
           - `create` (optional): if ``True``, force collection
             creation even without options being set
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) database.codec_options is used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) database.read_preference is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) database.write_concern is used.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 2.9
+           Added the codec_options, read_preference, and write_concern options.
 
         .. versionchanged:: 2.2
            Removed deprecated argument: options
@@ -86,15 +98,18 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: collections
         """
+        opts, mode, tags, wc_doc = helpers._get_common_options(
+            database, codec_options, read_preference, write_concern)
+        salms = database.secondary_acceptable_latency_ms
+
         super(Collection, self).__init__(
+            codec_options=opts,
+            read_preference=mode,
+            tag_sets=tags,
+            secondary_acceptable_latency_ms=salms,
             slave_okay=database.slave_okay,
-            read_preference=database.read_preference,
-            tag_sets=database.tag_sets,
-            secondary_acceptable_latency_ms=(
-                database.secondary_acceptable_latency_ms),
             safe=database.safe,
-            codec_options=database.codec_options,
-            **database.write_concern)
+            **wc_doc)
 
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance "
@@ -188,6 +203,43 @@ class Collection(common.BaseObject):
            ``database`` is now a property rather than a method.
         """
         return self.__database
+
+    def with_options(
+            self, codec_options=None, read_preference=None, write_concern=None):
+        """Get a clone of this collection changing the specified settings.
+
+          >>> from pymongo import ReadPreference
+          >>> coll1.read_preference == ReadPreference.PRIMARY
+          True
+          >>> coll2 = coll1.with_options(read_preference=ReadPreference.SECONDARY)
+          >>> coll1.read_preference == ReadPreference.PRIMARY
+          True
+          >>> coll2.read_preference == ReadPreference.SECONDARY
+          True
+
+        :Parameters:
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`Collection`
+            is used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`Collection` is used. See :mod:`~pymongo.read_preferences`
+            for options.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`Collection`
+            is used.
+
+        .. versionadded:: 2.9
+        """
+        opts, mode, tags, wc_doc = helpers._get_common_options(
+            self, codec_options, read_preference, write_concern)
+        coll = Collection(self.__database, self.__name, False, opts)
+        coll.write_concern = wc_doc
+        coll.read_preference = mode
+        coll.tag_sets = tags
+        return coll
 
     def initialize_unordered_bulk_op(self):
         """Initialize an unordered batch of write operations.
@@ -1537,7 +1589,7 @@ class Collection(common.BaseObject):
         use_master = not self.slave_okay and not self.read_preference
 
         return self.__database.command("group", group,
-                                       uuid_subtype=self.uuid_subtype,
+                                       codec_options=self.codec_options,
                                        read_preference=self.read_preference,
                                        tag_sets=self.tag_sets,
                                        secondary_acceptable_latency_ms=(
@@ -1650,7 +1702,7 @@ class Collection(common.BaseObject):
             must_use_master = True
 
         response = self.__database.command("mapreduce", self.__name,
-                                           uuid_subtype=self.uuid_subtype,
+                                           codec_options=self.codec_options,
                                            map=map, reduce=reduce,
                                            read_preference=self.read_preference,
                                            tag_sets=self.tag_sets,
@@ -1706,7 +1758,7 @@ class Collection(common.BaseObject):
         use_master = not self.slave_okay and not self.read_preference
 
         res = self.__database.command("mapreduce", self.__name,
-                                      uuid_subtype=self.uuid_subtype,
+                                      codec_options=self.codec_options,
                                       read_preference=self.read_preference,
                                       tag_sets=self.tag_sets,
                                       secondary_acceptable_latency_ms=(
@@ -1814,7 +1866,7 @@ class Collection(common.BaseObject):
         out = self.__database.command("findAndModify", self.__name,
                                       allowable_errors=[no_obj_error],
                                       read_preference=ReadPreference.PRIMARY,
-                                      uuid_subtype=self.uuid_subtype,
+                                      codec_options=self.codec_options,
                                       **kwargs)
 
         if not out['ok']:

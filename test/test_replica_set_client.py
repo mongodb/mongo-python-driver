@@ -565,6 +565,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
         c.document_class = SON
+        db = c.pymongo_test
 
         self.assertEqual(SON, c.document_class)
         self.assertTrue(isinstance(db.test.find_one(), SON))
@@ -579,6 +580,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
         c.document_class = dict
+        db = c.pymongo_test
 
         self.assertEqual(dict, c.document_class)
         self.assertTrue(isinstance(db.test.find_one(), dict))

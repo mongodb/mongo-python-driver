@@ -30,6 +30,7 @@
       .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype
+      .. automethod:: with_options
       .. automethod:: insert(doc_or_docs[, manipulate=True[, safe=None[, check_keys=True[, continue_on_error=False[, **kwargs]]]]])
       .. automethod:: save(to_save[, manipulate=True[, safe=None[, check_keys=True[, **kwargs]]]])
       .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, safe=None[, multi=False[, check_keys=True[, **kwargs]]]]]])

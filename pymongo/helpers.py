@@ -32,6 +32,37 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             ExecutionTimeout,
                             WTimeoutError)
+from pymongo.read_preferences import _ServerMode
+from pymongo.write_concern import WriteConcern as _WriteConcern
+
+
+def _get_common_options(obj, codec_options, read_preference, write_concern):
+    """Get the codec options, read preference mode and tags, and write concern
+    necessary to create a new Database of Collection instance.
+    """
+    if codec_options is None:
+        codec_options = obj.codec_options
+
+    if read_preference is None:
+        rp_mode = obj.read_preference
+        rp_tags = obj.tag_sets
+    else:
+        if isinstance(read_preference, _ServerMode):
+            rp_mode = read_preference.mode
+            rp_tags = read_preference.tag_sets
+        else:
+            rp_mode = read_preference
+            rp_tags = [{}]
+
+    if write_concern is None:
+        wc_document = obj.write_concern
+    else:
+        if not isinstance(write_concern, _WriteConcern):
+            raise TypeError("write_concern must be an instance of "
+                            "pymongo.write_concern.WriteConcern")
+        wc_document = write_concern.document
+
+    return codec_options, rp_mode, rp_tags, wc_document
 
 
 def _index_list(key_or_list, direction=None):

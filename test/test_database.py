@@ -24,7 +24,9 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 
+from bson.binary import JAVA_LEGACY
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.regex import Regex
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
@@ -33,18 +35,19 @@ from pymongo import (ALL,
                      auth,
                      OFF,
                      SLOW_ONLY,
-                     helpers,
-                     ReadPreference)
+                     helpers)
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
                             ExecutionTimeout,
                             InvalidName,
                             OperationFailure)
+from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      SONManipulator,
                                      ObjectIdShuffler)
+from pymongo.write_concern import WriteConcern
 from test import version, skip_restricted_localhost
 from test.utils import (catch_warnings, get_command_line,
                         is_mongos, server_started_with_auth)
@@ -91,6 +94,27 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(db.test, Collection(db, "test"))
         self.assertNotEqual(db.test, Collection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
+
+    def test_get_collection(self):
+        db = Database(self.client, "pymongo_test")
+        codec_options = CodecOptions(
+            tz_aware=True, uuid_representation=JAVA_LEGACY)
+        write_concern = WriteConcern(w=2, j=True)
+        coll = db.get_collection(
+            'foo', codec_options, ReadPreference.SECONDARY, write_concern)
+        self.assertEqual('foo', coll.name)
+        self.assertEqual(codec_options, coll.codec_options)
+        self.assertEqual(JAVA_LEGACY, coll.uuid_subtype)
+        self.assertEqual(ReadPreference.SECONDARY, coll.read_preference)
+        self.assertEqual(write_concern.document, coll.write_concern)
+
+        pref = Secondary([{"dc": "sf"}])
+        coll = db.get_collection('foo', read_preference=pref)
+        self.assertEqual(pref.mode, coll.read_preference)
+        self.assertEqual(pref.tag_sets, coll.tag_sets)
+        self.assertEqual(db.codec_options, coll.codec_options)
+        self.assertEqual(db.uuid_subtype, coll.uuid_subtype)
+        self.assertEqual(db.write_concern, coll.write_concern)
 
     def test_create_collection(self):
         db = Database(self.client, "pymongo_test")

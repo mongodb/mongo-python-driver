@@ -95,6 +95,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.read_preferences import ReadPreference
+from pymongo.write_concern import WriteConcern
 
 def has_c():
     """Is the C extension installed?

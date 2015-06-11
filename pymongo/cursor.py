@@ -18,6 +18,7 @@ from collections import deque
 
 from bson import RE_TYPE
 from bson.code import Code
+from bson.codec_options import CodecOptions as _CodecOptions
 from bson.son import SON
 from pymongo import helpers, message, read_preferences
 from pymongo.read_preferences import ReadPreference, secondary_ok_commands
@@ -104,7 +105,7 @@ class Cursor(object):
                  read_preference=ReadPreference.PRIMARY,
                  tag_sets=[{}], secondary_acceptable_latency_ms=None,
                  exhaust=False, compile_re=True, oplog_replay=False,
-                 modifiers=None, _must_use_master=False, _uuid_subtype=None,
+                 modifiers=None, _must_use_master=False, _codec_options=None,
                  **kwargs):
         """Create a new cursor.
 
@@ -178,9 +179,6 @@ class Cursor(object):
             if not isinstance(fields, dict):
                 fields = helpers._fields_list_to_dict(fields)
 
-        if as_class is None:
-            as_class = collection.database.connection.document_class
-
         self.__collection = collection
         self.__spec = spec
         self.__fields = fields
@@ -216,16 +214,19 @@ class Cursor(object):
         self.__explain = False
         self.__hint = None
         self.__comment = None
-        self.__as_class = as_class
         self.__slave_okay = slave_okay
         self.__manipulate = manipulate
         self.__read_preference = read_preference
         self.__tag_sets = tag_sets
         self.__secondary_acceptable_latency_ms = secondary_acceptable_latency_ms
-        self.__tz_aware = collection.database.connection.tz_aware
         self.__compile_re = compile_re
         self.__must_use_master = _must_use_master
-        self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
+
+        copts = _codec_options or collection.codec_options
+        if as_class is not None:
+            copts = _CodecOptions(
+                as_class, copts.tz_aware, copts.uuid_representation)
+        self.__codec_options = copts
 
         self.__data = deque()
         self.__connection_id = None
@@ -311,10 +312,10 @@ class Cursor(object):
         values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
                            "comment", "max", "min",
                            "snapshot", "ordering", "explain", "hint",
-                           "batch_size", "max_scan", "as_class", "slave_okay",
+                           "batch_size", "max_scan", "slave_okay",
                            "manipulate", "read_preference", "tag_sets",
                            "secondary_acceptable_latency_ms",
-                           "must_use_master", "uuid_subtype", "compile_re",
+                           "must_use_master", "codec_options", "compile_re",
                            "query_flags", "modifiers", "kwargs")
         data = dict((k, v) for k, v in self.__dict__.iteritems()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
@@ -825,7 +826,7 @@ class Cursor(object):
         database = self.__collection.database
         r = database.command("count", self.__collection.name,
                              allowable_errors=["ns missing"],
-                             uuid_subtype=self.__uuid_subtype,
+                             codec_options=self.__codec_options,
                              compile_re=self.__compile_re,
                              **command)
         if r.get("errmsg", "") == "ns missing":
@@ -878,7 +879,7 @@ class Cursor(object):
         database = self.__collection.database
         return database.command("distinct",
                                 self.__collection.name,
-                                uuid_subtype=self.__uuid_subtype,
+                                codec_options=self.__codec_options,
                                 compile_re=self.__compile_re,
                                 **options)["values"]
 
@@ -1013,11 +1014,13 @@ class Cursor(object):
                 raise
 
         try:
-            response = helpers._unpack_response(response, self.__id,
-                                                self.__as_class,
-                                                self.__tz_aware,
-                                                self.__uuid_subtype,
-                                                self.__compile_re)
+            response = helpers._unpack_response(
+                response,
+                self.__id,
+                self.__codec_options.document_class,
+                self.__codec_options.tz_aware,
+                self.__codec_options.uuid_representation,
+                self.__compile_re)
         except OperationFailure:
             self.__killed = True
             # Make sure exhaust socket is returned immediately, if necessary.
@@ -1075,7 +1078,7 @@ class Cursor(object):
                               self.__collection.full_name,
                               self.__skip, ntoreturn,
                               self.__query_spec(), self.__fields,
-                              self.__uuid_subtype))
+                              self.__codec_options.uuid_representation))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More

@@ -1,6 +1,36 @@
 Changelog
 =========
 
+Changes in Version 2.9
+----------------------
+
+.. warning::
+  In previous versions of PyMongo, changing the value of
+  :attr:`~pymongo.mongo_client.MongoClient.document_class` changed
+  the behavior of all existing instances of
+  :class:`~pymongo.collection.Collection`::
+
+    >>> coll = client.test.test
+    >>> coll.find_one()
+    {u'_id': ObjectId('5579dc7cfba5220cc14d9a18')}
+    >>> from bson.son import SON
+    >>> client.document_class = SON
+    >>> coll.find_one()
+    SON([(u'_id', ObjectId('5579dc7cfba5220cc14d9a18'))])
+
+  The document_class setting is now configurable at the client,
+  database, collection, and per-operation level. This required breaking
+  the existing behavior. To change the document class per operation in a
+  forward compatible way use
+  :meth:`~pymongo.collection.Collection.with_options`::
+
+    >>> coll.find_one()
+    {u'_id': ObjectId('5579dc7cfba5220cc14d9a18')}
+    >>> from bson.codec_options import CodecOptions
+    >>> coll.with_options(CodecOptions(SON)).find_one()
+    SON([(u'_id', ObjectId('5579dc7cfba5220cc14d9a18'))])
+
+
 Changes in Version 2.8.1
 ------------------------
 
