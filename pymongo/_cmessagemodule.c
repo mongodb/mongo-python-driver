@@ -181,16 +181,29 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
+    PyObject* codec_options = Py_None;
+    PyObject* as_class;
+    unsigned char tz_aware;
 
-    if (!PyArg_ParseTuple(args, "et#ObbObb",
+    if (!PyArg_ParseTuple(args, "et#ObbObb|O",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &docs, &check_keys, &safe,
                           &last_error_args,
-                          &continue_on_error, &uuid_subtype)) {
+                          &continue_on_error, &uuid_subtype,
+                          &codec_options)) {
         return NULL;
     }
+
+    if (codec_options != Py_None) {
+        if (!PyArg_ParseTuple(codec_options, "Obb",
+                              &as_class, &tz_aware, &uuid_subtype)) {
+            PyMem_Free(collection_name);
+            return NULL;
+        }
+    }
+
     if (continue_on_error) {
         options += 1;
     }
@@ -307,14 +320,26 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
+    PyObject* codec_options = Py_None;
+    PyObject* as_class;
+    unsigned char tz_aware;
 
-    if (!PyArg_ParseTuple(args, "et#bbOObObb",
+    if (!PyArg_ParseTuple(args, "et#bbOObObb|O",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &upsert, &multi, &spec, &doc, &safe,
-                          &last_error_args, &check_keys, &uuid_subtype)) {
+                          &last_error_args, &check_keys, &uuid_subtype,
+                          &codec_options)) {
         return NULL;
+    }
+
+    if (codec_options != Py_None) {
+        if (!PyArg_ParseTuple(codec_options, "Obb",
+                              &as_class, &tz_aware, &uuid_subtype)) {
+            PyMem_Free(collection_name);
+            return NULL;
+        }
     }
 
     options = 0;
@@ -410,16 +435,29 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
+    PyObject* codec_options = Py_None;
+    PyObject* as_class;
+    unsigned char tz_aware;
 
-    if (!PyArg_ParseTuple(args, "Iet#iiO|Ob",
+    if (!PyArg_ParseTuple(args, "Iet#iiO|ObO",
                           &options,
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &num_to_skip, &num_to_return,
-                          &query, &field_selector, &uuid_subtype)) {
+                          &query, &field_selector, &uuid_subtype,
+                          &codec_options)) {
         return NULL;
     }
+
+    if (codec_options != Py_None) {
+        if (!PyArg_ParseTuple(codec_options, "Obb",
+                              &as_class, &tz_aware, &uuid_subtype)) {
+            PyMem_Free(collection_name);
+            return NULL;
+        }
+    }
+
     buffer = buffer_new();
     if (!buffer) {
         PyErr_NoMemory();

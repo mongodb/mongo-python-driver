@@ -28,7 +28,8 @@ from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
-from bson.binary import Binary, JAVA_LEGACY
+from bson import BSON
+from bson.binary import Binary, JAVA_LEGACY, STANDARD, CSHARP_LEGACY
 from bson.regex import Regex
 from bson.code import Code
 from bson.codec_options import CodecOptions
@@ -62,7 +63,6 @@ try:
     import uuid
 except ImportError:
     have_uuid = False
-
 
 setUpModule = skip_restricted_localhost
 
@@ -2002,6 +2002,47 @@ class TestCollection(unittest.TestCase):
             self.assertNotEqual(doc, coll.find_one({'_id': 2}))
             coll.uuid_subtype = 6
             self.assertEqual(doc, coll.find_one({'_id': 2}))
+
+    def test_message_backport_codec_options(self):
+        if not have_uuid:
+            raise SkipTest("No uuid module")
+        name = "%s.%s" % (self.db.name, "test")
+        self.db.drop_collection("test")
+        key = {'_id': 1, 'key': uuid.UUID("12345678123456781234567812345678")}
+        key2 = {'key2': uuid.UUID("22345678123456781234567812345678")}
+        enc = BSON.encode(key, uuid_subtype=STANDARD)
+
+        msg = message_module.insert(
+            name, [key], True, False, {}, False, CSHARP_LEGACY,
+            CodecOptions(uuid_representation=STANDARD))
+        self.assertTrue(enc in msg[1])
+        self.db.connection._send_message(msg, False)
+        self.assertEqual(self.db.test.find_one(), key)
+
+        msg = message_module.update(
+            name, True, False, key, {"$set": key2}, False, False, False,
+            CSHARP_LEGACY, CodecOptions(uuid_representation=STANDARD))
+        self.assertTrue(enc in msg[1])
+        self.db.connection._send_message(msg, False)
+        key.update(key2)
+        self.assertEqual(self.db.test.find_one(), key)
+
+        enc = BSON.encode(key, uuid_subtype=STANDARD)
+        msg = message_module.query(
+            0, name, 0, 0, key, None, CSHARP_LEGACY,
+            CodecOptions(uuid_representation=STANDARD))
+        self.assertTrue(enc in msg[1])
+        r = self.db.connection._send_message_with_response(msg, False)
+        self.assertTrue(key['key'].bytes in r[1][0])
+
+
+        msg = message_module.delete(
+            name, key, False, False, CSHARP_LEGACY, 0,
+            CodecOptions(uuid_representation=STANDARD))
+        self.assertTrue(enc in msg[1])
+        self.assertEqual(1, self.db.test.count())
+        self.db.connection._send_message(msg, False)
+        self.assertEqual(0, self.db.test.count())
 
     def test_map_reduce(self):
         if not version.at_least(self.db.connection, (1, 1, 1)):
