@@ -81,7 +81,8 @@ def __pack_message(operation, data):
 
 
 def insert(collection_name, docs, check_keys,
-           safe, last_error_args, continue_on_error, uuid_subtype):
+           safe, last_error_args, continue_on_error, uuid_subtype,
+           codec_options=None):
     """Get an **insert** message.
 
     .. note:: As of PyMongo 2.6, this function is no longer used. It
@@ -90,6 +91,8 @@ def insert(collection_name, docs, check_keys,
        be removed in a future release.
 
     """
+    if codec_options is not None:
+        uuid_subtype = codec_options.uuid_representation
     options = 0
     if continue_on_error:
         options += 1
@@ -113,9 +116,12 @@ if _use_c:
 
 
 def update(collection_name, upsert, multi,
-           spec, doc, safe, last_error_args, check_keys, uuid_subtype):
+           spec, doc, safe, last_error_args, check_keys, uuid_subtype,
+           codec_options=None):
     """Get an **update** message.
     """
+    if codec_options is not None:
+        uuid_subtype = codec_options.uuid_representation
     options = 0
     if upsert:
         options += 1
@@ -142,9 +148,11 @@ if _use_c:
 
 def query(options, collection_name, num_to_skip,
           num_to_return, query, field_selector=None,
-          uuid_subtype=OLD_UUID_SUBTYPE):
+          uuid_subtype=OLD_UUID_SUBTYPE, codec_options=None):
     """Get a **query** message.
     """
+    if codec_options is not None:
+        uuid_subtype = codec_options.uuid_representation
     data = struct.pack("<I", options)
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
@@ -175,9 +183,11 @@ if _use_c:
 
 
 def delete(collection_name, spec, safe,
-           last_error_args, uuid_subtype, options=0):
+           last_error_args, uuid_subtype, options=0, codec_options=None):
     """Get a **delete** message.
     """
+    if codec_options is not None:
+        uuid_subtype = codec_options.uuid_representation
     data = _ZERO_32
     data += bson._make_c_string(collection_name)
     data += struct.pack("<I", options)
