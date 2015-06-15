@@ -585,6 +585,12 @@ class MongoReplicaSetClient(common.BaseObject):
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``. Defaults to ``None``.
+          - `ssl_match_hostname`: If ``True`` (the default), and
+            `ssl_cert_reqs` is not ``ssl.CERT_NONE``, enables hostname
+            verification using the :func:`~ssl.match_hostname` function from
+            python's :mod:`~ssl` module. Think very carefully before setting
+            this to ``False`` as that could make your application vulnerable to
+            man-in-the-middle attacks.
 
         .. versionchanged:: 2.5
            Added additional ssl options
@@ -667,11 +673,12 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
         self.__wait_queue_multiple = self.__opts.get('waitqueuemultiple')
         self.__socket_keepalive = self.__opts.get('socketkeepalive', False)
-        self.__use_ssl = self.__opts.get('ssl', None)
-        self.__ssl_keyfile = self.__opts.get('ssl_keyfile', None)
-        self.__ssl_certfile = self.__opts.get('ssl_certfile', None)
-        self.__ssl_cert_reqs = self.__opts.get('ssl_cert_reqs', None)
-        self.__ssl_ca_certs = self.__opts.get('ssl_ca_certs', None)
+        self.__use_ssl = self.__opts.get('ssl')
+        self.__ssl_keyfile = self.__opts.get('ssl_keyfile')
+        self.__ssl_certfile = self.__opts.get('ssl_certfile')
+        self.__ssl_cert_reqs = self.__opts.get('ssl_cert_reqs')
+        self.__ssl_ca_certs = self.__opts.get('ssl_ca_certs')
+        self.__ssl_match_hostname = self.__opts.get('ssl_match_hostname', True)
 
         ssl_kwarg_keys = [k for k in kwargs.keys()
                           if k.startswith('ssl_') and kwargs[k]]
@@ -1076,7 +1083,8 @@ class MongoReplicaSetClient(common.BaseObject):
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
-            ssl_ca_certs=self.__ssl_ca_certs)
+            ssl_ca_certs=self.__ssl_ca_certs,
+            ssl_match_hostname=self.__ssl_match_hostname)
 
         if self.in_request():
             connection_pool.start_request()

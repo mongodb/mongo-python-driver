@@ -241,6 +241,12 @@ class MongoClient(common.BaseObject):
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``. Defaults to ``None``.
+          - `ssl_match_hostname`: If ``True`` (the default), and
+            `ssl_cert_reqs` is not ``ssl.CERT_NONE``, enables hostname
+            verification using the :func:`~ssl.match_hostname` function from
+            python's :mod:`~ssl` module. Think very carefully before setting
+            this to ``False`` as that could make your application vulnerable to
+            man-in-the-middle attacks.
 
         .. seealso:: :meth:`end_request`
 
@@ -330,11 +336,12 @@ class MongoClient(common.BaseObject):
         self.__wait_queue_multiple = options.get('waitqueuemultiple')
         self.__socket_keepalive = options.get('socketkeepalive', False)
 
-        self.__use_ssl = options.get('ssl', None)
-        self.__ssl_keyfile = options.get('ssl_keyfile', None)
-        self.__ssl_certfile = options.get('ssl_certfile', None)
-        self.__ssl_cert_reqs = options.get('ssl_cert_reqs', None)
-        self.__ssl_ca_certs = options.get('ssl_ca_certs', None)
+        self.__use_ssl = options.get('ssl')
+        self.__ssl_keyfile = options.get('ssl_keyfile')
+        self.__ssl_certfile = options.get('ssl_certfile')
+        self.__ssl_cert_reqs = options.get('ssl_cert_reqs')
+        self.__ssl_ca_certs = options.get('ssl_ca_certs')
+        self.__ssl_match_hostname = options.get('ssl_match_hostname', True)
 
         ssl_kwarg_keys = [k for k in kwargs.keys()
                           if k.startswith('ssl_') and kwargs[k]]
@@ -512,6 +519,7 @@ class MongoClient(common.BaseObject):
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
             ssl_ca_certs=self.__ssl_ca_certs,
+            ssl_match_hostname=self.__ssl_match_hostname,
             wait_queue_timeout=self.__wait_queue_timeout,
             wait_queue_multiple=self.__wait_queue_multiple,
             socket_keepalive=self.__socket_keepalive)

@@ -375,7 +375,7 @@ class TestSSL(unittest.TestCase):
                            "hostname in the certificate")
 
         uri_fmt = ("mongodb://server/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
-                   "=%s&ssl_ca_certs=%s")
+                   "=%s&ssl_ca_certs=%s&ssl_match_hostname=true")
         client = MongoClient(uri_fmt % (CLIENT_PEM, 'CERT_REQUIRED', CA_PEM))
 
         db = client.pymongo_ssl_test
@@ -426,7 +426,7 @@ class TestSSL(unittest.TestCase):
         self.assertTrue(db.test.find_one()['ssl'])
         client.drop_database('pymongo_ssl_test')
 
-    def test_cert_ssl_validation_hostname_fail(self):
+    def test_cert_ssl_validation_hostname_matching(self):
         # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
@@ -439,6 +439,9 @@ class TestSSL(unittest.TestCase):
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         response = client.admin.command('ismaster')
 
+        uri = ("mongodb://%s/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
+               "=CERT_REQUIRED&ssl_ca_certs=%s" % (pair, CLIENT_PEM, CA_PEM))
+
         try:
             MongoClient(pair,
                         ssl=True,
@@ -449,11 +452,30 @@ class TestSSL(unittest.TestCase):
         except CertificateError:
             pass
 
+        try:
+            MongoClient(uri)
+            self.fail("Invalid hostname should have failed")
+        except CertificateError:
+            pass
+
+        # No error.
+        MongoClient(pair,
+                    ssl=True,
+                    ssl_certfile=CLIENT_PEM,
+                    ssl_cert_reqs=ssl.CERT_REQUIRED,
+                    ssl_ca_certs=CA_PEM,
+                    ssl_match_hostname=False)
+
+        MongoClient(uri + "&ssl_match_hostname=false")
+
         if 'setName' in response:
+            name = response['setName']
+            w = len(response['hosts'])
+            uri = uri + "&replicaSet=%s&w=%d" % (name, w)
             try:
                 MongoReplicaSetClient(pair,
-                                      replicaSet=response['setName'],
-                                      w=len(response['hosts']),
+                                      replicaSet=name,
+                                      w=w,
                                       ssl=True,
                                       ssl_certfile=CLIENT_PEM,
                                       ssl_cert_reqs=ssl.CERT_REQUIRED,
@@ -461,6 +483,24 @@ class TestSSL(unittest.TestCase):
                 self.fail("Invalid hostname should have failed")
             except CertificateError:
                 pass
+
+            try:
+                MongoReplicaSetClient(uri)
+                self.fail("Invalid hostname should have failed")
+            except CertificateError:
+                pass
+
+            # No error.
+            MongoReplicaSetClient(pair,
+                                  replicaSet=name,
+                                  w=w,
+                                  ssl=True,
+                                  ssl_certfile=CLIENT_PEM,
+                                  ssl_cert_reqs=ssl.CERT_REQUIRED,
+                                  ssl_ca_certs=CA_PEM,
+                                  ssl_match_hostname=False)
+
+            MongoClient(uri + "&ssl_match_hostname=false")
 
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the server.pem, ca.pem
