@@ -339,7 +339,7 @@ class TestSSL(unittest.TestCase):
                            "hostname in the certificate")
 
         uri_fmt = ("mongodb://server/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
-                   "=%s&ssl_ca_certs=%s")
+                   "=%s&ssl_ca_certs=%s&ssl_match_hostname=true")
         client = MongoClient(uri_fmt % (CLIENT_PEM, 'CERT_REQUIRED', CA_PEM))
 
         db = client.pymongo_ssl_test
