@@ -132,10 +132,19 @@ def _on_executor_deleted(ref):
 def _shutdown_executors():
     # Copy the set. Stopping threads has the side effect of removing executors.
     executors = list(_EXECUTORS)
+
+    # First signal all executors to close...
     for ref in executors:
-        executor = ref()
-        if executor:
-            executor.close()
-            executor.join(10)
+        try:
+            ref().close()
+        except ReferenceError:
+            pass
+
+    # ...then try to join them.
+    for ref in executors:
+        try:
+            ref().join(1)
+        except ReferenceError:
+            pass
 
 atexit.register(_shutdown_executors)
