@@ -379,7 +379,6 @@ changes are not significant for your application.
 
 - spec -> filter
 - fields -> projection
-- timeout -> no_cursor_timeout
 - partial -> allow_partial_results
 
 The following find/find_one options have been added:
@@ -414,6 +413,13 @@ The following find/find_one options have been removed:
 The following find/find_one options are deprecated:
 
 - manipulate
+
+The following renames need special handling.
+
+- timeout -> no_cursor_timeout -
+  The default for `timeout` was True. The default for `no_cursor_timeout` is
+  False. If you were previously passing False for `timeout` you must pass
+  **True** for `no_cursor_timeout` to keep the previous behavior.
 
 :mod:`~pymongo.errors` changes
 ..............................
