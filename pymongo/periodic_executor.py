@@ -70,7 +70,7 @@ class PeriodicExecutor(object):
         callback; see monitor.py.
 
         Since this can be called from a weakref callback during garbage
-        collection it must take no locks!
+        collection it must take no locks! That means it cannot call wake().
         """
         self._stopped = True
 
