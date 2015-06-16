@@ -434,6 +434,9 @@ class GridOut(object):
 
             chunk_data = chunk["data"][self.__position % chunk_size:]
 
+            if not chunk_data:
+                raise CorruptGridFile("truncated chunk")
+
         self.__position += len(chunk_data)
         self.__buffer = EMPTY
         return chunk_data

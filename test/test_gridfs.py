@@ -24,12 +24,12 @@ import threading
 import time
 import gridfs
 
+from bson.binary import Binary
 from bson.py3compat import u, StringIO, string_type
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo.read_preferences import ReadPreference
-from gridfs.errors import (FileExists,
-                           NoFile)
+from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test import (client_context,
                   unittest,
@@ -158,6 +158,19 @@ class TestGridfs(IntegrationTest):
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(255 * 1024, raw["chunkSize"])
         self.assertTrue(isinstance(raw["md5"], string_type))
+
+    def test_corrupt_chunk(self):
+        files_id = self.fs.put(b'foobar')
+        self.db.fs.chunks.update_one({'files_id': files_id},
+                                     {'$set': {'data': Binary(b'foo', 0)}})
+        try:
+            out = self.fs.get(files_id)
+            self.assertRaises(CorruptGridFile, out.read)
+
+            out = self.fs.get(files_id)
+            self.assertRaises(CorruptGridFile, out.readline)
+        finally:
+            self.fs.delete(files_id)
 
     def test_delete_ensures_index(self):
         # setUp has dropped collections.
