@@ -24,6 +24,7 @@ import sys
 from bson.binary import (Binary, OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
 from bson.code import Code
+from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
                          InvalidDocument,
@@ -89,6 +90,8 @@ BSONLON = b("\x12") # 64bit int
 BSONMIN = b("\xFF") # Min key
 BSONMAX = b("\x7F") # Max key
 
+_CODEC_OPTIONS_TYPE_ERROR = TypeError(
+    "codec_options must be an instance of bson.codec_options.CodecOptions")
 
 def _get_int(data, position, as_class=None,
              tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE,
@@ -497,7 +500,8 @@ if _use_c:
 
 
 def decode_all(data, as_class=dict,
-               tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+               tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+               codec_options=None):
     """Decode BSON data to multiple documents.
 
     `data` must be a string of concatenated, valid, BSON-encoded
@@ -521,6 +525,12 @@ def decode_all(data, as_class=dict,
        Added `compile_re` option.
     .. versionadded:: 1.9
     """
+    if codec_options is not None:
+        if not isinstance(codec_options, CodecOptions):
+            raise _CODEC_OPTIONS_TYPE_ERROR
+        as_class = codec_options.document_class
+        tz_aware = codec_options.tz_aware
+        uuid_subtype = codec_options.uuid_representation
     docs = []
     position = 0
     end = len(data) - 1
@@ -547,7 +557,8 @@ if _use_c:
 
 
 def decode_iter(data, as_class=dict, tz_aware=True,
-                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+                codec_options=None):
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -574,6 +585,12 @@ def decode_iter(data, as_class=dict, tz_aware=True,
 
     .. versionadded:: 2.8
     """
+    if codec_options is not None:
+        if not isinstance(codec_options, CodecOptions):
+            raise _CODEC_OPTIONS_TYPE_ERROR
+        as_class = codec_options.document_class
+        tz_aware = codec_options.tz_aware
+        uuid_subtype = codec_options.uuid_representation
     position = 0
     end = len(data) - 1
     while position < end:
@@ -585,7 +602,8 @@ def decode_iter(data, as_class=dict, tz_aware=True,
 
 
 def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
-                     uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+                     uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+                     codec_options=None):
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -609,6 +627,12 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
 
     .. versionadded:: 2.8
     """
+    if codec_options is not None:
+        if not isinstance(codec_options, CodecOptions):
+            raise _CODEC_OPTIONS_TYPE_ERROR
+        as_class = codec_options.document_class
+        tz_aware = codec_options.tz_aware
+        uuid_subtype = codec_options.uuid_representation
     while True:
         # Read size of next object.
         size_data = file_obj.read(4)
@@ -648,7 +672,8 @@ class BSON(binary_type):
     """
 
     @classmethod
-    def encode(cls, document, check_keys=False, uuid_subtype=OLD_UUID_SUBTYPE):
+    def encode(cls, document, check_keys=False, uuid_subtype=OLD_UUID_SUBTYPE,
+               codec_options=None):
         """Encode a document to a new :class:`BSON` instance.
 
         A document can be any mapping type (like :class:`dict`).
@@ -669,10 +694,15 @@ class BSON(binary_type):
 
         .. versionadded:: 1.9
         """
+        if codec_options is not None:
+            if not isinstance(codec_options, CodecOptions):
+                raise _CODEC_OPTIONS_TYPE_ERROR
+            uuid_subtype = codec_options.uuid_representation
         return cls(_dict_to_bson(document, check_keys, uuid_subtype))
 
     def decode(self, as_class=dict,
-               tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+               tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+               codec_options=None):
         """Decode this BSON data.
 
         The default type to use for the resultant document is
@@ -706,6 +736,12 @@ class BSON(binary_type):
            Added ``compile_re`` option.
         .. versionadded:: 1.9
         """
+        if codec_options is not None:
+            if not isinstance(codec_options, CodecOptions):
+                raise _CODEC_OPTIONS_TYPE_ERROR
+            as_class = codec_options.document_class
+            tz_aware = codec_options.tz_aware
+            uuid_subtype = codec_options.uuid_representation
         (document, _) = _bson_to_dict(
             self, as_class, tz_aware, uuid_subtype, compile_re)
 
