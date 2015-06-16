@@ -27,8 +27,9 @@ sys.path[0:0] = [""]
 
 import gridfs
 
+from bson.binary import Binary
 from bson.py3compat import b, StringIO
-from gridfs.errors import (FileExists, NoFile)
+from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo.errors import ConnectionFailure
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
@@ -136,6 +137,19 @@ class TestGridfs(unittest.TestCase):
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(255 * 1024, raw["chunkSize"])
         self.assertTrue(isinstance(raw["md5"], basestring))
+
+    def test_corrupt_chunk(self):
+        files_id = self.fs.put('foobar')
+        self.db.fs.chunks.update({'files_id': files_id},
+                                 {'$set': {'data': Binary('foo', 0)}})
+        try:
+            out = self.fs.get(files_id)
+            self.assertRaises(CorruptGridFile, out.read)
+
+            out = self.fs.get(files_id)
+            self.assertRaises(CorruptGridFile, out.readline)
+        finally:
+            self.fs.delete(files_id)
 
     def test_alt_collection(self):
         oid = self.alt.put(b("hello world"))
