@@ -139,9 +139,9 @@ class TestGridfs(unittest.TestCase):
         self.assertTrue(isinstance(raw["md5"], basestring))
 
     def test_corrupt_chunk(self):
-        files_id = self.fs.put('foobar')
+        files_id = self.fs.put(b('foobar'))
         self.db.fs.chunks.update({'files_id': files_id},
-                                 {'$set': {'data': Binary('foo', 0)}})
+                                 {'$set': {'data': Binary(b('foo'), 0)}})
         try:
             out = self.fs.get(files_id)
             self.assertRaises(CorruptGridFile, out.read)
