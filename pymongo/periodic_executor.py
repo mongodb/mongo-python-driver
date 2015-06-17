@@ -135,16 +135,16 @@ def _shutdown_executors():
 
     # First signal all executors to close...
     for ref in executors:
-        try:
-            ref().close()
-        except ReferenceError:
-            pass
+        executor = ref()
+        if executor:
+            executor.close()
 
     # ...then try to join them.
     for ref in executors:
-        try:
-            ref().join(1)
-        except ReferenceError:
-            pass
+        executor = ref()
+        if executor:
+            executor.join(1)
+
+    executor = None
 
 atexit.register(_shutdown_executors)
