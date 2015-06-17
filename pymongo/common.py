@@ -317,6 +317,35 @@ def validate_auth_mechanism_properties(option, value):
     return props
 
 
+def validate_is_dict(option, value):
+    """Validate the type of method arguments that expect a document."""
+    if not isinstance(value, dict):
+        raise TypeError("%s must be an instance of dict, bson.son.SON, or"
+                        "another subclass of dict" % (option,))
+
+
+def validate_ok_for_replace(replacement):
+    """Validate a replacement document."""
+    validate_is_dict("replacement", replacement)
+    # Replacement can be {}
+    if replacement:
+        first = iter(replacement).next()
+        if first.startswith('$'):
+            raise ValueError('replacement can not include $ operators')
+
+
+def validate_ok_for_update(update):
+    """Validate an update document."""
+    validate_is_dict("update", update)
+    # Update can not be {}
+    if not update:
+        raise ValueError('update only works with $ operators')
+    first = iter(update).next()
+    if not first.startswith('$'):
+        raise ValueError('update only works with $ operators')
+
+
+
 # jounal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
 # readpreferencetags is an alias for tag_sets.

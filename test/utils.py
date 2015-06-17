@@ -744,3 +744,23 @@ class CatchWarnings(object):
 def catch_warnings(record=False, module=None):
     """Helper for use with CatchWarnings."""
     return CatchWarnings(record, module)
+
+def wait_until(predicate, success_description, timeout=10):
+    """Wait up to 10 seconds (by default) for predicate to be true.
+    E.g.:
+        wait_until(lambda: client.primary == ('a', 1),
+                   'connect to the primary')
+    If the lambda-expression isn't true after 10 seconds, we raise
+    AssertionError("Didn't ever connect to the primary").
+    Returns the predicate's first true value.
+    """
+    start = time.time()
+    while True:
+        retval = predicate()
+        if retval:
+            return retval
+
+        if time.time() - start > timeout:
+            raise AssertionError("Didn't ever %s" % success_description)
+
+        time.sleep(0.1)

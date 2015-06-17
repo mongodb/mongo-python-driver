@@ -24,6 +24,8 @@ sys.path[0:0] = [""]
 from bson import InvalidDocument, SON
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
 from pymongo.mongo_client import _partition_node, MongoClient
+from pymongo.operations import (InsertOne, UpdateOne, UpdateMany, ReplaceOne,
+                                DeleteOne, DeleteMany)
 from test import version, skip_restricted_localhost
 from test.test_client import get_client
 from test.utils import oid_generated_on_client, get_command_line
@@ -1172,6 +1174,134 @@ class TestBulkNoResults(BulkTestBase):
         self.assertTrue(batch.execute({'w': 0}) is None)
         self.assertEqual(2, self.coll.count())
         self.assertTrue(self.coll.find_one({'_id': 1}) is None)
+
+class TestBackportBulkWrite(BulkTestBase):
+    def setUp(self):
+        super(TestBackportBulkWrite, self).setUp()
+        self.coll = get_client().pymongo_test.test
+        self.coll.remove()
+
+    def test_insert(self):
+        expected = {
+            'nMatched': 0,
+            'nModified': 0,
+            'nUpserted': 0,
+            'nInserted': 1,
+            'nRemoved': 0,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+
+        result = self.coll.bulk_write([InsertOne({})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.inserted_count)
+        self.assertEqual(1, self.coll.count())
+
+    def test_update_many(self):
+        expected = {
+            'nMatched': 2,
+            'nModified': 2,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 0,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+
+        self.coll.insert_many([{}, {}])
+        result = self.coll.bulk_write([UpdateMany({},
+                                                  {'$set': {'foo': 'bar'}})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(2, result.matched_count)
+        self.assertTrue(result.modified_count in (2, None))
+
+    def test_update_one(self):
+        expected = {
+            'nMatched': 1,
+            'nModified': 1,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 0,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+        self.coll.insert_many([{}, {}])
+        result = self.coll.bulk_write([UpdateOne({},
+                                                 {'$set': {'foo': 'bar'}})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (1, None))
+
+    def test_replace_one(self):
+        expected = {
+            'nMatched': 1,
+            'nModified': 1,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 0,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+        self.coll.insert_many([{}, {}])
+        result = self.coll.bulk_write([ReplaceOne({}, {'foo': 'bar'})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (1, None))
+
+    def test_delete_many(self):
+        expected = {
+            'nMatched': 0,
+            'nModified': 0,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 2,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+        self.coll.insert_many([{}, {}])
+        result = self.coll.bulk_write([DeleteMany({})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(2, result.deleted_count)
+
+    def test_delete_one(self):
+        expected = {
+            'nMatched': 0,
+            'nModified': 0,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 1,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+        self.coll.insert_many([{}, {}])
+        result = self.coll.bulk_write([DeleteOne({})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.deleted_count)
+        self.assertEqual(self.coll.count(), 1)
+
+    def test_replace_one_upsert(self):
+        expected = {
+            'nMatched': 0,
+            'nModified': 0,
+            'nUpserted': 1,
+            'nInserted': 0,
+            'nRemoved': 0,
+            'upserted': [{'index': 0, '_id': '...'}]
+        }
+        result = self.coll.bulk_write([ReplaceOne({},
+                                                  {'foo': 'bar'},
+                                                  upsert=True)])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.upserted_count)
+        self.assertEqual(1, len(result.upserted_ids))
+        self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
+
 
 
 if __name__ == "__main__":
