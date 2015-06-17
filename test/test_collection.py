@@ -40,7 +40,8 @@ from bson.son import SON, RE_TYPE
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import message as message_module
-from pymongo.collection import Collection
+from pymongo import results
+from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (DocumentTooLarge,
                             DuplicateKeyError,
@@ -55,7 +56,8 @@ from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
 from test.test_client import get_client
 from test.utils import (catch_warnings, enable_text_search,
-                        get_pool, is_mongos, joinall, oid_generated_on_client)
+                        get_pool, is_mongos, joinall, oid_generated_on_client,
+                        wait_until)
 from test import qcheck, version, skip_restricted_localhost
 
 have_uuid = True
@@ -2512,6 +2514,385 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual(res, res2)
         self.assertEqual(res2, res3)
+
+    def test_backport_insert_one(self):
+        db = self.db
+        db.test.drop()
+
+        document = {"_id": 1000}
+        result = db.test.insert_one(document)
+        self.assertTrue(isinstance(result, results.InsertOneResult))
+        self.assertTrue(isinstance(result.inserted_id, int))
+        self.assertEqual(document["_id"], result.inserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertFalse(db.test.find_one({"_id": document["_id"]}) is None)
+        self.assertEqual(1, db.test.count())
+
+        document = {"foo": "bar"}
+        result = db.test.insert_one(document)
+        self.assertTrue(isinstance(result, results.InsertOneResult))
+        self.assertTrue(isinstance(result.inserted_id, ObjectId))
+        self.assertEqual(document["_id"], result.inserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertFalse(db.test.find_one({"_id": document["_id"]}) is None)
+        self.assertEqual(2, db.test.count())
+
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
+        result = db.test.insert_one(document)
+        self.assertTrue(isinstance(result, results.InsertOneResult))
+        self.assertTrue(isinstance(result.inserted_id, ObjectId))
+        self.assertEqual(document["_id"], result.inserted_id)
+        self.assertFalse(result.acknowledged)
+        # The insert failed duplicate key...
+        wait_until(lambda: 2 == db.test.count(), 'forcing duplicate key error')
+
+    def test_backport_insert_many(self):
+        db = self.db
+        db.test.drop()
+
+        docs = [{} for _ in range(5)]
+        result = db.test.insert_many(docs)
+        self.assertTrue(isinstance(result, results.InsertManyResult))
+        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertEqual(5, len(result.inserted_ids))
+        for doc in docs:
+            _id = doc["_id"]
+            self.assertTrue(isinstance(_id, ObjectId))
+            self.assertTrue(_id in result.inserted_ids)
+            self.assertEqual(1, db.test.find({'_id': _id}).count())
+        self.assertTrue(result.acknowledged)
+
+        docs = [{"_id": i} for i in range(5)]
+        result = db.test.insert_many(docs)
+        self.assertTrue(isinstance(result, results.InsertManyResult))
+        self.assertTrue(isinstance(result.inserted_ids, list))
+        self.assertEqual(5, len(result.inserted_ids))
+        for doc in docs:
+            _id = doc["_id"]
+            self.assertTrue(isinstance(_id, int))
+            self.assertTrue(_id in result.inserted_ids)
+            self.assertEqual(1, db.test.find({"_id": _id}).count())
+        self.assertTrue(result.acknowledged)
+
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
+        docs = [{} for _ in range(5)]
+        result = db.test.insert_many(docs)
+        self.assertTrue(isinstance(result, results.InsertManyResult))
+        self.assertFalse(result.acknowledged)
+        self.assertEqual(15, db.test.count())
+
+
+    def test_backport_delete_one(self):
+        self.db.test.drop()
+
+        self.db.test.insert_one({"x": 1})
+        self.db.test.insert_one({"y": 1})
+        self.db.test.insert_one({"z": 1})
+
+        result = self.db.test.delete_one({"x": 1})
+        self.assertTrue(isinstance(result, results.DeleteResult))
+        self.assertEqual(1, result.deleted_count)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(2, self.db.test.count())
+
+        result = self.db.test.delete_one({"y": 1})
+        self.assertTrue(isinstance(result, results.DeleteResult))
+        self.assertEqual(1, result.deleted_count)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, self.db.test.count())
+
+        db = self.db.client.get_database(self.db.name,
+                                         write_concern=WriteConcern(w=0))
+        result = db.test.delete_one({"z": 1})
+        self.assertTrue(isinstance(result, results.DeleteResult))
+        self.assertRaises(InvalidOperation, lambda: result.deleted_count)
+        self.assertFalse(result.acknowledged)
+        wait_until(lambda: 0 == db.test.count(), 'delete 1 documents')
+
+
+    def test_backport_delete_many(self):
+        self.db.test.drop()
+
+        self.db.test.insert_one({"x": 1})
+        self.db.test.insert_one({"x": 1})
+        self.db.test.insert_one({"y": 1})
+        self.db.test.insert_one({"y": 1})
+
+        result = self.db.test.delete_many({"x": 1})
+        self.assertTrue(isinstance(result, results.DeleteResult))
+        self.assertEqual(2, result.deleted_count)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(0, self.db.test.find({"x": 1}).count())
+
+        db = self.db.client.get_database(self.db.name,
+                                         write_concern=WriteConcern(w=0))
+        result = db.test.delete_many({"y": 1})
+        self.assertTrue(isinstance(result, results.DeleteResult))
+        self.assertRaises(InvalidOperation, lambda: result.deleted_count)
+        self.assertFalse(result.acknowledged)
+        wait_until(lambda: 0 == db.test.count(), 'delete 2 documents')
+
+
+    def test_backport_fields_specifier_as_dict(self):
+        db = self.db
+        db.test.delete_many({})
+
+        db.test.insert_one({"x": [1, 2, 3], "mike": "awesome"})
+
+        self.assertEqual([1, 2, 3], db.test.find_one()["x"])
+        self.assertEqual([2, 3],
+                         db.test.find_one(
+                             projection={"x": {"$slice": -2}})["x"])
+        self.assertTrue("x" not in db.test.find_one(projection={"x": 0}))
+        self.assertTrue("mike" in db.test.find_one(projection={"x": 0}))
+
+
+    def test_backport_invalid_key_names(self):
+        db = self.db
+        db.test.drop()
+
+        db.test.insert_one({"hello": "world"})
+        db.test.insert_one({"hello": {"hello": "world"}})
+
+        self.assertRaises(InvalidDocument, db.test.insert_one,
+                          {"$hello": "world"})
+        self.assertRaises(InvalidDocument, db.test.insert_one,
+                          {"hello": {"$hello": "world"}})
+
+        db.test.insert_one({"he$llo": "world"})
+        db.test.insert_one({"hello": {"hello$": "world"}})
+
+        self.assertRaises(InvalidDocument, db.test.insert_one,
+                          {".hello": "world"})
+        self.assertRaises(InvalidDocument, db.test.insert_one,
+                          {"hello": {".hello": "world"}})
+        self.assertRaises(InvalidDocument, db.test.insert_one,
+                          {"hello.": "world"})
+        self.assertRaises(InvalidDocument, db.test.insert_one,
+                          {"hello": {"hello.": "world"}})
+        self.assertRaises(InvalidDocument, db.test.insert_one,
+                          {"hel.lo": "world"})
+        self.assertRaises(InvalidDocument, db.test.insert_one,
+                          {"hello": {"hel.lo": "world"}})
+
+
+    def test_backport_replace_one(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertRaises(ValueError,
+                          lambda: db.test.replace_one({}, {"$set": {"x": 1}}))
+
+        id1 = db.test.insert_one({"x": 1}).inserted_id
+        result = db.test.replace_one({"x": 1}, {"y": 1})
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertTrue(result.upserted_id is None)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, db.test.find({"y": 1}).count())
+        self.assertEqual(0, db.test.find({"x": 1}).count())
+        self.assertEqual(db.test.find_one(id1)["y"], 1)
+
+        result = db.test.replace_one({"x": 2}, {"y": 2}, True)
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertEqual(0, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 0))
+        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, db.test.find({"y": 2}).count())
+
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
+        result = db.test.replace_one({"x": 0}, {"y": 0})
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertRaises(InvalidOperation, lambda: result.matched_count)
+        self.assertRaises(InvalidOperation, lambda: result.modified_count)
+        self.assertRaises(InvalidOperation, lambda: result.upserted_id)
+        self.assertFalse(result.acknowledged)
+
+
+    def test_backport_update_one(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertRaises(ValueError,
+                          lambda: db.test.update_one({}, {"x": 1}))
+
+        id1 = db.test.insert_one({"x": 5}).inserted_id
+        result = db.test.update_one({}, {"$inc": {"x": 1}})
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertTrue(result.upserted_id is None)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(db.test.find_one(id1)["x"], 6)
+
+        id2 = db.test.insert_one({"x": 1}).inserted_id
+        result = db.test.update_one({"x": 6}, {"$inc": {"x": 1}})
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertTrue(result.upserted_id is None)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(db.test.find_one(id1)["x"], 7)
+        self.assertEqual(db.test.find_one(id2)["x"], 1)
+
+        result = db.test.update_one({"x": 2}, {"$set": {"y": 1}}, True)
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertEqual(0, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 0))
+        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertTrue(result.acknowledged)
+
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
+        result = db.test.update_one({"x": 0}, {"$inc": {"x": 1}})
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertRaises(InvalidOperation, lambda: result.matched_count)
+        self.assertRaises(InvalidOperation, lambda: result.modified_count)
+        self.assertRaises(InvalidOperation, lambda: result.upserted_id)
+        self.assertFalse(result.acknowledged)
+
+    def test_backport_update_many(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertRaises(ValueError,
+                          lambda: db.test.update_many({}, {"x": 1}))
+
+        db.test.insert_one({"x": 4, "y": 3})
+        db.test.insert_one({"x": 5, "y": 5})
+        db.test.insert_one({"x": 4, "y": 4})
+
+        result = db.test.update_many({"x": 4}, {"$set": {"y": 5}})
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertEqual(2, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 2))
+        self.assertTrue(result.upserted_id is None)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(3, db.test.find({"y": 5}).count())
+
+        result = db.test.update_many({"x": 5}, {"$set": {"y": 6}})
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertTrue(result.upserted_id is None)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, db.test.find({"y": 6}).count())
+
+        result = db.test.update_many({"x": 2}, {"$set": {"y": 1}}, True)
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertEqual(0, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 0))
+        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertTrue(result.acknowledged)
+
+        db = db.client.get_database(db.name,
+                                    write_concern=WriteConcern(w=0))
+        result = db.test.update_many({"x": 0}, {"$inc": {"x": 1}})
+        self.assertTrue(isinstance(result, results.UpdateResult))
+        self.assertRaises(InvalidOperation, lambda: result.matched_count)
+        self.assertRaises(InvalidOperation, lambda: result.modified_count)
+        self.assertRaises(InvalidOperation, lambda: result.upserted_id)
+        self.assertFalse(result.acknowledged)
+
+
+    def test_backport_update_with_invalid_keys(self):
+        self.db.drop_collection("test")
+        self.assertTrue(self.db.test.insert_one({"hello": "world"}))
+        doc = self.db.test.find_one()
+        doc['a.b'] = 'c'
+
+        expected = InvalidDocument
+        if version.at_least(self.client, (2, 5, 4, -1)):
+            expected = OperationFailure
+
+        # Replace
+        self.assertRaises(expected, self.db.test.replace_one,
+                          {"hello": "world"}, doc)
+        # Upsert
+        self.assertRaises(expected, self.db.test.replace_one,
+                          {"foo": "bar"}, doc, upsert=True)
+
+        # Check that the last two ops didn't actually modify anything
+        self.assertTrue('a.b' not in self.db.test.find_one())
+
+        # Modify shouldn't check keys...
+        self.assertTrue(self.db.test.update_one({"hello": "world"},
+                                                {"$set": {"foo.bar": "baz"}},
+                                                upsert=True))
+
+        # I know this seems like testing the server but I'd like to be notified
+        # by CI if the server's behavior changes here.
+        doc = SON([("$set", {"foo.bar": "bim"}), ("hello", "world")])
+        self.assertRaises(OperationFailure, self.db.test.update_one,
+                          {"hello": "world"}, doc, upsert=True)
+
+        # This is going to cause keys to be checked and raise InvalidDocument.
+        # That's OK assuming the server's behavior in the previous assert
+        # doesn't change. If the behavior changes checking the first key for
+        # '$' in update won't be good enough anymore.
+        doc = SON([("hello", "world"), ("$set", {"foo.bar": "bim"})])
+        self.assertRaises(expected, self.db.test.replace_one,
+                          {"hello": "world"}, doc, upsert=True)
+
+        # Replace with empty document
+        self.assertNotEqual(0,
+                            self.db.test.replace_one(
+                                {"hello": "world"}, {}).matched_count)
+
+
+    def test_backport_find_one_and(self):
+        c = self.db.test
+        c.drop()
+        c.insert_one({'_id': 1, 'i': 1})
+
+        self.assertEqual({'_id': 1, 'i': 1},
+                         c.find_one_and_update({'_id': 1}, {'$inc': {'i': 1}}))
+        self.assertEqual({'_id': 1, 'i': 3},
+                         c.find_one_and_update(
+                             {'_id': 1}, {'$inc': {'i': 1}},
+                             return_document=ReturnDocument.AFTER))
+
+        self.assertEqual({'_id': 1, 'i': 3},
+                         c.find_one_and_delete({'_id': 1}))
+        self.assertEqual(None, c.find_one({'_id': 1}))
+
+        self.assertEqual(None,
+                         c.find_one_and_update({'_id': 1}, {'$inc': {'i': 1}}))
+        self.assertEqual({'_id': 1, 'i': 1},
+                         c.find_one_and_update(
+                             {'_id': 1}, {'$inc': {'i': 1}},
+                             return_document=ReturnDocument.AFTER,
+                             upsert=True))
+        self.assertEqual({'_id': 1, 'i': 2},
+                         c.find_one_and_update(
+                             {'_id': 1}, {'$inc': {'i': 1}},
+                             return_document=ReturnDocument.AFTER))
+
+        self.assertEqual({'_id': 1, 'i': 3},
+                         c.find_one_and_replace(
+                             {'_id': 1}, {'i': 3, 'j': 1},
+                             projection=['i'],
+                             return_document=ReturnDocument.AFTER))
+        self.assertEqual({'i': 4},
+                         c.find_one_and_update(
+                             {'_id': 1}, {'$inc': {'i': 1}},
+                             projection={'i': 1, '_id': 0},
+                             return_document=ReturnDocument.AFTER))
+
+        c.drop()
+        for j in range(5):
+            c.insert_one({'j': j, 'i': 0})
+
+        sort = [('j', DESCENDING)]
+        self.assertEqual(4, c.find_one_and_update({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+
 
 
 if __name__ == "__main__":

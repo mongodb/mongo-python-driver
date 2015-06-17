@@ -87,12 +87,19 @@ def get_version_string():
 version = get_version_string()
 """Current version of PyMongo."""
 
+from pymongo.collection import ReturnDocument
 from pymongo.common import (MIN_SUPPORTED_WIRE_VERSION,
                             MAX_SUPPORTED_WIRE_VERSION)
 from pymongo.connection import Connection
 from pymongo.cursor import CursorType
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+from pymongo.operations import (InsertOne,
+                                DeleteOne,
+                                DeleteMany,
+                                UpdateOne,
+                                UpdateMany,
+                                ReplaceOne)
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern

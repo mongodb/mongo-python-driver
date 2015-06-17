@@ -40,6 +40,10 @@
       .. automethod:: drop
       .. automethod:: find([spec=None[, fields=None[, skip=0[, limit=0[, timeout=True[, snapshot=False[, tailable=False[, sort=None[, max_scan=None[, as_class=None[, slave_okay=False[, await_data=False[, partial=False[, manipulate=True[, read_preference=ReadPreference.PRIMARY[, tag_sets=[{}][, secondary_acceptable_latency_ms=None[, exhaust=False[, compile_re=True[, oplog_replay=False[, modifiers=None[, network_timeout=None[, filter=None[, projection=None[, no_cursor_timeout=None[, allow_partial_results=None[, cursor_type=None]]]]]]]]]]]]]]]]]]]]]]]]]]])
       .. automethod:: find_one([spec_or_id=None[, *args[, **kwargs]]])
+      .. automethod:: find_one_and_delete
+      .. automethod:: find_one_and_replace(filter, replacement, projection=None, sort=None, return_document=ReturnDocument.BEFORE, **kwargs)
+      .. automethod:: find_one_and_update(filter, update, projection=None, sort=None, return_document=ReturnDocument.BEFORE, **kwargs)
+      .. automethod:: bulk_write
       .. automethod:: parallel_scan
       .. automethod:: count
       .. automethod:: create_index
@@ -61,4 +65,11 @@
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options
       .. automethod:: unset_lasterror_options
+      .. automethod:: insert_one
+      .. automethod:: insert_many
+      .. automethod:: replace_one
+      .. automethod:: update_one
+      .. automethod:: update_many
+      .. automethod:: delete_one
+      .. automethod:: delete_many
 

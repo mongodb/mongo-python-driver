@@ -22,12 +22,14 @@ from bson.son import SON
 from pymongo import (bulk,
                      common,
                      helpers,
-                     message)
+                     message,
+                     results)
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.message import _INSERT, _UPDATE, _DELETE
+from pymongo.operations import _WriteOp
 from pymongo.read_preferences import ReadPreference
 
 
@@ -42,6 +44,19 @@ def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
     """
     return u"_".join([u"%s_%s" % item for item in keys])
+
+
+class ReturnDocument(object):
+    """An enum used with
+    :meth:`~pymongo.collection.Collection.find_one_and_replace` and
+    :meth:`~pymongo.collection.Collection.find_one_and_update`.
+    """
+    BEFORE = False
+    """Return the original document before it was updated/replaced, or
+    ``None`` if no document matches the query.
+    """
+    AFTER = True
+    """Return the updated/replaced or inserted document."""
 
 
 class Collection(common.BaseObject):
@@ -270,6 +285,70 @@ class Collection(common.BaseObject):
         """
         return bulk.BulkOperationBuilder(self, ordered=True)
 
+    def bulk_write(self, requests, ordered=True):
+        """Send a batch of write operations to the server.
+
+        Requests are passed as a list of write operation instances (
+        :class:`~pymongo.operations.InsertOne`,
+        :class:`~pymongo.operations.UpdateOne`,
+        :class:`~pymongo.operations.UpdateMany`,
+        :class:`~pymongo.operations.ReplaceOne`,
+        :class:`~pymongo.operations.DeleteOne`, or
+        :class:`~pymongo.operations.DeleteMany`).
+
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634ef')}
+          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634f0')}
+          >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
+          ...
+          >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
+          >>> requests = [InsertOne({'y': 1}), DeleteOne({'x': 1}),
+          ...             ReplaceOne({'w': 1}, {'z': 1}, upsert=True)]
+          >>> result = db.test.bulk_write(requests)
+          >>> result.inserted_count
+          1
+          >>> result.deleted_count
+          1
+          >>> result.modified_count
+          0
+          >>> result.upserted_ids
+          {2: ObjectId('54f62ee28891e756a6e1abd5')}
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634f0')}
+          {u'y': 1, u'_id': ObjectId('54f62ee2fba5226811f634f1')}
+          {u'z': 1, u'_id': ObjectId('54f62ee28891e756a6e1abd5')}
+
+        :Parameters:
+          - `requests`: A list of write operations (see examples above).
+          - `ordered` (optional): If ``True`` (the default) requests will be
+            performed on the server serially, in the order provided. If an error
+            occurs all remaining operations are aborted. If ``False`` requests
+            will be performed on the server in arbitrary order, possibly in
+            parallel, and all operations will be attempted.
+
+        :Returns:
+          An instance of :class:`~pymongo.results.BulkWriteResult`.
+
+        .. versionadded:: 2.9
+        """
+        if not isinstance(requests, list):
+            raise TypeError("requests must be a list")
+
+        blk = bulk._Bulk(self, ordered)
+        for request in requests:
+            if not isinstance(request, _WriteOp):
+                raise TypeError("%r is not a valid request" % (request,))
+            request._add_to_bulk(blk)
+
+        bulk_api_result = blk.execute(self.write_concern)
+        if bulk_api_result is not None:
+            return results.BulkWriteResult(bulk_api_result, True)
+        return results.BulkWriteResult({}, False)
+
     def save(self, to_save, manipulate=True,
              safe=None, check_keys=True, **kwargs):
         """Save a document in this collection.
@@ -471,6 +550,74 @@ class Collection(common.BaseObject):
         else:
             return ids
 
+    def insert_one(self, document):
+        """Insert a single document.
+
+          >>> db.test.count({'x': 1})
+          0
+          >>> result = db.test.insert_one({'x': 1})
+          >>> result.inserted_id
+          ObjectId('54f112defba522406c9cc208')
+          >>> db.test.find_one({'x': 1})
+          {u'x': 1, u'_id': ObjectId('54f112defba522406c9cc208')}
+
+        :Parameters:
+          - `document`: The document to insert. Must be a mapping
+            type. If the document does not have an _id field one will be
+            added automatically.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.InsertOneResult`.
+
+        .. versionadded:: 2.9
+        """
+        common.validate_is_dict("document", document)
+        ids = self.insert(document)
+        return results.InsertOneResult(ids, self._get_write_mode()[0])
+
+    def insert_many(self, documents, ordered=True):
+        """Insert a list of documents.
+
+          >>> db.test.count()
+          0
+          >>> result = db.test.insert_many([{'x': i} for i in range(2)])
+          >>> result.inserted_ids
+          [ObjectId('54f113fffba522406c9cc20e'), ObjectId('54f113fffba522406c9cc20f')]
+          >>> db.test.count()
+          2
+
+        :Parameters:
+          - `documents`: A list of documents to insert.
+          - `ordered` (optional): If ``True`` (the default) documents will be
+            inserted on the server serially, in the order provided. If an error
+            occurs all remaining inserts are aborted. If ``False``, documents
+            will be inserted on the server in arbitrary order, possibly in
+            parallel, and all document inserts will be attempted.
+
+        :Returns:
+          An instance of :class:`~pymongo.results.InsertManyResult`.
+
+        .. versionadded:: 2.9
+        """
+        if not isinstance(documents, list) or not documents:
+            raise TypeError("documents must be a non-empty list")
+        inserted_ids = []
+
+        def gen():
+            """A generator that validates documents and handles _ids."""
+            for document in documents:
+                common.validate_is_dict("document", document)
+                if "_id" not in document:
+                    document["_id"] = ObjectId()
+                inserted_ids.append(document["_id"])
+                yield (_INSERT, document)
+
+        blk = bulk._Bulk(self, ordered)
+        blk.ops = [doc for doc in gen()]
+        blk.execute(self.write_concern)
+        return results.InsertManyResult(inserted_ids,
+                                        self._get_write_mode()[0])
+
     def update(self, spec, document, upsert=False, manipulate=False,
                safe=None, multi=False, check_keys=True, **kwargs):
         """Update a document(s) in this collection.
@@ -623,6 +770,80 @@ class Collection(common.BaseObject):
                                spec, document, safe, options,
                                check_keys, self.uuid_subtype), safe)
 
+    def update_one(self, filter, update, upsert=False):
+        """Update a single document matching the filter.
+
+          >>> for doc in db.test.find():
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+          >>> result = db.test.update_one({'x': 1}, {'$inc': {'x': 3}})
+          >>> result.matched_count
+          1
+          >>> result.modified_count
+          1
+          >>> for doc in db.test.find():
+          ...     print(doc)
+          ...
+          {u'x': 4, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+
+        :Parameters:
+          - `filter`: A query that matches the document to update.
+          - `update`: The modifications to apply.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. versionadded:: 2.9
+        """
+        common.validate_ok_for_update(update)
+        result = self.update(
+            filter, update, upsert, multi=False, check_keys=False)
+        return results.UpdateResult(result, self._get_write_mode()[0])
+
+    def update_many(self, filter, update, upsert=False):
+        """Update one or more documents that match the filter.
+
+          >>> for doc in db.test.find():
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+          >>> result = db.test.update_many({'x': 1}, {'$inc': {'x': 3}})
+          >>> result.matched_count
+          3
+          >>> result.modified_count
+          3
+          >>> for doc in db.test.find():
+          ...     print(doc)
+          ...
+          {u'x': 4, u'_id': 0}
+          {u'x': 4, u'_id': 1}
+          {u'x': 4, u'_id': 2}
+
+        :Parameters:
+          - `filter`: A query that matches the documents to update.
+          - `update`: The modifications to apply.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. versionadded:: 2.9
+        """
+        common.validate_ok_for_update(update)
+        result = self.update(
+            filter, update, upsert, multi=True, check_keys=False)
+        return results.UpdateResult(result, self._get_write_mode()[0])
+
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
@@ -732,6 +953,93 @@ class Collection(common.BaseObject):
             return client._send_message(
                 message.delete(self.__full_name, spec_or_id, safe,
                                options, self.uuid_subtype, int(not multi)), safe)
+
+    def delete_one(self, filter):
+        """Delete a single document matching the filter.
+
+          >>> db.test.count({'x': 1})
+          3
+          >>> result = db.test.delete_one({'x': 1})
+          >>> result.deleted_count
+          1
+          >>> db.test.count({'x': 1})
+          2
+
+        :Parameters:
+          - `filter`: A query that matches the document to delete.
+        :Returns:
+          - An instance of :class:`~pymongo.results.DeleteResult`.
+
+        .. versionadded:: 2.9
+        """
+        result = self.remove(filter, multi=False)
+        return results.DeleteResult(result, self._get_write_mode()[0])
+
+    def delete_many(self, filter):
+        """Delete one or more documents matching the filter.
+
+          >>> db.test.count({'x': 1})
+          3
+          >>> result = db.test.delete_many({'x': 1})
+          >>> result.deleted_count
+          3
+          >>> db.test.count({'x': 1})
+          0
+
+        :Parameters:
+          - `filter`: A query that matches the documents to delete.
+        :Returns:
+          - An instance of :class:`~pymongo.results.DeleteResult`.
+
+        .. versionadded:: 2.9
+        """
+        result = self.remove(filter, multi=True)
+        return results.DeleteResult(result, self._get_write_mode()[0])
+
+    def replace_one(self, filter, replacement, upsert=False):
+        """Replace a single document matching the filter.
+
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': ObjectId('54f4c5befba5220aa4d6dee7')}
+          >>> result = db.test.replace_one({'x': 1}, {'y': 1})
+          >>> result.matched_count
+          1
+          >>> result.modified_count
+          1
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'y': 1, u'_id': ObjectId('54f4c5befba5220aa4d6dee7')}
+
+        The *upsert* option can be used to insert a new document if a matching
+        document does not exist.
+
+          >>> result = db.test.replace_one({'x': 1}, {'x': 1}, True)
+          >>> result.matched_count
+          0
+          >>> result.modified_count
+          0
+          >>> result.upserted_id
+          ObjectId('54f11e5c8891e756a6e1abd4')
+          >>> db.test.find_one({'x': 1})
+          {u'x': 1, u'_id': ObjectId('54f11e5c8891e756a6e1abd4')}
+
+        :Parameters:
+          - `filter`: A query that matches the document to replace.
+          - `replacement`: The new document.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. versionadded:: 2.9
+        """
+        common.validate_ok_for_replace(replacement)
+        result = self.update(filter, replacement, upsert, multi=False)
+        return results.UpdateResult(result, self._get_write_mode()[0])
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.
@@ -1775,7 +2083,7 @@ class Collection(common.BaseObject):
 
     def find_and_modify(self, query={}, update=None,
                         upsert=False, sort=None, full_response=False,
-                        manipulate=False, **kwargs):
+                        manipulate=False, fields=None, **kwargs):
         """Update and return an object.
 
         This is a thin wrapper around the findAndModify_ command. The
@@ -1806,7 +2114,7 @@ class Collection(common.BaseObject):
             - `remove`: remove rather than updating (default ``False``)
             - `new`: return updated rather than original object
               (default ``False``)
-            - `fields`: see second argument to :meth:`find` (default all)
+            - `fields`: (optional): see second argument to :meth:`find` (default all)
             - `manipulate`: (optional): If ``True``, apply any outgoing SON
               manipulators before returning. Ignored when `full_response`
               is set to True. Defaults to ``False``.
@@ -1819,6 +2127,9 @@ class Collection(common.BaseObject):
         .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
 
         .. note:: Requires server version **>= 1.3.0**
+
+        .. versionchanged:: 2.9
+           Made fields a named parameter.
 
         .. versionchanged:: 2.8
            Added the optional manipulate parameter
@@ -1844,6 +2155,8 @@ class Collection(common.BaseObject):
             kwargs['update'] = update
         if upsert:
             kwargs['upsert'] = upsert
+        if fields:
+            kwargs['fields'] = fields
         if sort:
             # Accept a list of tuples to match Cursor's sort parameter.
             if isinstance(sort, list):
@@ -1883,6 +2196,202 @@ class Collection(common.BaseObject):
             if manipulate:
                 document = self.__database._fix_outgoing(document, self)
             return document
+
+    def find_one_and_delete(self, filter,
+                            projection=None, sort=None, **kwargs):
+        """Finds a single document and deletes it, returning the document.
+
+          >>> db.test.count({'x': 1})
+          2
+          >>> db.test.find_one_and_delete({'x': 1})
+          {u'x': 1, u'_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
+          >>> db.test.count({'x': 1})
+          1
+
+        If multiple documents match *filter*, a *sort* can be applied.
+
+          >>> for doc in db.test.find({'x': 1}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+          >>> db.test.find_one_and_delete(
+          ...     {'x': 1}, sort=[('_id', pymongo.DESCENDING)])
+          {u'x': 1, u'_id': 2}
+
+        The *projection* option can be used to limit the fields returned.
+
+          >>> db.test.find_one_and_delete({'x': 1}, projection={'_id': False})
+          {u'x': 1}
+
+        :Parameters:
+          - `filter`: A query that matches the document to delete.
+          - `projection` (optional): a list of field names that should be
+            returned in the result document or a mapping specifying the fields
+            to include or exclude. If `projection` is a list "_id" will
+            always be returned. Use a mapping to exclude fields from
+            the result (e.g. projection={'_id': False}).
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for the query. If multiple documents
+            match the query, they are sorted and the first is deleted.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
+
+        .. versionadded:: 2.9
+        """
+        common.validate_is_dict("filter", filter)
+        kwargs['remove'] = True
+        return self.find_and_modify(filter, fields=projection, sort=sort,
+                                    **kwargs)
+
+    def find_one_and_replace(self, filter, replacement,
+                             projection=None, sort=None, upsert=False,
+                             return_document=ReturnDocument.BEFORE, **kwargs):
+        """Finds a single document and replaces it, returning either the
+        original or the replaced document.
+
+        The :meth:`find_one_and_replace` method differs from
+        :meth:`find_one_and_update` by replacing the document matched by
+        *filter*, rather than modifying the existing document.
+
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'x': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+          >>> db.test.find_one_and_replace({'x': 1}, {'y': 1})
+          {u'x': 1, u'_id': 0}
+          >>> for doc in db.test.find({}):
+          ...     print(doc)
+          ...
+          {u'y': 1, u'_id': 0}
+          {u'x': 1, u'_id': 1}
+          {u'x': 1, u'_id': 2}
+
+        :Parameters:
+          - `filter`: A query that matches the document to replace.
+          - `replacement`: The replacement document.
+          - `projection` (optional): A list of field names that should be
+            returned in the result document or a mapping specifying the fields
+            to include or exclude. If `projection` is a list "_id" will
+            always be returned. Use a mapping to exclude fields from
+            the result (e.g. projection={'_id': False}).
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for the query. If multiple documents
+            match the query, they are sorted and the first is replaced.
+          - `upsert` (optional): When ``True``, inserts a new document if no
+            document matches the query. Defaults to ``False``.
+          - `return_document`: If
+            :attr:`ReturnDocument.BEFORE` (the default),
+            returns the original document before it was replaced, or ``None``
+            if no document matches. If
+            :attr:`ReturnDocument.AFTER`, returns the replaced
+            or inserted document.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
+
+        .. versionadded:: 2.9
+        """
+        common.validate_ok_for_replace(replacement)
+        kwargs['update'] = replacement
+        new = return_document == ReturnDocument.AFTER
+        return self.find_and_modify(filter, fields=projection,
+                                    sort=sort, upsert=upsert,
+                                    new=new,
+                                    **kwargs)
+
+    def find_one_and_update(self, filter, update,
+                            projection=None, sort=None, upsert=False,
+                            return_document=ReturnDocument.BEFORE, **kwargs):
+        """Finds a single document and updates it, returning either the
+        original or the updated document.
+
+          >>> db.test.find_one_and_update(
+          ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
+          {u'_id': 665, u'done': False, u'count': 25}}
+
+        By default :meth:`find_one_and_update` returns the original version of
+        the document before the update was applied. To return the updated
+        version of the document instead, use the *return_document* option.
+
+          >>> from pymongo import ReturnDocument
+          >>> db.example.find_one_and_update(
+          ...     {'_id': 'userid'},
+          ...     {'$inc': {'seq': 1}},
+          ...     return_document=ReturnDocument.AFTER)
+          {u'_id': u'userid', u'seq': 1}
+
+        You can limit the fields returned with the *projection* option.
+
+          >>> db.example.find_one_and_update(
+          ...     {'_id': 'userid'},
+          ...     {'$inc': {'seq': 1}},
+          ...     projection={'seq': True, '_id': False},
+          ...     return_document=ReturnDocument.AFTER)
+          {u'seq': 2}
+
+        The *upsert* option can be used to create the document if it doesn't
+        already exist.
+
+          >>> db.example.delete_many({}).deleted_count
+          1
+          >>> db.example.find_one_and_update(
+          ...     {'_id': 'userid'},
+          ...     {'$inc': {'seq': 1}},
+          ...     projection={'seq': True, '_id': False},
+          ...     upsert=True,
+          ...     return_document=ReturnDocument.AFTER)
+          {u'seq': 1}
+
+        If multiple documents match *filter*, a *sort* can be applied.
+
+          >>> for doc in db.test.find({'done': True}):
+          ...     print(doc)
+          ...
+          {u'_id': 665, u'done': True, u'result': {u'count': 26}}
+          {u'_id': 701, u'done': True, u'result': {u'count': 17}}
+          >>> db.test.find_one_and_update(
+          ...     {'done': True},
+          ...     {'$set': {'final': True}},
+          ...     sort=[('_id', pymongo.DESCENDING)])
+          {u'_id': 701, u'done': True, u'result': {u'count': 17}}
+
+        :Parameters:
+          - `filter`: A query that matches the document to update.
+          - `update`: The update operations to apply.
+          - `projection` (optional): A list of field names that should be
+            returned in the result document or a mapping specifying the fields
+            to include or exclude. If `projection` is a list "_id" will
+            always be returned. Use a dict to exclude fields from
+            the result (e.g. projection={'_id': False}).
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for the query. If multiple documents
+            match the query, they are sorted and the first is updated.
+          - `upsert` (optional): When ``True``, inserts a new document if no
+            document matches the query. Defaults to ``False``.
+          - `return_document`: If
+            :attr:`ReturnDocument.BEFORE` (the default),
+            returns the original document before it was updated, or ``None``
+            if no document matches. If
+            :attr:`ReturnDocument.AFTER`, returns the updated
+            or inserted document.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
+
+        .. versionadded:: 2.9
+        """
+        common.validate_ok_for_update(update)
+        kwargs['update'] = update
+        new = return_document == ReturnDocument.AFTER
+        return self.find_and_modify(filter, fields=projection,
+                                    sort=sort, upsert=upsert,
+                                    new=new,
+                                    **kwargs)
 
     def __iter__(self):
         return self
