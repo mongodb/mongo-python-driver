@@ -22,6 +22,9 @@ everything you need to know to use **PyMongo**.
 :doc:`faq`
   Some questions that come up often.
 
+:doc:`migrate-to-pymongo3`
+  A PyMongo 2.x to 3.x migration guide.
+
 :doc:`python3`
   Frequently asked questions about python 3 support.
 
@@ -93,3 +96,4 @@ Indices and tables
    contributors
    changelog
    python3
+   migrate-to-pymongo3
