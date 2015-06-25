@@ -46,7 +46,7 @@ class Connection(MongoClient):
 
     def __init__(self, host=None, port=None, max_pool_size=None,
                  network_timeout=None, document_class=dict,
-                 tz_aware=False, _connect=True, **kwargs):
+                 tz_aware=False, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         .. warning::
@@ -237,8 +237,8 @@ class Connection(MongoClient):
         kwargs['auto_start_request'] = kwargs.get('auto_start_request', True)
         kwargs['safe'] = kwargs.get('safe', False)
 
-        super(Connection, self).__init__(host, port,
-                max_pool_size, document_class, tz_aware, _connect, **kwargs)
+        super(Connection, self).__init__(
+            host, port, max_pool_size, document_class, tz_aware, **kwargs)
 
     def __repr__(self):
         if len(self.nodes) == 1:

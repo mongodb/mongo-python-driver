@@ -182,6 +182,15 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         self.assertTrue(MongoClient(host, port))
 
+        # Test that connect=False prevents the constructor from raising
+        # ConnectionFailure.
+        client = MongoClient("somedomainthatdoesnotexist.org",
+                             connectTimeoutMS=100, connect=False)
+        try:
+            client.admin.command("ismaster")
+        except AutoReconnect:
+            pass
+
     def test_equality(self):
         client = MongoClient(host, port)
         self.assertEqual(client, MongoClient(host, port))

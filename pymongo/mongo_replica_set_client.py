@@ -435,7 +435,7 @@ class MongoReplicaSetClient(common.BaseObject):
     _rs_client = True
 
     def __init__(self, hosts_or_uri=None, max_pool_size=100,
-                 document_class=dict, tz_aware=False, _connect=True, **kwargs):
+                 document_class=dict, tz_aware=False, **kwargs):
         """Create a new connection to a MongoDB replica set.
 
         The resultant client object has connection-pooling built
@@ -514,6 +514,8 @@ class MongoReplicaSetClient(common.BaseObject):
             rather than thread-local, socket. Defaults to ``False``.
             `use_greenlets` with :class:`MongoReplicaSetClient` requires
             `Gevent <http://gevent.org/>`_ to be installed.
+          - `connect`: if True (the default), immediately connect to MongoDB
+            in the foreground. Otherwise connect on the first operation.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -715,6 +717,7 @@ class MongoReplicaSetClient(common.BaseObject):
                           "use read_preference instead.", DeprecationWarning,
                           stacklevel=2)
 
+        _connect = self.__opts.get('_connect', self.__opts.get('connect', True))
         if _connect:
             try:
                 self.refresh(initial=True)

@@ -405,6 +405,42 @@ can be replaced by this with PyMongo 2.9 or later:
 MongoClient
 -----------
 
+MongoClient connects asynchronously
+...................................
+
+In PyMongo 3, the :class:`~pymongo.mongo_client.MongoClient` constructor no
+longer blocks while connecting to the server or servers, and it no longer
+raises :exc:`~pymongo.errors.ConnectionFailure` if they are unavailable, nor
+:exc:`~pymongo.errors.ConfigurationError` if the user’s credentials are wrong.
+Instead, the constructor returns immediately and launches the connection
+process on background threads. The `connect` option is added to control whether
+these threads are started immediately, or when the client is first used.
+
+For consistent behavior in PyMongo 2.x and PyMongo 3.x, code like this::
+
+  >>> from pymongo.errors import ConnectionFailure
+  >>> try:
+  ...     client = MongoClient()
+  ... except ConnectionFailure:
+  ...     print("Server not available")
+  >>>
+
+can be changed to this with PyMongo 2.9 or later:
+
+.. doctest::
+
+  >>> from pymongo.errors import ConnectionFailure
+  >>> client = MongoClient(connect=False)
+  >>> try:
+  ...     result = client.admin.command("ismaster")
+  ... except ConnectionFailure:
+  ...     print("Server not available")
+  >>>
+
+Any operation can be used to determine if the server is available. We choose
+the "ismaster" command here because it is cheap and does not require auth, so
+it is a simple way to check whether the server is available.
+
 The max_pool_size parameter is removed
 ......................................
 

@@ -224,6 +224,16 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                           pair, replicaSet='fdlksjfdslkjfd')
         self.assertTrue(MongoReplicaSetClient(pair, replicaSet=self.name))
 
+        # Test that connect=False prevents the constructor from raising
+        # ConnectionFailure.
+        client = MongoReplicaSetClient("somedomainthatdoesnotexist.org",
+                                       connectTimeoutMS=100, connect=False,
+                                       replicaSet=self.name)
+        try:
+            client.admin.command("ismaster")
+        except AutoReconnect:
+            pass
+
     def test_repr(self):
         client = self._get_client()
 

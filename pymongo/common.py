@@ -385,7 +385,9 @@ VALIDATORS = {
     'authmechanismproperties': validate_auth_mechanism_properties,
     'uuidrepresentation': validate_uuid_representation,
     'socketkeepalive': validate_boolean,
-    'maxpoolsize': validate_positive_integer_or_none
+    'maxpoolsize': validate_positive_integer_or_none,
+    'connect': validate_boolean,
+    '_connect': validate_boolean
 }
 
 

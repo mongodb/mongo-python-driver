@@ -92,8 +92,7 @@ class MongoClient(common.BaseObject):
     _rs_client = False
 
     def __init__(self, host=None, port=None, max_pool_size=100,
-                 document_class=dict, tz_aware=False, _connect=True,
-                 **kwargs):
+                 document_class=dict, tz_aware=False, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant client object has connection-pooling built
@@ -161,6 +160,8 @@ class MongoClient(common.BaseObject):
           - `use_greenlets`: If ``True``, :meth:`start_request()` will ensure
             that the current greenlet uses the same socket for all
             operations until :meth:`end_request()`. Defaults to ``False``.
+          - `connect`: if True (the default), immediately connect to MongoDB in
+            the foreground. Otherwise connect on the first operation.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -399,6 +400,7 @@ class MongoClient(common.BaseObject):
                           "use read_preference instead.", DeprecationWarning,
                           stacklevel=2)
 
+        _connect = options.get('_connect', options.get('connect', True))
         if _connect:
             try:
                 self._ensure_connected(True)
