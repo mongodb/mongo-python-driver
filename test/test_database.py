@@ -524,7 +524,7 @@ class TestDatabase(IntegrationTest):
         # Admin read-only user should be able to query any db,
         # but not write.
         admin_db.authenticate('ro-admin', 'pass')
-        self.assertEqual(0, other_db.test.count())
+        self.assertEqual(None, other_db.test.find_one())
         self.assertRaises(OperationFailure,
                           other_db.test.insert_one, {})
 
