@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Version 3.0.3
+------------------------
+
+Version 3.0.3 fixes issues reported since the release of 3.0.2, including a
+feature breaking bug in the GSSAPI implementation.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.0.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.0.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/15528
+
 Changes in Version 3.0.2
 ------------------------
 
