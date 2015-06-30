@@ -86,8 +86,8 @@ To use MongoDB with `Tornado <http://www.tornadoweb.org/>`_ see the
 `Motor <https://github.com/mongodb/motor>`_ project.
 
 For `Twisted <http://twistedmatrix.com/>`_, see `TxMongo
-<http://github.com/fiorix/mongo-async-python-driver>`_. Compared to PyMongo,
-TxMongo is less stable, lacks features, and is less actively maintained.
+<https://github.com/twisted/txmongo>`_. Its stated mission is to keep feature
+parity with PyMongo.
 
 Key order in subdocuments -- why does my query work in the shell but not PyMongo?
 ---------------------------------------------------------------------------------
