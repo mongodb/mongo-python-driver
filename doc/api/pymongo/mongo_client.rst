@@ -6,9 +6,7 @@
 
    .. autoclass:: pymongo.mongo_client.MongoClient([host='localhost'[, port=27017[, max_pool_size=100[, document_class=dict[, tz_aware=False[, **kwargs]]]]]])
 
-      .. automethod:: disconnect
       .. automethod:: close
-      .. automethod:: alive
 
       .. describe:: c[db_name] || c.db_name
 
@@ -35,7 +33,6 @@
       .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: local_threshold_ms
       .. autoattribute:: write_concern
-      .. autoattribute:: uuid_subtype
       .. autoattribute:: is_locked
       .. automethod:: database_names
       .. automethod:: drop_database
@@ -51,3 +48,11 @@
       .. automethod:: set_cursor_manager
       .. automethod:: fsync
       .. automethod:: unlock
+      .. automethod:: disconnect
+      .. automethod:: alive
+      .. autoattribute:: uuid_subtype
+      .. autoattribute:: slave_okay
+      .. autoattribute:: safe
+      .. automethod:: get_lasterror_options
+      .. automethod:: set_lasterror_options
+      .. automethod:: unset_lasterror_options

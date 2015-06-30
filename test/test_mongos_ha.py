@@ -75,7 +75,7 @@ class TestMongosHA(unittest.TestCase):
         self.assertEqual(3, len(client.nodes))
 
         # Trigger reconnect.
-        client.disconnect()
+        client.close()
         do_find_one(client, nthreads)
         self.assertEqual(3, len(client.nodes))
 

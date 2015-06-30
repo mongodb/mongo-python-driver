@@ -60,11 +60,6 @@
       .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
       .. automethod:: find_and_modify
-      .. autoattribute:: slave_okay
-      .. autoattribute:: safe
-      .. automethod:: get_lasterror_options
-      .. automethod:: set_lasterror_options
-      .. automethod:: unset_lasterror_options
       .. automethod:: insert_one
       .. automethod:: insert_many
       .. automethod:: replace_one
@@ -72,4 +67,9 @@
       .. automethod:: update_many
       .. automethod:: delete_one
       .. automethod:: delete_many
+      .. autoattribute:: slave_okay
+      .. autoattribute:: safe
+      .. automethod:: get_lasterror_options
+      .. automethod:: set_lasterror_options
+      .. automethod:: unset_lasterror_options
 

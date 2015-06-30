@@ -112,13 +112,13 @@ class TestReadPreferences(TestReadPreferencesBase):
             self.assertEqual(mode, self._get_client(
                 read_preference=mode).read_preference)
 
-        self.assertRaises(ConfigurationError, self._get_client,
-            read_preference='foo')
+        self.assertRaises(
+            ConfigurationError, self._get_client, read_preference='foo')
 
     def test_tag_sets_validation(self):
         # Can't use tags with PRIMARY
-        self.assertRaises(ConfigurationError, self._get_client,
-            tag_sets=[{'k': 'v'}])
+        self.assertRaises(
+            ConfigurationError, self._get_client, tag_sets=[{'k': 'v'}])
 
         # ... but empty tag sets are ok with PRIMARY
         self.assertEqual([{}], self._get_client(tag_sets=[{}]).tag_sets)
@@ -126,23 +126,29 @@ class TestReadPreferences(TestReadPreferencesBase):
         S = ReadPreference.SECONDARY
         self.assertEqual([{}], self._get_client(read_preference=S).tag_sets)
 
-        self.assertEqual([{'k': 'v'}], self._get_client(
-            read_preference=S, tag_sets=[{'k': 'v'}]).tag_sets)
+        self.assertEqual(
+            [{'k': 'v'}], self._get_client(
+                read_preference=S, tag_sets=[{'k': 'v'}]).tag_sets)
 
-        self.assertEqual([{'k': 'v'}, {}], self._get_client(
-            read_preference=S, tag_sets=[{'k': 'v'}, {}]).tag_sets)
+        self.assertEqual(
+            [{'k': 'v'}, {}], self._get_client(
+                read_preference=S, tag_sets=[{'k': 'v'}, {}]).tag_sets)
 
-        self.assertRaises(ConfigurationError, self._get_client,
+        self.assertRaises(
+            ConfigurationError, self._get_client,
             read_preference=S, tag_sets=[])
 
         # One dict not ok, must be a list of dicts
-        self.assertRaises(ConfigurationError, self._get_client,
+        self.assertRaises(
+            ConfigurationError, self._get_client,
             read_preference=S, tag_sets={'k': 'v'})
 
-        self.assertRaises(ConfigurationError, self._get_client,
+        self.assertRaises(
+            ConfigurationError, self._get_client,
             read_preference=S, tag_sets='foo')
 
-        self.assertRaises(ConfigurationError, self._get_client,
+        self.assertRaises(
+            ConfigurationError, self._get_client,
             read_preference=S, tag_sets=['foo'])
 
     def test_latency_validation(self):
@@ -188,25 +194,27 @@ class TestReadPreferences(TestReadPreferencesBase):
                           localthresholdms=-1)
 
     def test_primary(self):
-        self.assertReadsFrom('primary',
-            read_preference=ReadPreference.PRIMARY)
+        self.assertReadsFrom(
+            'primary', read_preference=ReadPreference.PRIMARY)
 
     def test_primary_with_tags(self):
         # Tags not allowed with PRIMARY
-        self.assertRaises(ConfigurationError,
-            self._get_client, tag_sets=[{'dc': 'ny'}])
+        self.assertRaises(
+            ConfigurationError,
+            self._get_client,
+            tag_sets=[{'dc': 'ny'}])
 
     def test_primary_preferred(self):
-        self.assertReadsFrom('primary',
-            read_preference=ReadPreference.PRIMARY_PREFERRED)
+        self.assertReadsFrom(
+            'primary', read_preference=ReadPreference.PRIMARY_PREFERRED)
 
     def test_secondary(self):
-        self.assertReadsFrom('secondary',
-            read_preference=ReadPreference.SECONDARY)
+        self.assertReadsFrom(
+            'secondary', read_preference=ReadPreference.SECONDARY)
 
     def test_secondary_preferred(self):
-        self.assertReadsFrom('secondary',
-            read_preference=ReadPreference.SECONDARY_PREFERRED)
+        self.assertReadsFrom(
+            'secondary', read_preference=ReadPreference.SECONDARY_PREFERRED)
 
     def test_secondary_only(self):
         # Test deprecated mode SECONDARY_ONLY, which is now a synonym for
@@ -240,7 +248,8 @@ class TestReadPreferences(TestReadPreferencesBase):
             '%s: %dms' % (member.host, member.ping_time.get())
             for member in c._MongoReplicaSetClient__rs_state.members)
 
-        self.assertFalse(not_used,
+        self.assertFalse(
+            not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
             " but didn't use %s\nlatencies: %s" % (not_used, latencies))
 
@@ -294,43 +303,47 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             self.fail("Bad state %s" % repr(state))
 
     def _test_fn(self, obedient, fn):
-        if not obedient:
-            for mode in modes:
-                self.c.read_preference = mode
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            if not obedient:
+                for mode in modes:
+                    self.c.read_preference = mode
 
-                # Run it a few times to make sure we don't just get lucky the
-                # first time.
-                for _ in range(10):
-                    self.assertExecutedOn('primary', self.c, fn)
-        else:
-            for mode, expected_state in [
-                (ReadPreference.PRIMARY, 'primary'),
-                (ReadPreference.PRIMARY_PREFERRED, 'primary'),
-                (ReadPreference.SECONDARY, 'secondary'),
-                (ReadPreference.SECONDARY_PREFERRED, 'secondary'),
-                (ReadPreference.NEAREST, 'any'),
-            ]:
-                self.c.read_preference = mode
-                for _ in range(10):
-                    if expected_state in ('primary', 'secondary'):
-                        self.assertExecutedOn(expected_state, self.c, fn)
-                    elif expected_state == 'any':
-                        used = set()
-                        for _ in range(1000):
-                            member = self.executed_on_which_member(
-                                self.c, fn)
-                            used.add(member.host)
-                            if len(used) == len(self.c.secondaries) + 1:
-                                # Success
-                                break
+                    # Run it a few times to make sure we don't just get lucky
+                    # the first time.
+                    for _ in range(10):
+                        self.assertExecutedOn('primary', self.c, fn)
+            else:
+                for mode, expected_state in [
+                        (ReadPreference.PRIMARY, 'primary'),
+                        (ReadPreference.PRIMARY_PREFERRED, 'primary'),
+                        (ReadPreference.SECONDARY, 'secondary'),
+                        (ReadPreference.SECONDARY_PREFERRED, 'secondary'),
+                        (ReadPreference.NEAREST, 'any')]:
+                    self.c.read_preference = mode
+                    for _ in range(10):
+                        if expected_state in ('primary', 'secondary'):
+                            self.assertExecutedOn(expected_state, self.c, fn)
+                        elif expected_state == 'any':
+                            used = set()
+                            for _ in range(1000):
+                                member = self.executed_on_which_member(
+                                    self.c, fn)
+                                used.add(member.host)
+                                if len(used) == len(self.c.secondaries) + 1:
+                                    # Success
+                                    break
 
-                        unused = self.c.secondaries.union(
-                            set([self.c.primary])
-                        ).difference(used)
-                        if unused:
-                            self.fail(
-                                "Some members not used for NEAREST: %s" % (
-                                    unused))
+                            unused = self.c.secondaries.union(
+                                set([self.c.primary])
+                            ).difference(used)
+                            if unused:
+                                self.fail(
+                                    "Some members not used for NEAREST: %s" % (
+                                        unused))
+        finally:
+            ctx.exit()
 
     def test_command_read_pref_warning(self):
         ctx = catch_warnings()
@@ -340,14 +353,16 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             self.assertRaises(UserWarning, self.c.pymongo_test.command,
                               'ping', read_preference=ReadPreference.SECONDARY)
             try:
-                self.c.pymongo_test.command('dbStats',
+                self.c.pymongo_test.command(
+                    'dbStats',
                     read_preference=ReadPreference.SECONDARY_PREFERRED)
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
 
             primary = MongoClient(host, port)
             try:
-                primary.pymongo_test.command('ping',
+                primary.pymongo_test.command(
+                    'ping',
                     read_preference=ReadPreference.SECONDARY_PREFERRED)
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
@@ -358,7 +373,8 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             self.assertRaises(UserWarning, msclient.pymongo_test.command,
                               'ping', read_preference=ReadPreference.SECONDARY)
             try:
-                msclient.pymongo_test.command('dbStats',
+                msclient.pymongo_test.command(
+                    'dbStats',
                     read_preference=ReadPreference.SECONDARY_PREFERRED)
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
@@ -420,19 +436,21 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
             ('geoNear', 'test'), ('near', [0, 0])])))
 
-        self._test_fn(True, lambda: self.c.pymongo_test.command(
-            'geoSearch', 'test', near=[33, 33], maxDistance=6,
-            search={'type': 'restaurant' }, limit=30))
+        self._test_fn(
+            True, lambda: self.c.pymongo_test.command(
+                'geoSearch', 'test', near=[33, 33], maxDistance=6,
+                search={'type': 'restaurant'}, limit=30))
 
-        self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
-            ('geoSearch', 'test'), ('near', [33, 33]), ('maxDistance', 6),
-            ('search', {'type': 'restaurant'}), ('limit', 30)])))
+        self._test_fn(
+            True, lambda: self.c.pymongo_test.command(SON([
+                ('geoSearch', 'test'), ('near', [33, 33]), ('maxDistance', 6),
+                ('search', {'type': 'restaurant'}), ('limit', 30)])))
 
         if version.at_least(self.c, (2, 1, 0)):
-            self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
-                ('aggregate', 'test'),
-                ('pipeline', [])
-            ])))
+            self._test_fn(
+                True, lambda: self.c.pymongo_test.command(SON([
+                    ('aggregate', 'test'),
+                    ('pipeline', [])])))
 
     def test_map_reduce_command(self):
         # mapreduce fails if no collection
@@ -561,7 +579,8 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
     def test_distinct(self):
         self._test_fn(True, lambda: self.c.pymongo_test.test.distinct('a'))
-        self._test_fn(True,
+        self._test_fn(
+            True,
             lambda: self.c.pymongo_test.test.find().distinct('a'))
 
     def test_aggregate(self):
@@ -621,16 +640,13 @@ class TestMongosConnection(unittest.TestCase):
             warnings.simplefilter("ignore", DeprecationWarning)
             # Test non-PRIMARY modes which can be combined with tags
             for kwarg, value, mongos_mode in (
-                ('read_preference', PRIMARY_PREFERRED, 'primaryPreferred'),
-                ('read_preference', SECONDARY, 'secondary'),
-                ('read_preference', SECONDARY_PREFERRED, 'secondaryPreferred'),
-                ('read_preference', NEAREST, 'nearest'),
-                ('slave_okay', True, 'secondaryPreferred'),
-                ('slave_okay', False, 'primary')
-            ):
-                for tag_sets in (
-                    None, [{}]
-                ):
+                    ('read_preference', PRIMARY_PREFERRED, 'primaryPreferred'),
+                    ('read_preference', SECONDARY, 'secondary'),
+                    ('read_preference', SECONDARY_PREFERRED, 'secondaryPreferred'),
+                    ('read_preference', NEAREST, 'nearest'),
+                    ('slave_okay', True, 'secondaryPreferred'),
+                    ('slave_okay', False, 'primary')):
+                for tag_sets in (None, [{}]):
                     # Create a client e.g. with read_preference=NEAREST or
                     # slave_okay=True
                     c = get_client(tag_sets=tag_sets, **{kwarg: value})
@@ -668,10 +684,9 @@ class TestMongosConnection(unittest.TestCase):
                             '$readPreference' in cursor._Cursor__query_spec())
 
                 for tag_sets in (
-                    [{'dc': 'la'}],
-                    [{'dc': 'la'}, {'dc': 'sf'}],
-                    [{'dc': 'la'}, {'dc': 'sf'}, {}],
-                ):
+                        [{'dc': 'la'}],
+                        [{'dc': 'la'}, {'dc': 'sf'}],
+                        [{'dc': 'la'}, {'dc': 'sf'}, {}]):
                     if kwarg == 'slave_okay':
                         # Can't use tags with slave_okay True or False, need a
                         # real read preference

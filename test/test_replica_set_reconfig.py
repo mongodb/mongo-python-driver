@@ -53,7 +53,7 @@ class TestSecondaryBecomesStandalone(unittest.TestCase):
         c.kill_host('b:2')
 
         # Force reconnect.
-        c.disconnect()
+        c.close()
 
         try:
             c.db.collection.find_one()
@@ -145,7 +145,7 @@ class TestSecondaryAdded(unittest.TestCase):
         c.mock_members.append('c:3')
         c.mock_ismaster_hosts.append('c:3')
 
-        c.disconnect()
+        c.close()
         c.db.collection.find_one()
 
         self.assertEqual('a', c.host)

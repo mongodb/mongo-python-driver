@@ -452,15 +452,15 @@ class BaseObject(object):
         if not isinstance(self._codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of "
                             "bson.codec_options.CodecOptions")
+        self._read_pref = ReadPreference.PRIMARY
+        self._tag_sets = [{}]
+        self._secondary_acceptable_latency_ms = 15
+        self._write_concern = WriteConcern()
         self.__slave_okay = False
-        self.__read_pref = ReadPreference.PRIMARY
-        self.__tag_sets = [{}]
-        self.__secondary_acceptable_latency_ms = 15
         self.__safe = None
-        self.__write_concern = WriteConcern()
         self.__set_options(options)
-        if (self.__read_pref == ReadPreference.PRIMARY
-                and self.__tag_sets != [{}]):
+        if (self._read_pref == ReadPreference.PRIMARY
+                and self._tag_sets != [{}]):
             raise ConfigurationError(
                 "ReadPreference PRIMARY cannot be combined with tags")
 
@@ -485,9 +485,9 @@ class BaseObject(object):
         object (Connection, Database, Collection, etc.)
         """
         if value is None:
-            self.__write_concern.pop(option, None)
+            self._write_concern.pop(option, None)
         else:
-            self.__write_concern[option] = value
+            self._write_concern[option] = value
             if option != "w" or value != 0:
                 self.__safe = True
 
@@ -497,12 +497,12 @@ class BaseObject(object):
             if option in ('slave_okay', 'slaveok'):
                 self.__slave_okay = validate_boolean(option, value)
             elif option in ('read_preference', "readpreference"):
-                self.__read_pref = validate_read_preference(option, value)
+                self._read_pref = validate_read_preference(option, value)
             elif option in ('tag_sets', 'readpreferencetags'):
-                self.__tag_sets = validate_tag_sets(option, value)
+                self._tag_sets = validate_tag_sets(option, value)
             elif option in ('secondaryacceptablelatencyms',
                             'secondary_acceptable_latency_ms'):
-                self.__secondary_acceptable_latency_ms = (
+                self._secondary_acceptable_latency_ms = (
                     validate_positive_float_or_zero(option, value))
             elif option in SAFE_OPTIONS:
                 if option == 'journal':
@@ -517,12 +517,21 @@ class BaseObject(object):
         """Read only access to the :class:`~bson.codec_options.CodecOptions`
         of this instance.
 
+        The value of :attr:`codec_options` can be changed through
+        :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+        :meth:`~pymongo.database.Database.get_collection`,
+        or :meth:`~pymongo.collection.Collection.with_options`,
+
         .. versionadded:: 2.9
         """
         return self._codec_options
 
     def __set_write_concern(self, value):
         """Property setter for write_concern."""
+        warnings.warn("Changing write_concern by setting it directly is "
+                      "deprecated in this version of PyMongo and prohibited "
+                      "in PyMongo 3. See the write_concern docstring for more "
+                      "information.", DeprecationWarning, stacklevel=2)
         if not isinstance(value, dict):
             raise ConfigurationError("write_concern must be an "
                                      "instance of dict or a subclass.")
@@ -532,13 +541,12 @@ class BaseObject(object):
         for k, v in value.iteritems():
             # Make sure we validate each option.
             wc[k] = v
-        self.__write_concern = wc
+        self._write_concern = wc
 
     def __get_write_concern(self):
         """The default write concern for this instance.
 
-        Supports dict style access for getting/setting write concern
-        options. Valid options include:
+        Valid options include:
 
         - `w`: (integer or string) If this is a replica set, write operations
           will block until they have been replicated to the specified number
@@ -562,23 +570,6 @@ class BaseObject(object):
           option, blocking until write operations have been committed to the
           journal. Cannot be used in combination with `j`.
 
-        >>> m = pymongo.MongoClient()
-        >>> m.write_concern
-        {}
-        >>> m.write_concern = {'w': 2, 'wtimeout': 1000}
-        >>> m.write_concern
-        {'wtimeout': 1000, 'w': 2}
-        >>> m.write_concern['j'] = True
-        >>> m.write_concern
-        {'wtimeout': 1000, 'j': True, 'w': 2}
-        >>> m.write_concern = {'j': True}
-        >>> m.write_concern
-        {'j': True}
-        >>> # Disable write acknowledgement and write concern
-        ...
-        >>> m.write_concern['w'] = 0
-
-
         .. note:: Accessing :attr:`write_concern` returns its value
            (a subclass of :class:`dict`), not a copy.
 
@@ -589,15 +580,34 @@ class BaseObject(object):
            :meth:`set_lasterror_options`, setting an option in
            :attr:`write_concern` does not implicitly set :attr:`safe`
            to ``True``.
+
+        .. warning:: :attr:`write_concern` is read only in PyMongo 3. Use
+          :class:`~pymongo.write_concern.WriteConcern` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` to set write
+          concern.
+          See :doc:`/migrate-to-pymongo3` for examples.
+
+        .. versionchanged:: 2.9
+          Deprecated directly setting write_concern.
         """
         # To support dict style access we have to return the actual
         # WriteConcern here, not a copy.
-        return self.__write_concern
+        return self._write_concern
 
     write_concern = property(__get_write_concern, __set_write_concern)
 
     def __get_slave_okay(self):
-        """DEPRECATED. Use :attr:`read_preference` instead.
+        """**DEPRECATED** Use read preference "secondaryPreferred" instead.
+
+        .. warning:: :attr:`slave_okay` is deprecated in this version of
+          PyMongo and removed in PyMongo 3. Use read preference
+          :class:`~pymongo.read_preferences.SecondaryPreferred` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` instead.
+          See :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.1
            Deprecated slave_okay.
@@ -607,9 +617,10 @@ class BaseObject(object):
 
     def __set_slave_okay(self, value):
         """Property setter for slave_okay"""
-        warnings.warn("slave_okay is deprecated. Please use "
-                      "read_preference instead.", DeprecationWarning,
-                      stacklevel=2)
+        warnings.warn("slave_okay is deprecated in this version of PyMongo "
+                      "and removed in PyMongo 3. See the slave_okay docstring "
+                      "for more information.",
+                      DeprecationWarning, stacklevel=2)
         self.__slave_okay = validate_boolean('slave_okay', value)
 
     slave_okay = property(__get_slave_okay, __set_slave_okay)
@@ -620,36 +631,62 @@ class BaseObject(object):
         See :class:`~pymongo.read_preferences.ReadPreference` for
         available options.
 
+        .. warning:: :attr:`read_preference` is read only in PyMongo 3. Use the
+          read preference classes from :mod:`~pymongo.read_preferences` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` to set read
+          preference.
+          See :doc:`/migrate-to-pymongo3` for examples.
+
+        .. versionchanged:: 2.9
+          Deprecated directly setting read_preference.
         .. versionadded:: 2.1
         """
-        return self.__read_pref
+        return self._read_pref
 
     def __set_read_pref(self, value):
         """Property setter for read_preference"""
-        self.__read_pref = validate_read_preference('read_preference', value)
+        warnings.warn("Changing read_preference by setting it directly is "
+                      "deprecated in this version of PyMongo and prohibited "
+                      "in PyMongo 3. See the read_preference docstring for "
+                      "more information.", DeprecationWarning, stacklevel=2)
+        self._read_pref = validate_read_preference('read_preference', value)
 
     read_preference = property(__get_read_pref, __set_read_pref)
 
     def __get_acceptable_latency(self):
-        """Any replica-set member whose ping time is within
+        """**DEPRECATED** Any replica set member whose ping time is within
         :attr:`secondary_acceptable_latency_ms` of the nearest member may
         accept reads. Defaults to 15 milliseconds.
 
         See :class:`~pymongo.read_preferences.ReadPreference`.
 
-        .. versionadded:: 2.3
-
-        .. note:: ``secondary_acceptable_latency_ms`` is ignored when talking
+        .. note:: :attr:`secondary_acceptable_latency_ms` is ignored when talking
           to a replica set *through* a mongos. The equivalent is the
           localThreshold_ command line option.
 
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+        .. warning:: :attr:`secondary_acceptable_latency_ms` is deprecated in
+          this version of PyMongo and removed in PyMongo 3. Use the
+          `localThresholdMS` :class:`~pymongo.mongo_client.MongoClient` option
+          instead. See :doc:`/migrate-to-pymongo3` for more information.
+
+        .. versionchanged:: 2.9
+          Deprecated secondary_acceptable_latency_ms.
+        .. versionadded:: 2.3
+
+        .. _localThreshold:
+          http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
-        return self.__secondary_acceptable_latency_ms
+        return self._secondary_acceptable_latency_ms
 
     def __set_acceptable_latency(self, value):
         """Property setter for secondary_acceptable_latency_ms"""
-        self.__secondary_acceptable_latency_ms = (
+        warnings.warn("secondary_acceptable_latency_ms is deprecated in this "
+                      "version of PyMongo and removed in PyMongo 3. See the "
+                      "PyMongo 3 migration guide for more information.",
+                      DeprecationWarning, stacklevel=3)
+        self._secondary_acceptable_latency_ms = (
             validate_positive_float_or_zero(
                 'secondary_acceptable_latency_ms', value))
 
@@ -657,38 +694,67 @@ class BaseObject(object):
         __get_acceptable_latency, __set_acceptable_latency)
 
     def __get_tag_sets(self):
-        """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to
-        read only from members whose ``dc`` tag has the value ``"ny"``.
-        To specify a priority-order for tag sets, provide a list of
+        """**DEPRECATED** Set ``tag_sets`` to a list of dictionaries like
+        [{'dc': 'ny'}] to read only from members whose ``dc`` tag has the value
+        ``"ny"``. To specify a priority-order for tag sets, provide a list of
         tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
         set, ``{}``, means "read from any member that matches the mode,
         ignoring tags." ReplicaSetConnection tries each set of tags in turn
         until it finds a set of tags with at least one matching member.
 
-           .. seealso:: `Data-Center Awareness
-               <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_
+        .. seealso:: `Data-Center Awareness
+          <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_
 
+        .. warning:: :attr:`tag_sets` is deprecated in this version of PyMongo
+          and removed in PyMongo 3. Use the read preference classes from
+          :mod:`~pymongo.read_preferences` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` instead.
+          See :doc:`/migrate-to-pymongo3` for examples.
+
+        .. versionchanged:: 2.9
+          Deprecated tag_sets.
         .. versionadded:: 2.3
         """
-        return self.__tag_sets
+        return self._tag_sets
 
     def __set_tag_sets(self, value):
         """Property setter for tag_sets"""
-        self.__tag_sets = validate_tag_sets('tag_sets', value)
+        warnings.warn("tag_sets is deprecated in this version of PyMongo and "
+                      "removed in PyMongo 3. See the tag_sets docstring for "
+                      "more information.", DeprecationWarning, stacklevel=2)
+        self._tag_sets = validate_tag_sets('tag_sets', value)
 
     tag_sets = property(__get_tag_sets, __set_tag_sets)
 
     def __get_uuid_subtype(self):
-        """This attribute specifies which BSON Binary subtype is used when
-        storing UUIDs. Historically UUIDs have been stored as BSON Binary
+        """**DEPRECATED** This attribute specifies which BSON Binary subtype is
+        used when storing UUIDs. Historically UUIDs have been stored as BSON Binary
         subtype 3. This attribute is used to switch to the newer BSON Binary
         subtype 4. It can also be used to force legacy byte order and subtype
         compatibility with the Java and C# drivers. See the :mod:`bson.binary`
-        module for all options."""
+        module for all options.
+
+        .. warning:: :attr:`uuid_subtype` is deprecated in this version of
+          PyMongo and removed in PyMongo 3. Use
+          :class:`~bson.codec_options.CodecOptions` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` instead.
+          See :doc:`/migrate-to-pymongo3` for examples.
+
+        .. versionchanged:: 2.9
+          Deprecated uuid_subtype.
+        """
         return self._codec_options.uuid_representation
 
     def __set_uuid_subtype(self, value):
         """Sets the BSON Binary subtype to be used when storing UUIDs."""
+        warnings.warn("uuid_subtype is deprecated in this version of PyMongo "
+                      "and removed in PyMongo 3. See the uuid_subtype "
+                      "docstring for more information.",
+                      DeprecationWarning, stacklevel=2)
         as_class = self._codec_options.document_class
         tz_aware = self._codec_options.tz_aware
         uuid_rep = validate_uuid_subtype("uuid_subtype", value)
@@ -697,41 +763,51 @@ class BaseObject(object):
     uuid_subtype = property(__get_uuid_subtype, __set_uuid_subtype)
 
     def __get_safe(self):
-        """**DEPRECATED:** Use the 'w' :attr:`write_concern` option instead.
+        """**DEPRECATED** Use getlasterror with every write operation?
 
-        Use getlasterror with every write operation?
+        .. warning:: :attr:`safe` is deprecated in this version of PyMongo
+          and removed in PyMongo 3. Use
+          :class:`~pymongo.write_concern.WriteConcern` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` instead.
+          See :doc:`/migrate-to-pymongo3` for examples.
 
+        .. versionchanged:: 2.4
+          Deprecated safe.
         .. versionadded:: 2.0
         """
         return self.__safe
 
     def __set_safe(self, value):
         """Property setter for safe"""
-        warnings.warn("safe is deprecated. Please use the"
-                      " 'w' write_concern option instead.",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("safe is deprecated in this version of PyMongo and "
+                      "removed in PyMongo 3. See the safe docstring for more "
+                      "information.", DeprecationWarning, stacklevel=2)
         self.__safe = validate_boolean('safe', value)
 
     safe = property(__get_safe, __set_safe)
 
     def get_lasterror_options(self):
-        """DEPRECATED: Use :attr:`write_concern` instead.
+        """**DEPRECATED** Returns a dict of the getlasterror options set on this
+        instance.
 
-        Returns a dict of the getlasterror options set on this instance.
+        .. warning:: :meth:`get_lasterror_options` is deprecated in this
+          version of PyMongo and removed in PyMongo 3. Use
+          :attr:`write_concern` instead.
 
         .. versionchanged:: 2.4
            Deprecated get_lasterror_options.
         .. versionadded:: 2.0
         """
-        warnings.warn("get_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning,
-                      stacklevel=2)
-        return self.__write_concern.copy()
+        warnings.warn("get_lasterror_options is deprecated in this version of "
+                      "PyMongo and removed in PyMongo 3. See the "
+                      "get_lasterror_options docstring for more information.",
+                      DeprecationWarning, stacklevel=2)
+        return self._write_concern.copy()
 
     def set_lasterror_options(self, **kwargs):
-        """DEPRECATED: Use :attr:`write_concern` instead.
-
-        Set getlasterror options for this instance.
+        """**DEPRECATED** Set getlasterror options for this instance.
 
         Valid options include j=<bool>, w=<int/string>, wtimeout=<int>,
         and fsync=<bool>. Implies safe=True.
@@ -740,20 +816,27 @@ class BaseObject(object):
             - `**kwargs`: Options should be passed as keyword
                           arguments (e.g. w=2, fsync=True)
 
+        .. warning:: :meth:`set_lasterror_options` is deprecated in this
+          version of PyMongo and removed in PyMongo 3. Use
+          :class:`~pymongo.write_concern.WriteConcern` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` instead.
+          See :doc:`/migrate-to-pymongo3` for examples.
+
         .. versionchanged:: 2.4
            Deprecated set_lasterror_options.
         .. versionadded:: 2.0
         """
-        warnings.warn("set_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning,
-                      stacklevel=2)
+        warnings.warn("set_lasterror_options is deprecated in this version of "
+                      "PyMongo and removed in PyMongo 3. See the "
+                      "set_lasterror_options docstring for more information.",
+                      DeprecationWarning, stacklevel=2)
         for key, value in kwargs.iteritems():
             self.__set_safe_option(key, value)
 
     def unset_lasterror_options(self, *options):
-        """DEPRECATED: Use :attr:`write_concern` instead.
-
-        Unset getlasterror options for this instance.
+        """**DEPRECATED** Unset getlasterror options for this instance.
 
         If no options are passed unsets all getlasterror options.
         This does not set `safe` to False.
@@ -761,18 +844,27 @@ class BaseObject(object):
         :Parameters:
             - `*options`: The list of options to unset.
 
+        .. warning:: :meth:`unset_lasterror_options` is deprecated in this
+          version of PyMongo and removed in PyMongo 3. Use
+          :class:`~pymongo.write_concern.WriteConcern` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` instead.
+          See :doc:`/migrate-to-pymongo3` for examples.
+
         .. versionchanged:: 2.4
            Deprecated unset_lasterror_options.
         .. versionadded:: 2.0
         """
-        warnings.warn("unset_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning,
-                      stacklevel=2)
+        warnings.warn("unset_lasterror_options is deprecated in this version "
+                      "of PyMongo and removed in PyMongo 3. See the "
+                      "unset_lasterror_options docstring for more information.",
+                      DeprecationWarning, stacklevel=2)
         if len(options):
             for option in options:
-                self.__write_concern.pop(option, None)
+                self._write_concern.pop(option, None)
         else:
-            self.__write_concern = WriteConcern()
+            self._write_concern = WriteConcern()
 
     def _get_wc_override(self):
         """Get write concern override.
@@ -781,7 +873,7 @@ class BaseObject(object):
         We don't want to override user write concern options if write concern
         is already enabled.
         """
-        if self.safe and self.__write_concern.get('w') != 0:
+        if self.safe and self._write_concern.get('w') != 0:
             return {}
         return {'w': 1}
 
@@ -808,7 +900,7 @@ class BaseObject(object):
         if safe is not None or options:
             if safe or options:
                 if not options:
-                    options = self.__write_concern.copy()
+                    options = self._write_concern.copy()
                     # Backwards compatability edge case. Call getLastError
                     # with no options if safe=True was passed but collection
                     # level defaults have been disabled with w=0.
@@ -823,9 +915,9 @@ class BaseObject(object):
 
         # Fall back to collection level defaults.
         # w=0 takes precedence over self.safe = True
-        if self.__write_concern.get('w') == 0:
+        if self._write_concern.get('w') == 0:
             return False, {}
-        elif self.safe or self.__write_concern.get('w', 0) != 0:
-            return True, self.__write_concern.copy()
+        elif self.safe or self._write_concern.get('w', 0) != 0:
+            return True, self._write_concern.copy()
 
         return False, {}

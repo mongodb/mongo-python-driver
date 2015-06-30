@@ -45,13 +45,22 @@ setUpModule = skip_restricted_localhost
 
 class TestCommon(unittest.TestCase):
 
+    def setUp(self):
+        self.ctx = catch_warnings()
+        warnings.simplefilter("ignore", DeprecationWarning)
+
+    def tearDown(self):
+        self.ctx.exit()
+        self.ctx = None
+
     def test_baseobject(self):
 
         ctx = catch_warnings()
         try:
             warnings.simplefilter("error", UserWarning)
-            self.assertRaises(UserWarning, lambda:
-                    MongoClient(host, port, wtimeout=1000, w=0))
+            self.assertRaises(UserWarning,
+                              lambda: MongoClient(host, port,
+                                                  wtimeout=1000, w=0))
             try:
                 MongoClient(host, port, wtimeout=1000, w=1)
             except UserWarning:
@@ -65,200 +74,194 @@ class TestCommon(unittest.TestCase):
             ctx.exit()
 
         # Connection tests
-        ctx = catch_warnings()
-        try:
-            warnings.simplefilter("ignore", DeprecationWarning)
-            c = Connection(pair)
-            self.assertFalse(c.slave_okay)
-            self.assertFalse(c.safe)
-            self.assertEqual({}, c.get_lasterror_options())
-            db = c.pymongo_test
-            db.drop_collection("test")
-            self.assertFalse(db.slave_okay)
-            self.assertFalse(db.safe)
-            self.assertEqual({}, db.get_lasterror_options())
-            coll = db.test
-            self.assertFalse(coll.slave_okay)
-            self.assertFalse(coll.safe)
-            self.assertEqual({}, coll.get_lasterror_options())
+        c = Connection(pair)
+        self.assertFalse(c.slave_okay)
+        self.assertFalse(c.safe)
+        self.assertEqual({}, c.get_lasterror_options())
+        db = c.pymongo_test
+        db.drop_collection("test")
+        self.assertFalse(db.slave_okay)
+        self.assertFalse(db.safe)
+        self.assertEqual({}, db.get_lasterror_options())
+        coll = db.test
+        self.assertFalse(coll.slave_okay)
+        self.assertFalse(coll.safe)
+        self.assertEqual({}, coll.get_lasterror_options())
 
-            self.assertEqual((False, {}), coll._get_write_mode())
-            coll.safe = False
-            coll.write_concern.update(w=1)
-            self.assertEqual((True, {"w": 1}), coll._get_write_mode())
-            coll.write_concern.update(w=3)
-            self.assertEqual((True, {'w': 3}), coll._get_write_mode())
+        self.assertEqual((False, {}), coll._get_write_mode())
+        coll.safe = False
+        coll.write_concern.update(w=1)
+        self.assertEqual((True, {"w": 1}), coll._get_write_mode())
+        coll.write_concern.update(w=3)
+        self.assertEqual((True, {'w': 3}), coll._get_write_mode())
 
-            coll.safe = True
-            coll.write_concern.update(w=0)
-            self.assertEqual((False, {}), coll._get_write_mode())
+        coll.safe = True
+        coll.write_concern.update(w=0)
+        self.assertEqual((False, {}), coll._get_write_mode())
 
-            coll = db.test
-            cursor = coll.find()
-            self.assertFalse(cursor._Cursor__slave_okay)
-            cursor = coll.find(slave_okay=True)
-            self.assertTrue(cursor._Cursor__slave_okay)
+        coll = db.test
+        cursor = coll.find()
+        self.assertFalse(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=True)
+        self.assertTrue(cursor._Cursor__slave_okay)
 
-            # MongoClient test
-            c = MongoClient(pair)
-            self.assertFalse(c.slave_okay)
-            self.assertTrue(c.safe)
-            self.assertEqual({}, c.get_lasterror_options())
-            db = c.pymongo_test
-            db.drop_collection("test")
-            self.assertFalse(db.slave_okay)
-            self.assertTrue(db.safe)
-            self.assertEqual({}, db.get_lasterror_options())
-            coll = db.test
-            self.assertFalse(coll.slave_okay)
-            self.assertTrue(coll.safe)
-            self.assertEqual({}, coll.get_lasterror_options())
+        # MongoClient test
+        c = MongoClient(pair)
+        self.assertFalse(c.slave_okay)
+        self.assertTrue(c.safe)
+        self.assertEqual({}, c.get_lasterror_options())
+        db = c.pymongo_test
+        db.drop_collection("test")
+        self.assertFalse(db.slave_okay)
+        self.assertTrue(db.safe)
+        self.assertEqual({}, db.get_lasterror_options())
+        coll = db.test
+        self.assertFalse(coll.slave_okay)
+        self.assertTrue(coll.safe)
+        self.assertEqual({}, coll.get_lasterror_options())
 
-            self.assertEqual((True, {}), coll._get_write_mode())
-            coll.safe = False
-            coll.write_concern.update(w=1)
-            self.assertEqual((True, {"w": 1}), coll._get_write_mode())
-            coll.write_concern.update(w=3)
-            self.assertEqual((True, {'w': 3}), coll._get_write_mode())
+        self.assertEqual((True, {}), coll._get_write_mode())
+        coll.safe = False
+        coll.write_concern.update(w=1)
+        self.assertEqual((True, {"w": 1}), coll._get_write_mode())
+        coll.write_concern.update(w=3)
+        self.assertEqual((True, {'w': 3}), coll._get_write_mode())
 
-            coll.safe = True
-            coll.write_concern.update(w=0)
-            self.assertEqual((False, {}), coll._get_write_mode())
+        coll.safe = True
+        coll.write_concern.update(w=0)
+        self.assertEqual((False, {}), coll._get_write_mode())
 
-            coll = db.test
-            cursor = coll.find()
-            self.assertFalse(cursor._Cursor__slave_okay)
-            cursor = coll.find(slave_okay=True)
-            self.assertTrue(cursor._Cursor__slave_okay)
+        coll = db.test
+        cursor = coll.find()
+        self.assertFalse(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=True)
+        self.assertTrue(cursor._Cursor__slave_okay)
 
-            # Setting any safe operations overrides explicit safe
-            self.assertTrue(MongoClient(host, port, wtimeout=1000, safe=False).safe)
+        # Setting any safe operations overrides explicit safe
+        self.assertTrue(MongoClient(host, port, wtimeout=1000, safe=False).safe)
 
-            c = MongoClient(pair, slaveok=True, w='majority',
-                            wtimeout=300, fsync=True, j=True)
-            self.assertTrue(c.slave_okay)
-            self.assertTrue(c.safe)
-            d = {'w': 'majority', 'wtimeout': 300, 'fsync': True, 'j': True}
-            self.assertEqual(d, c.get_lasterror_options())
-            db = c.pymongo_test
-            self.assertTrue(db.slave_okay)
-            self.assertTrue(db.safe)
-            self.assertEqual(d, db.get_lasterror_options())
-            coll = db.test
-            self.assertTrue(coll.slave_okay)
-            self.assertTrue(coll.safe)
-            self.assertEqual(d, coll.get_lasterror_options())
-            cursor = coll.find()
-            self.assertTrue(cursor._Cursor__slave_okay)
-            cursor = coll.find(slave_okay=False)
-            self.assertFalse(cursor._Cursor__slave_okay)
+        c = MongoClient(pair, slaveok=True, w='majority',
+                        wtimeout=300, fsync=True, j=True)
+        self.assertTrue(c.slave_okay)
+        self.assertTrue(c.safe)
+        d = {'w': 'majority', 'wtimeout': 300, 'fsync': True, 'j': True}
+        self.assertEqual(d, c.get_lasterror_options())
+        db = c.pymongo_test
+        self.assertTrue(db.slave_okay)
+        self.assertTrue(db.safe)
+        self.assertEqual(d, db.get_lasterror_options())
+        coll = db.test
+        self.assertTrue(coll.slave_okay)
+        self.assertTrue(coll.safe)
+        self.assertEqual(d, coll.get_lasterror_options())
+        cursor = coll.find()
+        self.assertTrue(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=False)
+        self.assertFalse(cursor._Cursor__slave_okay)
 
-            c = MongoClient('mongodb://%s/?'
-                           'w=2;wtimeoutMS=300;fsync=true;'
-                           'journal=true' % (pair,))
-            self.assertTrue(c.safe)
-            d = {'w': 2, 'wtimeout': 300, 'fsync': True, 'j': True}
-            self.assertEqual(d, c.get_lasterror_options())
+        c = MongoClient('mongodb://%s/?'
+                        'w=2;wtimeoutMS=300;fsync=true;'
+                        'journal=true' % (pair,))
+        self.assertTrue(c.safe)
+        d = {'w': 2, 'wtimeout': 300, 'fsync': True, 'j': True}
+        self.assertEqual(d, c.get_lasterror_options())
 
-            c = MongoClient('mongodb://%s/?'
-                           'slaveok=true;w=1;wtimeout=300;'
-                           'fsync=true;j=true' % (pair,))
-            self.assertTrue(c.slave_okay)
-            self.assertTrue(c.safe)
-            d = {'w': 1, 'wtimeout': 300, 'fsync': True, 'j': True}
-            self.assertEqual(d, c.get_lasterror_options())
-            self.assertEqual(d, c.write_concern)
-            db = c.pymongo_test
-            self.assertTrue(db.slave_okay)
-            self.assertTrue(db.safe)
-            self.assertEqual(d, db.get_lasterror_options())
-            self.assertEqual(d, db.write_concern)
-            coll = db.test
-            self.assertTrue(coll.slave_okay)
-            self.assertTrue(coll.safe)
-            self.assertEqual(d, coll.get_lasterror_options())
-            self.assertEqual(d, coll.write_concern)
-            cursor = coll.find()
-            self.assertTrue(cursor._Cursor__slave_okay)
-            cursor = coll.find(slave_okay=False)
-            self.assertFalse(cursor._Cursor__slave_okay)
+        c = MongoClient('mongodb://%s/?'
+                        'slaveok=true;w=1;wtimeout=300;'
+                        'fsync=true;j=true' % (pair,))
+        self.assertTrue(c.slave_okay)
+        self.assertTrue(c.safe)
+        d = {'w': 1, 'wtimeout': 300, 'fsync': True, 'j': True}
+        self.assertEqual(d, c.get_lasterror_options())
+        self.assertEqual(d, c.write_concern)
+        db = c.pymongo_test
+        self.assertTrue(db.slave_okay)
+        self.assertTrue(db.safe)
+        self.assertEqual(d, db.get_lasterror_options())
+        self.assertEqual(d, db.write_concern)
+        coll = db.test
+        self.assertTrue(coll.slave_okay)
+        self.assertTrue(coll.safe)
+        self.assertEqual(d, coll.get_lasterror_options())
+        self.assertEqual(d, coll.write_concern)
+        cursor = coll.find()
+        self.assertTrue(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=False)
+        self.assertFalse(cursor._Cursor__slave_okay)
 
-            c.unset_lasterror_options()
-            self.assertTrue(c.slave_okay)
-            self.assertTrue(c.safe)
-            c.safe = False
-            self.assertFalse(c.safe)
-            c.slave_okay = False
-            self.assertFalse(c.slave_okay)
-            self.assertEqual({}, c.get_lasterror_options())
-            self.assertEqual({}, c.write_concern)
-            db = c.pymongo_test
-            self.assertFalse(db.slave_okay)
-            self.assertFalse(db.safe)
-            self.assertEqual({}, db.get_lasterror_options())
-            self.assertEqual({}, db.write_concern)
-            coll = db.test
-            self.assertFalse(coll.slave_okay)
-            self.assertFalse(coll.safe)
-            self.assertEqual({}, coll.get_lasterror_options())
-            self.assertEqual({}, coll.write_concern)
-            cursor = coll.find()
-            self.assertFalse(cursor._Cursor__slave_okay)
-            cursor = coll.find(slave_okay=True)
-            self.assertTrue(cursor._Cursor__slave_okay)
+        c.unset_lasterror_options()
+        self.assertTrue(c.slave_okay)
+        self.assertTrue(c.safe)
+        c.safe = False
+        self.assertFalse(c.safe)
+        c.slave_okay = False
+        self.assertFalse(c.slave_okay)
+        self.assertEqual({}, c.get_lasterror_options())
+        self.assertEqual({}, c.write_concern)
+        db = c.pymongo_test
+        self.assertFalse(db.slave_okay)
+        self.assertFalse(db.safe)
+        self.assertEqual({}, db.get_lasterror_options())
+        self.assertEqual({}, db.write_concern)
+        coll = db.test
+        self.assertFalse(coll.slave_okay)
+        self.assertFalse(coll.safe)
+        self.assertEqual({}, coll.get_lasterror_options())
+        self.assertEqual({}, coll.write_concern)
+        cursor = coll.find()
+        self.assertFalse(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=True)
+        self.assertTrue(cursor._Cursor__slave_okay)
 
-            coll.set_lasterror_options(fsync=True)
-            self.assertEqual({'fsync': True}, coll.get_lasterror_options())
-            self.assertEqual({'fsync': True}, coll.write_concern)
-            self.assertEqual({}, db.get_lasterror_options())
-            self.assertEqual({}, db.write_concern)
-            self.assertFalse(db.safe)
-            self.assertEqual({}, c.get_lasterror_options())
-            self.assertEqual({}, c.write_concern)
-            self.assertFalse(c.safe)
+        coll.set_lasterror_options(fsync=True)
+        self.assertEqual({'fsync': True}, coll.get_lasterror_options())
+        self.assertEqual({'fsync': True}, coll.write_concern)
+        self.assertEqual({}, db.get_lasterror_options())
+        self.assertEqual({}, db.write_concern)
+        self.assertFalse(db.safe)
+        self.assertEqual({}, c.get_lasterror_options())
+        self.assertEqual({}, c.write_concern)
+        self.assertFalse(c.safe)
 
-            db.set_lasterror_options(w='majority')
-            self.assertEqual({'fsync': True}, coll.get_lasterror_options())
-            self.assertEqual({'fsync': True}, coll.write_concern)
-            self.assertEqual({'w': 'majority'}, db.get_lasterror_options())
-            self.assertEqual({'w': 'majority'}, db.write_concern)
-            self.assertEqual({}, c.get_lasterror_options())
-            self.assertEqual({}, c.write_concern)
-            self.assertFalse(c.safe)
-            db.slave_okay = True
-            self.assertTrue(db.slave_okay)
-            self.assertFalse(c.slave_okay)
-            self.assertFalse(coll.slave_okay)
-            cursor = coll.find()
-            self.assertFalse(cursor._Cursor__slave_okay)
-            cursor = db.coll2.find()
-            self.assertTrue(cursor._Cursor__slave_okay)
-            cursor = db.coll2.find(slave_okay=False)
-            self.assertFalse(cursor._Cursor__slave_okay)
+        db.set_lasterror_options(w='majority')
+        self.assertEqual({'fsync': True}, coll.get_lasterror_options())
+        self.assertEqual({'fsync': True}, coll.write_concern)
+        self.assertEqual({'w': 'majority'}, db.get_lasterror_options())
+        self.assertEqual({'w': 'majority'}, db.write_concern)
+        self.assertEqual({}, c.get_lasterror_options())
+        self.assertEqual({}, c.write_concern)
+        self.assertFalse(c.safe)
+        db.slave_okay = True
+        self.assertTrue(db.slave_okay)
+        self.assertFalse(c.slave_okay)
+        self.assertFalse(coll.slave_okay)
+        cursor = coll.find()
+        self.assertFalse(cursor._Cursor__slave_okay)
+        cursor = db.coll2.find()
+        self.assertTrue(cursor._Cursor__slave_okay)
+        cursor = db.coll2.find(slave_okay=False)
+        self.assertFalse(cursor._Cursor__slave_okay)
 
-            self.assertRaises(ConfigurationError, coll.set_lasterror_options, foo=20)
-            self.assertRaises(TypeError, coll._BaseObject__set_slave_okay, 20)
-            self.assertRaises(TypeError, coll._BaseObject__set_safe, 20)
+        self.assertRaises(ConfigurationError, coll.set_lasterror_options, foo=20)
+        self.assertRaises(TypeError, coll._BaseObject__set_slave_okay, 20)
+        self.assertRaises(TypeError, coll._BaseObject__set_safe, 20)
 
-            coll.remove()
-            self.assertEqual(None, coll.find_one(slave_okay=True))
-            coll.unset_lasterror_options()
-            coll.set_lasterror_options(w=4, wtimeout=10)
-            # Fails if we don't have 4 active nodes or we don't have replication...
-            self.assertRaises(OperationFailure, coll.insert, {'foo': 'bar'})
-            # Succeeds since we override the lasterror settings per query.
-            self.assertTrue(coll.insert({'foo': 'bar'}, fsync=True))
-            drop_collections(db)
-        finally:
-            ctx.exit()
+        coll.remove()
+        self.assertEqual(None, coll.find_one(slave_okay=True))
+        coll.unset_lasterror_options()
+        coll.set_lasterror_options(w=4, wtimeout=10)
+        # Fails if we don't have 4 active nodes or we don't have replication...
+        self.assertRaises(OperationFailure, coll.insert, {'foo': 'bar'})
+        # Succeeds since we override the lasterror settings per query.
+        self.assertTrue(coll.insert({'foo': 'bar'}, fsync=True))
+        drop_collections(db)
 
     def test_uuid_subtype(self):
         if not have_uuid:
             raise SkipTest("No uuid module")
 
-        self.client = MongoClient(pair)
-        self.db = self.client.pymongo_test
-        coll = self.client.pymongo_test.uuid
+        client = MongoClient(pair)
+        coll = client.pymongo_test.uuid
         coll.drop()
 
         def change_subtype(collection, subtype):
@@ -317,14 +320,14 @@ class TestCommon(unittest.TestCase):
 
         # Test find_and_modify
         self.assertEqual(None, coll.find_and_modify({'_id': uu},
-                                                     {'$set': {'i': 5}}))
+                                                    {'$set': {'i': 5}}))
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         self.assertEqual(2, coll.find_and_modify({'_id': uu},
-                                                  {'$set': {'i': 5}})['i'])
+                                                 {'$set': {'i': 5}})['i'])
         self.assertEqual(5, coll.find_one({'_id': uu})['i'])
 
         # Test command
-        db = self.client.pymongo_test
+        db = client.pymongo_test
         no_obj_error = "No matching object found"
         result = db.command('findAndModify', 'uuid',
                             allowable_errors=[no_obj_error],
@@ -362,7 +365,7 @@ class TestCommon(unittest.TestCase):
 
         coll.uuid_subtype = UUID_SUBTYPE
         q = {"_id": uu}
-        if version.at_least(self.db.connection, (1, 7, 4)):
+        if version.at_least(db.connection, (1, 7, 4)):
             result = coll.inline_map_reduce(map, reduce, query=q)
             self.assertEqual([], result)
 
@@ -371,7 +374,7 @@ class TestCommon(unittest.TestCase):
 
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         q = {"_id": uu}
-        if version.at_least(self.db.connection, (1, 7, 4)):
+        if version.at_least(db.connection, (1, 7, 4)):
             result = coll.inline_map_reduce(map, reduce, query=q)
             self.assertEqual(2, len(result))
 
@@ -389,7 +392,7 @@ class TestCommon(unittest.TestCase):
         coll.uuid_subtype = UUID_SUBTYPE
         self.assertEqual([],
                          coll.group([], {"_id": uu},
-                                     {"count": 0}, reduce))
+                                    {"count": 0}, reduce))
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         self.assertEqual([{"count": 1}],
                          coll.group([], {"_id": uu},
@@ -428,52 +431,47 @@ class TestCommon(unittest.TestCase):
         coll.write_concern = wc
         self.assertEqual(wc.to_dict(), coll.write_concern)
 
-        def f():
+        def func0():
             c.write_concern = {'foo': 'bar'}
-        self.assertRaises(ConfigurationError, f)
+        self.assertRaises(ConfigurationError, func0)
 
-        def f():
+        def func1():
             c.write_concern['foo'] = 'bar'
-        self.assertRaises(ConfigurationError, f)
+        self.assertRaises(ConfigurationError, func1)
 
-        def f():
+        def func2():
             c.write_concern = [('foo', 'bar')]
-        self.assertRaises(ConfigurationError, f)
+        self.assertRaises(ConfigurationError, func2)
 
     def test_mongo_client(self):
         m = MongoClient(pair, w=0)
         coll = m.pymongo_test.write_concern_test
         coll.drop()
 
-        ctx = catch_warnings()
-        try:
-            warnings.simplefilter("ignore", DeprecationWarning)
-            doc = {"_id": ObjectId()}
-            coll.insert(doc)
-            self.assertTrue(coll.insert(doc, safe=False))
-            self.assertTrue(coll.insert(doc, w=0))
-            self.assertTrue(coll.insert(doc))
-            self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
-            self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+        doc = {"_id": ObjectId()}
+        coll.insert(doc)
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertTrue(coll.insert(doc))
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-            m = MongoClient(pair)
-            coll = m.pymongo_test.write_concern_test
-            self.assertTrue(coll.insert(doc, safe=False))
-            self.assertTrue(coll.insert(doc, w=0))
-            self.assertRaises(OperationFailure, coll.insert, doc)
-            self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
-            self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+        m = MongoClient(pair)
+        coll = m.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-            m = MongoClient("mongodb://%s/" % (pair,))
-            self.assertTrue(m.safe)
-            coll = m.pymongo_test.write_concern_test
-            self.assertRaises(OperationFailure, coll.insert, doc)
-            m = MongoClient("mongodb://%s/?w=0" % (pair,))
-            self.assertFalse(m.safe)
-            coll = m.pymongo_test.write_concern_test
-            self.assertTrue(coll.insert(doc))
-        finally:
-            ctx.exit()
+        m = MongoClient("mongodb://%s/" % (pair,))
+        self.assertTrue(m.safe)
+        coll = m.pymongo_test.write_concern_test
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        m = MongoClient("mongodb://%s/?w=0" % (pair,))
+        self.assertFalse(m.safe)
+        coll = m.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc))
 
         # Equality tests
         self.assertEqual(m, MongoClient("mongodb://%s/?w=0" % (pair,)))
@@ -490,35 +488,30 @@ class TestCommon(unittest.TestCase):
         coll = m.pymongo_test.write_concern_test
         coll.drop()
 
-        ctx = catch_warnings()
-        try:
-            warnings.simplefilter("ignore", DeprecationWarning)
-            doc = {"_id": ObjectId()}
-            coll.insert(doc)
-            self.assertTrue(coll.insert(doc, safe=False))
-            self.assertTrue(coll.insert(doc, w=0))
-            self.assertTrue(coll.insert(doc))
-            self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
-            self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+        doc = {"_id": ObjectId()}
+        coll.insert(doc)
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertTrue(coll.insert(doc))
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-            m = MongoReplicaSetClient(pair, replicaSet=setname)
-            coll = m.pymongo_test.write_concern_test
-            self.assertTrue(coll.insert(doc, safe=False))
-            self.assertTrue(coll.insert(doc, w=0))
-            self.assertRaises(OperationFailure, coll.insert, doc)
-            self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
-            self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+        m = MongoReplicaSetClient(pair, replicaSet=setname)
+        coll = m.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-            m = MongoReplicaSetClient("mongodb://%s/?replicaSet=%s" % (pair, setname))
-            self.assertTrue(m.safe)
-            coll = m.pymongo_test.write_concern_test
-            self.assertRaises(OperationFailure, coll.insert, doc)
-            m = MongoReplicaSetClient("mongodb://%s/?replicaSet=%s;w=0" % (pair, setname))
-            self.assertFalse(m.safe)
-            coll = m.pymongo_test.write_concern_test
-            self.assertTrue(coll.insert(doc))
-        finally:
-            ctx.exit()
+        m = MongoReplicaSetClient("mongodb://%s/?replicaSet=%s" % (pair, setname))
+        self.assertTrue(m.safe)
+        coll = m.pymongo_test.write_concern_test
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        m = MongoReplicaSetClient("mongodb://%s/?replicaSet=%s;w=0" % (pair, setname))
+        self.assertFalse(m.safe)
+        coll = m.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc))
 
 
 if __name__ == "__main__":

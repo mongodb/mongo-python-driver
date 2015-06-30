@@ -69,36 +69,41 @@ def get_client(*args, **kwargs):
 class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_keyword_arg_defaults(self):
-        client = MongoClient(socketTimeoutMS=None,
-                             connectTimeoutMS=20000,
-                             waitQueueTimeoutMS=None,
-                             waitQueueMultiple=None,
-                             socketKeepAlive=False,
-                             auto_start_request=False,
-                             use_greenlets=False,
-                             replicaSet=None,
-                             read_preference=ReadPreference.PRIMARY,
-                             tag_sets=[{}],
-                             ssl=False,
-                             ssl_keyfile=None,
-                             ssl_certfile=None,
-                             ssl_ca_certs=None,
-                             _connect=False)
-        self.assertEqual(None, client._MongoClient__net_timeout)
-        # socket.Socket.settimeout takes a float in seconds
-        self.assertEqual(20.0, client._MongoClient__conn_timeout)
-        self.assertEqual(None, client._MongoClient__wait_queue_timeout)
-        self.assertEqual(None, client._MongoClient__wait_queue_multiple)
-        self.assertFalse(client._MongoClient__socket_keepalive)
-        self.assertFalse(client.auto_start_request)
-        self.assertFalse(client.use_greenlets)
-        self.assertEqual(None, client._MongoClient__repl)
-        self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
-        self.assertEqual([{}], client.tag_sets)
-        self.assertFalse(client._MongoClient__use_ssl)
-        self.assertEqual(None, client._MongoClient__ssl_keyfile)
-        self.assertEqual(None, client._MongoClient__ssl_certfile)
-        self.assertEqual(None, client._MongoClient__ssl_ca_certs)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            client = MongoClient(socketTimeoutMS=None,
+                                 connectTimeoutMS=20000,
+                                 waitQueueTimeoutMS=None,
+                                 waitQueueMultiple=None,
+                                 socketKeepAlive=False,
+                                 auto_start_request=False,
+                                 use_greenlets=False,
+                                 replicaSet=None,
+                                 read_preference=ReadPreference.PRIMARY,
+                                 tag_sets=[{}],
+                                 ssl=False,
+                                 ssl_keyfile=None,
+                                 ssl_certfile=None,
+                                 ssl_ca_certs=None,
+                                 _connect=False)
+            self.assertEqual(None, client._MongoClient__net_timeout)
+            # socket.Socket.settimeout takes a float in seconds
+            self.assertEqual(20.0, client._MongoClient__conn_timeout)
+            self.assertEqual(None, client._MongoClient__wait_queue_timeout)
+            self.assertEqual(None, client._MongoClient__wait_queue_multiple)
+            self.assertFalse(client._MongoClient__socket_keepalive)
+            self.assertFalse(client.auto_start_request)
+            self.assertFalse(client.use_greenlets)
+            self.assertEqual(None, client._MongoClient__repl)
+            self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
+            self.assertEqual([{}], client.tag_sets)
+            self.assertFalse(client._MongoClient__use_ssl)
+            self.assertEqual(None, client._MongoClient__ssl_keyfile)
+            self.assertEqual(None, client._MongoClient__ssl_certfile)
+            self.assertEqual(None, client._MongoClient__ssl_ca_certs)
+        finally:
+            ctx.exit()
 
     def test_types(self):
         self.assertRaises(TypeError, MongoClient, 1)
@@ -136,20 +141,25 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_init_disconnected(self):
         c = MongoClient(host, port, _connect=False)
 
-        self.assertIsInstance(c.is_primary, bool)
-        self.assertIsInstance(c.is_mongos, bool)
-        self.assertIsInstance(c.max_pool_size, int)
-        self.assertIsInstance(c.use_greenlets, bool)
-        self.assertIsInstance(c.nodes, frozenset)
-        self.assertIsInstance(c.auto_start_request, bool)
-        self.assertEqual(dict, c.get_document_class())
-        self.assertIsInstance(c.tz_aware, bool)
-        self.assertIsInstance(c.max_bson_size, int)
-        self.assertIsInstance(c.min_wire_version, int)
-        self.assertIsInstance(c.max_wire_version, int)
-        self.assertIsInstance(c.max_write_batch_size, int)
-        self.assertEqual(None, c.host)
-        self.assertEqual(None, c.port)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertIsInstance(c.is_primary, bool)
+            self.assertIsInstance(c.is_mongos, bool)
+            self.assertIsInstance(c.max_pool_size, int)
+            self.assertIsInstance(c.use_greenlets, bool)
+            self.assertIsInstance(c.nodes, frozenset)
+            self.assertIsInstance(c.auto_start_request, bool)
+            self.assertEqual(dict, c.get_document_class())
+            self.assertIsInstance(c.tz_aware, bool)
+            self.assertIsInstance(c.max_bson_size, int)
+            self.assertIsInstance(c.min_wire_version, int)
+            self.assertIsInstance(c.max_wire_version, int)
+            self.assertIsInstance(c.max_write_batch_size, int)
+            self.assertEqual(None, c.host)
+            self.assertEqual(None, c.port)
+        finally:
+            ctx.exit()
 
         c.pymongo_test.test.find_one()  # Auto-connect.
         self.assertEqual(host, c.host)
@@ -215,11 +225,16 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                          MongoClient(host, port).nodes)
 
     def test_use_greenlets(self):
-        self.assertFalse(MongoClient(host, port).use_greenlets)
-        if thread_util.have_gevent:
-            self.assertTrue(
-                MongoClient(
-                    host, port, use_greenlets=True).use_greenlets)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertFalse(MongoClient(host, port).use_greenlets)
+            if thread_util.have_gevent:
+                self.assertTrue(
+                    MongoClient(
+                        host, port, use_greenlets=True).use_greenlets)
+        finally:
+            ctx.exit()
 
     def test_get_db(self):
         client = MongoClient(host, port)
@@ -344,13 +359,13 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c = MongoClient(host, port)
         coll = c.pymongo_test.bar
 
-        c.disconnect()
-        c.disconnect()
+        c.close()
+        c.close()
 
         coll.count()
 
-        c.disconnect()
-        c.disconnect()
+        c.close()
+        c.close()
 
         coll.count()
 
@@ -409,7 +424,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(client.secondary_acceptable_latency_ms, 10)
         self.assertEqual(client.local_threshold_ms, 10)
         client = MongoClient(uri, localThresholdMS=10,
-                              secondaryAcceptableLatencyMS=8)
+                             secondaryAcceptableLatencyMS=8)
         self.assertEqual(client.secondary_acceptable_latency_ms, 10)
         self.assertEqual(client.local_threshold_ms, 10)
 
@@ -426,7 +441,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(client.secondary_acceptable_latency_ms, 10)
         self.assertEqual(client.local_threshold_ms, 10)
         client = MongoClient(lt_uri, localThresholdMS=8,
-                              secondaryAcceptableLatencyMS=6)
+                             secondaryAcceptableLatencyMS=6)
         self.assertEqual(client.secondary_acceptable_latency_ms, 10)
         self.assertEqual(client.local_threshold_ms, 10)
 
@@ -437,7 +452,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(client.secondary_acceptable_latency_ms, 10)
         self.assertEqual(client.local_threshold_ms, 10)
         client = MongoClient(sl_uri, localThresholdMS=10,
-                              secondaryAcceptableLatencyMS=6)
+                             secondaryAcceptableLatencyMS=6)
         self.assertEqual(client.secondary_acceptable_latency_ms, 10)
         self.assertEqual(client.local_threshold_ms, 10)
 
@@ -445,7 +460,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(client.secondary_acceptable_latency_ms, 10)
         self.assertEqual(client.local_threshold_ms, 10)
         client = MongoClient(lt_sl_uri, localThresholdMS=8,
-                               secondaryAcceptableLatencyMS=4)
+                             secondaryAcceptableLatencyMS=4)
         self.assertEqual(client.secondary_acceptable_latency_ms, 10)
         self.assertEqual(client.local_threshold_ms, 10)
 
@@ -555,30 +570,35 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         db = c.pymongo_test
         db.test.insert({"x": 1})
 
-        self.assertEqual(dict, c.document_class)
-        self.assertTrue(isinstance(db.test.find_one(), dict))
-        self.assertFalse(isinstance(db.test.find_one(), SON))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertEqual(dict, c.document_class)
+            self.assertTrue(isinstance(db.test.find_one(), dict))
+            self.assertFalse(isinstance(db.test.find_one(), SON))
 
-        c.document_class = SON
-        db = c.pymongo_test
+            c.document_class = SON
+            db = c.pymongo_test
 
-        self.assertEqual(SON, c.document_class)
-        self.assertTrue(isinstance(db.test.find_one(), SON))
-        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
+            self.assertEqual(SON, c.document_class)
+            self.assertTrue(isinstance(db.test.find_one(), SON))
+            self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
-        c = MongoClient(host, port, document_class=SON)
-        db = c.pymongo_test
+            c = MongoClient(host, port, document_class=SON)
+            db = c.pymongo_test
 
-        self.assertEqual(SON, c.document_class)
-        self.assertTrue(isinstance(db.test.find_one(), SON))
-        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
+            self.assertEqual(SON, c.document_class)
+            self.assertTrue(isinstance(db.test.find_one(), SON))
+            self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
-        c.document_class = dict
-        db = c.pymongo_test
+            c.document_class = dict
+            db = c.pymongo_test
 
-        self.assertEqual(dict, c.document_class)
-        self.assertTrue(isinstance(db.test.find_one(), dict))
-        self.assertFalse(isinstance(db.test.find_one(), SON))
+            self.assertEqual(dict, c.document_class)
+            self.assertTrue(isinstance(db.test.find_one(), dict))
+            self.assertFalse(isinstance(db.test.find_one(), SON))
+        finally:
+            ctx.exit()
 
     def test_timeouts(self):
         client = MongoClient(host, port, connectTimeoutMS=10500)
@@ -593,22 +613,22 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c = get_client(socketTimeoutMS=None)
         self.assertEqual(None, c._MongoClient__net_timeout)
 
-        self.assertRaises(ConfigurationError,
-            get_client, socketTimeoutMS=0)
+        self.assertRaises(
+            ConfigurationError, get_client, socketTimeoutMS=0)
 
-        self.assertRaises(ConfigurationError,
-            get_client, socketTimeoutMS=-1)
+        self.assertRaises(
+            ConfigurationError, get_client, socketTimeoutMS=-1)
 
-        self.assertRaises(ConfigurationError,
-            get_client, socketTimeoutMS=1e10)
+        self.assertRaises(
+            ConfigurationError, get_client, socketTimeoutMS=1e10)
 
-        self.assertRaises(ConfigurationError,
-            get_client, socketTimeoutMS='foo')
+        self.assertRaises(
+            ConfigurationError, get_client, socketTimeoutMS='foo')
 
         # network_timeout is gone from MongoClient, remains in deprecated
         # Connection
-        self.assertRaises(ConfigurationError,
-            get_client, network_timeout=10)
+        self.assertRaises(
+            ConfigurationError, get_client, network_timeout=10)
 
     def test_network_timeout(self):
         no_timeout = MongoClient(host, port)
@@ -662,8 +682,8 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(None, naive.pymongo_test.test.find_one()["x"].tzinfo)
         self.assertEqual(utc, aware.pymongo_test.test.find_one()["x"].tzinfo)
         self.assertEqual(
-                aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
-                naive.pymongo_test.test.find_one()["x"])
+            aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
+            naive.pymongo_test.test.find_one()["x"])
 
     def test_ipv6(self):
         try:
@@ -781,34 +801,39 @@ with client.start_request() as request:
             self.assertDifferentSock(pool)
 
     def test_auto_start_request(self):
-        for bad_horrible_value in (None, 5, 'hi!'):
-            self.assertRaises(
-                (TypeError, ConfigurationError),
-                lambda: get_client(auto_start_request=bad_horrible_value)
-            )
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            for bad_horrible_value in (None, 5, 'hi!'):
+                self.assertRaises(
+                    (TypeError, ConfigurationError),
+                    lambda: get_client(auto_start_request=bad_horrible_value)
+                )
 
-        # auto_start_request should default to False
-        client = get_client()
-        self.assertFalse(client.auto_start_request)
+            # auto_start_request should default to False
+            client = get_client()
+            self.assertFalse(client.auto_start_request)
 
-        client = get_client(auto_start_request=True)
-        self.assertTrue(client.auto_start_request)
+            client = get_client(auto_start_request=True)
+            self.assertTrue(client.auto_start_request)
 
-        # Assure we acquire a request socket.
-        client.pymongo_test.test.find_one()
-        self.assertTrue(client.in_request())
-        pool = get_pool(client)
-        self.assertRequestSocket(pool)
-        self.assertSameSock(pool)
+            # Assure we acquire a request socket.
+            client.pymongo_test.test.find_one()
+            self.assertTrue(client.in_request())
+            pool = get_pool(client)
+            self.assertRequestSocket(pool)
+            self.assertSameSock(pool)
 
-        client.end_request()
-        self.assertNoRequest(pool)
-        self.assertDifferentSock(pool)
+            client.end_request()
+            self.assertNoRequest(pool)
+            self.assertDifferentSock(pool)
 
-        # Trigger auto_start_request
-        client.pymongo_test.test.find_one()
-        self.assertRequestSocket(pool)
-        self.assertSameSock(pool)
+            # Trigger auto_start_request
+            client.pymongo_test.test.find_one()
+            self.assertRequestSocket(pool)
+            self.assertSameSock(pool)
+        finally:
+            ctx.exit()
 
     def test_nested_request(self):
         # auto_start_request is False
@@ -964,10 +989,15 @@ with client.start_request() as request:
         self.assertEqual(old_sock_info, pool._get_request_state())
 
     def test_alive(self):
-        self.assertTrue(get_client().alive())
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertTrue(get_client().alive())
 
-        client = MongoClient('doesnt exist', _connect=False)
-        self.assertFalse(client.alive())
+            client = MongoClient('doesnt exist', _connect=False)
+            self.assertFalse(client.alive())
+        finally:
+            ctx.exit()
 
     def test_wire_version(self):
         c = MockClient(
@@ -984,7 +1014,7 @@ with client.start_request() as request:
         self.assertEqual(c.max_wire_version, 5)
 
         c.set_wire_version_range('a:1', 10, 11)
-        c.disconnect()
+        c.close()
         self.assertRaises(ConfigurationError, c.db.collection.find_one)
 
     def test_max_wire_version(self):
@@ -1007,7 +1037,7 @@ with client.start_request() as request:
 
         # b becomes primary.
         c.mock_primary = 'b:2'
-        c.disconnect()
+        c.close()
         self.assertEqual(1000, c.max_write_batch_size)
         c.db.collection.find_one()  # Connect.
         self.assertEqual(c.max_write_batch_size, 2)
@@ -1034,7 +1064,7 @@ with client.start_request() as request:
         c.set_wire_version_range('a:1', 0, 0)
         c.set_wire_version_range('b:2', 0, 0)
         c.set_wire_version_range('c:3', 0, 0)
-        c.disconnect()
+        c.close()
         c.db.collection.find_one()
         used_host = '%s:%s' % (c.host, c.port)
         expected_min, expected_max = c.mock_wire_versions[used_host]
@@ -1073,7 +1103,7 @@ with client.start_request() as request:
         collection.insert({} for _ in range(4))
         cursor = collection.find().batch_size(1)
         cursor.next()
-        client.disconnect()
+        client.close()
         ctx = catch_warnings()
         try:
             warnings.simplefilter("error", UserWarning)
@@ -1163,7 +1193,7 @@ class TestMongoClientFailover(unittest.TestCase):
         c.mock_primary = 'b:2'
 
         # Force reconnect.
-        c.disconnect()
+        c.close()
         c.db.collection.find_one()
         self.assertEqual('b', c.host)
         self.assertEqual(2, c.port)

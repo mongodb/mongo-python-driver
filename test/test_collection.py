@@ -174,8 +174,8 @@ class TestCollection(unittest.TestCase):
         db.test.drop()
         db.test.insert({'a': 1})
         db.test.insert({'a': 1})
-        self.assertRaises(DuplicateKeyError, db.test.create_index,
-                                                    'a', unique=True)
+        self.assertRaises(
+            DuplicateKeyError, db.test.create_index, 'a', unique=True)
 
     def test_ensure_index(self):
         db = self.db
@@ -356,8 +356,8 @@ class TestCollection(unittest.TestCase):
         self.assertEqual([("hello", DESCENDING), ("world", ASCENDING)],
                          db.test.index_information()["hello_-1_world_1"]["key"]
                         )
-        self.assertEqual(True,
-                     db.test.index_information()["hello_-1_world_1"]["unique"])
+        self.assertEqual(
+            True, db.test.index_information()["hello_-1_world_1"]["unique"])
 
     def test_index_geo2d(self):
         db = self.db
@@ -452,7 +452,7 @@ class TestCollection(unittest.TestCase):
             self.fail("2dsphere index not found.")
 
         poly = {"type": "Polygon",
-                "coordinates": [[[40,5], [40,6], [41,6], [41,5], [40,5]]]}
+                "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]]}
         query = {"geo": {"$within": {"$geometry": poly}}}
 
         # This query will error without a 2dsphere index.
@@ -635,7 +635,7 @@ class TestCollection(unittest.TestCase):
         doc_class = None
         # Work around http://bugs.jython.org/issue1728
         if (sys.platform.startswith('java') and
-            sys.version_info[:3] >= (2, 5, 2)):
+                sys.version_info[:3] >= (2, 5, 2)):
             doc_class = SON
 
         def remove_insert_find_one(doc):
@@ -1045,10 +1045,12 @@ class TestCollection(unittest.TestCase):
         collection.remove()
         collection.insert({'_id': 1})
 
-        collection.write_concern = {'w': 1, 'wtimeout': 1000}
+        coll = collection.with_options(
+            write_concern=WriteConcern(w=1, wtimeout=1000))
         self.assertRaises(DuplicateKeyError, collection.insert, {'_id': 1})
 
-        collection.write_concern = {'wtimeout': 1000}
+        coll = collection.with_options(
+            write_concern=WriteConcern(wtimeout=1000))
         self.assertRaises(DuplicateKeyError, collection.insert, {'_id': 1})
 
     def test_continue_on_error(self):
@@ -1113,8 +1115,8 @@ class TestCollection(unittest.TestCase):
 
         db.test.insert({"hello": {"a": 4, "b": 5}})
         db.test.insert({"hello": {"a": 7, "b": 2}})
-        self.assertRaises(DuplicateKeyError,
-            db.test.insert, {"hello": {"a": 4, "b": 10}})
+        self.assertRaises(
+            DuplicateKeyError, db.test.insert, {"hello": {"a": 4, "b": 10}})
 
     def test_safe_insert(self):
         db = self.db
@@ -1284,8 +1286,8 @@ class TestCollection(unittest.TestCase):
                           {"hello": "world"}, doc, upsert=True)
 
         # Replace with empty document
-        self.assertNotEqual(0, self.db.test.update({"hello": "world"},
-                            {})['n'])
+        self.assertNotEqual(
+            0, self.db.test.update({"hello": "world"}, {})['n'])
 
     def test_safe_save(self):
         db = self.db
@@ -1437,11 +1439,11 @@ class TestCollection(unittest.TestCase):
     def test_aggregation_cursor(self):
         db = self.db
         if self.setname:
+            # Test that getMore messages are sent to the right server.
             db = MongoReplicaSetClient(host=self.client.host,
                                        port=self.client.port,
-                                       replicaSet=self.setname)[db.name]
-            # Test that getMore messages are sent to the right server.
-            db.read_preference = ReadPreference.SECONDARY
+                                       replicaSet=self.setname,
+                                       readPreference='secondary')[db.name]
 
         for collection_size in (10, 1000):
             db.drop_collection("test")
@@ -1479,11 +1481,11 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
         if self.setname:
+            # Test that getMore messages are sent to the right server.
             db = MongoReplicaSetClient(host=self.client.host,
                                        port=self.client.port,
-                                       replicaSet=self.setname)[db.name]
-            # Test that getMore messages are sent to the right server.
-            db.read_preference = ReadPreference.SECONDARY
+                                       replicaSet=self.setname,
+                                       readPreference='secondary')[db.name]
         coll = db.test
         coll.insert(({'_id': i} for i in xrange(8000)), w=self.w)
         docs = []
@@ -1505,7 +1507,7 @@ class TestCollection(unittest.TestCase):
         self.assertEqual([],
                          db.test.group([], {}, {"count": 0},
                                        "function (obj, prev) { prev.count++; }"
-                                       ))
+                                      ))
 
         db.test.save({"a": 2})
         db.test.save({"b": 5})
@@ -1689,7 +1691,7 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find_one(None), db.test.find_one())
         self.assertEqual(db.test.find_one({}), db.test.find_one())
         self.assertEqual(db.test.find_one({"hello": "world"}),
-                                          db.test.find_one())
+                         db.test.find_one())
 
         self.assertTrue("hello" in db.test.find_one(fields=["hello"]))
         self.assertTrue("hello" not in db.test.find_one(fields=["foo"]))
@@ -2002,7 +2004,8 @@ class TestCollection(unittest.TestCase):
             do_insert(uuid_sub_args)
             coll = self.db.test
             self.assertNotEqual(doc, coll.find_one({'_id': 2}))
-            coll.uuid_subtype = 6
+            coll = self.db.get_collection('test',
+                                          CodecOptions(uuid_representation=6))
             self.assertEqual(doc, coll.find_one({'_id': 2}))
 
     def test_message_backport_codec_options(self):
@@ -2104,7 +2107,7 @@ class TestCollection(unittest.TestCase):
             self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
 
             if (is_mongos(self.db.connection)
-                and not version.at_least(self.db.connection, (2, 1, 2))):
+                    and not version.at_least(self.db.connection, (2, 1, 2))):
                 pass
             else:
                 result = db.test.map_reduce(map, reduce,
@@ -2272,18 +2275,18 @@ class TestCollection(unittest.TestCase):
         # Test with full_response=True
         # No lastErrorObject from mongos until 2.0
         if (not is_mongos(self.db.connection) and
-            version.at_least(self.db.connection, (2, 0))):
+                version.at_least(self.db.connection, (2, 0))):
             result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                               new=True, upsert=True,
-                                               full_response=True,
-                                               fields={'i': 1})
+                                       new=True, upsert=True,
+                                       full_response=True,
+                                       fields={'i': 1})
             self.assertEqual({'_id': 1, 'i': 5}, result["value"])
             self.assertEqual(True, result["lastErrorObject"]["updatedExisting"])
 
             result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
-                                               new=True, upsert=True,
-                                               full_response=True,
-                                               fields={'i': 1})
+                                       new=True, upsert=True,
+                                       full_response=True,
+                                       fields={'i': 1})
             self.assertEqual({'_id': 2, 'i': 1}, result["value"])
             self.assertEqual(False, result["lastErrorObject"]["updatedExisting"])
 
@@ -2291,11 +2294,11 @@ class TestCollection(unittest.TestCase):
             pass
 
         result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                    new=True, fields={'i': 1})
+                                   new=True, fields={'i': 1})
         self.assertFalse(isinstance(result, ExtendedDict))
         result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                    new=True, fields={'i': 1},
-                                    as_class=ExtendedDict)
+                                   new=True, fields={'i': 1},
+                                   as_class=ExtendedDict)
         self.assertTrue(isinstance(result, ExtendedDict))
 
     def test_update_backward_compat(self):
@@ -2321,44 +2324,44 @@ class TestCollection(unittest.TestCase):
         ctx = catch_warnings()
         try:
             warnings.simplefilter("ignore", DeprecationWarning)
-            sort={'j': DESCENDING}
+            sort = {'j': DESCENDING}
             self.assertEqual(4, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-            sort={'j': ASCENDING}
+            sort = {'j': ASCENDING}
             self.assertEqual(0, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-            sort=[('j', DESCENDING)]
+            sort = [('j', DESCENDING)]
             self.assertEqual(4, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-            sort=[('j', ASCENDING)]
+            sort = [('j', ASCENDING)]
             self.assertEqual(0, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-            sort=SON([('j', DESCENDING)])
+            sort = SON([('j', DESCENDING)])
             self.assertEqual(4, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-            sort=SON([('j', ASCENDING)])
+            sort = SON([('j', ASCENDING)])
             self.assertEqual(0, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
             try:
                 from collections import OrderedDict
-                sort=OrderedDict([('j', DESCENDING)])
+                sort = OrderedDict([('j', DESCENDING)])
                 self.assertEqual(4, c.find_and_modify({},
                                                       {'$inc': {'i': 1}},
                                                       sort=sort)['j'])
-                sort=OrderedDict([('j', ASCENDING)])
+                sort = OrderedDict([('j', ASCENDING)])
                 self.assertEqual(0, c.find_and_modify({},
                                                       {'$inc': {'i': 1}},
                                                       sort=sort)['j'])
             except ImportError:
                 pass
             # Test that a standard dict with two keys is rejected.
-            sort={'j': DESCENDING, 'foo': DESCENDING}
+            sort = {'j': DESCENDING, 'foo': DESCENDING}
             self.assertRaises(TypeError, c.find_and_modify,
                               {}, {'$inc': {'i': 1}}, sort=sort)
         finally:

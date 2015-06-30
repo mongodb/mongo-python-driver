@@ -598,7 +598,8 @@ class MongoReplicaSetClient(common.BaseObject):
            Added additional ssl options
         .. versionadded:: 2.4
 
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+        .. _localThreshold:
+          http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         self.__opts = {}
         self.__seeds = set()
@@ -652,10 +653,16 @@ class MongoReplicaSetClient(common.BaseObject):
             document_class, tz_aware, uuid_representation)
 
         self.__use_greenlets = self.__opts.get('use_greenlets', False)
-        if self.__use_greenlets and not have_gevent:
-            raise ConfigurationError(
-                "The gevent module is not available. "
-                "Install the gevent package from PyPI.")
+        if self.__use_greenlets:
+            if not have_gevent:
+                raise ConfigurationError(
+                    "The gevent module is not available. "
+                    "Install the gevent package from PyPI.")
+            warnings.warn("use_greenlets is deprecated in this version of "
+                          "PyMongo and removed in PyMongo 3. Use Gevent's "
+                          "monkey.patch_all() instead.",
+                          DeprecationWarning, stacklevel=2)
+
 
         self.__rs_state = RSState(self.__make_threadlocal(), initial=True)
 
@@ -713,9 +720,10 @@ class MongoReplicaSetClient(common.BaseObject):
 
         super(MongoReplicaSetClient, self).__init__(**self.__opts)
         if self.slave_okay:
-            warnings.warn("slave_okay is deprecated. Please "
-                          "use read_preference instead.", DeprecationWarning,
-                          stacklevel=2)
+            warnings.warn("slave_okay is deprecated in this version of "
+                          "PyMongo and removed in PyMongo 3. Use "
+                          "secondaryPreferred read preference instead.",
+                          DeprecationWarning, stacklevel=2)
 
         _connect = self.__opts.get('_connect', self.__opts.get('connect', True))
         if _connect:
@@ -945,32 +953,69 @@ class MongoReplicaSetClient(common.BaseObject):
 
     @property
     def use_greenlets(self):
-        """Whether calling :meth:`start_request` assigns greenlet-local,
-        rather than thread-local, sockets.
+        """**DEPRECATED** Whether calling :meth:`start_request` assigns
+        greenlet-local, rather than thread-local, sockets.
 
+        .. warning:: :attr:`use_greenlets` is deprecated in this version of
+          PyMongo and removed in PyMongo 3. Use Gevent's monkey.patch_all()
+          instead.
+
+        .. versionchanged:: 2.9
+          Deprecated use_greenlets.
         .. versionadded:: 2.4.2
         """
+        warnings.warn("use_greenlets is deprecated in this version of PyMongo "
+                      "and removed in PyMongo 3. Use Gevent's "
+                      "monkey.patch_all() instead",
+                      DeprecationWarning, stacklevel=2)
         return self.__use_greenlets
 
     def get_document_class(self):
-        """document_class getter"""
+        """**DEPRECATED** Default class to use for documents returned from this
+        client.
+
+        .. warning:: :attr:`document_class` is deprecated in this version of
+          PyMongo and removed in PyMongo 3. Use
+          :class:`~bson.codec_options.CodecOptions`
+          with :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` instead.
+          See :doc:`/migrate-to-pymongo3` for examples.
+
+        .. versionchanged:: 2.9
+          Deprecated document_class.
+        """
+        warnings.warn("document_class is deprecated in this version of "
+                      "PyMongo and removed in PyMongo 3. See the "
+                      "document_class docstring for more information.",
+                      DeprecationWarning, stacklevel=2)
         return self._codec_options.document_class
 
     def set_document_class(self, klass):
         """document_class setter"""
+        warnings.warn("document_class is deprecated in this version of "
+                      "PyMongo and removed in PyMongo 3. See the "
+                      "document_class docstring for more information.",
+                      DeprecationWarning, stacklevel=2)
         tz_aware = self._codec_options.tz_aware
         uuid_rep = self._codec_options.uuid_representation
         self._codec_options = CodecOptions(klass, tz_aware, uuid_rep)
 
-    document_class = property(get_document_class, set_document_class,
-                              doc="""Default class to use for documents
-                              returned from this client.
-                              """)
+    document_class = property(get_document_class, set_document_class)
 
     @property
     def tz_aware(self):
         """Does this client return timezone-aware datetimes?
+
+        .. warning:: :attr:`tz_aware` is deprecated in this version of PyMongo
+          and removed in PyMongo 3. See :attr:`codec_options` instead.
+
+        .. versionchanged:: 2.9
+          Deprecated tz_aware.
         """
+        warnings.warn("tz_aware is deprecated in this version of PyMongo and "
+                      "removed in PyMongo 3. Use codec_options instead.",
+                      DeprecationWarning, stacklevel=2)
         return self._codec_options.tz_aware
 
     @property
@@ -1037,16 +1082,25 @@ class MongoReplicaSetClient(common.BaseObject):
 
     @property
     def auto_start_request(self):
-        """**DEPRECATED** Is auto_start_request enabled?"""
+        """**DEPRECATED** Is auto_start_request enabled?
+
+        .. versionchanged:: 2.8
+          Deprecated auto_start_request.
+        """
+        warnings.warn("auto_start_request is deprecated in this version of "
+                      "PyMongo and removed in PyMongo 3.",
+                      DeprecationWarning, stacklevel=2)
         return self.__auto_start_request
 
     @property
     def local_threshold_ms(self):
-        """Alias for :attr:`secondary_acceptable_latency_ms`.
+        """Any replica set member whose ping time is within
+        :attr:`local_threshold_ms` of the nearest member may accept reads.
+        Defaults to 15 milliseconds.
 
         .. versionadded:: 2.9
         """
-        return self.secondary_acceptable_latency_ms
+        return self._secondary_acceptable_latency_ms
 
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
@@ -1342,7 +1396,7 @@ class MongoReplicaSetClient(common.BaseObject):
     def __socket(self, member, force=False):
         """Get a SocketInfo from the pool.
         """
-        if self.auto_start_request and not self.in_request():
+        if self.__auto_start_request and not self.in_request():
             self.start_request()
 
         sock_info = member.get_socket(force=force)
@@ -1405,8 +1459,8 @@ class MongoReplicaSetClient(common.BaseObject):
             monitor.join(1.0)
 
     def alive(self):
-        """Return ``False`` if there has been an error communicating with the
-        primary, else ``True``.
+        """**DEPRECATED** Return ``False`` if there has been an error
+        communicating with the primary, else ``True``.
 
         This method attempts to check the status of the primary with minimal
         I/O. The current thread / greenlet retrieves a socket from the
@@ -1420,6 +1474,9 @@ class MongoReplicaSetClient(common.BaseObject):
 
         .. _select: http://docs.python.org/2/library/select.html#select.select
         """
+        warnings.warn("alive is deprecated in this version of PyMongo and "
+                      "removed in PyMongo 3.",
+                      DeprecationWarning, stacklevel=2)
         # In the common case, a socket is available and was used recently, so
         # calling select() on it is a reasonable attempt to see if the OS has
         # reported an error.
@@ -1778,7 +1835,7 @@ class MongoReplicaSetClient(common.BaseObject):
             raise AutoReconnect(str(e))
 
     def start_request(self):
-        """**DEPRECATED**: start_request will be removed in PyMongo 3.0.
+        """**DEPRECATED**: start_request is removed in PyMongo 3.0.
 
         When doing w=0 writes to MongoDB 2.4 or earlier, :meth:`start_request`
         was sometimes useful to ensure the current thread always used the same
@@ -1787,8 +1844,12 @@ class MongoReplicaSetClient(common.BaseObject):
         useful in modern MongoDB applications, see
         `PYTHON-785 <https://jira.mongodb.org/browse/PYTHON-785>`_.
 
+        .. warning:: :meth:`start_request`, :meth:`in_request`,
+          and :meth:`end_request` are deprecated, and removed in PyMongo 3.
+          See :doc:`/migrate-to-pymongo3` for more information.
+
         .. versionchanged:: 2.8
-           Deprecated.
+           Deprecated start_request.
 
         .. versionadded:: 2.2
            The :class:`~pymongo.pool.Request` return value.
@@ -1810,11 +1871,41 @@ class MongoReplicaSetClient(common.BaseObject):
         """**DEPRECATED**: True if :meth:`start_request` has been called, but
         not :meth:`end_request`, or if `auto_start_request` is True and
         :meth:`end_request` has not been called in this thread or greenlet.
+
+        .. warning:: :meth:`start_request`, :meth:`in_request`,
+          and :meth:`end_request` are deprecated in this version of PyMongo
+          and removed in PyMongo 3. See :doc:`/migrate-to-pymongo3` for more
+          information.
+
+        .. versionchanged:: 2.8
+          Deprecated in_request.
         """
         return bool(self.__request_counter.get())
 
     def end_request(self):
-        """**DEPRECATED**: Undo :meth:`start_request`."""
+        """**DEPRECATED**: Undo :meth:`start_request`. If :meth:`end_request`
+        is called as many times as :meth:`start_request`, the request is over
+        and this thread's connection returns to the pool. Extra calls to
+        :meth:`end_request` have no effect.
+
+        Ending a request allows the :class:`~socket.socket` that has
+        been reserved for this thread by :meth:`start_request` to be returned to
+        the pool. Other threads will then be able to re-use that
+        :class:`~socket.socket`. If your application uses many threads, or has
+        long-running threads that infrequently perform MongoDB operations, then
+        judicious use of this method can lead to performance gains. Care should
+        be taken, however, to make sure that :meth:`end_request` is not called
+        in the middle of a sequence of operations in which ordering is
+        important. This could lead to unexpected results.
+
+        .. warning:: :meth:`start_request`, :meth:`in_request`,
+          and :meth:`end_request` are deprecated in this version of PyMongo and
+          removed in PyMongo 3. See :doc:`/migrate-to-pymongo3` for more
+          information.
+
+        .. versionchanged:: 2.8
+          Deprecated end_request.
+        """
         rs_state = self.__rs_state
         if 0 == self.__request_counter.dec():
             for member in rs_state.members:
@@ -1898,7 +1989,8 @@ class MongoReplicaSetClient(common.BaseObject):
         """Get a list of the names of all databases on the connected server.
         """
         return [db["name"] for db in
-                self.admin.command("listDatabases",
+                self.admin.command(
+                    "listDatabases",
                     read_preference=ReadPreference.PRIMARY)["databases"]]
 
     def drop_database(self, name_or_database):
@@ -1929,9 +2021,6 @@ class MongoReplicaSetClient(common.BaseObject):
                       mechanism='DEFAULT'):
         """**DEPRECATED**: Copy a database, potentially from another host.
 
-        :meth:`copy_database` will be removed in PyMongo 3.0. See the
-        :doc:`copy_database examples </examples/copydb>` for alternatives.
-
         Raises :class:`TypeError` if `from_name` or `to_name` is not
         an instance of :class:`basestring` (:class:`str` in python 3).
         Raises :class:`~pymongo.errors.InvalidName` if `to_name` is
@@ -1944,6 +2033,9 @@ class MongoReplicaSetClient(common.BaseObject):
         `password` must be specified. By default, use SCRAM-SHA-1 with
         MongoDB 3.0 and later, MONGODB-CR (MongoDB Challenge Response
         protocol) for older servers.
+
+        .. warning:: :meth:`copy_database` is removed in PyMongo 3.0. See the
+          :doc:`copy_database examples </examples/copydb>` for alternatives.
 
         :Parameters:
           - `from_name`: the name of the source database

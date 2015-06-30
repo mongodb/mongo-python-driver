@@ -18,13 +18,14 @@ import gc
 import sys
 import time
 import unittest
+import warnings
 
 from nose.plugins.skip import SkipTest
 
 from pymongo import pool
 from pymongo.errors import ConfigurationError
 from test import host, port, skip_restricted_localhost
-from test.utils import looplet
+from test.utils import catch_warnings, looplet
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
     _TestWaitQueueMultiple, has_gevent)
@@ -36,6 +37,15 @@ setUpModule = skip_restricted_localhost
 class TestPoolingGevent(_TestPooling, unittest.TestCase):
     """Apply all the standard pool tests with greenlets and Gevent"""
     use_greenlets = True
+
+    def setUp(self):
+        self.warn_ctx = catch_warnings()
+        warnings.simplefilter("ignore", DeprecationWarning)
+        super(TestPoolingGevent, self).setUp()
+
+    def tearDown(self):
+        self.warn_ctx.exit()
+        super(TestPoolingGevent, self).tearDown()
 
 
 class TestPoolingGeventSpecial(unittest.TestCase):
@@ -183,13 +193,40 @@ class TestPoolingGeventSpecial(unittest.TestCase):
 class TestMaxPoolSizeGevent(_TestMaxPoolSize, unittest.TestCase):
     use_greenlets = True
 
+    def setUp(self):
+        self.warn_ctx = catch_warnings()
+        warnings.simplefilter("ignore", DeprecationWarning)
+        super(TestMaxPoolSizeGevent, self).setUp()
+
+    def tearDown(self):
+        self.warn_ctx.exit()
+        super(TestMaxPoolSizeGevent, self).tearDown()
+
 
 class TestMaxOpenSocketsGevent(_TestMaxOpenSockets, unittest.TestCase):
     use_greenlets = True
 
+    def setUp(self):
+        self.warn_ctx = catch_warnings()
+        warnings.simplefilter("ignore", DeprecationWarning)
+        super(TestMaxOpenSocketsGevent, self).setUp()
+
+    def tearDown(self):
+        self.warn_ctx.exit()
+        super(TestMaxOpenSocketsGevent, self).tearDown()
+
 
 class TestWaitQueueMultipleGevent(_TestWaitQueueMultiple, unittest.TestCase):
     use_greenlets = True
+
+    def setUp(self):
+        self.warn_ctx = catch_warnings()
+        warnings.simplefilter("ignore", DeprecationWarning)
+        super(TestWaitQueueMultipleGevent, self).setUp()
+
+    def tearDown(self):
+        self.warn_ctx.exit()
+        super(TestWaitQueueMultipleGevent, self).tearDown()
 
 
 class TestUseGreenletsWithoutGevent(unittest.TestCase):

@@ -34,8 +34,10 @@ from pymongo.member import Member
 from pymongo.mongo_replica_set_client import Monitor
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_client import MongoClient, _partition_node
-from pymongo.read_preferences import ReadPreference, modes
-
+from pymongo.read_preferences import (ReadPreference,
+                                      modes,
+                                      Secondary,
+                                      Nearest)
 from test import utils, version
 from test.utils import one
 
@@ -127,13 +129,12 @@ class TestDirectConnection(HATestCase):
 
         # MongoClient succeeds no matter the read preference
         for kwargs in [
-            {'read_preference': PRIMARY},
-            {'read_preference': PRIMARY_PREFERRED},
-            {'read_preference': SECONDARY},
-            {'read_preference': SECONDARY_PREFERRED},
-            {'read_preference': NEAREST},
-            {'slave_okay': True}
-        ]:
+                {'read_preference': PRIMARY},
+                {'read_preference': PRIMARY_PREFERRED},
+                {'read_preference': SECONDARY},
+                {'read_preference': SECONDARY_PREFERRED},
+                {'read_preference': NEAREST},
+                {'slave_okay': True}]:
             client = MongoClient(primary_host,
                                  primary_port,
                                  use_greenlets=use_greenlets,
@@ -178,7 +179,7 @@ class TestDirectConnection(HATestCase):
             self.assertEqual(arbiter_host, client.host)
             self.assertEqual(arbiter_port, client.port)
             self.assertFalse(client.is_primary)
-            
+
             # See explanation above
             try:
                 client.pymongo_test.test.insert({}, w=0)
@@ -188,7 +189,7 @@ class TestDirectConnection(HATestCase):
                 self.fail(
                     'Unacknowledged insert into arbiter client %s should'
                     'have raised exception' % (client,))
-        
+
     def tearDown(self):
         self.c.close()
         super(TestDirectConnection, self).tearDown()
@@ -201,8 +202,7 @@ class TestPassiveAndHidden(HATestCase):
                    {'priority': 0},
                    {'arbiterOnly': True},
                    {'priority': 0, 'hidden': True},
-                   {'priority': 0, 'slaveDelay': 5}
-        ]
+                   {'priority': 0, 'slaveDelay': 5}]
         res = ha_tools.start_replica_set(members)
         self.seed, self.name = res
 
@@ -618,19 +618,19 @@ class TestReadPreference(HATestCase):
         assertReadFrom(primary, SECONDARY_PREFERRED, bad_tag)
 
         # Fall back from non-matching tag set to matching set
-        assertReadFromAll([secondary, other_secondary],
-            SECONDARY_PREFERRED, [bad_tag, {}])
+        assertReadFromAll(
+            [secondary, other_secondary], SECONDARY_PREFERRED, [bad_tag, {}])
 
-        assertReadFrom(other_secondary,
-            SECONDARY_PREFERRED, [bad_tag, {'dc': 'ny'}])
+        assertReadFrom(
+            other_secondary, SECONDARY_PREFERRED, [bad_tag, {'dc': 'ny'}])
 
         #       NEAREST
         self.clear_ping_times()
 
         assertReadFromAll([primary, secondary, other_secondary], NEAREST)
 
-        assertReadFromAll([primary, other_secondary],
-            NEAREST, [bad_tag, {'dc': 'ny'}])
+        assertReadFromAll(
+            [primary, other_secondary], NEAREST, [bad_tag, {'dc': 'ny'}])
 
         self.set_ping_time(primary, 0)
         self.set_ping_time(secondary, .03) # 30 ms
@@ -793,8 +793,7 @@ class TestReadPreference(HATestCase):
         # Verify that changing the mode unpins the member. We'll try it for
         # every relevant change of mode.
         for mode0, mode1 in permutations(
-            (PRIMARY, SECONDARY, SECONDARY_PREFERRED, NEAREST), 2
-        ):
+                (PRIMARY, SECONDARY, SECONDARY_PREFERRED, NEAREST), 2):
             # Try reading and then changing modes and reading again, see if we
             # read from a different host
             for _ in range(1000):
@@ -814,8 +813,8 @@ class TestReadPreference(HATestCase):
         tags0 = [{'a': 'a'}, {}]
         tags1 = [{'a': 'x'}, {}]
         for _ in range(1000):
-            host = utils.read_from_which_host(c, NEAREST, tags0)
-            new_host = utils.read_from_which_host(c, NEAREST, tags1)
+            host = utils.read_from_which_host(c, Nearest(tags0))
+            new_host = utils.read_from_which_host(c, Nearest(tags1))
             if host != new_host:
                 break
         else:
@@ -825,9 +824,10 @@ class TestReadPreference(HATestCase):
 
         # Finally, verify changing the secondary_acceptable_latency_ms unpins
         # the member.
+        pref = Secondary()
         for _ in range(1000):
-            host = utils.read_from_which_host(c, SECONDARY, None, 15)
-            new_host = utils.read_from_which_host(c, SECONDARY, None, 20)
+            host = utils.read_from_which_host(c, pref, 15)
+            new_host = utils.read_from_which_host(c, pref, 20)
             if host != new_host:
                 break
         else:
@@ -902,14 +902,14 @@ class TestAlive(HATestCase):
             self.assertTrue(primary_cx.alive())
             self.assertTrue(secondary_cx.alive())
             self.assertTrue(rsc.alive())
-    
+
             ha_tools.kill_primary()
             time.sleep(0.5)
 
             self.assertFalse(primary_cx.alive())
             self.assertTrue(secondary_cx.alive())
             self.assertFalse(rsc.alive())
-            
+
             ha_tools.kill_members([secondary], 2)
             time.sleep(0.5)
 
@@ -919,7 +919,7 @@ class TestAlive(HATestCase):
         finally:
             rsc.close()
 
-        
+
 class TestMongosHighAvailability(HATestCase):
     def setUp(self):
         seed_list = ha_tools.create_sharded_cluster()
@@ -1004,7 +1004,7 @@ class TestReplicaSetRequest(HATestCase):
             sleep(1)
         else:
             self.fail("Problem with test: No new primary after %s seconds"
-                % patience_seconds)
+                      % patience_seconds)
 
         try:
             # Trigger start_request on secondary_pool, which is becoming new

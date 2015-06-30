@@ -70,7 +70,7 @@ def get_command_line(client):
 
 def server_started_with_option(client, cmdline_opt, config_opt):
     """Check if the server was started with a particular option.
-    
+
     :Parameters:
       - `cmdline_opt`: The command line option (i.e. --nojournal)
       - `config_opt`: The config file option (i.e. nojournal)
@@ -202,17 +202,16 @@ class RendezvousThread(threading.Thread):
         def __init__(self, nthreads):
             # Number of threads total
             self.nthreads = nthreads
-    
+
             # Number of threads that have arrived at rendezvous point
             self.arrived_threads = 0
             self.arrived_threads_lock = threading.Lock()
-    
+
             # Set when all threads reach rendezvous
             self.ev_arrived = threading.Event()
-    
+
             # Set by resume_after_rendezvous() so threads can continue.
             self.ev_resume = threading.Event()
-            
 
     @classmethod
     def create_shared_state(cls, nthreads):
@@ -277,11 +276,7 @@ class RendezvousThread(threading.Thread):
         self.passed = True
 
 def read_from_which_host(
-    rsc,
-    mode,
-    tag_sets=None,
-    secondary_acceptable_latency_ms=15
-):
+        rsc, read_pref, secondary_acceptable_latency_ms=None):
     """Read from a MongoReplicaSetClient with the given Read Preference mode,
        tags, and acceptable latency. Return the 'host:port' which was read from.
 
@@ -291,12 +286,9 @@ def read_from_which_host(
       - `tag_sets`: List of dicts of tags for data-center-aware reads
       - `secondary_acceptable_latency_ms`: a float
     """
-    db = rsc.pymongo_test
-    db.read_preference = mode
-    if isinstance(tag_sets, dict):
-        tag_sets = [tag_sets]
-    db.tag_sets = tag_sets or [{}]
-    db.secondary_acceptable_latency_ms = secondary_acceptable_latency_ms
+    db = rsc.get_database('pymongo_test', read_preference=read_pref)
+    if secondary_acceptable_latency_ms is not None:
+        db.secondary_acceptable_latency_ms = secondary_acceptable_latency_ms
 
     cursor = db.test.find()
     try:
@@ -685,8 +677,8 @@ class WarningMessage(object):
 
     def __str__(self):
         return ("{message : %r, category : %r, filename : %r, lineno : %s, "
-                    "line : %r}" % (self.message, self._category_name,
-                                    self.filename, self.lineno, self.line))
+                "line : %r}" % (self.message, self._category_name,
+                                self.filename, self.lineno, self.line))
 
 
 # Rough backport of warnings.catch_warnings from python 2.6,

@@ -373,6 +373,10 @@ class MongoClient(common.BaseObject):
 
         self.__connecting = False
         if self.__use_greenlets:
+            warnings.warn("use_greenlets is deprecated in this version of "
+                          "PyMongo and removed in PyMongo 3. Use Gevent's "
+                          "monkey.patch_all() instead.",
+                          DeprecationWarning, stacklevel=2)
             # Greenlets don't need to lock around access to the Member;
             # they're only interrupted when they do I/O.
             self.__connecting_lock = thread_util.DummyLock()
@@ -396,9 +400,10 @@ class MongoClient(common.BaseObject):
 
         super(MongoClient, self).__init__(**options)
         if self.slave_okay:
-            warnings.warn("slave_okay is deprecated. Please "
-                          "use read_preference instead.", DeprecationWarning,
-                          stacklevel=2)
+            warnings.warn("slave_okay is deprecated in this version of "
+                          "PyMongo and removed in PyMongo 3. Use "
+                          "secondaryPreferred read preference instead.",
+                          DeprecationWarning, stacklevel=2)
 
         _connect = options.get('_connect', options.get('connect', True))
         if _connect:
@@ -614,11 +619,21 @@ class MongoClient(common.BaseObject):
 
     @property
     def use_greenlets(self):
-        """Whether calling :meth:`start_request` assigns greenlet-local,
-        rather than thread-local, sockets.
+        """**DEPRECATED** Whether calling :meth:`start_request` assigns
+        greenlet-local, rather than thread-local, sockets.
 
+        .. warning:: :attr:`use_greenlets` is deprecated in this version of
+          PyMongo and removed in PyMongo 3. Use Gevent's monkey.patch_all()
+          instead.
+
+        .. versionchanged:: 2.9
+          Deprecated use_greenlets.
         .. versionadded:: 2.4.2
         """
+        warnings.warn("use_greenlets is deprecated in this version of PyMongo "
+                      "and removed in PyMongo 3. Use Gevent's "
+                      "monkey.patch_all() instead.",
+                      DeprecationWarning, stacklevel=2)
         return self.__use_greenlets
 
     @property
@@ -634,30 +649,64 @@ class MongoClient(common.BaseObject):
 
     @property
     def auto_start_request(self):
-        """**DEPRECATED** Is auto_start_request enabled?"""
+        """**DEPRECATED** Is auto_start_request enabled?
+
+        .. versionchanged:: 2.8
+          Deprecated auto_start_request.
+        """
+        warnings.warn("auto_start_request is deprecated in this version of "
+                      "PyMongo and removed in PyMongo 3.",
+                      DeprecationWarning, stacklevel=2)
         return self.__auto_start_request
 
     def get_document_class(self):
+        """**DEPRECATED** Default class to use for documents returned from this
+        client.
+
+        .. warning:: :attr:`document_class` is deprecated in this version of
+          PyMongo and removed in PyMongo 3. Use
+          :class:`~bson.codec_options.CodecOptions` with
+          :meth:`~pymongo.mongo_client.MongoClient.get_database`,
+          :meth:`~pymongo.database.Database.get_collection`,
+          or :meth:`~pymongo.collection.Collection.with_options` instead.
+          See :doc:`/migrate-to-pymongo3` for examples.
+
+        .. versionchanged:: 2.9
+          Deprecated document_class.
+        .. versionadded:: 1.7
+        """
+        warnings.warn("document_class is deprecated in this version of "
+                      "PyMongo and removed in PyMongo 3. See the "
+                      "document_class docstring for more information.",
+                      DeprecationWarning, stacklevel=2)
         return self._codec_options.document_class
 
     def set_document_class(self, klass):
+        """document_class setter"""
+        warnings.warn("document_class is deprecated in this version of "
+                      "PyMongo and removed in PyMongo 3. See the "
+                      "document_class docstring for more information.",
+                      DeprecationWarning, stacklevel=2)
         tz_aware = self._codec_options.tz_aware
         uuid_rep = self._codec_options.uuid_representation
         self._codec_options = CodecOptions(klass, tz_aware, uuid_rep)
 
-    document_class = property(get_document_class, set_document_class,
-                              doc="""Default class to use for documents
-                              returned from this client.
-
-                              .. versionadded:: 1.7
-                              """)
+    document_class = property(get_document_class, set_document_class)
 
     @property
     def tz_aware(self):
         """Does this client return timezone-aware datetimes?
 
+        .. warning:: :attr:`tz_aware` is deprecated in this version of PyMongo
+          and removed in PyMongo 3. Use :attr:`codec_options` instead.
+
+        .. versionchanged:: 2.9
+          Deprecated tz_aware.
         .. versionadded:: 1.8
         """
+        warnings.warn("tz_aware is deprecated in this version of PyMongo and "
+                      "removed in PyMongo 3. Use codec_options instead.",
+                      DeprecationWarning, stacklevel=2)
         return self._codec_options.tz_aware
 
     @property
@@ -717,11 +766,13 @@ class MongoClient(common.BaseObject):
 
     @property
     def local_threshold_ms(self):
-        """Alias for :attr:`secondary_acceptable_latency_ms`.
+        """Any replica set member whose ping time is within
+        :attr:`local_threshold_ms` of the nearest member may accept reads.
+        Defaults to 15 milliseconds.
 
         .. versionadded:: 2.9
         """
-        return self.secondary_acceptable_latency_ms
+        return self._secondary_acceptable_latency_ms
 
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server. May raise AutoReconnect.
@@ -827,7 +878,7 @@ class MongoClient(common.BaseObject):
         # `member` is None, and `future_member` is pending.
         #
         # To violate these invariants temporarily, acquire the lock.
-        # Note that disconnect() interacts with this method.
+        # Note that close() interacts with this method.
         self.__connecting_lock.acquire()
         if self.__member:
             member = self.__member
@@ -951,15 +1002,15 @@ class MongoClient(common.BaseObject):
     def __socket(self, member):
         """Get a SocketInfo.
 
-        Calls disconnect() on error.
+        Calls close() on error.
         """
         try:
-            if self.auto_start_request and not member.in_request():
+            if self.__auto_start_request and not member.in_request():
                 member.start_request()
 
             sock_info = member.get_socket()
         except socket.error, why:
-            self.disconnect()
+            self.close()
 
             # Check if a unix domain socket
             host, port = member.host
@@ -982,7 +1033,7 @@ class MongoClient(common.BaseObject):
         self.__ensure_member()
 
     def disconnect(self):
-        """Disconnect from MongoDB.
+        """**DEPRECATED** Use close() instead.
 
         Disconnecting will close all underlying sockets in the connection
         pool. If this instance is used again it will be automatically
@@ -990,8 +1041,30 @@ class MongoClient(common.BaseObject):
         is not called in the middle of a sequence of operations in which
         ordering is important. This could lead to unexpected results.
 
+        .. warning:: :meth:`disconnect` is deprecated in this version of
+          PyMongo and removed in PyMongo 3. Use :meth:`close` instead.
+
         .. seealso:: :meth:`end_request`
+        .. versionchanged:: 2.9
+          Deprecated.
         .. versionadded:: 1.3
+        """
+        warnings.warn("disconnect is deprecated in this version of PyMongo "
+                      "and removed in PyMongo 3. Use close() instead.",
+                      DeprecationWarning, stacklevel=2)
+        self.close()
+
+    def close(self):
+        """Disconnect from MongoDB.
+
+        Disconnecting will close all underlying sockets in the connection
+        pool. If this instance is used again it will be automatically
+        re-opened. Care should be taken to make sure that :meth:`close`
+        is not called in the middle of a sequence of operations in which
+        ordering is important. This could lead to unexpected results.
+
+        .. seealso:: :meth:`end_request`
+        .. versionadded:: 2.1
         """
         self.__connecting_lock.acquire()
         member, self.__member = self.__member, None
@@ -1001,23 +1074,9 @@ class MongoClient(common.BaseObject):
         if member:
             member.reset()
 
-    def close(self):
-        """Alias for :meth:`disconnect`
-
-        Disconnecting will close all underlying sockets in the connection
-        pool. If this instance is used again it will be automatically
-        re-opened. Care should be taken to make sure that :meth:`disconnect`
-        is not called in the middle of a sequence of operations in which
-        ordering is important. This could lead to unexpected results.
-
-        .. seealso:: :meth:`end_request`
-        .. versionadded:: 2.1
-        """
-        self.disconnect()
-
     def alive(self):
-        """Return ``False`` if there has been an error communicating with the
-        server, else ``True``.
+        """**DEPRECATED** Return ``False`` if there has been an error
+        communicating with the server, else ``True``.
 
         This method attempts to check the status of the server with minimal I/O.
         The current thread / greenlet retrieves a socket from the pool (its
@@ -1032,6 +1091,9 @@ class MongoClient(common.BaseObject):
 
         .. _select: http://docs.python.org/2/library/select.html#select.select
         """
+        warnings.warn("alive is deprecated in this version of PyMongo and "
+                      "removed in PyMongo 3.",
+                      DeprecationWarning, stacklevel=2)
         # In the common case, a socket is available and was used recently, so
         # calling select() on it is a reasonable attempt to see if the OS has
         # reported an error.
@@ -1063,12 +1125,11 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `manager_class`: cursor manager to use
 
+        .. versionchanged:: 2.9
+           Unedprecated.
         .. versionchanged:: 2.1+
            Deprecated support for external cursor managers.
         """
-        warnings.warn("Support for external cursor managers is deprecated "
-                      "and will be removed in PyMongo 3.0.",
-                      DeprecationWarning, stacklevel=2)
         manager = manager_class(self)
         if not isinstance(manager, CursorManager):
             raise TypeError("manager_class must be a subclass of "
@@ -1089,7 +1150,7 @@ class MongoClient(common.BaseObject):
         assert response["number_returned"] == 1
         result = response["data"][0]
 
-        helpers._check_command_response(result, self.disconnect)
+        helpers._check_command_response(result, self.close)
 
         # write commands - skip getLastError checking
         if is_command:
@@ -1100,7 +1161,7 @@ class MongoClient(common.BaseObject):
         if error_msg is None:
             return result
         if error_msg.startswith("not master"):
-            self.disconnect()
+            self.close()
             raise AutoReconnect(error_msg)
 
         details = result
@@ -1177,7 +1238,7 @@ class MongoClient(common.BaseObject):
             except OperationFailure:
                 raise
             except (ConnectionFailure, socket.error), e:
-                self.disconnect()
+                self.close()
                 raise AutoReconnect(str(e))
             except:
                 sock_info.close()
@@ -1263,7 +1324,7 @@ class MongoClient(common.BaseObject):
 
             return (None, (response, sock_info, member.pool))
         except (ConnectionFailure, socket.error), e:
-            self.disconnect()
+            self.close()
             member.maybe_return_socket(sock_info)
             raise AutoReconnect(str(e))
         except:
@@ -1281,7 +1342,7 @@ class MongoClient(common.BaseObject):
             raise AutoReconnect(str(e))
 
     def start_request(self):
-        """**DEPRECATED**: start_request will be removed in PyMongo 3.0.
+        """**DEPRECATED**: start_request is removed in PyMongo 3.0.
 
         When doing w=0 writes to MongoDB 2.4 or earlier, :meth:`start_request`
         was sometimes useful to ensure the current thread always used the same
@@ -1290,8 +1351,12 @@ class MongoClient(common.BaseObject):
         useful in modern MongoDB applications, see
         `PYTHON-785 <https://jira.mongodb.org/browse/PYTHON-785>`_.
 
+        .. warning:: :meth:`start_request`, :meth:`in_request`,
+          and :meth:`end_request` are deprecated, and removed in PyMongo 3.
+          See :doc:`/migrate-to-pymongo3` for more information.
+
         .. versionchanged:: 2.8
-           Deprecated.
+           Deprecated start_request.
 
         .. versionchanged:: 2.4
            Now counts the number of calls to start_request and doesn't end
@@ -1308,6 +1373,14 @@ class MongoClient(common.BaseObject):
     def in_request(self):
         """**DEPRECATED**: True if this thread is in a request, meaning it has
         a socket reserved for its exclusive use.
+
+        .. warning:: :meth:`start_request`, :meth:`in_request`,
+          and :meth:`end_request` are deprecated in this version of PyMongo and
+          removed in PyMongo 3. See :doc:`/migrate-to-pymongo3` for more
+          information.
+
+        .. versionchanged:: 2.8
+          Deprecated in_request.
         """
         member = self.__member  # Don't try to connect if disconnected.
         return member and member.in_request()
@@ -1327,6 +1400,14 @@ class MongoClient(common.BaseObject):
         be taken, however, to make sure that :meth:`end_request` is not called
         in the middle of a sequence of operations in which ordering is
         important. This could lead to unexpected results.
+
+        .. warning:: :meth:`start_request`, :meth:`in_request`,
+          and :meth:`end_request` are deprecated in this version of PyMongo and
+          removed in PyMongo 3. See :doc:`/migrate-to-pymongo3` for more
+          information.
+
+        .. versionchanged:: 2.8
+          Deprecated end_request.
         """
         member = self.__member  # Don't try to connect if disconnected.
         if member:
@@ -1460,9 +1541,6 @@ class MongoClient(common.BaseObject):
                       mechanism='DEFAULT'):
         """**DEPRECATED**: Copy a database, potentially from another host.
 
-        :meth:`copy_database` will be removed in PyMongo 3.0. See the
-        :doc:`copy_database examples </examples/copydb>` for alternatives.
-
         Raises :class:`TypeError` if `from_name` or `to_name` is not
         an instance of :class:`basestring` (:class:`str` in python 3).
         Raises :class:`~pymongo.errors.InvalidName` if `to_name` is
@@ -1479,6 +1557,9 @@ class MongoClient(common.BaseObject):
         .. note:: mongos does not support copying a database from a server
            with authentication, see
            `SERVER-6427 <https://jira.mongodb.org/browse/SERVER-6427>`_.
+
+        .. warning:: :meth:`copy_database` is removed in PyMongo 3.0. See the
+          :doc:`copy_database examples </examples/copydb>` for alternatives.
 
         :Parameters:
           - `from_name`: the name of the source database
@@ -1605,7 +1686,7 @@ class MongoClient(common.BaseObject):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
+        self.close()
 
     def __iter__(self):
         return self

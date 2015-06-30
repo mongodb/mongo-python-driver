@@ -8,7 +8,6 @@
 
       .. automethod:: disconnect
       .. automethod:: close
-      .. automethod:: alive
 
       .. describe:: c[db_name] || c.db_name
 
@@ -36,10 +35,16 @@
       .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: local_threshold_ms
       .. autoattribute:: write_concern
-      .. autoattribute:: uuid_subtype
       .. automethod:: database_names
       .. automethod:: drop_database
       .. automethod:: copy_database(from_name, to_name[, from_host=None[, username=None[, password=None]]])
       .. automethod:: get_default_database
       .. automethod:: get_database
       .. automethod:: close_cursor
+      .. automethod:: alive
+      .. autoattribute:: uuid_subtype
+      .. autoattribute:: slave_okay
+      .. autoattribute:: safe
+      .. automethod:: get_lasterror_options
+      .. automethod:: set_lasterror_options
+      .. automethod:: unset_lasterror_options

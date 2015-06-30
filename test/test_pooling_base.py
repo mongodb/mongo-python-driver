@@ -109,6 +109,13 @@ class MongoThread(object):
     def run_mongo_thread(self):
         raise NotImplementedError()
 
+    def disconnect_client(self):
+        if isinstance(self.client, MongoClient):
+            self.client.close()
+        else:
+            # Don't kill the replica set monitor.
+            self.client.disconnect()
+
 
 class SaveAndFind(MongoThread):
 
@@ -143,7 +150,7 @@ class Disconnect(MongoThread):
 
     def run_mongo_thread(self):
         for _ in xrange(N):
-            self.client.disconnect()
+            self.disconnect_client()
 
 
 class NoRequest(MongoThread):
@@ -444,7 +451,7 @@ class _TestPooling(_TestPoolingBase):
         self.assert_no_request()
         self.assert_pool_size(1)
 
-        self.c.disconnect()
+        self.c.close()
         self.assert_pool_size(0)
         self.assert_no_request()
 

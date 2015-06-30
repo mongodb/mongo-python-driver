@@ -251,9 +251,9 @@ class Collection(common.BaseObject):
         opts, mode, tags, wc_doc = helpers._get_common_options(
             self, codec_options, read_preference, write_concern)
         coll = Collection(self.__database, self.__name, False, opts)
-        coll.write_concern = wc_doc
-        coll.read_preference = mode
-        coll.tag_sets = tags
+        coll._write_concern = wc_doc
+        coll._read_pref = mode
+        coll._tag_sets = tags
         return coll
 
     def initialize_unordered_bulk_op(self):

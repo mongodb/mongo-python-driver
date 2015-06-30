@@ -19,6 +19,7 @@ import copy
 import pickle
 import sys
 import unittest
+import warnings
 try:
     import uuid
     should_test_uuid = True
@@ -27,15 +28,18 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 import bson
 
 from bson.binary import *
+from bson.codec_options import CodecOptions
 from bson.py3compat import b, binary_type
 from bson.son import SON
-from nose.plugins.skip import SkipTest
+from pymongo.mongo_client import MongoClient
 from test import skip_restricted_localhost
 from test.test_client import get_client
-from pymongo.mongo_client import MongoClient
+from test.utils import catch_warnings
 
 
 setUpModule = skip_restricted_localhost
@@ -160,15 +164,15 @@ class TestBinary(unittest.TestCase):
         # Test insert and find
         client = get_client()
         client.pymongo_test.drop_collection('java_uuid')
-        coll = client.pymongo_test.java_uuid
-        coll.uuid_subtype = JAVA_LEGACY
+        coll = client.pymongo_test.get_collection(
+            'java_uuid', CodecOptions(uuid_representation=JAVA_LEGACY))
 
         coll.insert(docs)
         self.assertEqual(5, coll.count())
         for d in coll.find():
             self.assertEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = client.pymongo_test.java_uuid
         for d in coll.find():
             self.assertNotEqual(d['newguid'], d['newguidstring'])
         client.pymongo_test.drop_collection('java_uuid')
@@ -232,15 +236,15 @@ class TestBinary(unittest.TestCase):
         # Test insert and find
         client = get_client()
         client.pymongo_test.drop_collection('csharp_uuid')
-        coll = client.pymongo_test.csharp_uuid
-        coll.uuid_subtype = CSHARP_LEGACY
+        coll = client.pymongo_test.get_collection(
+            'csharp_uuid', CodecOptions(uuid_representation=CSHARP_LEGACY))
 
         coll.insert(docs)
         self.assertEqual(5, coll.count())
         for d in coll.find():
             self.assertEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = client.pymongo_test.csharp_uuid
         for d in coll.find():
             self.assertNotEqual(d['newguid'], d['newguidstring'])
         client.pymongo_test.drop_collection('csharp_uuid')
@@ -267,26 +271,31 @@ class TestBinary(unittest.TestCase):
         coll.insert({'uuid': Binary(binary_type(uu.bytes), 3)})
         self.assertEqual(1, coll.count())
 
-        # Test UUIDLegacy queries.
-        coll.uuid_subtype = 4
-        self.assertEqual(0, coll.find({'uuid': uu}).count())
-        cur = coll.find({'uuid': UUIDLegacy(uu)})
-        self.assertEqual(1, cur.count())
-        retrieved = cur.next()
-        self.assertEqual(uu, retrieved['uuid'])
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            # Test UUIDLegacy queries.
+            coll.uuid_subtype = 4
+            self.assertEqual(0, coll.find({'uuid': uu}).count())
+            cur = coll.find({'uuid': UUIDLegacy(uu)})
+            self.assertEqual(1, cur.count())
+            retrieved = cur.next()
+            self.assertEqual(uu, retrieved['uuid'])
 
-        # Test regular UUID queries (using subtype 4).
-        coll.insert({'uuid': uu})
-        self.assertEqual(2, coll.count())
-        cur = coll.find({'uuid': uu})
-        self.assertEqual(1, cur.count())
-        retrieved = cur.next()
-        self.assertEqual(uu, retrieved['uuid'])
+            # Test regular UUID queries (using subtype 4).
+            coll.insert({'uuid': uu})
+            self.assertEqual(2, coll.count())
+            cur = coll.find({'uuid': uu})
+            self.assertEqual(1, cur.count())
+            retrieved = cur.next()
+            self.assertEqual(uu, retrieved['uuid'])
 
-        # Test both.
-        cur = coll.find({'uuid': {'$in': [uu, UUIDLegacy(uu)]}})
-        self.assertEqual(2, cur.count())
-        coll.drop()
+            # Test both.
+            cur = coll.find({'uuid': {'$in': [uu, UUIDLegacy(uu)]}})
+            self.assertEqual(2, cur.count())
+            coll.drop()
+        finally:
+            ctx.exit()
 
     def test_pickle(self):
         b1 = Binary(b('123'), 2)
