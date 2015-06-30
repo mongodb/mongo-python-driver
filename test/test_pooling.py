@@ -241,6 +241,14 @@ class TestPooling(_TestPoolingBase):
         with cx_pool.get_socket({}):
             pass
 
+    def test_socket_closed(self):
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(('localhost', 27017))
+        self.assertFalse(socket_closed(s))
+        s.close()
+        self.assertTrue(socket_closed(s))
+
     def test_return_socket_after_reset(self):
         pool = self.create_pool()
         with pool.get_socket({}) as sock:
