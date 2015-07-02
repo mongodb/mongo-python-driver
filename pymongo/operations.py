@@ -32,6 +32,15 @@ class _WriteOp(object):
         self._doc = doc
         self._upsert = upsert
 
+    def __eq__(self, other):
+        if type(other) == type(self):
+            return (other._filter, other._doc, other._upsert) == \
+                   (self._filter, self._doc, self._upsert)
+        return False
+
+    def __ne__(self, other):
+        return not self == other
+
 
 class InsertOne(_WriteOp):
     """Represents an insert_one operation."""
