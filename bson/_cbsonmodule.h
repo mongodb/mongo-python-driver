@@ -57,6 +57,7 @@ typedef struct codec_options_t {
     unsigned char tz_aware;
     unsigned char uuid_rep;
     char* unicode_decode_error_handler;
+    PyObject* tzinfo;
 } codec_options_t;
 
 /* C API functions */

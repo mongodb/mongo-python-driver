@@ -217,11 +217,14 @@ def _get_date(data, position, dummy, opts):
     seconds = (millis - diff) / 1000
     micros = diff * 1000
     if opts.tz_aware:
-        return EPOCH_AWARE + datetime.timedelta(
-            seconds=seconds, microseconds=micros), end
+        dt = EPOCH_AWARE + datetime.timedelta(
+            seconds=seconds, microseconds=micros)
+        if opts.tzinfo:
+            dt = dt.astimezone(opts.tzinfo)
     else:
-        return EPOCH_NAIVE + datetime.timedelta(
-            seconds=seconds, microseconds=micros), end
+        dt = EPOCH_NAIVE + datetime.timedelta(
+            seconds=seconds, microseconds=micros)
+    return dt, end
 
 
 def _get_code(data, position, obj_end, opts):

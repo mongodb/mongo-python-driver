@@ -29,6 +29,7 @@ from bson import (BSON,
                   decode_all,
                   decode_file_iter,
                   decode_iter,
+                  EPOCH_AWARE,
                   is_valid,
                   Regex)
 from bson.binary import Binary, UUIDLegacy
@@ -40,6 +41,7 @@ from bson.dbref import DBRef
 from bson.py3compat import PY3, u, text_type, iteritems, StringIO
 from bson.son import SON
 from bson.timestamp import Timestamp
+from bson.tz_util import FixedOffset
 from bson.errors import (InvalidBSON,
                          InvalidDocument,
                          InvalidStringData)
@@ -85,6 +87,29 @@ class NotADict(collections.MutableMapping):
 
     def __repr__(self):
         return "NotADict(%s)" % repr(self._dict)
+
+
+class DSTAwareTimezone(datetime.tzinfo):
+
+    def __init__(self, offset, name, dst_start_month, dst_end_month):
+        self.__offset = offset
+        self.__dst_start_month = dst_start_month
+        self.__dst_end_month = dst_end_month
+        self.__name = name
+
+    def _is_dst(self, dt):
+        return self.__dst_start_month <= dt.month <= self.__dst_end_month
+
+    def utcoffset(self, dt):
+        return datetime.timedelta(minutes=self.__offset) + self.dst(dt)
+
+    def dst(self, dt):
+        if self._is_dst(dt):
+            return datetime.timedelta(hours=1)
+        return datetime.timedelta(0)
+
+    def tzname(self, dt):
+        return self.__name
 
 
 class TestBSON(unittest.TestCase):
@@ -437,6 +462,58 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(utc, after.tzinfo)
         self.assertEqual(as_utc, after)
 
+    def test_local_datetime(self):
+        # Timezone -60 minutes of UTC, with DST between April and July.
+        tz = DSTAwareTimezone(60, "sixty-minutes", 4, 7)
+
+        # It's not DST.
+        local = datetime.datetime(year=2025, month=12, hour=2, day=1,
+                                  tzinfo=tz)
+        options = CodecOptions(tz_aware=True, tzinfo=tz)
+        # Encode with this timezone, then decode to UTC.
+        encoded = BSON.encode({'date': local}, codec_options=options)
+        self.assertEqual(local.replace(hour=1, tzinfo=None),
+                         encoded.decode()['date'])
+
+        # It's DST.
+        local = datetime.datetime(year=2025, month=4, hour=1, day=1,
+                                  tzinfo=tz)
+        encoded = BSON.encode({'date': local}, codec_options=options)
+        self.assertEqual(local.replace(month=3, day=31, hour=23, tzinfo=None),
+                         encoded.decode()['date'])
+
+        # Encode UTC, then decode in a different timezone.
+        encoded = BSON.encode({'date': local.replace(tzinfo=utc)})
+        decoded = encoded.decode(options)['date']
+        self.assertEqual(local.replace(hour=3), decoded)
+        self.assertEqual(tz, decoded.tzinfo)
+
+        # Test round-tripping.
+        self.assertEqual(
+            local,
+            (BSON
+             .encode({'date': local}, codec_options=options)
+             .decode(options)['date']))
+
+        # Test around the Unix Epoch.
+        epochs = (
+            EPOCH_AWARE,
+            EPOCH_AWARE.astimezone(FixedOffset(120, 'one twenty')),
+            EPOCH_AWARE.astimezone(FixedOffset(-120, 'minus one twenty'))
+        )
+        utc_co = CodecOptions(tz_aware=True)
+        for epoch in epochs:
+            doc = {'epoch': epoch}
+            # We always retrieve datetimes in UTC unless told to do otherwise.
+            self.assertEqual(
+                EPOCH_AWARE,
+                BSON.encode(doc).decode(codec_options=utc_co)['epoch'])
+            # Round-trip the epoch.
+            local_co = CodecOptions(tz_aware=True, tzinfo=epoch.tzinfo)
+            self.assertEqual(
+                epoch,
+                BSON.encode(doc).decode(codec_options=local_co)['epoch'])
+
     def test_naive_decode(self):
         aware = datetime.datetime(1993, 4, 4, 2,
                                   tzinfo=FixedOffset(555, "SomeZone"))
@@ -784,10 +861,17 @@ class TestCodecOptions(unittest.TestCase):
         self.assertRaises(ValueError, CodecOptions, uuid_representation=7)
         self.assertRaises(ValueError, CodecOptions, uuid_representation=2)
 
+    def test_tzinfo(self):
+        self.assertRaises(TypeError, CodecOptions, tzinfo='pacific')
+        tz = FixedOffset(42, 'forty-two')
+        self.assertRaises(ValueError, CodecOptions, tzinfo=tz)
+        self.assertEqual(tz, CodecOptions(tz_aware=True, tzinfo=tz).tzinfo)
+
     def test_codec_options_repr(self):
         r = ("CodecOptions(document_class=dict, tz_aware=False, "
              "uuid_representation=PYTHON_LEGACY, "
-             "unicode_decode_error_handler='strict')")
+             "unicode_decode_error_handler='strict', "
+             "tzinfo=None)")
         self.assertEqual(r, repr(CodecOptions()))
 
     def test_decode_all_defaults(self):

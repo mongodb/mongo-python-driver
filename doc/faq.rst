@@ -145,7 +145,8 @@ collection, configured to use :class:`~bson.son.SON` instead of dict:
   >>> opts  # doctest: +NORMALIZE_WHITESPACE
   CodecOptions(document_class=<class 'bson.son.SON'>,
                tz_aware=False,
-               uuid_representation=PYTHON_LEGACY)
+               uuid_representation=PYTHON_LEGACY,
+               tzinfo=None)
   >>> collection_son = collection.with_options(codec_options=opts)
 
 Now, documents and subdocuments in query results are represented with
@@ -268,26 +269,8 @@ about the decision, but here is a brief summary:
 What is the correct way to handle time zones with PyMongo?
 ----------------------------------------------------------
 
-Prior to PyMongo version 1.7, the correct way is to only save naive
-:class:`~datetime.datetime` instances, and to save all dates as
-UTC. In versions >= 1.7, the driver will automatically convert aware
-datetimes to UTC before saving them. By default, datetimes retrieved
-from the server (no matter what version of the driver you're using)
-will be naive and represent UTC. In newer versions of the driver you
-can set the :class:`~pymongo.mongo_client.MongoClient` `tz_aware`
-parameter to ``True``, which will cause all
-:class:`~datetime.datetime` instances returned from that MongoClient to
-be aware (UTC). This setting is recommended, as it can force
-application code to handle timezones properly.
-
-.. warning::
-
-   Be careful not to save naive :class:`~datetime.datetime`
-   instances that are not UTC (i.e. the result of calling
-   :meth:`datetime.datetime.now`).
-
-Something like :mod:`pytz` can be used to convert dates to localtime
-after retrieving them from the database.
+See :doc:`examples/datetimes` for examples on how to handle
+:class:`~datetime.datetime` objects correctly.
 
 How can I save a :mod:`datetime.date` instance?
 -----------------------------------------------

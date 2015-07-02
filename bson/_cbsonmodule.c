@@ -119,15 +119,17 @@ _downcast_and_check(Py_ssize_t size, int extra) {
 int convert_codec_options(PyObject* options_obj, void* p) {
     codec_options_t* options = (codec_options_t*)p;
     options->unicode_decode_error_handler = NULL;
-    if (!PyArg_ParseTuple(options_obj, "Obbz",
+    if (!PyArg_ParseTuple(options_obj, "ObbzO",
                           &options->document_class,
                           &options->tz_aware,
                           &options->uuid_rep,
-                          &options->unicode_decode_error_handler)) {
+                          &options->unicode_decode_error_handler,
+                          &options->tzinfo)) {
         return 0;
     }
 
     Py_INCREF(options->document_class);
+    Py_INCREF(options->tzinfo);
     return 1;
 }
 
@@ -140,10 +142,13 @@ void default_codec_options(codec_options_t* options) {
     options->tz_aware = 0;
     options->uuid_rep = PYTHON_LEGACY;
     options->unicode_decode_error_handler = NULL;
+    options->tzinfo = Py_None;
+    Py_INCREF(options->tzinfo);
 }
 
 void destroy_codec_options(codec_options_t* options) {
     Py_CLEAR(options->document_class);
+    Py_CLEAR(options->tzinfo);
 }
 
 static PyObject* elements_to_dict(PyObject* self, const char* string,
@@ -1865,6 +1870,7 @@ static PyObject* get_value(PyObject* self, const char* buffer,
             PyObject* replace;
             PyObject* args;
             PyObject* kwargs;
+            PyObject* astimezone;
             long long millis;
             if (max < 8) {
                 goto invalid;
@@ -1906,6 +1912,20 @@ static PyObject* get_value(PyObject* self, const char* buffer,
             }
             Py_XDECREF(utc_type);
             value = PyObject_Call(replace, args, kwargs);
+
+            /* convert to local time */
+            if (options->tzinfo != Py_None) {
+                astimezone = PyObject_GetAttrString(value, "astimezone");
+                if (!astimezone) {
+                    Py_DECREF(replace);
+                    Py_DECREF(args);
+                    Py_DECREF(kwargs);
+                    goto invalid;
+                }
+                value = PyObject_CallFunctionObjArgs(astimezone, options->tzinfo, NULL);
+                Py_DECREF(astimezone);
+            }
+
             Py_DECREF(replace);
             Py_DECREF(args);
             Py_DECREF(kwargs);
