@@ -156,5 +156,9 @@ class TestWriteOpsComparison(unittest.TestCase):
         self.assertNotEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
                             UpdateOne({'foo': 42}, {'$set': {'bar': 23}}))
 
+    def test_UpdateOneNotEqualsUpdateMany(self):
+        self.assertNotEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
+                            UpdateMany({'foo': 42}, {'$set': {'bar': 42}}))
+
 if __name__ == "__main__":
     unittest.main()
