@@ -17,6 +17,17 @@
 import select
 import struct
 
+_HAS_POLL = True
+_poller = None
+_EVENT_MASK = 0
+try:
+    from select import poll
+    _poller = poll()
+    _EVENT_MASK = (select.POLLIN | select.POLLPRI | select.POLLERR |
+                   select.POLLHUP | select.POLLNVAL)
+except ImportError:
+    _HAS_POLL = False
+
 from pymongo import helpers, message
 from pymongo.errors import AutoReconnect
 
@@ -93,7 +104,12 @@ def socket_closed(sock):
     """Return True if we know socket has been closed, False otherwise.
     """
     try:
-        rd, _, _ = select.select([sock], [], [], 0)
+        if _HAS_POLL:
+            _poller.register(sock, _EVENT_MASK)
+            rd = _poller.poll(0)
+            _poller.unregister(sock)
+        else:
+            rd, _, _ = select.select([sock], [], [], 0)
     # Any exception here is equally bad (select.error, ValueError, etc.).
     except:
         return True
