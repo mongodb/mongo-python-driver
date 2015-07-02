@@ -25,6 +25,7 @@ from bson.py3compat import iteritems
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.results import _WriteResult
+from pymongo.operations import UpdateOne, UpdateMany, DeleteOne, DeleteMany, InsertOne, ReplaceOne
 
 from test import unittest, client_context, IntegrationTest
 
@@ -144,6 +145,16 @@ def create_tests():
 
 
 create_tests()
+
+
+class TestWriteOpsComparison(unittest.TestCase):
+    def test_UpdateOneEquals(self):
+        self.assertEquals(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
+                          UpdateOne({'foo': 42}, {'$set': {'bar': 42}}))
+
+    def test_UpdateOneNotEquals(self):
+        self.assertNotEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
+                            UpdateOne({'foo': 42}, {'$set': {'bar': 23}}))
 
 if __name__ == "__main__":
     unittest.main()
