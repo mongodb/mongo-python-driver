@@ -148,13 +148,50 @@ create_tests()
 
 
 class TestWriteOpsComparison(unittest.TestCase):
+    def test_InsertOneEquals(self):
+        self.assertEqual(InsertOne({'foo': 42}), InsertOne({'foo': 42}))
+
+    def test_InsertOneNotEquals(self):
+        self.assertNotEqual(InsertOne({'foo': 42}), InsertOne({'foo': 23}))
+
+    def test_DeleteOneEquals(self):
+        self.assertEqual(DeleteOne({'foo': 42}), DeleteOne({'foo': 42}))
+
+    def test_DeleteOneNotEquals(self):
+        self.assertNotEqual(DeleteOne({'foo': 42}), DeleteOne({'foo': 23}))
+
+    def test_DeleteManyEquals(self):
+        self.assertEqual(DeleteMany({'foo': 42}), DeleteMany({'foo': 42}))
+
+    def test_DeleteManyNotEquals(self):
+        self.assertNotEqual(DeleteMany({'foo': 42}), DeleteMany({'foo': 23}))
+
+    def test_DeleteOneNotEqualsDeleteMany(self):
+        self.assertNotEqual(DeleteOne({'foo': 42}), DeleteMany({'foo': 42}))
+
+    def test_ReplaceOneEquals(self):
+        self.assertEqual(ReplaceOne({'foo': 42}, {'bar': 42}, upsert=False),
+                         ReplaceOne({'foo': 42}, {'bar': 42}, upsert=False))
+
+    def test_ReplaceOneNotEquals(self):
+        self.assertNotEqual(ReplaceOne({'foo': 42}, {'bar': 42}, upsert=False),
+                            ReplaceOne({'foo': 42}, {'bar': 42}, upsert=True))
+
     def test_UpdateOneEquals(self):
-        self.assertEquals(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
-                          UpdateOne({'foo': 42}, {'$set': {'bar': 42}}))
+        self.assertEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
+                         UpdateOne({'foo': 42}, {'$set': {'bar': 42}}))
 
     def test_UpdateOneNotEquals(self):
         self.assertNotEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
                             UpdateOne({'foo': 42}, {'$set': {'bar': 23}}))
+
+    def test_UpdateManyEquals(self):
+        self.assertEqual(UpdateMany({'foo': 42}, {'$set': {'bar': 42}}),
+                         UpdateMany({'foo': 42}, {'$set': {'bar': 42}}))
+
+    def test_UpdateManyNotEquals(self):
+        self.assertNotEqual(UpdateMany({'foo': 42}, {'$set': {'bar': 42}}),
+                            UpdateMany({'foo': 42}, {'$set': {'bar': 23}}))
 
     def test_UpdateOneNotEqualsUpdateMany(self):
         self.assertNotEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
