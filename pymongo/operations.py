@@ -36,7 +36,7 @@ class _WriteOp(object):
         if type(other) == type(self):
             return (other._filter, other._doc, other._upsert) == \
                    (self._filter, self._doc, self._upsert)
-        return False
+        return NotImplemented
 
     def __ne__(self, other):
         return not self == other
