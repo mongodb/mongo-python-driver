@@ -51,7 +51,11 @@ except ImportError:
 def _raise_connection_failure(address, error):
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
-    msg = '%s:%d: %s' % (host, port, error)
+    # If connecting to a Unix socket, port will be None.
+    if port is not None:
+        msg = '%s:%d: %s' % (host, port, error)
+    else:
+        msg = '%s: %s' % (host, error)
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg)
     else:
