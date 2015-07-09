@@ -16,13 +16,15 @@
 
 from collections import MutableMapping, namedtuple
 
+from bson.py3compat import string_type
 from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          PYTHON_LEGACY,
                          UUID_REPRESENTATION_NAMES)
 
 
 _options_base = namedtuple(
-    'CodecOptions', ('document_class', 'tz_aware', 'uuid_representation'))
+    'CodecOptions', ('document_class', 'tz_aware', 'uuid_representation',
+                     'unicode_decode_error_handler'))
 
 
 class CodecOptions(_options_base):
@@ -38,10 +40,21 @@ class CodecOptions(_options_base):
       - `uuid_representation`: The BSON representation to use when encoding
         and decoding instances of :class:`~uuid.UUID`. Defaults to
         :data:`~bson.binary.PYTHON_LEGACY`.
+      - `unicode_decode_error_handler`: The error handler to use when decoding
+         an invalid BSON string. Valid options include 'strict', 'replace', and
+         'ignore'. Defaults to 'strict'.
+
+    .. warning:: Care must be taken when changing
+       `unicode_decode_error_handler` from its default value ('strict').
+       The 'replace' and 'ignore' modes should not be used when documents
+       retrieved from the server will be modified in the client application
+       and stored back to the server.
+
     """
 
     def __new__(cls, document_class=dict,
-                tz_aware=False, uuid_representation=PYTHON_LEGACY):
+                tz_aware=False, uuid_representation=PYTHON_LEGACY,
+                unicode_decode_error_handler="strict"):
         if not issubclass(document_class, MutableMapping):
             raise TypeError("document_class must be dict, bson.son.SON, or "
                             "another subclass of collections.MutableMapping")
@@ -50,9 +63,12 @@ class CodecOptions(_options_base):
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError("uuid_representation must be a value "
                              "from bson.binary.ALL_UUID_REPRESENTATIONS")
-
+        if not isinstance(unicode_decode_error_handler, (string_type, None)):
+            raise ValueError("unicode_decode_error_handler must be a string "
+                             "or None")
         return tuple.__new__(
-            cls, (document_class, tz_aware, uuid_representation))
+            cls, (document_class, tz_aware, uuid_representation,
+                  unicode_decode_error_handler))
 
     def __repr__(self):
         document_class_repr = (
@@ -64,7 +80,9 @@ class CodecOptions(_options_base):
 
         return (
             'CodecOptions(document_class=%s, tz_aware=%r, uuid_representation='
-            '%s)' % (document_class_repr, self.tz_aware, uuid_rep_repr))
+            '%s, unicode_decode_error_handler=%r)' %
+            (document_class_repr, self.tz_aware, uuid_rep_repr,
+             self.unicode_decode_error_handler))
 
 
 DEFAULT_CODEC_OPTIONS = CodecOptions()
@@ -78,4 +96,6 @@ def _parse_codec_options(options):
         tz_aware=options.get(
             'tz_aware', DEFAULT_CODEC_OPTIONS.tz_aware),
         uuid_representation=options.get(
-            'uuidrepresentation', DEFAULT_CODEC_OPTIONS.uuid_representation))
+            'uuidrepresentation', DEFAULT_CODEC_OPTIONS.uuid_representation),
+        unicode_decode_error_handler=options.get(
+            'unicode_decode_error_handler', "strict"))

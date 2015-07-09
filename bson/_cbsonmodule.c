@@ -118,10 +118,12 @@ _downcast_and_check(Py_ssize_t size, int extra) {
  */
 int convert_codec_options(PyObject* options_obj, void* p) {
     codec_options_t* options = (codec_options_t*)p;
-    if (!PyArg_ParseTuple(options_obj, "Obb",
+    options->unicode_decode_error_handler = NULL;
+    if (!PyArg_ParseTuple(options_obj, "Obbz",
                           &options->document_class,
                           &options->tz_aware,
-                          &options->uuid_rep)) {
+                          &options->uuid_rep,
+                          &options->unicode_decode_error_handler)) {
         return 0;
     }
 
@@ -137,6 +139,7 @@ void default_codec_options(codec_options_t* options) {
     // TODO: set to "1". PYTHON-526, setting tz_aware=True by default.
     options->tz_aware = 0;
     options->uuid_rep = PYTHON_LEGACY;
+    options->unicode_decode_error_handler = NULL;
 }
 
 void destroy_codec_options(codec_options_t* options) {
@@ -1560,7 +1563,9 @@ static PyObject* get_value(PyObject* self, const char* buffer,
             if (buffer[*position + value_length - 1]) {
                 goto invalid;
             }
-            value = PyUnicode_DecodeUTF8(buffer + *position, value_length - 1, "strict");
+            value = PyUnicode_DecodeUTF8(
+                buffer + *position, value_length - 1,
+                options->unicode_decode_error_handler);
             if (!value) {
                 goto invalid;
             }
@@ -1916,7 +1921,9 @@ static PyObject* get_value(PyObject* self, const char* buffer,
             if (pattern_length > BSON_MAX_SIZE || max < pattern_length) {
                 goto invalid;
             }
-            pattern = PyUnicode_DecodeUTF8(buffer + *position, pattern_length, "strict");
+            pattern = PyUnicode_DecodeUTF8(
+                buffer + *position, pattern_length,
+                options->unicode_decode_error_handler);
             if (!pattern) {
                 goto invalid;
             }
@@ -1980,8 +1987,9 @@ static PyObject* get_value(PyObject* self, const char* buffer,
                 goto invalid;
             }
 
-            collection = PyUnicode_DecodeUTF8(buffer + *position,
-                                              coll_length - 1, "strict");
+            collection = PyUnicode_DecodeUTF8(
+                buffer + *position, coll_length - 1,
+                options->unicode_decode_error_handler);
             if (!collection) {
                 goto invalid;
             }
@@ -2026,7 +2034,9 @@ static PyObject* get_value(PyObject* self, const char* buffer,
             if (buffer[*position + value_length - 1]) {
                 goto invalid;
             }
-            code = PyUnicode_DecodeUTF8(buffer + *position, value_length - 1, "strict");
+            code = PyUnicode_DecodeUTF8(
+                buffer + *position, value_length - 1,
+                options->unicode_decode_error_handler);
             if (!code) {
                 goto invalid;
             }
@@ -2068,7 +2078,9 @@ static PyObject* get_value(PyObject* self, const char* buffer,
             if (buffer[*position + code_size - 1]) {
                 goto invalid;
             }
-            code = PyUnicode_DecodeUTF8(buffer + *position, code_size - 1, "strict");
+            code = PyUnicode_DecodeUTF8(
+                buffer + *position, code_size - 1,
+                options->unicode_decode_error_handler);
             if (!code) {
                 goto invalid;
             }
@@ -2261,8 +2273,29 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
             Py_DECREF(dict);
             return NULL;
         }
-        name = PyUnicode_DecodeUTF8(string + position, name_length, "strict");
+        name = PyUnicode_DecodeUTF8(
+            string + position, name_length,
+            options->unicode_decode_error_handler);
         if (!name) {
+            /* If NULL is returned then wrap the UnicodeDecodeError
+               in an InvalidBSON error */
+            PyObject *etype, *evalue, *etrace;
+            PyObject *InvalidBSON;
+
+            PyErr_Fetch(&etype, &evalue, &etrace);
+            InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                Py_DECREF(etype);
+                etype = InvalidBSON;
+
+                if (evalue) {
+                    PyObject *msg = PyObject_Str(evalue);
+                    Py_DECREF(evalue);
+                    evalue = msg;
+                }
+                PyErr_NormalizeException(&etype, &evalue, &etrace);
+            }
+            PyErr_Restore(etype, evalue, etrace);
             Py_DECREF(dict);
             return NULL;
         }

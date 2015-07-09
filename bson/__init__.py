@@ -98,10 +98,11 @@ def _get_int(data, position, dummy0, dummy1):
     return _UNPACK_INT(data[position:end])[0], end
 
 
-def _get_c_string(data, position):
+def _get_c_string(data, position, opts):
     """Decode a BSON 'C' string to python unicode string."""
     end = data.index(b"\x00", position)
-    return _utf_8_decode(data[position:end], None, True)[0], end + 1
+    return _utf_8_decode(data[position:end],
+                         opts.unicode_decode_error_handler, True)[0], end + 1
 
 
 def _get_float(data, position, dummy0, dummy1):
@@ -110,7 +111,7 @@ def _get_float(data, position, dummy0, dummy1):
     return _UNPACK_FLOAT(data[position:end])[0], end
 
 
-def _get_string(data, position, obj_end, dummy):
+def _get_string(data, position, obj_end, opts):
     """Decode a BSON string to python unicode string."""
     length = _UNPACK_INT(data[position:position + 4])[0]
     position += 4
@@ -119,7 +120,8 @@ def _get_string(data, position, obj_end, dummy):
     end = position + length - 1
     if data[end:end + 1] != b"\x00":
         raise InvalidBSON("invalid end of string")
-    return _utf_8_decode(data[position:end], None, True)[0], end + 1
+    return _utf_8_decode(data[position:end],
+                         opts.unicode_decode_error_handler, True)[0], end + 1
 
 
 def _get_object(data, position, obj_end, opts):
@@ -235,10 +237,10 @@ def _get_code_w_scope(data, position, obj_end, opts):
     return Code(code, scope), position
 
 
-def _get_regex(data, position, dummy0, dummy1):
+def _get_regex(data, position, dummy0, opts):
     """Decode a BSON regex to bson.regex.Regex or a python pattern object."""
-    pattern, position = _get_c_string(data, position)
-    bson_flags, position = _get_c_string(data, position)
+    pattern, position = _get_c_string(data, position, opts)
+    bson_flags, position = _get_c_string(data, position, opts)
     bson_re = Regex(pattern, bson_flags)
     return bson_re, position
 
@@ -295,7 +297,7 @@ def _element_to_dict(data, position, obj_end, opts):
     """Decode a single key, value pair."""
     element_type = data[position:position + 1]
     position += 1
-    element_name, position = _get_c_string(data, position)
+    element_name, position = _get_c_string(data, position, opts)
     value, position = _ELEMENT_GETTER[element_type](data,
                                                     position, obj_end, opts)
     return element_name, value, position
