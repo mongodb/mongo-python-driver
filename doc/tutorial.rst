@@ -145,7 +145,7 @@ of the collections in our database:
 .. doctest::
 
   >>> db.collection_names()
-  [u'system.indexes', u'posts']
+  [u'posts', u'system.indexes']
 
 .. note:: The *system.indexes* collection is a special internal
    collection that was created automatically.
@@ -342,33 +342,46 @@ by author.
 
 Indexing
 --------
-To make the above query fast we can add a compound index on
-``"date"`` and ``"author"``. To start, lets use the
-:meth:`~pymongo.cursor.Cursor.explain` method to get some information
-about how the query is being performed without the index:
+
+Adding indexes can help accelerate certain queries and can also add additional
+functionality to querying and storing documents. In this example, we'll
+demonstrate how to create a `unique index
+<http://docs.mongodb.org/manual/core/index-unique/>`_ on a key that rejects
+documents whose value for that key already exists in the index.
+
+First, we'll need to create the index:
 
 .. doctest::
 
-  >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["cursor"]
-  u'BasicCursor'
-  >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["nscanned"]
-  3
+   >>> result = db.profiles.create_index([('user_id', pymongo.ASCENDING)],
+   ...                                   unique=True)
+   >>> [idx['name']
+   ...  for idx in db.system.indexes.find({'ns': 'test-database.profiles'})]
+   [u'_id_', u'user_id_1']
 
-We can see that the query is using the *BasicCursor* and scanning over
-all 3 documents in the collection. Now let's add a compound index and
-look at the same information:
+Notice that we have two indexes now: one is the index on ``_id`` that MongoDB
+creates automatically, and the other is the index on ``user_id`` we just
+created.
+
+Now let's set up some user profiles:
 
 .. doctest::
 
-  >>> from pymongo import ASCENDING, DESCENDING
-  >>> posts.create_index([("date", DESCENDING), ("author", ASCENDING)])
-  u'date_-1_author_1'
-  >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["cursor"]
-  u'BtreeCursor date_-1_author_1'
-  >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["nscanned"]
-  2
+   >>> user_profiles = [
+   ...     {'user_id': 211, 'name': 'Luke'},
+   ...     {'user_id': 212, 'name': 'Ziltoid'}]
+   >>> result = db.profiles.insert_many(user_profiles)
 
-Now the query is using a *BtreeCursor* (the index) and only scanning
-over the 2 matching documents.
+The index prevents us from inserting a document whose ``user_id`` is already in
+the collection:
+
+.. doctest::
+
+   >>> new_profile = {'user_id': 213, 'name': 'Drew'}
+   >>> duplicate_profile = {'user_id': 212, 'name': 'Tommy'}
+   >>> result = db.profiles.insert_one(new_profile)  # This is fine.
+   >>> result = db.profiles.insert_one(duplicate_profile)
+   Traceback (most recent call last):
+   pymongo.errors.DuplicateKeyError: E11000 duplicate key error index: test_database.profiles.$user_id_1 dup key: { : 212 }
 
 .. seealso:: The MongoDB documentation on `indexes <http://www.mongodb.org/display/DOCS/Indexes>`_

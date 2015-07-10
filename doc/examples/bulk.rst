@@ -81,7 +81,6 @@ describing the type and count of operations performed.
    'upserted': [{u'_id': 4, u'index': 5}],
    'writeConcernErrors': [],
    'writeErrors': []}
-  >>>
 
 .. warning:: ``nModified`` is only reported by MongoDB 2.6 and later. When
   connected to an earlier server version, or in certain mixed version sharding
@@ -107,7 +106,7 @@ the failure.
   >>> try:
   ...     bulk.execute()
   ... except BulkWriteError as bwe:
-  ...     pprint(bwe.details)
+  ...     pprint(bwe.details)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
   ... 
   {'nInserted': 0,
    'nMatched': 1,
@@ -117,10 +116,9 @@ the failure.
    'upserted': [],
    'writeConcernErrors': [],
    'writeErrors': [{u'code': 11000,
-                    u'errmsg': u'insertDocument :: caused by :: 11000 E11000 duplicate key error index: bulk_example.test.$_id_  dup key: { : 4 }',
+                    u'errmsg': u'...E11000 duplicate key error index: bulk_example.test.$_id_  dup key: { : 4 }',
                     u'index': 1,
                     u'op': {'_id': 4}}]}
-  >>>
 
 .. _unordered_bulk:
 
@@ -145,7 +143,7 @@ and fourth operations succeed.
   >>> try:
   ...     bulk.execute()
   ... except BulkWriteError as bwe:
-  ...     pprint(bwe.details)
+  ...     pprint(bwe.details)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
   ... 
   {'nInserted': 0,
    'nMatched': 1,
@@ -155,14 +153,13 @@ and fourth operations succeed.
    'upserted': [],
    'writeConcernErrors': [],
    'writeErrors': [{u'code': 11000,
-                    u'errmsg': u'insertDocument :: caused by :: 11000 E11000 duplicate key error index: bulk_example.test.$_id_  dup key: { : 1 }',
+                    u'errmsg': u'...E11000 duplicate key error index: bulk_example.test.$_id_  dup key: { : 1 }',
                     u'index': 0,
                     u'op': {'_id': 1}},
                    {u'code': 11000,
-                    u'errmsg': u'insertDocument :: caused by :: 11000 E11000 duplicate key error index: bulk_example.test.$_id_  dup key: { : 3 }',
+                    u'errmsg': u'...E11000 duplicate key error index: bulk_example.test.$_id_  dup key: { : 3 }',
                     u'index': 2,
                     u'op': {'_id': 3}}]}
-  >>>
 
 Write Concern
 .............
@@ -182,7 +179,7 @@ regardless of execution order.
   >>> bulk.insert({'a': 2})
   >>> bulk.insert({'a': 3})
   >>> try:
-  ...     bulk.execute({'w': 4, 'wtimeout': 1})
+  ...     bulk.execute({'w': 3, 'wtimeout': 1})
   ... except BulkWriteError as bwe:
   ...     pprint(bwe.details)
   ... 
@@ -196,5 +193,3 @@ regardless of execution order.
                            u'errInfo': {u'wtimeout': True},
                            u'errmsg': u'waiting for replication timed out'}],
    'writeErrors': []}
-  >>>
-

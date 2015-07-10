@@ -32,18 +32,15 @@ Inserting Places
 
 Locations in MongoDB are represented using either embedded documents
 or lists where the first two elements are coordinates. Here, we'll
-insert a couple of example locations:
+insert a few example locations:
 
 .. doctest::
 
-  >>> db.places.insert({"loc": [2, 5]})
-  ObjectId('...')
-  >>> db.places.insert({"loc": [30, 5]})
-  ObjectId('...')
-  >>> db.places.insert({"loc": [1, 2]})
-  ObjectId('...')
-  >>> db.places.insert({"loc": [4, 4]})
-  ObjectId('...')
+  >>> result = db.places.insert([
+  ...     {"loc": [2, 5]},
+  ...     {"loc": [30, 5]},
+  ...     {"loc": [1, 2]},
+  ...     {"loc": [4, 4]}])
 
 Querying
 --------
@@ -53,7 +50,7 @@ Using the geospatial index we can find documents near another point:
 .. doctest::
 
   >>> for doc in db.places.find({"loc": {"$near": [3, 6]}}).limit(3):
-  ...   repr(doc)
+  ...   repr(doc)  # doctest: +ELLIPSIS
   ...
   "{u'loc': [2, 5], u'_id': ObjectId('...')}"
   "{u'loc': [4, 4], u'_id': ObjectId('...')}"
@@ -64,8 +61,9 @@ The $maxDistance operator requires the use of :class:`~bson.son.SON`:
 .. doctest::
 
   >>> from bson.son import SON
-  >>> for doc in db.places.find({"loc": SON([("$near", [3, 6]), ("$maxDistance", 100)])}).limit(3):
-  ...   repr(doc)
+  >>> query = {"loc": SON([("$near", [3, 6]), ("$maxDistance", 100)])}
+  >>> for doc in db.places.find(query).limit(3):
+  ...   repr(doc)  # doctest: +ELLIPSIS
   ...
   "{u'loc': [2, 5], u'_id': ObjectId('...')}"
   "{u'loc': [4, 4], u'_id': ObjectId('...')}"
@@ -76,26 +74,27 @@ It's also possible to query for all items within a given rectangle
 
 .. doctest::
 
-  >>> for doc in db.places.find({"loc": {"$within": {"$box": [[2, 2], [5, 6]]}}}):
-  ...   repr(doc)
+  >>> query = {"loc": {"$within": {"$box": [[2, 2], [5, 6]]}}}
+  >>> for doc in db.places.find(query).sort('_id'):
+  ...   repr(doc)  # doctest: +ELLIPSIS
   ...
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
   "{u'loc': [2, 5], u'_id': ObjectId('...')}"
+  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
 
 Or circle (specified by center point and radius):
 
 .. doctest::
 
-  >>> for doc in db.places.find({"loc": {"$within": {"$center": [[0, 0], 6]}}}):
-  ...   repr(doc)
+  >>> query = {"loc": {"$within": {"$center": [[0, 0], 6]}}}
+  >>> for doc in db.places.find(query).sort('_id'):
+  ...   repr(doc)  # doctest: +ELLIPSIS
   ...
+  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
   "{u'loc': [1, 2], u'_id': ObjectId('...')}"
   "{u'loc': [4, 4], u'_id': ObjectId('...')}"
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
 
 geoNear queries are also supported using :class:`~bson.son.SON`::
 
   >>> from bson.son import SON
   >>> db.command(SON([('geoNear', 'places'), ('near', [1, 2])]))
   {u'ok': 1.0, u'stats': ...}
-
