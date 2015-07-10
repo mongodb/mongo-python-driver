@@ -146,6 +146,7 @@ collection, configured to use :class:`~bson.son.SON` instead of dict:
   CodecOptions(document_class=<class 'bson.son.SON'>,
                tz_aware=False,
                uuid_representation=PYTHON_LEGACY,
+               unicode_decode_error_handler='strict',
                tzinfo=None)
   >>> collection_son = collection.with_options(codec_options=opts)
 
