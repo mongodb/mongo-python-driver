@@ -351,8 +351,8 @@ First, we'll need to create the index:
 
    >>> result = db.profiles.create_index([('user_id', pymongo.ASCENDING)],
    ...                                   unique=True)
-   >>> [idx['name'] for idx in db.profiles.list_indexes()]
-   [u'_id_', u'user_id_1']
+   >>> list(db.profiles.index_information())
+   [u'user_id_1', u'_id_']
 
 Notice that we have two indexes now: one is the index on ``_id`` that MongoDB
 creates automatically, and the other is the index on ``user_id`` we just
