@@ -144,8 +144,8 @@ of the collections in our database:
 
 .. doctest::
 
-  >>> db.collection_names()
-  [u'posts', u'system.indexes']
+  >>> db.collection_names(include_system_collections=False)
+  [u'posts']
 
 .. note:: The *system.indexes* collection is a special internal
    collection that was created automatically.
@@ -355,9 +355,8 @@ First, we'll need to create the index:
 
    >>> result = db.profiles.create_index([('user_id', pymongo.ASCENDING)],
    ...                                   unique=True)
-   >>> [idx['name']
-   ...  for idx in db.system.indexes.find({'ns': 'test-database.profiles'})]
-   [u'_id_', u'user_id_1']
+   >>> list(db.profiles.index_information())
+   [u'user_id_1', u'_id_']
 
 Notice that we have two indexes now: one is the index on ``_id`` that MongoDB
 creates automatically, and the other is the index on ``user_id`` we just
