@@ -1052,9 +1052,12 @@ class TestCursor(IntegrationTest):
 
         run_with_profiling(find)
 
+        # MongoDB 3.1.5 changed the ns for commands.
+        regex = {'$regex': 'pymongo_test.(\$cmd|test)'}
+
         def count():
             self.db.test.find().comment('foo').count()
-            op = self.db.system.profile.find({'ns': 'pymongo_test.$cmd',
+            op = self.db.system.profile.find({'ns': regex,
                                               'op': 'command',
                                               'command.count': 'test',
                                               'command.$comment': 'foo'})
@@ -1064,7 +1067,7 @@ class TestCursor(IntegrationTest):
 
         def distinct():
             self.db.test.find().comment('foo').distinct('type')
-            op = self.db.system.profile.find({'ns': 'pymongo_test.$cmd',
+            op = self.db.system.profile.find({'ns': regex,
                                               'op': 'command',
                                               'command.distinct': 'test',
                                               'command.$comment': 'foo'})
