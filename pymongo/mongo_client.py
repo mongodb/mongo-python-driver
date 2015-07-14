@@ -558,11 +558,19 @@ class MongoClient(common.BaseObject):
 
     @property
     def host(self):
-        """Current connected host.
+        """**DEPRECATED** Current connected host.
 
+        .. warning:: :attr:`host` is deprecated in this version of PyMongo and
+          removed in PyMongo 3.0. Use :attr:`address` instead.
+
+        .. versionchanged:: 2.9
+           Deprecated :attr:`host`.
         .. versionchanged:: 1.3
            ``host`` is now a property rather than a method.
         """
+        warnings.warn("host is deprecated in this version of PyMongo and "
+                      "removed in PyMongo 3. Use address instead.",
+                      DeprecationWarning, stacklevel=2)
         member = self.__member
         if member:
             return member.host[0]
@@ -571,16 +579,34 @@ class MongoClient(common.BaseObject):
 
     @property
     def port(self):
-        """Current connected port.
+        """**DEPRECATED** Current connected port.
 
+        .. warning:: :attr:`port` is deprecated in this version of PyMongo and
+          removed in PyMongo 3.0. Use :attr:`address` instead.
+
+        .. versionchanged:: 2.9
+           Deprecated :attr:`port`.
         .. versionchanged:: 1.3
            ``port`` is now a property rather than a method.
         """
+        warnings.warn("port is deprecated in this version of PyMongo and "
+                      "removed in PyMongo 3. Use address instead.",
+                      DeprecationWarning, stacklevel=2)
         member = self.__member
         if member:
             return member.host[1]
 
+    @property
+    def address(self):
+        """(host, port) of the current standalone, primary, or mongos, or None.
+
+        .. versionadded:: 2.9
+        """
+        member = self.__member
+        if member:
+            return member.host
         return None
+
     @property
     def is_primary(self):
         """If this instance is connected to a standalone, a replica set
@@ -1415,7 +1441,7 @@ class MongoClient(common.BaseObject):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.host == other.host and self.port == other.port
+            return self.address == other.address
         return NotImplemented
 
     def __ne__(self, other):
@@ -1423,7 +1449,7 @@ class MongoClient(common.BaseObject):
 
     def __repr__(self):
         if len(self.__nodes) == 1:
-            return "MongoClient(%r, %r)" % (self.host, self.port)
+            return "MongoClient(%r, %r)" % self.address
         else:
             return "MongoClient(%r)" % ["%s:%d" % n for n in self.__nodes]
 

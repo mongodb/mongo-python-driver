@@ -264,6 +264,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         try:
             warnings.simplefilter("ignore", DeprecationWarning)
             self.assertEqual(c.primary, self.primary)
+            self.assertEqual(c.address, self.primary)
             self.assertEqual(c.hosts, self.hosts)
             self.assertEqual(c.arbiters, self.arbiters)
             self.assertEqual(c.max_pool_size, 100)
@@ -296,6 +297,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                                       tag_sets=copy.deepcopy(tag_sets),
                                       secondary_acceptable_latency_ms=77)
             self.assertEqual(c.primary, self.primary)
+            self.assertEqual(c.address, self.primary)
             self.assertEqual(c.hosts, self.hosts)
             self.assertEqual(c.arbiters, self.arbiters)
             self.assertEqual(c.max_pool_size, 25)

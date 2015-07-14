@@ -162,8 +162,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             ctx.exit()
 
         c.pymongo_test.test.find_one()  # Auto-connect.
-        self.assertEqual(host, c.host)
-        self.assertEqual(port, c.port)
+        self.assertEqual((host, port), c.address)
 
         if version.at_least(c, (2, 5, 4, -1)):
             self.assertTrue(c.max_wire_version > 0)
@@ -219,8 +218,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                          "MongoClient('%s', %d)" % (host, port))
 
     def test_getters(self):
-        self.assertEqual(MongoClient(host, port).host, host)
-        self.assertEqual(MongoClient(host, port).port, port)
+        self.assertEqual(MongoClient(host, port).address, (host, port))
         self.assertEqual(set([(host, port)]),
                          MongoClient(host, port).nodes)
 
@@ -1056,7 +1054,7 @@ with client.start_request() as request:
         c.db.collection.find_one()  # Connect.
 
         # Which member did we use?
-        used_host = '%s:%s' % (c.host, c.port)
+        used_host = '%s:%s' % c.address
         expected_min, expected_max = c.mock_wire_versions[used_host]
         self.assertEqual(expected_min, c.min_wire_version)
         self.assertEqual(expected_max, c.max_wire_version)
@@ -1066,7 +1064,7 @@ with client.start_request() as request:
         c.set_wire_version_range('c:3', 0, 0)
         c.close()
         c.db.collection.find_one()
-        used_host = '%s:%s' % (c.host, c.port)
+        used_host = '%s:%s' % c.address
         expected_min, expected_max = c.mock_wire_versions[used_host]
         self.assertEqual(expected_min, c.min_wire_version)
         self.assertEqual(expected_max, c.max_wire_version)
@@ -1184,8 +1182,7 @@ class TestMongoClientFailover(unittest.TestCase):
             host='b:2',  # Pass a secondary.
             replicaSet='rs')
 
-        self.assertEqual('a', c.host)
-        self.assertEqual(1, c.port)
+        self.assertEqual(('a', 1), c.address)
         self.assertEqual(3, len(c.nodes))
 
         # Fail over.
@@ -1195,8 +1192,7 @@ class TestMongoClientFailover(unittest.TestCase):
         # Force reconnect.
         c.close()
         c.db.collection.find_one()
-        self.assertEqual('b', c.host)
-        self.assertEqual(2, c.port)
+        self.assertEqual(('b', 2), c.address)
 
         # a:1 is still in nodes.
         self.assertEqual(3, len(c.nodes))

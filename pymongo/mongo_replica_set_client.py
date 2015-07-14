@@ -902,6 +902,16 @@ class MongoReplicaSetClient(common.BaseObject):
         return self.__rs_state.hosts
 
     @property
+    def address(self):
+        """The (host, port) of the current primary of the replica set.
+
+        Returns None if there is no primary.
+
+        .. versionadded:: 2.9
+        """
+        return self.__rs_state.writer
+
+    @property
     def primary(self):
         """The (host, port) of the current primary of the replica set.
 

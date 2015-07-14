@@ -93,7 +93,7 @@ class TestMongosHA(unittest.TestCase):
         self.assertEqual(len(mock_hosts), len(client.nodes))
 
         # Our chosen mongos goes down.
-        client.kill_host('%s:%s' % (client.host, client.port))
+        client.kill_host('%s:%s' % client.address)
 
         # Trigger failover. AutoReconnect should be raised exactly once.
         errors = []
@@ -146,7 +146,7 @@ class TestMongosHA(unittest.TestCase):
         # No error
         client.db.collection.find_one()
         # Our chosen mongos goes down.
-        client.kill_host('%s:%s' % (client.host, client.port))
+        client.kill_host('%s:%s' % client.address)
         try:
             client.db.collection.find_one()
         except:
@@ -185,7 +185,7 @@ class TestMongosHA(unittest.TestCase):
         # secondaryAcceptableLatencyMS.
         client.db.collection.find_one()
         # Our chosen mongos goes down.
-        client.kill_host('%s:%s' % (client.host, client.port))
+        client.kill_host('%s:%s' % client.address)
         try:
             client.db.collection.find_one()
         except:

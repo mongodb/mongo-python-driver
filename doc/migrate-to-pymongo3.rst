@@ -469,6 +469,21 @@ can be replaced by this with PyMongo 2.9 or later:
 
   >>> client.close()
 
+The host and port attributes are removed
+........................................
+
+Code like this::
+
+  >>> host = client.host
+  >>> port = client.port
+
+can be replaced by this with PyMongo 2.9 or later:
+
+.. doctest::
+
+  >>> address = client.address
+  >>> host, port = address or (None, None)
+
 BSON
 ----
 

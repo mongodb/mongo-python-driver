@@ -1440,8 +1440,8 @@ class TestCollection(unittest.TestCase):
         db = self.db
         if self.setname:
             # Test that getMore messages are sent to the right server.
-            db = MongoReplicaSetClient(host=self.client.host,
-                                       port=self.client.port,
+            db = MongoReplicaSetClient(host=self.client.address[0],
+                                       port=self.client.address[1],
                                        replicaSet=self.setname,
                                        readPreference='secondary')[db.name]
 
@@ -1482,8 +1482,8 @@ class TestCollection(unittest.TestCase):
         db.drop_collection("test")
         if self.setname:
             # Test that getMore messages are sent to the right server.
-            db = MongoReplicaSetClient(host=self.client.host,
-                                       port=self.client.port,
+            db = MongoReplicaSetClient(host=self.client.address[0],
+                                       port=self.client.address[1],
                                        replicaSet=self.setname,
                                        readPreference='secondary')[db.name]
         coll = db.test

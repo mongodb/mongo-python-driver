@@ -41,8 +41,7 @@ class TestSecondaryBecomesStandalone(unittest.TestCase):
             replicaSet='rs')
 
         # MongoClient connects to primary by default.
-        self.assertEqual('a', c.host)
-        self.assertEqual(1, c.port)
+        self.assertEqual(('a', 1), c.address)
 
         # C is brought up as a standalone.
         c.mock_members.remove('c:3')
@@ -62,8 +61,7 @@ class TestSecondaryBecomesStandalone(unittest.TestCase):
         else:
             self.fail("MongoClient didn't raise AutoReconnect")
 
-        self.assertEqual(None, c.host)
-        self.assertEqual(None, c.port)
+        self.assertEqual(None, c.address)
 
     def test_replica_set_client(self):
         c = MockReplicaSetClient(
@@ -137,8 +135,7 @@ class TestSecondaryAdded(unittest.TestCase):
             replicaSet='rs')
 
         # MongoClient connects to primary by default.
-        self.assertEqual('a', c.host)
-        self.assertEqual(1, c.port)
+        self.assertEqual(('a', 1), c.address)
         self.assertEqual(set([('a', 1), ('b', 2)]), c.nodes)
 
         # C is added.
@@ -148,8 +145,7 @@ class TestSecondaryAdded(unittest.TestCase):
         c.close()
         c.db.collection.find_one()
 
-        self.assertEqual('a', c.host)
-        self.assertEqual(1, c.port)
+        self.assertEqual(('a', 1), c.address)
         self.assertEqual(set([('a', 1), ('b', 2), ('c', 3)]), c.nodes)
 
     def test_replica_set_client(self):
