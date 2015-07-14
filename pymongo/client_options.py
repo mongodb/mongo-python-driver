@@ -105,6 +105,8 @@ class ClientOptions(object):
     """ClientOptions"""
 
     def __init__(self, username, password, database, options):
+        self.__options = options
+
         options = dict([validate(opt, val) for opt, val in iteritems(options)])
 
         self.__codec_options = _parse_codec_options(options)
@@ -120,6 +122,17 @@ class ClientOptions(object):
         self.__read_preference = _parse_read_preference(options)
         self.__replica_set_name = options.get('replicaset')
         self.__write_concern = _parse_write_concern(options)
+        self.__connect = options.get('connect')
+
+    @property
+    def _options(self):
+        """The original options used to create this ClientOptions."""
+        return self.__options
+
+    @property
+    def connect(self):
+        """Whether to begin discovering a MongoDB topology automatically."""
+        return self.__connect
 
     @property
     def codec_options(self):

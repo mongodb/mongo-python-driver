@@ -249,10 +249,25 @@ class TestClient(IntegrationTest):
                                   serverSelectionTimeoutMS=10))
 
     def test_repr(self):
-        # Making host a str avoids the 'u' prefix in Python 2, so the repr is
-        # the same in Python 2 and 3.
-        self.assertEqual(repr(MongoClient(str(host), port)),
-                         "MongoClient('%s', %d)" % (host, port))
+        # Used to test 'eval' below.
+        import bson
+
+        client = MongoClient(
+            'mongodb://localhost:27017,localhost:27018/?replicaSet=replset'
+            '&connectTimeoutMS=12345',
+            connect=False, document_class=SON)
+
+        the_repr = repr(client)
+        self.assertIn(
+            "MongoClient(host=['localhost:27017', 'localhost:27018'], "
+            "document_class=bson.son.SON, "
+            "tz_aware=False, "
+            "connect=False, ",
+            the_repr)
+        self.assertIn("connectTimeoutMS='12345'", the_repr)
+        self.assertIn("replicaSet=", the_repr)
+
+        self.assertEqual(eval(the_repr), client)
 
     @client_context.require_replica_set
     def test_repr_replica_set(self):

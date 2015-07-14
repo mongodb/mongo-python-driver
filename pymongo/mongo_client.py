@@ -67,6 +67,9 @@ from pymongo.settings import TopologySettings
 class MongoClient(common.BaseObject):
     HOST = "localhost"
     PORT = 27017
+    # Define order to retrieve options from ClientOptions for __repr__.
+    # No host/port; these are retrieved from TopologySettings.
+    _constructor_args = ('document_class', 'tz_aware', 'connect')
 
     def __init__(
             self,
@@ -315,8 +318,9 @@ class MongoClient(common.BaseObject):
         monitor_class = kwargs.pop('_monitor_class', None)
         condition_class = kwargs.pop('_condition_class', None)
 
-        kwargs['document_class'] = document_class
-        kwargs['tz_aware'] = tz_aware
+        opts['document_class'] = document_class
+        opts['tz_aware'] = tz_aware
+        opts['connect'] = connect
         opts.update(kwargs)
         self.__options = options = ClientOptions(
             username, password, dbase, opts)
@@ -777,13 +781,30 @@ class MongoClient(common.BaseObject):
         return not self == other
 
     def __repr__(self):
-        server_descriptions = self._topology.description.server_descriptions()
-        if len(server_descriptions) == 1:
-            description, = server_descriptions.values()
-            return "MongoClient(%r, %r)" % description.address
-        else:
-            return "MongoClient(%r)" % [
-                "%s:%d" % address for address in server_descriptions]
+        def option_repr(option, value):
+            """Fix options whose __repr__ isn't usable in a constructor."""
+            if option == 'document_class':
+                if value is dict:
+                    return 'document_class=dict'
+                else:
+                    return 'document_class=%s.%s' % (value.__module__,
+                                                     value.__name__)
+            return '%s=%r' % (option, value)
+
+        # Host first...
+        options = ['host=%r' % [
+            '%s:%d' % (host, port)
+            for host, port in self._topology_settings.seeds]]
+        # ... then everything in self._constructor_args...
+        options.extend(
+            option_repr(key, self.__options._options[key])
+            for key in self._constructor_args)
+        # ... then everything else.
+        options.extend(
+            option_repr(key, self.__options._options[key])
+            for key in self.__options._options
+            if key not in set(self._constructor_args))
+        return ("MongoClient(%s)" % ', '.join(options))
 
     def __getattr__(self, name):
         """Get a database by name.

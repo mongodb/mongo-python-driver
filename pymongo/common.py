@@ -428,6 +428,7 @@ VALIDATORS = {
     'document_class': validate_document_class,
     'tz_aware': validate_boolean_or_string,
     'uuidrepresentation': validate_uuid_representation,
+    'connect': validate_boolean
 }
 
 
