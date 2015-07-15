@@ -17,6 +17,7 @@
 
       .. autoattribute:: seeds
       .. autoattribute:: hosts
+      .. autoattribute:: address
       .. autoattribute:: primary
       .. autoattribute:: secondaries
       .. autoattribute:: arbiters
@@ -29,6 +30,7 @@
       .. autoattribute:: min_wire_version
       .. autoattribute:: max_wire_version
       .. autoattribute:: auto_start_request
+      .. autoattribute:: use_greenlets
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
@@ -41,6 +43,9 @@
       .. automethod:: get_default_database
       .. automethod:: get_database
       .. automethod:: close_cursor
+      .. automethod:: start_request
+      .. automethod:: in_request
+      .. automethod:: end_request
       .. automethod:: alive
       .. autoattribute:: uuid_subtype
       .. autoattribute:: slave_okay

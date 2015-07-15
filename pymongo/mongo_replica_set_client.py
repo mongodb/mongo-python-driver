@@ -990,7 +990,7 @@ class MongoReplicaSetClient(common.BaseObject):
           with :meth:`~pymongo.mongo_client.MongoClient.get_database`,
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` instead.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.9
           Deprecated document_class.
@@ -1015,7 +1015,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
     @property
     def tz_aware(self):
-        """Does this client return timezone-aware datetimes?
+        """**DEPRECATED** Does this client return timezone-aware datetimes?
 
         .. warning:: :attr:`tz_aware` is deprecated in this version of PyMongo
           and removed in PyMongo 3. See :attr:`codec_options` instead.
@@ -1856,7 +1856,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         .. warning:: :meth:`start_request`, :meth:`in_request`,
           and :meth:`end_request` are deprecated, and removed in PyMongo 3.
-          See :doc:`/migrate-to-pymongo3` for more information.
+          See the :doc:`/migrate-to-pymongo3` for more information.
 
         .. versionchanged:: 2.8
            Deprecated start_request.
@@ -1884,7 +1884,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         .. warning:: :meth:`start_request`, :meth:`in_request`,
           and :meth:`end_request` are deprecated in this version of PyMongo
-          and removed in PyMongo 3. See :doc:`/migrate-to-pymongo3` for more
+          and removed in PyMongo 3. See the :doc:`/migrate-to-pymongo3` for more
           information.
 
         .. versionchanged:: 2.8
@@ -1910,7 +1910,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         .. warning:: :meth:`start_request`, :meth:`in_request`,
           and :meth:`end_request` are deprecated in this version of PyMongo and
-          removed in PyMongo 3. See :doc:`/migrate-to-pymongo3` for more
+          removed in PyMongo 3. See the :doc:`/migrate-to-pymongo3` for more
           information.
 
         .. versionchanged:: 2.8

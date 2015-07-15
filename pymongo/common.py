@@ -587,7 +587,7 @@ class BaseObject(object):
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` to set write
           concern.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.9
           Deprecated directly setting write_concern.
@@ -607,7 +607,7 @@ class BaseObject(object):
           :meth:`~pymongo.mongo_client.MongoClient.get_database`,
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` instead.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.1
            Deprecated slave_okay.
@@ -637,7 +637,7 @@ class BaseObject(object):
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` to set read
           preference.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.9
           Deprecated directly setting read_preference.
@@ -668,8 +668,10 @@ class BaseObject(object):
 
         .. warning:: :attr:`secondary_acceptable_latency_ms` is deprecated in
           this version of PyMongo and removed in PyMongo 3. Use the
-          `localThresholdMS` :class:`~pymongo.mongo_client.MongoClient` option
-          instead. See :doc:`/migrate-to-pymongo3` for more information.
+          `localThresholdMS` option with
+          :class:`~pymongo.mongo_client.MongoClient` or
+          :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
+          instead. See the :doc:`/migrate-to-pymongo3` for more information.
 
         .. versionchanged:: 2.9
           Deprecated secondary_acceptable_latency_ms.
@@ -711,7 +713,7 @@ class BaseObject(object):
           :meth:`~pymongo.mongo_client.MongoClient.get_database`,
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` instead.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.9
           Deprecated tag_sets.
@@ -742,7 +744,7 @@ class BaseObject(object):
           :meth:`~pymongo.mongo_client.MongoClient.get_database`,
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` instead.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.9
           Deprecated uuid_subtype.
@@ -771,7 +773,7 @@ class BaseObject(object):
           :meth:`~pymongo.mongo_client.MongoClient.get_database`,
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` instead.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.4
           Deprecated safe.
@@ -822,7 +824,7 @@ class BaseObject(object):
           :meth:`~pymongo.mongo_client.MongoClient.get_database`,
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` instead.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.4
            Deprecated set_lasterror_options.
@@ -850,7 +852,7 @@ class BaseObject(object):
           :meth:`~pymongo.mongo_client.MongoClient.get_database`,
           :meth:`~pymongo.database.Database.get_collection`,
           or :meth:`~pymongo.collection.Collection.with_options` instead.
-          See :doc:`/migrate-to-pymongo3` for examples.
+          See the :doc:`/migrate-to-pymongo3` for examples.
 
         .. versionchanged:: 2.4
            Deprecated unset_lasterror_options.

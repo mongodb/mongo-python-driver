@@ -4,6 +4,45 @@ Changelog
 Changes in Version 2.9
 ----------------------
 
+Version 2.9 provides an upgrade path to PyMongo 3.x. Most of the API changes
+from PyMongo 3.0 have been backported in a backward compatible way, allowing
+applications to be written against PyMongo >= 2.9, rather then PyMongo 2.x or
+PyMongo 3.x. See the :doc:`/migrate-to-pymongo3` for detailed examples.
+
+.. note:: There are a number of new deprecations in this release for features
+  that were removed in PyMongo 3.0.
+
+  :class:`~pymongo.mongo_client.MongoClient`:
+    - :attr:`~pymongo.mongo_client.MongoClient.host`
+    - :attr:`~pymongo.mongo_client.MongoClient.port`
+    - :attr:`~pymongo.mongo_client.MongoClient.use_greenlets`
+    - :attr:`~pymongo.mongo_client.MongoClient.document_class`
+    - :attr:`~pymongo.mongo_client.MongoClient.tz_aware`
+    - :attr:`~pymongo.mongo_client.MongoClient.secondary_acceptable_latency_ms`
+    - :attr:`~pymongo.mongo_client.MongoClient.tag_sets`
+    - :attr:`~pymongo.mongo_client.MongoClient.uuid_subtype`
+    - :meth:`~pymongo.mongo_client.MongoClient.disconnect`
+    - :meth:`~pymongo.mongo_client.MongoClient.alive`
+
+  :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`:
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.use_greenlets`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.document_class`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.tz_aware`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.secondary_acceptable_latency_ms`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.tag_sets`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.uuid_subtype`
+    - :meth:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.alive`
+
+  :class:`~pymongo.database.Database`:
+    - :attr:`~pymongo.database.Database.secondary_acceptable_latency_ms`
+    - :attr:`~pymongo.database.Database.tag_sets`
+    - :attr:`~pymongo.database.Database.uuid_subtype`
+
+  :class:`~pymongo.collection.Collection`:
+    - :attr:`~pymongo.collection.Collection.secondary_acceptable_latency_ms`
+    - :attr:`~pymongo.collection.Collection.tag_sets`
+    - :attr:`~pymongo.collection.Collection.uuid_subtype`
+
 .. warning::
   In previous versions of PyMongo, changing the value of
   :attr:`~pymongo.mongo_client.MongoClient.document_class` changed
@@ -70,15 +109,27 @@ Highlights include:
 .. note:: There are a number of deprecations in this release for features that
   will be removed in PyMongo 3.0. These include:
 
-  - :meth:`~pymongo.mongo_client.MongoClient.start_request`
-  - :meth:`~pymongo.mongo_client.MongoClient.in_request`
-  - :meth:`~pymongo.mongo_client.MongoClient.end_request`
-  - :meth:`~pymongo.mongo_client.MongoClient.copy_database`
-  - :meth:`~pymongo.database.Database.error`
-  - :meth:`~pymongo.database.Database.last_status`
-  - :meth:`~pymongo.database.Database.previous_error`
-  - :meth:`~pymongo.database.Database.reset_error_history`
-  - :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
+  :class:`~pymongo.mongo_client.MongoClient`:
+    - :attr:`~pymongo.mongo_client.MongoClient.auto_start_request`
+    - :meth:`~pymongo.mongo_client.MongoClient.start_request`
+    - :meth:`~pymongo.mongo_client.MongoClient.in_request`
+    - :meth:`~pymongo.mongo_client.MongoClient.end_request`
+    - :meth:`~pymongo.mongo_client.MongoClient.copy_database`
+
+  :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`:
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.auto_start_request`
+    - :meth:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.start_request`
+    - :meth:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.in_request`
+    - :meth:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.end_request`
+    - :meth:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.copy_database`
+
+  :class:`~pymongo.database.Database`:
+    - :meth:`~pymongo.database.Database.error`
+    - :meth:`~pymongo.database.Database.last_status`
+    - :meth:`~pymongo.database.Database.previous_error`
+    - :meth:`~pymongo.database.Database.reset_error_history`
+
+  :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
 
   The JSON format for :class:`~bson.timestamp.Timestamp` has changed from
   '{"t": <int>, "i": <int>}' to '{"$timestamp": {"t": <int>, "i": <int>}}'.
