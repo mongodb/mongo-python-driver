@@ -468,8 +468,6 @@ class TestClientAuth(unittest.TestCase):
 
     def test_copy_db(self):
         authed_client = auth_context.client
-        if version.at_least(authed_client, (2, 7, 2)):
-            raise SkipTest("SERVER-17034")
         if is_mongos(authed_client):
             raise SkipTest("SERVER-6427")
 
@@ -969,8 +967,6 @@ class TestReplicaSetClientAuth(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_copy_db(self):
         authed_client = auth_context.client
-        if version.at_least(authed_client, (2, 7, 2)):
-            raise SkipTest("SERVER-17034")
 
         authed_client.admin.add_user("admin", "password")
         c = self._get_client()
