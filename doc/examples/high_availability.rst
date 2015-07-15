@@ -14,10 +14,6 @@ PyMongo makes working with `replica sets
 replica set and show how to handle both initialization and normal
 connections with PyMongo.
 
-.. note:: Replica sets require server version **>= 1.6.0**. Support
-   for connecting to replica sets also requires PyMongo version **>=
-   1.8.0**.
-
 .. mongodoc:: rs
 
 Starting a Replica Set
@@ -65,7 +61,7 @@ tell PyMongo that it's okay to connect to a slave/secondary::
 
   >>> from pymongo import MongoClient, ReadPreference
   >>> c = MongoClient("morton.local:27017",
-                      read_preference=ReadPreference.SECONDARY)
+                      readPreference="secondary")
 
 .. note:: We could have connected to any of the other nodes instead,
    but only the node we initiate from is allowed to contain any
@@ -128,10 +124,8 @@ connect to the replica set and perform a couple of basic operations::
 By checking the host and port, we can see that we're connected to
 *morton.local:27017*, which is the current primary::
 
-  >>> db.connection.host
-  'morton.local'
-  >>> db.connection.port
-  27017
+  >>> db.client.address
+  ('morton.local', 27017)
 
 Now let's bring down that node and see what happens when we run our
 query again::
@@ -156,10 +150,8 @@ the operation will succeed::
 
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
-  >>> db.connection.host
-  'morton.local'
-  >>> db.connection.port
-  27018
+  >>> db.client.address
+  ('morton.local', 27018)
 
 MongoReplicaSetClient
 ~~~~~~~~~~~~~~~~~~~~~
@@ -180,90 +172,95 @@ Secondary Reads
 '''''''''''''''
 
 By default an instance of MongoReplicaSetClient will only send queries to
-the primary member of the replica set. To use secondaries for queries
-we have to change the :class:`~pymongo.read_preferences.ReadPreference`::
+the primary member of the replica set. To prefer secondaries for queries
+we have to change the read preference::
 
-  >>> db = MongoReplicaSetClient("morton.local:27017", replicaSet='foo').test
-  >>> from pymongo.read_preferences import ReadPreference
-  >>> db.read_preference = ReadPreference.SECONDARY_PREFERRED
+  >>> client = MongoReplicaSetClient(
+  ...     "morton.local:27017",
+  ...     replicaSet='foo',
+  ...     readPreference='secondaryPreferred')
 
 Now all queries will be sent to the secondary members of the set. If there are
 no secondary members the primary will be used as a fallback. If you have
 queries you would prefer to never send to the primary you can specify that
-using the ``SECONDARY`` read preference::
+using the ``secondary`` read preference::
 
-  >>> db.read_preference = ReadPreference.SECONDARY
+  >>> client = MongoReplicaSetClient(
+  ...     "morton.local:27017",
+  ...     replicaSet='foo',
+  ...     readPreference='secondary')
 
-Read preference can be set on a client, database, collection, or on a
-per-query basis, e.g.::
+Read preference can also be set on a database or collection, e.g.::
 
-  >>> db.collection.find_one(read_preference=ReadPreference.PRIMARY)
+  >>> from pymongo import ReadPreference
+  >>> db = client.get_database('test', read_preference=ReadPreference.PRIMARY)
+  >>> coll = db.get_collection(
+  ...     'testcoll', read_preference=ReadPreference.NEAREST)
 
-Reads are configured using three options: **read_preference**, **tag_sets**,
-and **secondary_acceptable_latency_ms**.
+Reads are configured using three options: **read preference**, **tag sets**,
+and **local threshold**.
 
-**read_preference**:
+**Read preference**:
 
 - ``PRIMARY``: Read from the primary. This is the default, and provides the
   strongest consistency. If no primary is available, raise
   :class:`~pymongo.errors.AutoReconnect`.
 
-- ``PRIMARY_PREFERRED``: Read from the primary if available, or if there is
-  none, read from a secondary matching your choice of ``tag_sets`` and
-  ``secondary_acceptable_latency_ms``.
+- ``PRIMARY_PREFERRED``: Read from the primary if available, otherwise read
+  from a secondary.
 
-- ``SECONDARY``: Read from a secondary matching your choice of ``tag_sets`` and
-  ``secondary_acceptable_latency_ms``. If no matching secondary is available,
+- ``SECONDARY``: Read from a secondary. If no matching secondary is available,
   raise :class:`~pymongo.errors.AutoReconnect`.
 
-- ``SECONDARY_PREFERRED``: Read from a secondary matching your choice of
-  ``tag_sets`` and ``secondary_acceptable_latency_ms`` if available, otherwise
-  from primary (regardless of the primary's tags and latency).
+- ``SECONDARY_PREFERRED``: Read from a secondary if available, otherwise from
+  the primary.
 
-- ``NEAREST``: Read from any member matching your choice of ``tag_sets`` and
-  ``secondary_acceptable_latency_ms``.
+- ``NEAREST``: Read from any available member.
 
-**tag_sets**:
+**Tag sets**:
 
 Replica-set members can be `tagged
 <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_ according to any
 criteria you choose. By default, MongoReplicaSetClient ignores tags when
-choosing a member to read from, but it can be configured with the ``tag_sets``
-parameter. ``tag_sets`` must be a list of dictionaries, each dict providing tag
+choosing a member to read from, but it can be configured with the
+``readPreferenceTags`` option or the ``tag_sets`` read preference option.
+``tag_sets`` must be a list of dictionaries, each dict providing tag
 values that the replica set member must match. MongoReplicaSetClient tries each
 set of tags in turn until it finds a set of tags with at least one matching
 member. For example, to prefer reads from the New York data center, but fall
 back to the San Francisco data center, tag your replica set members according
-to their location and create a MongoReplicaSetClient like so:
+to their location and create a Database like so::
 
-  >>> rsc = MongoReplicaSetClient(
-  ...     "morton.local:27017",
-  ...     replicaSet='foo'
-  ...     read_preference=ReadPreference.SECONDARY,
-  ...     tag_sets=[{'dc': 'ny'}, {'dc': 'sf'}]
-  ... )
+  >>> from pymongo.read_preferences import Secondary
+  >>> db = client.get_database(
+  ...     'test',
+  ...     read_preference=Secondary(tag_sets=[{'dc': 'ny'}, {'dc': 'sf'}]))
+  >>>
 
 MongoReplicaSetClient tries to find secondaries in New York, then San Francisco,
 and raises :class:`~pymongo.errors.AutoReconnect` if none are available. As an
 additional fallback, specify a final, empty tag set, ``{}``, which means "read
 from any member that matches the mode, ignoring tags."
 
-**secondary_acceptable_latency_ms**:
+**Local threshold**:
 
-If multiple members match the mode and tag sets, MongoReplicaSetClient reads
-from among the nearest members, chosen according to ping time. By default,
-only members whose ping times are within 15 milliseconds of the nearest
-are used for queries. You can choose to distribute reads among members with
-higher latencies by setting ``secondary_acceptable_latency_ms`` to a larger
-number. In that case, MongoReplicaSetClient distributes reads among matching
-members within ``secondary_acceptable_latency_ms`` of the closest member's
-ping time.
+If multiple members match the read preference and tag sets, PyMongo reads from
+among the nearest members, chosen according to ping time. By default, only
+members whose ping times are within 15 milliseconds of the nearest are used for
+queries. You can choose to distribute reads among members with higher latencies
+by setting ``localThresholdMS`` to a larger number::
 
-.. note:: ``secondary_acceptable_latency_ms`` is ignored when talking to a
+  >>> client = pymongo.MongoReplicaSetClient(
+  ...     replicaSet='repl0',
+  ...     readPreference='secondaryPreferred',
+  ...     localThresholdMS=35)
+
+.. note:: ``localThresholdMS`` is ignored when talking to a
   replica set *through* a mongos. The equivalent is the localThreshold_ command
   line option.
 
-.. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+.. _localThreshold:
+  http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
 
 Health Monitoring
 '''''''''''''''''
@@ -307,11 +304,9 @@ Each member of the seed list passed to MongoClient must be a mongos. By checking
 the host, port, and is_mongos attributes we can see that we're connected to
 *morton.local:30001*, a mongos::
 
-  >>> db.connection.host
-  'morton.local'
-  >>> db.connection.port
-  30001
-  >>> db.connection.is_mongos
+  >>> db.client.address
+  ('morton.local', 30001)
+  >>> db.client.is_mongos
   True
 
 Now let's shut down that mongos instance and see what happens when we run our
@@ -335,9 +330,7 @@ operation will succeed::
 
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
-  >>> db.connection.host
-  'morton.local'
-  >>> db.connection.port
-  30002
-  >>> db.connection.is_mongos
+  >>> db.client.address
+  ('morton.local', 30002)
+  >>> db.client.is_mongos
   True

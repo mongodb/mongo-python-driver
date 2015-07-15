@@ -10,7 +10,7 @@ operations executed with a single socket. This feature intended to make
 read-your-writes consistency more likely, even with unacknowledged writes.
 (That is, operations with write concern ``w=0``.)
 
-However, mongos 2.6 doesn't support socket pinning by default, and `mongos 2.8
+However, mongos 2.6 doesn't support socket pinning by default, and `mongos 3.0
 doesn't support it at all`_, so requests provide no benefit with sharding.
 
 In any case, requests are no longer necessary with PyMongo.
@@ -25,4 +25,4 @@ server after the writes complete. This is called "read-your-writes
 consistency." If your application requires this consistency, do not override
 the default write concern with ``w=0``.
 
-.. _mongos 2.8 doesn't support it at all: https://jira.mongodb.org/browse/SERVER-12273
+.. _mongos 3.0 doesn't support it at all: https://jira.mongodb.org/browse/SERVER-12273
