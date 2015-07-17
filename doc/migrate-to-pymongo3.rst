@@ -37,6 +37,11 @@ Warnings can also be changed to errors::
 
   python -Wd -Werror <your application>
 
+.. note:: Not all deprecated features raise :exc:`DeprecationWarning` when
+  used. For example, the :meth:`~pymongo.collection.Collection.find` options
+  renamed in PyMongo 3.0 do not raise :exc:`DeprecationWarning` when used in
+  PyMongo 2.x. See also `Removed features with no migration path`_.
+
 CRUD API
 --------
 
@@ -241,10 +246,24 @@ can be changed to this with PyMongo 2.9 or later:
 
 .. seealso:: :meth:`~pymongo.database.Database.get_collection`
 
-The "tag_sets" attribute is removed
-...................................
+The "tag_sets" option and attribute are removed
+...............................................
 
-Code like this::
+The `tag_sets` MongoClient option is removed. The `read_preference`
+option can be used instead. Code like this::
+
+  >>> client = MongoClient(
+  ...     read_preference=ReadPreference.SECONDARY,
+  ...     tag_sets=[{"dc": "ny"}, {"dc": "sf"}])
+
+can be changed to this with PyMongo 2.9 or later:
+
+.. doctest::
+
+  >>> from pymongo.read_preferences import Secondary
+  >>> client = MongoClient(read_preference=Secondary([{"dc": "ny"}]))
+
+To change the tags sets for a Database or Collection, code like this::
 
   >>> db = client.my_database
   >>> db.read_preference = ReadPreference.SECONDARY
@@ -254,7 +273,6 @@ can be changed to this with PyMongo 2.9 or later:
 
 .. doctest::
 
-  >>> from pymongo.read_preferences import Secondary
   >>> db = client.get_database("my_database",
   ...                          read_preference=Secondary([{"dc": "ny"}]))
 
@@ -506,8 +524,8 @@ can be replaced by this in PyMongo 2.9 or later:
   >>> from bson.son import SON
   >>> encoded = BSON.encode({"a": 1}, codec_options=CodecOptions(SON))
 
-Advice for features removed in PyMongo 3
-----------------------------------------
+Removed features with no migration path
+---------------------------------------
 
 MasterSlaveConnection is removed
 ................................
