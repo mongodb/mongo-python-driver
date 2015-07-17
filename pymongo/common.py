@@ -243,24 +243,58 @@ def validate_read_preference(dummy, value):
         raise ConfigurationError("Not a valid read preference")
 
 
-def validate_tag_sets(dummy, value):
+def _validate_tag_sets_format(option, value):
+    if not isinstance(value, list):
+        raise ConfigurationError("%s %r invalid, must be "
+                                 "a list" % (option, value))
+    elif not value:
+        raise ConfigurationError("%s %r invalid, must be None or contain "
+                                 "at least one set of tags" % (option, value))
+
+
+def _validate_dict_list(option, value):
+    for elt in value:
+        if not isinstance(elt, dict):
+            raise ConfigurationError(
+                "%s %r invalid, must be a dict" % (option, elt))
+
+
+def validate_read_preference_tags(option, value):
+    """Parse readPreferenceTags if passed as a client kwarg.
+    """
+    if value is None:
+        return [{}]
+
+    if isinstance(value, basestring):
+        value = [value]
+    else:
+        _validate_tag_sets_format(option, value)
+        if isinstance(value[0], dict):
+            _validate_dict_list("Tag set", value)
+            return value
+
+    tag_sets = []
+    for tag_set in value:
+        if tag_set == '':
+            tag_sets.append({})
+            continue
+        try:
+            tag_sets.append(dict([tag.split(":")
+                                  for tag in tag_set.split(",")]))
+        except Exception:
+            raise ValueError("%r not a valid "
+                             "value for %s" % (tag_set, option))
+    return tag_sets
+
+
+def validate_tag_sets(option, value):
     """Validate tag sets for a ReplicaSetConnection.
     """
     if value is None:
         return [{}]
 
-    if not isinstance(value, list):
-        raise ConfigurationError((
-            "Tag sets %s invalid, must be a list") % repr(value))
-    if len(value) == 0:
-        raise ConfigurationError((
-            "Tag sets %s invalid, must be None or contain at least one set of"
-            " tags") % repr(value))
-
-    for tags in value:
-        if not isinstance(tags, dict):
-            raise ConfigurationError(
-                "Tag set %s invalid, must be a dict" % repr(tags))
+    _validate_tag_sets_format(option, value)
+    _validate_dict_list("Tag set", value)
 
     return value
 
@@ -372,7 +406,7 @@ VALIDATORS = {
     'ssl_match_hostname': validate_boolean,
     'readpreference': validate_read_preference,
     'read_preference': validate_read_preference,
-    'readpreferencetags': validate_tag_sets,
+    'readpreferencetags': validate_read_preference_tags,
     'tag_sets': validate_tag_sets,
     'secondaryacceptablelatencyms': validate_positive_float_or_zero,
     'secondary_acceptable_latency_ms': validate_positive_float_or_zero,
@@ -678,7 +712,7 @@ class BaseObject(object):
         .. versionadded:: 2.3
 
         .. _localThreshold:
-          http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+          http://docs.mongodb.org/manual/reference/program/mongos/#cmdoption--localThreshold
         """
         return self._secondary_acceptable_latency_ms
 

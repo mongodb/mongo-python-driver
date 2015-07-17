@@ -170,17 +170,18 @@ def _parse_options(opts, delim):
         else:
             options[key] = val
     if 'readpreferencetags' in options:
-        new_tag_sets = []
+        tag_sets = []
         for tag_set in options['readpreferencetags']:
-            tag_dict = {}
+            if tag_set == '':
+                tag_sets.append({})
+                continue
             try:
-                for tag in tag_set.split(","):
-                    tag_parts = tag.split(":")
-                    tag_dict[tag_parts[0]] = tag_parts[1]
-                new_tag_sets.append(tag_dict)
-            except IndexError:
-                new_tag_sets.append({})
-        options['readpreferencetags'] = new_tag_sets
+                tag_sets.append(dict([tag.split(":")
+                                      for tag in tag_set.split(",")]))
+            except Exception:
+                raise ValueError("%s not a valid value "
+                                 "for readpreferencetags" % (tag_set,))
+        options['readpreferencetags'] = tag_sets
     return options
 
 

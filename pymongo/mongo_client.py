@@ -63,7 +63,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from pymongo.member import Member
-from pymongo.read_preferences import ReadPreference
+from pymongo.read_preferences import ReadPreference, _ServerMode
 
 
 EMPTY = b("")
@@ -156,10 +156,6 @@ class MongoClient(common.BaseObject):
           - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
             packets on connected sockets. Defaults to ``False`` (do not send
             keep-alive packets).
-          - `auto_start_request`: Deprecated.
-          - `use_greenlets`: If ``True``, :meth:`start_request()` will ensure
-            that the current greenlet uses the same socket for all
-            operations until :meth:`end_request()`. Defaults to ``False``.
           - `connect`: if True (the default), immediately connect to MongoDB in
             the foreground. Otherwise connect on the first operation.
 
@@ -199,24 +195,15 @@ class MongoClient(common.BaseObject):
             *Ignored by mongos*. Defaults to ``None``.
           - `read_preference`: The read preference for this client. If
             connecting to a secondary then a read preference mode *other* than
-            PRIMARY is required - otherwise all queries will throw
+            primary is required - otherwise all queries will throw
             :class:`~pymongo.errors.AutoReconnect` "not master".
-            See :class:`~pymongo.read_preferences.ReadPreference` for all
-            available read preference options. Defaults to ``PRIMARY``.
-          - `tag_sets`: Ignored unless connecting to a replica set via mongos.
-            Specify a priority-order for tag sets, provide a list of
-            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
-            set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags. Defaults to ``[{}]``, meaning "ignore members'
-            tags."
-          - `secondaryAcceptableLatencyMS`: (integer) Any replica-set member
-            whose ping time is within secondaryAcceptableLatencyMS of the
-            nearest member may accept reads. Default 15 milliseconds.
-            **Ignored by mongos** and must be configured on the command line.
-            See the localThreshold_ option for more information.
-          - `localThresholdMS`: (integer) Alias for
-            secondaryAcceptableLatencyMS. Takes precedence over
-            secondaryAcceptableLatencyMS.
+            See :mod:`~pymongo.read_preferences` for options.
+            Defaults to ``ReadPreference.PRIMARY``.
+          - `localThresholdMS`: (integer) Used with mongos high availability.
+            Any known mongos whose ping time is within localThresholdMS of the
+            nearest member may be chosen during a failover. Default 15
+            milliseconds. Ignored **by** mongos and must be configured on the
+            command line. See the localThreshold_ option for more information.
 
           | **SSL configuration:**
 
@@ -305,14 +292,38 @@ class MongoClient(common.BaseObject):
         pool_class = kwargs.pop('_pool_class', pool.Pool)
         event_class = kwargs.pop('_event_class', None)
 
+        # tag_sets is only supported through kwargs since it must be a list.
+        if "tag_sets" in kwargs:
+            warnings.warn("tag_sets is deprecated in this version of PyMongo "
+                          "and removed in PyMongo 3. Pass a read preference "
+                          "object as read_preference instead",
+                          DeprecationWarning, stacklevel=2)
+
+        # Support _ServerMode through kwargs
+        pref = kwargs.get("read_preference")
+        if isinstance(pref, _ServerMode):
+            kwargs["read_preference"] = pref.mode
+            kwargs["tag_sets"] = pref.tag_sets
+
+        # URI overrides kwargs.
         options = {}
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
             options[option] = value
         options.update(opts)
 
+        # Both of these work in kwargs and URI...
+        if ("secondary_acceptable_latency_ms" in options or
+                "secondaryacceptablelatencyms" in options):
+            warnings.warn("secondary_acceptable_latency_ms and "
+                          "secondaryAcceptableLatencyMS are deprecated. Use "
+                          "localThresholdMS instead",
+                          DeprecationWarning, stacklevel=2)
+
         # localthresholdms takes precedence over secondaryacceptablelatencyms.
         if "localthresholdms" in options:
+            options.pop("secondaryacceptablelatencyms", None)
+            options.pop("secondary_acceptable_latency_ms", None)
             options["secondaryacceptablelatencyms"] = (
                 options["localthresholdms"])
 

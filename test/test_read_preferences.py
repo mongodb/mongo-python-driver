@@ -105,6 +105,39 @@ class TestSlaveOkayMetadataCommands(TestReadPreferencesBase):
         client.pymongo_test.test.index_information()
 
 
+class TestClientReadPreference(unittest.TestCase):
+
+    def test_client_read_preference(self):
+        preferences = (
+            Primary(), Secondary([{'dc': 'ny'}]), Nearest([{'dc': 'ny'}, {}]))
+        tags = [{'foo': 'bar'}]
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            for pref in preferences:
+                client = MongoClient(read_preference=pref, connect=False)
+                self.assertEqual(client.read_preference, pref.mode)
+                self.assertEqual(client.tag_sets, pref.tag_sets)
+
+                client = MongoClient(
+                    read_preference=pref, tag_sets=tags, connect=False)
+                self.assertEqual(client.read_preference, pref.mode)
+                self.assertEqual(client.tag_sets, pref.tag_sets)
+
+                client = MongoReplicaSetClient(
+                    read_preference=pref, replicaSet='foo', connect=False)
+                self.assertEqual(client.read_preference, pref.mode)
+                self.assertEqual(client.tag_sets, pref.tag_sets)
+
+                client = MongoReplicaSetClient(
+                    read_preference=pref, tag_sets=tags,
+                    replicaSet='foo', connect=False)
+                self.assertEqual(client.read_preference, pref.mode)
+                self.assertEqual(client.tag_sets, pref.tag_sets)
+        finally:
+            ctx.exit()
+
+
 class TestReadPreferences(TestReadPreferencesBase):
     def test_mode_validation(self):
         # 'modes' are imported from read_preferences.py
@@ -116,82 +149,121 @@ class TestReadPreferences(TestReadPreferencesBase):
             ConfigurationError, self._get_client, read_preference='foo')
 
     def test_tag_sets_validation(self):
-        # Can't use tags with PRIMARY
-        self.assertRaises(
-            ConfigurationError, self._get_client, tag_sets=[{'k': 'v'}])
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            # Can't use tags with PRIMARY
+            self.assertRaises(
+                ConfigurationError, self._get_client, tag_sets=[{'k': 'v'}])
 
-        # ... but empty tag sets are ok with PRIMARY
-        self.assertEqual([{}], self._get_client(tag_sets=[{}]).tag_sets)
+            # ... but empty tag sets are ok with PRIMARY
+            self.assertEqual([{}], self._get_client(tag_sets=[{}]).tag_sets)
 
-        S = ReadPreference.SECONDARY
-        self.assertEqual([{}], self._get_client(read_preference=S).tag_sets)
+            SECONDARY = ReadPreference.SECONDARY
+            self.assertEqual(
+                [{}],
+                self._get_client(read_preference=SECONDARY).tag_sets)
+            self.assertEqual(
+                [{}],
+                self._get_client(readPreference='secondary').tag_sets)
 
-        self.assertEqual(
-            [{'k': 'v'}], self._get_client(
-                read_preference=S, tag_sets=[{'k': 'v'}]).tag_sets)
+            self.assertEqual(
+                [{'k': 'v'}], self._get_client(
+                    read_preference=SECONDARY,
+                    tag_sets=[{'k': 'v'}]).tag_sets)
+            self.assertEqual(
+                [{'k': 'v'}],
+                self._get_client(
+                    readPreference='secondary',
+                    readPreferenceTags=['k:v']).tag_sets)
+            self.assertEqual(
+                [{'k': 'v'}],
+                self._get_client(
+                    readPreference='secondary',
+                    readPreferenceTags='k:v').tag_sets)
 
-        self.assertEqual(
-            [{'k': 'v'}, {}], self._get_client(
-                read_preference=S, tag_sets=[{'k': 'v'}, {}]).tag_sets)
+            self.assertEqual(
+                [{'k': 'v'}, {}], self._get_client(
+                    read_preference=SECONDARY,
+                    tag_sets=[{'k': 'v'}, {}]).tag_sets)
+            self.assertEqual(
+                [{'k': 'v'}, {}], self._get_client(
+                    readPreference='secondary',
+                    readPreferenceTags=['k:v', '']).tag_sets)
 
-        self.assertRaises(
-            ConfigurationError, self._get_client,
-            read_preference=S, tag_sets=[])
+            self.assertRaises(
+                ConfigurationError, self._get_client,
+                read_preference=SECONDARY, tag_sets=[])
+            self.assertRaises(
+                ConfigurationError, self._get_client,
+                readPreference='secondary', readPreferenceTags=[])
 
-        # One dict not ok, must be a list of dicts
-        self.assertRaises(
-            ConfigurationError, self._get_client,
-            read_preference=S, tag_sets={'k': 'v'})
+            # One dict not ok, must be a list of dicts
+            self.assertRaises(
+                ConfigurationError, self._get_client,
+                read_preference=SECONDARY, tag_sets={'k': 'v'})
 
-        self.assertRaises(
-            ConfigurationError, self._get_client,
-            read_preference=S, tag_sets='foo')
+            self.assertRaises(
+                ConfigurationError, self._get_client,
+                read_preference=SECONDARY, tag_sets='foo')
 
-        self.assertRaises(
-            ConfigurationError, self._get_client,
-            read_preference=S, tag_sets=['foo'])
+            self.assertRaises(
+                ConfigurationError, self._get_client,
+                read_preference=SECONDARY, tag_sets=['foo'])
+        finally:
+            ctx.exit()
 
     def test_latency_validation(self):
-        self.assertEqual(17, self._get_client(
-            secondary_acceptable_latency_ms=17
-        ).secondary_acceptable_latency_ms)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertEqual(17, self._get_client(
+                secondary_acceptable_latency_ms=17
+            ).secondary_acceptable_latency_ms)
 
-        self.assertEqual(42, self._get_client(
-            secondaryAcceptableLatencyMS=42
-        ).secondary_acceptable_latency_ms)
+            self.assertEqual(42, self._get_client(
+                secondaryAcceptableLatencyMS=42
+            ).secondary_acceptable_latency_ms)
 
-        self.assertEqual(666, self._get_client(
-            secondaryacceptablelatencyms=666
-        ).secondary_acceptable_latency_ms)
+            self.assertEqual(666, self._get_client(
+                secondaryacceptablelatencyms=666
+            ).secondary_acceptable_latency_ms)
 
-        self.assertEqual(0, self._get_client(
-            secondaryacceptablelatencyms=0
-        ).secondary_acceptable_latency_ms)
+            self.assertEqual(0, self._get_client(
+                secondaryacceptablelatencyms=0
+            ).secondary_acceptable_latency_ms)
 
-        self.assertRaises(ConfigurationError,
-                          self._get_client,
-                          secondaryacceptablelatencyms=-1)
+            self.assertRaises(ConfigurationError,
+                              self._get_client,
+                              secondaryacceptablelatencyms=-1)
+        finally:
+            ctx.exit()
 
     def test_backport_latency_validation(self):
-        self.assertEqual(17, self._get_client(
-            localThresholdMS=17
-        ).secondary_acceptable_latency_ms)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertEqual(17, self._get_client(
+                localThresholdMS=17
+            ).secondary_acceptable_latency_ms)
 
-        self.assertEqual(42, self._get_client(
-            secondaryAcceptableLatencyMS=42
-        ).local_threshold_ms)
+            self.assertEqual(42, self._get_client(
+                secondaryAcceptableLatencyMS=42
+            ).local_threshold_ms)
 
-        self.assertEqual(666, self._get_client(
-            localThresholdMS=666
-        ).local_threshold_ms)
+            self.assertEqual(666, self._get_client(
+                localThresholdMS=666
+            ).local_threshold_ms)
 
-        self.assertEqual(0, self._get_client(
-            localthresholdms=0
-        ).local_threshold_ms)
+            self.assertEqual(0, self._get_client(
+                localthresholdms=0
+            ).local_threshold_ms)
 
-        self.assertRaises(ConfigurationError,
-                          self._get_client,
-                          localthresholdms=-1)
+            self.assertRaises(ConfigurationError,
+                              self._get_client,
+                              localthresholdms=-1)
+        finally:
+            ctx.exit()
 
     def test_primary(self):
         self.assertReadsFrom(
@@ -199,10 +271,15 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_primary_with_tags(self):
         # Tags not allowed with PRIMARY
-        self.assertRaises(
-            ConfigurationError,
-            self._get_client,
-            tag_sets=[{'dc': 'ny'}])
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertRaises(
+                ConfigurationError,
+                self._get_client,
+                tag_sets=[{'dc': 'ny'}])
+        finally:
+            ctx.exit()
 
     def test_primary_preferred(self):
         self.assertReadsFrom(
@@ -227,7 +304,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         # member
         c = self._get_client(
             read_preference=ReadPreference.NEAREST,
-            secondaryAcceptableLatencyMS=10000, # 10 seconds
+            localThresholdMS=10000, # 10 seconds
             auto_start_request=False)
 
         data_members = set(self.hosts).difference(set(self.arbiters))
@@ -276,7 +353,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             replicaSet=self.name, auto_start_request=False,
             # Effectively ignore members' ping times so we can test the effect
             # of ReadPreference modes only
-            secondary_acceptable_latency_ms=1000*1000)
+            localThresholdMS=1000*1000)
 
     def tearDown(self):
         # We create a lot of collections and indexes in these tests, so drop

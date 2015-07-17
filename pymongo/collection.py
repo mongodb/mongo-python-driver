@@ -1275,8 +1275,6 @@ class Collection(common.BaseObject):
            The `tailable` parameter.
 
         .. mongodoc:: find
-        .. _localThreshold:
-          http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         .. _query modifiers:
           http://docs.mongodb.org/manual/reference/operator/query-modifier
         """

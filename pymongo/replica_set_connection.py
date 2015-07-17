@@ -125,13 +125,6 @@ class ReplicaSetConnection(MongoReplicaSetClient):
             accesses this :class:`ReplicaSetConnection` has a socket allocated
             to it for each member of the set until the thread calls
             :meth:`end_request` or terminates.
-          - `use_greenlets`: if ``True``, use a background Greenlet instead of
-            a background thread to monitor state of replica set. Additionally,
-            :meth:`start_request()` will ensure that the current greenlet uses
-            the same socket for all operations until :meth:`end_request()`.
-            Defaults to ``False``.
-            `use_greenlets` with ReplicaSetConnection requires `Gevent
-            <http://gevent.org/>`_ to be installed.
 
           | **Write Concern options:**
 
@@ -163,18 +156,11 @@ class ReplicaSetConnection(MongoReplicaSetClient):
 
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
-          - `read_preference`: The read preference for this connection.
-            See :class:`~pymongo.read_preferences.ReadPreference` for available
-            options. Defaults to ``PRIMARY``.
-          - `tag_sets`: Read from replica-set members with these tags.
-            To specify a priority-order for tag sets, provide a list of
-            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
-            set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags." :class:`MongoReplicaSetClient` tries each set of
-            tags in turn until it finds a set of tags with at least one matching
-            member. Defaults to ``[{}]``, meaning "ignore members' tags."
-          - `secondary_acceptable_latency_ms`: (integer) Any replica-set member
-            whose ping time is within secondary_acceptable_latency_ms of the
+          - `read_preference`: The read preference for this client.
+            See :mod:`~pymongo.read_preferences` for available
+            options. Defaults to ``ReadPreference.PRIMARY``.
+          - `localThresholdMS`: (integer) Any replica-set member
+            whose ping time is within localThresholdMS of the
             nearest member may accept reads. Default 15 milliseconds.
             **Ignored by mongos** and must be configured on the command line.
             See the localThreshold_ option for more information.
@@ -213,8 +199,6 @@ class ReplicaSetConnection(MongoReplicaSetClient):
            Added support for `host`, `port`, and `network_timeout` keyword
            arguments for compatibility with connection.Connection.
         .. versionadded:: 2.1
-
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         network_timeout = kwargs.pop('network_timeout', None)
         if network_timeout is not None:

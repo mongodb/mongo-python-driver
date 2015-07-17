@@ -117,9 +117,6 @@ class Connection(MongoClient):
           - `auto_start_request`: If ``True`` (the default), each thread that
             accesses this Connection has a socket allocated to it for the
             thread's lifetime, or until :meth:`end_request` is called.
-          - `use_greenlets`: if ``True``, :meth:`start_request()` will ensure
-            that the current greenlet uses the same socket for all operations
-            until :meth:`end_request()`. Defaults to ``False``.
 
           | **Write Concern options:**
 
@@ -159,16 +156,15 @@ class Connection(MongoClient):
             mongos*. Defaults to ``None``.
           - `read_preference`: The read preference for this client. If
             connecting to a secondary then a read preference mode *other* than
-            PRIMARY is required - otherwise all queries will throw a
+            primary is required - otherwise all queries will throw a
             :class:`~pymongo.errors.AutoReconnect` "not master" error.
-            See :class:`~pymongo.read_preferences.ReadPreference` for all
-            available read preference options. Defaults to ``PRIMARY``.
-          - `tag_sets`: Ignored unless connecting to a replica-set via mongos.
-            Specify a priority-order for tag sets, provide a list of
-            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
-            set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags. Defaults to ``[{}]``, meaning "ignore members'
-            tags."
+            See :mod:`~pymongo.read_preferences` for all options.
+            Defaults to ``ReadPreference.PRIMARY``.
+          - `localThresholdMS`: (integer) Used with mongos high availability.
+            Any known mongos whose ping time is within localThresholdMS of the
+            nearest member may be chosen during a failover. Default 15
+            milliseconds. Ignored **by** mongos and must be configured on the
+            command line. See the localThreshold_ option for more information.
 
           | **SSL configuration:**
 

@@ -835,53 +835,58 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         sl_lt_uri = ("mongodb://%s/?replicaSet=%s;localThresholdMS=10;"
                      "secondaryAcceptableLatencyMS=8" % (pair, self.name))
 
-        # Just localThresholdMS
-        client = MongoReplicaSetClient(uri)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 15)
-        self.assertEqual(client.local_threshold_ms, 15)
-        client = MongoReplicaSetClient(uri, localThresholdMS=10)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(uri, localThresholdMS=10,
-                             secondaryAcceptableLatencyMS=8)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            # Just localThresholdMS
+            client = MongoReplicaSetClient(uri)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 15)
+            self.assertEqual(client.local_threshold_ms, 15)
+            client = MongoReplicaSetClient(uri, localThresholdMS=10)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(uri, localThresholdMS=10,
+                                 secondaryAcceptableLatencyMS=8)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
 
-        # URI options take precedence over kwargs but localThresholdMS takes
-        # precedence over secondaryAcceptableLatencyMS always. Test to make
-        # sure the precedence is correct between URI vs. kwargs.
-        client = MongoReplicaSetClient(lt_uri)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoReplicaSetClient(lt_uri, localThresholdMS=8)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(lt_uri, secondaryAcceptableLatencyMS=8)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(lt_uri, secondaryAcceptableLatencyMS=8,
-                             localThresholdMS=6)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
+            # URI options take precedence over kwargs but localThresholdMS
+            # takes precedence over secondaryAcceptableLatencyMS always. Test
+            # to make sure the precedence is correct between URI vs. kwargs.
+            client = MongoReplicaSetClient(lt_uri)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoReplicaSetClient(lt_uri, localThresholdMS=8)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(lt_uri, secondaryAcceptableLatencyMS=8)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(lt_uri, secondaryAcceptableLatencyMS=8,
+                                 localThresholdMS=6)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
 
-        client = MongoClient(sl_uri, secondaryAcceptableLatencyMS=8)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(sl_uri, localThresholdMS=10)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(sl_uri, localThresholdMS=10,
-                             secondaryAcceptableLatencyMS=6)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(sl_uri, secondaryAcceptableLatencyMS=8)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(sl_uri, localThresholdMS=10)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(sl_uri, localThresholdMS=10,
+                                 secondaryAcceptableLatencyMS=6)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
 
-        client = MongoClient(sl_lt_uri)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(sl_lt_uri, localThresholdMS=8,
-                             secondaryAcceptableLatencyMS=4)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(sl_lt_uri)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(sl_lt_uri, localThresholdMS=8,
+                                 secondaryAcceptableLatencyMS=4)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+        finally:
+            ctx.exit()
 
 
     def _test_kill_cursor_explicit(self, read_pref):
@@ -1200,7 +1205,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_pinned_member(self):
         latency = 1000 * 1000
-        client = self._get_client(secondary_acceptable_latency_ms=latency)
+        client = self._get_client(localThresholdMS=latency)
 
         host = read_from_which_host(client, ReadPreference.SECONDARY)
         self.assertTrue(host in client.secondaries)

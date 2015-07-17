@@ -17,12 +17,14 @@
 import sys
 import threading
 import unittest
+import warnings
 
 sys.path[0:0] = [""]
 
 from pymongo.errors import AutoReconnect
 from test import skip_restricted_localhost
 from test.pymongo_mocks import MockClient
+from test.utils import catch_warnings
 
 
 setUpModule = skip_restricted_localhost
@@ -129,7 +131,7 @@ class TestMongosHA(unittest.TestCase):
             members=[],
             mongoses=['a:1', 'b:2', 'c:3'],
             host='a:1,b:2,c:3',
-            secondaryAcceptableLatencyMS=7)
+            localThresholdMS=7)
 
         self.assertEqual(7, client.secondary_acceptable_latency_ms)
         # No error
@@ -140,7 +142,7 @@ class TestMongosHA(unittest.TestCase):
             members=[],
             mongoses=['a:1', 'b:2', 'c:3'],
             host='a:1,b:2,c:3',
-            secondaryAcceptableLatencyMS=0)
+            localThresholdMS=0)
 
         self.assertEqual(0, client.secondary_acceptable_latency_ms)
         # No error
@@ -157,41 +159,46 @@ class TestMongosHA(unittest.TestCase):
     def test_backport_localthresholdms_kwarg(self):
         # Test that localThresholdMS takes precedence over
         # secondaryAcceptableLatencyMS.
-        client = MockClient(
-            standalones=[],
-            members=[],
-            mongoses=['a:1', 'b:2', 'c:3'],
-            host='a:1,b:2,c:3',
-            localThresholdMS=7,
-            secondaryAcceptableLatencyMS=0)
-
-        self.assertEqual(7, client.secondary_acceptable_latency_ms)
-        self.assertEqual(7, client.local_threshold_ms)
-        # No error
-        client.db.collection.find_one()
-
-        client = MockClient(
-            standalones=[],
-            members=[],
-            mongoses=['a:1', 'b:2', 'c:3'],
-            host='a:1,b:2,c:3',
-            localThresholdMS=0,
-            secondaryAcceptableLatencyMS=15)
-
-        self.assertEqual(0, client.secondary_acceptable_latency_ms)
-        self.assertEqual(0, client.local_threshold_ms)
-
-        # Test that using localThresholdMS works in the same way as using
-        # secondaryAcceptableLatencyMS.
-        client.db.collection.find_one()
-        # Our chosen mongos goes down.
-        client.kill_host('%s:%s' % client.address)
+        ctx = catch_warnings()
         try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            client = MockClient(
+                standalones=[],
+                members=[],
+                mongoses=['a:1', 'b:2', 'c:3'],
+                host='a:1,b:2,c:3',
+                localThresholdMS=7,
+                secondaryAcceptableLatencyMS=0)
+
+            self.assertEqual(7, client.secondary_acceptable_latency_ms)
+            self.assertEqual(7, client.local_threshold_ms)
+            # No error
             client.db.collection.find_one()
-        except:
-            pass
-        # No error
-        client.db.collection.find_one()
+
+            client = MockClient(
+                standalones=[],
+                members=[],
+                mongoses=['a:1', 'b:2', 'c:3'],
+                host='a:1,b:2,c:3',
+                localThresholdMS=0,
+                secondaryAcceptableLatencyMS=15)
+
+            self.assertEqual(0, client.secondary_acceptable_latency_ms)
+            self.assertEqual(0, client.local_threshold_ms)
+
+            # Test that using localThresholdMS works in the same way as using
+            # secondaryAcceptableLatencyMS.
+            client.db.collection.find_one()
+            # Our chosen mongos goes down.
+            client.kill_host('%s:%s' % client.address)
+            try:
+                client.db.collection.find_one()
+            except:
+                pass
+            # No error
+            client.db.collection.find_one()
+        finally:
+            ctx.exit()
 
 if __name__ == "__main__":
     unittest.main()

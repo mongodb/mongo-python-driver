@@ -53,7 +53,7 @@ from pymongo import (auth,
                      uri_parser)
 from pymongo.member import Member
 from pymongo.read_preferences import (
-    ReadPreference, select_member, modes, MovingAverage)
+    ReadPreference, select_member, modes, MovingAverage, _ServerMode)
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -507,13 +507,6 @@ class MongoReplicaSetClient(common.BaseObject):
           - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
             packets on connected sockets. Defaults to ``False`` (do not send
             keep-alive packets).
-          - `auto_start_request`: Deprecated.
-          - `use_greenlets`: If ``True``, use a background Greenlet instead of
-            a background thread to monitor the state of the replica set.
-            Additionally, :meth:`start_request` assigns a greenlet-local,
-            rather than thread-local, socket. Defaults to ``False``.
-            `use_greenlets` with :class:`MongoReplicaSetClient` requires
-            `Gevent <http://gevent.org/>`_ to be installed.
           - `connect`: if True (the default), immediately connect to MongoDB
             in the foreground. Otherwise connect on the first operation.
 
@@ -545,23 +538,13 @@ class MongoReplicaSetClient(common.BaseObject):
           | **Read preference options:**
 
           - `read_preference`: The read preference for this client.
-            See :class:`~pymongo.read_preferences.ReadPreference` for available
-            options. Defaults to ``PRIMARY``.
-          - `tag_sets`: Read from replica-set members with these tags.
-            To specify a priority-order for tag sets, provide a list of
-            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
-            set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags." :class:`MongoReplicaSetClient` tries each set of
-            tags in turn until it finds a set of tags with at least one matching
-            member. Defaults to ``[{}]``, meaning "ignore members' tags."
-          - `secondaryAcceptableLatencyMS`: (integer) Any replica-set member
-            whose ping time is within secondaryAcceptableLatencyMS of the
+            See :mod:`~pymongo.read_preferences` for available
+            options. Defaults to ``ReadPreference.PRIMARY``.
+          - `localThresholdMS`: (integer) Any replica-set member
+            whose ping time is within localThresholdMS of the
             nearest member may accept reads. Default 15 milliseconds.
             **Ignored by mongos** and must be configured on the command line.
             See the localThreshold_ option for more information.
-          - `localThresholdMS`: (integer) Alias for
-            secondaryAcceptableLatencyMS. Takes precedence over
-            secondaryAcceptableLatencyMS.
 
           | **SSL configuration:**
 
@@ -597,9 +580,6 @@ class MongoReplicaSetClient(common.BaseObject):
         .. versionchanged:: 2.5
            Added additional ssl options
         .. versionadded:: 2.4
-
-        .. _localThreshold:
-          http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         self.__opts = {}
         self.__seeds = set()
@@ -637,10 +617,32 @@ class MongoReplicaSetClient(common.BaseObject):
         self.pool_class = kwargs.pop('_pool_class', pool.Pool)
         self.__monitor_class = kwargs.pop('_monitor_class', None)
 
+        # tag_sets is only supported through kwargs since it must be a list.
+        if "tag_sets" in kwargs:
+            warnings.warn("tag_sets is deprecated in this version of PyMongo "
+                          "and removed in PyMongo 3. Pass a read preference "
+                          "object as read_preference instead",
+                          DeprecationWarning, stacklevel=2)
+
+        # Support _ServerMode through kwargs
+        pref = kwargs.get("read_preference")
+        if isinstance(pref, _ServerMode):
+            kwargs["read_preference"] = pref.mode
+            kwargs["tag_sets"] = pref.tag_sets
+
+        # URI overrides kwargs.
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
             self.__opts[option] = value
         self.__opts.update(options)
+
+        # Both of these work in kwargs and URI...
+        if ("secondary_acceptable_latency_ms" in self.__opts or
+                "secondaryacceptablelatencyms" in self.__opts):
+            warnings.warn("secondary_acceptable_latency_ms and "
+                          "secondaryAcceptableLatencyMS are deprecated. Use "
+                          "localThresholdMS instead",
+                          DeprecationWarning, stacklevel=2)
 
         self.__max_pool_size = self.__opts.get(
             'maxpoolsize',
@@ -715,6 +717,8 @@ class MongoReplicaSetClient(common.BaseObject):
 
         # localThresholdMS takes precedence over secondaryAcceptableLatencyMS
         if "localthresholdms" in self.__opts:
+            self.__opts.pop("secondaryacceptablelatencyms", None)
+            self.__opts.pop("secondary_acceptable_latency_ms", None)
             self.__opts["secondaryacceptablelatencyms"] = (
                 self.__opts["localthresholdms"])
 

@@ -414,53 +414,58 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         lt_sl_uri = ("mongodb://%s:%d/?localThresholdMS=10;"
                      "secondaryAcceptableLatencyMS=8" % (host, port))
 
-        # Just localThresholdMS
-        client = MongoClient(uri)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 15)
-        self.assertEqual(client.local_threshold_ms, 15)
-        client = MongoClient(uri, localThresholdMS=10)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(uri, localThresholdMS=10,
-                             secondaryAcceptableLatencyMS=8)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            # Just localThresholdMS
+            client = MongoClient(uri)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 15)
+            self.assertEqual(client.local_threshold_ms, 15)
+            client = MongoClient(uri, localThresholdMS=10)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(uri, localThresholdMS=10,
+                                 secondaryAcceptableLatencyMS=8)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
 
-        # URI options take precedence over kwargs but localThresholdMS takes
-        # precedence over secondaryAcceptableLatencyMS always. Test to make
-        # sure the precedence is correct between URI vs. kwargs.
-        client = MongoClient(lt_uri)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(lt_uri, localThresholdMS=8)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(lt_uri, secondaryAcceptableLatencyMS=8)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(lt_uri, localThresholdMS=8,
-                             secondaryAcceptableLatencyMS=6)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
+            # URI options take precedence over kwargs but localThresholdMS
+            # takes precedence over secondaryAcceptableLatencyMS always. Test
+            # to make sure the precedence is correct between URI vs. kwargs.
+            client = MongoClient(lt_uri)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(lt_uri, localThresholdMS=8)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(lt_uri, secondaryAcceptableLatencyMS=8)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(lt_uri, localThresholdMS=8,
+                                 secondaryAcceptableLatencyMS=6)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
 
-        client = MongoClient(sl_uri, secondaryAcceptableLatencyMS=8)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(sl_uri, localThresholdMS=10)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(sl_uri, localThresholdMS=10,
-                             secondaryAcceptableLatencyMS=6)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(sl_uri, secondaryAcceptableLatencyMS=8)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(sl_uri, localThresholdMS=10)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(sl_uri, localThresholdMS=10,
+                                 secondaryAcceptableLatencyMS=6)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
 
-        client = MongoClient(lt_sl_uri)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
-        client = MongoClient(lt_sl_uri, localThresholdMS=8,
-                             secondaryAcceptableLatencyMS=4)
-        self.assertEqual(client.secondary_acceptable_latency_ms, 10)
-        self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(lt_sl_uri)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+            client = MongoClient(lt_sl_uri, localThresholdMS=8,
+                                 secondaryAcceptableLatencyMS=4)
+            self.assertEqual(client.secondary_acceptable_latency_ms, 10)
+            self.assertEqual(client.local_threshold_ms, 10)
+        finally:
+            ctx.exit()
 
 
     def test_get_default_database(self):

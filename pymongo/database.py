@@ -529,7 +529,6 @@ class Database(common.BaseObject):
         .. versionadded:: 1.4
 
         .. mongodoc:: commands
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         return self._command(command, value, check, allowable_errors,
                              uuid_subtype, compile_re, read_preference,
