@@ -258,8 +258,8 @@ class TestClient(IntegrationTest):
             connect=False, document_class=SON)
 
         the_repr = repr(client)
+        self.assertIn('MongoClient(host=', the_repr)
         self.assertIn(
-            "MongoClient(host=['localhost:27017', 'localhost:27018'], "
             "document_class=bson.son.SON, "
             "tz_aware=False, "
             "connect=False, ",
@@ -271,10 +271,8 @@ class TestClient(IntegrationTest):
 
     @client_context.require_replica_set
     def test_repr_replica_set(self):
-        # Like MongoClient(["localhost:27017", "localhost:27018"]).
-        self.assertIn("MongoClient([", repr(self.client))
-        for node in client_context.nodes:
-            self.assertIn("%s:%d" % node, repr(self.client))
+        self.assertIn("MongoClient(host=[", repr(self.client))
+        self.assertIn(pair, repr(self.client))
 
     def test_getters(self):
         self.assertEqual(client_context.client.address, (host, port))

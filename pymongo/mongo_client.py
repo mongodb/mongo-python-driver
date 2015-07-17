@@ -780,7 +780,7 @@ class MongoClient(common.BaseObject):
     def __ne__(self, other):
         return not self == other
 
-    def __repr__(self):
+    def _repr_helper(self):
         def option_repr(option, value):
             """Fix options whose __repr__ isn't usable in a constructor."""
             if option == 'document_class':
@@ -804,7 +804,10 @@ class MongoClient(common.BaseObject):
             option_repr(key, self.__options._options[key])
             for key in self.__options._options
             if key not in set(self._constructor_args))
-        return ("MongoClient(%s)" % ', '.join(options))
+        return ', '.join(options)
+
+    def __repr__(self):
+        return ("MongoClient(%s)" % (self._repr_helper(),))
 
     def __getattr__(self, name):
         """Get a database by name.
