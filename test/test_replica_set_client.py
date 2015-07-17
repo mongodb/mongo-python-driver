@@ -101,15 +101,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             client = MongoReplicaSetClient(host, port,
                                            replicaSet=self.name)
 
-        wait_until(lambda: client.primary == self.primary, "discover primary")
-        wait_until(lambda: client.secondaries == self.secondaries,
-                   "discover secondaries")
-
-        # repr should be something like
-        # MongoReplicaSetClient(["localhost:27017", "localhost:27018"]).
-        self.assertIn("MongoReplicaSetClient([", repr(client))
-        for h in self.hosts:
-            self.assertIn("%s:%d" % h, repr(client))
+        self.assertIn("MongoReplicaSetClient(host=[", repr(client))
+        self.assertIn(pair, repr(client))
 
     def test_properties(self):
         c = client_context.rs_client
