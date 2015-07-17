@@ -37,6 +37,11 @@ Warnings can also be changed to errors::
 
   python -Wd -Werror <your application>
 
+.. note:: Not all deprecated features raise :exc:`DeprecationWarning` when
+  used. For example, the :meth:`~pymongo.collection.Collection.find` options
+  renamed in PyMongo 3.0 do not raise :exc:`DeprecationWarning` when used in
+  PyMongo 2.x. See also `Removed features with no migration path`_.
+
 CRUD API
 --------
 
@@ -519,8 +524,8 @@ can be replaced by this in PyMongo 2.9 or later:
   >>> from bson.son import SON
   >>> encoded = BSON.encode({"a": 1}, codec_options=CodecOptions(SON))
 
-Advice for features removed in PyMongo 3
-----------------------------------------
+Removed features with no migration path
+---------------------------------------
 
 MasterSlaveConnection is removed
 ................................
