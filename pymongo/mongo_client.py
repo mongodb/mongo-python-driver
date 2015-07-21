@@ -98,6 +98,9 @@ class MongoClient(common.BaseObject):
         passwords reserved characters like ':', '/', '+' and '@' must be
         escaped following RFC 2396.
 
+        .. warning:: When using PyMongo in a multiprocessing context, please
+          read :ref:`multiprocessing` first.
+
         :Parameters:
           - `host` (optional): hostname or IP address of the
             instance to connect to, or a mongodb URI, or a list of

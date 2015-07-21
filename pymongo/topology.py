@@ -14,8 +14,10 @@
 
 """Internal class to monitor a topology of one or more servers."""
 
+import os
 import random
 import threading
+import warnings
 
 from bson.py3compat import itervalues
 from pymongo import common
@@ -50,13 +52,31 @@ class Topology(object):
         self._lock = threading.Lock()
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
+        self._pid = None
 
     def open(self):
         """Start monitoring, or restart after a fork.
 
         No effect if called multiple times.
+
+        .. warning:: To avoid a deadlock during Python's getaddrinfo call,
+          will generate a warning if open() is called from a different
+          process than the one that initialized the Topology. To prevent this
+          from happening, MongoClient must be created after any forking OR
+          MongoClient must be started with connect=False.
         """
         with self._lock:
+            if self._pid is None:
+                self._pid = os.getpid()
+            else:
+                if os.getpid() != self._pid:
+                    warnings.warn(
+                        "MongoClient opened before fork. Create MongoClient "
+                        "with connect=False, or create client after forking. "
+                        "See PyMongo's documentation for details: http://api."
+                        "mongodb.org/python/current/faq.html#using-pymongo-"
+                        "with-multiprocessing>")
+
             self._ensure_opened()
 
     def select_servers(self,

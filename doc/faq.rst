@@ -375,3 +375,20 @@ just that field::
 
   >>> cur = coll.find({}, projection={'dt': False})
 
+.. _multiprocessing:
+
+Using PyMongo with Multiprocessing
+----------------------------------
+There are a few things to be aware of when using multiprocessing with PyMongo.
+On certain platforms (`defined here <https://hg.python.org/cpython/file/d2b8354e87f5/Modules/socketmodule.c#l187>`_)
+:class:`~pymongo.mongo_client.MongoClient` MUST be initialized with ``connect=False`` if a :class:`~pymongo.mongo_client.MongoClient` used in a
+child process is initialized before forking. If ``connect`` cannot be False,
+then :class:`~pymongo.mongo_client.MongoClient` must be initialized AFTER forking.
+
+This is because CPython must acquire a lock before calling
+`getaddrinfo() <https://hg.python.org/cpython/file/d2b8354e87f5/Modules/socketmodule.c#l4203>`_.
+A deadlock will occur if the :class:`~pymongo.mongo_client.MongoClient`'s parent process forks (on the main
+thread) while its monitor thread is in the getaddrinfo() system call.
+
+PyMongo will issue a warning if there is a chance of this deadlock occurring.
+
