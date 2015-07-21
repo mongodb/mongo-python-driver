@@ -119,7 +119,7 @@ class _ServerMode(object):
         if isinstance(other, _ServerMode):
             return (self.mode == other.mode and
                     self.tag_sets == other.tag_sets)
-        raise NotImplementedError
+        return NotImplemented
 
     def __ne__(self, other):
         return not self == other
@@ -161,7 +161,7 @@ class Primary(_ServerMode):
     def __eq__(self, other):
         if isinstance(other, _ServerMode):
             return other.mode == _PRIMARY
-        raise NotImplementedError
+        return NotImplemented
 
 
 class PrimaryPreferred(_ServerMode):
