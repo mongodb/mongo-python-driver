@@ -40,7 +40,9 @@ from test.utils import (joinall,
                         single_client,
                         one,
                         rs_client,
-                        rs_or_single_client)
+                        rs_or_single_client,
+                        rs_or_single_client_noauth,
+                        remove_all_users)
 
 
 class JustWrite(threading.Thread):
@@ -513,6 +515,23 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
         rsc = client_context.rs_client
         rsc.pymongo_test.drop_collection('fs.files')
         rsc.pymongo_test.drop_collection('fs.chunks')
+
+class TestGridfsAuth(IntegrationTest):
+
+    @client_context.require_auth
+    def test_gridfs_readonly(self):
+        # "self.client" is logged in as root. Make a read-only user.
+        auth_db = self.client.test_gridfs_readonly
+        auth_db.add_user('readonly', 'pw', readOnly=True)
+        self.addCleanup(remove_all_users, auth_db)
+
+        db = rs_or_single_client_noauth().test_gridfs_readonly
+        db.authenticate('readonly', 'pw')
+
+        fs = gridfs.GridFS(db)
+        file = fs.new_file()
+        file._ensure_index()
+        fs.list()
 
 
 if __name__ == "__main__":

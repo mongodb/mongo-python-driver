@@ -28,8 +28,9 @@ from gridfs.grid_file import (GridIn,
                               GridOutCursor)
 from pymongo import (ASCENDING,
                      DESCENDING)
+from pymongo.common import UNAUTHORIZED_CODES
 from pymongo.database import Database
-from pymongo.errors import ConfigurationError
+from pymongo.errors import ConfigurationError, OperationFailure
 
 
 class GridFS(object):
@@ -66,16 +67,25 @@ class GridFS(object):
     def __is_secondary(self):
         return not self.__database.client._is_writable()
 
+    def __create_index(self, coll, key, **kwargs):
+        try:
+            if not self.__is_secondary():
+                coll.create_index(key, **kwargs)
+        except OperationFailure as exc:
+            if not (exc.code in UNAUTHORIZED_CODES
+                    or "authorized" in str(exc)):
+                raise exc
+
+
     def __ensure_index_files_id(self):
-        if not self.__is_secondary():
-            self.__chunks.create_index([("files_id", ASCENDING),
-                                        ("n", ASCENDING)],
-                                       unique=True)
+            self.__create_index(self.__chunks,
+                                [("files_id", ASCENDING), ("n", ASCENDING)],
+                                unique=True)
 
     def __ensure_index_filename(self):
-        if not self.__is_secondary():
-            self.__files.create_index([("filename", ASCENDING),
-                                       ("uploadDate", DESCENDING)])
+            self.__create_index(self.__files,
+                                [("filename", ASCENDING),
+                                 ("uploadDate", DESCENDING)])
 
     def new_file(self, **kwargs):
         """Create a new file in GridFS.

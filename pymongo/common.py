@@ -71,6 +71,8 @@ LOCAL_THRESHOLD_MS = 15
 # exist.
 COMMAND_NOT_FOUND_CODES = (59, 13390, None)
 
+# Error codes to ignore if GridFS calls createIndex on a secondary
+UNAUTHORIZED_CODES = (13, 16547, 16548)
 
 def partition_node(node):
     """Split a host:port string into (host, int(port)) pair."""

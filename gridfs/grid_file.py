@@ -26,8 +26,11 @@ from gridfs.errors import (CorruptGridFile,
                            NoFile)
 from pymongo import ASCENDING
 from pymongo.collection import Collection
+from pymongo.common import UNAUTHORIZED_CODES
 from pymongo.cursor import Cursor
-from pymongo.errors import ConfigurationError, DuplicateKeyError
+from pymongo.errors import (ConfigurationError,
+                            DuplicateKeyError,
+                            OperationFailure)
 from pymongo.read_preferences import ReadPreference
 
 try:
@@ -166,9 +169,14 @@ class GridIn(object):
 
     def _ensure_index(self):
         if not object.__getattribute__(self, "_ensured_index"):
-            self._coll.chunks.create_index(
-                [("files_id", ASCENDING), ("n", ASCENDING)],
-                unique=True)
+            try:
+                self._coll.chunks.create_index(
+                    [("files_id", ASCENDING), ("n", ASCENDING)],
+                    unique=True)
+            except OperationFailure as exc:
+                if not (exc.code in UNAUTHORIZED_CODES
+                        or "authorized" in str(exc)):
+                    raise exc
             object.__setattr__(self, "_ensured_index", True)
 
     @property
