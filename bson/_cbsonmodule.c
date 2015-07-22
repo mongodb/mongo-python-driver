@@ -1912,6 +1912,12 @@ static PyObject* get_value(PyObject* self, const char* buffer,
             }
             Py_XDECREF(utc_type);
             value = PyObject_Call(replace, args, kwargs);
+            if (!value) {
+                Py_DECREF(replace);
+                Py_DECREF(args);
+                Py_DECREF(kwargs);
+                goto invalid;
+            }
 
             /* convert to local time */
             if (options->tzinfo != Py_None) {
