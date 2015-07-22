@@ -16,7 +16,6 @@
 
 import collections
 import warnings
-from types import GeneratorType
 
 from bson.code import Code
 from bson.objectid import ObjectId
@@ -469,7 +468,7 @@ class Collection(common.BaseObject):
                                    self.write_concern.acknowledged)
 
     def insert_many(self, documents, ordered=True):
-        """Insert a list or generator of documents.
+        """Insert an iterable of documents.
 
           >>> db.test.count()
           0
@@ -480,7 +479,7 @@ class Collection(common.BaseObject):
           2
 
         :Parameters:
-          - `documents`: A list or generator of documents to insert.
+          - `documents`: A iterable of documents to insert.
           - `ordered` (optional): If ``True`` (the default) documents will be
             inserted on the server serially, in the order provided. If an error
             occurs all remaining inserts are aborted. If ``False``, documents
@@ -492,7 +491,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        if not isinstance(documents, (list, GeneratorType)) or not documents:
+        if not isinstance(documents, collections.Iterable) or not documents:
             raise TypeError("documents must be a non-empty list")
         inserted_ids = []
         def gen():
