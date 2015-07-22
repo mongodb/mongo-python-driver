@@ -915,6 +915,17 @@ class TestBulk(BulkTestBase):
         batch.execute()
         self.assertRaises(InvalidOperation, batch.execute)
 
+    def test_generator_insert(self):
+        def gen():
+            yield {'a': 1, 'b': 1}
+            yield {'a': 1, 'b': 2}
+            yield {'a': 2, 'b': 3}
+            yield {'a': 3, 'b': 5}
+            yield {'a': 5, 'b': 8}
+
+        result = self.coll.insert_many(gen())
+        self.assertEqual(5, len(result.inserted_ids))
+
 
 class TestBulkWriteConcern(BulkTestBase):
 
