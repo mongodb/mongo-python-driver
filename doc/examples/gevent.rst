@@ -19,12 +19,30 @@ on greenlets instead of threads.
 
 Consideration on gevent's hub termination
 -----------------------------------------
+PyMongo uses threads to monitor your servers' topology and to handle
+graceful reconnections.
+
 When shutting down your application gracefully, your code be may waiting
 for any remaining greenlet to terminate before exiting.
-Because monkey-patched threads are greenlets and PyMongo uses quite a lot
-of them, this may become a **blocking operation**  and may prevent your
-application to exit properly. You therefore must close (or dereference)
-any active MongoClient object before exiting !
+
+This may become a **blocking operation** because monkey-patched threads
+are considered as greenlets and this could prevent your application
+to exit properly. You therefore **must close or dereference** any active
+MongoClient object before exiting !
+
+Code example, this function is called when your application is asked
+to exit or gracefully reload itself by receiving a SIGHUP signal:
+
+.. code-block:: python
+
+    import signal
+
+    def graceful_reload(signum, traceback):
+        """Explicitly close our connection
+        """
+        client.close()
+
+    signal.signal(signal.SIGHUP, graceful_reload)
 
 **uWSGI** applications using the ``gevent-wait-for-hub`` option are directly
 affected by this behaviour.
