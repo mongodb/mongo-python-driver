@@ -110,7 +110,7 @@ Here's a basic example (for more see the *examples* section of the docs):
   >>> db.my_collection.find_one()
   {u'x': 10, u'_id': ObjectId('4aba15ebe23f6b53b0000000')}
   >>> for item in db.my_collection.find():
-  ...     print item["x"]
+  ...     print(item["x"])
   ...
   10
   8
@@ -118,7 +118,7 @@ Here's a basic example (for more see the *examples* section of the docs):
   >>> db.my_collection.create_index("x")
   u'x_1'
   >>> for item in db.my_collection.find().sort("x", pymongo.ASCENDING):
-  ...     print item["x"]
+  ...     print(item["x"])
   ...
   8
   10
