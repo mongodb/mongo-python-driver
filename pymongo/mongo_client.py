@@ -300,7 +300,7 @@ class MongoClient(common.BaseObject):
         for entity in host:
             if "://" in entity:
                 if entity.startswith("mongodb://"):
-                    res = uri_parser.parse_uri(entity, port, False)
+                    res = uri_parser.parse_uri(entity, port, warn=True)
                     seeds.update(res["nodelist"])
                     username = res["username"] or username
                     password = res["password"] or password
@@ -321,10 +321,14 @@ class MongoClient(common.BaseObject):
         monitor_class = kwargs.pop('_monitor_class', None)
         condition_class = kwargs.pop('_condition_class', None)
 
-        opts['document_class'] = document_class
-        opts['tz_aware'] = tz_aware
-        opts['connect'] = connect
-        opts.update(kwargs)
+        keyword_opts = kwargs
+        keyword_opts['document_class'] = document_class
+        keyword_opts['tz_aware'] = tz_aware
+        keyword_opts['connect'] = connect
+        # Validate all keyword options.
+        keyword_opts = dict(common.validate(k, v)
+                            for k, v in keyword_opts.items())
+        opts.update(keyword_opts)
         self.__options = options = ClientOptions(
             username, password, dbase, opts)
 
@@ -792,6 +796,9 @@ class MongoClient(common.BaseObject):
                 else:
                     return 'document_class=%s.%s' % (value.__module__,
                                                      value.__name__)
+            if "ms" in option:
+                return "%s='%s'" % (option, int(value * 1000))
+
             return '%s=%r' % (option, value)
 
         # Host first...

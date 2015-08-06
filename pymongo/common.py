@@ -16,11 +16,12 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import collections
+import warnings
 
 from bson.binary import (STANDARD, PYTHON_LEGACY,
                          JAVA_LEGACY, CSHARP_LEGACY)
 from bson.codec_options import CodecOptions
-from bson.py3compat import string_type, integer_types
+from bson.py3compat import string_type, integer_types, iteritems
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import (read_pref_mode_from_name,
@@ -73,6 +74,7 @@ COMMAND_NOT_FOUND_CODES = (59, 13390, None)
 
 # Error codes to ignore if GridFS calls createIndex on a secondary
 UNAUTHORIZED_CODES = (13, 16547, 16548)
+
 
 def partition_node(node):
     """Split a host:port string into (host, int(port)) pair."""
@@ -340,15 +342,16 @@ def validate_auth_mechanism_properties(option, value):
     for opt in value.split(','):
         try:
             key, val = opt.split(':')
-            if key not in _MECHANISM_PROPS:
-                raise ValueError("%s is not a supported auth "
-                                 "mechanism property. Must be one of "
-                                 "%s." % (key, tuple(_MECHANISM_PROPS)))
-            props[key] = val
         except ValueError:
             raise ValueError("auth mechanism properties must be "
                              "key:value pairs like SERVICE_NAME:"
                              "mongodb, not %s." % (opt,))
+        if key not in _MECHANISM_PROPS:
+            raise ValueError("%s is not a supported auth "
+                             "mechanism property. Must be one of "
+                             "%s." % (key, tuple(_MECHANISM_PROPS)))
+        props[key] = val
+
     return props
 
 
@@ -456,6 +459,23 @@ def validate(option, value):
     return lower, value
 
 
+def get_validated_options(options):
+    """Validate each entry in options and raise a warning if it is not valid.
+    Returns a copy of options with invalid entries removed
+    """
+    validated_options = {}
+    for opt, value in iteritems(options):
+        lower = opt.lower()
+        try:
+            validator = VALIDATORS.get(lower, raise_config_error)
+            value = validator(opt, value)
+        except (ValueError, ConfigurationError) as exc:
+            warnings.warn(str(exc))
+        else:
+            validated_options[lower] = value
+    return validated_options
+
+
 WRITE_CONCERN_OPTIONS = frozenset([
     'w',
     'wtimeout',
@@ -516,4 +536,3 @@ class BaseObject(object):
           The :attr:`read_preference` attribute is now read only.
         """
         return self.__read_preference
-

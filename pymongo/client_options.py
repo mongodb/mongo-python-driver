@@ -107,8 +107,6 @@ class ClientOptions(object):
     def __init__(self, username, password, database, options):
         self.__options = options
 
-        options = dict([validate(opt, val) for opt, val in iteritems(options)])
-
         self.__codec_options = _parse_codec_options(options)
         self.__credentials = _parse_credentials(
             username, password, database, options)
