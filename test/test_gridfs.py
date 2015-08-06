@@ -27,7 +27,9 @@ import gridfs
 from bson.binary import Binary
 from bson.py3compat import u, StringIO, string_type
 from pymongo.mongo_client import MongoClient
-from pymongo.errors import ConfigurationError, ConnectionFailure
+from pymongo.errors import (ConfigurationError,
+                            ConnectionFailure,
+                            ServerSelectionTimeoutError)
 from pymongo.read_preferences import ReadPreference
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from test.test_replica_set_client import TestReplicaSetClientBase
@@ -40,9 +42,7 @@ from test.utils import (joinall,
                         single_client,
                         one,
                         rs_client,
-                        rs_or_single_client,
-                        rs_or_single_client_noauth,
-                        remove_all_users)
+                        rs_or_single_client)
 
 
 class JustWrite(threading.Thread):
@@ -174,24 +174,21 @@ class TestGridfs(IntegrationTest):
         finally:
             self.fs.delete(files_id)
 
-    def test_delete_ensures_index(self):
+    def test_put_ensures_index(self):
         # setUp has dropped collections.
         names = self.db.collection_names()
         self.assertFalse([name for name in names if name.startswith('fs')])
 
         chunks = self.db.fs.chunks
+        files = self.db.fs.files
+        self.fs.put(b"junk")
 
-        self.fs.delete(file_id=1)
-
-        # delete() has ensured an index on (files_id, n).
-        # index_information() is like:
-        # {
-        #     '_id_': {'key': [('_id', 1)]},
-        #     'files_id_1_n_1': {'key': [('files_id', 1), ('n', 1)]}
-        # }
         self.assertTrue(any(
             info.get('key') == [('files_id', 1), ('n', 1)]
             for info in chunks.index_information().values()))
+        self.assertTrue(any(
+            info.get('key') == [('filename', 1), ('uploadDate', 1)]
+            for info in files.index_information().values()))
 
     def test_alt_collection(self):
         oid = self.alt.put(b"hello world")
@@ -246,7 +243,7 @@ class TestGridfs(IntegrationTest):
         # Should have created 100 versions of 'test' file
         self.assertEqual(
             100,
-            self.db.fs.files.find({'filename':'test'}).count()
+            self.db.fs.files.find({'filename': 'test'}).count()
         )
 
     def test_get_last_version(self):
@@ -404,11 +401,11 @@ class TestGridfs(IntegrationTest):
                              serverSelectionTimeoutMS=10)
         db = client.db
         gfs = gridfs.GridFS(db)
-        self.assertRaises(ConnectionFailure, gfs.list)
+        self.assertRaises(ServerSelectionTimeoutError, gfs.list)
 
         fs = gridfs.GridFS(db)
-        f = fs.new_file()  # Still no connection.
-        self.assertRaises(ConnectionFailure, f.close)
+        f = fs.new_file()
+        self.assertRaises(ServerSelectionTimeoutError, f.close)
 
     def test_gridfs_find(self):
         self.fs.put(b"test2", filename="two")
@@ -418,7 +415,7 @@ class TestGridfs(IntegrationTest):
         self.fs.put(b"test1", filename="one")
         time.sleep(0.01)
         self.fs.put(b"test2++", filename="two")
-        self.assertEqual(3, self.fs.find({"filename":"two"}).count())
+        self.assertEqual(3, self.fs.find({"filename": "two"}).count())
         self.assertEqual(4, self.fs.find().count())
         cursor = self.fs.find(
             no_cursor_timeout=False).sort("uploadDate", -1).skip(1).limit(2)
@@ -515,23 +512,6 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
         rsc = client_context.rs_client
         rsc.pymongo_test.drop_collection('fs.files')
         rsc.pymongo_test.drop_collection('fs.chunks')
-
-class TestGridfsAuth(IntegrationTest):
-
-    @client_context.require_auth
-    def test_gridfs_readonly(self):
-        # "self.client" is logged in as root. Make a read-only user.
-        auth_db = self.client.test_gridfs_readonly
-        auth_db.add_user('readonly', 'pw', readOnly=True)
-        self.addCleanup(remove_all_users, auth_db)
-
-        db = rs_or_single_client_noauth().test_gridfs_readonly
-        db.authenticate('readonly', 'pw')
-
-        fs = gridfs.GridFS(db)
-        file = fs.new_file()
-        file._ensure_index()
-        fs.list()
 
 
 if __name__ == "__main__":

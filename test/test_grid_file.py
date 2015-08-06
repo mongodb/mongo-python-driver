@@ -32,7 +32,7 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               GridOutCursor)
 from gridfs.errors import NoFile
 from pymongo import MongoClient
-from pymongo.errors import ConfigurationError, ConnectionFailure
+from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from test import (IntegrationTest,
                   host,
                   port,
@@ -173,7 +173,6 @@ class TestGridFile(IntegrationTest):
         a.metadata = {"foo": 1}
         self.assertEqual({"foo": 1}, a.metadata)
 
-        self.assertRaises(AttributeError, getattr, a, "md5")
         self.assertRaises(AttributeError, setattr, a, "md5", 5)
 
         a.close()
@@ -241,8 +240,8 @@ class TestGridFile(IntegrationTest):
 
     def test_grid_out_custom_opts(self):
         one = GridIn(self.db.fs, _id=5, filename="my_file",
-                   contentType="text/html", chunkSize=1000, aliases=["foo"],
-                   metadata={"foo": 1, "bar": 2}, bar=3, baz="hello")
+                     contentType="text/html", chunkSize=1000, aliases=["foo"],
+                     metadata={"foo": 1, "bar": 2}, bar=3, baz="hello")
         one.write(b"hello world")
         one.close()
 
@@ -272,7 +271,8 @@ class TestGridFile(IntegrationTest):
         two = GridOut(self.db.fs, file_document=self.db.fs.files.find_one())
         self.assertEqual(b"foo bar", two.read())
 
-        three = GridOut(self.db.fs, 5, file_document=self.db.fs.files.find_one())
+        three = GridOut(self.db.fs, 5,
+                        file_document=self.db.fs.files.find_one())
         self.assertEqual(b"foo bar", three.read())
 
         four = GridOut(self.db.fs, file_document={})
@@ -604,8 +604,9 @@ Bye"""))
                              serverSelectionTimeoutMS=10)
         fs = client.db.fs
         infile = GridIn(fs, file_id=-1, chunk_size=1)
-        self.assertRaises(ConnectionFailure, infile.write, b'data')
-        self.assertRaises(ConnectionFailure, infile.close)
+        self.assertRaises(ServerSelectionTimeoutError, infile.write, b'data')
+        self.assertRaises(ServerSelectionTimeoutError, infile.close)
+
 
     def test_unacknowledged(self):
         # w=0 is prohibited.
