@@ -25,7 +25,7 @@ to install pymongo on platforms other than Windows::
 
 To get a specific version of pymongo::
 
-  $ pip install pymongo==2.6.3
+  $ pip install pymongo==2.8.1
 
 To upgrade using pip::
 
@@ -192,7 +192,7 @@ PyMongo source directory::
   $ python setup.py bdist_egg
 
 The egg package can be found in the dist/ subdirectory. The file name will
-resemble “pymongo-2.6.3-py2.7-linux-x86_64.egg” but may have a different name
+resemble “pymongo-2.8.1-py2.7-linux-x86_64.egg” but may have a different name
 depending on your platform and the version of python you use to compile.
 
 .. warning::
@@ -205,7 +205,7 @@ depending on your platform and the version of python you use to compile.
 Copy this file to the target system and issue the following command to install the
 package::
 
-  $ sudo easy_install pymongo-2.6.3-py2.7-linux-x86_64.egg
+  $ sudo easy_install pymongo-2.8.1-py2.7-linux-x86_64.egg
 
 Installing a release candidate
 ------------------------------
@@ -216,9 +216,9 @@ but can be found on the
 `github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
 They can be installed by passing the full URL for the tag to pip::
 
-  $ pip install https://github.com/mongodb/mongo-python-driver/archive/2.8rc2.tar.gz
+  $ pip install https://github.com/mongodb/mongo-python-driver/archive/2.9rc0.tar.gz
 
 or easy_install::
 
-  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/2.8rc2.tar.gz
+  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/2.9rc0.tar.gz
 
