@@ -69,6 +69,14 @@ PyMongo 3.x. See the :doc:`/migrate-to-pymongo3` for detailed examples.
     >>> coll.with_options(CodecOptions(SON)).find_one()
     SON([(u'_id', ObjectId('5579dc7cfba5220cc14d9a18'))])
 
+Issues Resolved
+...............
+
+See the `PyMongo 2.9 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14795
+
 
 Changes in Version 2.8.1
 ------------------------
