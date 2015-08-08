@@ -102,8 +102,7 @@ class CommandCursor(object):
 
         try:
             doc = helpers._unpack_response(response.data,
-                                           self.__id,
-                                           self.__collection.codec_options)
+                                           self.__id)
         except CursorNotFound:
             self.__killed = True
             raise
@@ -118,7 +117,8 @@ class CommandCursor(object):
             self.__killed = True
 
         self.__retrieved += doc["number_returned"]
-        self.__data = deque(doc["data"])
+        self.__data = deque(doc["data"].decode(
+            self.__collection.codec_options))
 
     def _refresh(self):
         """Refreshes the cursor with more data from the server.

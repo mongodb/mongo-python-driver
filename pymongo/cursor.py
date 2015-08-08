@@ -175,7 +175,7 @@ class Cursor(object):
         # it anytime we change __limit.
         self.__empty = False
 
-        self.__data = deque()
+        self.__data = helpers.BSONList()
         self.__address = None
         self.__retrieved = 0
         self.__killed = False
@@ -219,7 +219,7 @@ class Cursor(object):
         be sent to the server, even if the resultant data has already been
         retrieved by this cursor.
         """
-        self.__data = deque()
+        self.__data = helpers.BSONList()
         self.__id = None
         self.__address = None
         self.__retrieved = 0
@@ -835,8 +835,7 @@ class Cursor(object):
 
         try:
             doc = helpers._unpack_response(response=data,
-                                           cursor_id=self.__id,
-                                           codec_options=self.__codec_options)
+                                           cursor_id=self.__id)
         except OperationFailure:
             self.__killed = True
 
@@ -865,7 +864,7 @@ class Cursor(object):
             self.__killed = True
 
         self.__retrieved += doc["number_returned"]
-        self.__data = deque(doc["data"])
+        self.__data = doc["data"]
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()
@@ -875,7 +874,7 @@ class Cursor(object):
         if self.__exhaust and self.__id == 0:
             self.__exhaust_mgr.close()
 
-    def _refresh(self):
+    def _refresh(self, batch_size=None):
         """Refreshes the cursor with more data from Mongo.
 
         Returns the length of self.__data after refresh. Will exit early if
@@ -885,11 +884,14 @@ class Cursor(object):
         if len(self.__data) or self.__killed:
             return len(self.__data)
 
+        if batch_size is None:
+            batch_size = self.__batch_size
+
         if self.__id is None:  # Query
-            ntoreturn = self.__batch_size
+            ntoreturn = batch_size
             if self.__limit:
-                if self.__batch_size:
-                    ntoreturn = min(self.__limit, self.__batch_size)
+                if batch_size:
+                    ntoreturn = min(self.__limit, batch_size)
                 else:
                     ntoreturn = self.__limit
             self.__send_message(_Query(self.__query_flags,
@@ -905,10 +907,10 @@ class Cursor(object):
         elif self.__id:  # Get More
             if self.__limit:
                 limit = self.__limit - self.__retrieved
-                if self.__batch_size:
-                    limit = min(limit, self.__batch_size)
+                if batch_size:
+                    limit = min(limit, batch_size)
             else:
-                limit = self.__batch_size
+                limit = batch_size
 
             # Exhaust cursors don't send getMore messages.
             if self.__exhaust:
@@ -969,6 +971,45 @@ class Cursor(object):
     def __iter__(self):
         return self
 
+    def pop_bson_left(self, count=1):
+        """
+        Get the next ``count`` BSON documents from the cursor.
+
+        Returns a BSONList containing up to `count` BSON documents.  If fewer
+        documents than requested are available those available documents will
+        be returned.
+
+        This function is similar to ``next()``, but returns can return more than
+        one document and doesn't return Python objects, but returns data still
+        BSON encoded.
+
+        This function is less convenient than just iterating the cursor, but can
+        allow more efficient operation if you don't need to deserialise the BSON
+        objects into Python dictionaries, or you want to implement custom
+        deserialisation yourself in a C extension.
+
+        .. versionadded:: 3.1
+        """
+        if count == 0:
+            return helpers.BSONList()
+
+        outlist = helpers.BSONList()
+        while len(outlist) < count:
+            n = self._refresh(batch_size=count - len(outlist))
+            if n == 0:
+                break
+            elif n + len(outlist) <= count:
+                outlist += self.__data
+                self.__data = helpers.BSONList()
+            else:
+                iterator = iter(self.__data)
+                for _ in range(count - len(outlist)):
+                    iterator.next()
+
+                self.__data.split(iterator)
+
+        return outlist
+
     def next(self):
         """Advance the cursor."""
         if self.__empty:
@@ -976,10 +1017,11 @@ class Cursor(object):
         _db = self.__collection.database
         if len(self.__data) or self._refresh():
             if self.__manipulate:
-                return _db._fix_outgoing(self.__data.popleft(),
-                                         self.__collection)
+                return _db._fix_outgoing(
+                    self.__data.popleft().decode(self.__codec_options),
+                    self.__collection)
             else:
-                return self.__data.popleft()
+                return self.__data.popleft().decode(self.__codec_options)
         else:
             raise StopIteration
 

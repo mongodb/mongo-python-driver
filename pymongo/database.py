@@ -468,7 +468,7 @@ class Database(common.BaseObject):
             res = _first_batch(sock_info, coll.full_name,
                                criteria, 0, slave_okay,
                                CodecOptions(), ReadPreference.PRIMARY)
-            data = res["data"]
+            data = res["data"].decode(CodecOptions())
             cursor = {
                 "id": res["cursor_id"],
                 "firstBatch": data,

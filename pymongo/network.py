@@ -57,8 +57,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos, read_preference,
                                        None, codec_options)
     sock.sendall(msg)
     response = receive_message(sock, 1, request_id)
-    unpacked = helpers._unpack_response(response, codec_options=codec_options)
-    response_doc = unpacked['data'][0]
+    unpacked = helpers._unpack_response(response)
+    response_doc = unpacked['data'].popleft().decode(codec_options)
     msg = "command %s on namespace %s failed: %%s" % (
         repr(spec).replace("%", "%%"), ns)
     if check:
