@@ -53,7 +53,7 @@ class JustWrite(threading.Thread):
 
     def run(self):
         for _ in range(self.num):
-            file, _ = self.gfs.open_upload_stream("test")
+            file = self.gfs.open_upload_stream("test")
             file.write(b"hello")
             file.close()
 
@@ -224,7 +224,7 @@ class TestGridfs(IntegrationTest):
     def test_get_last_version(self):
         one = self.fs.upload_from_stream("test", b"foo")
         time.sleep(0.01)
-        two, _ = self.fs.open_upload_stream("test")
+        two = self.fs.open_upload_stream("test")
         two.write(b"bar")
         two.close()
         time.sleep(0.01)
@@ -356,18 +356,18 @@ class TestGridfs(IntegrationTest):
             "second_name").read())
 
     def test_abort(self):
-        gin, file_id = self.fs.open_upload_stream("test_filename",
-                                                  chunk_size_bytes=5)
+        gin = self.fs.open_upload_stream("test_filename",
+                                         chunk_size_bytes=5)
         gin.write(b"test1")
         gin.write(b"test2")
         gin.write(b"test3")
         self.assertEqual(3, self.db.fs.chunks.count(
-            {"files_id": file_id}))
+            {"files_id": gin._id}))
         gin.abort()
         self.assertTrue(gin.closed)
         self.assertRaises(ValueError, gin.write, b"test4")
         self.assertEqual(0, self.db.fs.chunks.count(
-            {"files_id": file_id}))
+            {"files_id": gin._id}))
 
 class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
 

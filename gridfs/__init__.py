@@ -426,8 +426,7 @@ class GridFSBucket(object):
           grid_in.write("data I want to store!")
           grid_in.close()  # uploaded on close
 
-        Returns an instance of :class:`~gridfs.grid_file.GridIn` and the _id
-        of the file to upload.
+        Returns an instance of :class:`~gridfs.grid_file.GridIn`.
 
         Raises :exc:`~gridfs.errors.NoFile` if no such version of
         that file exists.
@@ -449,8 +448,7 @@ class GridFSBucket(object):
         if metadata is not None:
             opts["metadata"] = metadata
 
-        gin = GridIn(self._collection, **opts)
-        return gin, gin._id
+        return GridIn(self._collection, **opts)
 
     def upload_from_stream(self, filename, source, chunk_size_bytes=None,
                            metadata=None):
@@ -484,14 +482,11 @@ class GridFSBucket(object):
             files collection document. If not provided the metadata field will
             be omitted from the files collection document.
         """
-        gin, _id = self.open_upload_stream(filename, chunk_size_bytes,
-                                           metadata)
-        try:
+        with self.open_upload_stream(
+                filename, chunk_size_bytes, metadata) as gin:
             gin.write(source)
-        finally:
-            gin.close()
 
-        return _id
+        return gin._id
 
     def open_download_stream(self, file_id):
         """Opens a Stream from which the application can read the contents of
