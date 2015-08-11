@@ -14,6 +14,7 @@
 
 """Internal network layer helper methods."""
 
+import datetime
 import select
 import struct
 
@@ -28,14 +29,15 @@ try:
 except ImportError:
     _HAS_POLL = False
 
-from pymongo import helpers, message
-from pymongo.errors import AutoReconnect
+from pymongo import helpers, message, monitoring
+from pymongo.errors import AutoReconnect, OperationFailure
 
 _UNPACK_INT = struct.Struct("<i").unpack
 
 
-def command(sock, dbname, spec, slave_ok, is_mongos, read_preference,
-            codec_options, check=True, allowable_errors=None):
+def command(sock, dbname, spec, slave_ok, is_mongos,
+            read_preference, codec_options, check=True,
+            allowable_errors=None, address=None, user=False):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -48,21 +50,48 @@ def command(sock, dbname, spec, slave_ok, is_mongos, read_preference,
       - `codec_options`: a CodecOptions instance
       - `check`: raise OperationFailure if there are errors
       - `allowable_errors`: errors to ignore if `check` is True
+      - `address`: the (host, port) of `sock`
+      - `user`: is this a user command or internal?
     """
+    name = next(iter(spec))
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
     if is_mongos:
         spec = message._maybe_add_read_preference(spec, read_preference)
+
+    publish = user and monitoring.enabled()
+    if publish:
+        start = datetime.datetime.now()
+
     request_id, msg, _ = message.query(flags, ns, 0, -1, spec,
                                        None, codec_options)
+
+    if publish:
+        encoding_duration = datetime.datetime.now() - start
+        monitoring.publish_command_start(spec, dbname, request_id, address)
+        start = datetime.datetime.now()
+
     sock.sendall(msg)
     response = receive_message(sock, 1, request_id)
     unpacked = helpers._unpack_response(response, codec_options=codec_options)
+
+    if publish:
+        duration = (datetime.datetime.now() - start) + encoding_duration
+
     response_doc = unpacked['data'][0]
     msg = "command %s on namespace %s failed: %%s" % (
         repr(spec).replace("%", "%%"), ns)
     if check:
-        helpers._check_command_response(response_doc, msg, allowable_errors)
+        try:
+            helpers._check_command_response(response_doc, msg, allowable_errors)
+        except OperationFailure as exc:
+            if publish:
+                monitoring.publish_command_failure(
+                    duration, exc.details, name, request_id, address)
+            raise
+    if publish:
+        monitoring.publish_command_success(
+            duration, response_doc, name, request_id, address)
     return response_doc
 
 
