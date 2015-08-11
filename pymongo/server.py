@@ -16,6 +16,9 @@
 
 import contextlib
 
+from datetime import datetime
+
+from pymongo import monitoring
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
 
@@ -59,7 +62,7 @@ class Server(object):
           - `message`: (request_id, data).
           - `all_credentials`: dict, maps auth source to MongoCredential.
         """
-        request_id, data, max_doc_size = self._split_message(message)
+        _, data, max_doc_size = self._split_message(message)
         with self.get_socket(all_credentials) as sock_info:
             sock_info.send_message(data, max_doc_size)
 
@@ -81,21 +84,43 @@ class Server(object):
             It is returned along with its Pool in the Response.
         """
         with self.get_socket(all_credentials, exhaust) as sock_info:
+
+            duration = None
+            publish = monitoring.enabled()
+            if publish:
+                start = datetime.now()
+
             message = operation.get_message(
                 set_slave_okay, sock_info.is_mongos)
             request_id, data, max_doc_size = self._split_message(message)
+
+            if publish:
+                encoding_duration = datetime.now() - start
+                cmd, dbn = operation.as_command()
+                monitoring.publish_command_start(
+                    cmd, dbn, request_id, sock_info.address)
+                start = datetime.now()
+
             sock_info.send_message(data, max_doc_size)
             response_data = sock_info.receive_message(1, request_id)
+
+            if publish:
+                duration = (datetime.now() - start) + encoding_duration
+
             if exhaust:
                 return ExhaustResponse(
                     data=response_data,
                     address=self._description.address,
                     socket_info=sock_info,
-                    pool=self._pool)
+                    pool=self._pool,
+                    duration=duration,
+                    request_id=request_id)
             else:
                 return Response(
                     data=response_data,
-                    address=self._description.address)
+                    address=self._description.address,
+                    duration=duration,
+                    request_id=request_id)
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):

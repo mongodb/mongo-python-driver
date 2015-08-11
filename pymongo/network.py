@@ -30,7 +30,7 @@ except ImportError:
     _HAS_POLL = False
 
 from pymongo import helpers, message, monitoring
-from pymongo.errors import AutoReconnect, OperationFailure
+from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
 
 _UNPACK_INT = struct.Struct("<i").unpack
 
@@ -84,7 +84,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     if check:
         try:
             helpers._check_command_response(response_doc, msg, allowable_errors)
-        except OperationFailure as exc:
+        except (NotMasterError, OperationFailure) as exc:
             if publish:
                 monitoring.publish_command_failure(
                     duration, exc.details, name, request_id, address)

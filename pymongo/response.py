@@ -16,17 +16,21 @@
 
 
 class Response(object):
-    __slots__ = ('_data', '_address')
+    __slots__ = ('_data', '_address', '_request_id', '_duration')
 
-    def __init__(self, data, address):
+    def __init__(self, data, address, request_id, duration):
         """Represent a response from the server.
 
         :Parameters:
           - `data`: Raw BSON bytes.
           - `address`: (host, port) of the source server.
+          - `request_id`: The request id of this operation.
+          - `duration`: The duration of the operation.
         """
         self._data = data
         self._address = address
+        self._request_id = request_id
+        self._duration = duration
 
     @property
     def data(self):
@@ -38,11 +42,22 @@ class Response(object):
         """(host, port) of the source server."""
         return self._address
 
+    @property
+    def request_id(self):
+        """The request id of this operation."""
+        return self._request_id
+
+    @property
+    def duration(self):
+        """The duration of the operation."""
+        return self._duration
+
 
 class ExhaustResponse(Response):
     __slots__ = ('_socket_info', '_pool')
 
-    def __init__(self, data, address, socket_info, pool):
+    def __init__(
+            self, data, address, socket_info, pool, request_id, duration):
         """Represent a response to an exhaust cursor's initial query.
 
         :Parameters:
@@ -50,8 +65,13 @@ class ExhaustResponse(Response):
           - `address`: (host, port) of the source server.
           - `socket_info`: The SocketInfo used for the initial query.
           - `pool`: The Pool from which the SocketInfo came.
+          - `request_id`: The request id of this operation.
+          - `duration`: The duration of the operation.
         """
-        super(ExhaustResponse, self).__init__(data, address)
+        super(ExhaustResponse, self).__init__(data,
+                                              address,
+                                              request_id,
+                                              duration)
         self._socket_info = socket_info
         self._pool = pool
 

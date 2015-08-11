@@ -17,7 +17,7 @@
 from collections import deque
 
 from bson.py3compat import integer_types
-from pymongo import helpers
+from pymongo import helpers, monitoring
 from pymongo.errors import AutoReconnect, CursorNotFound, NotMasterError
 from pymongo.message import _GetMore
 
@@ -100,19 +100,42 @@ class CommandCursor(object):
             self.__killed = True
             raise
 
+        publish = monitoring.enabled()
+        duration = response.duration
+        rqst_id = response.request_id
         try:
             doc = helpers._unpack_response(response.data,
                                            self.__id,
                                            self.__collection.codec_options)
-        except CursorNotFound:
+        except CursorNotFound as exc:
             self.__killed = True
+
+            if publish:
+                monitoring.publish_command_failure(
+                    duration, exc.details, "getMore", rqst_id, self.__address)
+
             raise
-        except NotMasterError:
+        except NotMasterError as exc:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
+
+            if publish:
+                monitoring.publish_command_failure(
+                    duration, exc.details, "getMore", rqst_id, self.__address)
+
             client._reset_server_and_request_check(self.address)
             raise
+
+        if publish:
+            # Must publish in getMore command response format.
+            res = {"cursor": {"id": doc["cursor_id"],
+                              "ns": self.__collection.full_name,
+                              "nextBatch": doc["data"]},
+                   "ok": 1}
+            monitoring.publish_command_success(
+                duration, res, "getMore", rqst_id, self.__address)
+
         self.__id = doc["cursor_id"]
         if self.__id == 0:
             self.__killed = True

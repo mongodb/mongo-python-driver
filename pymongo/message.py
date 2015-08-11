@@ -75,14 +75,80 @@ def _maybe_add_read_preference(spec, read_preference):
     return spec
 
 
+# XXX: What to do about exhaust?
+_OPTIONS = SON([
+    ('tailable', 2),
+    ('oplogReplay', 8),
+    ('noCursorTimeout', 16),
+    ('awaitData', 32),
+    ('allowPartialResults', 128)])
+
+
+# XXX: What about $explain? Time to switch to explain command?
+_MODIFIERS = SON([
+    ('$query', 'filter'),
+    ('$orderby', 'sort'),
+    ('$hint', 'hint'),
+    ('$comment', 'comment'),
+    ('$maxScan', 'maxScan'),
+    ('$maxTimeMS', 'maxTimeMS'),
+    ('$readPreference', 'readPreference'),
+    ('$max', 'max'),
+    ('$min', 'min'),
+    ('$returnKey', 'returnKey'),
+    ('$showRecordId', 'showRecordId'),
+    ('$showDiskLoc', 'showRecordId'),  # <= MongoDb 3.0
+    ('$snapshot', 'snapshot')])
+
+
+def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options):
+    """Generate a find command document."""
+    cmd = SON([('find', coll)])
+    if '$query' in spec:
+        cmd.update([(_MODIFIERS[key], val) for key, val in spec.items()])
+    else:
+        cmd['filter'] = spec
+
+    if projection:
+        cmd['projection'] = projection
+    if skip:
+        cmd['skip'] = skip
+    if limit:
+        cmd['limit'] = limit
+    if batch_size:
+        cmd['batchSize'] = batch_size
+    # XXX: Should the check for 1 be here?
+    if limit < 0 or limit == 1:
+        cmd['singleBatch'] = True
+
+    if options:
+        cmd.update([(opt, True)
+                    for opt, val in _OPTIONS.items()
+                    if options & val])
+    return cmd
+
+
+def _gen_get_more_command(cursor_id, coll, batch_size, max_time_ms):
+    """Generate a getMore command document."""
+    cmd = SON([('getMore', cursor_id),
+               ('collection', coll)])
+    if batch_size:
+        cmd['batchSize'] = batch_size
+    if max_time_ms:
+        cmd['maxTimeMS'] = max_time_ms
+    return cmd
+
+
 class _Query(object):
     """A query operation."""
 
-    __slots__ = ('flags', 'ns', 'ntoskip', 'ntoreturn',
-                 'spec', 'fields', 'codec_options', 'read_preference')
+    __slots__ = ('flags', 'ns', 'ntoskip', 'ntoreturn', 'spec', 'fields',
+                 'codec_options', 'read_preference', 'limit', 'batch_size')
 
-    def __init__(self, flags, ns, ntoskip, ntoreturn,
-                 spec, fields, codec_options, read_preference):
+    name = 'find'
+
+    def __init__(self, flags, ns, ntoskip, ntoreturn, spec, fields,
+                 codec_options, read_preference, limit, batch_size):
         self.flags = flags
         self.ns = ns
         self.ntoskip = ntoskip
@@ -91,31 +157,50 @@ class _Query(object):
         self.fields = fields
         self.codec_options = codec_options
         self.read_preference = read_preference
+        self.limit = limit
+        self.batch_size = batch_size
+
+    def as_command(self):
+        """Return a find command document for this query.
+
+        Should be called *after* get_message.
+        """
+        dbn, coll = self.ns.split('.', 1)
+        return _gen_find_command(coll, self.spec, self.fields, self.ntoskip,
+                                 self.limit, self.batch_size, self.flags), dbn
 
     def get_message(self, set_slave_ok, is_mongos):
         """Get a query message, possibly setting the slaveOk bit."""
         if is_mongos:
-            spec = _maybe_add_read_preference(self.spec, self.read_preference)
-        else:
-            spec = self.spec
+            self.spec = _maybe_add_read_preference(self.spec,
+                                                   self.read_preference)
         if set_slave_ok:
             # Set the slaveOk bit.
             flags = self.flags | 4
         else:
             flags = self.flags
-        return query(flags, self.ns, self.ntoskip,
-                     self.ntoreturn, spec, self.fields, self.codec_options)
+        return query(flags, self.ns, self.ntoskip, self.ntoreturn,
+                     self.spec, self.fields, self.codec_options)
 
 
 class _GetMore(object):
     """A getmore operation."""
 
-    __slots__ = ('ns', 'ntoreturn', 'cursor_id')
+    __slots__ = ('ns', 'ntoreturn', 'cursor_id', 'max_time_ms')
 
-    def __init__(self, ns, ntoreturn, cursor_id):
+    name = 'getMore'
+
+    def __init__(self, ns, ntoreturn, cursor_id, max_time_ms=None):
         self.ns = ns
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
+        self.max_time_ms = max_time_ms
+
+    def as_command(self):
+        """Return a getMore command document for this query."""
+        dbn, coll = self.ns.split('.', 1)
+        return _gen_get_more_command(
+            self.cursor_id, coll, self.ntoreturn, self.max_time_ms), dbn
 
     def get_message(self, dummy0, dummy1):
         """Get a getmore message."""

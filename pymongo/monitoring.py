@@ -86,9 +86,9 @@ class Subscriber(object):
 def _to_micros(dur):
     """Convert duration 'dur' to microseconds."""
     if hasattr(dur, 'total_seconds'):
-        return int(dur.total_seconds() * 10e6)
+        return int(dur.total_seconds() * 10e5)
     # Python 2.6
-    return dur.microseconds + (dur.seconds + dur.days * 24 * 3600) * 10e6
+    return dur.microseconds + (dur.seconds + dur.days * 24 * 3600) * 1000000
 
 
 def _validate_events(events):

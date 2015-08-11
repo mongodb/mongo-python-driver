@@ -43,7 +43,7 @@ class AutoReconnect(ConnectionFailure):
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
     def __init__(self, message='', errors=None):
-        self.errors = errors or []
+        self.errors = self.details = errors or []
         ConnectionFailure.__init__(self, message)
 
 
