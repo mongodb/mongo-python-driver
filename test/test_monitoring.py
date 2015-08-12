@@ -293,11 +293,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual('getMore', failed.command_name)
         self.assertTrue(isinstance(failed.request_id, int))
         self.assertEqual(cursor.address, failed.connection_id)
-        expected_result = {
-            'errmsg': "Cursor not found, cursor id: 12345",
-            'code': 43,
-            'ok': 0}
-        self.assertEqual(expected_result, failed.failure)
+        self.assertEqual(0, failed.failure.get("ok"))
 
     @client_context.require_replica_set
     def test_not_master_error(self):

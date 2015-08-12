@@ -112,6 +112,8 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
         raise CursorNotFound(msg, 43, errobj)
     elif response_flag & 2:
         error_object = bson.BSON(response[20:]).decode()
+        # Fake the ok field if it doesn't exist.
+        error_object.setdefault("ok", 0)
         if error_object["$err"].startswith("not master"):
             raise NotMasterError(error_object["$err"], error_object)
         elif error_object.get("code") == 50:

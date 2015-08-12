@@ -822,7 +822,7 @@ class Cursor(object):
                                                         response.pool)
 
                 data = response.data
-                duration = response.duration
+                cmd_duration = response.duration
                 rqst_id = response.request_id
             except AutoReconnect:
                 # Don't try to send kill cursors on another socket
@@ -833,7 +833,6 @@ class Cursor(object):
                 raise
         else:
             # Exhaust cursor - no getMore message.
-            duration = None
             rqst_id = 0
             cmd_name = 'getMore'
             if publish:
@@ -853,8 +852,10 @@ class Cursor(object):
                 self.__die()
                 raise
             if publish:
-                duration = datetime.datetime.now() - start
+                cmd_duration = datetime.datetime.now() - start
 
+        if publish:
+            start = datetime.datetime.now()
         try:
             doc = helpers._unpack_response(response=data,
                                            cursor_id=self.__id,
@@ -866,6 +867,7 @@ class Cursor(object):
             self.__die()
 
             if publish:
+                duration = (datetime.datetime.now() - start) + cmd_duration
                 monitoring.publish_command_failure(
                     duration, exc.details, cmd_name, rqst_id, self.__address)
 
@@ -885,6 +887,7 @@ class Cursor(object):
             self.__die()
 
             if publish:
+                duration = (datetime.datetime.now() - start) + cmd_duration
                 monitoring.publish_command_failure(
                     duration, exc.details, cmd_name, rqst_id, self.__address)
 
@@ -892,6 +895,7 @@ class Cursor(object):
             raise
 
         if publish:
+            duration = (datetime.datetime.now() - start) + cmd_duration
             # Must publish in find / getMore command response format.
             res = {"cursor": {"id": doc["cursor_id"],
                               "ns": self.__collection.full_name},

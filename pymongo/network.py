@@ -73,23 +73,23 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
     sock.sendall(msg)
     response = receive_message(sock, 1, request_id)
-    unpacked = helpers._unpack_response(response, codec_options=codec_options)
+    try:
+        unpacked = helpers._unpack_response(
+            response, codec_options=codec_options)
 
+        response_doc = unpacked['data'][0]
+        if check:
+            msg = "command %s on namespace %s failed: %%s" % (
+                repr(spec).replace("%", "%%"), ns)
+            helpers._check_command_response(response_doc, msg, allowable_errors)
+    except (NotMasterError, OperationFailure) as exc:
+        if publish:
+            duration = (datetime.datetime.now() - start) + encoding_duration
+            monitoring.publish_command_failure(
+                duration, exc.details, name, request_id, address)
+        raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
-
-    response_doc = unpacked['data'][0]
-    msg = "command %s on namespace %s failed: %%s" % (
-        repr(spec).replace("%", "%%"), ns)
-    if check:
-        try:
-            helpers._check_command_response(response_doc, msg, allowable_errors)
-        except (NotMasterError, OperationFailure) as exc:
-            if publish:
-                monitoring.publish_command_failure(
-                    duration, exc.details, name, request_id, address)
-            raise
-    if publish:
         monitoring.publish_command_success(
             duration, response_doc, name, request_id, address)
     return response_doc
