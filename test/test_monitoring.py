@@ -21,6 +21,7 @@ from pymongo import CursorType, MongoClient, monitoring
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import NotMasterError, OperationFailure
 from test import unittest, IntegrationTest, client_context
+from test.utils import single_client
 
 
 class EventListener(monitoring.Subscriber):
@@ -298,7 +299,10 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_replica_set
     def test_not_master_error(self):
         address = next(iter(self.client.secondaries))
-        client = MongoClient(*address)
+        client = single_client(*address)
+        # Clear authentication command results from the listener.
+        client.admin.command('ismaster')
+        self.listener.results = {}
         error = None
         try:
             client.pymongo_test.test.find_one_and_delete({})
