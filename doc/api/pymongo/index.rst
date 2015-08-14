@@ -38,6 +38,7 @@ Sub-modules:
    bulk
    errors
    message
+   monitoring
    mongo_client
    mongo_replica_set_client
    operations

@@ -13,25 +13,22 @@
 # limitations under the License.
 
 """Tools for representing files stored in GridFS."""
-
 import datetime
 import math
 import os
 
+from hashlib import md5
+
 from bson.binary import Binary
 from bson.objectid import ObjectId
 from bson.py3compat import text_type, StringIO
-from gridfs.errors import (CorruptGridFile,
-                           FileExists,
-                           NoFile)
+from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
 from pymongo.collection import Collection
-from pymongo.common import UNAUTHORIZED_CODES
 from pymongo.cursor import Cursor
 from pymongo.errors import (ConfigurationError,
                             DuplicateKeyError,
                             OperationFailure)
-from pymongo.read_preferences import ReadPreference
 
 try:
     _SEEK_SET = os.SEEK_SET
@@ -49,6 +46,9 @@ NEWLN = b"\n"
 """Default chunk size, in bytes."""
 # Slightly under a power of 2, to work well with server's record allocations.
 DEFAULT_CHUNK_SIZE = 255 * 1024
+
+_C_INDEX = [("files_id", ASCENDING), ("n", ASCENDING)]
+_F_INDEX = [("filename", ASCENDING), ("uploadDate", ASCENDING)]
 
 
 def _grid_in_property(field_name, docstring, read_only=False,
@@ -155,6 +155,7 @@ class GridIn(object):
         if "chunk_size" in kwargs:
             kwargs["chunkSize"] = kwargs.pop("chunk_size")
 
+        kwargs['md5'] = md5()
         # Defaults
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
@@ -167,17 +168,29 @@ class GridIn(object):
         object.__setattr__(self, "_closed", False)
         object.__setattr__(self, "_ensured_index", False)
 
-    def _ensure_index(self):
-        if not object.__getattribute__(self, "_ensured_index"):
+    def __create_index(self, collection, index, unique):
+        doc = collection.find_one(projection={"_id": 1})
+        if doc is None:
             try:
-                self._coll.chunks.create_index(
-                    [("files_id", ASCENDING), ("n", ASCENDING)],
-                    unique=True)
-            except OperationFailure as exc:
-                if not (exc.code in UNAUTHORIZED_CODES
-                        or "authorized" in str(exc)):
-                    raise exc
+                indexes = list(collection.list_indexes())
+            except OperationFailure:
+                indexes = []
+            if index not in indexes:
+                collection.create_index(index, unique=unique)
+
+    def __ensure_indexes(self):
+        if not object.__getattribute__(self, "_ensured_index"):
+            self.__create_index(self._coll.files, _F_INDEX, False)
+            self.__create_index(self._coll.chunks, _C_INDEX, True)
             object.__setattr__(self, "_ensured_index", True)
+
+    def abort(self):
+        """Remove all chunks/files that may have been uploaded and close.
+        """
+        self._coll.chunks.delete_many({"files_id": self._file['_id']})
+        self._coll.files.delete_one({"_id": self._file['_id']})
+        object.__setattr__(self, "_closed", True)
+
 
     @property
     def closed(self):
@@ -225,7 +238,8 @@ class GridIn(object):
         """
         # Ensure the index, even if there's nothing to write, so
         # the filemd5 command always succeeds.
-        self._ensure_index()
+        self.__ensure_indexes()
+        self._file['md5'].update(data)
 
         if not data:
             return
@@ -255,12 +269,7 @@ class GridIn(object):
         try:
             self.__flush_buffer()
 
-            db = self._coll.database
-            md5 = db.command(
-                "filemd5", self._id, root=self._coll.name,
-                read_preference=ReadPreference.PRIMARY)["md5"]
-
-            self._file["md5"] = md5
+            self._file['md5'] = self._file["md5"].hexdigest()
             self._file["length"] = self._position
             self._file["uploadDate"] = datetime.datetime.utcnow()
 
@@ -326,10 +335,14 @@ class GridIn(object):
             # Make sure to flush only when _buffer is complete
             space = self.chunk_size - self._buffer.tell()
             if space:
-                to_write = read(space)
+                try:
+                    to_write = read(space)
+                except:
+                    self.abort()
+                    raise
                 self._buffer.write(to_write)
                 if len(to_write) < space:
-                    return # EOF or incomplete
+                    return  # EOF or incomplete
             self.__flush_buffer()
         to_write = read(self.chunk_size)
         while to_write and len(to_write) == self.chunk_size:
@@ -475,6 +488,16 @@ class GridOut(object):
             received += len(chunk_data)
             data.write(chunk_data)
 
+        # Detect extra chunks.
+        max_chunk_n = math.ceil(self.length / float(self.chunk_size))
+        chunk = self.__chunks.find_one({"files_id": self._id,
+                                        "n": {"$gte": max_chunk_n}})
+        # According to spec, ignore extra chunks if they are empty.
+        if chunk is not None and len(chunk['data']):
+            raise CorruptGridFile(
+                "Extra chunk found: expected %i chunks but found "
+                "chunk with n=%i" % (max_chunk_n, chunk['n']))
+
         self.__position -= received - size
 
         # Return 'size' bytes and store the rest.
@@ -605,7 +628,7 @@ class GridOutCursor(Cursor):
     of an arbitrary query against the GridFS files collection.
     """
     def __init__(self, collection, filter=None, skip=0, limit=0,
-                 no_cursor_timeout=False, sort=None):
+                 no_cursor_timeout=False, sort=None, batch_size=0):
         """Create a new cursor, similar to the normal
         :class:`~pymongo.cursor.Cursor`.
 
@@ -621,7 +644,8 @@ class GridOutCursor(Cursor):
 
         super(GridOutCursor, self).__init__(
             collection.files, filter, skip=skip, limit=limit,
-            no_cursor_timeout=no_cursor_timeout, sort=sort)
+            no_cursor_timeout=no_cursor_timeout, sort=sort,
+            batch_size=batch_size)
 
     def next(self):
         """Get next GridOut object from cursor.

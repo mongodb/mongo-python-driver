@@ -15,6 +15,8 @@
 """Cursor class to iterate over Mongo query results."""
 
 import copy
+import datetime
+
 from collections import deque
 
 from bson import RE_TYPE
@@ -23,7 +25,7 @@ from bson.py3compat import (iteritems,
                             integer_types,
                             string_type)
 from bson.son import SON
-from pymongo import helpers
+from pymongo import helpers, monitoring
 from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
@@ -799,8 +801,10 @@ class Cursor(object):
         Can raise ConnectionFailure.
         """
         client = self.__collection.database.client
+        publish = monitoring.enabled()
 
         if operation:
+            cmd_name = operation.name
             kwargs = {
                 "read_preference": self.__read_preference,
                 "exhaust": self.__exhaust,
@@ -818,6 +822,8 @@ class Cursor(object):
                                                         response.pool)
 
                 data = response.data
+                cmd_duration = response.duration
+                rqst_id = response.request_id
             except AutoReconnect:
                 # Don't try to send kill cursors on another socket
                 # or to another server. It can cause a _pinValue
@@ -827,21 +833,43 @@ class Cursor(object):
                 raise
         else:
             # Exhaust cursor - no getMore message.
+            rqst_id = 0
+            cmd_name = 'getMore'
+            if publish:
+                # Fake a getMore command.
+                cmd = SON([('getMore', self.__id),
+                           ('collection', self.__collection.name)])
+                if self.__batch_size:
+                    cmd['batchSize'] = self.__batch_size
+                if self.__max_time_ms:
+                    cmd['maxTimeMS'] = self.__max_time_ms
+                monitoring.publish_command_start(
+                    cmd, self.__collection.database.name, 0, self.__address)
+                start = datetime.datetime.now()
             try:
                 data = self.__exhaust_mgr.sock.receive_message(1, None)
             except ConnectionFailure:
                 self.__die()
                 raise
+            if publish:
+                cmd_duration = datetime.datetime.now() - start
 
+        if publish:
+            start = datetime.datetime.now()
         try:
             doc = helpers._unpack_response(response=data,
                                            cursor_id=self.__id,
                                            codec_options=self.__codec_options)
-        except OperationFailure:
+        except OperationFailure as exc:
             self.__killed = True
 
             # Make sure exhaust socket is returned immediately, if necessary.
             self.__die()
+
+            if publish:
+                duration = (datetime.datetime.now() - start) + cmd_duration
+                monitoring.publish_command_failure(
+                    duration, exc.details, cmd_name, rqst_id, self.__address)
 
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
@@ -850,7 +878,7 @@ class Cursor(object):
             if self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]:
                 return
             raise
-        except NotMasterError:
+        except NotMasterError as exc:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
@@ -858,8 +886,27 @@ class Cursor(object):
             # Make sure exhaust socket is returned immediately, if necessary.
             self.__die()
 
+            if publish:
+                duration = (datetime.datetime.now() - start) + cmd_duration
+                monitoring.publish_command_failure(
+                    duration, exc.details, cmd_name, rqst_id, self.__address)
+
             client._reset_server_and_request_check(self.__address)
             raise
+
+        if publish:
+            duration = (datetime.datetime.now() - start) + cmd_duration
+            # Must publish in find / getMore command response format.
+            res = {"cursor": {"id": doc["cursor_id"],
+                              "ns": self.__collection.full_name},
+                   "ok": 1}
+            if cmd_name == "find":
+                res["cursor"]["firstBatch"] = doc["data"]
+            else:
+                res["cursor"]["nextBatch"] = doc["data"]
+            monitoring.publish_command_success(
+                duration, res, cmd_name, rqst_id, self.__address)
+
         self.__id = doc["cursor_id"]
         if self.__id == 0:
             self.__killed = True
@@ -899,7 +946,9 @@ class Cursor(object):
                                        self.__query_spec(),
                                        self.__projection,
                                        self.__codec_options,
-                                       self.__read_preference))
+                                       self.__read_preference,
+                                       self.__limit,
+                                       self.__batch_size))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More
@@ -916,7 +965,8 @@ class Cursor(object):
             else:
                 self.__send_message(_GetMore(self.__collection.full_name,
                                              limit,
-                                             self.__id))
+                                             self.__id,
+                                             self.__max_time_ms))
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True

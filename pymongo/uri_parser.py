@@ -14,6 +14,7 @@
 
 
 """Tools to parse and validate a MongoDB URI."""
+import warnings
 
 from bson.py3compat import PY3, iteritems, string_type
 
@@ -22,7 +23,7 @@ if PY3:
 else:
     from urllib import unquote_plus
 
-from pymongo.common import validate as _validate
+from pymongo.common import (validate as _validate, get_validated_options)
 from pymongo.errors import ConfigurationError, InvalidURI
 
 
@@ -129,6 +130,8 @@ def parse_host(entity, default_port=DEFAULT_PORT):
     port = default_port
     if entity[0] == '[':
         host, port = parse_ipv6_literal_host(entity, default_port)
+    elif entity.endswith(".sock"):
+        return entity, default_port
     elif entity.find(':') != -1:
         if entity.count(':') > 1:
             raise ValueError("Reserved characters such as ':' must be "
@@ -137,8 +140,9 @@ def parse_host(entity, default_port=DEFAULT_PORT):
                              "and ']' according to RFC 2732.")
         host, port = host.split(':', 1)
     if isinstance(port, string_type):
-        if not port.isdigit():
-            raise ValueError("Port number must be an integer.")
+        if not port.isdigit() or int(port) > 65535 or int(port) <= 0:
+            raise ValueError("Port must be an integer between 0 and 65535: %s"
+                             % (port,))
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:
@@ -148,15 +152,23 @@ def parse_host(entity, default_port=DEFAULT_PORT):
     return host.lower(), port
 
 
-def validate_options(opts):
+def validate_options(opts, warn=False):
     """Validates and normalizes options passed in a MongoDB URI.
 
-    Returns a new dictionary of validated and normalized options.
+    Returns a new dictionary of validated and normalized options. If warn is
+    False then errors will be thrown for invalid options, otherwise they will
+    be ignored and a warning will be issued.
 
     :Parameters:
         - `opts`: A dict of MongoDB URI options.
+        - `warn` (optional): If ``True`` then warnigns will be logged and
+          invalid options will be ignored. Otherwise invalid options will
+          cause errors.
     """
-    return dict([_validate(opt, val) for opt, val in iteritems(opts)])
+    if warn:
+        return get_validated_options(opts)
+    else:
+        return dict([_validate(opt, val) for opt, val in iteritems(opts)])
 
 
 def _parse_options(opts, delim):
@@ -172,11 +184,21 @@ def _parse_options(opts, delim):
             # str(option) to ensure that a unicode URI results in plain 'str'
             # option names. 'normalized' is then suitable to be passed as
             # kwargs in all Python versions.
-            options[str(key)] = val
+            if str(key) in options:
+                warnings.warn("Duplicate URI option %s" % (str(key),))
+            options[str(key)] = unquote_plus(val)
+
+    # Special case for deprecated options
+    if "wtimeout" in options:
+        if "wtimeoutMS" in options:
+            options.pop("wtimeout")
+        warnings.warn("Option wtimeout is deprecated, use 'wtimeoutMS'"
+                      " instead")
+
     return options
 
 
-def split_options(opts, validate=True):
+def split_options(opts, validate=True, warn=False):
     """Takes the options portion of a MongoDB URI, validates each option
     and returns the options in a dictionary.
 
@@ -202,7 +224,7 @@ def split_options(opts, validate=True):
         raise InvalidURI("MongoDB URI options are key=value pairs.")
 
     if validate:
-        return validate_options(options)
+        return validate_options(options, warn)
     return options
 
 
@@ -232,7 +254,7 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
     return nodes
 
 
-def parse_uri(uri, default_port=DEFAULT_PORT, validate=True):
+def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -252,6 +274,13 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True):
           for a host in the URI.
         - `validate`: If ``True`` (the default), validate and normalize all
           options.
+        - `warn` (optional): When validating, if ``True`` then will warn
+          the user then ignore any invalid options or values. If ``False``,
+          validation will error when options are unsupported or values are
+          invalid.
+
+    .. versionchanged:: 3.1
+        ``warn`` added so invalid options can be ignored.
     """
     if not uri.startswith(SCHEME):
         raise InvalidURI("Invalid URI scheme: URI "
@@ -262,7 +291,6 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True):
     if not scheme_free:
         raise InvalidURI("Must provide at least one hostname or IP.")
 
-    nodes = None
     user = None
     passwd = None
     dbase = None
@@ -272,11 +300,14 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True):
     # Check for unix domain sockets in the uri
     if '.sock' in scheme_free:
         host_part, _, path_part = _rpartition(scheme_free, '/')
-        try:
-            parse_uri('%s%s' % (SCHEME, host_part))
-        except (ConfigurationError, InvalidURI):
-            host_part = scheme_free
+        if not host_part:
+            host_part = path_part
             path_part = ""
+        if '/' in host_part:
+            raise InvalidURI("Any '/' in a unix domain socket must be"
+                             " URL encoded: %s" % host_part)
+        host_part = unquote_plus(host_part)
+        path_part = unquote_plus(path_part)
     else:
         host_part, _, path_part = _partition(scheme_free, '/')
 
@@ -302,7 +333,12 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True):
                 dbase, collection = dbase.split('.', 1)
 
         if opts:
-            options = split_options(opts, validate)
+            options = split_options(opts, validate, warn)
+
+    if dbase is not None:
+        dbase = unquote_plus(dbase)
+    if collection is not None:
+        collection = unquote_plus(collection)
 
     return {
         'nodelist': nodes,

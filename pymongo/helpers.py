@@ -106,12 +106,16 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
         # Shouldn't get this response if we aren't doing a getMore
         assert cursor_id is not None
 
-        raise CursorNotFound("cursor id '%s' not valid at server" %
-                             cursor_id)
+        # Fake a getMore command response. OP_GET_MORE provides no document.
+        msg = "Cursor not found, cursor id: %d" % (cursor_id,)
+        errobj = {"ok" : 0, "errmsg" : msg, "code" : 43}
+        raise CursorNotFound(msg, 43, errobj)
     elif response_flag & 2:
         error_object = bson.BSON(response[20:]).decode()
+        # Fake the ok field if it doesn't exist.
+        error_object.setdefault("ok", 0)
         if error_object["$err"].startswith("not master"):
-            raise NotMasterError(error_object["$err"])
+            raise NotMasterError(error_object["$err"], error_object)
         elif error_object.get("code") == 50:
             raise ExecutionTimeout(error_object.get("$err"),
                                    error_object.get("code"),
@@ -166,7 +170,7 @@ def _check_command_response(response, msg=None, allowable_errors=None):
             # Server is "not master" or "recovering"
             if (errmsg.startswith("not master")
                     or errmsg.startswith("node is recovering")):
-                raise NotMasterError(errmsg)
+                raise NotMasterError(errmsg, response)
 
             # Server assertion failures
             if errmsg == "db assertion failure":
@@ -211,7 +215,7 @@ def _check_gle_response(response):
         return result
 
     if error_msg.startswith("not master"):
-        raise NotMasterError(error_msg)
+        raise NotMasterError(error_msg, result)
 
     details = result
 
@@ -229,10 +233,11 @@ def _check_gle_response(response):
 
 
 def _first_batch(sock_info, namespace, query,
-                 limit, slave_ok, codec_options, read_preference):
+                 ntoreturn, slave_ok, codec_options, read_preference):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
-        0, namespace, 0, limit, query, None, codec_options, read_preference)
+        0, namespace, 0, ntoreturn, query, None,
+        codec_options, read_preference, 0, ntoreturn)
     request_id, msg, max_doc_size = query.get_message(slave_ok,
                                                       sock_info.is_mongos)
     sock_info.send_message(msg, max_doc_size)

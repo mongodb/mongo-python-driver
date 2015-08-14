@@ -183,9 +183,9 @@ class SocketInfo(object):
           - `allowable_errors`: errors to ignore if `check` is True
         """
         try:
-            return command(self.sock, dbname, spec,
-                           slave_ok, self.is_mongos, read_preference,
-                           codec_options, check, allowable_errors)
+            return command(self.sock, dbname, spec, slave_ok,
+                           self.is_mongos, read_preference, codec_options,
+                           check, allowable_errors, self.address, True)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

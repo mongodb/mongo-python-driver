@@ -14,11 +14,13 @@
 
 """CommandCursor class to iterate over command results."""
 
+import datetime
+
 from collections import deque
 
 from bson.py3compat import integer_types
-from pymongo import helpers
-from pymongo.errors import AutoReconnect, CursorNotFound, NotMasterError
+from pymongo import helpers, monitoring
+from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
 from pymongo.message import _GetMore
 
 
@@ -100,19 +102,47 @@ class CommandCursor(object):
             self.__killed = True
             raise
 
+        publish = monitoring.enabled()
+        cmd_duration = response.duration
+        rqst_id = response.request_id
+        if publish:
+            start = datetime.datetime.now()
         try:
             doc = helpers._unpack_response(response.data,
                                            self.__id,
                                            self.__collection.codec_options)
-        except CursorNotFound:
+        except OperationFailure as exc:
             self.__killed = True
+
+            if publish:
+                duration = (datetime.datetime.now() - start) + cmd_duration
+                monitoring.publish_command_failure(
+                    duration, exc.details, "getMore", rqst_id, self.__address)
+
             raise
-        except NotMasterError:
+        except NotMasterError as exc:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
+
+            if publish:
+                duration = (datetime.datetime.now() - start) + cmd_duration
+                monitoring.publish_command_failure(
+                    duration, exc.details, "getMore", rqst_id, self.__address)
+
             client._reset_server_and_request_check(self.address)
             raise
+
+        if publish:
+            duration = (datetime.datetime.now() - start) + cmd_duration
+            # Must publish in getMore command response format.
+            res = {"cursor": {"id": doc["cursor_id"],
+                              "ns": self.__collection.full_name,
+                              "nextBatch": doc["data"]},
+                   "ok": 1}
+            monitoring.publish_command_success(
+                duration, res, "getMore", rqst_id, self.__address)
+
         self.__id = doc["cursor_id"]
         if self.__id == 0:
             self.__killed = True

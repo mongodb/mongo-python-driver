@@ -244,7 +244,7 @@ class TestClient(IntegrationTest):
         self.assertFalse(client_context.rs_or_standalone_client != c)
 
     def test_host_w_port(self):
-        with self.assertRaises(AutoReconnect):
+        with self.assertRaises(ValueError):
             connected(MongoClient("%s:1234567" % host, connectTimeoutMS=1,
                                   serverSelectionTimeoutMS=10))
 
@@ -264,8 +264,8 @@ class TestClient(IntegrationTest):
             "tz_aware=False, "
             "connect=False, ",
             the_repr)
-        self.assertIn("connectTimeoutMS='12345'", the_repr)
-        self.assertIn("replicaSet=", the_repr)
+        self.assertIn("connecttimeoutms='12345'", the_repr)
+        self.assertIn("replicaset=", the_repr)
 
         self.assertEqual(eval(the_repr), client)
 
@@ -400,13 +400,14 @@ class TestClient(IntegrationTest):
             raise SkipTest("UNIX-sockets are not supported on this system")
 
         mongodb_socket = '/tmp/mongodb-27017.sock'
+        encoded_socket = '%2Ftmp%2Fmongodb-27017.sock'
         if not os.access(mongodb_socket, os.R_OK):
             raise SkipTest("Socket file is not accessible")
 
         if client_context.auth_enabled:
-            uri = "mongodb://%s:%s@%s" % (db_user, db_pwd, mongodb_socket)
+            uri = "mongodb://%s:%s@%s" % (db_user, db_pwd, encoded_socket)
         else:
-            uri = "mongodb://%s" % mongodb_socket
+            uri = "mongodb://%s" % encoded_socket
 
         # Confirm we can do operations via the socket.
         client = MongoClient(uri)
@@ -417,7 +418,7 @@ class TestClient(IntegrationTest):
         # Confirm it fails with a missing socket.
         self.assertRaises(
             ConnectionFailure,
-            connected, MongoClient("mongodb:///tmp/non-existent.sock",
+            connected, MongoClient("mongodb://%2Ftmp%2Fnon-existent.sock",
                                    serverSelectionTimeoutMS=100))
 
     def test_fork(self):
@@ -481,7 +482,6 @@ class TestClient(IntegrationTest):
 
         self.assertEqual(SON, c.codec_options.document_class)
         self.assertTrue(isinstance(db.test.find_one(), SON))
-
 
     def test_timeouts(self):
         client = rs_or_single_client(connectTimeoutMS=10500)
@@ -547,12 +547,14 @@ class TestClient(IntegrationTest):
             'mongodb://localhost/?serverSelectionTimeoutMS=0', connect=False)
         self.assertAlmostEqual(0, client.server_selection_timeout)
 
-        self.assertRaises(ValueError, MongoClient,
-                          'mongodb://localhost/?serverSelectionTimeoutMS=-1',
-                          connect=False)
-        self.assertRaises(ValueError, MongoClient,
-                          'mongodb://localhost/?serverSelectionTimeoutMS=',
-                          connect=False)
+        # Test invalid timeout in URI ignored and set to default.
+        client = MongoClient(
+            'mongodb://localhost/?serverSelectionTimeoutMS=-1', connect=False)
+        self.assertAlmostEqual(30, client.server_selection_timeout)
+
+        client = MongoClient(
+            'mongodb://localhost/?serverSelectionTimeoutMS=', connect=False)
+        self.assertAlmostEqual(30, client.server_selection_timeout)
 
     def test_waitQueueTimeoutMS(self):
         client = rs_or_single_client(waitQueueTimeoutMS=2000)
