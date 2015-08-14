@@ -131,6 +131,35 @@ except ImportError:
                 _ui ^= from_bytes(_u1, 'big')
             return to_bytes(_ui, 20, 'big')
 
+try:
+    from hmac import compare_digest
+except ImportError:
+    if PY3:
+        def _xor_bytes(a, b):
+            return a ^ b
+    else:
+        def _xor_bytes(a, b, _ord=ord):
+            return _ord(a) ^ _ord(b)
+
+    # Python 2.x < 2.7.7 and Python 3.x < 3.3
+    # References:
+    #  - http://bugs.python.org/issue14532
+    #  - http://bugs.python.org/issue14955
+    #  - http://bugs.python.org/issue15061
+    def compare_digest(a, b, _xor_bytes=_xor_bytes):
+        left = None
+        right = b
+        if len(a) == len(b):
+            left = a
+            result = 0
+        if len(a) != len(b):
+            left = b
+            result = 1
+
+        for x, y in zip(left, right):
+            result |= _xor_bytes(x, y)
+        return result == 0
+
 
 def _parse_scram_response(response):
     """Split a scram response into key, value pairs."""
@@ -187,7 +216,7 @@ def _authenticate_scram_sha1(credentials, sock_info):
     res = sock_info.command(source, cmd)
 
     parsed = _parse_scram_response(res['payload'])
-    if parsed[b'v'] != server_sig:
+    if not compare_digest(parsed[b'v'], server_sig):
         raise OperationFailure("Server returned an invalid signature.")
 
     # Depending on how it's configured, Cyrus SASL (which the server uses)
