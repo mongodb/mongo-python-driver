@@ -543,13 +543,19 @@ class TestBSON(unittest.TestCase):
             self.assertRaises(RuntimeError, BSON.encode, evil_data)
 
     def test_overflow(self):
-        self.assertTrue(BSON.encode({"x": long(9223372036854775807)}))
-        self.assertRaises(OverflowError, BSON.encode,
-                          {"x": long(9223372036854775808)})
+        # Maximum signed int64 value: 0x7fffffffffffffff (2^63 - 1)
+          self.assertTrue(BSON.encode({"x": long(9223372036854775807)}))
+          # Minimum unsigned int64 value: 0x8000000000000000 (2^63)
+          self.assertTrue(BSON.encode({"x": long(9223372036854775808)}))
+          # 65-bit integer: 0x10000000000000000 (2^64)
+          self.assertRaises(OverflowError, BSON.encode,
+                            {"x": long(184467440737095516116)})
 
-        self.assertTrue(BSON.encode({"x": long(-9223372036854775808)}))
-        self.assertRaises(OverflowError, BSON.encode,
-                          {"x": long(-9223372036854775809)})
+          # Minimum signed int64 (-2^64)
+          self.assertTrue(BSON.encode({"x": long(-9223372036854775808)}))
+          # 65-bit negative int: -2^64 - 1
+          self.assertRaises(OverflowError, BSON.encode,
+                            {"x": long(-9223372036854775809)})
 
     def test_small_long_encode_decode(self):
         encoded1 = BSON.encode({'x': 256})
@@ -785,7 +791,7 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(MinKey() != 1)
         self.assertFalse(MinKey() == 1)
         self.assertTrue(MinKey() == MinKey())
-        
+
         # MinKey compared to MaxKey.
         self.assertTrue(MinKey() < MaxKey())
         self.assertTrue(MinKey() <= MaxKey())
@@ -793,7 +799,7 @@ class TestBSON(unittest.TestCase):
         self.assertFalse(MinKey() >= MaxKey())
         self.assertTrue(MinKey() != MaxKey())
         self.assertFalse(MinKey() == MaxKey())
-        
+
         # MaxKey's <, <=, >, >=, !=, and ==.
         self.assertFalse(MaxKey() < None)
         self.assertFalse(MaxKey() < 1)
