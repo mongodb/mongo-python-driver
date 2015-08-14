@@ -75,7 +75,6 @@ def _maybe_add_read_preference(spec, read_preference):
     return spec
 
 
-# XXX: What to do about exhaust?
 _OPTIONS = SON([
     ('tailable', 2),
     ('oplogReplay', 8),
@@ -84,7 +83,6 @@ _OPTIONS = SON([
     ('allowPartialResults', 128)])
 
 
-# XXX: What about $explain? Time to switch to explain command?
 _MODIFIERS = SON([
     ('$query', 'filter'),
     ('$orderby', 'sort'),
@@ -101,11 +99,20 @@ _MODIFIERS = SON([
     ('$snapshot', 'snapshot')])
 
 
+def _gen_explain_command(
+        coll, spec, projection, skip, limit, batch_size, options):
+    """Generate an explain command document."""
+    cmd = _gen_find_command(
+        coll, spec, projection, skip, limit, batch_size, options)
+    return SON([('explain', cmd)])
+
+
 def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
-        cmd.update([(_MODIFIERS[key], val) for key, val in spec.items()])
+        cmd.update([(_MODIFIERS[key], val)
+                    for key, val in spec.items() if key in _MODIFIERS])
     else:
         cmd['filter'] = spec
 
@@ -143,9 +150,8 @@ class _Query(object):
     """A query operation."""
 
     __slots__ = ('flags', 'ns', 'ntoskip', 'ntoreturn', 'spec', 'fields',
-                 'codec_options', 'read_preference', 'limit', 'batch_size')
-
-    name = 'find'
+                 'codec_options', 'read_preference', 'limit', 'batch_size',
+                 'name')
 
     def __init__(self, flags, ns, ntoskip, ntoreturn, spec, fields,
                  codec_options, read_preference, limit, batch_size):
@@ -159,6 +165,7 @@ class _Query(object):
         self.read_preference = read_preference
         self.limit = limit
         self.batch_size = batch_size
+        self.name = 'find'
 
     def as_command(self):
         """Return a find command document for this query.
@@ -166,6 +173,11 @@ class _Query(object):
         Should be called *after* get_message.
         """
         dbn, coll = self.ns.split('.', 1)
+        if '$explain' in self.spec:
+            self.name = 'explain'
+            return _gen_explain_command(
+                coll, self.spec, self.fields, self.ntoskip,
+                self.limit, self.batch_size, self.flags), dbn
         return _gen_find_command(coll, self.spec, self.fields, self.ntoskip,
                                  self.limit, self.batch_size, self.flags), dbn
 

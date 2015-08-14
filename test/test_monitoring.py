@@ -198,6 +198,33 @@ class TestCommandMonitoring(IntegrationTest):
             'ok': 1}
         self.assertEqual(expected_result, succeeded.reply)
 
+    def test_find_with_explain(self):
+        self.client.pymongo_test.test.drop()
+        self.client.pymongo_test.test.insert_one({})
+        self.listener.results = {}
+        res = self.client.pymongo_test.test.find().explain()
+        results = self.listener.results
+        started = results.get('started')
+        succeeded = results.get('succeeded')
+        self.assertIsNone(results.get('failed'))
+        self.assertTrue(
+            isinstance(started, monitoring.CommandStartedEvent))
+        self.assertEqual(
+            SON([('explain', SON([('find', 'test'),
+                                  ('filter', {})]))]),
+            started.command)
+        self.assertEqual('explain', started.command_name)
+        self.assertEqual(self.client.address, started.connection_id)
+        self.assertEqual('pymongo_test', started.database_name)
+        self.assertTrue(isinstance(started.request_id, int))
+        self.assertTrue(
+            isinstance(succeeded, monitoring.CommandSucceededEvent))
+        self.assertTrue(isinstance(succeeded.duration_micros, int))
+        self.assertEqual('explain', succeeded.command_name)
+        self.assertTrue(isinstance(succeeded.request_id, int))
+        self.assertEqual(self.client.address, succeeded.connection_id)
+        self.assertEqual(res, succeeded.reply)
+
     @client_context.require_version_min(2, 6, 0)
     def test_command_and_get_more(self):
         self.client.pymongo_test.test.drop()

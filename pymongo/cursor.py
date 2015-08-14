@@ -804,7 +804,6 @@ class Cursor(object):
         publish = monitoring.enabled()
 
         if operation:
-            cmd_name = operation.name
             kwargs = {
                 "read_preference": self.__read_preference,
                 "exhaust": self.__exhaust,
@@ -821,6 +820,7 @@ class Cursor(object):
                     self.__exhaust_mgr = _SocketManager(response.socket_info,
                                                         response.pool)
 
+                cmd_name = operation.name
                 data = response.data
                 cmd_duration = response.duration
                 rqst_id = response.request_id
@@ -896,14 +896,17 @@ class Cursor(object):
 
         if publish:
             duration = (datetime.datetime.now() - start) + cmd_duration
-            # Must publish in find / getMore command response format.
-            res = {"cursor": {"id": doc["cursor_id"],
-                              "ns": self.__collection.full_name},
-                   "ok": 1}
-            if cmd_name == "find":
-                res["cursor"]["firstBatch"] = doc["data"]
+            # Must publish in find / getMore / explain command response format.
+            if cmd_name == "explain":
+                res = doc["data"][0] if doc["number_returned"] else {}
             else:
-                res["cursor"]["nextBatch"] = doc["data"]
+                res = {"cursor": {"id": doc["cursor_id"],
+                                  "ns": self.__collection.full_name},
+                       "ok": 1}
+                if cmd_name == "find":
+                    res["cursor"]["firstBatch"] = doc["data"]
+                else:
+                    res["cursor"]["nextBatch"] = doc["data"]
             monitoring.publish_command_success(
                 duration, res, cmd_name, rqst_id, self.__address)
 
