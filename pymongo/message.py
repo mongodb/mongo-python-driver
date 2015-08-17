@@ -219,6 +219,20 @@ class _GetMore(object):
         return get_more(self.ns, self.ntoreturn, self.cursor_id)
 
 
+class _CursorAddress(tuple):
+    """The server address (host, port) of a cursor, with namespace property."""
+
+    def __new__(cls, address, namespace):
+        self = tuple.__new__(cls, address)
+        self.__namespace = namespace
+        return self
+
+    @property
+    def namespace(self):
+        """The namespace this cursor."""
+        return self.__namespace
+
+
 def __last_error(namespace, args):
     """Data to send to do a lastError.
     """

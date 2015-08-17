@@ -32,7 +32,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
-from pymongo.message import _GetMore, _Query
+from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.read_preferences import ReadPreference
 
 _QUERY_OPTIONS = {
@@ -269,8 +269,10 @@ class Cursor(object):
                 # to stop the server from sending more data.
                 self.__exhaust_mgr.sock.close()
             else:
-                self.__collection.database.client.close_cursor(self.__id,
-                                                               self.__address)
+                self.__collection.database.client.close_cursor(
+                    self.__id,
+                    _CursorAddress(
+                        self.__address, self.__collection.full_name))
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
         self.__killed = True

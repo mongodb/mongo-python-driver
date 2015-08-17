@@ -40,9 +40,11 @@ from collections import defaultdict
 
 from bson.py3compat import (integer_types,
                             string_type)
+from bson.son import SON
 from pymongo import (common,
                      database,
                      message,
+                     monitoring,
                      periodic_executor,
                      uri_parser)
 from pymongo.client_options import ClientOptions
@@ -910,6 +912,7 @@ class MongoClient(common.BaseObject):
 
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
+            publish = monitoring.enabled()
             topology = self._get_topology()
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
@@ -920,8 +923,28 @@ class MongoClient(common.BaseObject):
                         server = topology.select_server(
                             writable_server_selector)
 
-                    server.send_message(message.kill_cursors(cursor_ids),
-                                        self.__all_credentials)
+                    if publish:
+                        start = datetime.datetime.now()
+                    data = message.kill_cursors(cursor_ids)
+                    if publish:
+                        duration = datetime.datetime.now() - start
+                        try:
+                            dbname, collname = address.namespace.split(".", 1)
+                        except AttributeError:
+                            dbname = collname = 'OP_KILL_CURSORS'
+                        command = SON([('killCursors', collname),
+                                       ('cursors', cursor_ids)])
+                        monitoring.publish_command_start(
+                            command, dbname, data[0], address)
+                        start = datetime.datetime.now()
+                    server.send_message(data, self.__all_credentials)
+                    if publish:
+                        duration = (datetime.datetime.now() - start) + duration
+                        # OP_KILL_CURSORS returns no reply, fake one.
+                        reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
+                        monitoring.publish_command_success(
+                            duration, reply, 'killCursors', data[0], address)
+
                 except ConnectionFailure as exc:
                     warnings.warn("couldn't close cursor on %s: %s"
                                   % (address, exc))

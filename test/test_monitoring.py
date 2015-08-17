@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import sys
+import time
 
 sys.path[0:0] = [""]
 
 from bson.son import SON
-from pymongo import CursorType, MongoClient, monitoring
+from pymongo import CursorType, monitoring
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import NotMasterError, OperationFailure
-from test import unittest, IntegrationTest, client_context
+from test import unittest, IntegrationTest, client_context, client_knobs
 from test.utils import single_client
 
 
@@ -420,6 +421,39 @@ class TestCommandMonitoring(IntegrationTest):
                        'nextBatch': [{} for _ in range(5)]},
             'ok': 1}
         self.assertEqual(expected_result, succeeded.reply)
+
+    def test_kill_cursors(self):
+        with client_knobs(kill_cursor_frequency=0.01):
+            self.client.pymongo_test.test.drop()
+            self.client.pymongo_test.test.insert_many([{} for _ in range(10)])
+            cursor = self.client.pymongo_test.test.find().batch_size(5)
+            next(cursor)
+            cursor_id = cursor.cursor_id
+            self.listener.results = {}
+            cursor.close()
+            time.sleep(2)
+            results = self.listener.results
+            started = results.get('started')
+            succeeded = results.get('succeeded')
+            self.assertIsNone(results.get('failed'))
+            self.assertTrue(
+                isinstance(started, monitoring.CommandStartedEvent))
+            # There could be more than one cursor_id here depending on
+            # when the thread last ran.
+            self.assertIn(cursor_id, started.command['cursors'])
+            self.assertEqual('killCursors', started.command_name)
+            self.assertEqual(cursor.address, started.connection_id)
+            self.assertEqual('pymongo_test', started.database_name)
+            self.assertTrue(isinstance(started.request_id, int))
+            self.assertTrue(
+                isinstance(succeeded, monitoring.CommandSucceededEvent))
+            self.assertTrue(isinstance(succeeded.duration_micros, int))
+            self.assertEqual('killCursors', succeeded.command_name)
+            self.assertTrue(isinstance(succeeded.request_id, int))
+            self.assertEqual(cursor.address, succeeded.connection_id)
+            # There could be more than one cursor_id here depending on
+            # when the thread last ran.
+            self.assertIn(cursor_id, succeeded.reply['cursorsUnknown'])
 
 
 if __name__ == "__main__":
