@@ -421,16 +421,18 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     codec_options_t options;
     buffer_t buffer;
     int length_location, message_length;
+    unsigned char check_keys = 0;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "Iet#iiOOO&",
+    if (!PyArg_ParseTuple(args, "Iet#iiOOO&|b",
                           &flags,
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &num_to_skip, &num_to_return,
                           &query, &field_selector,
-                          convert_codec_options, &options)) {
+                          convert_codec_options, &options,
+                          &check_keys)) {
         return NULL;
     }
     buffer = buffer_new();
@@ -463,7 +465,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     }
 
     begin = buffer_get_position(buffer);
-    if (!write_dict(state->_cbson, buffer, query, 0, &options, 1)) {
+    if (!write_dict(state->_cbson, buffer, query, check_keys, &options, 1)) {
         destroy_codec_options(&options);
         buffer_free(buffer);
         PyMem_Free(collection_name);

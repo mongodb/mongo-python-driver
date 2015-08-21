@@ -274,6 +274,47 @@ def _check_write_command_response(results):
                 error.get("errmsg"), error.get("code"), error)
 
 
+def _upconvert_write_result(operation, command, result):
+    """Upconvert a legacy write result to write commmand format."""
+
+    # Based on _merge_legacy from bulk.py
+    affected = result.get("n", 0)
+    res = {"ok": 1, "n": affected}
+    errmsg = result.get("errmsg", result.get("err", ""))
+    if errmsg:
+        # The write was successful on at least the primary so don't return.
+        if result.get("wtimeout"):
+            res["writeConcernError"] = {"errmsg": errmsg,
+                                        "code": 64,
+                                        "errInfo": {"wtimeout": True}}
+        else:
+            # The write failed.
+            error = {"index": 0,
+                     "code": result.get("code", 8),
+                     "errmsg": errmsg}
+            if "errInfo" in result:
+                error["errInfo"] = result["errInfo"]
+            res["writeErrors"] = [error]
+            return res
+    if operation == "insert":
+        # GLE result for insert is always 0 in most MongoDB versions.
+        res["n"] = 1
+    elif operation == "update":
+        res["nModified"] = 0
+        if "upserted" in result:
+            res["upserted"] = [{"index": 0, "_id": result["upserted"]}]
+        # Versions of MongoDB before 2.6 don't return the _id for an
+        # upsert if _id is not an ObjectId.
+        elif result.get("updatedExisting") is False and affected == 1:
+            # If _id is in both the update document *and* the query spec
+            # the update document _id takes precedence.
+            _id = command["u"].get("_id", command["q"].get("_id"))
+            res["upserted"] = [{"index": 0, "_id": _id}]
+        else:
+            res["nModified"] = affected
+    return res
+
+
 def _fields_list_to_dict(fields, option_name):
     """Takes a sequence of field names and returns a matching dictionary.
 

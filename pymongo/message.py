@@ -258,11 +258,7 @@ def __pack_message(operation, data):
 
 def insert(collection_name, docs, check_keys,
            safe, last_error_args, continue_on_error, opts):
-    """Get an **insert** message.
-
-    Used by the Bulk API to insert into pre-2.6 servers. Collection.insert
-    uses _do_batched_insert.
-    """
+    """Get an **insert** message."""
     options = 0
     if continue_on_error:
         options += 1
@@ -314,14 +310,14 @@ if _use_c:
 
 
 def query(options, collection_name, num_to_skip,
-          num_to_return, query, field_selector, opts):
+          num_to_return, query, field_selector, opts, check_keys=False):
     """Get a **query** message.
     """
     data = struct.pack("<I", options)
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
-    encoded = bson.BSON.encode(query, False, opts)
+    encoded = bson.BSON.encode(query, check_keys, opts)
     data += encoded
     max_bson_size = len(encoded)
     if field_selector is not None:

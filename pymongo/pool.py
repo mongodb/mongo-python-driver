@@ -170,7 +170,7 @@ class SocketInfo(object):
     def command(self, dbname, spec, slave_ok=False,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
-                allowable_errors=None):
+                allowable_errors=None, check_keys=False):
         """Execute a command or raise ConnectionFailure or OperationFailure.
 
         :Parameters:
@@ -185,7 +185,8 @@ class SocketInfo(object):
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
-                           check, allowable_errors, self.address, True)
+                           check, allowable_errors, self.address, True,
+                           check_keys)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

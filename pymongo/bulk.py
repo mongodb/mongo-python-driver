@@ -123,7 +123,7 @@ def _merge_legacy(run, full_result, result, index):
             full_result['nUpserted'] += affected
         # Versions of MongoDB before 2.6 don't return the _id for an
         # upsert if _id is not an ObjectId.
-        elif result.get("updatedExisting") == False and affected == 1:
+        elif result.get("updatedExisting") is False and affected == 1:
             op = run.ops[index]
             # If _id is in both the update document *and* the query spec
             # the update document _id takes precedence.

@@ -37,7 +37,8 @@ _UNPACK_INT = struct.Struct("<i").unpack
 
 def command(sock, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, check=True,
-            allowable_errors=None, address=None, user=False):
+            allowable_errors=None, address=None, user=False,
+            check_keys=False):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -64,7 +65,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         start = datetime.datetime.now()
 
     request_id, msg, _ = message.query(flags, ns, 0, -1, spec,
-                                       None, codec_options)
+                                       None, codec_options, check_keys)
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
