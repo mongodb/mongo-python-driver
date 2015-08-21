@@ -232,6 +232,20 @@ class _CursorAddress(tuple):
         """The namespace this cursor."""
         return self.__namespace
 
+    def __hash__(self):
+        # Two _CursorAddress instances with different namespaces
+        # must not hash the same.
+        return (self + (self.__namespace,)).__hash__()
+
+    def __eq__(self, other):
+        if isinstance(other, _CursorAddress):
+            return (tuple(self) == tuple(other)
+                    and self.namespace == other.namespace)
+        return NotImplemented
+
+    def __ne__(self, other):
+        return not self == other
+
 
 def __last_error(namespace, args):
     """Data to send to do a lastError.
