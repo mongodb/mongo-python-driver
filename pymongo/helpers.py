@@ -275,7 +275,7 @@ def _check_write_command_response(results):
 
 
 def _upconvert_write_result(operation, command, result):
-    """Upconvert a legacy write result to write commmand format."""
+    """Convert a legacy write result to write commmand format."""
 
     # Based on _merge_legacy from bulk.py
     affected = result.get("n", 0)

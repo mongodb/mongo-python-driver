@@ -53,6 +53,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `allowable_errors`: errors to ignore if `check` is True
       - `address`: the (host, port) of `sock`
       - `user`: is this a user command or internal?
+      - `check_keys`: if True, check `spec` for invalid keys
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'

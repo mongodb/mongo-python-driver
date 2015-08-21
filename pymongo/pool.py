@@ -181,6 +181,7 @@ class SocketInfo(object):
           - `codec_options`: a CodecOptions instance
           - `check`: raise OperationFailure if there are errors
           - `allowable_errors`: errors to ignore if `check` is True
+          - `check_keys`: if True, check `spec` for invalid keys
         """
         try:
             return command(self.sock, dbname, spec, slave_ok,
