@@ -917,7 +917,10 @@ class MongoClient(common.BaseObject):
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
                     if address:
-                        server = topology.select_server_by_address(address)
+                        # address could be a tuple or _CursorAddress, but
+                        # select_server_by_address needs (host, port).
+                        server = topology.select_server_by_address(
+                            tuple(address))
                     else:
                         # Application called close_cursor() with no address.
                         server = topology.select_server(
