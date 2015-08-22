@@ -1132,6 +1132,9 @@ class Database(common.BaseObject):
             evaluated
           - `args` (optional): additional positional arguments are
             passed to the `code` being evaluated
+
+        .. warning:: the eval command is deprecated in MongoDB 3.0 and
+          will be removed in a future server version.
         """
         if not isinstance(code, Code):
             code = Code(code)
