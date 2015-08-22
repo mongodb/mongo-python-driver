@@ -376,7 +376,8 @@ class MongoClient(common.BaseObject):
             condition_class=self._topology_settings.condition_class,
             interval=common.KILL_CURSOR_FREQUENCY,
             min_interval=0,
-            target=target)
+            target=target,
+            name="pymongo_kill_cursors_thread")
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the client is freed, stop the executor soon.

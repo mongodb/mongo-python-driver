@@ -24,7 +24,8 @@ from pymongo.monotonic import time as _time
 
 
 class PeriodicExecutor(object):
-    def __init__(self, condition_class, interval, min_interval, target):
+    def __init__(
+            self, condition_class, interval, min_interval, target, name=None):
         """"Run a target function periodically on a background thread.
 
         If the target's return value is false, the executor stops.
@@ -35,6 +36,7 @@ class PeriodicExecutor(object):
           - `min_interval`: Minimum seconds between calls if `wake` is
             called very often.
           - `target`: A function.
+          - `name`: A name to give the underlying thread.
         """
         self._event = thread_util.Event(condition_class)
         self._interval = interval
@@ -42,6 +44,7 @@ class PeriodicExecutor(object):
         self._target = target
         self._stopped = False
         self._thread = None
+        self._name = name
 
     def open(self):
         """Start. Multiple calls have no effect.
@@ -57,7 +60,7 @@ class PeriodicExecutor(object):
             pass
 
         if not started:
-            thread = threading.Thread(target=self._run)
+            thread = threading.Thread(target=self._run, name=self._name)
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)

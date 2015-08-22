@@ -58,7 +58,8 @@ class Monitor(object):
             condition_class=self._settings.condition_class,
             interval=common.HEARTBEAT_FREQUENCY,
             min_interval=common.MIN_HEARTBEAT_INTERVAL,
-            target=target)
+            target=target,
+            name="pymongo_server_monitor_thread")
 
         self._executor = executor
         
