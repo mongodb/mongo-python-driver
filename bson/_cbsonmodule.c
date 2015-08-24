@@ -53,6 +53,37 @@ struct module_state {
     PyObject* Mapping;
 };
 
+
+/* pyint_value is a union for dealing with signed/unsigned 32bit and 64bit
+ * Python numbers for both Python 2.X and Python 3.X. */
+#if LLONG_MAX == LONG_MAX
+  /* On platforms where sizeof(long) == sizeof(long long). */
+  union pyint_value {
+    long long_value;
+    unsigned long ulong_value;
+    long long long_long_value;
+    unsigned long long ulong_long_value;
+  };
+#else
+  /* On platforms where sizeof(long) < sizeof(long long). */
+  union pyint_value {
+    struct {
+      long long_value;
+      /* Padding */
+      long pad1;
+    };
+    struct {
+      unsigned long ulong_value;
+      /* Padding */
+      unsigned long pad2;
+    };
+
+    long long long_long_value;
+    unsigned long long ulong_long_value;
+  };
+#endif
+
+
 /* The Py_TYPE macro was introduced in CPython 2.6 */
 #ifndef Py_TYPE
 #define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
@@ -79,6 +110,12 @@ static struct module_state _state;
 #define BSON_MAX_SIZE 2147483647
 /* The smallest possible BSON document, i.e. "{}" */
 #define BSON_MIN_SIZE 5
+
+/* The maximum negative number supported by a 32-bit int */
+#define MAX_NEGATIVE_INT32  -2147483647
+/* The maximum positive number supported by a 32-bit int */
+#define MAX_POSITIVE_INT32  2147483647
+
 
 /* Get an error class from the bson.errors module.
  *
@@ -410,6 +447,7 @@ static int _load_python_objects(PyObject* module) {
     return 0;
 }
 
+
 static int write_element_to_buffer(PyObject* self, buffer_t buffer,
                                    int type_byte, PyObject* value,
                                    unsigned char check_keys,
@@ -594,6 +632,101 @@ static int _write_regex_to_buffer(
     return 1;
 }
 
+
+#if PY_MAJOR_VERSION < 3
+  /* Write a Python int (PyInt) to the buffer.
+   * This function handles signed and unsigned 32bit and 64bit ints for Python 2.X
+   * only. Python 2.X int objects need special handling because the _PyLong_Sign
+   * and _PyLong_NumBits functions are not reliable when dealing with a PyInt
+   * objects. Instead, the type is inferred as either 32 or 64bit by inspecting
+   * the int's value.
+   *
+   * returns 0 on failure */
+  static int _write_int_to_buffer(
+    buffer_t buffer, int type_byte, PyObject* value) {
+
+    int type;
+    union pyint_value pyint;
+    int retval;
+
+    pyint.long_long_value = Py_SIZE(value);
+
+    if(pyint.long_long_value > MAX_POSITIVE_INT32
+        || pyint.long_long_value < MAX_NEGATIVE_INT32) {
+      /* The value must be a signed 64bit long long (type 0x12)
+       * NOTE: the BSON library treats the maximum unsigned 32-bit value (2^32 -1)
+       *       as a signed 64-bit value, rather than an unsigned 32bit value. To
+       *       avoid breaking backwards compatibility, this behavior is replicated
+       *       here. */
+      type = 0x12;
+    } else {
+      /* The value must be a 32bit int (type 0x10) */
+      type = 0x10;
+    }
+
+    if(!PyErr_Occurred()) {
+      const int len = type == 0x10 ? 4 : 8;
+      *(buffer_get_buffer(buffer) + type_byte) = type;
+      retval =  buffer_write_bytes(buffer, (const char*)&pyint, len);
+    } else {
+      retval = 0;
+    }
+
+    return retval;
+  }
+#endif
+
+
+/* Write a Python long (PyLong) to the buffer.
+ * This function handles signed and unisnged 32bit and 64bit longs for Python
+ * 2.X and 3.X.
+ *
+ * returns 0 on failure */
+static int _write_long_to_buffer(
+  buffer_t buffer, int type_byte, PyObject* value) {
+
+    int type;
+    union pyint_value pyint;
+    int retval;
+    const int sign = _PyLong_Sign(value);
+    /* Bits: the number of bts required. */
+    const int bits = sign >= 0 ? _PyLong_NumBits(value) : -_PyLong_NumBits(value);
+
+    if(bits > -32 && bits < 32) {
+      /* 32bit signed int */
+      pyint.long_value = PyLong_AsLong(value);
+      type = 0x10;
+    } else if((bits <= -32 && bits > -64) || bits < 64) {
+      /* The value must be a signed 64bit long long (type 0x12)
+       * NOTE: the BSON library treats the maximum unsigned 32-bit value (2^32 -1)
+       *       as a signed 64-bit value, rather than an unsigned 32bit value. To
+       *       avoid breaking backwards compatibility, this behavior is replicated
+       *       here. */
+      pyint.long_long_value = PyLong_AsLongLong(value);
+      type = 0x12;
+    } else if(bits == 64) {
+      pyint.ulong_long_value = PyLong_AsUnsignedLongLong(value);
+      type = 0x12;
+    } else {
+      type = 0;
+    }
+
+    if(PyErr_Occurred()) {
+      retval = 0;
+    } else if(type == 0) {
+      retval = 0;
+      PyErr_SetString(PyExc_OverflowError,
+                      "MongoDB can only handle up to 8-byte ints");
+    } else {
+      const int len = type == 0x10 ? 4 : 8;
+      *(buffer_get_buffer(buffer) + type_byte) = type;
+      retval =  buffer_write_bytes(buffer, (const char*)&pyint, len);
+    }
+
+    return retval;
+}
+
+
 /* TODO our platform better be little-endian w/ 4-byte ints! */
 /* Write a single value to the buffer (also write its type_byte, for which
  * space has already been reserved.
@@ -635,7 +768,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         long type = PyInt_AsLong(type_marker);
 #endif
         Py_DECREF(type_marker);
-        /* 
+        /*
          * Py(Long|Int)_AsLong returns -1 for error but -1 is a valid value
          * so we call PyErr_Occurred to differentiate.
          */
@@ -882,41 +1015,15 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         *(buffer_get_buffer(buffer) + type_byte) = 0x08;
         return buffer_write_bytes(buffer, &c, 1);
     }
-#if PY_MAJOR_VERSION >= 3
     else if (PyLong_Check(value)) {
-        const long long_value = PyLong_AsLong(value);
-#else
-    else if (PyInt_Check(value)) {
-        const long long_value = PyInt_AsLong(value);
-#endif
-
-        const int int_value = (int)long_value;
-        if (PyErr_Occurred() || long_value != int_value) { /* Overflow */
-            long long long_long_value;
-            PyErr_Clear();
-            long_long_value = PyLong_AsLongLong(value);
-            if (PyErr_Occurred()) { /* Overflow AGAIN */
-                PyErr_SetString(PyExc_OverflowError,
-                                "MongoDB can only handle up to 8-byte ints");
-                return 0;
-            }
-            *(buffer_get_buffer(buffer) + type_byte) = 0x12;
-            return buffer_write_bytes(buffer, (const char*)&long_long_value, 8);
-        }
-        *(buffer_get_buffer(buffer) + type_byte) = 0x10;
-        return buffer_write_bytes(buffer, (const char*)&int_value, 4);
+        return _write_long_to_buffer(buffer, type_byte, value);
+    }
 #if PY_MAJOR_VERSION < 3
-    } else if (PyLong_Check(value)) {
-        const long long long_long_value = PyLong_AsLongLong(value);
-        if (PyErr_Occurred()) { /* Overflow */
-            PyErr_SetString(PyExc_OverflowError,
-                            "MongoDB can only handle up to 8-byte ints");
-            return 0;
-        }
-        *(buffer_get_buffer(buffer) + type_byte) = 0x12;
-        return buffer_write_bytes(buffer, (const char*)&long_long_value, 8);
+    else if (PyInt_Check(value)) {
+        return _write_int_to_buffer(buffer, type_byte, value);
+    }
 #endif
-    } else if (PyFloat_Check(value)) {
+    else if (PyFloat_Check(value)) {
         const double d = PyFloat_AsDouble(value);
         *(buffer_get_buffer(buffer) + type_byte) = 0x01;
         return buffer_write_bytes(buffer, (const char*)&d, 8);
@@ -1074,8 +1181,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     } else if (PyObject_TypeCheck(value, state->REType)) {
         return _write_regex_to_buffer(buffer, type_byte, value);
     }
-    
-    /* 
+
+    /*
      * Try Mapping and UUID last since we have to import
      * them if we're in a sub-interpreter.
      */
@@ -1788,7 +1895,7 @@ static PyObject* get_value(PyObject* self, const char* buffer,
                     }
                     if ((PyDict_SetItemString(kwargs, "bytes", data)) == -1)
                         goto uuiderror;
-                
+
                 }
                 if ((type_to_create = _get_object(state->UUID, "uuid", "UUID"))) {
                     value = PyObject_Call(type_to_create, args, kwargs);
