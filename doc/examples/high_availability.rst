@@ -302,6 +302,8 @@ milliseconds of the closest member's ping time.
 
 .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold
 
+.. _health-monitoring:
+
 Health Monitoring
 '''''''''''''''''
 

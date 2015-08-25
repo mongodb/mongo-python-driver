@@ -17,32 +17,35 @@ Gevent's monkey-patching replaces those standard functions so that PyMongo
 does asynchronous I/O with non-blocking sockets, and schedules operations
 on greenlets instead of threads.
 
-Consideration on gevent's hub termination
------------------------------------------
-PyMongo uses threads to monitor your servers' topology and to handle
-graceful reconnections.
+Avoid blocking in Hub.join
+--------------------------
 
-When shutting down your application gracefully, your code be may waiting
-for any remaining greenlet to terminate before exiting.
+By default, PyMongo uses threads to discover and monitor your servers' topology
+(see :ref:`health-monitoring`). If you execute ``monkey.patch_all()`` when
+your application first begins, PyMongo automatically uses greenlets instead
+of threads.
 
-This may become a **blocking operation** because monkey-patched threads
-are considered as greenlets and this could prevent your application
-to exit properly. You therefore **must close or dereference** any active
-MongoClient object before exiting !
+When shutting down, if your application calls :meth:`~gevent.hub.Hub.join` on
+Gevent's :class:`~gevent.hub.Hub` without first terminating these background
+greenlets, the call to :meth:`~gevent.hub.Hub.join` blocks indefinitely. You
+therefore **must close or dereference** any active
+:class:`~pymongo.mongo_client.MongoClient` before exiting.
 
-Code example, this function is called when your application is asked
-to exit or gracefully reload itself by receiving a SIGHUP signal:
+An example solution to this issue in some application frameworks is a signal
+handler to end background greenlets when your application receives SIGHUP:
 
 .. code-block:: python
 
     import signal
 
     def graceful_reload(signum, traceback):
-        """Explicitly close our connection
-        """
+        """Explicitly close some global MongoClient object."""
         client.close()
 
     signal.signal(signal.SIGHUP, graceful_reload)
 
-**uWSGI** applications using the ``gevent-wait-for-hub`` option are directly
-affected by this behaviour.
+Applications using uWSGI prior to 1.9.16 are affected by this issue,
+or newer uWSGI versions with the ``-gevent-wait-for-hub`` option.
+See `the uWSGI changelog for details
+<http://uwsgi-docs.readthedocs.org/en/latest/Changelog-1.9.16.html#important-change-in-the-gevent-plugin-shutdown-reload-procedure>`_.
+
