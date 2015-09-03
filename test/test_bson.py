@@ -759,6 +759,9 @@ class TestBSON(unittest.TestCase):
         unicode_regex = re.compile('', re.U)
         self.assertEqual(re.U, Regex.from_native(unicode_regex).flags)
 
+    def test_regex_hash(self):
+        self.assertRaises(TypeError, hash, Regex('hello'))
+
     def test_exception_wrapping(self):
         # No matter what exception is raised while trying to decode BSON,
         # the final exception always matches InvalidBSON.
@@ -814,6 +817,11 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(MaxKey() >= MinKey())
         self.assertTrue(MaxKey() != MinKey())
         self.assertFalse(MaxKey() == MinKey())
+
+    def test_minkey_maxkey_hash(self):
+        self.assertEqual(hash(MaxKey()), hash(MaxKey()))
+        self.assertEqual(hash(MinKey()), hash(MinKey()))
+        self.assertNotEqual(hash(MaxKey()), hash(MinKey()))
 
     def test_timestamp_comparison(self):
         # Timestamp is initialized with time, inc. Time is the more

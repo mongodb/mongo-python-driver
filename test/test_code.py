@@ -77,6 +77,9 @@ class TestCode(unittest.TestCase):
         self.assertFalse(b != Code("hello"))
         self.assertFalse(b != Code("hello", {}))
 
+    def test_hash(self):
+        self.assertRaises(TypeError, hash, Code("hello world"))
+
     def test_scope_preserved(self):
         a = Code("hello")
         b = Code("hello", {"foo": 5})

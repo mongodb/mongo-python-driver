@@ -171,6 +171,9 @@ class Binary(bytes):
         # subclass of str...
         return False
 
+    def __hash__(self):
+        return super(Binary, self).__hash__() ^ hash(self.__subtype)
+
     def __ne__(self, other):
         return not self == other
 

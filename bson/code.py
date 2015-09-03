@@ -77,5 +77,7 @@ class Code(str):
             return (self.__scope, str(self)) == (other.__scope, str(other))
         return False
 
+    __hash__ = None
+
     def __ne__(self, other):
         return not self == other

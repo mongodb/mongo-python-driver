@@ -23,6 +23,7 @@ from bson.tz_util import utc
 
 UPPERBOUND = 4294967296
 
+
 class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
     """
@@ -80,6 +81,9 @@ class Timestamp(object):
             return (self.__time == other.time and self.__inc == other.inc)
         else:
             return NotImplemented
+
+    def __hash__(self):
+        return hash(self.time) ^ hash(self.inc)
 
     def __ne__(self, other):
         return not self == other

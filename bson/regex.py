@@ -104,6 +104,8 @@ class Regex(object):
         else:
             return NotImplemented
 
+    __hash__ = None
+
     def __ne__(self, other):
         return not self == other
 
