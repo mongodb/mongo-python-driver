@@ -28,6 +28,9 @@ class MaxKey(object):
     def __eq__(self, other):
         return isinstance(other, MaxKey)
 
+    def __hash__(self):
+        return hash(self._type_marker)
+
     def __ne__(self, other):
         return not self == other
 
