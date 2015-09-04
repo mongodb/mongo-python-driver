@@ -130,11 +130,11 @@ class TestBinary(unittest.TestCase):
                          "Binary(%s, 100)" % (repr(b"test"),))
 
     def test_hash(self):
-        one = Binary(b"hello world")
-        two = Binary(b"hello world", 42)
-        self.assertEqual(hash(Binary(b"hello world")), hash(one))
+        one = Binary(b("hello world"))
+        two = Binary(b("hello world"), 42)
+        self.assertEqual(hash(Binary(b("hello world"))), hash(one))
         self.assertNotEqual(hash(one), hash(two))
-        self.assertEqual(hash(Binary(b"hello world", 42)), hash(two))
+        self.assertEqual(hash(Binary(b("hello world"), 42)), hash(two))
 
     def test_legacy_java_uuid(self):
         # Test decoding
