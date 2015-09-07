@@ -1671,7 +1671,7 @@ class Collection(common.BaseObject):
         .. versionchanged:: 2.2
            Removed deprecated arguments: merge_output and reduce_output
 
-        .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce
+        .. _map reduce command: http://docs.mongodb.org/manual/reference/command/mapReduce/
 
         .. mongodoc:: mapreduce
         """
