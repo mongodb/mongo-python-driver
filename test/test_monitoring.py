@@ -248,7 +248,6 @@ class TestCommandMonitoring(IntegrationTest):
                    ('sort', SON([('_id', 1)])),
                    ('projection', {'x': False}),
                    ('skip', 1),
-                   ('limit', 2),
                    ('batchSize', 2),
                    ('noCursorTimeout', True),
                    ('allowPartialResults', True)])
@@ -264,7 +263,6 @@ class TestCommandMonitoring(IntegrationTest):
             filter={},
             projection={'x': False},
             skip=1,
-            limit=2,
             no_cursor_timeout=True,
             sort=[('_id', 1)],
             allow_partial_results=True,
