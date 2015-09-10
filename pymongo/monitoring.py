@@ -145,7 +145,8 @@ def _handle_exception():
             del einfo
 
 
-def publish_command_start(command, database_name, request_id, connection_id):
+def publish_command_start(
+        command, database_name, request_id, connection_id, op_id=None):
     """Publish a CommandStartedEvent to all command event subscribers.
 
     :Parameters:
@@ -154,9 +155,12 @@ def publish_command_start(command, database_name, request_id, connection_id):
       - `request_id`: The request id for this operation.
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
+      - `op_id`: The (optional) operation id for this operation.
     """
+    if op_id is None:
+        op_id = request_id
     event = CommandStartedEvent(
-        command, database_name, request_id, connection_id)
+        command, database_name, request_id, connection_id, op_id)
     for subscriber in get_subscribers(COMMAND):
         try:
             subscriber.started(event)
@@ -165,7 +169,7 @@ def publish_command_start(command, database_name, request_id, connection_id):
 
 
 def publish_command_success(
-        duration, reply, command_name, request_id, connection_id):
+        duration, reply, command_name, request_id, connection_id, op_id=None):
     """Publish a CommandSucceededEvent to all command event subscribers.
 
     :Parameters:
@@ -175,9 +179,12 @@ def publish_command_success(
       - `request_id`: The request id for this operation.
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
+      - `op_id`: The (optional) operation id for this operation.
     """
+    if op_id is None:
+        op_id = request_id
     event = CommandSucceededEvent(
-        duration, reply, command_name, request_id, connection_id)
+        duration, reply, command_name, request_id, connection_id, op_id)
     for subscriber in get_subscribers(COMMAND):
         try:
             subscriber.succeeded(event)
@@ -186,7 +193,7 @@ def publish_command_success(
 
 
 def publish_command_failure(
-        duration, failure, command_name, request_id, connection_id):
+        duration, failure, command_name, request_id, connection_id, op_id=None):
     """Publish a CommandFailedEvent to all command event subscribers.
 
     :Parameters:
@@ -196,9 +203,12 @@ def publish_command_failure(
       - `request_id`: The request id for this operation.
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
+      - `op_id`: The (optional) operation id for this operation.
     """
+    if op_id is None:
+        op_id = request_id
     event = CommandFailedEvent(
-        duration, failure, command_name, request_id, connection_id)
+        duration, failure, command_name, request_id, connection_id, op_id)
     for subscriber in get_subscribers(COMMAND):
         try:
             subscriber.failed(event)
@@ -209,12 +219,13 @@ def publish_command_failure(
 class _CommandEvent(object):
     """Base class for command events."""
 
-    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id")
+    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id")
 
-    def __init__(self, command_name, request_id, connection_id):
+    def __init__(self, command_name, request_id, connection_id, operation_id):
         self.__cmd_name = command_name
         self.__rqst_id = request_id
         self.__conn_id = connection_id
+        self.__op_id = operation_id
 
     @property
     def command_name(self):
@@ -231,6 +242,11 @@ class _CommandEvent(object):
         """The address (host, port) of the server this command was sent to."""
         return self.__conn_id
 
+    @property
+    def operation_id(self):
+        """An id for this series of events or None."""
+        return self.__op_id
+
 
 class CommandStartedEvent(_CommandEvent):
     """Event published when a command starts.
@@ -241,17 +257,16 @@ class CommandStartedEvent(_CommandEvent):
       - `request_id`: The request id for this operation.
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
+      - `operation_id`: An optional identifier for a series of related events.
     """
     __slots__ = ("__cmd", "__db")
 
-    def __init__(self, command, database_name, request_id, connection_id):
+    def __init__(self, command, database_name, *args):
         if not command:
             raise ValueError("%r is not a valid command" % (command,))
         # Command name must be first key.
         command_name = next(iter(command))
-        super(CommandStartedEvent, self).__init__(command_name,
-                                                  request_id,
-                                                  connection_id)
+        super(CommandStartedEvent, self).__init__(command_name, *args)
         self.__cmd = command
         self.__db = database_name
 
@@ -276,6 +291,7 @@ class CommandSucceededEvent(_CommandEvent):
       - `request_id`: The request id for this operation.
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
+      - `operation_id`: An optional identifier for a series of related events.
     """
     __slots__ = ("__duration_micros", "__reply")
 
@@ -305,6 +321,7 @@ class CommandFailedEvent(_CommandEvent):
       - `request_id`: The request id for this operation.
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
+      - `operation_id`: An optional identifier for a series of related events.
     """
     __slots__ = ("__duration_micros", "__failure")
 

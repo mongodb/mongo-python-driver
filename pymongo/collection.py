@@ -35,7 +35,6 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
-from pymongo.message import _INSERT
 from pymongo.operations import _WriteOp, IndexModel
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (BulkWriteResult,
@@ -383,7 +382,7 @@ class Collection(common.BaseObject):
         return BulkWriteResult({}, False)
 
     def _legacy_write(
-            self, sock_info, name, command, acknowledged, func, *args):
+            self, sock_info, name, cmd, acknowledged, op_id, func, *args):
         """Internal legacy write helper."""
         publish = monitoring.enabled()
         if publish:
@@ -392,39 +391,37 @@ class Collection(common.BaseObject):
         if publish:
             duration = datetime.datetime.now() - start
             monitoring.publish_command_start(
-                command, self.__database.name, rqst_id, sock_info.address)
+                cmd, self.__database.name, rqst_id, sock_info.address, op_id)
             start = datetime.datetime.now()
         try:
             result = sock_info.legacy_write(
                 rqst_id, msg, max_size, acknowledged)
         except OperationFailure as exc:
             if publish:
-                duration = (datetime.datetime.now() - start) + duration
+                dur = (datetime.datetime.now() - start) + duration
                 details = exc.details
                 # Succeed if GLE was successful and this is a write error.
-                # XXX: Is checking if "n" is in details the best way to
-                # differentiate write errors from something else?
                 if details.get("ok") and "n" in details:
-                    reply = helpers._upconvert_write_result(
-                        name, command, details)
+                    reply = message._convert_write_result(
+                        name, cmd, details)
                     monitoring.publish_command_success(
-                        duration, reply, name, rqst_id, sock_info.address)
+                        dur, reply, name, rqst_id, sock_info.address, op_id)
                 else:
                     monitoring.publish_command_failure(
-                        duration, details, name, rqst_id, sock_info.address)
+                        dur, details, name, rqst_id, sock_info.address, op_id)
             raise
         if publish:
-            # No result for w=0
-            reply = None
+            # Comply with APM spec.
+            reply = {'ok': 1}
             if result:
-                reply = helpers._upconvert_write_result(name, command, result)
+                reply = message._convert_write_result(name, cmd, result)
             duration = (datetime.datetime.now() - start) + duration
             monitoring.publish_command_success(
-                duration, reply, name, rqst_id, sock_info.address)
+                duration, reply, name, rqst_id, sock_info.address, op_id)
         return result
 
     def _insert_one(
-            self, sock_info, doc, check_keys, manipulate, write_concern):
+            self, sock_info, doc, check_keys, manipulate, write_concern, op_id):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
@@ -435,9 +432,9 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         acknowledged = concern.get("w") != 0
         command = SON([('insert', self.name),
-                       ('documents', [doc]),
-                       ('ordered', True)])
-        if acknowledged and concern:
+                       ('ordered', True),
+                       ('documents', [doc])])
+        if concern:
             command['writeConcern'] = concern
 
         if sock_info.max_wire_version > 1 and acknowledged:
@@ -450,17 +447,17 @@ class Collection(common.BaseObject):
         else:
             # Legacy OP_INSERT.
             self._legacy_write(
-                sock_info, 'insert', command, acknowledged,
+                sock_info, 'insert', command, acknowledged, op_id,
                 message.insert, self.__full_name, [doc], check_keys,
                 acknowledged, concern, False, self.codec_options)
         return doc.get('_id')
 
-    def _insert(self, sock_info, docs, ordered=True,
-                check_keys=True, manipulate=False, write_concern=None):
+    def _insert(self, sock_info, docs, ordered=True, check_keys=True,
+                manipulate=False, write_concern=None, op_id=None):
         """Internal insert helper."""
         if isinstance(docs, collections.MutableMapping):
             return self._insert_one(
-                sock_info, docs, check_keys, manipulate, write_concern)
+                sock_info, docs, check_keys, manipulate, write_concern, op_id)
 
         ids = []
 
@@ -489,25 +486,27 @@ class Collection(common.BaseObject):
                     yield doc
 
         concern = (write_concern or self.write_concern).document
-        safe = concern.get("w") != 0
+        acknowledged = concern.get("w") != 0
 
-        if sock_info.max_wire_version > 1 and safe:
+        command = SON([('insert', self.name),
+                       ('ordered', ordered)])
+        if concern:
+            command['writeConcern'] = concern
+        if op_id is None:
+            op_id = message._randint()
+        bwc = message._BulkWriteContext(
+            self.database.name, command, sock_info, op_id)
+        if sock_info.max_wire_version > 1 and acknowledged:
             # Batched insert command.
-            command = SON([('insert', self.name),
-                           ('ordered', ordered)])
-
-            if concern:
-                command['writeConcern'] = concern
-
             results = message._do_batched_write_command(
-                self.database.name + ".$cmd", _INSERT, command,
-                gen(), check_keys, self.codec_options, sock_info)
+                self.database.name + ".$cmd", message._INSERT, command,
+                gen(), check_keys, self.codec_options, bwc)
             _check_write_command_response(results)
         else:
             # Legacy batched OP_INSERT.
             message._do_batched_insert(self.__full_name, gen(), check_keys,
-                                       safe, concern, not ordered,
-                                       self.codec_options, sock_info)
+                                       acknowledged, concern, not ordered,
+                                       self.codec_options, bwc)
         return ids
 
     def insert_one(self, document):
@@ -572,7 +571,7 @@ class Collection(common.BaseObject):
                 if "_id" not in document:
                     document["_id"] = ObjectId()
                 inserted_ids.append(document["_id"])
-                yield (_INSERT, document)
+                yield (message._INSERT, document)
 
         blk = _Bulk(self, ordered)
         blk.ops = [doc for doc in gen()]
@@ -581,7 +580,7 @@ class Collection(common.BaseObject):
 
     def _update(self, sock_info, criteria, document, upsert=False,
                 check_keys=True, multi=False, manipulate=False,
-                write_concern=None):
+                write_concern=None, op_id=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         if manipulate:
@@ -589,12 +588,12 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         acknowledged = concern.get("w") != 0
         command = SON([('update', self.name),
+                       ('ordered', True),
                        ('updates', [SON([('q', criteria),
                                          ('u', document),
                                          ('multi', multi),
-                                         ('upsert', upsert)])]),
-                       ('ordered', True)])
-        if acknowledged and concern:
+                                         ('upsert', upsert)])])])
+        if concern:
             command['writeConcern'] = concern
         if sock_info.max_wire_version > 1 and acknowledged:
             # Update command.
@@ -619,9 +618,9 @@ class Collection(common.BaseObject):
         else:
             # Legacy OP_UPDATE.
             return self._legacy_write(
-                sock_info, 'update', command, acknowledged, message.update,
-                self.__full_name, upsert, multi, criteria, document,
-                acknowledged, concern, check_keys, self.codec_options)
+                sock_info, 'update', command, acknowledged, op_id,
+                message.update, self.__full_name, upsert, multi, criteria,
+                document, acknowledged, concern, check_keys, self.codec_options)
 
     def replace_one(self, filter, replacement, upsert=False):
         """Replace a single document matching the filter.
@@ -758,16 +757,17 @@ class Collection(common.BaseObject):
         """
         self.__database.drop_collection(self.__name)
 
-    def _delete(self, sock_info, criteria, multi, write_concern=None):
+    def _delete(
+            self, sock_info, criteria, multi, write_concern=None, op_id=None):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         concern = (write_concern or self.write_concern).document
         acknowledged = concern.get("w") != 0
         command = SON([('delete', self.name),
+                       ('ordered', True),
                        ('deletes', [SON([('q', criteria),
-                                         ('limit', int(not multi))])]),
-                       ('ordered', True)])
-        if acknowledged and concern:
+                                         ('limit', int(not multi))])])])
+        if concern:
             command['writeConcern'] = concern
 
         if sock_info.max_wire_version > 1 and acknowledged:
@@ -780,9 +780,9 @@ class Collection(common.BaseObject):
         else:
             # Legacy OP_DELETE.
             return self._legacy_write(
-                sock_info, 'delete', command, acknowledged, message.delete,
-                self.__full_name, criteria, acknowledged, concern,
-                self.codec_options, int(not multi))
+                sock_info, 'delete', command, acknowledged, op_id,
+                message.delete, self.__full_name, criteria, acknowledged,
+                concern, self.codec_options, int(not multi))
 
     def delete_one(self, filter):
         """Delete a single document matching the filter.

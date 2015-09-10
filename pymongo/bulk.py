@@ -29,7 +29,9 @@ from pymongo.errors import (BulkWriteError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
-                             _do_batched_write_command)
+                             _do_batched_write_command,
+                             _randint,
+                             _BulkWriteContext)
 from pymongo.write_concern import WriteConcern
 
 
@@ -181,11 +183,13 @@ def _merge_command(run, full_result, results):
         write_errors = result.get("writeErrors")
         if write_errors:
             for doc in write_errors:
+                # Leave the server response intact for APM.
+                replacement = doc.copy()
                 idx = doc["index"] + offset
-                doc["index"] = run.index(idx)
+                replacement["index"] = run.index(idx)
                 # Add the failed operation to the error document.
-                doc[_UOP] = run.ops[idx]
-            full_result["writeErrors"].extend(write_errors)
+                replacement[_UOP] = run.ops[idx]
+                full_result["writeErrors"].append(replacement)
 
         wc_error = result.get("writeConcernError")
         if wc_error:
@@ -276,15 +280,19 @@ class _Bulk(object):
             "nRemoved": 0,
             "upserted": [],
         }
+        op_id = _randint()
+        db_name = self.collection.database.name
+
         for run in generator:
             cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
                        ('ordered', self.ordered)])
             if write_concern.document:
                 cmd['writeConcern'] = write_concern.document
 
+            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id)
             results = _do_batched_write_command(
                 self.namespace, run.op_type, cmd,
-                run.ops, True, self.collection.codec_options, sock_info)
+                run.ops, True, self.collection.codec_options, bwc)
 
             _merge_command(run, full_result, results)
             # We're supposed to continue if errors are
@@ -306,6 +314,7 @@ class _Bulk(object):
         # If ordered is True we have to send GLE or use write
         # commands so we can abort on the first error.
         write_concern = WriteConcern(w=int(self.ordered))
+        op_id = _randint()
 
         for run in generator:
             try:
@@ -313,7 +322,8 @@ class _Bulk(object):
                     coll._insert(sock_info,
                                  run.ops,
                                  self.ordered,
-                                 write_concern=write_concern)
+                                 write_concern=write_concern,
+                                 op_id=op_id)
                 elif run.op_type == _UPDATE:
                     for operation in run.ops:
                         doc = operation['u']
@@ -326,13 +336,15 @@ class _Bulk(object):
                                      operation['upsert'],
                                      check_keys,
                                      operation['multi'],
-                                     write_concern=write_concern)
+                                     write_concern=write_concern,
+                                     op_id=op_id)
                 else:
                     for operation in run.ops:
                         coll._delete(sock_info,
                                      operation['q'],
                                      not operation['limit'],
-                                     write_concern)
+                                     write_concern,
+                                     op_id)
             except OperationFailure:
                 if self.ordered:
                     break
@@ -350,6 +362,7 @@ class _Bulk(object):
             "nRemoved": 0,
             "upserted": [],
         }
+        op_id = _randint()
         stop = False
         for run in generator:
             for idx, operation in enumerate(run.ops):
@@ -360,7 +373,8 @@ class _Bulk(object):
                     if run.op_type == _INSERT:
                         coll._insert(sock_info,
                                      operation,
-                                     write_concern=write_concern)
+                                     write_concern=write_concern,
+                                     op_id=op_id)
                         result = {}
                     elif run.op_type == _UPDATE:
                         doc = operation['u']
@@ -373,12 +387,14 @@ class _Bulk(object):
                                               operation['upsert'],
                                               check_keys,
                                               operation['multi'],
-                                              write_concern=write_concern)
+                                              write_concern=write_concern,
+                                              op_id=op_id)
                     else:
                         result = coll._delete(sock_info,
                                               operation['q'],
                                               not operation['limit'],
-                                              write_concern)
+                                              write_concern,
+                                              op_id)
                     _merge_legacy(run, full_result, result, idx)
                 except DocumentTooLarge as exc:
                     # MongoDB 2.6 uses error code 2 for "too large".

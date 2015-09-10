@@ -580,10 +580,10 @@ _set_document_too_large(int size, long max) {
 }
 
 static PyObject*
-_send_insert(PyObject* self, PyObject* sock_info,
+_send_insert(PyObject* self, PyObject* ctx,
              PyObject* gle_args, buffer_t buffer,
              char* coll_name, int coll_len, int request_id, int safe,
-             codec_options_t* options) {
+             codec_options_t* options, PyObject* to_publish) {
 
     if (safe) {
         if (!add_last_error(self, buffer, request_id,
@@ -594,13 +594,14 @@ _send_insert(PyObject* self, PyObject* sock_info,
 
     /* The max_doc_size parameter for legacy_write is the max size of any
      * document in buffer. We enforced max size already, pass 0 here. */
-    return PyObject_CallMethod(sock_info, "legacy_write",
-                               "i" BYTES_FORMAT_STRING "iN",
+    return PyObject_CallMethod(ctx, "legacy_write",
+                               "i" BYTES_FORMAT_STRING "iNO",
                                request_id,
                                buffer_get_buffer(buffer),
                                buffer_get_position(buffer),
                                0,
-                               PyBool_FromLong((long)safe));
+                               PyBool_FromLong((long)safe),
+                               to_publish);
 }
 
 static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
@@ -615,11 +616,12 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     PyObject* docs;
     PyObject* doc;
     PyObject* iterator;
-    PyObject* sock_info;
+    PyObject* ctx;
     PyObject* last_error_args;
     PyObject* result;
     PyObject* max_bson_size_obj;
     PyObject* max_message_size_obj;
+    PyObject* to_publish = NULL;
     unsigned char check_keys;
     unsigned char safe;
     unsigned char continue_on_error;
@@ -638,7 +640,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                           &last_error_args,
                           &continue_on_error,
                           convert_codec_options, &options,
-                          &sock_info)) {
+                          &ctx)) {
         return NULL;
     }
     if (continue_on_error) {
@@ -649,7 +651,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
      * is True it's pointless (and slower) to send GLE.
      */
     send_safe = (safe || !continue_on_error);
-    max_bson_size_obj = PyObject_GetAttrString(sock_info, "max_bson_size");
+    max_bson_size_obj = PyObject_GetAttrString(ctx, "max_bson_size");
 #if PY_MAJOR_VERSION >= 3
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
 #else
@@ -662,7 +664,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    max_message_size_obj = PyObject_GetAttrString(sock_info, "max_message_size");
+    max_message_size_obj = PyObject_GetAttrString(ctx, "max_message_size");
 #if PY_MAJOR_VERSION >= 3
     max_message_size = PyLong_AsLong(max_message_size_obj);
 #else
@@ -692,6 +694,10 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
         goto insertfail;
     }
 
+    if (!(to_publish = PyList_New(0))) {
+        goto insertfail;
+    }
+
     iterator = PyObject_GetIter(docs);
     if (iterator == NULL) {
         PyObject* InvalidOperation = _error("InvalidOperation");
@@ -706,10 +712,8 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
         int cur_size;
         if (!write_dict(state->_cbson, buffer, doc, check_keys,
                         &options, 1)) {
-            Py_DECREF(doc);
             goto iterfail;
         }
-        Py_DECREF(doc);
 
         cur_size = buffer_get_position(buffer) - before;
         if (cur_size > max_bson_size) {
@@ -719,9 +723,10 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                 message_length = buffer_get_position(buffer) - length_location;
                 memcpy(buffer_get_buffer(buffer) + length_location,
                        &message_length, 4);
-                result = _send_insert(self, sock_info, last_error_args, buffer,
+                result = _send_insert(self, ctx, last_error_args, buffer,
                                       collection_name, collection_name_length,
-                                      request_id, send_safe, &options);
+                                      request_id, send_safe, &options,
+                                      to_publish);
                 if (!result)
                     goto iterfail;
                 Py_DECREF(result);
@@ -762,14 +767,19 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             message_length = buffer_get_position(buffer) - length_location;
             memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
-            result = _send_insert(self, sock_info, last_error_args, buffer,
+            result = _send_insert(self, ctx, last_error_args, buffer,
                                   collection_name, collection_name_length,
-                                  request_id, send_safe, &options);
+                                  request_id, send_safe, &options, to_publish);
 
             buffer_free(buffer);
             buffer = new_buffer;
             request_id = new_request_id;
             length_location = message_start;
+
+            Py_DECREF(to_publish);
+            if (!(to_publish = PyList_New(0))) {
+                goto insertfail;
+            }
 
             if (!result) {
                 PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
@@ -786,7 +796,9 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                                 Py_DECREF(etype);
                                 Py_XDECREF(evalue);
                                 Py_XDECREF(etrace);
+                                Py_DECREF(to_publish);
                                 Py_DECREF(iterator);
+                                Py_DECREF(doc);
                                 buffer_free(buffer);
                                 PyMem_Free(collection_name);
                                 Py_RETURN_NONE;
@@ -799,6 +811,10 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                             exc_type = etype;
                             exc_value = evalue;
                             exc_trace = etrace;
+                            if (PyList_Append(to_publish, doc) < 0) {
+                                goto iterfail;
+                            }
+                            Py_CLEAR(doc);
                             continue;
                         }
                     }
@@ -813,6 +829,10 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                 Py_DECREF(result);
             }
         }
+        if (PyList_Append(to_publish, doc) < 0) {
+            goto iterfail;
+        }
+        Py_CLEAR(doc);
     }
     Py_DECREF(iterator);
 
@@ -833,10 +853,11 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
     /* Send the last (or only) batch */
-    result = _send_insert(self, sock_info, last_error_args, buffer,
+    result = _send_insert(self, ctx, last_error_args, buffer,
                           collection_name, collection_name_length,
-                          request_id, safe, &options);
+                          request_id, safe, &options, to_publish);
 
+    Py_DECREF(to_publish);
     PyMem_Free(collection_name);
     buffer_free(buffer);
 
@@ -859,19 +880,22 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     Py_RETURN_NONE;
 
 iterfail:
+    Py_XDECREF(doc);
     Py_DECREF(iterator);
 insertfail:
     Py_XDECREF(exc_type);
     Py_XDECREF(exc_value);
     Py_XDECREF(exc_trace);
+    Py_XDECREF(to_publish);
     buffer_free(buffer);
     PyMem_Free(collection_name);
     return NULL;
 }
 
 static PyObject*
-_send_write_command(PyObject* sock_info, buffer_t buffer,
-                    int lst_len_loc, int cmd_len_loc, unsigned char* errors) {
+_send_write_command(PyObject* ctx, buffer_t buffer, int lst_len_loc,
+                    int cmd_len_loc, unsigned char* errors,
+                    PyObject* to_publish) {
 
     PyObject* result;
 
@@ -885,11 +909,12 @@ _send_write_command(PyObject* sock_info, buffer_t buffer,
     memcpy(buffer_get_buffer(buffer) + 4, &request_id, 4);
 
     /* Send the current batch */
-    result = PyObject_CallMethod(sock_info, "write_command",
-                                 "i" BYTES_FORMAT_STRING,
+    result = PyObject_CallMethod(ctx, "write_command",
+                                 "i" BYTES_FORMAT_STRING "O",
                                  request_id,
                                  buffer_get_buffer(buffer),
-                                 buffer_get_position(buffer));
+                                 buffer_get_position(buffer),
+                                 to_publish);
     if (result && PyDict_GetItemString(result, "writeErrors"))
         *errors = 1;
     return result;
@@ -948,10 +973,11 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     PyObject* command;
     PyObject* doc;
     PyObject* docs;
-    PyObject* sock_info;
+    PyObject* ctx;
     PyObject* iterator;
     PyObject* result;
     PyObject* results;
+    PyObject* to_publish = NULL;
     unsigned char op;
     unsigned char check_keys;
     codec_options_t options;
@@ -962,11 +988,11 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "et#bOObO&O", "utf-8",
                           &ns, &ns_len, &op, &command, &docs, &check_keys,
                           convert_codec_options, &options,
-                          &sock_info)) {
+                          &ctx)) {
         return NULL;
     }
 
-    max_bson_size_obj = PyObject_GetAttrString(sock_info, "max_bson_size");
+    max_bson_size_obj = PyObject_GetAttrString(ctx, "max_bson_size");
 #if PY_MAJOR_VERSION >= 3
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
 #else
@@ -984,7 +1010,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
      */
     max_cmd_size = max_bson_size + 16382;
 
-    max_write_batch_size_obj = PyObject_GetAttrString(sock_info, "max_write_batch_size");
+    max_write_batch_size_obj = PyObject_GetAttrString(ctx, "max_write_batch_size");
 #if PY_MAJOR_VERSION >= 3
     max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
 #else
@@ -1006,10 +1032,18 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    if (!(to_publish = PyList_New(0))) {
+        destroy_codec_options(&options);
+        PyMem_Free(ns);
+        Py_DECREF(results);
+        return NULL;
+    }
+
     if (!(buffer = _command_buffer_new(ns, ns_len))) {
         destroy_codec_options(&options);
         PyMem_Free(ns);
         Py_DECREF(results);
+        Py_DECREF(to_publish);
         return NULL;
     }
 
@@ -1086,16 +1120,13 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
         INT2STRING(key, idx);
         if (!buffer_write_bytes(buffer, "\x03", 1) ||
             !buffer_write_bytes(buffer, key, (int)strlen(key) + 1)) {
-            Py_DECREF(doc);
             goto cmditerfail;
         }
         cur_doc_begin = buffer_get_position(buffer);
         if (!write_dict(state->_cbson, buffer, doc,
                         check_keys, &options, 1)) {
-            Py_DECREF(doc);
             goto cmditerfail;
         }
-        Py_DECREF(doc);
 
         /* We have enough data, maybe send this batch. */
         enough_data = (buffer_get_position(buffer) > max_cmd_size);
@@ -1147,8 +1178,8 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
                 goto cmditerfail;
             }
 
-            result = _send_write_command(sock_info, buffer,
-                                         lst_len_loc, cmd_len_loc, &errors);
+            result = _send_write_command(ctx, buffer, lst_len_loc,
+                                         cmd_len_loc, &errors, to_publish);
 
             buffer_free(buffer);
             buffer = new_buffer;
@@ -1166,7 +1197,10 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
             if (!result)
                 goto cmditerfail;
 
-            PyList_Append(results, result);
+            if (PyList_Append(results, result) < 0) {
+                Py_DECREF(result);
+                goto cmditerfail;
+            }
             Py_DECREF(result);
 
             if (errors && ordered) {
@@ -1177,7 +1211,15 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
             }
             idx_offset += idx;
             idx = 0;
+            Py_DECREF(to_publish);
+            if (!(to_publish = PyList_New(0))) {
+                goto cmditerfail;
+            }
         }
+        if (PyList_Append(to_publish, doc) < 0) {
+            goto cmditerfail;
+        }
+        Py_CLEAR(doc);
         idx += 1;
     }
     Py_DECREF(iterator);
@@ -1198,8 +1240,8 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     if (!buffer_write_bytes(buffer, "\x00\x00", 2))
         goto cmdfail;
 
-    result = _send_write_command(sock_info, buffer,
-                                 lst_len_loc, cmd_len_loc, &errors);
+    result = _send_write_command(ctx, buffer, lst_len_loc,
+                                 cmd_len_loc, &errors, to_publish);
     if (!result)
         goto cmdfail;
 
@@ -1213,16 +1255,22 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
 
     buffer_free(buffer);
 
-    PyList_Append(results, result);
+    if (PyList_Append(results, result) < 0) {
+        Py_DECREF(result);
+        goto cmdfail;
+    }
     Py_DECREF(result);
+    Py_DECREF(to_publish);
     destroy_codec_options(&options);
     return results;
 
 cmditerfail:
+    Py_XDECREF(doc);
     Py_DECREF(iterator);
 cmdfail:
     destroy_codec_options(&options);
     Py_DECREF(results);
+    Py_XDECREF(to_publish);
     buffer_free(buffer);
     return NULL;
 }

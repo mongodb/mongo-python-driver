@@ -58,6 +58,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     name = next(iter(spec))
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
+    # Publish the original command document.
+    orig = spec
     if is_mongos:
         spec = message._maybe_add_read_preference(spec, read_preference)
 
@@ -70,7 +72,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
-        monitoring.publish_command_start(spec, dbname, request_id, address)
+        monitoring.publish_command_start(orig, dbname, request_id, address)
         start = datetime.datetime.now()
 
     sock.sendall(msg)

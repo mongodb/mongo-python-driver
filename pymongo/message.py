@@ -20,6 +20,7 @@ MongoDB.
    application developers.
 """
 
+import datetime
 import random
 import struct
 
@@ -32,6 +33,7 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
+from pymongo import monitoring
 from pymongo.errors import DocumentTooLarge, InvalidOperation, OperationFailure
 from pymongo.read_preferences import ReadPreference
 
@@ -57,6 +59,11 @@ _OP_MAP = {
 }
 
 
+def _randint():
+    """Generate a pseudo random 32 bit integer."""
+    return random.randint(MIN_INT32, MAX_INT32)
+
+
 def _maybe_add_read_preference(spec, read_preference):
     """Add $readPreference to spec when appropriate."""
     mode = read_preference.mode
@@ -75,6 +82,44 @@ def _maybe_add_read_preference(spec, read_preference):
     return spec
 
 
+def _convert_write_result(operation, command, result):
+    """Convert a legacy write result to write commmand format."""
+
+    # Based on _merge_legacy from bulk.py
+    affected = result.get("n", 0)
+    res = {"ok": 1, "n": affected}
+    errmsg = result.get("errmsg", result.get("err", ""))
+    if errmsg:
+        # The write was successful on at least the primary so don't return.
+        if result.get("wtimeout"):
+            res["writeConcernError"] = {"errmsg": errmsg,
+                                        "code": 64,
+                                        "errInfo": {"wtimeout": True}}
+        else:
+            # The write failed.
+            error = {"index": 0,
+                     "code": result.get("code", 8),
+                     "errmsg": errmsg}
+            if "errInfo" in result:
+                error["errInfo"] = result["errInfo"]
+            res["writeErrors"] = [error]
+            return res
+    if operation == "insert":
+        # GLE result for insert is always 0 in most MongoDB versions.
+        res["n"] = len(command['documents'])
+    elif operation == "update":
+        if "upserted" in result:
+            res["upserted"] = [{"index": 0, "_id": result["upserted"]}]
+        # Versions of MongoDB before 2.6 don't return the _id for an
+        # upsert if _id is not an ObjectId.
+        elif result.get("updatedExisting") is False and affected == 1:
+            # If _id is in both the update document *and* the query spec
+            # the update document _id takes precedence.
+            _id = command["u"].get("_id", command["q"].get("_id"))
+            res["upserted"] = [{"index": 0, "_id": _id}]
+    return res
+
+
 _OPTIONS = SON([
     ('tailable', 2),
     ('oplogReplay', 8),
@@ -90,7 +135,6 @@ _MODIFIERS = SON([
     ('$comment', 'comment'),
     ('$maxScan', 'maxScan'),
     ('$maxTimeMS', 'maxTimeMS'),
-    ('$readPreference', 'readPreference'),
     ('$max', 'max'),
     ('$min', 'min'),
     ('$returnKey', 'returnKey'),
@@ -121,12 +165,11 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options):
     if skip:
         cmd['skip'] = skip
     if limit:
-        cmd['limit'] = limit
+        cmd['limit'] = abs(limit)
+        if limit < 0:
+            cmd['singleBatch'] = True
     if batch_size:
         cmd['batchSize'] = batch_size
-    # XXX: Should the check for 1 be here?
-    if limit < 0 or limit == 1:
-        cmd['singleBatch'] = True
 
     if options:
         cmd.update([(opt, True)
@@ -262,7 +305,7 @@ def __pack_message(operation, data):
 
     Returns the resultant message string.
     """
-    request_id = random.randint(MIN_INT32, MAX_INT32)
+    request_id = _randint()
     message = struct.pack("<i", 16 + len(data))
     message += struct.pack("<i", request_id)
     message += _ZERO_32  # responseTo
@@ -390,9 +433,119 @@ def kill_cursors(cursor_ids):
     return __pack_message(2007, data)
 
 
+_FIELD_MAP = {
+    'insert': 'documents',
+    'update': 'updates',
+    'delete': 'deletes'
+}
+
+
+class _BulkWriteContext(object):
+    """A wrapper around SocketInfo for use with write splitting functions."""
+
+    __slots__ = ('db_name', 'command', 'sock_info',
+                 'op_id', 'name', 'field', 'publish', 'start_time')
+
+    def __init__(self, database_name, command, sock_info, operation_id):
+        self.db_name = database_name
+        self.command = command
+        self.sock_info = sock_info
+        self.op_id = operation_id
+        self.name = next(iter(command))
+        self.field = _FIELD_MAP[self.name]
+        self.publish = monitoring.enabled()
+        self.start_time = datetime.datetime.now() if self.publish else None
+
+    @property
+    def max_bson_size(self):
+        """A proxy for SockInfo.max_bson_size."""
+        return self.sock_info.max_bson_size
+
+    @property
+    def max_message_size(self):
+        """A proxy for SockInfo.max_message_size."""
+        return self.sock_info.max_message_size
+
+    @property
+    def max_write_batch_size(self):
+        """A proxy for SockInfo.max_write_batch_size."""
+        return self.sock_info.max_write_batch_size
+
+    def legacy_write(self, request_id, msg, max_doc_size, acknowledged, docs):
+        """A proxy for SocketInfo.legacy_write that handles event publishing.
+        """
+        if self.publish:
+            duration = datetime.datetime.now() - self.start_time
+            cmd = self._start(request_id, docs)
+            start = datetime.datetime.now()
+        try:
+            reply = self.sock_info.legacy_write(
+                request_id, msg, max_doc_size, acknowledged)
+            if self.publish:
+                duration = (datetime.datetime.now() - start) + duration
+                self._succeed(
+                    request_id,
+                    _convert_write_result(self.name, cmd, reply),
+                    duration)
+        except OperationFailure as exc:
+            if self.publish:
+                duration = (datetime.datetime.now() - start) + duration
+                self._fail(
+                    request_id,
+                    _convert_write_result(
+                        self.name, cmd, exc.details),
+                    duration)
+            raise
+        finally:
+            self.start_time = datetime.datetime.now()
+        return reply
+
+    def write_command(self, request_id, msg, docs):
+        """A proxy for SocketInfo.write_command that handles event publishing.
+        """
+        if self.publish:
+            duration = datetime.datetime.now() - self.start_time
+            self._start(request_id, docs)
+            start = datetime.datetime.now()
+        try:
+            reply = self.sock_info.write_command(request_id, msg)
+            if self.publish:
+                duration = (datetime.datetime.now() - start) + duration
+                self._succeed(request_id, reply, duration)
+        except OperationFailure as exc:
+            if self.publish:
+                duration = (datetime.datetime.now() - start) + duration
+                self._fail(request_id, exc.details, duration)
+            raise
+        finally:
+            self.start_time = datetime.datetime.now()
+        return reply
+
+    def _start(self, request_id, docs):
+        """Publish a CommandStartedEvent."""
+        cmd = self.command.copy()
+        cmd[self.field] = docs
+        monitoring.publish_command_start(
+            cmd, self.db_name,
+            request_id, self.sock_info.address, self.op_id)
+        return cmd
+
+    def _succeed(self, request_id, reply, duration):
+        """Publish a CommandSucceededEvent."""
+        monitoring.publish_command_success(
+            duration, reply, self.name,
+            request_id, self.sock_info.address, self.op_id)
+
+    def _fail(self, request_id, failure, duration):
+        """Publish a CommandFailedEvent."""
+        monitoring.publish_command_failure(
+            duration, failure, self.name,
+            request_id, self.sock_info.address, self.op_id)
+
+
 def _do_batched_insert(collection_name, docs, check_keys,
                        safe, last_error_args, continue_on_error, opts,
-                       sock_info):
+                       ctx):
     """Insert `docs` using multiple batches.
     """
     def _insert_message(insert_message, send_safe):
@@ -412,14 +565,16 @@ def _do_batched_insert(collection_name, docs, check_keys,
     data.write(bson._make_c_string(collection_name))
     message_length = begin_loc = data.tell()
     has_docs = False
+    to_send = []
     for doc in docs:
         encoded = bson.BSON.encode(doc, check_keys, opts)
         encoded_length = len(encoded)
-        too_large = (encoded_length > sock_info.max_bson_size)
+        too_large = (encoded_length > ctx.max_bson_size)
 
         message_length += encoded_length
-        if message_length < sock_info.max_message_size and not too_large:
+        if message_length < ctx.max_message_size and not too_large:
             data.write(encoded)
+            to_send.append(doc)
             has_docs = True
             continue
 
@@ -427,7 +582,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
             # We have enough data, send this message.
             try:
                 request_id, msg = _insert_message(data.getvalue(), send_safe)
-                sock_info.legacy_write(request_id, msg, 0, send_safe)
+                ctx.legacy_write(request_id, msg, 0, send_safe, to_send)
             # Exception type could be OperationFailure or a subtype
             # (e.g. DuplicateKeyError)
             except OperationFailure as exc:
@@ -447,18 +602,19 @@ def _do_batched_insert(collection_name, docs, check_keys,
                                    " - the connected server supports"
                                    " BSON document sizes up to %d"
                                    " bytes." %
-                                   (encoded_length, sock_info.max_bson_size))
+                                   (encoded_length, ctx.max_bson_size))
 
         message_length = begin_loc + encoded_length
         data.seek(begin_loc)
         data.truncate()
         data.write(encoded)
+        to_send = [doc]
 
     if not has_docs:
         raise InvalidOperation("cannot do an empty bulk insert")
 
     request_id, msg = _insert_message(data.getvalue(), safe)
-    sock_info.legacy_write(request_id, msg, 0, safe)
+    ctx.legacy_write(request_id, msg, 0, safe, to_send)
 
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:
@@ -468,11 +624,11 @@ if _use_c:
 
 
 def _do_batched_write_command(namespace, operation, command,
-                              docs, check_keys, opts, sock_info):
+                              docs, check_keys, opts, ctx):
     """Execute a batch of insert, update, or delete commands.
     """
-    max_bson_size = sock_info.max_bson_size
-    max_write_batch_size = sock_info.max_write_batch_size
+    max_bson_size = ctx.max_bson_size
+    max_write_batch_size = ctx.max_write_batch_size
     # Max BSON object size + 16k - 2 bytes for ending NUL bytes.
     # Server guarantees there is enough room: SERVER-10643.
     max_cmd_size = max_bson_size + 16382
@@ -511,6 +667,8 @@ def _do_batched_write_command(namespace, operation, command,
     # Where to write list document length
     list_start = buf.tell() - 4
 
+    to_send = []
+
     def send_message():
         """Finalize and send the current OP_QUERY message.
         """
@@ -524,11 +682,11 @@ def _do_batched_write_command(namespace, operation, command,
         buf.seek(command_start)
         buf.write(struct.pack('<i', length - command_start))
         buf.seek(4)
-        request_id = random.randint(MIN_INT32, MAX_INT32)
+        request_id = _randint()
         buf.write(struct.pack('<i', request_id))
         buf.seek(0)
         buf.write(struct.pack('<i', length))
-        return sock_info.write_command(request_id, buf.getvalue())
+        return ctx.write_command(request_id, buf.getvalue(), to_send)
 
     # If there are multiple batches we'll
     # merge results in the caller.
@@ -567,10 +725,12 @@ def _do_batched_write_command(namespace, operation, command,
             idx_offset += idx
             idx = 0
             key = b'0'
+            to_send = []
         buf.write(_BSONOBJ)
         buf.write(key)
         buf.write(_ZERO_8)
         buf.write(value)
+        to_send.append(doc)
         idx += 1
 
     if not has_docs:
