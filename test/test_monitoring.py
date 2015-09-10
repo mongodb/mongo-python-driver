@@ -178,33 +178,37 @@ class TestCommandMonitoring(IntegrationTest):
         # Next batch. Exhausting the cursor could cause a getMore
         # that returns id of 0 and no results.
         next(cursor)
-        results = self.listener.results
-        started = results['started'][0]
-        succeeded = results['succeeded'][0]
-        self.assertEqual(0, len(results['failed']))
-        self.assertTrue(
-            isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(
-            SON([('getMore', cursor_id),
-                 ('collection', 'test'),
-                 ('batchSize', 4)]),
-            started.command)
-        self.assertEqual('getMore', started.command_name)
-        self.assertEqual(self.client.address, started.connection_id)
-        self.assertEqual('pymongo_test', started.database_name)
-        self.assertTrue(isinstance(started.request_id, int))
-        self.assertTrue(
-            isinstance(succeeded, monitoring.CommandSucceededEvent))
-        self.assertTrue(isinstance(succeeded.duration_micros, int))
-        self.assertEqual('getMore', succeeded.command_name)
-        self.assertTrue(isinstance(succeeded.request_id, int))
-        self.assertEqual(cursor.address, succeeded.connection_id)
-        expected_result = {
-            'cursor': {'id': cursor_id,
-                       'ns': 'pymongo_test.test',
-                       'nextBatch': [{} for _ in range(4)]},
-            'ok': 1}
-        self.assertEqual(expected_result, succeeded.reply)
+        try:
+            results = self.listener.results
+            started = results['started'][0]
+            succeeded = results['succeeded'][0]
+            self.assertEqual(0, len(results['failed']))
+            self.assertTrue(
+                isinstance(started, monitoring.CommandStartedEvent))
+            self.assertEqual(
+                SON([('getMore', cursor_id),
+                     ('collection', 'test'),
+                     ('batchSize', 4)]),
+                started.command)
+            self.assertEqual('getMore', started.command_name)
+            self.assertEqual(self.client.address, started.connection_id)
+            self.assertEqual('pymongo_test', started.database_name)
+            self.assertTrue(isinstance(started.request_id, int))
+            self.assertTrue(
+                isinstance(succeeded, monitoring.CommandSucceededEvent))
+            self.assertTrue(isinstance(succeeded.duration_micros, int))
+            self.assertEqual('getMore', succeeded.command_name)
+            self.assertTrue(isinstance(succeeded.request_id, int))
+            self.assertEqual(cursor.address, succeeded.connection_id)
+            expected_result = {
+                'cursor': {'id': cursor_id,
+                           'ns': 'pymongo_test.test',
+                           'nextBatch': [{} for _ in range(4)]},
+                'ok': 1}
+            self.assertEqual(expected_result, succeeded.reply)
+        finally:
+            # Exhaust the cursor to avoid kill cursors.
+            tuple(cursor)
 
     def test_find_with_explain(self):
         cmd = SON([('explain', SON([('find', 'test'),
@@ -286,7 +290,8 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertTrue(isinstance(succeeded.request_id, int))
             self.assertEqual(self.client.address, succeeded.connection_id)
         finally:
-            cursor.close()
+            # Exhaust the cursor to avoid kill cursors.
+            tuple(cursor)
 
     @client_context.require_version_min(2, 6, 0)
     def test_command_and_get_more(self):
@@ -332,33 +337,37 @@ class TestCommandMonitoring(IntegrationTest):
 
         self.listener.results.clear()
         next(cursor)
-        results = self.listener.results
-        started = results['started'][0]
-        succeeded = results['succeeded'][0]
-        self.assertEqual(0, len(results['failed']))
-        self.assertTrue(
-            isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(
-            SON([('getMore', cursor_id),
-                 ('collection', 'test'),
-                 ('batchSize', 4)]),
-            started.command)
-        self.assertEqual('getMore', started.command_name)
-        self.assertEqual(self.client.address, started.connection_id)
-        self.assertEqual('pymongo_test', started.database_name)
-        self.assertTrue(isinstance(started.request_id, int))
-        self.assertTrue(
-            isinstance(succeeded, monitoring.CommandSucceededEvent))
-        self.assertTrue(isinstance(succeeded.duration_micros, int))
-        self.assertEqual('getMore', succeeded.command_name)
-        self.assertTrue(isinstance(succeeded.request_id, int))
-        self.assertEqual(cursor.address, succeeded.connection_id)
-        expected_result = {
-            'cursor': {'id': cursor_id,
-                       'ns': 'pymongo_test.test',
-                       'nextBatch': [{'x': 1} for _ in range(4)]},
-            'ok': 1}
-        self.assertEqual(expected_result, succeeded.reply)
+        try:
+            results = self.listener.results
+            started = results['started'][0]
+            succeeded = results['succeeded'][0]
+            self.assertEqual(0, len(results['failed']))
+            self.assertTrue(
+                isinstance(started, monitoring.CommandStartedEvent))
+            self.assertEqual(
+                SON([('getMore', cursor_id),
+                     ('collection', 'test'),
+                     ('batchSize', 4)]),
+                started.command)
+            self.assertEqual('getMore', started.command_name)
+            self.assertEqual(self.client.address, started.connection_id)
+            self.assertEqual('pymongo_test', started.database_name)
+            self.assertTrue(isinstance(started.request_id, int))
+            self.assertTrue(
+                isinstance(succeeded, monitoring.CommandSucceededEvent))
+            self.assertTrue(isinstance(succeeded.duration_micros, int))
+            self.assertEqual('getMore', succeeded.command_name)
+            self.assertTrue(isinstance(succeeded.request_id, int))
+            self.assertEqual(cursor.address, succeeded.connection_id)
+            expected_result = {
+                'cursor': {'id': cursor_id,
+                           'ns': 'pymongo_test.test',
+                           'nextBatch': [{'x': 1} for _ in range(4)]},
+                'ok': 1}
+            self.assertEqual(expected_result, succeeded.reply)
+        finally:
+            # Exhaust the cursor to avoid kill cursors.
+            tuple(cursor)
 
     def test_get_more_failure(self):
         address = self.client.address
@@ -459,8 +468,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(expected_result, succeeded.reply)
 
         self.listener.results.clear()
-        for _ in cursor:
-            pass
+        tuple(cursor)
         results = self.listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
