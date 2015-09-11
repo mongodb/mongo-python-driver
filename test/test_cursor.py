@@ -1036,26 +1036,23 @@ class TestCursor(IntegrationTest):
         if server_started_with_auth(self.db.client):
             raise SkipTest("SERVER-4754 - This test uses profiling.")
 
-        def run_with_profiling(func):
-            self.db.set_profiling_level(OFF)
-            self.db.system.profile.drop()
-            self.db.set_profiling_level(ALL)
-            func()
-            self.db.set_profiling_level(OFF)
-
-        def find():
-            list(self.db.test.find().comment('foo'))
-            op = self.db.system.profile.find({'ns': 'pymongo_test.test',
-                                              'op': 'query',
-                                              'query.$comment': 'foo'})
-            self.assertEqual(op.count(), 1)
-
-        run_with_profiling(find)
-
         # MongoDB 3.1.5 changed the ns for commands.
         regex = {'$regex': 'pymongo_test.(\$cmd|test)'}
 
-        def count():
+        if client_context.version.at_least(3, 1, 8, -1):
+            query_key = "query.comment"
+        else:
+            query_key = "query.$comment"
+
+        self.client.drop_database(self.db)
+        self.db.set_profiling_level(ALL)
+        try:
+            list(self.db.test.find().comment('foo'))
+            op = self.db.system.profile.find({'ns': 'pymongo_test.test',
+                                              'op': 'query',
+                                              query_key: 'foo'})
+            self.assertEqual(op.count(), 1)
+
             self.db.test.find().comment('foo').count()
             op = self.db.system.profile.find({'ns': regex,
                                               'op': 'command',
@@ -1063,24 +1060,20 @@ class TestCursor(IntegrationTest):
                                               'command.$comment': 'foo'})
             self.assertEqual(op.count(), 1)
 
-        run_with_profiling(count)
-
-        def distinct():
             self.db.test.find().comment('foo').distinct('type')
             op = self.db.system.profile.find({'ns': regex,
                                               'op': 'command',
                                               'command.distinct': 'test',
                                               'command.$comment': 'foo'})
             self.assertEqual(op.count(), 1)
-
-        run_with_profiling(distinct)
+        finally:
+            self.db.set_profiling_level(OFF)
+            self.db.system.profile.drop()
 
         self.db.test.insert_many([{}, {}])
         cursor = self.db.test.find()
         next(cursor)
         self.assertRaises(InvalidOperation, cursor.comment, 'hello')
-
-        self.db.system.profile.drop()
 
     def test_cursor_transfer(self):
 

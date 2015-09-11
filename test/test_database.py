@@ -255,6 +255,7 @@ class TestDatabase(IntegrationTest):
     def test_profiling_info(self):
         db = self.client.pymongo_test
 
+        db.system.profile.drop()
         db.set_profiling_level(ALL)
         db.test.find_one()
         db.set_profiling_level(OFF)
