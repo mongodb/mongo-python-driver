@@ -237,6 +237,7 @@ class TestDatabase(unittest.TestCase):
             raise SkipTest('profile is not supported by mongos')
         db = self.client.pymongo_test
 
+        db.system.profile.drop()
         db.set_profiling_level(ALL)
         db.test.find_one()
         db.set_profiling_level(OFF)
