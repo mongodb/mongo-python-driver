@@ -337,14 +337,16 @@ class _Bulk(object):
                                      check_keys,
                                      operation['multi'],
                                      write_concern=write_concern,
-                                     op_id=op_id)
+                                     op_id=op_id,
+                                     ordered=self.ordered)
                 else:
                     for operation in run.ops:
                         coll._delete(sock_info,
                                      operation['q'],
                                      not operation['limit'],
                                      write_concern,
-                                     op_id)
+                                     op_id,
+                                     self.ordered)
             except OperationFailure:
                 if self.ordered:
                     break
@@ -373,6 +375,7 @@ class _Bulk(object):
                     if run.op_type == _INSERT:
                         coll._insert(sock_info,
                                      operation,
+                                     self.ordered,
                                      write_concern=write_concern,
                                      op_id=op_id)
                         result = {}
@@ -388,13 +391,15 @@ class _Bulk(object):
                                               check_keys,
                                               operation['multi'],
                                               write_concern=write_concern,
-                                              op_id=op_id)
+                                              op_id=op_id,
+                                              ordered=self.ordered)
                     else:
                         result = coll._delete(sock_info,
                                               operation['q'],
                                               not operation['limit'],
                                               write_concern,
-                                              op_id)
+                                              op_id,
+                                              self.ordered)
                     _merge_legacy(run, full_result, result, idx)
                 except DocumentTooLarge as exc:
                     # MongoDB 2.6 uses error code 2 for "too large".

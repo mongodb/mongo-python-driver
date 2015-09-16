@@ -115,7 +115,8 @@ def _convert_write_result(operation, command, result):
         elif result.get("updatedExisting") is False and affected == 1:
             # If _id is in both the update document *and* the query spec
             # the update document _id takes precedence.
-            _id = command["u"].get("_id", command["q"].get("_id"))
+            update = command['updates'][0]
+            _id = update["u"].get("_id", update["q"].get("_id"))
             res["upserted"] = [{"index": 0, "_id": _id}]
     return res
 
@@ -479,14 +480,16 @@ class _BulkWriteContext(object):
             cmd = self._start(request_id, docs)
             start = datetime.datetime.now()
         try:
-            reply = self.sock_info.legacy_write(
+            result = self.sock_info.legacy_write(
                 request_id, msg, max_doc_size, acknowledged)
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
-                self._succeed(
-                    request_id,
-                    _convert_write_result(self.name, cmd, reply),
-                    duration)
+                if result is not None:
+                    reply = _convert_write_result(self.name, cmd, result)
+                else:
+                    # Comply with APM spec.
+                    reply = {'ok': 1}
+                self._succeed(request_id, reply, duration)
         except OperationFailure as exc:
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
@@ -498,7 +501,7 @@ class _BulkWriteContext(object):
             raise
         finally:
             self.start_time = datetime.datetime.now()
-        return reply
+        return result
 
     def write_command(self, request_id, msg, docs):
         """A proxy for SocketInfo.write_command that handles event publishing.

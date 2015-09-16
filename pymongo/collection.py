@@ -411,17 +411,19 @@ class Collection(common.BaseObject):
                         dur, details, name, rqst_id, sock_info.address, op_id)
             raise
         if publish:
-            # Comply with APM spec.
-            reply = {'ok': 1}
-            if result:
+            if result is not None:
                 reply = message._convert_write_result(name, cmd, result)
+            else:
+                # Comply with APM spec.
+                reply = {'ok': 1}
             duration = (datetime.datetime.now() - start) + duration
             monitoring.publish_command_success(
                 duration, reply, name, rqst_id, sock_info.address, op_id)
         return result
 
     def _insert_one(
-            self, sock_info, doc, check_keys, manipulate, write_concern, op_id):
+            self, sock_info, doc, ordered,
+            check_keys, manipulate, write_concern, op_id):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
@@ -432,7 +434,7 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         acknowledged = concern.get("w") != 0
         command = SON([('insert', self.name),
-                       ('ordered', True),
+                       ('ordered', ordered),
                        ('documents', [doc])])
         if concern:
             command['writeConcern'] = concern
@@ -457,7 +459,8 @@ class Collection(common.BaseObject):
         """Internal insert helper."""
         if isinstance(docs, collections.MutableMapping):
             return self._insert_one(
-                sock_info, docs, check_keys, manipulate, write_concern, op_id)
+                sock_info, docs, ordered,
+                check_keys, manipulate, write_concern, op_id)
 
         ids = []
 
@@ -580,7 +583,7 @@ class Collection(common.BaseObject):
 
     def _update(self, sock_info, criteria, document, upsert=False,
                 check_keys=True, multi=False, manipulate=False,
-                write_concern=None, op_id=None):
+                write_concern=None, op_id=None, ordered=True):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         if manipulate:
@@ -588,7 +591,7 @@ class Collection(common.BaseObject):
         concern = (write_concern or self.write_concern).document
         acknowledged = concern.get("w") != 0
         command = SON([('update', self.name),
-                       ('ordered', True),
+                       ('ordered', ordered),
                        ('updates', [SON([('q', criteria),
                                          ('u', document),
                                          ('multi', multi),
@@ -758,13 +761,14 @@ class Collection(common.BaseObject):
         self.__database.drop_collection(self.__name)
 
     def _delete(
-            self, sock_info, criteria, multi, write_concern=None, op_id=None):
+            self, sock_info, criteria, multi,
+            write_concern=None, op_id=None, ordered=True):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         concern = (write_concern or self.write_concern).document
         acknowledged = concern.get("w") != 0
         command = SON([('delete', self.name),
-                       ('ordered', True),
+                       ('ordered', ordered),
                        ('deletes', [SON([('q', criteria),
                                          ('limit', int(not multi))])])])
         if concern:
