@@ -83,6 +83,9 @@ def create_test(scenario_def):
         dbname = scenario_def['database_name']
         collname = scenario_def['collection_name']
 
+        # Clear the kill cursors queue.
+        self.client._kill_cursors_executor.wake()
+
         for test in scenario_def['tests']:
             coll = self.client[dbname][collname]
             coll.drop()
@@ -91,7 +94,7 @@ def create_test(scenario_def):
             name = camel_to_snake(test['operation']['name'])
             args = test['operation']['arguments']
             # Don't send $readPreference to mongos before 2.4.
-            if (not client_context.version.at_least(2, 4, 0)
+            if (client_context.version.at_least(2, 4, 0)
                     and 'readPreference' in args):
                 pref = make_read_preference(
                     args['readPreference']['mode'], None)
