@@ -804,6 +804,7 @@ class Cursor(object):
         """
         client = self.__collection.database.client
         publish = monitoring.enabled()
+        from_command = False
 
         if operation:
             kwargs = {
@@ -826,6 +827,7 @@ class Cursor(object):
                 data = response.data
                 cmd_duration = response.duration
                 rqst_id = response.request_id
+                from_command = response.from_command
             except AutoReconnect:
                 # Don't try to send kill cursors on another socket
                 # or to another server. It can cause a _pinValue
@@ -862,6 +864,8 @@ class Cursor(object):
             doc = helpers._unpack_response(response=data,
                                            cursor_id=self.__id,
                                            codec_options=self.__codec_options)
+            if from_command:
+                helpers._check_command_response(doc['data'][0])
         except OperationFailure as exc:
             self.__killed = True
 
@@ -899,7 +903,9 @@ class Cursor(object):
         if publish:
             duration = (datetime.datetime.now() - start) + cmd_duration
             # Must publish in find / getMore / explain command response format.
-            if cmd_name == "explain":
+            if from_command:
+                res = doc['data'][0]
+            elif cmd_name == "explain":
                 res = doc["data"][0] if doc["number_returned"] else {}
             else:
                 res = {"cursor": {"id": doc["cursor_id"],
@@ -912,12 +918,23 @@ class Cursor(object):
             monitoring.publish_command_success(
                 duration, res, cmd_name, rqst_id, self.__address)
 
-        self.__id = doc["cursor_id"]
+        if from_command and cmd_name != "explain":
+            cursor = doc['data'][0]['cursor']
+            self.__id = cursor['id']
+            if cmd_name == 'find':
+                documents = cursor['firstBatch']
+            else:
+                documents = cursor['nextBatch']
+            self.__data = deque(documents)
+            self.__retrieved += len(documents)
+        else:
+            self.__id = doc["cursor_id"]
+            self.__data = deque(doc["data"])
+            self.__retrieved += doc["number_returned"]
+
         if self.__id == 0:
             self.__killed = True
 
-        self.__retrieved += doc["number_returned"]
-        self.__data = deque(doc["data"])
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()
@@ -945,7 +962,8 @@ class Cursor(object):
                 else:
                     ntoreturn = self.__limit
             self.__send_message(_Query(self.__query_flags,
-                                       self.__collection.full_name,
+                                       self.__collection.database.name,
+                                       self.__collection.name,
                                        self.__skip,
                                        ntoreturn,
                                        self.__query_spec(),
@@ -968,9 +986,11 @@ class Cursor(object):
             if self.__exhaust:
                 self.__send_message(None)
             else:
-                self.__send_message(_GetMore(self.__collection.full_name,
+                self.__send_message(_GetMore(self.__collection.database.name,
+                                             self.__collection.name,
                                              limit,
                                              self.__id,
+                                             self.__codec_options,
                                              self.__max_time_ms))
 
         else:  # Cursor id is zero nothing else to return

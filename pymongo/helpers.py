@@ -125,11 +125,11 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
                                error_object.get("code"),
                                error_object)
 
-    result = {}
-    result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
-    result["starting_from"] = struct.unpack("<i", response[12:16])[0]
-    result["number_returned"] = struct.unpack("<i", response[16:20])[0]
-    result["data"] = bson.decode_all(response[20:], codec_options)
+    result = {"cursor_id": struct.unpack("<q", response[4:12])[0],
+              "starting_from": struct.unpack("<i", response[12:16])[0],
+              "number_returned": struct.unpack("<i", response[16:20])[0],
+              "data": bson.decode_all(response[20:], codec_options)}
+
     assert len(result["data"]) == result["number_returned"]
     return result
 
@@ -187,6 +187,8 @@ def _check_command_response(response, msg=None, allowable_errors=None):
                 raise DuplicateKeyError(errmsg, code, response)
             elif code == 50:
                 raise ExecutionTimeout(errmsg, code, response)
+            elif code == 43:
+                raise CursorNotFound(errmsg, code, response)
 
             msg = msg or "%s"
             raise OperationFailure(msg % errmsg, code, response)
@@ -232,12 +234,12 @@ def _check_gle_response(response):
     raise OperationFailure(details["err"], code, result)
 
 
-def _first_batch(sock_info, namespace, query,
+def _first_batch(sock_info, db, coll, query,
                  ntoreturn, slave_ok, codec_options, read_preference):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
-        0, namespace, 0, ntoreturn, query, None,
-        codec_options, read_preference, 0, ntoreturn)
+        0, db, coll, 0, ntoreturn, query, None,
+        codec_options, read_preference, 0, 0)
     request_id, msg, max_doc_size = query.get_message(slave_ok,
                                                       sock_info.is_mongos)
     sock_info.send_message(msg, max_doc_size)

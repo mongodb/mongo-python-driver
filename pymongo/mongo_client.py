@@ -1084,7 +1084,7 @@ class MongoClient(common.BaseObject):
                     if exc.code != 125:
                         raise
             else:
-                helpers._first_batch(sock_info, "admin.$cmd.sys.unlock",
+                helpers._first_batch(sock_info, "admin", "$cmd.sys.unlock",
                     {}, -1, True, self.codec_options, ReadPreference.PRIMARY)
 
 
