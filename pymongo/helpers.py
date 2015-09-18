@@ -32,6 +32,7 @@ from pymongo.errors import (CursorNotFound,
                             WriteConcernError,
                             WTimeoutError)
 from pymongo.message import _Query, _convert_exception
+from pymongo.read_concern import DEFAULT_READ_CONCERN
 
 
 _UUNDER = u("_")
@@ -240,7 +241,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, db, coll, 0, ntoreturn, query, None,
-        codec_options, read_preference, 0, ntoreturn)
+        codec_options, read_preference, 0, 0, DEFAULT_READ_CONCERN)
 
     name = next(iter(cmd))
     duration = None

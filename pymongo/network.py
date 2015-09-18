@@ -31,6 +31,7 @@ except ImportError:
 
 from pymongo import helpers, message
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
+from pymongo.read_concern import DEFAULT_READ_CONCERN
 
 _UNPACK_INT = struct.Struct("<i").unpack
 
@@ -38,7 +39,8 @@ _UNPACK_INT = struct.Struct("<i").unpack
 def command(sock, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, check=True,
             allowable_errors=None, address=None,
-            check_keys=False, listeners=None, max_bson_size=None):
+            check_keys=False, listeners=None, max_bson_size=None,
+            read_concern=DEFAULT_READ_CONCERN):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -55,6 +57,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `check_keys`: if True, check `spec` for invalid keys
       - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
       - `max_bson_size`: The maximum encoded bson size for this server
+      - `read_concern`: The read concern for this command.
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
@@ -63,6 +66,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     orig = spec
     if is_mongos:
         spec = message._maybe_add_read_preference(spec, read_preference)
+    if read_concern.level:
+        spec['readConcern'] = read_concern.document
 
     publish = listeners is not None and listeners.enabled_for_commands
     if publish:

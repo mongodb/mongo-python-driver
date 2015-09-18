@@ -22,6 +22,7 @@ from bson.py3compat import u, itervalues
 from pymongo import auth, helpers, thread_util
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
+                            ConfigurationError,
                             DocumentTooLarge,
                             NetworkTimeout,
                             NotMasterError,
@@ -31,6 +32,7 @@ from pymongo.monotonic import time as _time
 from pymongo.network import (command,
                              receive_message,
                              socket_closed)
+from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
 
@@ -181,7 +183,8 @@ class SocketInfo(object):
     def command(self, dbname, spec, slave_ok=False,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
-                allowable_errors=None, check_keys=False):
+                allowable_errors=None, check_keys=False,
+                read_concern=DEFAULT_READ_CONCERN):
         """Execute a command or raise ConnectionFailure or OperationFailure.
 
         :Parameters:
@@ -193,12 +196,19 @@ class SocketInfo(object):
           - `check`: raise OperationFailure if there are errors
           - `allowable_errors`: errors to ignore if `check` is True
           - `check_keys`: if True, check `spec` for invalid keys
+          - `read_concern`: The read concern for this command.
         """
+        if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
+            raise ConfigurationError(
+                'read concern level of %s is not valid '
+                'with a max wire version of %d.'
+                % (read_concern.level, self.max_wire_version))
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
                            check, allowable_errors, self.address,
-                           check_keys, self.listeners, self.max_bson_size)
+                           check_keys, self.listeners, self.max_bson_size,
+                           read_concern)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

@@ -42,6 +42,7 @@ from pymongo.errors import (CollectionInvalid,
                             ExecutionTimeout,
                             InvalidName,
                             OperationFailure)
+from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
@@ -95,12 +96,15 @@ class TestDatabaseNoConnect(unittest.TestCase):
     def test_get_collection(self):
         codec_options = CodecOptions(tz_aware=True)
         write_concern = WriteConcern(w=2, j=True)
+        read_concern = ReadConcern('majority')
         coll = self.client.pymongo_test.get_collection(
-            'foo', codec_options, ReadPreference.SECONDARY, write_concern)
+            'foo', codec_options, ReadPreference.SECONDARY, write_concern,
+            read_concern)
         self.assertEqual('foo', coll.name)
         self.assertEqual(codec_options, coll.codec_options)
         self.assertEqual(ReadPreference.SECONDARY, coll.read_preference)
         self.assertEqual(write_concern, coll.write_concern)
+        self.assertEqual(read_concern, coll.read_concern)
 
     def test_getattr(self):
         db = self.client.pymongo_test

@@ -22,9 +22,11 @@ import sys
 import threading
 import time
 import warnings
+
+from collections import defaultdict
 from functools import partial
 
-from pymongo import MongoClient
+from pymongo import MongoClient, monitoring
 from pymongo.errors import AutoReconnect, OperationFailure
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
@@ -35,6 +37,21 @@ from test import (client_context,
                   host,
                   port)
 from test.version import Version
+
+
+class EventListener(monitoring.CommandListener):
+
+    def __init__(self):
+        self.results = defaultdict(list)
+
+    def started(self, event):
+        self.results['started'].append(event)
+
+    def succeeded(self, event):
+        self.results['succeeded'].append(event)
+
+    def failed(self, event):
+        self.results['failed'].append(event)
 
 
 def _connection_string_noauth(h, p):

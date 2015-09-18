@@ -17,7 +17,7 @@
 import warnings
 
 from bson.code import Code
-from bson.codec_options import CodecOptions
+from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
@@ -51,8 +51,8 @@ class Database(common.BaseObject):
     """A Mongo database.
     """
 
-    def __init__(self, client, name, codec_options=None,
-                 read_preference=None, write_concern=None):
+    def __init__(self, client, name, codec_options=None, read_preference=None,
+                 write_concern=None, read_concern=None):
         """Get a database by client and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -71,8 +71,14 @@ class Database(common.BaseObject):
           - `write_concern` (optional): An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) client.write_concern is used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) client.read_concern is used.
 
         .. mongodoc:: databases
+
+        .. versionchanged:: 3.2
+           Added the read_concern option.
 
         .. versionchanged:: 3.0
            Added the codec_options, read_preference, and write_concern options.
@@ -89,7 +95,8 @@ class Database(common.BaseObject):
         super(Database, self).__init__(
             codec_options or client.codec_options,
             read_preference or client.read_preference,
-            write_concern or client.write_concern)
+            write_concern or client.write_concern,
+            read_concern or client.read_concern)
 
         if not isinstance(name, string_type):
             raise TypeError("name must be an instance "
@@ -225,8 +232,8 @@ class Database(common.BaseObject):
         """
         return Collection(self, name)
 
-    def get_collection(self, name, codec_options=None,
-                       read_preference=None, write_concern=None):
+    def get_collection(self, name, codec_options=None, read_preference=None,
+                       write_concern=None, read_concern=None):
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -259,12 +266,18 @@ class Database(common.BaseObject):
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) the :attr:`write_concern` of this :class:`Database` is
             used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) the :attr:`read_concern` of this :class:`Database` is
+            used.
         """
         return Collection(
-            self, name, False, codec_options, read_preference, write_concern)
+            self, name, False, codec_options, read_preference,
+            write_concern, read_concern)
 
     def create_collection(self, name, codec_options=None,
-                          read_preference=None, write_concern=None, **kwargs):
+                          read_preference=None, write_concern=None,
+                          read_concern=None, **kwargs):
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -298,6 +311,10 @@ class Database(common.BaseObject):
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) the :attr:`write_concern` of this :class:`Database` is
             used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) the :attr:`read_concern` of this :class:`Database` is
+            used.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
@@ -311,7 +328,8 @@ class Database(common.BaseObject):
             raise CollectionInvalid("collection %s already exists" % name)
 
         return Collection(self, name, True, codec_options,
-                          read_preference, write_concern, **kwargs)
+                          read_preference, write_concern,
+                          read_concern, **kwargs)
 
     def _apply_incoming_manipulators(self, son, collection):
         """Apply incoming manipulators to `son`."""
@@ -351,7 +369,7 @@ class Database(common.BaseObject):
 
     def _command(self, sock_info, command, slave_ok=False, value=1, check=True,
                  allowable_errors=None, read_preference=ReadPreference.PRIMARY,
-                 codec_options=CodecOptions(), **kwargs):
+                 codec_options=DEFAULT_CODEC_OPTIONS, **kwargs):
         """Internal command helper."""
         if isinstance(command, string_type):
             command = SON([(command, value)])
@@ -367,7 +385,7 @@ class Database(common.BaseObject):
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
-                codec_options=CodecOptions(), **kwargs):
+                codec_options=DEFAULT_CODEC_OPTIONS, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
