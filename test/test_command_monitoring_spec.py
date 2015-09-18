@@ -118,6 +118,10 @@ def create_test(scenario_def):
                 except OperationFailure:
                     pass
             elif name == 'find':
+                # XXX: Skip killCursors test when using the find command.
+                if (client_context.version.at_least(3, 1, 1) and
+                        'limit' in args):
+                    continue
                 if 'sort' in args:
                     args['sort'] = list(args['sort'].items())
                 try:
