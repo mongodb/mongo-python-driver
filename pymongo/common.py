@@ -24,6 +24,7 @@ from bson.codec_options import CodecOptions
 from bson.py3compat import string_type, integer_types, iteritems
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
+from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (read_pref_mode_from_name,
                                       _ServerMode)
 from pymongo.ssl_support import validate_cert_reqs
@@ -422,6 +423,7 @@ VALIDATORS = {
     'ssl_cert_reqs': validate_cert_reqs,
     'ssl_ca_certs': validate_readable,
     'ssl_match_hostname': validate_boolean_or_string,
+    'readconcernlevel': validate_string_or_none,
     'read_preference': validate_read_preference,
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
@@ -493,7 +495,8 @@ class BaseObject(object):
     SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
     """
 
-    def __init__(self, codec_options, read_preference, write_concern):
+    def __init__(self, codec_options, read_preference, write_concern,
+                 read_concern):
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of "
@@ -510,6 +513,11 @@ class BaseObject(object):
             raise TypeError("write_concern must be an instance of "
                             "pymongo.write_concern.WriteConcern")
         self.__write_concern = write_concern
+
+        if not isinstance(read_concern, ReadConcern):
+            raise TypeError("read_concern must be an instance of "
+                            "pymongo.read_concern.ReadConcern")
+        self.__read_concern = read_concern
 
     @property
     def codec_options(self):
@@ -536,3 +544,11 @@ class BaseObject(object):
           The :attr:`read_preference` attribute is now read only.
         """
         return self.__read_preference
+
+    @property
+    def read_concern(self):
+        """Read only access to the read concern of this instance.
+
+        .. versionadded:: 3.2
+        """
+        return self.__read_concern

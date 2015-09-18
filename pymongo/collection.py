@@ -36,6 +36,7 @@ from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.operations import _WriteOp, IndexModel
+from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (BulkWriteResult,
                              DeleteResult,
@@ -72,7 +73,8 @@ class Collection(common.BaseObject):
     """
 
     def __init__(self, database, name, create=False, codec_options=None,
-                 read_preference=None, write_concern=None, **kwargs):
+                 read_preference=None, write_concern=None, read_concern=None,
+                 **kwargs):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -101,8 +103,14 @@ class Collection(common.BaseObject):
           - `write_concern` (optional): An instance of
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) database.write_concern is used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) database.read_concern is used.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 3.2
+           Added the read_concern option.
 
         .. versionchanged:: 3.0
            Added the codec_options, read_preference, and write_concern options.
@@ -129,7 +137,8 @@ class Collection(common.BaseObject):
         super(Collection, self).__init__(
             codec_options or database.codec_options,
             read_preference or database.read_preference,
-            write_concern or database.write_concern)
+            write_concern or database.write_concern,
+            read_concern or database.read_concern)
 
         if not isinstance(name, string_type):
             raise TypeError("name must be an instance "
@@ -165,7 +174,8 @@ class Collection(common.BaseObject):
 
     def _command(self, sock_info, command, slave_ok=False,
                  read_preference=None,
-                 codec_options=None, check=True, allowable_errors=None):
+                 codec_options=None, check=True, allowable_errors=None,
+                 read_concern=DEFAULT_READ_CONCERN):
         """Internal command helper.
 
         :Parameters:
@@ -176,6 +186,8 @@ class Collection(common.BaseObject):
             :class:`~bson.codec_options.CodecOptions`.
           - `check`: raise OperationFailure if there are errors
           - `allowable_errors`: errors to ignore if `check` is True
+          - `read_concern` (optional) - An instance of
+            :class:`~pymongo.read_concern.ReadConcern`.
 
         :Returns:
 
@@ -189,7 +201,8 @@ class Collection(common.BaseObject):
                                  read_preference or self.read_preference,
                                  codec_options or self.codec_options,
                                  check,
-                                 allowable_errors)
+                                 allowable_errors,
+                                 read_concern=read_concern)
 
     def __create(self, options):
         """Sends a create command with the given options.
@@ -255,7 +268,8 @@ class Collection(common.BaseObject):
         return self.__database
 
     def with_options(
-            self, codec_options=None, read_preference=None, write_concern=None):
+            self, codec_options=None, read_preference=None,
+            write_concern=None, read_concern=None):
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -280,13 +294,18 @@ class Collection(common.BaseObject):
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) the :attr:`write_concern` of this :class:`Collection`
             is used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) the :attr:`read_concern` of this :class:`Collection`
+            is used.
         """
         return Collection(self.__database,
                           self.__name,
                           False,
                           codec_options or self.codec_options,
                           read_preference or self.read_preference,
-                          write_concern or self.write_concern)
+                          write_concern or self.write_concern,
+                          read_concern or self.read_concern)
 
     def initialize_unordered_bulk_op(self):
         """Initialize an unordered batch of write operations.
@@ -1048,7 +1067,8 @@ class Collection(common.BaseObject):
                    ('numCursors', num_cursors)])
 
         with self._socket_for_reads() as (sock_info, slave_ok):
-            result = self._command(sock_info, cmd, slave_ok)
+            result = self._command(sock_info, cmd, slave_ok,
+                                   read_concern=self.read_concern)
 
         return [CommandCursor(self, cursor['cursor'], sock_info.address)
                 for cursor in result['cursors']]
@@ -1057,7 +1077,8 @@ class Collection(common.BaseObject):
         """Internal count helper."""
         with self._socket_for_reads() as (sock_info, slave_ok):
             res = self._command(sock_info, cmd, slave_ok,
-                                allowable_errors=["ns missing"])
+                                allowable_errors=["ns missing"],
+                                read_concern=self.read_concern)
         if res.get("errmsg", "") == "ns missing":
             return 0
         return int(res["n"])
@@ -1509,7 +1530,8 @@ class Collection(common.BaseObject):
 
             cmd.update(kwargs)
 
-            result = self._command(sock_info, cmd, slave_ok)
+            result = self._command(sock_info, cmd, slave_ok,
+                                   read_concern=self.read_concern)
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -1640,7 +1662,8 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         cmd.update(kwargs)
         with self._socket_for_reads() as (sock_info, slave_ok):
-            return self._command(sock_info, cmd, slave_ok)["values"]
+            return self._command(sock_info, cmd, slave_ok,
+                                 read_concern=self.read_concern)["values"]
 
     def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.

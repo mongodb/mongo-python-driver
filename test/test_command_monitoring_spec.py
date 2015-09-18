@@ -19,8 +19,6 @@ import os
 import re
 import sys
 
-from collections import defaultdict
-
 sys.path[0:0] = [""]
 
 import pymongo
@@ -31,7 +29,7 @@ from pymongo.errors import OperationFailure
 from pymongo.read_preferences import make_read_preference
 from pymongo.write_concern import WriteConcern
 from test import unittest, IntegrationTest, client_context
-from test.utils import wait_until
+from test.utils import wait_until, EventListener
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -43,21 +41,6 @@ def camel_to_snake(camel):
     # Regex to convert CamelCase to snake_case.
     snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
-
-
-class EventListener(monitoring.Subscriber):
-
-    def __init__(self):
-        self.results = defaultdict(list)
-
-    def started(self, event):
-        self.results['started'].append(event)
-
-    def succeeded(self, event):
-        self.results['succeeded'].append(event)
-
-    def failed(self, event):
-        self.results['failed'].append(event)
 
 
 class TestAllScenarios(IntegrationTest):

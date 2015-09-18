@@ -35,6 +35,7 @@ except ImportError:
     _use_c = False
 from pymongo import monitoring
 from pymongo.errors import DocumentTooLarge, InvalidOperation, OperationFailure
+from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 
 
@@ -147,14 +148,18 @@ _MODIFIERS = SON([
 
 
 def _gen_explain_command(
-        coll, spec, projection, skip, limit, batch_size, options):
+        coll, spec, projection, skip, limit, batch_size,
+        options, read_concern):
     """Generate an explain command document."""
     cmd = _gen_find_command(
         coll, spec, projection, skip, limit, batch_size, options)
+    if read_concern.level:
+        return SON([('explain', cmd), ('readConcern', read_concern.document)])
     return SON([('explain', cmd)])
 
 
-def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options):
+def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
+                      options, read_concern=DEFAULT_READ_CONCERN):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
@@ -173,6 +178,8 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options):
             cmd['singleBatch'] = True
     if batch_size:
         cmd['batchSize'] = batch_size
+    if read_concern.level:
+        cmd['readConcern'] = read_concern.document
 
     if options:
         cmd.update([(opt, True)
@@ -197,10 +204,11 @@ class _Query(object):
 
     __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'ntoreturn', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
-                 'batch_size', 'name')
+                 'batch_size', 'name', 'read_concern')
 
     def __init__(self, flags, db, coll, ntoskip, ntoreturn, spec, fields,
-                 codec_options, read_preference, limit, batch_size):
+                 codec_options, read_preference, limit,
+                 batch_size, read_concern):
         self.flags = flags
         self.db = db
         self.coll = coll
@@ -210,6 +218,7 @@ class _Query(object):
         self.fields = fields
         self.codec_options = codec_options
         self.read_preference = read_preference
+        self.read_concern = read_concern
         self.limit = limit
         self.batch_size = batch_size
         self.name = 'find'
@@ -223,10 +232,11 @@ class _Query(object):
             self.name = 'explain'
             return _gen_explain_command(
                 self.coll, self.spec, self.fields, self.ntoskip,
-                self.limit, self.batch_size, self.flags), self.db
+                self.limit, self.batch_size, self.flags,
+                self.read_concern), self.db
         return _gen_find_command(
             self.coll, self.spec, self.fields, self.ntoskip, self.limit,
-            self.batch_size, self.flags), self.db
+            self.batch_size, self.flags, self.read_concern), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""

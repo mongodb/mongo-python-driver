@@ -31,6 +31,7 @@ except ImportError:
 
 from pymongo import helpers, message, monitoring
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
+from pymongo.read_concern import DEFAULT_READ_CONCERN
 
 _UNPACK_INT = struct.Struct("<i").unpack
 
@@ -38,7 +39,7 @@ _UNPACK_INT = struct.Struct("<i").unpack
 def command(sock, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, check=True,
             allowable_errors=None, address=None, user=False,
-            check_keys=False):
+            check_keys=False, read_concern=DEFAULT_READ_CONCERN):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -62,6 +63,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     orig = spec
     if is_mongos:
         spec = message._maybe_add_read_preference(spec, read_preference)
+    if read_concern.level:
+        spec['readConcern'] = read_concern.document
 
     publish = user and monitoring.enabled()
     if publish:

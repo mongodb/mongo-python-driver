@@ -16,8 +16,6 @@ import sys
 import time
 import warnings
 
-from collections import defaultdict
-
 sys.path[0:0] = [""]
 
 from bson.objectid import ObjectId
@@ -29,22 +27,7 @@ from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 from test import unittest, IntegrationTest, client_context, client_knobs
-from test.utils import single_client
-
-
-class EventListener(monitoring.Subscriber):
-
-    def __init__(self):
-        self.results = defaultdict(list)
-
-    def started(self, event):
-        self.results['started'].append(event)
-
-    def succeeded(self, event):
-        self.results['succeeded'].append(event)
-
-    def failed(self, event):
-        self.results['failed'].append(event)
+from test.utils import single_client, EventListener
 
 
 class TestCommandMonitoring(IntegrationTest):

@@ -225,6 +225,15 @@ class MongoClient(common.BaseObject):
             this to ``False`` as that could make your application vulnerable to
             man-in-the-middle attacks.
 
+          | **Read Concern options:**
+          | (If not set explicitly, this will use the server default)
+
+          - `readConcernLevel`: (string) The read concern level specifies the
+            level of isolation for read operations.  For example, a read
+            operation using a read concern level of ``majority`` will only
+            return data that has been written to a majority of nodes. If the
+            level is left unspecified, the server default will be used.
+
         .. mongodoc:: connections
 
         .. versionchanged:: 3.0
@@ -345,7 +354,8 @@ class MongoClient(common.BaseObject):
 
         super(MongoClient, self).__init__(options.codec_options,
                                           options.read_preference,
-                                          options.write_concern)
+                                          options.write_concern,
+                                          options.read_concern)
 
         self.__all_credentials = {}
         creds = options.credentials
@@ -1019,8 +1029,8 @@ class MongoClient(common.BaseObject):
 
         return self[self.__default_database_name]
 
-    def get_database(self, name, codec_options=None,
-                     read_preference=None, write_concern=None):
+    def get_database(self, name, codec_options=None, read_preference=None,
+                     write_concern=None, read_concern=None):
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
 
@@ -1053,9 +1063,14 @@ class MongoClient(common.BaseObject):
             :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
             default) the :attr:`write_concern` of this :class:`MongoClient` is
             used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) the :attr:`read_concern` of this :class:`MongoClient` is
+            used.
         """
         return database.Database(
-            self, name, codec_options, read_preference, write_concern)
+            self, name, codec_options, read_preference,
+            write_concern, read_concern)
 
     @property
     def is_locked(self):

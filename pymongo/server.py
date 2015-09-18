@@ -19,6 +19,8 @@ import contextlib
 from datetime import datetime
 
 from pymongo import monitoring
+from pymongo.errors import ConfigurationError
+from pymongo.message import _Query
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
 
@@ -90,7 +92,17 @@ class Server(object):
             if publish:
                 start = datetime.now()
 
-            use_find_cmd = (sock_info.max_wire_version >= 4 and not exhaust)
+            use_find_cmd = False
+            if sock_info.max_wire_version >= 4:
+                if not exhaust:
+                    use_find_cmd = True
+            elif (isinstance(operation, _Query) and
+                  not operation.read_concern.ok_for_legacy):
+                raise ConfigurationError(
+                    'read concern level of %s is not valid '
+                    'with a max wire version of %d.'
+                    % (operation.read_concern.level,
+                       sock_info.max_wire_version))
 
             message = operation.get_message(
                 set_slave_okay, sock_info.is_mongos, use_find_cmd)

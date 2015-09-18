@@ -184,6 +184,7 @@ class Cursor(object):
 
         self.__codec_options = collection.codec_options
         self.__read_preference = collection.read_preference
+        self.__read_concern = collection.read_concern
 
         self.__query_flags = cursor_type
         if self.__read_preference != ReadPreference.PRIMARY:
@@ -971,7 +972,8 @@ class Cursor(object):
                                        self.__codec_options,
                                        self.__read_preference,
                                        self.__limit,
-                                       self.__batch_size))
+                                       self.__batch_size,
+                                       self.__read_concern))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More

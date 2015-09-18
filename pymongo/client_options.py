@@ -21,6 +21,7 @@ from pymongo.common import validate, validate_boolean
 from pymongo import common
 from pymongo.errors import ConfigurationError
 from pymongo.pool import PoolOptions
+from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import make_read_preference
 from pymongo.ssl_support import get_ssl_context
 from pymongo.write_concern import WriteConcern
@@ -53,6 +54,12 @@ def _parse_write_concern(options):
     j = options.get('j', options.get('journal'))
     fsync = options.get('fsync')
     return WriteConcern(concern, wtimeout, j, fsync)
+
+
+def _parse_read_concern(options):
+    """Parse read concern options."""
+    concern = options.get('readconcernlevel')
+    return ReadConcern(concern)
 
 
 def _parse_ssl_options(options):
@@ -120,6 +127,7 @@ class ClientOptions(object):
         self.__read_preference = _parse_read_preference(options)
         self.__replica_set_name = options.get('replicaset')
         self.__write_concern = _parse_write_concern(options)
+        self.__read_concern = _parse_read_concern(options)
         self.__connect = options.get('connect')
 
     @property
@@ -171,3 +179,8 @@ class ClientOptions(object):
     def write_concern(self):
         """A :class:`~pymongo.write_concern.WriteConcern` instance."""
         return self.__write_concern
+
+    @property
+    def read_concern(self):
+        """A :class:`~pymongo.read_concern.ReadConcern` instance."""
+        return self.__read_concern
