@@ -167,7 +167,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual('find', succeeded.command_name)
         self.assertTrue(isinstance(succeeded.request_id, int))
         self.assertEqual(cursor.address, succeeded.connection_id)
-        csr = succeeded.reply[u'cursor']
+        csr = succeeded.reply["cursor"]
         self.assertEqual(csr["id"], cursor_id)
         self.assertEqual(csr["ns"], "pymongo_test.test")
         self.assertEqual(csr["firstBatch"], [{} for _ in range(4)])
