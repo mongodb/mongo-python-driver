@@ -1360,9 +1360,10 @@ class Collection(common.BaseObject):
             else:
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
-                    sock_info, namespace, {"ns": self.__full_name},
-                    0, slave_ok, codec_options, ReadPreference.PRIMARY,
-                    cmd, self.database.client._event_listeners)
+                    sock_info, self.__database.name, "system.indexes",
+                    {"ns": self.__full_name}, 0, slave_ok, codec_options,
+                    ReadPreference.PRIMARY, cmd,
+                    self.database.client._event_listeners)
                 data = res["data"]
                 cursor = {
                     "id": res["cursor_id"],

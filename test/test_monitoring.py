@@ -170,12 +170,10 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual('find', succeeded.command_name)
         self.assertTrue(isinstance(succeeded.request_id, int))
         self.assertEqual(cursor.address, succeeded.connection_id)
-        expected_result = {
-            'cursor': {'id': cursor_id,
-                       'ns': 'pymongo_test.test',
-                       'firstBatch': [{} for _ in range(4)]},
-            'ok': 1}
-        self.assertEqual(expected_result, succeeded.reply)
+        csr = succeeded.reply[u'cursor']
+        self.assertEqual(csr["id"], cursor_id)
+        self.assertEqual(csr["ns"], "pymongo_test.test")
+        self.assertEqual(csr["firstBatch"], [{} for _ in range(4)])
 
         self.listener.results.clear()
         # Next batch. Exhausting the cursor could cause a getMore

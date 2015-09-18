@@ -16,9 +16,10 @@
 
 
 class Response(object):
-    __slots__ = ('_data', '_address', '_request_id', '_duration')
+    __slots__ = ('_data', '_address', '_request_id', '_duration',
+                 '_from_command')
 
-    def __init__(self, data, address, request_id, duration):
+    def __init__(self, data, address, request_id, duration, from_command):
         """Represent a response from the server.
 
         :Parameters:
@@ -26,11 +27,13 @@ class Response(object):
           - `address`: (host, port) of the source server.
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
+          - `from_command`: if the response is the result of a db command.
         """
         self._data = data
         self._address = address
         self._request_id = request_id
         self._duration = duration
+        self._from_command = from_command
 
     @property
     def data(self):
@@ -52,12 +55,17 @@ class Response(object):
         """The duration of the operation."""
         return self._duration
 
+    @property
+    def from_command(self):
+        """If the response is a result from a db command."""
+        return self._from_command
+
 
 class ExhaustResponse(Response):
     __slots__ = ('_socket_info', '_pool')
 
-    def __init__(
-            self, data, address, socket_info, pool, request_id, duration):
+    def __init__(self, data, address, socket_info, pool, request_id, duration,
+                 from_command):
         """Represent a response to an exhaust cursor's initial query.
 
         :Parameters:
@@ -67,11 +75,13 @@ class ExhaustResponse(Response):
           - `pool`: The Pool from which the SocketInfo came.
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
+          - `from_command`: If the response is the result of a db command.
         """
         super(ExhaustResponse, self).__init__(data,
                                               address,
                                               request_id,
-                                              duration)
+                                              duration,
+                                              from_command)
         self._socket_info = socket_info
         self._pool = pool
 

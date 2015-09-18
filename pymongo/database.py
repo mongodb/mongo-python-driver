@@ -466,7 +466,7 @@ class Database(common.BaseObject):
             return CommandCursor(coll, cursor, sock_info.address)
         else:
             coll = self["system.namespaces"]
-            res = _first_batch(sock_info, coll.full_name,
+            res = _first_batch(sock_info, coll.database.name, coll.name,
                                criteria, 0, slave_okay,
                                CodecOptions(), ReadPreference.PRIMARY, cmd,
                                self.client._event_listeners)
@@ -598,7 +598,7 @@ class Database(common.BaseObject):
                 return sock_info.command("admin", cmd)
             else:
                 spec = {"$all": True} if include_all else {}
-                x = helpers._first_batch(sock_info, "admin.$cmd.sys.inprog",
+                x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
                     spec, -1, True, self.codec_options,
                     ReadPreference.PRIMARY, cmd, self.client._event_listeners)
                 return x.get('data', [None])[0]

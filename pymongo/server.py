@@ -91,8 +91,10 @@ class Server(object):
             if publish:
                 start = datetime.now()
 
+            use_find_cmd = (sock_info.max_wire_version >= 4 and not exhaust)
+
             message = operation.get_message(
-                set_slave_okay, sock_info.is_mongos)
+                set_slave_okay, sock_info.is_mongos, use_find_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
             if publish:
@@ -124,13 +126,15 @@ class Server(object):
                     socket_info=sock_info,
                     pool=self._pool,
                     duration=duration,
-                    request_id=request_id)
+                    request_id=request_id,
+                    from_command=use_find_cmd)
             else:
                 return Response(
                     data=response_data,
                     address=self._description.address,
                     duration=duration,
-                    request_id=request_id)
+                    request_id=request_id,
+                    from_command=use_find_cmd)
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
