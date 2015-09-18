@@ -524,7 +524,8 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(cursor.address, succeeded.connection_id)
             # There could be more than one cursor_id here depending on
             # when the thread last ran.
-            self.assertIn(cursor_id, succeeded.reply['cursorsUnknown'])
+            self.assertTrue(cursor_id in succeeded.reply['cursorsUnknown']
+                            or cursor_id in succeeded.reply['cursorsKilled'])
 
     def test_non_bulk_writes(self):
         coll = self.client.pymongo_test.test
