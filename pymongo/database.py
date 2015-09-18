@@ -22,7 +22,7 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
-from pymongo import auth, common
+from pymongo import auth, common, helpers
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
@@ -592,12 +592,16 @@ class Database(common.BaseObject):
           - `include_all` (optional): if ``True`` also list currently
             idle operations in the result
         """
-        coll = self.get_collection(
-            "$cmd.sys.inprog", read_preference=ReadPreference.PRIMARY)
-        if include_all:
-            return coll.find_one({"$all": True})
-        else:
-            return coll.find_one()
+        with self.__client._socket_for_writes() as sock_info:
+            if sock_info.max_wire_version >= 4:
+                return sock_info.command(
+                    "admin", SON([("currentOp", 1), ("$all", include_all)]))
+            else:
+                spec = {"$all": True} if include_all else {}
+                x = helpers._first_batch(sock_info, "admin.$cmd.sys.inprog",
+                    spec, -1, True, self.codec_options,
+                    ReadPreference.PRIMARY)
+                return x.get('data', [None])[0]
 
     def profiling_level(self):
         """Get the database's current profiling level.
