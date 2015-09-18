@@ -42,6 +42,7 @@ from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
                             NetworkTimeout,
                             InvalidURI)
+from pymongo.message import _CursorAddress
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import SocketInfo
 from pymongo.read_preferences import ReadPreference
@@ -707,7 +708,7 @@ class TestClient(IntegrationTest):
         new_sock_info = next(iter(pool.sockets))
         self.assertEqual(old_sock_info, new_sock_info)
 
-    def test_kill_cursors(self):
+    def test_kill_cursors_with_cursoraddress(self):
         if (client_context.is_mongos
                 and not client_context.version.at_least(2, 4, 7)):
             # Old mongos sends incorrectly formatted error response when
@@ -720,7 +721,40 @@ class TestClient(IntegrationTest):
         self.collection.insert_many([{'_id': i} for i in range(200)])
         cursor = self.collection.find().batch_size(1)
         next(cursor)
-        self.client.kill_cursors([cursor.cursor_id])
+        self.client.kill_cursors(
+            [cursor.cursor_id],
+            _CursorAddress(self.client.address, self.collection.full_name))
+
+        # Prevent killcursors from reaching the server while a getmore is in
+        # progress -- the server logs "Assertion: 16089:Cannot kill active
+        # cursor."
+        time.sleep(2)
+
+        def raises_cursor_not_found():
+            try:
+                next(cursor)
+                return False
+            except CursorNotFound:
+                return True
+
+        wait_until(raises_cursor_not_found, 'close cursor')
+
+    def test_kill_cursors_with_tuple(self):
+        if (client_context.is_mongos
+                and not client_context.version.at_least(2, 4, 7)):
+            # Old mongos sends incorrectly formatted error response when
+            # cursor isn't found, see SERVER-9738.
+            raise SkipTest("Can't test kill_cursors against old mongos")
+
+        self.collection = self.client.pymongo_test.test
+        self.collection.drop()
+
+        self.collection.insert_many([{'_id': i} for i in range(200)])
+        cursor = self.collection.find().batch_size(1)
+        next(cursor)
+        self.client.kill_cursors(
+            [cursor.cursor_id],
+            self.client.address)
 
         # Prevent killcursors from reaching the server while a getmore is in
         # progress -- the server logs "Assertion: 16089:Cannot kill active

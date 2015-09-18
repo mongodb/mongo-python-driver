@@ -937,35 +937,48 @@ class MongoClient(common.BaseObject):
                         server = topology.select_server(
                             writable_server_selector)
 
-                    if publish:
-                        start = datetime.datetime.now()
-                    data = message.kill_cursors(cursor_ids)
-                    if publish:
-                        duration = datetime.datetime.now() - start
-                        try:
-                            dbname, collname = address.namespace.split(".", 1)
-                        except AttributeError:
-                            dbname = collname = 'OP_KILL_CURSORS'
-                        command = SON([('killCursors', collname),
-                                       ('cursors', cursor_ids)])
-                        listeners.publish_command_start(
-                            command, dbname, data[0], address)
-                        start = datetime.datetime.now()
                     try:
-                        server.send_message(data, self.__all_credentials)
-                    except Exception as exc:
-                        if publish:
-                            dur = (datetime.datetime.now() - start) + duration
-                            listeners.publish_command_failure(
-                                dur, message._convert_exception(exc),
-                                'killCursors', data[0], address)
-                        raise
-                    if publish:
-                        duration = (datetime.datetime.now() - start) + duration
-                        # OP_KILL_CURSORS returns no reply, fake one.
-                        reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
-                        listeners.publish_command_success(
-                            duration, reply, 'killCursors', data[0], address)
+                        namespace = address.namespace
+                        db, coll = namespace.split('.', 1)
+                    except AttributeError:
+                        namespace = None
+                        db = coll = "OP_KILL_CURSORS"
+
+                    spec = SON([('killCursors', coll),
+                                ('cursors', cursor_ids)])
+                    with server.get_socket(self.__all_credentials) as sock_info:
+                        if (sock_info.max_wire_version >= 4 and
+                                namespace is not None):
+                            sock_info.command(db, spec, slave_ok=True)
+                        else:
+                            if publish:
+                                start = datetime.datetime.now()
+                            request_id, msg = message.kill_cursors(cursor_ids)
+                            if publish:
+                                duration = datetime.datetime.now() - start
+                                listeners.publish_command_start(
+                                    spec, db, request_id, address)
+                                start = datetime.datetime.now()
+
+                            try:
+                                sock_info.send_message(msg, 0)
+                            except Exception as exc:
+                                if publish:
+                                    dur = ((datetime.datetime.now() - start)
+                                           + duration)
+                                    listeners.publish_command_failure(
+                                        dur, message._convert_exception(exc),
+                                        'killCursors', request_id, address)
+                                raise
+
+                            if publish:
+                                duration = ((datetime.datetime.now() - start)
+                                            + duration)
+                                # OP_KILL_CURSORS returns no reply, fake one.
+                                reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
+                                listeners.publish_command_success(
+                                    duration, reply, 'killCursors', request_id,
+                                    address)
 
                 except ConnectionFailure as exc:
                     warnings.warn("couldn't close cursor on %s: %s"

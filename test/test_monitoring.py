@@ -170,7 +170,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual('find', succeeded.command_name)
         self.assertTrue(isinstance(succeeded.request_id, int))
         self.assertEqual(cursor.address, succeeded.connection_id)
-        csr = succeeded.reply[u'cursor']
+        csr = succeeded.reply["cursor"]
         self.assertEqual(csr["id"], cursor_id)
         self.assertEqual(csr["ns"], "pymongo_test.test")
         self.assertEqual(csr["firstBatch"], [{} for _ in range(4)])
@@ -527,7 +527,8 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(cursor.address, succeeded.connection_id)
             # There could be more than one cursor_id here depending on
             # when the thread last ran.
-            self.assertIn(cursor_id, succeeded.reply['cursorsUnknown'])
+            self.assertTrue(cursor_id in succeeded.reply['cursorsUnknown']
+                            or cursor_id in succeeded.reply['cursorsKilled'])
 
     def test_non_bulk_writes(self):
         coll = self.client.pymongo_test.test
