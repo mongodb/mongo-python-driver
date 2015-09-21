@@ -16,6 +16,7 @@
 
 import gc
 import random
+import socket
 import sys
 import threading
 import time
@@ -242,9 +243,8 @@ class TestPooling(_TestPoolingBase):
             pass
 
     def test_socket_closed(self):
-        import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(('localhost', 27017))
+        s.connect((host, port))
         self.assertFalse(socket_closed(s))
         s.close()
         self.assertTrue(socket_closed(s))
