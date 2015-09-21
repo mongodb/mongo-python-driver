@@ -534,6 +534,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_is_mutable_mapping("document", document)
+        document = document.copy()
         if "_id" not in document:
             document["_id"] = ObjectId()
         with self._socket_for_writes() as sock_info:
@@ -571,6 +572,7 @@ class Collection(common.BaseObject):
             """A generator that validates documents and handles _ids."""
             for document in documents:
                 common.validate_is_mutable_mapping("document", document)
+                document = document.copy()
                 if "_id" not in document:
                     document["_id"] = ObjectId()
                 inserted_ids.append(document["_id"])
