@@ -731,14 +731,14 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(doc1, BSON(doc1_bson).decode())
 
         # Valid Python regex, with flags.
-        re2 = re.compile('.*', re.I | re.L | re.M | re.S | re.U | re.X)
-        bson_re2 = Regex('.*', re.I | re.L | re.M | re.S | re.U | re.X)
+        re2 = re.compile(u('.*'), re.I | re.M | re.S | re.U | re.X)
+        bson_re2 = Regex(u('.*'), re.I | re.M | re.S | re.U | re.X)
 
         doc2_with_re = {'r': re2}
         doc2_with_bson_re = {'r': bson_re2}
         doc2_bson = (
-            b"\x12\x00\x00\x00"           # document length
-            b"\x0br\x00.*\x00ilmsux\x00"  # r: regex
+            b"\x11\x00\x00\x00"           # document length
+            b"\x0br\x00.*\x00imsux\x00"   # r: regex
             b"\x00")                      # document terminator
 
         self.assertEqual(doc2_bson, BSON.encode(doc2_with_re))
