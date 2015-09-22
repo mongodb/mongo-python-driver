@@ -146,10 +146,10 @@ class TestJsonUtil(unittest.TestCase):
             else:
                 self.assertEqual(re.IGNORECASE, res.flags)
 
-        all_options = re.I|re.L|re.M|re.S|re.U|re.X
-        regex = re.compile("a*b", all_options)
+        unicode_options = re.I|re.M|re.S|re.U|re.X
+        regex = re.compile("a*b", unicode_options)
         res = self.round_tripped({"r": regex})["r"]
-        self.assertEqual(all_options, res.flags)
+        self.assertEqual(unicode_options, res.flags)
 
         # Some tools may not add $options if no flags are set.
         res = json_util.loads('{"r": {"$regex": "a*b"}}')['r']
