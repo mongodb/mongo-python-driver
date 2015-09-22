@@ -792,7 +792,7 @@ class TestBSON(unittest.TestCase):
         except InvalidBSON:
             exc_type, exc_value, exc_tb = sys.exc_info()
             # Original re error was captured and wrapped in InvalidBSON.
-            self.assertEqual(exc_value.args[0], 'bad character range')
+            self.assertTrue('bad character range' in exc_value.args[0])
 
             # Traceback includes bson module's call into re module.
             for filename, lineno, fname, text in traceback.extract_tb(exc_tb):
