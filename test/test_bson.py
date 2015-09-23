@@ -539,8 +539,17 @@ class TestBSON(unittest.TestCase):
         evil_list['a'].append(evil_list)
         evil_dict = {}
         evil_dict['a'] = evil_dict
-        for evil_data in [evil_dict, evil_list]:
-            self.assertRaises(RuntimeError, BSON.encode, evil_data)
+        # Work around what seems like a regression in python 3.5.0.
+        # See http://bugs.python.org/issue25222
+        # 250 is an arbitrary choice. The default is 1000 on the machines
+        # I have access to.
+        depth = sys.getrecursionlimit()
+        sys.setrecursionlimit(250)
+        try:
+            for evil_data in [evil_dict, evil_list]:
+                self.assertRaises(RuntimeError, BSON.encode, evil_data)
+        finally:
+            sys.setrecursionlimit(depth)
 
     def test_overflow(self):
         self.assertTrue(BSON.encode({"x": long(9223372036854775807)}))
