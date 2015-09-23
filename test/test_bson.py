@@ -541,10 +541,10 @@ class TestBSON(unittest.TestCase):
         evil_dict['a'] = evil_dict
         # Work around what seems like a regression in python 3.5.0.
         # See http://bugs.python.org/issue25222
-        # 250 is an arbitrary choice. The default is 1000 on the machines
+        # 100 is an arbitrary choice. The default is 1000 on the machines
         # I have access to.
         depth = sys.getrecursionlimit()
-        sys.setrecursionlimit(250)
+        sys.setrecursionlimit(100)
         try:
             for evil_data in [evil_dict, evil_list]:
                 self.assertRaises(RuntimeError, BSON.encode, evil_data)
