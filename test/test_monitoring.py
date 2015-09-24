@@ -634,7 +634,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(started.connection_id, succeeded.connection_id)
         reply = succeeded.reply
         self.assertEqual(1, reply.get('ok'))
-        self.assertEqual(3, reply.get('n'))
+        self.assertEqual(res.deleted_count, reply.get('n'))
 
         # replace_one
         self.listener.results.clear()
@@ -874,7 +874,7 @@ class TestCommandMonitoring(IntegrationTest):
 
             # remove all
             self.listener.results.clear()
-            coll.remove({'x': 1}, w=1)
+            res = coll.remove({'x': 1}, w=1)
             results = self.listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
@@ -897,7 +897,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(started.connection_id, succeeded.connection_id)
             reply = succeeded.reply
             self.assertEqual(1, reply.get('ok'))
-            self.assertEqual(3, reply.get('n'))
+            self.assertEqual(res['n'], reply.get('n'))
 
             # upsert
             self.listener.results.clear()
