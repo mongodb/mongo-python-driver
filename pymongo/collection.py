@@ -1797,6 +1797,10 @@ class Collection(common.BaseObject):
             common.validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
         with self._socket_for_writes() as sock_info:
+            if sock_info.max_wire_version >= 4 and 'writeConcern' not in cmd:
+                wc_doc = self.write_concern.document
+                if wc_doc:
+                    cmd['writeConcern'] = wc_doc
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
                                 allowable_errors=[_NO_OBJ_ERROR])
@@ -1844,7 +1848,17 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.2
+           Respects write concern.
+
+        .. warning:: Starting in PyMongo 3.2, this command uses the
+           :class:`~pymongo.write_concern.WriteConcern` of this
+           :class:`~pymongo.collection.Collection` when connected to MongoDB >=
+           3.2. Note that using an elevated write concern with this command may
+           be slower compared to using the default write concern.
+
         .. versionadded:: 3.0
+
         """
         kwargs['remove'] = True
         return self.__find_and_modify(filter, projection, sort, **kwargs)
@@ -1896,6 +1910,15 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+
+        .. versionchanged:: 3.2
+           Respects write concern.
+
+        .. warning:: Starting in PyMongo 3.2, this command uses the
+           :class:`~pymongo.write_concern.WriteConcern` of this
+           :class:`~pymongo.collection.Collection` when connected to MongoDB >=
+           3.2. Note that using an elevated write concern with this command may
+           be slower compared to using the default write concern.
 
         .. versionadded:: 3.0
         """
@@ -1982,6 +2005,15 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+
+        .. versionchanged:: 3.2
+           Respects write concern.
+
+        .. warning:: Starting in PyMongo 3.2, this command uses the
+           :class:`~pymongo.write_concern.WriteConcern` of this
+           :class:`~pymongo.collection.Collection` when connected to MongoDB >=
+           3.2. Note that using an elevated write concern with this command may
+           be slower compared to using the default write concern.
 
         .. versionadded:: 3.0
         """
@@ -2130,7 +2162,6 @@ class Collection(common.BaseObject):
                                 "pairs, a dict of len 1, or an instance of "
                                 "SON or OrderedDict")
 
-
         fields = kwargs.pop("fields", None)
         if fields is not None:
             kwargs["fields"] = helpers._fields_list_to_dict(fields, "fields")
@@ -2138,6 +2169,10 @@ class Collection(common.BaseObject):
         cmd = SON([("findAndModify", self.__name)])
         cmd.update(kwargs)
         with self._socket_for_writes() as sock_info:
+            if sock_info.max_wire_version >= 4 and 'writeConcern' not in cmd:
+                wc_doc = self.write_concern.document
+                if wc_doc:
+                    cmd['writeConcern'] = wc_doc
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
                                 allowable_errors=[_NO_OBJ_ERROR])
