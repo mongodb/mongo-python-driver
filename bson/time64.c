@@ -543,6 +543,7 @@ struct TM *gmtime64_r (const Time64_T *in_time, struct TM *p)
 
     assert(p != NULL);
 
+#ifdef USE_SYSTEM_GMTIME
     /* Use the system gmtime() if time_t is small enough */
     if( SHOULD_USE_SYSTEM_GMTIME(*in_time) ) {
         time_t safe_time = (time_t)*in_time;
@@ -554,6 +555,7 @@ struct TM *gmtime64_r (const Time64_T *in_time, struct TM *p)
 
         return p;
     }
+#endif
 
 #ifdef HAS_TM_TM_GMTOFF
     p->tm_gmtoff = 0;
@@ -668,6 +670,7 @@ struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
 
     assert(local_tm != NULL);
 
+#ifdef USE_SYSTEM_LOCALTIME
     /* Use the system localtime() if time_t is small enough */
     if( SHOULD_USE_SYSTEM_LOCALTIME(*time) ) {
         safe_time = (time_t)*time;
@@ -681,6 +684,7 @@ struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
 
         return local_tm;
     }
+#endif
 
     if( gmtime64_r(time, &gm_tm) == NULL ) {
         TIME64_TRACE1("gmtime64_r returned null for %lld\n", *time);
