@@ -1697,7 +1697,11 @@ static PyObject* get_value(PyObject* self, const char* buffer,
                     Py_DECREF(value);
                     goto invalid;
                 }
-                PyList_Append(value, to_append);
+                if (PyList_Append(value, to_append) < 0) {
+                    Py_DECREF(value);
+                    Py_DECREF(to_append);
+                    goto invalid;
+                }
                 Py_DECREF(to_append);
             }
             (*position)++;
@@ -2534,7 +2538,12 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
             destroy_codec_options(&options);
             return NULL;
         }
-        PyList_Append(result, dict);
+        if (PyList_Append(result, dict) < 0) {
+            Py_DECREF(dict);
+            Py_DECREF(result);
+            destroy_codec_options(&options);
+            return NULL;
+        }
         Py_DECREF(dict);
         string += size;
         total_size -= size;

@@ -1253,14 +1253,13 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     if (!result)
         goto cmdfail;
 
-    buffer_free(buffer);
-
     if (PyList_Append(results, result) < 0) {
         Py_DECREF(result);
         goto cmdfail;
     }
     Py_DECREF(result);
     Py_DECREF(to_publish);
+    buffer_free(buffer);
     destroy_codec_options(&options);
     return results;
 
