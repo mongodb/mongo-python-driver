@@ -105,13 +105,17 @@ class CommandCursor(object):
         publish = monitoring.enabled()
         cmd_duration = response.duration
         rqst_id = response.request_id
+        from_command = response.from_command
+
         if publish:
             start = datetime.datetime.now()
         try:
             doc = helpers._unpack_response(response.data,
                                            self.__id,
                                            self.__collection.codec_options)
-            # TODO: check_command_response when getMore works with agg cursor
+            if from_command:
+                helpers._check_command_response(doc['data'][0])
+
         except OperationFailure as exc:
             self.__killed = True
 
@@ -134,22 +138,30 @@ class CommandCursor(object):
             client._reset_server_and_request_check(self.address)
             raise
 
+        if from_command:
+            cursor = doc['data'][0]['cursor']
+            documents = cursor['nextBatch']
+            self.__id = cursor['id']
+            self.__retrieved += len(documents)
+        else:
+            documents = doc["data"]
+            self.__id = doc["cursor_id"]
+            self.__retrieved += doc["number_returned"]
+
         if publish:
             duration = (datetime.datetime.now() - start) + cmd_duration
             # Must publish in getMore command response format.
-            res = {"cursor": {"id": doc["cursor_id"],
+            res = {"cursor": {"id": self.__id,
                               "ns": self.__collection.full_name,
-                              "nextBatch": doc["data"]},
+                              "nextBatch": documents},
                    "ok": 1}
             monitoring.publish_command_success(
                 duration, res, "getMore", rqst_id, self.__address)
 
-        self.__id = doc["cursor_id"]
         if self.__id == 0:
             self.__killed = True
+        self.__data = deque(documents)
 
-        self.__retrieved += doc["number_returned"]
-        self.__data = deque(doc["data"])
 
     def _refresh(self):
         """Refreshes the cursor with more data from the server.
@@ -167,8 +179,7 @@ class CommandCursor(object):
                          self.__collection.name,
                          self.__batch_size,
                          self.__id,
-                         self.__collection.codec_options,
-                         cmd_cursor=True))
+                         self.__collection.codec_options))
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
