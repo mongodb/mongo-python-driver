@@ -275,21 +275,18 @@ class _GetMore(object):
     """A getmore operation."""
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_time_ms',
-                 'codec_options', 'cmd_cursor')
+                 'codec_options')
 
     name = 'getMore'
 
     def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
-                 max_time_ms=None, cmd_cursor=False):
+                 max_time_ms=None):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
         self.codec_options = codec_options
         self.max_time_ms = max_time_ms
-        # XXX: Temporarily keep track of if this getMore is for a command cursor
-        # so we can use OP_KILLCURSORS until find support for mongos is completed.
-        self.cmd_cursor = cmd_cursor
 
     def as_command(self):
         """Return a getMore command document for this query."""
@@ -301,7 +298,7 @@ class _GetMore(object):
 
         ns = _UJOIN % (self.db, self.coll)
 
-        if use_cmd and not self.cmd_cursor:
+        if use_cmd:
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
 
