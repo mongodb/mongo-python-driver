@@ -1340,8 +1340,8 @@ class Collection(common.BaseObject):
         codec_options = CodecOptions(SON)
         coll = self.with_options(codec_options)
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
+            cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:
-                cmd = SON([("listIndexes", self.__name), ("cursor", {})])
                 cursor = self._command(sock_info, cmd, slave_ok,
                                        ReadPreference.PRIMARY,
                                        codec_options)["cursor"]
@@ -1350,7 +1350,7 @@ class Collection(common.BaseObject):
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
                     sock_info, namespace, {"ns": self.__full_name},
-                    0, slave_ok, codec_options, ReadPreference.PRIMARY)
+                    0, slave_ok, codec_options, ReadPreference.PRIMARY, cmd)
                 data = res["data"]
                 cursor = {
                     "id": res["cursor_id"],

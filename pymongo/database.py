@@ -456,10 +456,11 @@ class Database(common.BaseObject):
     def _list_collections(self, sock_info, slave_okay, criteria=None):
         """Internal listCollections helper."""
         criteria = criteria or {}
+        cmd = SON([("listCollections", 1), ("cursor", {})])
+        if criteria:
+            cmd["filter"] = criteria
+
         if sock_info.max_wire_version > 2:
-            cmd = SON([("listCollections", 1), ("cursor", {})])
-            if criteria:
-                cmd["filter"] = criteria
             coll = self["$cmd"]
             cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
             return CommandCursor(coll, cursor, sock_info.address)
@@ -467,7 +468,7 @@ class Database(common.BaseObject):
             coll = self["system.namespaces"]
             res = _first_batch(sock_info, coll.full_name,
                                criteria, 0, slave_okay,
-                               CodecOptions(), ReadPreference.PRIMARY)
+                               CodecOptions(), ReadPreference.PRIMARY, cmd)
             data = res["data"]
             cursor = {
                 "id": res["cursor_id"],

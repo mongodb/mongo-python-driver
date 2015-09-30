@@ -15,14 +15,14 @@
 """Bits and pieces used by the driver that don't really fit elsewhere."""
 
 import collections
+import datetime
 import struct
-from pymongo.message import _Query
 
 import bson
-import pymongo
 from bson.codec_options import CodecOptions
 from bson.py3compat import itervalues, string_type, iteritems, u
 from bson.son import SON
+from pymongo import ASCENDING, monitoring
 from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
                             ExecutionTimeout,
@@ -31,6 +31,7 @@ from pymongo.errors import (CursorNotFound,
                             WriteError,
                             WriteConcernError,
                             WTimeoutError)
+from pymongo.message import _Query
 
 
 _UUNDER = u("_")
@@ -50,7 +51,7 @@ def _index_list(key_or_list, direction=None):
         return [(key_or_list, direction)]
     else:
         if isinstance(key_or_list, string_type):
-            return [(key_or_list, pymongo.ASCENDING)]
+            return [(key_or_list, ASCENDING)]
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, "
                             "key_or_list must be an instance of list")
@@ -233,16 +234,43 @@ def _check_gle_response(response):
 
 
 def _first_batch(sock_info, namespace, query,
-                 ntoreturn, slave_ok, codec_options, read_preference):
+                 ntoreturn, slave_ok, codec_options, read_preference, cmd):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, namespace, 0, ntoreturn, query, None,
         codec_options, read_preference, 0, ntoreturn)
+
+    name = next(iter(cmd))
+    duration = None
+    publish = monitoring.enabled()
+    if publish:
+        start = datetime.datetime.now()
+
     request_id, msg, max_doc_size = query.get_message(slave_ok,
                                                       sock_info.is_mongos)
+
+    if publish:
+        encoding_duration = datetime.datetime.now() - start
+        monitoring.publish_command_start(
+            cmd, namespace.split('.', 1)[0], request_id, sock_info.address)
+        start = datetime.datetime.now()
+
     sock_info.send_message(msg, max_doc_size)
     response = sock_info.receive_message(1, request_id)
-    return _unpack_response(response, None, codec_options)
+    try:
+        result = _unpack_response(response, None, codec_options)
+    except (NotMasterError, OperationFailure) as exc:
+        if publish:
+            duration = (datetime.datetime.now() - start) + encoding_duration
+            monitoring.publish_command_failure(
+                duration, exc.details, name, request_id, sock_info.address)
+        raise
+    if publish:
+        duration = (datetime.datetime.now() - start) + encoding_duration
+        monitoring.publish_command_success(
+            duration, result, name, request_id, sock_info.address)
+
+    return result
 
 
 def _check_write_command_response(results):
