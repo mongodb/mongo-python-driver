@@ -77,7 +77,7 @@ class MongoClient(common.BaseObject):
             self,
             host=None,
             port=None,
-            document_class=dict,
+            document_class=SON,
             tz_aware=False,
             connect=True,
             **kwargs):
