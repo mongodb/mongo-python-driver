@@ -183,10 +183,7 @@ class MongoClient(common.BaseObject):
             match this name. Implies that the hosts specified are a seed list
             and the driver should attempt to find all members of the set.
             Defaults to ``None``.
-          - `read_preference`: The read preference for this client. If
-            connecting directly to a secondary then a read preference mode
-            *other* than PRIMARY is required - otherwise all queries will throw
-            :class:`~pymongo.errors.AutoReconnect` "not master".
+          - `read_preference`: The read preference for this client.
             See :class:`~pymongo.read_preferences.ReadPreference` for all
             available read preference options. Defaults to ``PRIMARY``.
 
