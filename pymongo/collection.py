@@ -1250,7 +1250,7 @@ class Collection(common.BaseObject):
           using the option will fail if a duplicate value is detected.
 
         .. note:: `expireAfterSeconds` requires server version **>= 2.2**
-        .. note:: `partialFilterIndexes` requires server version **>= 3.2**
+        .. note:: `partialFilterExpression` requires server version **>= 3.2**
 
         :Parameters:
           - `keys`: a single key or a list of (key, direction)
