@@ -1239,6 +1239,8 @@ class Collection(common.BaseObject):
             collection. MongoDB will automatically delete documents from
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
+          - `partialFilterExpression`: A document that specifies a filter for
+            a partial index.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
@@ -1248,6 +1250,7 @@ class Collection(common.BaseObject):
           using the option will fail if a duplicate value is detected.
 
         .. note:: `expireAfterSeconds` requires server version **>= 2.2**
+        .. note:: `partialFilterIndexes` requires server version **>= 3.2**
 
         :Parameters:
           - `keys`: a single key or a list of (key, direction)
@@ -1256,6 +1259,8 @@ class Collection(common.BaseObject):
             options (see the above list) should be passed as keyword
             arguments
 
+        .. versionchanged:: 3.2
+            Added partialFilterExpression to support partial indexes.
         .. versionchanged:: 3.0
             Renamed `key_or_list` to `keys`. Removed the `cache_for` option.
             :meth:`create_index` no longer caches index names. Removed support
