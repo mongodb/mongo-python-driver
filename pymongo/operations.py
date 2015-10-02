@@ -228,7 +228,7 @@ class IndexModel(object):
         See the MongoDB documentation for a full list of supported options by
         server version.
 
-        .. note:: `partialFilterIndexes` requires server version **>= 3.2**
+        .. note:: `partialFilterExpression` requires server version **>= 3.2**
 
         :Parameters:
           - `keys`: a single key or a list of (key, direction)
