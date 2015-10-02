@@ -478,6 +478,59 @@ class TestCollection(IntegrationTest):
         # Index wasn't created, only the default index on _id
         self.assertEqual(1, len(db.test.index_information()))
 
+    @client_context.require_version_min(3, 1, 9, -1)
+    def test_index_filter(self):
+        db = self.db
+        db.drop_collection("test")
+
+        # Test bad filter spec on create.
+        self.assertRaises(OperationFailure, db.test.create_index, "x",
+                          partialFilterExpression=5)
+        self.assertRaises(OperationFailure, db.test.create_index, "x",
+                          partialFilterExpression={"x": {"$asdasd": 3}})
+        self.assertRaises(OperationFailure, db.test.create_index, "x",
+                          partialFilterExpression={"$and": 5})
+        self.assertRaises(OperationFailure, db.test.create_index, "x",
+                          partialFilterExpression={
+                              "$and": [{"$and":  [{"x": {"$lt": 2}},
+                                                  {"x": {"$gt": 0}}]},
+                                       {"x": {"$exists": True}}]})
+
+        self.assertEqual("x_1", db.test.create_index(
+            [('x', ASCENDING)], partialFilterExpression={"a": {"$lte": 1.5}}))
+        db.test.insert_one({"x": 5, "a": 2})
+        db.test.insert_one({"x": 6, "a": 1})
+
+        # Operations that use the partial index.
+        explain = db.test.find(
+            {"x": 6, "a": 1}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
+        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
+        explain = db.test.find(
+            {"x": {"$gt": 1}, "a": 1}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
+        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
+        explain = db.test.find(
+            {"x": 6,
+             "a": {"$lte": 1}}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
+        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
+
+        # Operations that do not use the partial index.
+        explain = db.test.find(
+            {"x": 6,
+             "a": {"$lte": 1.6}}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("COLLSCAN", explain.get('stage'))
+        explain = db.test.find(
+            {"x": 6}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("COLLSCAN", explain.get('stage'))
+
+        # Test drop_indexes.
+        db.test.drop_index("x_1")
+        explain = db.test.find(
+            {"x": 6, "a": 1}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("COLLSCAN", explain.get('stage'))
+
     def test_field_selection(self):
         db = self.db
         db.drop_collection("test")
