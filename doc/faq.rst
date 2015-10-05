@@ -89,6 +89,56 @@ For `Twisted <http://twistedmatrix.com/>`_, see `TxMongo
 <https://github.com/twisted/txmongo>`_. Its stated mission is to keep feature
 parity with PyMongo.
 
+.. _writes-and-ids:
+
+Why does PyMongo add an _id field to all of my documents?
+---------------------------------------------------------
+
+When a document is inserted to MongoDB using
+:meth:`~pymongo.collection.Collection.insert_one`,
+:meth:`~pymongo.collection.Collection.insert_many`, or
+:meth:`~pymongo.collection.Collection.bulk_write`, and that document does not
+include an ``_id`` field, PyMongo automatically adds one for you, set to an
+instance of :class:`~bson.objectid.ObjectId`. For example::
+
+  >>> my_doc = {'x': 1}
+  >>> collection.insert_one(my_doc)
+  <pymongo.results.InsertOneResult object at 0x7f3fc25bd640>
+  >>> my_doc
+  {'x': 1, '_id': ObjectId('560db337fba522189f171720')}
+
+Users often discover this behavior when calling
+:meth:`~pymongo.collection.Collection.insert_many` with a list of references
+to a single document raises :exc:`~pymongo.errors.BulkWriteError`. Several
+Python idioms lead to this pitfall::
+
+  >>> doc = {}
+  >>> collection.insert_many(doc for _ in range(10))
+  Traceback (most recent call last):
+  ...
+  pymongo.errors.BulkWriteError: batch op errors occurred
+  >>> doc
+  {'_id': ObjectId('560f171cfba52279f0b0da0c')}
+
+  >>> docs = [{}]
+  >>> collection.insert_many(docs * 10)
+  Traceback (most recent call last):
+  ...
+  pymongo.errors.BulkWriteError: batch op errors occurred
+  >>> docs
+  [{'_id': ObjectId('560f1933fba52279f0b0da0e')}]
+
+PyMongo adds an ``_id`` field in this manner for a few reasons:
+
+- All MongoDB documents are required to have an ``_id`` field.
+- If PyMongo were to insert a document without an ``_id`` MongoDB would add one
+  itself, but it would not report the value back to PyMongo.
+- Copying the document to insert before adding the ``_id`` field would be
+  prohibitively expensive for most high write volume applications.
+
+If you don't want PyMongo to add an ``_id`` to your documents, insert only
+documents that already have an ``_id`` field, added by your application.
+
 Key order in subdocuments -- why does my query work in the shell but not PyMongo?
 ---------------------------------------------------------------------------------
 

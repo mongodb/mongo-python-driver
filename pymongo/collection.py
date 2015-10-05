@@ -365,6 +365,8 @@ class Collection(common.BaseObject):
         :Returns:
           An instance of :class:`~pymongo.results.BulkWriteResult`.
 
+        .. seealso:: :ref:`writes-and-ids`
+
         .. versionadded:: 3.0
         """
         if not isinstance(requests, list):
@@ -531,6 +533,8 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
 
+        .. seealso:: :ref:`writes-and-ids`
+
         .. versionadded:: 3.0
         """
         common.validate_is_mutable_mapping("document", document)
@@ -561,6 +565,8 @@ class Collection(common.BaseObject):
 
         :Returns:
           An instance of :class:`~pymongo.results.InsertManyResult`.
+
+        .. seealso:: :ref:`writes-and-ids`
 
         .. versionadded:: 3.0
         """

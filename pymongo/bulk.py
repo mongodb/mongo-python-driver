@@ -588,6 +588,8 @@ class BulkOperationBuilder(object):
 
         :Parameters:
           - `document` (dict): the document to insert
+
+        .. seealso:: :ref:`writes-and-ids`
         """
         self.__bulk.add_insert(document)
 
