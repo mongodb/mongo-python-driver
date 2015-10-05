@@ -1642,8 +1642,18 @@ class Collection(common.BaseObject):
 
             cmd.update(kwargs)
 
-            result = self._command(sock_info, cmd, slave_ok,
-                                   read_concern=self.read_concern)
+            # Apply this Collection's read concern if $out is not in the
+            # pipeline.
+            if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
+                for stage in cmd['pipeline']:
+                    if '$out' in stage:
+                        result = self._command(sock_info, cmd, slave_ok)
+                        break
+                else:
+                    result = self._command(sock_info, cmd, slave_ok,
+                                           read_concern=self.read_concern)
+            else:
+                result = self._command(sock_info, cmd, slave_ok)
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -1826,8 +1836,14 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
-            response = self._command(
-                sock_info, cmd, slave_ok, ReadPreference.PRIMARY)
+            if (sock_info.max_wire_version >= 4 and 'readConcern' not in cmd and
+                    'inline' in cmd['out']):
+                response = self._command(
+                    sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
+                    read_concern=self.read_concern)
+            else:
+                response = self._command(
+                    sock_info, cmd, slave_ok, ReadPreference.PRIMARY)
 
         if full_response or not response.get('result'):
             return response
@@ -1869,6 +1885,11 @@ class Collection(common.BaseObject):
                    ("out", {"inline": 1})])
         cmd.update(kwargs)
         with self._socket_for_reads() as (sock_info, slave_ok):
+            if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
+                res = self._command(sock_info, cmd, slave_ok,
+                                    read_concern=self.read_concern)
+            else:
+                res = self._command(sock_info, cmd, slave_ok)
             res = self._command(sock_info, cmd, slave_ok)
 
         if full_response:

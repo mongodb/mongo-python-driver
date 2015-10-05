@@ -18,7 +18,7 @@ import pymongo
 
 from bson.son import SON
 from pymongo import monitoring
-from pymongo.errors import ConfigurationError
+from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_concern import ReadConcern
 
 from test import client_context, pair, unittest
@@ -107,6 +107,57 @@ class TestReadConcern(unittest.TestCase):
         # Explicitly set readConcern to 'local'.
         coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
         tuple(coll.aggregate([{'$match': {'field': 'value'}}]))
+        self.assertEqual(
+            {'level': 'local'},
+            self.listener.results['started'][0].command['readConcern'])
+
+    def test_aggregate_out(self):
+        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
+        try:
+            tuple(coll.aggregate([{'$match': {'field': 'value'}},
+                                  {'$out': 'output_collection'}]))
+        except OperationFailure:
+            # "ns doesn't exist"
+            pass
+        self.assertNotIn('readConcern',
+                         self.listener.results['started'][0].command)
+
+    def test_map_reduce_out(self):
+        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
+        try:
+            tuple(coll.map_reduce('function() { emit(this._id, this.value); }',
+                                  'function(key, values) { return 42; }',
+                                  out='output_collection'))
+        except OperationFailure:
+            # "ns doesn't exist"
+            pass
+        self.assertNotIn('readConcern',
+                         self.listener.results['started'][0].command)
+
+        if client_context.version.at_least(3, 1, 9, -1):
+            self.listener.results.clear()
+            try:
+                tuple(coll.map_reduce(
+                    'function() { emit(this._id, this.value); }',
+                    'function(key, values) { return 42; }',
+                    out={'inline': 1}))
+            except OperationFailure:
+                # "ns doesn't exist"
+                pass
+            self.assertEqual(
+                {'level': 'local'},
+                self.listener.results['started'][0].command['readConcern'])
+
+    @client_context.require_version_min(3, 1, 9, -1)
+    def test_inline_map_reduce(self):
+        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
+        try:
+            tuple(coll.inline_map_reduce(
+                'function() { emit(this._id, this.value); }',
+                'function(key, values) { return 42; }'))
+        except OperationFailure:
+            # "ns doesn't exist"
+            pass
         self.assertEqual(
             {'level': 'local'},
             self.listener.results['started'][0].command['readConcern'])
