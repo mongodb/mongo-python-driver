@@ -398,19 +398,22 @@ class Collection(common.BaseObject):
         try:
             result = sock_info.legacy_write(
                 rqst_id, msg, max_size, acknowledged)
-        except OperationFailure as exc:
+        except Exception as exc:
             if publish:
                 dur = (datetime.datetime.now() - start) + duration
-                details = exc.details
-                # Succeed if GLE was successful and this is a write error.
-                if details.get("ok") and "n" in details:
-                    reply = message._convert_write_result(
-                        name, cmd, details)
-                    monitoring.publish_command_success(
-                        dur, reply, name, rqst_id, sock_info.address, op_id)
+                if isinstance(exc, OperationFailure):
+                    details = exc.details
+                    # Succeed if GLE was successful and this is a write error.
+                    if details.get("ok") and "n" in details:
+                        reply = message._convert_write_result(
+                            name, cmd, details)
+                        monitoring.publish_command_success(
+                            dur, reply, name, rqst_id, sock_info.address, op_id)
+                        raise
                 else:
-                    monitoring.publish_command_failure(
-                        dur, details, name, rqst_id, sock_info.address, op_id)
+                    details = message._convert_exception(exc)
+                monitoring.publish_command_failure(
+                    dur, details, name, rqst_id, sock_info.address, op_id)
             raise
         if publish:
             if result is not None:

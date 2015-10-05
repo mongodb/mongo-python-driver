@@ -198,7 +198,7 @@ def publish_command_failure(
 
     :Parameters:
       - `duration`: The command duration as a datetime.timedelta.
-      - `failure`: The server reply document.
+      - `failure`: The server reply document or failure description document.
       - `command_name`: The command name.
       - `request_id`: The request id for this operation.
       - `connection_id`: The address (host, port) of the server this command

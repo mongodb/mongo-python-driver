@@ -21,7 +21,7 @@ from collections import deque
 from bson.py3compat import integer_types
 from pymongo import helpers, monitoring
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
-from pymongo.message import _CursorAddress, _GetMore
+from pymongo.message import _CursorAddress, _GetMore, _convert_exception
 
 
 class CommandCursor(object):
@@ -131,6 +131,13 @@ class CommandCursor(object):
                     duration, exc.details, "getMore", rqst_id, self.__address)
 
             client._reset_server_and_request_check(self.address)
+            raise
+        except Exception as exc:
+            if publish:
+                duration = (datetime.datetime.now() - start) + cmd_duration
+                monitoring.publish_command_failure(
+                    duration, _convert_exception(exc), "getMore", rqst_id,
+                    self.__address)
             raise
 
         if publish:

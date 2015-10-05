@@ -82,6 +82,12 @@ def _maybe_add_read_preference(spec, read_preference):
     return spec
 
 
+def _convert_exception(exception):
+    """Convert an Exception into a failure document for publishing."""
+    return {'errmsg': exception.message,
+            'errtype': exception.__class__.__name__}
+
+
 def _convert_write_result(operation, command, result):
     """Convert a legacy write result to write commmand format."""
 

@@ -31,7 +31,7 @@ from pymongo.errors import (CursorNotFound,
                             WriteError,
                             WriteConcernError,
                             WTimeoutError)
-from pymongo.message import _Query
+from pymongo.message import _Query, _convert_exception
 
 
 _UUNDER = u("_")
@@ -259,11 +259,15 @@ def _first_batch(sock_info, namespace, query,
     response = sock_info.receive_message(1, request_id)
     try:
         result = _unpack_response(response, None, codec_options)
-    except (NotMasterError, OperationFailure) as exc:
+    except Exception as exc:
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
+            if isinstance(exc, (NotMasterError, OperationFailure)):
+                failure = exc.details
+            else:
+                failure = _convert_exception(exc)
             monitoring.publish_command_failure(
-                duration, exc.details, name, request_id, sock_info.address)
+                duration, failure, name, request_id, sock_info.address)
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration

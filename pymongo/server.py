@@ -19,6 +19,7 @@ import contextlib
 from datetime import datetime
 
 from pymongo import monitoring
+from pymongo.message import _convert_exception
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
 
@@ -101,8 +102,17 @@ class Server(object):
                     cmd, dbn, request_id, sock_info.address)
                 start = datetime.now()
 
-            sock_info.send_message(data, max_doc_size)
-            response_data = sock_info.receive_message(1, request_id)
+            try:
+                sock_info.send_message(data, max_doc_size)
+                response_data = sock_info.receive_message(1, request_id)
+            except Exception as exc:
+                if publish:
+                    duration = (datetime.now() - start) + encoding_duration
+                    failure = _convert_exception(exc)
+                    monitoring.publish_command_failure(
+                        duration, failure, next(iter(cmd)), request_id,
+                        sock_info.address)
+                raise
 
             if publish:
                 duration = (datetime.now() - start) + encoding_duration

@@ -32,7 +32,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
-from pymongo.message import _CursorAddress, _GetMore, _Query
+from pymongo.message import _CursorAddress, _GetMore, _Query, _convert_exception
 from pymongo.read_preferences import ReadPreference
 
 _QUERY_OPTIONS = {
@@ -850,8 +850,14 @@ class Cursor(object):
                 start = datetime.datetime.now()
             try:
                 data = self.__exhaust_mgr.sock.receive_message(1, None)
-            except ConnectionFailure:
-                self.__die()
+            except Exception as exc:
+                if publish:
+                    duration = datetime.datetime.now() - start
+                    monitoring.publish_command_failure(
+                        duration, _convert_exception(exc), cmd_name, rqst_id,
+                        self.__address)
+                if isinstance(exc, ConnectionFailure):
+                    self.__die()
                 raise
             if publish:
                 cmd_duration = datetime.datetime.now() - start
@@ -894,6 +900,13 @@ class Cursor(object):
                     duration, exc.details, cmd_name, rqst_id, self.__address)
 
             client._reset_server_and_request_check(self.__address)
+            raise
+        except Exception as exc:
+            if publish:
+                duration = (datetime.datetime.now() - start) + cmd_duration
+                monitoring.publish_command_failure(
+                    duration, _convert_exception(exc), cmd_name, rqst_id,
+                    self.__address)
             raise
 
         if publish:

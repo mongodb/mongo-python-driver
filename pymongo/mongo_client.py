@@ -938,7 +938,15 @@ class MongoClient(common.BaseObject):
                         monitoring.publish_command_start(
                             command, dbname, data[0], address)
                         start = datetime.datetime.now()
-                    server.send_message(data, self.__all_credentials)
+                    try:
+                        server.send_message(data, self.__all_credentials)
+                    except Exception as exc:
+                        if publish:
+                            dur = (datetime.datetime.now() - start) + duration
+                            monitoring.publish_command_failure(
+                                dur, message._convert_exception(exc),
+                                'killCursors', data[0], address)
+                        raise
                     if publish:
                         duration = (datetime.datetime.now() - start) + duration
                         # OP_KILL_CURSORS returns no reply, fake one.
