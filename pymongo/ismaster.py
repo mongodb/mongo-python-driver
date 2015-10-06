@@ -122,3 +122,9 @@ class IsMaster(object):
     @property
     def is_readable(self):
         return self._is_readable
+
+    @property
+    def me(self):
+        me = self._doc.get('me')
+        if me:
+            return common.clean_node(me)

@@ -300,6 +300,9 @@ def _update_rs_with_primary_from_member(
 
     if replica_set_name != server_description.replica_set_name:
         sds.pop(server_description.address)
+    elif (server_description.me and
+          server_description.address != server_description.me):
+        sds.pop(server_description.address)
 
     # Had this member been the primary?
     return _check_has_primary(sds)
@@ -329,6 +332,10 @@ def _update_rs_no_primary_from_member(
     for address in server_description.all_hosts:
         if address not in sds:
             sds[address] = ServerDescription(address)
+
+    if (server_description.me and
+            server_description.address != server_description.me):
+        sds.pop(server_description.address)
 
     return topology_type, replica_set_name
 

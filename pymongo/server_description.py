@@ -32,7 +32,7 @@ class ServerDescription(object):
         '_address', '_server_type', '_all_hosts', '_tags', '_replica_set_name',
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
-        '_round_trip_time', '_is_writable', '_is_readable', '_error',
+        '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
         '_election_id')
 
     def __init__(
@@ -59,6 +59,7 @@ class ServerDescription(object):
         self._is_writable = ismaster.is_writable
         self._is_readable = ismaster.is_readable
         self._round_trip_time = round_trip_time
+        self._me = ismaster.me
         self._error = error
 
     @property
@@ -111,6 +112,10 @@ class ServerDescription(object):
     @property
     def election_id(self):
         return self._election_id
+
+    @property
+    def me(self):
+        return self._me
 
     @property
     def round_trip_time(self):
