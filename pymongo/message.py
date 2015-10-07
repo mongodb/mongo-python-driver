@@ -84,7 +84,7 @@ def _maybe_add_read_preference(spec, read_preference):
 
 def _convert_exception(exception):
     """Convert an Exception into a failure document for publishing."""
-    return {'errmsg': exception.message,
+    return {'errmsg': str(exception),
             'errtype': exception.__class__.__name__}
 
 
