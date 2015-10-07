@@ -19,26 +19,25 @@ import threading
 import time
 import weakref
 
-from pymongo import thread_util
 from pymongo.monotonic import time as _time
 
 
 class PeriodicExecutor(object):
-    def __init__(
-            self, condition_class, interval, min_interval, target, name=None):
+    def __init__(self, interval, min_interval, target, name=None):
         """"Run a target function periodically on a background thread.
 
         If the target's return value is false, the executor stops.
 
         :Parameters:
-          - `condition_class`: A class like threading.Condition.
           - `interval`: Seconds between calls to `target`.
           - `min_interval`: Minimum seconds between calls if `wake` is
             called very often.
           - `target`: A function.
           - `name`: A name to give the underlying thread.
         """
-        self._event = thread_util.Event(condition_class)
+        # threading.Event and its internal condition variable are expensive
+        # in Python 2, see PYTHON-983. Use a boolean to know when to wake.
+        self._event = False
         self._interval = interval
         self._min_interval = min_interval
         self._target = target
@@ -71,9 +70,6 @@ class PeriodicExecutor(object):
 
         The dummy parameter allows an executor's close method to be a weakref
         callback; see monitor.py.
-
-        Since this can be called from a weakref callback during garbage
-        collection it must take no locks! That means it cannot call wake().
         """
         self._stopped = True
 
@@ -87,7 +83,7 @@ class PeriodicExecutor(object):
 
     def wake(self):
         """Execute the target function soon."""
-        self._event.set()
+        self._event = True
 
     def _run(self):
         while not self._stopped:
@@ -101,17 +97,12 @@ class PeriodicExecutor(object):
 
             deadline = _time() + self._interval
 
-            # Avoid running too frequently if wake() is called very often.
-            time.sleep(self._min_interval)
-
-            # Until the deadline, wake often to check if close() was called.
             while not self._stopped and _time() < deadline:
-                # Our Event's wait returns True if set, else False.
-                if self._event.wait(0.1):
-                    # Someone called wake().
-                    break
+                time.sleep(self._min_interval)
+                if self._event:
+                    break  # Early wake.
 
-            self._event.clear()
+            self._event = False
 
 
 # _EXECUTORS has a weakref to each running PeriodicExecutor. Once started,

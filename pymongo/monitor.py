@@ -55,7 +55,6 @@ class Monitor(object):
             return True
 
         executor = periodic_executor.PeriodicExecutor(
-            condition_class=self._settings.condition_class,
             interval=common.HEARTBEAT_FREQUENCY,
             min_interval=common.MIN_HEARTBEAT_INTERVAL,
             target=target,

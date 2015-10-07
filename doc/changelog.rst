@@ -18,6 +18,12 @@ Highlights include:
 - An implementation of :class:`~gridfs.GridFSBucket` from the new GridFS spec.
 - Compliance with the new Connection String spec.
 
+Changes in internal classes
+...........................
+
+The private ``PeriodicExecutor`` class no longer takes a ``condition_class``
+option, and the private ``thread_util.Event`` class is removed.
+
 Issues Resolved
 ...............
 
