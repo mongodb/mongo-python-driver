@@ -482,6 +482,24 @@ class TestCollection(IntegrationTest):
         # Index wasn't created, only the default index on _id
         self.assertEqual(1, len(db.test.index_information()))
 
+    # Get the plan dynamically because the explain format will change.
+    def get_plan_stage(self, root, stage):
+        if root.get('stage') == stage:
+            return root
+        elif "inputStage" in root:
+            return self.get_plan_stage(root['inputStage'], stage)
+        elif "inputStages" in root:
+            for i in root['inputStages']:
+                stage = self.get_plan_stage(i, stage)
+                if stage:
+                    return stage
+        elif "shards" in root:
+            for i in root['shards']:
+                stage = self.get_plan_stage(i['winningPlan'], stage)
+                if stage:
+                    return stage
+        return {}
+
     @client_context.require_version_min(3, 1, 9, -1)
     def test_index_filter(self):
         db = self.db
@@ -506,34 +524,40 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({"x": 6, "a": 1})
 
         # Operations that use the partial index.
-        explain = db.test.find(
-            {"x": 6, "a": 1}).explain()['queryPlanner']['winningPlan']
-        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
-        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
-        explain = db.test.find(
-            {"x": {"$gt": 1}, "a": 1}).explain()['queryPlanner']['winningPlan']
-        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
-        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
-        explain = db.test.find(
-            {"x": 6,
-             "a": {"$lte": 1}}).explain()['queryPlanner']['winningPlan']
-        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
-        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
+        explain = db.test.find({"x": 6, "a": 1}).explain()
+        stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
+                                    'IXSCAN')
+        self.assertEqual("x_1", stage.get('indexName'))
+        self.assertTrue(stage.get('isPartial'))
+
+        explain = db.test.find({"x": {"$gt": 1}, "a": 1}).explain()
+        stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
+                                    'IXSCAN')
+        self.assertEqual("x_1", stage.get('indexName'))
+        self.assertTrue(stage.get('isPartial'))
+
+        explain = db.test.find({"x": 6, "a": {"$lte": 1}}).explain()
+        stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
+                                    'IXSCAN')
+        self.assertEqual("x_1", stage.get('indexName'))
+        self.assertTrue(stage.get('isPartial'))
 
         # Operations that do not use the partial index.
-        explain = db.test.find(
-            {"x": 6,
-             "a": {"$lte": 1.6}}).explain()['queryPlanner']['winningPlan']
-        self.assertEqual("COLLSCAN", explain.get('stage'))
-        explain = db.test.find(
-            {"x": 6}).explain()['queryPlanner']['winningPlan']
-        self.assertEqual("COLLSCAN", explain.get('stage'))
+        explain = db.test.find({"x": 6, "a": {"$lte": 1.6}}).explain()
+        stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
+                                    'COLLSCAN')
+        self.assertNotEqual({}, stage)
+        explain = db.test.find({"x": 6}).explain()
+        stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
+                                    'COLLSCAN')
+        self.assertNotEqual({}, stage)
 
         # Test drop_indexes.
         db.test.drop_index("x_1")
-        explain = db.test.find(
-            {"x": 6, "a": 1}).explain()['queryPlanner']['winningPlan']
-        self.assertEqual("COLLSCAN", explain.get('stage'))
+        explain = db.test.find({"x": 6, "a": 1}).explain()
+        stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
+                                    'COLLSCAN')
+        self.assertNotEqual({}, stage)
 
     def test_field_selection(self):
         db = self.db
