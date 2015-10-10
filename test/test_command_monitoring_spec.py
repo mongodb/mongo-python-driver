@@ -30,8 +30,8 @@ from pymongo import monitoring
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import make_read_preference
 from pymongo.write_concern import WriteConcern
-from test import unittest, IntegrationTest, client_context
-from test.utils import wait_until
+from test import unittest, client_context
+from test.utils import single_client, wait_until
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -45,7 +45,7 @@ def camel_to_snake(camel):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
 
 
-class EventListener(monitoring.Subscriber):
+class EventListener(monitoring.CommandListener):
 
     def __init__(self):
         self.results = defaultdict(list)
@@ -60,18 +60,19 @@ class EventListener(monitoring.Subscriber):
         self.results['failed'].append(event)
 
 
-class TestAllScenarios(IntegrationTest):
+class TestAllScenarios(unittest.TestCase):
 
     @classmethod
+    @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
-        cls.saved_subscribers = monitoring._SUBSCRIBERS
-        monitoring.subscribe(cls.listener)
-        super(TestAllScenarios, cls).setUpClass()
+        cls.saved_listeners = monitoring._LISTENERS
+        monitoring._LISTENERS = monitoring._Listeners([])
+        cls.client = single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
-        monitoring._SUBSCRIBERS = cls.saved_subscribers
+        monitoring._LISTENERS = cls.saved_listeners
 
     def tearDown(self):
         self.listener.results.clear()

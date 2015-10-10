@@ -468,7 +468,8 @@ class Database(common.BaseObject):
             coll = self["system.namespaces"]
             res = _first_batch(sock_info, coll.full_name,
                                criteria, 0, slave_okay,
-                               CodecOptions(), ReadPreference.PRIMARY, cmd)
+                               CodecOptions(), ReadPreference.PRIMARY, cmd,
+                               self.client._event_listeners)
             data = res["data"]
             cursor = {
                 "id": res["cursor_id"],

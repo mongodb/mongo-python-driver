@@ -33,7 +33,6 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
-from pymongo import monitoring
 from pymongo.errors import DocumentTooLarge, InvalidOperation, OperationFailure
 from pymongo.read_preferences import ReadPreference
 
@@ -450,17 +449,19 @@ _FIELD_MAP = {
 class _BulkWriteContext(object):
     """A wrapper around SocketInfo for use with write splitting functions."""
 
-    __slots__ = ('db_name', 'command', 'sock_info',
-                 'op_id', 'name', 'field', 'publish', 'start_time')
+    __slots__ = ('db_name', 'command', 'sock_info', 'op_id',
+                 'name', 'field', 'publish', 'start_time', 'listeners')
 
-    def __init__(self, database_name, command, sock_info, operation_id):
+    def __init__(
+            self, database_name, command, sock_info, operation_id, listeners):
         self.db_name = database_name
         self.command = command
         self.sock_info = sock_info
         self.op_id = operation_id
+        self.listeners = listeners
+        self.publish = listeners.enabled_for_commands
         self.name = next(iter(command))
         self.field = _FIELD_MAP[self.name]
-        self.publish = monitoring.enabled()
         self.start_time = datetime.datetime.now() if self.publish else None
 
     @property
@@ -534,20 +535,20 @@ class _BulkWriteContext(object):
         """Publish a CommandStartedEvent."""
         cmd = self.command.copy()
         cmd[self.field] = docs
-        monitoring.publish_command_start(
+        self.listeners.publish_command_start(
             cmd, self.db_name,
             request_id, self.sock_info.address, self.op_id)
         return cmd
 
     def _succeed(self, request_id, reply, duration):
         """Publish a CommandSucceededEvent."""
-        monitoring.publish_command_success(
+        self.listeners.publish_command_success(
             duration, reply, self.name,
             request_id, self.sock_info.address, self.op_id)
 
     def _fail(self, request_id, failure, duration):
         """Publish a CommandFailedEvent."""
-        monitoring.publish_command_failure(
+        self.listeners.publish_command_failure(
             duration, failure, self.name,
             request_id, self.sock_info.address, self.op_id)
 

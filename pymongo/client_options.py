@@ -15,11 +15,11 @@
 """Tools to parse mongo client options."""
 
 from bson.codec_options import _parse_codec_options
-from bson.py3compat import iteritems
 from pymongo.auth import _build_credentials_tuple
-from pymongo.common import validate, validate_boolean
+from pymongo.common import validate_boolean
 from pymongo import common
 from pymongo.errors import ConfigurationError
+from pymongo.monitoring import _EventListeners
 from pymongo.pool import PoolOptions
 from pymongo.read_preferences import make_read_preference
 from pymongo.ssl_support import get_ssl_context
@@ -93,11 +93,13 @@ def _parse_pool_options(options):
     socket_timeout = options.get('sockettimeoutms')
     wait_queue_timeout = options.get('waitqueuetimeoutms')
     wait_queue_multiple = options.get('waitqueuemultiple')
+    event_listeners = options.get('event_listeners')
     ssl_context, ssl_match_hostname = _parse_ssl_options(options)
     return PoolOptions(max_pool_size,
                        connect_timeout, socket_timeout,
                        wait_queue_timeout, wait_queue_multiple,
-                       ssl_context, ssl_match_hostname, socket_keepalive)
+                       ssl_context, ssl_match_hostname, socket_keepalive,
+                       _EventListeners(event_listeners))
 
 
 class ClientOptions(object):

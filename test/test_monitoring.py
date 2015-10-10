@@ -28,11 +28,11 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
-from test import unittest, IntegrationTest, client_context, client_knobs
+from test import unittest, client_context, client_knobs
 from test.utils import single_client
 
 
-class EventListener(monitoring.Subscriber):
+class EventListener(monitoring.CommandListener):
 
     def __init__(self):
         self.results = defaultdict(list)
@@ -47,18 +47,20 @@ class EventListener(monitoring.Subscriber):
         self.results['failed'].append(event)
 
 
-class TestCommandMonitoring(IntegrationTest):
+class TestCommandMonitoring(unittest.TestCase):
 
     @classmethod
+    @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
-        cls.saved_subscribers = monitoring._SUBSCRIBERS
-        monitoring.subscribe(cls.listener)
-        super(TestCommandMonitoring, cls).setUpClass()
+        cls.saved_listeners = monitoring._LISTENERS
+        # Don't use any global subscribers.
+        monitoring._LISTENERS = monitoring._Listeners([])
+        cls.client = single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
-        monitoring._SUBSCRIBERS = cls.saved_subscribers
+        monitoring._LISTENERS = cls.saved_listeners
 
     def tearDown(self):
         self.listener.results.clear()
@@ -400,8 +402,8 @@ class TestCommandMonitoring(IntegrationTest):
 
     @client_context.require_replica_set
     def test_not_master_error(self):
-        address = next(iter(self.client.secondaries))
-        client = single_client(*address)
+        address = next(iter(client_context.rs_client.secondaries))
+        client = single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         client.admin.command('ismaster')
         self.listener.results.clear()
@@ -1157,7 +1159,7 @@ class TestCommandMonitoring(IntegrationTest):
                              InsertOne({'_id': 1}),
                              InsertOne({'_id': 1}),
                              DeleteOne({'_id': 1})],
-                             ordered=False)
+                            ordered=False)
         except OperationFailure:
             pass
         results = self.listener.results
@@ -1226,6 +1228,40 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(started.command_name, succeeded.command_name)
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
+
+
+class TestGlobalListener(unittest.TestCase):
+
+    @classmethod
+    @client_context.require_connection
+    def setUpClass(cls):
+        cls.listener = EventListener()
+        cls.saved_listeners = monitoring._LISTENERS
+        monitoring.register(cls.listener)
+        cls.client = single_client()
+
+    @classmethod
+    def tearDownClass(cls):
+        monitoring._LISTENERS = cls.saved_listeners
+
+    def tearDown(self):
+        self.listener.results.clear()
+
+    def test_simple(self):
+        self.client.pymongo_test.command('ismaster')
+        results = self.listener.results
+        started = results['started'][0]
+        succeeded = results['succeeded'][0]
+        self.assertEqual(0, len(results['failed']))
+        self.assertTrue(
+            isinstance(succeeded, monitoring.CommandSucceededEvent))
+        self.assertTrue(
+            isinstance(started, monitoring.CommandStartedEvent))
+        self.assertEqual(SON([('ismaster', 1)]), started.command)
+        self.assertEqual('ismaster', started.command_name)
+        self.assertEqual(self.client.address, started.connection_id)
+        self.assertEqual('pymongo_test', started.database_name)
+        self.assertTrue(isinstance(started.request_id, int))
 
 
 if __name__ == "__main__":

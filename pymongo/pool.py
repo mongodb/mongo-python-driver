@@ -66,12 +66,14 @@ class PoolOptions(object):
 
     __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
-                 '__ssl_context', '__ssl_match_hostname', '__socket_keepalive')
+                 '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
+                 '__event_listeners')
 
     def __init__(self, max_pool_size=100, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
-                 ssl_match_hostname=True, socket_keepalive=False):
+                 ssl_match_hostname=True, socket_keepalive=False,
+                 event_listeners=None):
 
         self.__max_pool_size = max_pool_size
         self.__connect_timeout = connect_timeout
@@ -81,6 +83,7 @@ class PoolOptions(object):
         self.__ssl_context = ssl_context
         self.__ssl_match_hostname = ssl_match_hostname
         self.__socket_keepalive = socket_keepalive
+        self.__event_listeners = event_listeners
 
     @property
     def max_pool_size(self):
@@ -135,6 +138,12 @@ class PoolOptions(object):
         """
         return self.__socket_keepalive
 
+    @property
+    def event_listeners(self):
+        """An instance of pymongo.monitoring._EventListeners.
+        """
+        return self.__event_listeners
+
 
 class SocketInfo(object):
     """Store a socket with some metadata.
@@ -157,6 +166,8 @@ class SocketInfo(object):
         self.max_message_size = ismaster.max_message_size if ismaster else None
         self.max_write_batch_size = (
             ismaster.max_write_batch_size if ismaster else None)
+
+        self.listeners = pool.opts.event_listeners
 
         if ismaster:
             self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
@@ -186,8 +197,8 @@ class SocketInfo(object):
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
-                           check, allowable_errors, self.address, True,
-                           check_keys)
+                           check, allowable_errors, self.address,
+                           check_keys, self.listeners)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

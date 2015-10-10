@@ -282,6 +282,7 @@ class _Bulk(object):
         }
         op_id = _randint()
         db_name = self.collection.database.name
+        listeners = self.collection.database.client._event_listeners
 
         for run in generator:
             cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
@@ -289,7 +290,7 @@ class _Bulk(object):
             if write_concern.document:
                 cmd['writeConcern'] = write_concern.document
 
-            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id)
+            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id, listeners)
             results = _do_batched_write_command(
                 self.namespace, run.op_type, cmd,
                 run.ops, True, self.collection.codec_options, bwc)

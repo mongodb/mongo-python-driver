@@ -14,18 +14,19 @@
 
 """Tools to monitor driver events.
 
-Use :func:`subscribe` to register subscribers for specific events. Only
-events of type :data:`COMMAND` are currently supported. Subscribers must be
-a subclass of :class:`Subscriber` and implement :meth:`~Subscriber.started`,
-:meth:`~Subscriber.succeeded`, and :meth:`~Subscriber.failed`.
+Use :func:`register` to register global listeners for specific events.
+Currently only command events are published. Listeners must be
+a subclass of :class:`CommandListener` and implement
+:meth:`~CommandListener.started`, :meth:`~CommandListener.succeeded`, and
+:meth:`~CommandListener.failed`.
 
-For example, a simple logging subscriber might be implemented like this::
+For example, a simple command logger might be implemented like this::
 
     import logging
 
     from pymongo import monitoring
 
-    class LoggingSubscriber(monitoring.Subscriber):
+    class CommandLogger(monitoring.CommandListener):
 
         def started(self, event):
             logging.info("Command {0.command_name} with request id "
@@ -44,19 +45,39 @@ For example, a simple logging subscriber might be implemented like this::
                          "failed in {0.duration_micros} "
                          "microseconds".format(event))
 
-    monitoring.subscribe(LoggingSubscriber(), monitoring.COMMAND)
+    monitoring.register(CommandLogger())
+
+Event listeners can also be registered per instance of
+:class:`~pymongo.mongo_client.MongoClient`::
+
+    client = MongoClient(event_listeners=[CommandLogger()])
+
+Note that previously registered global listeners are automatically included when
+configuring per client event listeners. Registering a new global listener will
+not add that listener to existing client instances.
+
+.. note:: Events are delivered **synchronously**. Application threads block
+  waiting for event handlers (e.g. :meth:`~CommandListener.started`) to
+  return. Care must be taken to ensure that your event handlers are efficient
+  enough to not adversely affect overall application performance.
+
+.. warning:: The command documents published through this API are *not* copies.
+  If you intend to modify them in any way you must copy them in your event
+  handler first.
 """
 
 import sys
 import traceback
 
-_SUBSCRIBERS = []
+from collections import namedtuple, Sequence
 
-COMMAND = 0
+_Listeners = namedtuple('Listeners', ('command_listeners',))
+
+_LISTENERS = _Listeners([])
 
 
-class Subscriber(object):
-    """Abstract base class for all subscribers."""
+class CommandListener(object):
+    """Abstract base class for command listeners."""
 
     def started(self, event):
         """Abstract method to handle CommandStartedEvent.
@@ -91,41 +112,25 @@ def _to_micros(dur):
     return dur.microseconds + (dur.seconds + dur.days * 24 * 3600) * 1000000
 
 
-def _validate_events(events):
-    """Validate that 'event' is an int."""
-    if not isinstance(events, int) or events != COMMAND:
-        raise ValueError("only events of type monitoring.COMMAND "
-                         "are currently supported")
+def _validate_event_listeners(option, listeners):
+    """Validate event listeners"""
+    if not isinstance(listeners, Sequence):
+        raise TypeError("%s must be a list or tuple" % (option,))
+    for listener in listeners:
+        if not isinstance(listener, CommandListener):
+            raise TypeError("Only subclasses of "
+                            "pymongo.monitoring.CommandListener are supported")
+    return listeners
 
 
-def subscribe(subscriber, events=COMMAND):
-    """Register a subscriber for events.
-
-    This version of PyMongo only publishes events of type :data:`COMMAND`.
-
-    :Parameters:
-      - `subscriber`: A subclass of abstract class :class:`Subscriber`.
-      - `events`: Optional integer to set event subscriptions
-    """
-    _validate_events(events)
-    if not isinstance(subscriber, Subscriber):
-        raise TypeError("subscriber must be a subclass "
-                        "of pymongo.monitoring.Subscriber")
-    _SUBSCRIBERS.append(subscriber)
-
-
-def get_subscribers(event=COMMAND):
-    """Get the list of subscribers for `event`.
+def register(listener):
+    """Register a global event listener.
 
     :Parameters:
-      - `event`: Return subscribers for this event type.
+      - `listener`: A subclass of :class:`CommandListener`.
     """
-    _validate_events(event)
-    return _SUBSCRIBERS[:]
-
-
-def enabled():
-    return bool(_SUBSCRIBERS)
+    _validate_event_listeners('listener', [listener])
+    _LISTENERS.command_listeners.append(listener)
 
 
 def _handle_exception():
@@ -143,77 +148,6 @@ def _handle_exception():
             pass
         finally:
             del einfo
-
-
-def publish_command_start(
-        command, database_name, request_id, connection_id, op_id=None):
-    """Publish a CommandStartedEvent to all command event subscribers.
-
-    :Parameters:
-      - `command`: The command document.
-      - `database_name`: The name of the database this command was run against.
-      - `request_id`: The request id for this operation.
-      - `connection_id`: The address (host, port) of the server this command
-        was sent to.
-      - `op_id`: The (optional) operation id for this operation.
-    """
-    if op_id is None:
-        op_id = request_id
-    event = CommandStartedEvent(
-        command, database_name, request_id, connection_id, op_id)
-    for subscriber in get_subscribers(COMMAND):
-        try:
-            subscriber.started(event)
-        except Exception:
-            _handle_exception()
-
-
-def publish_command_success(
-        duration, reply, command_name, request_id, connection_id, op_id=None):
-    """Publish a CommandSucceededEvent to all command event subscribers.
-
-    :Parameters:
-      - `duration`: The command duration as a datetime.timedelta.
-      - `reply`: The server reply document.
-      - `command_name`: The command name.
-      - `request_id`: The request id for this operation.
-      - `connection_id`: The address (host, port) of the server this command
-        was sent to.
-      - `op_id`: The (optional) operation id for this operation.
-    """
-    if op_id is None:
-        op_id = request_id
-    event = CommandSucceededEvent(
-        duration, reply, command_name, request_id, connection_id, op_id)
-    for subscriber in get_subscribers(COMMAND):
-        try:
-            subscriber.succeeded(event)
-        except Exception:
-            _handle_exception()
-
-
-def publish_command_failure(
-        duration, failure, command_name, request_id, connection_id, op_id=None):
-    """Publish a CommandFailedEvent to all command event subscribers.
-
-    :Parameters:
-      - `duration`: The command duration as a datetime.timedelta.
-      - `failure`: The server reply document or failure description document.
-      - `command_name`: The command name.
-      - `request_id`: The request id for this operation.
-      - `connection_id`: The address (host, port) of the server this command
-        was sent to.
-      - `op_id`: The (optional) operation id for this operation.
-    """
-    if op_id is None:
-        op_id = request_id
-    event = CommandFailedEvent(
-        duration, failure, command_name, request_id, connection_id, op_id)
-    for subscriber in get_subscribers(COMMAND):
-        try:
-            subscriber.failed(event)
-        except Exception:
-            _handle_exception()
 
 
 class _CommandEvent(object):
@@ -339,3 +273,100 @@ class CommandFailedEvent(_CommandEvent):
     def failure(self):
         """The server failure document for this operation."""
         return self.__failure
+
+
+class _EventListeners(object):
+    """Configure event listeners for a client instance.
+
+    Any event listeners registered globally are included by default.
+
+    :Parameters:
+      - `listeners`: A list of event listeners.
+    """
+    def __init__(self, listeners):
+        self.__command_listeners = _LISTENERS.command_listeners[:]
+        if listeners is not None:
+            self.__command_listeners.extend(listeners)
+        self.__enabled_for_commands = bool(self.__command_listeners)
+
+    @property
+    def enabled_for_commands(self):
+        """Are any CommandListener instances registered?"""
+        return self.__enabled_for_commands
+
+    @property
+    def event_listeners(self):
+        """List of registered event listeners."""
+        return self.__command_listeners[:]
+
+    def publish_command_start(self, command, database_name,
+                              request_id, connection_id, op_id=None):
+        """Publish a CommandStartedEvent to all command listeners.
+
+        :Parameters:
+          - `command`: The command document.
+          - `database_name`: The name of the database this command was run
+            against.
+          - `request_id`: The request id for this operation.
+          - `connection_id`: The address (host, port) of the server this
+            command was sent to.
+          - `op_id`: The (optional) operation id for this operation.
+        """
+        if op_id is None:
+            op_id = request_id
+        event = CommandStartedEvent(
+            command, database_name, request_id, connection_id, op_id)
+        for subscriber in self.__command_listeners:
+            try:
+                subscriber.started(event)
+            except Exception:
+                _handle_exception()
+
+
+    def publish_command_success(self, duration, reply, command_name,
+                                request_id, connection_id, op_id=None):
+        """Publish a CommandSucceededEvent to all command listeners.
+
+        :Parameters:
+          - `duration`: The command duration as a datetime.timedelta.
+          - `reply`: The server reply document.
+          - `command_name`: The command name.
+          - `request_id`: The request id for this operation.
+          - `connection_id`: The address (host, port) of the server this
+            command was sent to.
+          - `op_id`: The (optional) operation id for this operation.
+        """
+        if op_id is None:
+            op_id = request_id
+        event = CommandSucceededEvent(
+            duration, reply, command_name, request_id, connection_id, op_id)
+        for subscriber in self.__command_listeners:
+            try:
+                subscriber.succeeded(event)
+            except Exception:
+                _handle_exception()
+
+
+    def publish_command_failure(self, duration, failure, command_name,
+                                request_id, connection_id, op_id=None):
+        """Publish a CommandFailedEvent to all command listeners.
+
+        :Parameters:
+          - `duration`: The command duration as a datetime.timedelta.
+          - `failure`: The server reply document or failure description
+            document.
+          - `command_name`: The command name.
+          - `request_id`: The request id for this operation.
+          - `connection_id`: The address (host, port) of the server this
+            command was sent to.
+          - `op_id`: The (optional) operation id for this operation.
+        """
+        if op_id is None:
+            op_id = request_id
+        event = CommandFailedEvent(
+            duration, failure, command_name, request_id, connection_id, op_id)
+        for subscriber in self.__command_listeners:
+            try:
+                subscriber.failed(event)
+            except Exception:
+                _handle_exception()

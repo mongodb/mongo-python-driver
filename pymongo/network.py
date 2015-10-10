@@ -29,7 +29,7 @@ try:
 except ImportError:
     _HAS_POLL = False
 
-from pymongo import helpers, message, monitoring
+from pymongo import helpers, message
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
 
 _UNPACK_INT = struct.Struct("<i").unpack
@@ -37,8 +37,8 @@ _UNPACK_INT = struct.Struct("<i").unpack
 
 def command(sock, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, check=True,
-            allowable_errors=None, address=None, user=False,
-            check_keys=False):
+            allowable_errors=None, address=None,
+            check_keys=False, listeners=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -52,8 +52,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `check`: raise OperationFailure if there are errors
       - `allowable_errors`: errors to ignore if `check` is True
       - `address`: the (host, port) of `sock`
-      - `user`: is this a user command or internal?
       - `check_keys`: if True, check `spec` for invalid keys
+      - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
@@ -63,7 +63,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     if is_mongos:
         spec = message._maybe_add_read_preference(spec, read_preference)
 
-    publish = user and monitoring.enabled()
+    publish = listeners is not None and listeners.enabled_for_commands
     if publish:
         start = datetime.datetime.now()
 
@@ -72,7 +72,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
-        monitoring.publish_command_start(orig, dbname, request_id, address)
+        listeners.publish_command_start(orig, dbname, request_id, address)
         start = datetime.datetime.now()
 
     try:
@@ -93,12 +93,12 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
                 failure = exc.details
             else:
                 failure = message._convert_exception(exc)
-            monitoring.publish_command_failure(
+            listeners.publish_command_failure(
                 duration, failure, name, request_id, address)
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
-        monitoring.publish_command_success(
+        listeners.publish_command_success(
             duration, response_doc, name, request_id, address)
     return response_doc
 

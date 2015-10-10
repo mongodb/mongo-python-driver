@@ -19,7 +19,7 @@ import datetime
 from collections import deque
 
 from bson.py3compat import integer_types
-from pymongo import helpers, monitoring
+from pymongo import helpers
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _convert_exception
 
@@ -91,6 +91,8 @@ class CommandCursor(object):
         """Send a getmore message and handle the response.
         """
         client = self.__collection.database.client
+        listeners = client._event_listeners
+        publish = listeners.enabled_for_commands
         try:
             response = client._send_message_with_response(
                 operation, address=self.__address)
@@ -102,7 +104,6 @@ class CommandCursor(object):
             self.__killed = True
             raise
 
-        publish = monitoring.enabled()
         cmd_duration = response.duration
         rqst_id = response.request_id
         if publish:
@@ -116,7 +117,7 @@ class CommandCursor(object):
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                monitoring.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, exc.details, "getMore", rqst_id, self.__address)
 
             raise
@@ -127,7 +128,7 @@ class CommandCursor(object):
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                monitoring.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, exc.details, "getMore", rqst_id, self.__address)
 
             client._reset_server_and_request_check(self.address)
@@ -135,7 +136,7 @@ class CommandCursor(object):
         except Exception as exc:
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                monitoring.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, _convert_exception(exc), "getMore", rqst_id,
                     self.__address)
             raise
@@ -147,7 +148,7 @@ class CommandCursor(object):
                               "ns": self.__collection.full_name,
                               "nextBatch": doc["data"]},
                    "ok": 1}
-            monitoring.publish_command_success(
+            listeners.publish_command_success(
                 duration, res, "getMore", rqst_id, self.__address)
 
         self.__id = doc["cursor_id"]

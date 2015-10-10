@@ -4,12 +4,8 @@
 .. automodule:: pymongo.monitoring
    :synopsis: Tools for monitoring driver events.
 
-   .. data:: COMMAND
-
-      The event type of user commands.
-   .. autofunction:: subscribe(subscriber, events=COMMAND)
-   .. autofunction:: get_subscribers(event=COMMAND)
-   .. autoclass:: Subscriber
+   .. autofunction:: register(listener)
+   .. autoclass:: CommandListener
       :members:
    .. autoclass:: CommandStartedEvent
       :members:

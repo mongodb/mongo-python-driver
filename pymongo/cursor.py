@@ -25,7 +25,7 @@ from bson.py3compat import (iteritems,
                             integer_types,
                             string_type)
 from bson.son import SON
-from pymongo import helpers, monitoring
+from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
@@ -803,7 +803,8 @@ class Cursor(object):
         Can raise ConnectionFailure.
         """
         client = self.__collection.database.client
-        publish = monitoring.enabled()
+        listeners = client._event_listeners
+        publish = listeners.enabled_for_commands
 
         if operation:
             kwargs = {
@@ -845,7 +846,7 @@ class Cursor(object):
                     cmd['batchSize'] = self.__batch_size
                 if self.__max_time_ms:
                     cmd['maxTimeMS'] = self.__max_time_ms
-                monitoring.publish_command_start(
+                listeners.publish_command_start(
                     cmd, self.__collection.database.name, 0, self.__address)
                 start = datetime.datetime.now()
             try:
@@ -853,7 +854,7 @@ class Cursor(object):
             except Exception as exc:
                 if publish:
                     duration = datetime.datetime.now() - start
-                    monitoring.publish_command_failure(
+                    listeners.publish_command_failure(
                         duration, _convert_exception(exc), cmd_name, rqst_id,
                         self.__address)
                 if isinstance(exc, ConnectionFailure):
@@ -876,7 +877,7 @@ class Cursor(object):
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                monitoring.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, exc.details, cmd_name, rqst_id, self.__address)
 
             # If this is a tailable cursor the error is likely
@@ -896,7 +897,7 @@ class Cursor(object):
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                monitoring.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, exc.details, cmd_name, rqst_id, self.__address)
 
             client._reset_server_and_request_check(self.__address)
@@ -904,7 +905,7 @@ class Cursor(object):
         except Exception as exc:
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                monitoring.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, _convert_exception(exc), cmd_name, rqst_id,
                     self.__address)
             raise
@@ -922,7 +923,7 @@ class Cursor(object):
                     res["cursor"]["firstBatch"] = doc["data"]
                 else:
                     res["cursor"]["nextBatch"] = doc["data"]
-            monitoring.publish_command_success(
+            listeners.publish_command_success(
                 duration, res, cmd_name, rqst_id, self.__address)
 
         self.__id = doc["cursor_id"]

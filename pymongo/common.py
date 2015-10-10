@@ -24,6 +24,7 @@ from bson.codec_options import CodecOptions
 from bson.py3compat import string_type, integer_types, iteritems
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
+from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_preferences import (read_pref_mode_from_name,
                                       _ServerMode)
 from pymongo.ssl_support import validate_cert_reqs
@@ -433,7 +434,8 @@ VALIDATORS = {
     'document_class': validate_document_class,
     'tz_aware': validate_boolean_or_string,
     'uuidrepresentation': validate_uuid_representation,
-    'connect': validate_boolean
+    'connect': validate_boolean,
+    'event_listeners': _validate_event_listeners
 }
 
 

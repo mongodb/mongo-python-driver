@@ -22,7 +22,7 @@ import bson
 from bson.codec_options import CodecOptions
 from bson.py3compat import itervalues, string_type, iteritems, u
 from bson.son import SON
-from pymongo import ASCENDING, monitoring
+from pymongo import ASCENDING
 from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
                             ExecutionTimeout,
@@ -233,8 +233,8 @@ def _check_gle_response(response):
     raise OperationFailure(details["err"], code, result)
 
 
-def _first_batch(sock_info, namespace, query,
-                 ntoreturn, slave_ok, codec_options, read_preference, cmd):
+def _first_batch(sock_info, namespace, query, ntoreturn,
+                 slave_ok, codec_options, read_preference, cmd, listeners):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, namespace, 0, ntoreturn, query, None,
@@ -242,7 +242,7 @@ def _first_batch(sock_info, namespace, query,
 
     name = next(iter(cmd))
     duration = None
-    publish = monitoring.enabled()
+    publish = listeners.enabled_for_commands
     if publish:
         start = datetime.datetime.now()
 
@@ -251,7 +251,7 @@ def _first_batch(sock_info, namespace, query,
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
-        monitoring.publish_command_start(
+        listeners.publish_command_start(
             cmd, namespace.split('.', 1)[0], request_id, sock_info.address)
         start = datetime.datetime.now()
 
@@ -266,12 +266,12 @@ def _first_batch(sock_info, namespace, query,
                 failure = exc.details
             else:
                 failure = _convert_exception(exc)
-            monitoring.publish_command_failure(
+            listeners.publish_command_failure(
                 duration, failure, name, request_id, sock_info.address)
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
-        monitoring.publish_command_success(
+        listeners.publish_command_success(
             duration, result, name, request_id, sock_info.address)
 
     return result

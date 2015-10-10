@@ -28,8 +28,7 @@ from bson.codec_options import CodecOptions
 from bson.son import SON
 from pymongo import (common,
                      helpers,
-                     message,
-                     monitoring)
+                     message)
 from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
@@ -386,13 +385,15 @@ class Collection(common.BaseObject):
     def _legacy_write(
             self, sock_info, name, cmd, acknowledged, op_id, func, *args):
         """Internal legacy write helper."""
-        publish = monitoring.enabled()
+        listeners = self.database.client._event_listeners
+        publish = listeners.enabled_for_commands
+
         if publish:
             start = datetime.datetime.now()
         rqst_id, msg, max_size = func(*args)
         if publish:
             duration = datetime.datetime.now() - start
-            monitoring.publish_command_start(
+            listeners.publish_command_start(
                 cmd, self.__database.name, rqst_id, sock_info.address, op_id)
             start = datetime.datetime.now()
         try:
@@ -407,12 +408,12 @@ class Collection(common.BaseObject):
                     if details.get("ok") and "n" in details:
                         reply = message._convert_write_result(
                             name, cmd, details)
-                        monitoring.publish_command_success(
+                        listeners.publish_command_success(
                             dur, reply, name, rqst_id, sock_info.address, op_id)
                         raise
                 else:
                     details = message._convert_exception(exc)
-                monitoring.publish_command_failure(
+                listeners.publish_command_failure(
                     dur, details, name, rqst_id, sock_info.address, op_id)
             raise
         if publish:
@@ -422,7 +423,7 @@ class Collection(common.BaseObject):
                 # Comply with APM spec.
                 reply = {'ok': 1}
             duration = (datetime.datetime.now() - start) + duration
-            monitoring.publish_command_success(
+            listeners.publish_command_success(
                 duration, reply, name, rqst_id, sock_info.address, op_id)
         return result
 
@@ -503,7 +504,8 @@ class Collection(common.BaseObject):
         if op_id is None:
             op_id = message._randint()
         bwc = message._BulkWriteContext(
-            self.database.name, command, sock_info, op_id)
+            self.database.name, command, sock_info, op_id,
+            self.database.client._event_listeners)
         if sock_info.max_wire_version > 1 and acknowledged:
             # Batched insert command.
             results = message._do_batched_write_command(
@@ -1359,7 +1361,8 @@ class Collection(common.BaseObject):
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
                     sock_info, namespace, {"ns": self.__full_name},
-                    0, slave_ok, codec_options, ReadPreference.PRIMARY, cmd)
+                    0, slave_ok, codec_options, ReadPreference.PRIMARY,
+                    cmd, self.database.client._event_listeners)
                 data = res["data"]
                 cursor = {
                     "id": res["cursor_id"],

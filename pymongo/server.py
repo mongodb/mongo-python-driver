@@ -18,7 +18,6 @@ import contextlib
 
 from datetime import datetime
 
-from pymongo import monitoring
 from pymongo.message import _convert_exception
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
@@ -72,6 +71,7 @@ class Server(object):
             operation,
             set_slave_okay,
             all_credentials,
+            listeners,
             exhaust=False):
         """Send a message to MongoDB and return a Response object.
 
@@ -87,7 +87,7 @@ class Server(object):
         with self.get_socket(all_credentials, exhaust) as sock_info:
 
             duration = None
-            publish = monitoring.enabled()
+            publish = listeners.enabled_for_commands
             if publish:
                 start = datetime.now()
 
@@ -98,7 +98,7 @@ class Server(object):
             if publish:
                 encoding_duration = datetime.now() - start
                 cmd, dbn = operation.as_command()
-                monitoring.publish_command_start(
+                listeners.publish_command_start(
                     cmd, dbn, request_id, sock_info.address)
                 start = datetime.now()
 
@@ -109,7 +109,7 @@ class Server(object):
                 if publish:
                     duration = (datetime.now() - start) + encoding_duration
                     failure = _convert_exception(exc)
-                    monitoring.publish_command_failure(
+                    listeners.publish_command_failure(
                         duration, failure, next(iter(cmd)), request_id,
                         sock_info.address)
                 raise
