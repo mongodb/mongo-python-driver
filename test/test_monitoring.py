@@ -1248,6 +1248,7 @@ class TestGlobalListener(unittest.TestCase):
         self.listener.results.clear()
 
     def test_simple(self):
+        self.listener.results.clear()
         self.client.pymongo_test.command('ismaster')
         results = self.listener.results
         started = results['started'][0]
