@@ -1239,16 +1239,17 @@ class TestGlobalListener(unittest.TestCase):
         cls.saved_listeners = monitoring._LISTENERS
         monitoring.register(cls.listener)
         cls.client = single_client()
+        # Get one (authenticated) socket in the pool.
+        cls.client.pymongo_test.command('ismaster')
 
     @classmethod
     def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
 
-    def tearDown(self):
+    def setUp(self):
         self.listener.results.clear()
 
     def test_simple(self):
-        self.listener.results.clear()
         self.client.pymongo_test.command('ismaster')
         results = self.listener.results
         started = results['started'][0]
