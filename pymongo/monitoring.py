@@ -149,6 +149,13 @@ def _handle_exception():
         finally:
             del einfo
 
+# Note - to avoid bugs from forgetting which if these is all lowercase and
+# which are camelCase, and at the same time avoid having to add a test for
+# every command, use all lowercase here and test against command_name.lower().
+_SENSITIVE_COMMANDS = set(
+    ["authenticate", "saslstart", "saslcontinue", "getnonce", "createuser",
+     "updateuser", "copydbgetnonce", "copydbsaslstart", "copydb"])
+
 
 class _CommandEvent(object):
     """Base class for command events."""
@@ -201,7 +208,10 @@ class CommandStartedEvent(_CommandEvent):
         # Command name must be first key.
         command_name = next(iter(command))
         super(CommandStartedEvent, self).__init__(command_name, *args)
-        self.__cmd = command
+        if command_name.lower() in _SENSITIVE_COMMANDS:
+            self.__cmd = {}
+        else:
+            self.__cmd = command
         self.__db = database_name
 
     @property
@@ -229,10 +239,15 @@ class CommandSucceededEvent(_CommandEvent):
     """
     __slots__ = ("__duration_micros", "__reply")
 
-    def __init__(self, duration, reply, *args):
-        super(CommandSucceededEvent, self).__init__(*args)
+    def __init__(self, duration, reply, command_name,
+                 request_id, connection_id, operation_id):
+        super(CommandSucceededEvent, self).__init__(
+            command_name, request_id, connection_id, operation_id)
         self.__duration_micros = _to_micros(duration)
-        self.__reply = reply
+        if command_name.lower() in _SENSITIVE_COMMANDS:
+            self.__reply = {}
+        else:
+            self.__reply = reply
 
     @property
     def duration_micros(self):

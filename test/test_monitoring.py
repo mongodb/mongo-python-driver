@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import sys
 import time
 import warnings
@@ -1228,6 +1229,34 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(started.command_name, succeeded.command_name)
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
+
+    def test_sensitive_commands(self):
+        listeners = self.client._event_listeners
+
+        self.listener.results.clear()
+        cmd = SON([("getnonce", 1)])
+        listeners.publish_command_start(
+            cmd, "pymongo_test", 12345, self.client.address)
+        delta = datetime.timedelta(milliseconds=100)
+        listeners.publish_command_success(
+            delta, {'nonce': 'e474f4561c5eb40b', 'ok': 1.0},
+            "getnonce", 12345, self.client.address)
+        results = self.listener.results
+        started = results['started'][0]
+        succeeded = results['succeeded'][0]
+        self.assertEqual(0, len(results['failed']))
+        self.assertIsInstance(started, monitoring.CommandStartedEvent)
+        self.assertEqual({}, started.command)
+        self.assertEqual('pymongo_test', started.database_name)
+        self.assertEqual('getnonce', started.command_name)
+        self.assertIsInstance(started.request_id, int)
+        self.assertEqual(self.client.address, started.connection_id)
+        self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
+        self.assertEqual(succeeded.duration_micros, 100000)
+        self.assertEqual(started.command_name, succeeded.command_name)
+        self.assertEqual(started.request_id, succeeded.request_id)
+        self.assertEqual(started.connection_id, succeeded.connection_id)
+        self.assertEqual({}, succeeded.reply)
 
 
 class TestGlobalListener(unittest.TestCase):
