@@ -494,6 +494,82 @@ in this release.
 
 .. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12501
 
+Changes in Version 2.9
+----------------------
+
+Version 2.9 provides an upgrade path to PyMongo 3.x. Most of the API changes
+from PyMongo 3.0 have been backported in a backward compatible way, allowing
+applications to be written against PyMongo >= 2.9, rather then PyMongo 2.x or
+PyMongo 3.x. See the :doc:`/migrate-to-pymongo3` for detailed examples.
+
+.. note:: There are a number of new deprecations in this release for features
+  that were removed in PyMongo 3.0.
+
+  :class:`~pymongo.mongo_client.MongoClient`:
+    - :attr:`~pymongo.mongo_client.MongoClient.host`
+    - :attr:`~pymongo.mongo_client.MongoClient.port`
+    - :attr:`~pymongo.mongo_client.MongoClient.use_greenlets`
+    - :attr:`~pymongo.mongo_client.MongoClient.document_class`
+    - :attr:`~pymongo.mongo_client.MongoClient.tz_aware`
+    - :attr:`~pymongo.mongo_client.MongoClient.secondary_acceptable_latency_ms`
+    - :attr:`~pymongo.mongo_client.MongoClient.tag_sets`
+    - :attr:`~pymongo.mongo_client.MongoClient.uuid_subtype`
+    - :meth:`~pymongo.mongo_client.MongoClient.disconnect`
+    - :meth:`~pymongo.mongo_client.MongoClient.alive`
+
+  :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`:
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.use_greenlets`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.document_class`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.tz_aware`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.secondary_acceptable_latency_ms`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.tag_sets`
+    - :attr:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.uuid_subtype`
+    - :meth:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.alive`
+
+  :class:`~pymongo.database.Database`:
+    - :attr:`~pymongo.database.Database.secondary_acceptable_latency_ms`
+    - :attr:`~pymongo.database.Database.tag_sets`
+    - :attr:`~pymongo.database.Database.uuid_subtype`
+
+  :class:`~pymongo.collection.Collection`:
+    - :attr:`~pymongo.collection.Collection.secondary_acceptable_latency_ms`
+    - :attr:`~pymongo.collection.Collection.tag_sets`
+    - :attr:`~pymongo.collection.Collection.uuid_subtype`
+
+.. warning::
+  In previous versions of PyMongo, changing the value of
+  :attr:`~pymongo.mongo_client.MongoClient.document_class` changed
+  the behavior of all existing instances of
+  :class:`~pymongo.collection.Collection`::
+
+    >>> coll = client.test.test
+    >>> coll.find_one()
+    {u'_id': ObjectId('5579dc7cfba5220cc14d9a18')}
+    >>> from bson.son import SON
+    >>> client.document_class = SON
+    >>> coll.find_one()
+    SON([(u'_id', ObjectId('5579dc7cfba5220cc14d9a18'))])
+
+  The document_class setting is now configurable at the client,
+  database, collection, and per-operation level. This required breaking
+  the existing behavior. To change the document class per operation in a
+  forward compatible way use
+  :meth:`~pymongo.collection.Collection.with_options`::
+
+    >>> coll.find_one()
+    {u'_id': ObjectId('5579dc7cfba5220cc14d9a18')}
+    >>> from bson.codec_options import CodecOptions
+    >>> coll.with_options(CodecOptions(SON)).find_one()
+    SON([(u'_id', ObjectId('5579dc7cfba5220cc14d9a18'))])
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.9 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14795
+
 Changes in Version 2.8.1
 ------------------------
 
