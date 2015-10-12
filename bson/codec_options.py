@@ -44,19 +44,17 @@ class CodecOptions(_options_base):
         and decoding instances of :class:`~uuid.UUID`. Defaults to
         :data:`~bson.binary.PYTHON_LEGACY`.
       - `unicode_decode_error_handler`: The error handler to use when decoding
-         an invalid BSON string. Valid options include 'strict', 'replace', and
-         'ignore'. Defaults to 'strict'.
+        an invalid BSON string. Valid options include 'strict', 'replace', and
+        'ignore'. Defaults to 'strict'.
+      - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
+        timezone to/from which :class:`~datetime.datetime` objects should be
+        encoded/decoded.
 
     .. warning:: Care must be taken when changing
        `unicode_decode_error_handler` from its default value ('strict').
        The 'replace' and 'ignore' modes should not be used when documents
        retrieved from the server will be modified in the client application
        and stored back to the server.
-
-      - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
-        timezone to/from which :class:`~datetime.datetime` objects should be
-        encoded/decoded.
-
     """
 
     def __new__(cls, document_class=dict,

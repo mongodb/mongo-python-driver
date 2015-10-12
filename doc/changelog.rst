@@ -1,6 +1,31 @@
 Changelog
 =========
 
+Changes in Version 3.1
+----------------------
+
+Version 3.1 implements a few new features and fixes bugs reported since the release
+of 3.0.3.
+
+Highlights include:
+
+- Command monitoring support. See :mod:`~pymongo.monitoring` for details.
+- Configurable error handling for :exc:`UnicodeDecodeError`. See the
+  `unicode_decode_error_handler` option of
+  :class:`~bson.codec_options.CodecOptions`.
+- Optional automatic timezone conversion when decoding BSON datetime. See the
+  `tzinfo` option of :class:`~bson.codec_options.CodecOptions`.
+- An implementation of :class:`~gridfs.GridFSBucket` from the new GridFS spec.
+- Compliance with the new Connection String spec.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14796
+
 Changes in Version 3.0.3
 ------------------------
 
