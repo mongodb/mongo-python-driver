@@ -5,6 +5,7 @@ digraph "Monitor and PeriodicExecutor" {
     monitor -> executor
     executor -> "target()"
     "target()" -> self_ref
+    thread -> "target()"
 
     // Weak references
     edge [style="dashed"];

@@ -37,6 +37,8 @@ class PeriodicExecutor(object):
         """
         # threading.Event and its internal condition variable are expensive
         # in Python 2, see PYTHON-983. Use a boolean to know when to wake.
+        # The executor's design is constrained by several Python issues, see
+        # "periodic_executor.rst" in this repository.
         self._event = False
         self._interval = interval
         self._min_interval = min_interval

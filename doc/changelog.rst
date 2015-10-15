@@ -17,6 +17,7 @@ Highlights include:
   `tzinfo` option of :class:`~bson.codec_options.CodecOptions`.
 - An implementation of :class:`~gridfs.GridFSBucket` from the new GridFS spec.
 - Compliance with the new Connection String spec.
+- Reduced idle CPU usage in Python 2.
 
 Changes in internal classes
 ...........................
