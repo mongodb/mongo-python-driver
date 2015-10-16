@@ -173,6 +173,17 @@ class TestDatabase(IntegrationTest):
         finally:
             self.client.drop_database("many_collections")
 
+    def test_collection_names_single_socket(self):
+        # Test that Database.collection_names only requires one socket.
+        client = rs_or_single_client(maxPoolSize=1)
+        client.drop_database('test_collection_names_single_socket')
+        db = client.test_collection_names_single_socket
+        for i in range(200):
+            db.create_collection(str(i))
+
+        db.collection_names()  # Must not hang.
+        client.drop_database('test_collection_names_single_socket')
+
     def test_drop_collection(self):
         db = Database(self.client, "pymongo_test")
 
