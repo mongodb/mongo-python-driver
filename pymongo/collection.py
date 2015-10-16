@@ -1418,19 +1418,20 @@ class Collection(common.BaseObject):
             cursor = self.__database._list_collections(sock_info,
                                                        slave_ok,
                                                        criteria)
-            result = None
-            for doc in cursor:
-                result = doc
-                break
 
-            if not result:
-                return {}
+        result = None
+        for doc in cursor:
+            result = doc
+            break
 
-            options = result.get("options", {})
-            if "create" in options:
-                del options["create"]
+        if not result:
+            return {}
 
-            return options
+        options = result.get("options", {})
+        if "create" in options:
+            del options["create"]
+
+        return options
 
     def aggregate(self, pipeline, **kwargs):
         """Perform an aggregation using the aggregation framework on this
