@@ -373,7 +373,7 @@ class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
 
     def test_gridfs_replica_set(self):
         rsc = rs_client(
-            w=self.w, wtimeout=5000,
+            w=self.w,
             read_preference=ReadPreference.SECONDARY)
 
         gfs = gridfs.GridFSBucket(rsc.pymongo_test)
