@@ -313,17 +313,25 @@ _PREF_MAP = [
 
 class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
-    def setUp(self):
-        super(TestCommandAndReadPreference, self).setUp()
-        self.c = ReadPrefTester(
+    @classmethod
+    def setUpClass(cls):
+        super(TestCommandAndReadPreference, cls).setUpClass()
+        cls.c = ReadPrefTester(
             '%s:%s' % (host, port),
-            replicaSet=self.name,
+            replicaSet=cls.name,
             # Ignore round trip times, to test ReadPreference modes only.
             localThresholdMS=1000*1000)
         if client_context.auth_enabled:
-            self.c.admin.authenticate(db_user, db_pwd)
-        self.client_version = Version.from_client(self.c)
-        self.addCleanup(self.c.drop_database, 'pymongo_test')
+            cls.c.admin.authenticate(db_user, db_pwd)
+        cls.client_version = Version.from_client(cls.c)
+        # mapReduce and group fail with no collection
+        coll = cls.c.pymongo_test.get_collection(
+            'test', write_concern=WriteConcern(w=cls.w))
+        coll.insert_one({})
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.c.drop_database('pymongo_test')
 
     def executed_on_which_server(self, client, fn, *args, **kwargs):
         """Execute fn(*args, **kwargs) and return the Server instance used."""
@@ -397,24 +405,11 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                                {'a': 1}, {}, {}, 'function() { }')
 
     def test_map_reduce(self):
-        # mapreduce fails if no collection
-        coll = self.c.pymongo_test.test.with_options(
-            write_concern=WriteConcern(w=self.w))
-        coll.insert_one({})
-
-        self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
-                               'function() { }', 'function() { }', 'mr_out')
-
         self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
                                'function() { }', 'function() { }',
                                {'inline': 1})
 
     def test_inline_map_reduce(self):
-        # mapreduce fails if no collection
-        coll = self.c.pymongo_test.test.with_options(
-            write_concern=WriteConcern(w=self.w))
-        coll.insert_one({})
-
         self._test_coll_helper(True, self.c.pymongo_test.test,
                                'inline_map_reduce',
                                'function() { }', 'function() { }')
