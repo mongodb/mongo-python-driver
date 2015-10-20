@@ -592,15 +592,15 @@ class Database(common.BaseObject):
           - `include_all` (optional): if ``True`` also list currently
             idle operations in the result
         """
+        cmd = SON([("currentOp", 1), ("$all", include_all)])
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
-                return sock_info.command(
-                    "admin", SON([("currentOp", 1), ("$all", include_all)]))
+                return sock_info.command("admin", cmd)
             else:
                 spec = {"$all": True} if include_all else {}
                 x = helpers._first_batch(sock_info, "admin.$cmd.sys.inprog",
                     spec, -1, True, self.codec_options,
-                    ReadPreference.PRIMARY)
+                    ReadPreference.PRIMARY, cmd, self.client._event_listeners)
                 return x.get('data', [None])[0]
 
     def profiling_level(self):
