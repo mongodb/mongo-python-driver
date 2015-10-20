@@ -52,7 +52,7 @@ to install pymongo on platforms other than Windows::
 
 To get a specific version of pymongo::
 
-  $ pip install pymongo==2.8
+  $ pip install pymongo==3.0.3
 
 To upgrade using pip::
 
@@ -222,7 +222,7 @@ depending on your platform and the version of python you use to compile.
 Copy this file to the target system and issue the following command to install the
 package::
 
-  $ sudo easy_install pymongo-3.0-py2.7-linux-x86_64.egg
+  $ sudo easy_install pymongo-3.0.3-py2.7-linux-x86_64.egg
 
 Installing a beta or release candidate
 --------------------------------------
@@ -233,9 +233,9 @@ but can be found on the
 `github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
 They can be installed by passing the full URL for the tag to pip::
 
-  $ pip install https://github.com/mongodb/mongo-python-driver/archive/3.0rc1.tar.gz
+  $ pip install https://github.com/mongodb/mongo-python-driver/archive/3.1rc0.tar.gz
 
 or easy_install::
 
-  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/3.0rc1.tar.gz
+  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/3.1rc0.tar.gz
 
