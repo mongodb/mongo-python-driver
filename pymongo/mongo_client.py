@@ -1092,18 +1092,19 @@ class MongoClient(common.BaseObject):
     def unlock(self):
         """Unlock a previously locked server.
         """
+        cmd = {"fsyncUnlock": 1}
         with self._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
                 try:
-                    sock_info.command("admin", {"fsyncUnlock": 1})
+                    sock_info.command("admin", cmd)
                 except OperationFailure as exc:
                     # Ignore "DB not locked" to replicate old behavior
                     if exc.code != 125:
                         raise
             else:
                 helpers._first_batch(sock_info, "admin.$cmd.sys.unlock",
-                    {}, -1, True, self.codec_options, ReadPreference.PRIMARY)
-
+                    {}, -1, True, self.codec_options,
+                    ReadPreference.PRIMARY, cmd, self._event_listeners)
 
     def __enter__(self):
         return self

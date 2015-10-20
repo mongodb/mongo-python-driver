@@ -30,7 +30,7 @@ from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context, client_knobs
-from test.utils import single_client
+from test.utils import single_client, wait_until
 
 
 class EventListener(monitoring.CommandListener):
@@ -1247,6 +1247,29 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(started.command_name, succeeded.command_name)
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
+
+        if not client_context.is_mongos:
+            self.client.fsync(lock=True)
+            self.listener.results.clear()
+            self.client.unlock()
+            # Wait for async unlock...
+            wait_until(
+                lambda: not self.client.is_locked, "unlock the database")
+            started = results['started'][0]
+            succeeded = results['succeeded'][0]
+            self.assertEqual(0, len(results['failed']))
+            self.assertIsInstance(started, monitoring.CommandStartedEvent)
+            expected = {'fsyncUnlock': 1}
+            self.assertEqual(expected, started.command)
+            self.assertEqual('admin', started.database_name)
+            self.assertEqual('fsyncUnlock', started.command_name)
+            self.assertIsInstance(started.request_id, int)
+            self.assertEqual(self.client.address, started.connection_id)
+            self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
+            self.assertIsInstance(succeeded.duration_micros, int)
+            self.assertEqual(started.command_name, succeeded.command_name)
+            self.assertEqual(started.request_id, succeeded.request_id)
+            self.assertEqual(started.connection_id, succeeded.connection_id)
 
     def test_sensitive_commands(self):
         listeners = self.client._event_listeners
