@@ -1645,10 +1645,8 @@ class Collection(common.BaseObject):
             # Apply this Collection's read concern if $out is not in the
             # pipeline.
             if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
-                for stage in cmd['pipeline']:
-                    if '$out' in stage:
-                        result = self._command(sock_info, cmd, slave_ok)
-                        break
+                if pipeline and '$out' in pipeline[-1]:
+                    result = self._command(sock_info, cmd, slave_ok)
                 else:
                     result = self._command(sock_info, cmd, slave_ok,
                                            read_concern=self.read_concern)
