@@ -959,7 +959,7 @@ class MongoClient(common.BaseObject):
                     with server.get_socket(self.__all_credentials) as sock_info:
                         if (sock_info.max_wire_version >= 4 and
                                 namespace is not None):
-                            sock_info.command(db, spec, slave_ok=True)
+                            sock_info.command(db, spec)
                         else:
                             if publish:
                                 start = datetime.datetime.now()

@@ -302,7 +302,7 @@ class _GetMore(object):
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
 
-            return query(4, ns, 0, -1, spec, None, self.codec_options)
+            return query(0, ns, 0, -1, spec, None, self.codec_options)
 
         return get_more(ns, self.ntoreturn, self.cursor_id)
 
