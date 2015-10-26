@@ -196,14 +196,14 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
     return cmd
 
 
-def _gen_get_more_command(cursor_id, coll, batch_size, max_time_ms):
+def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms):
     """Generate a getMore command document."""
     cmd = SON([('getMore', cursor_id),
                ('collection', coll)])
     if batch_size:
         cmd['batchSize'] = batch_size
-    if max_time_ms:
-        cmd['maxTimeMS'] = max_time_ms
+    if max_await_time_ms is not None:
+        cmd['maxTimeMS'] = max_await_time_ms
     return cmd
 
 
@@ -274,24 +274,25 @@ class _Query(object):
 class _GetMore(object):
     """A getmore operation."""
 
-    __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_time_ms',
+    __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_await_time_ms',
                  'codec_options')
 
     name = 'getMore'
 
     def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
-                 max_time_ms=None):
+                 max_await_time_ms=None):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
         self.codec_options = codec_options
-        self.max_time_ms = max_time_ms
+        self.max_await_time_ms = max_await_time_ms
 
     def as_command(self):
         """Return a getMore command document for this query."""
         return _gen_get_more_command(self.cursor_id, self.coll,
-                                     self.ntoreturn, self.max_time_ms), self.db
+                                     self.ntoreturn,
+                                     self.max_await_time_ms), self.db
 
     def get_message(self, dummy0, dummy1, use_cmd=False):
         """Get a getmore message."""

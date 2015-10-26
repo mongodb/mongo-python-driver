@@ -154,6 +154,7 @@ class Cursor(object):
         self.__hint = None
         self.__comment = None
         self.__max_time_ms = None
+        self.__max_await_time_ms = None
         self.__max = None
         self.__min = None
         self.__manipulate = manipulate
@@ -244,10 +245,10 @@ class Cursor(object):
         """Internal clone helper."""
         clone = self._clone_base()
         values_to_clone = ("spec", "projection", "skip", "limit",
-                           "max_time_ms", "comment", "max", "min",
-                           "ordering", "explain", "hint", "batch_size",
-                           "max_scan", "manipulate", "query_flags",
-                           "modifiers")
+                           "max_time_ms", "max_await_time_ms", "comment",
+                           "max", "min", "ordering", "explain", "hint",
+                           "batch_size", "max_scan", "manipulate",
+                           "query_flags", "modifiers")
         data = dict((k, v) for k, v in iteritems(self.__dict__)
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
@@ -468,6 +469,35 @@ class Cursor(object):
         self.__check_okay_to_chain()
 
         self.__max_time_ms = max_time_ms
+        return self
+
+    def max_await_time_ms(self, max_await_time_ms):
+        """Specifies a time limit for a getMore operation on a
+        :attr:`~pymongo.CursorType.TAILABLE_AWAIT` cursor. For all other types
+        of cursor max_await_time_ms is ignored.
+
+        Raises :exc:`TypeError` if `max_await_time_ms` is not an integer or
+          ``None``.
+        Raises :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor`
+        has already been used.
+
+        .. note:: `max_await_time_ms` requires server version **>= 3.2**
+
+        :Parameters:
+          - `max_await_time_ms`: the time limit after which the operation is
+           aborted
+
+        .. versionadded:: 3.2
+        """
+        if (not isinstance(max_await_time_ms, integer_types)
+                and max_await_time_ms is not None):
+            raise TypeError("max_await_time_ms must be an integer or None")
+        self.__check_okay_to_chain()
+
+        # Ignore max_await_time_ms if not tailable or await_data is False.
+        if self.__query_flags & CursorType.TAILABLE_AWAIT:
+            self.__max_await_time_ms = max_await_time_ms
+
         return self
 
     def __getitem__(self, index):
@@ -1007,7 +1037,7 @@ class Cursor(object):
                                              limit,
                                              self.__id,
                                              self.__codec_options,
-                                             self.__max_time_ms))
+                                             self.__max_await_time_ms))
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
