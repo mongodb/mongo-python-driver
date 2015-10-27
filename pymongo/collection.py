@@ -433,9 +433,14 @@ class Collection(common.BaseObject):
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
 
-    def _legacy_write(
-            self, sock_info, name, cmd, acknowledged, op_id, func, *args):
+    def _legacy_write(self, sock_info, name, cmd, acknowledged, op_id,
+                      bypass_doc_val, func, *args):
         """Internal legacy write helper."""
+        # Cannot have both unacknowledged write and bypass document validation.
+        if (bypass_doc_val and not acknowledged and
+                    sock_info.max_wire_version >= 4):
+            raise OperationFailure("Cannot set bypass_document_validation with"
+                                   " unacknowledged write concern")
         listeners = self.database.client._event_listeners
         publish = listeners.enabled_for_commands
 
@@ -509,8 +514,8 @@ class Collection(common.BaseObject):
             # Legacy OP_INSERT.
             self._legacy_write(
                 sock_info, 'insert', command, acknowledged, op_id,
-                message.insert, self.__full_name, [doc], check_keys,
-                acknowledged, concern, False, self.codec_options)
+                bypass_doc_val, message.insert, self.__full_name, [doc],
+                check_keys, acknowledged, concern, False, self.codec_options)
         return doc.get('_id')
 
     def _insert(self, sock_info, docs, ordered=True, check_keys=True,
@@ -713,8 +718,9 @@ class Collection(common.BaseObject):
             # Legacy OP_UPDATE.
             return self._legacy_write(
                 sock_info, 'update', command, acknowledged, op_id,
-                message.update, self.__full_name, upsert, multi, criteria,
-                document, acknowledged, concern, check_keys, self.codec_options)
+                bypass_doc_val, message.update, self.__full_name, upsert,
+                multi, criteria, document, acknowledged, concern, check_keys,
+                self.codec_options)
 
     def replace_one(self, filter, replacement, upsert=False,
                     bypass_document_validation=False):
@@ -909,8 +915,8 @@ class Collection(common.BaseObject):
             # Legacy OP_DELETE.
             return self._legacy_write(
                 sock_info, 'delete', command, acknowledged, op_id,
-                message.delete, self.__full_name, criteria, acknowledged,
-                concern, self.codec_options, int(not multi))
+                False, message.delete, self.__full_name, criteria,
+                acknowledged, concern, self.codec_options, int(not multi))
 
     def delete_one(self, filter):
         """Delete a single document matching the filter.

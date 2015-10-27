@@ -757,6 +757,8 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.test.drop()
         db.create_collection("test", validator={"a": {"$exists": True}})
+        db_w0 = self.db.client.get_database(
+            self.db.name, write_concern=WriteConcern(w=0))
 
         # Test insert_one
         self.assertRaises(OperationFailure, db.test.insert_one,
@@ -768,6 +770,9 @@ class TestCollection(IntegrationTest):
         result = db.test.insert_one({"_id":2, "a":0})
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertEqual(2, result.inserted_id)
+
+        self.assertRaises(OperationFailure, db_w0.test.insert_one,
+                          {"x": 1}, bypass_document_validation=True)
 
         # Test insert_many
         docs = [{"_id": i, "x": 100 - i} for i in range(3, 100)]
@@ -792,12 +797,18 @@ class TestCollection(IntegrationTest):
             self.assertEqual(1, db.test.count({"a": doc["a"]}))
         self.assertTrue(result.acknowledged)
 
+        self.assertRaises(OperationFailure, db_w0.test.insert_many,
+                          [{"x": 1}, {"x": 2}],
+                          bypass_document_validation=True)
+
     @client_context.require_version_min(3, 1, 9, -1)
     @client_context.require_no_auth
     def test_replace_bypass_document_validation(self):
         db = self.db
         db.test.drop()
         db.create_collection("test", validator={"a": {"$exists": True}})
+        db_w0 = self.db.client.get_database(
+            self.db.name, write_concern=WriteConcern(w=0))
 
         # Test replace_one
         db.test.insert_one({"a": 101})
@@ -828,6 +839,9 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"x": 101}))
         self.assertEqual(1, db.test.count({"a": 103}))
 
+        self.assertRaises(OperationFailure, db_w0.test.replace_one, {"y": 1},
+                          {"x": 1}, bypass_document_validation=True)
+
     @client_context.require_version_min(3, 1, 9, -1)
     @client_context.require_no_auth
     def test_update_bypass_document_validation(self):
@@ -836,6 +850,8 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({"z": 5})
         db.command(SON([("collMod", "test"),
                         ("validator", {"z": {"$gte": 0}})]))
+        db_w0 = self.db.client.get_database(
+            self.db.name, write_concern=WriteConcern(w=0))
 
         # Test update_one
         self.assertRaises(OperationFailure, db.test.update_one,
@@ -865,6 +881,9 @@ class TestCollection(IntegrationTest):
                            bypass_document_validation=False)
         self.assertEqual(0, db.test.count({"z": -9}))
         self.assertEqual(1, db.test.count({"z": 0}))
+
+        self.assertRaises(OperationFailure, db_w0.test.update_one, {"y": 1},
+                          {"$inc": {"x": 1}}, bypass_document_validation=True)
 
         # Test update_many
         db.test.insert_many([{"z": i} for i in range(3, 101)])
@@ -899,12 +918,18 @@ class TestCollection(IntegrationTest):
         self.assertEqual(150, db.test.count({"z": {"$gte": 0}}))
         self.assertEqual(0, db.test.count({"z": {"$lt": 0}}))
 
+        self.assertRaises(OperationFailure, db_w0.test.update_many, {"y": 1},
+                          {"$inc": {"x": 1}}, bypass_document_validation=True)
+
     @client_context.require_version_min(3, 1, 9, -1)
     @client_context.require_no_auth
     def test_bypass_document_validation_bulk_write(self):
         db = self.db
         db.test.drop()
         db.create_collection("test", validator={"a": {"$gte": 0}})
+        db_w0 = self.db.client.get_database(
+            self.db.name, write_concern=WriteConcern(w=0))
+
         ops = [InsertOne({"a": -10}),
                InsertOne({"a": -11}),
                InsertOne({"a": -12}),
@@ -921,6 +946,9 @@ class TestCollection(IntegrationTest):
         # Assert that the operations would fail without bypass_doc_val
         for op in ops:
             self.assertRaises(BulkWriteError, db.test.bulk_write, [op])
+
+        self.assertRaises(OperationFailure, db_w0.test.bulk_write, ops,
+                          bypass_document_validation=True)
 
     def test_find_by_default_dct(self):
         db = self.db

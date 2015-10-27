@@ -314,6 +314,10 @@ class _Bulk(object):
     def execute_no_results(self, sock_info, generator):
         """Execute all operations, returning no results (w=0).
         """
+        # Cannot have both unacknowledged write and bypass document validation.
+        if self.bypass_doc_val and sock_info.max_wire_version >= 4:
+            raise OperationFailure("Cannot set bypass_document_validation with"
+                                   " unacknowledged write concern")
         coll = self.collection
         # If ordered is True we have to send GLE or use write
         # commands so we can abort on the first error.
