@@ -1928,6 +1928,7 @@ class Collection(common.BaseObject):
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
                                 allowable_errors=[_NO_OBJ_ERROR])
+            _check_write_command_response([(0, out)])
         return out.get("value")
 
     def find_one_and_delete(self, filter,
@@ -2300,6 +2301,7 @@ class Collection(common.BaseObject):
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
                                 allowable_errors=[_NO_OBJ_ERROR])
+            _check_write_command_response([(0, out)])
 
         if not out['ok']:
             if out["errmsg"] == _NO_OBJ_ERROR:
