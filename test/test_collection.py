@@ -1983,26 +1983,28 @@ class TestCollection(IntegrationTest):
                 results.clear()
 
                 # Test write concern errors.
-                c_wc_error = db.get_collection(
-                    'test',
-                    write_concern=WriteConcern(w=len(client_context.nodes) + 1))
-                self.assertRaises(
-                    WriteConcernError,
-                    c_wc_error.find_and_modify,
-                    {'_id': 1}, {'$set': {'foo': 'bar'}})
-                self.assertRaises(
-                    WriteConcernError,
-                    c_wc_error.find_one_and_update,
-                    {'_id': 1}, {'$set': {'foo': 'bar'}})
-                self.assertRaises(
-                    WriteConcernError,
-                    c_wc_error.find_one_and_replace,
-                    {'w': 0}, results['started'][0].command['writeConcern'])
-                self.assertRaises(
-                    WriteConcernError,
-                    c_wc_error.find_one_and_delete,
-                    {'w': 0}, results['started'][0].command['writeConcern'])
-                results.clear()
+                if client_context.is_rs:
+                    c_wc_error = db.get_collection(
+                        'test',
+                        write_concern=WriteConcern(
+                            w=len(client_context.nodes) + 1))
+                    self.assertRaises(
+                        WriteConcernError,
+                        c_wc_error.find_and_modify,
+                        {'_id': 1}, {'$set': {'foo': 'bar'}})
+                    self.assertRaises(
+                        WriteConcernError,
+                        c_wc_error.find_one_and_update,
+                        {'_id': 1}, {'$set': {'foo': 'bar'}})
+                    self.assertRaises(
+                        WriteConcernError,
+                        c_wc_error.find_one_and_replace,
+                        {'w': 0}, results['started'][0].command['writeConcern'])
+                    self.assertRaises(
+                        WriteConcernError,
+                        c_wc_error.find_one_and_delete,
+                        {'w': 0}, results['started'][0].command['writeConcern'])
+                    results.clear()
             else:
                 c_w0.find_and_modify(
                     {'_id': 1}, {'$set': {'foo': 'bar'}})
