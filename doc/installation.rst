@@ -209,7 +209,7 @@ PyMongo source directory::
   $ python setup.py bdist_egg
 
 The egg package can be found in the dist/ subdirectory. The file name will
-resemble “pymongo-3.0-py2.7-linux-x86_64.egg” but may have a different name
+resemble “pymongo-3.1-py2.7-linux-x86_64.egg” but may have a different name
 depending on your platform and the version of python you use to compile.
 
 .. warning::
@@ -222,7 +222,7 @@ depending on your platform and the version of python you use to compile.
 Copy this file to the target system and issue the following command to install the
 package::
 
-  $ sudo easy_install pymongo-3.0.3-py2.7-linux-x86_64.egg
+  $ sudo easy_install pymongo-3.1-py2.7-linux-x86_64.egg
 
 Installing a beta or release candidate
 --------------------------------------
