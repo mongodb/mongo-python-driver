@@ -25,8 +25,12 @@ except ImportError:
     pass
 
 try:
-    # Monotime or Python 3.3+.
-    from time import monotonic as time
+    # From https://pypi.python.org/pypi/monotinic.
+    from monotonic import monotonic as time
 except ImportError:
-    # Not monotonic.
-    from time import time
+    try:
+        # Monotime or Python 3.3+.
+        from time import monotonic as time
+    except ImportError:
+        # Not monotonic.
+        from time import time
