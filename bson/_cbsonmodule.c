@@ -1378,6 +1378,9 @@ int write_dict(PyObject* self, buffer_t buffer,
         Py_DECREF(key);
     }
     Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        return 0;
+    }
 
     /* write null byte and fill in length */
     if (!buffer_write_bytes(buffer, &zero, 1)) {
