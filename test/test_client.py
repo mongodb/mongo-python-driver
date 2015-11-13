@@ -206,19 +206,23 @@ class TestClient(IntegrationTest):
 
     def test_init_disconnected(self):
         c = rs_or_single_client(connect=False)
-
+        # is_primary causes client to block until connected
         self.assertIsInstance(c.is_primary, bool)
+
+        c = rs_or_single_client(connect=False)
         self.assertIsInstance(c.is_mongos, bool)
+        c = rs_or_single_client(connect=False)
         self.assertIsInstance(c.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
+        c = rs_or_single_client(connect=False)
         self.assertEqual(c.codec_options, CodecOptions())
         self.assertIsInstance(c.max_bson_size, int)
-        self.assertIsInstance(c.max_write_batch_size, int)
+        c = rs_or_single_client(connect=False)
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
-
-        c.pymongo_test.command('ismaster')  # Auto-connect.
+        c = rs_or_single_client(connect=False)
+        self.assertIsInstance(c.max_write_batch_size, int)
 
         if client_context.is_rs:
             # The primary's host and port are from the replica set config.
@@ -1058,14 +1062,9 @@ class TestClientLazyConnect(IntegrationTest):
         lazy_client_trial(reset, find_one, test, self._get_client)
 
     def test_max_bson_size(self):
-        # Client should have sane defaults before connecting, and should update
-        # its configuration once connected.
         c = self._get_client()
-        self.assertEqual(16 * (1024 ** 2), c.max_bson_size)
-        self.assertEqual(2 * c.max_bson_size, c.max_message_size)
 
-        # Make the client connect, so that it sets its max_bson_size and
-        # max_message_size attributes.
+        # max_bson_size will cause the client to connect.
         ismaster = c.db.command('ismaster')
         self.assertEqual(ismaster['maxBsonObjectSize'], c.max_bson_size)
         if 'maxMessageSizeBytes' in ismaster:

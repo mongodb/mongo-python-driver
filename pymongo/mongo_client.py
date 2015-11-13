@@ -480,22 +480,21 @@ class MongoClient(common.BaseObject):
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
 
-    def _server_property(self, attr_name, default=None):
+    def _server_property(self, attr_name):
         """An attribute of the current server's description.
 
-        Returns "default" while there is no current server, primary, or mongos.
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
 
         Not threadsafe if used multiple times in a single method, since
         the server may change. In such cases, store a local reference to a
         ServerDescription first, then use its properties.
         """
-        try:
-            server = self._topology.select_server(
-                writable_server_selector, server_selection_timeout=0)
+        server = self._topology.select_server(
+            writable_server_selector)
 
-            return getattr(server.description, attr_name)
-        except ConnectionFailure:
-            return default
+        return getattr(server.description, attr_name)
 
     @property
     def event_listeners(self):
@@ -513,15 +512,21 @@ class MongoClient(common.BaseObject):
         the client is load-balancing among mongoses, since there is no single
         address. Use :attr:`nodes` instead.
 
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
+
         .. versionadded:: 3.0
         """
-        try:
-            return self._topology.get_direct_or_primary()
-        except InvalidOperation:
-            # Only one case where Topology throws InvalidOperation.
+        topology_type = self._topology._description.topology_type
+        if topology_type == TOPOLOGY_TYPE.Sharded:
             raise InvalidOperation(
                 'Cannot use "address" property when load balancing among'
                 ' mongoses, use "nodes" instead.')
+        if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                                 TOPOLOGY_TYPE.Single):
+            return None
+        return self._server_property('address')
 
     @property
     def primary(self):
@@ -563,16 +568,20 @@ class MongoClient(common.BaseObject):
 
     @property
     def is_primary(self):
-        """If this client if connected to a server that can accept writes.
+        """If this client is connected to a server that can accept writes.
 
         True if the current server is a standalone, mongos, or the primary of
-        a replica set.
+        a replica set. If the client is not connected, this will block until a
+        connection is established or raise ServerSelectionTimeoutError if no
+        server is available.
         """
-        return self._server_property('is_writable', False)
+        return self._server_property('is_writable')
 
     @property
     def is_mongos(self):
-        """If this client is connected to mongos.
+        """If this client is connected to mongos. If the client is not
+        connected, this will block until a connection is established or raise
+        ServerSelectionTimeoutError if no server is available..
         """
         return self._server_property('server_type') == SERVER_TYPE.Mongos
 
@@ -605,28 +614,34 @@ class MongoClient(common.BaseObject):
     def max_bson_size(self):
         """The largest BSON object the connected server accepts in bytes.
 
-        Defaults to 16MB if not connected to a server.
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
         """
-        return self._server_property('max_bson_size', common.MAX_BSON_SIZE)
+        return self._server_property('max_bson_size')
 
     @property
     def max_message_size(self):
         """The largest message the connected server accepts in bytes.
 
-        Defaults to 32MB if not connected to a server.
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
         """
-        return self._server_property(
-            'max_message_size', common.MAX_MESSAGE_SIZE)
+        return self._server_property('max_message_size')
 
     @property
     def max_write_batch_size(self):
         """The maxWriteBatchSize reported by the server.
 
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
+
         Returns a default value when connected to server versions prior to
         MongoDB 2.6.
         """
-        return self._server_property(
-            'max_write_batch_size', common.MAX_WRITE_BATCH_SIZE)
+        return self._server_property('max_write_batch_size')
 
     @property
     def local_threshold_ms(self):

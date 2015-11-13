@@ -218,22 +218,6 @@ class Topology(object):
             descriptions = selector(self._description.known_servers)
             return set([d.address for d in descriptions])
 
-    def get_direct_or_primary(self):
-        """Return the address of a connected primary or standalone, or None.
-
-        Raise InvalidOperation for Sharded topologies.
-        """
-        # Implemented here in Topology instead of MongoClient, so it can lock.
-        with self._lock:
-            topology_type = self._description.topology_type
-            if topology_type == TOPOLOGY_TYPE.Sharded:
-                raise InvalidOperation()
-            if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                                     TOPOLOGY_TYPE.Single):
-                return None
-            descriptions = writable_server_selector(
-                self._description.known_servers)
-            return descriptions[0].address if descriptions else None
 
     def get_secondaries(self):
         """Return set of secondary addresses."""

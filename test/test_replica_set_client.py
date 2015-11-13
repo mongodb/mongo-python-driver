@@ -368,10 +368,6 @@ class TestReplicaSetClientMaxWriteBatchSize(MockClientTest):
         c.set_max_write_batch_size('a:1', 1)
         c.set_max_write_batch_size('b:2', 2)
 
-        # Starts with default max batch size.
-        self.assertEqual(1000, c.max_write_batch_size)
-        c.db.command('ismaster')  # Connect.
-
         # Uses primary's max batch size.
         self.assertEqual(c.max_write_batch_size, 1)
 

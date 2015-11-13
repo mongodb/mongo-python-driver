@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Changes in Version 3.2
+----------------------
+
+Version 3.2 implements the new server features introduced in MongoDB 3.2.
+
+Highlights include:
+
+- Certain MongoClient properties block until a connection is established or
+  raise ServerSelectionTimeoutError if no server is available. See
+  :class:`~pymongo.MongoClient` for details.
+
 Changes in Version 3.1.1
 ------------------------
 
