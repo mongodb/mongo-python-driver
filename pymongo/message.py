@@ -40,6 +40,9 @@ from pymongo.read_preferences import ReadPreference
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
 
+# Overhead allowed for encoded command documents.
+_COMMAND_OVERHEAD = 16382
+
 _INSERT = 0
 _UPDATE = 1
 _DELETE = 2
@@ -553,6 +556,19 @@ class _BulkWriteContext(object):
             request_id, self.sock_info.address, self.op_id)
 
 
+def _raise_document_too_large(operation, doc_size, max_size):
+    """Internal helper for raising DocumentTooLarge."""
+    if operation == "insert":
+        raise DocumentTooLarge("BSON document too large (%d bytes)"
+                               " - the connected server supports"
+                               " BSON document sizes up to %d"
+                               " bytes." % (doc_size, max_size))
+    else:
+        # There's nothing intelligent we can say
+        # about size for update and remove
+        raise DocumentTooLarge("command document too large")
+
+
 def _do_batched_insert(collection_name, docs, check_keys,
                        safe, last_error_args, continue_on_error, opts,
                        ctx):
@@ -608,11 +624,8 @@ def _do_batched_insert(collection_name, docs, check_keys,
                     raise
 
         if too_large:
-            raise DocumentTooLarge("BSON document too large (%d bytes)"
-                                   " - the connected server supports"
-                                   " BSON document sizes up to %d"
-                                   " bytes." %
-                                   (encoded_length, ctx.max_bson_size))
+            _raise_document_too_large(
+                "insert", encoded_length, ctx.max_bson_size)
 
         message_length = begin_loc + encoded_length
         data.seek(begin_loc)
@@ -641,7 +654,7 @@ def _do_batched_write_command(namespace, operation, command,
     max_write_batch_size = ctx.max_write_batch_size
     # Max BSON object size + 16k - 2 bytes for ending NUL bytes.
     # Server guarantees there is enough room: SERVER-10643.
-    max_cmd_size = max_bson_size + 16382
+    max_cmd_size = max_bson_size + _COMMAND_OVERHEAD
 
     ordered = command.get('ordered', True)
 
@@ -715,15 +728,9 @@ def _do_batched_write_command(namespace, operation, command,
         enough_documents = (idx >= max_write_batch_size)
         if enough_data or enough_documents:
             if not idx:
-                if operation == _INSERT:
-                    raise DocumentTooLarge("BSON document too large (%d bytes)"
-                                           " - the connected server supports"
-                                           " BSON document sizes up to %d"
-                                           " bytes." % (len(value),
-                                                        max_bson_size))
-                # There's nothing intelligent we can say
-                # about size for update and remove
-                raise DocumentTooLarge("command document too large")
+                write_op = "insert" if operation == _INSERT else None
+                _raise_document_too_large(
+                    write_op, len(value), max_bson_size)
             result = send_message()
             results.append((idx_offset, result))
             if ordered and "writeErrors" in result:

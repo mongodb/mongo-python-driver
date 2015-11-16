@@ -35,11 +35,13 @@ from pymongo import MongoClient
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import CursorType
-from pymongo.errors import (DuplicateKeyError,
+from pymongo.errors import (DocumentTooLarge,
+                            DuplicateKeyError,
                             InvalidDocument,
                             InvalidName,
                             InvalidOperation,
                             OperationFailure)
+from pymongo.message import _COMMAND_OVERHEAD
 from pymongo.operations import IndexModel
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (InsertOneResult,
@@ -658,6 +660,17 @@ class TestCollection(IntegrationTest):
         self.assertRaises(InvalidOperation, lambda: result.deleted_count)
         self.assertFalse(result.acknowledged)
         wait_until(lambda: 0 == db.test.count(), 'delete 2 documents')
+
+    def test_command_document_too_large(self):
+        large = '*' * (self.client.max_bson_size + _COMMAND_OVERHEAD)
+        coll = self.db.test
+        self.assertRaises(
+            DocumentTooLarge, coll.insert_one, {'data': large})
+        # update_one and update_many are the same
+        self.assertRaises(
+            DocumentTooLarge, coll.replace_one, {}, {'data': large})
+        self.assertRaises(
+            DocumentTooLarge, coll.delete_one, {'data': large})
 
     def test_find_by_default_dct(self):
         db = self.db

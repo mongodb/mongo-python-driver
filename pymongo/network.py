@@ -38,7 +38,7 @@ _UNPACK_INT = struct.Struct("<i").unpack
 def command(sock, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, check=True,
             allowable_errors=None, address=None,
-            check_keys=False, listeners=None):
+            check_keys=False, listeners=None, max_bson_size=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -54,6 +54,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `address`: the (host, port) of `sock`
       - `check_keys`: if True, check `spec` for invalid keys
       - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
+      - `max_bson_size`: The maximum encoded bson size for this server
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
@@ -67,8 +68,13 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     if publish:
         start = datetime.datetime.now()
 
-    request_id, msg, _ = message.query(flags, ns, 0, -1, spec,
-                                       None, codec_options, check_keys)
+    request_id, msg, size = message.query(flags, ns, 0, -1, spec,
+                                          None, codec_options, check_keys)
+
+    if (max_bson_size is not None
+            and size > max_bson_size + message._COMMAND_OVERHEAD):
+        message._raise_document_too_large(
+            name, size, max_bson_size + message._COMMAND_OVERHEAD)
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
