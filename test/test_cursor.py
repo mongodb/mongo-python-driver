@@ -122,17 +122,6 @@ class TestCursorNoConnect(unittest.TestCase):
         cursor.remove_option(32)
         self.assertEqual(2, cursor._Cursor__query_flags)
 
-        # Exhaust - which mongos doesn't support
-        cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
-        self.assertEqual(64, cursor._Cursor__query_flags)
-        cursor2 = self.db.test.find().add_option(64)
-        self.assertEqual(cursor._Cursor__query_flags,
-                         cursor2._Cursor__query_flags)
-        self.assertTrue(cursor._Cursor__exhaust)
-        cursor.remove_option(64)
-        self.assertEqual(0, cursor._Cursor__query_flags)
-        self.assertFalse(cursor._Cursor__exhaust)
-
         # Partial
         cursor = self.db.test.find(allow_partial_results=True)
         self.assertEqual(128, cursor._Cursor__query_flags)
@@ -141,6 +130,18 @@ class TestCursorNoConnect(unittest.TestCase):
                          cursor2._Cursor__query_flags)
         cursor.remove_option(128)
         self.assertEqual(0, cursor._Cursor__query_flags)
+
+        # Exhaust - which mongos doesn't support
+        if not self.db.client.is_mongos:
+            cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
+            self.assertEqual(64, cursor._Cursor__query_flags)
+            cursor2 = self.db.test.find().add_option(64)
+            self.assertEqual(cursor._Cursor__query_flags,
+                             cursor2._Cursor__query_flags)
+            self.assertTrue(cursor._Cursor__exhaust)
+            cursor.remove_option(64)
+            self.assertEqual(0, cursor._Cursor__query_flags)
+            self.assertFalse(cursor._Cursor__exhaust)
 
 
 class TestCursor(IntegrationTest):
