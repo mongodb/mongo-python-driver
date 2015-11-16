@@ -1043,7 +1043,7 @@ class TestBulkWriteConcern(BulkTestBase):
                       'op': {'_id': '...', 'a': 1}}]},
                 result)
 
-            self.assertEqual(2, len(result['writeConcernErrors']))
+            self.assertTrue(len(result['writeConcernErrors']) > 1)
             failed = result['writeErrors'][0]
             self.assertTrue("duplicate" in failed['errmsg'])
         finally:
