@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Version 2.9.1
+------------------------
+
+Version 2.9.1 fixes a very old error handling bug in the BSON C extensions and
+adapts a test case for a behavior change in MongoDB 3.2.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.9.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16208
+
 Changes in Version 2.9
 ----------------------
 
