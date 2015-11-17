@@ -4,9 +4,9 @@ Changelog
 Changes in Version 3.1.1
 ------------------------
 
-Version 3.1.1 fixes two issues reported since the release of 3.1, a very old error
-handling bug in the BSON C extensions and a regression in error handling for
-oversize command documents.
+Version 3.1.1 fixes a few issues reported since the release of 3.1, including a
+regression in error handling for oversize command documents and interrupt
+handling issues in the C extensions.
 
 Issues Resolved
 ...............
