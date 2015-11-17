@@ -2105,27 +2105,29 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
          * Calling _error clears the error state, so fetch it first.
          */
         PyErr_Fetch(&etype, &evalue, &etrace);
-        InvalidBSON = _error("InvalidBSON");
-        if (InvalidBSON) {
-            if (!PyErr_GivenExceptionMatches(etype, InvalidBSON)) {
-                /*
-                 * Raise InvalidBSON(str(e)).
-                 */
-                Py_DECREF(etype);
-                etype = InvalidBSON;
+        if (PyErr_GivenExceptionMatches(etype, PyExc_Exception)) {
+            InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                if (!PyErr_GivenExceptionMatches(etype, InvalidBSON)) {
+                    /*
+                     * Raise InvalidBSON(str(e)).
+                     */
+                    Py_DECREF(etype);
+                    etype = InvalidBSON;
 
-                if (evalue) {
-                    PyObject *msg = PyObject_Str(evalue);
-                    Py_DECREF(evalue);
-                    evalue = msg;
+                    if (evalue) {
+                        PyObject *msg = PyObject_Str(evalue);
+                        Py_DECREF(evalue);
+                        evalue = msg;
+                    }
+                    PyErr_NormalizeException(&etype, &evalue, &etrace);
+                } else {
+                    /*
+                     * The current exception matches InvalidBSON, so we don't
+                     * need this reference after all.
+                     */
+                    Py_DECREF(InvalidBSON);
                 }
-                PyErr_NormalizeException(&etype, &evalue, &etrace);
-            } else {
-                /*
-                 * The current exception matches InvalidBSON, so we don't need
-                 * this reference after all.
-                 */
-                Py_DECREF(InvalidBSON);
             }
         }
         /* Steals references to args. */
