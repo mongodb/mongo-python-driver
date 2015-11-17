@@ -4,7 +4,7 @@ Changelog
 Changes in Version 2.9.1
 ------------------------
 
-Version 2.9.1 fixes a very old error handling bug in the BSON C extensions and
+Version 2.9.1 fixes two interrupt handling issues in the C extensions and
 adapts a test case for a behavior change in MongoDB 3.2.
 
 Issues Resolved
