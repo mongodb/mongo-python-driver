@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.1.1
+------------------------
+
+Version 3.1.1 fixes two issues reported since the release of 3.1, a very old error
+handling bug in the BSON C extensions and a regression in error handling for
+oversize command documents.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.1.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.1.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16211
+
 Changes in Version 3.1
 ----------------------
 
