@@ -175,6 +175,8 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
                     for key, val in spec.items()])
         if '$explain' in cmd:
             cmd.pop('$explain')
+        if '$readPreference' in cmd:
+            cmd.pop('$readPreference')
     else:
         cmd['filter'] = spec
 
