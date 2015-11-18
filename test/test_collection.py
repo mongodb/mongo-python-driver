@@ -47,7 +47,7 @@ from pymongo.errors import (DocumentTooLarge,
                             InvalidOperation,
                             OperationFailure,
                             WriteConcernError)
-from pymongo.message import _COMMAND_OVERHEAD
+from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.operations import *
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (InsertOneResult,
@@ -2143,6 +2143,12 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(c.find_one()['r'], Regex))
         for doc in c.find():
             self.assertTrue(isinstance(doc['r'], Regex))
+
+    def test_find_command_generation(self):
+        cmd = _gen_find_command(
+            'coll', {'$query': {'foo': 1}, '$dumb': 2}, None, 0, 0, 0, None)
+        self.assertEqual(
+            cmd, SON([('find', 'coll'), ('$dumb', 2), ('filter', {'foo': 1})]))
 
 
 if __name__ == "__main__":

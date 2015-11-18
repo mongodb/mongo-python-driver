@@ -171,8 +171,10 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
-        cmd.update([(_MODIFIERS[key], val)
-                    for key, val in spec.items() if key in _MODIFIERS])
+        cmd.update([(_MODIFIERS[key], val) if key in _MODIFIERS else (key, val)
+                    for key, val in spec.items()])
+        if '$explain' in cmd:
+            cmd.pop('$explain')
     else:
         cmd['filter'] = spec
 
