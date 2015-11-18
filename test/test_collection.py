@@ -2148,7 +2148,10 @@ class TestCollection(IntegrationTest):
         cmd = _gen_find_command(
             'coll', {'$query': {'foo': 1}, '$dumb': 2}, None, 0, 0, 0, None)
         self.assertEqual(
-            cmd, SON([('find', 'coll'), ('$dumb', 2), ('filter', {'foo': 1})]))
+            cmd.to_dict(),
+            SON([('find', 'coll'),
+                 ('$dumb', 2),
+                 ('filter', {'foo': 1})]).to_dict())
 
 
 if __name__ == "__main__":
