@@ -8,9 +8,23 @@ Version 3.2 implements the new server features introduced in MongoDB 3.2.
 
 Highlights include:
 
-- Certain MongoClient properties block until a connection is established or
-  raise ServerSelectionTimeoutError if no server is available. See
-  :class:`~pymongo.MongoClient` for details.
+- Full support for MongoDB 3.2 including:
+
+  - Support for :class:`~pymongo.read_concern.ReadConcern`
+  - :class:`~pymongo.write_concern.WriteConcern` is now applied to
+    :meth:`~pymongo.collection.Collection.find_one_and_replace`,
+    :meth:`~pymongo.collection.Collection.find_one_and_update`, and
+    :meth:`~pymongo.collection.Collection.find_one_and_delete`.
+  - Support for the new `bypassDocumentValidation` option in write
+    helpers.
+
+- Support for reading and writing raw BSON with
+  :class:`~bson.raw_bson.RawBSONDocument`
+
+.. note:: Certain :class:`~pymongo.mongo_client.MongoClient` properties now
+  block until a connection is established or raise
+  :exc:`~pymongo.errors.ServerSelectionTimeoutError` if no server is available.
+  See :class:`~pymongo.mongo_client.MongoClient` for details.
 
 Changes in Version 3.1.1
 ------------------------

@@ -43,6 +43,7 @@ Sub-modules:
    mongo_replica_set_client
    operations
    pool
+   read_concern
    read_preferences
    results
    son_manipulator

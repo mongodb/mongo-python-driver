@@ -473,19 +473,18 @@ class Cursor(object):
 
     def max_await_time_ms(self, max_await_time_ms):
         """Specifies a time limit for a getMore operation on a
-        :attr:`~pymongo.CursorType.TAILABLE_AWAIT` cursor. For all other types
-        of cursor max_await_time_ms is ignored.
+        :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
+        types of cursor max_await_time_ms is ignored.
 
         Raises :exc:`TypeError` if `max_await_time_ms` is not an integer or
-          ``None``.
-        Raises :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor`
-        has already been used.
+        ``None``. Raises :exc:`~pymongo.errors.InvalidOperation` if this
+        :class:`Cursor` has already been used.
 
         .. note:: `max_await_time_ms` requires server version **>= 3.2**
 
         :Parameters:
           - `max_await_time_ms`: the time limit after which the operation is
-           aborted
+            aborted
 
         .. versionadded:: 3.2
         """

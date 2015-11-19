@@ -11,7 +11,6 @@ Sub-modules:
    :maxdepth: 2
 
    binary
-   regex
    code
    codec_options
    dbref
@@ -21,6 +20,8 @@ Sub-modules:
    max_key
    min_key
    objectid
+   raw_bson
+   regex
    son
    timestamp
    tz_util
