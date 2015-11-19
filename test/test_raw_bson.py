@@ -1,13 +1,11 @@
 import datetime
 import uuid
 
-import pymongo
-
 from bson import BSON
 from bson.binary import JAVA_LEGACY
 from bson.codec_options import CodecOptions
 from bson.raw_bson import RawBSONDocument
-from test import client_context, unittest, pair
+from test import client_context, unittest
 
 
 class TestRawBSONDocument(unittest.TestCase):
@@ -22,9 +20,13 @@ class TestRawBSONDocument(unittest.TestCase):
     )
     document = RawBSONDocument(bson_string)
 
+    @classmethod
+    def setUpClass(cls):
+        cls.client = client_context.rs_or_standalone_client
+
     def tearDown(self):
         if client_context.connected:
-            client_context.client.pymongo_test.test_raw.drop()
+            self.client.pymongo_test.test_raw.drop()
 
     def test_decode(self):
         self.assertEqual('Sherlock', self.document['name'])
@@ -37,9 +39,11 @@ class TestRawBSONDocument(unittest.TestCase):
 
     @client_context.require_connection
     def test_round_trip(self):
-        client = pymongo.MongoClient(pair, document_class=RawBSONDocument)
-        client.pymongo_test.test_raw.insert_one(self.document)
-        result = client.pymongo_test.test_raw.find_one(self.document['_id'])
+        db = self.client.get_database(
+            'pymongo_test',
+            codec_options=CodecOptions(document_class=RawBSONDocument))
+        db.test_raw.insert_one(self.document)
+        result = db.test_raw.find_one(self.document['_id'])
         self.assertIsInstance(result, RawBSONDocument)
         self.assertEqual(dict(self.document.items()), dict(result.items()))
 
@@ -65,7 +69,7 @@ class TestRawBSONDocument(unittest.TestCase):
             'date': datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
             '_id': uuid.UUID('026fab8f-975f-4965-9fbf-85ad874c60ff')
         }
-        db = pymongo.MongoClient(pair).pymongo_test
+        db = self.client.pymongo_test
         coll = db.get_collection(
             'test_raw',
             codec_options=CodecOptions(uuid_representation=JAVA_LEGACY))
@@ -80,7 +84,7 @@ class TestRawBSONDocument(unittest.TestCase):
     @client_context.require_connection
     def test_raw_bson_document_embedded(self):
         doc = {'embedded': self.document}
-        db = client_context.client.pymongo_test
+        db = self.client.pymongo_test
         db.test_raw.insert_one(doc)
         result = db.test_raw.find_one()
         self.assertEqual(BSON(self.document.raw).decode(), result['embedded'])
