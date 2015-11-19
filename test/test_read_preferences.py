@@ -140,7 +140,6 @@ class TestSingleSlaveOk(TestReadPreferencesBase):
 
         # Test some "magic" namespace helpers.
         self.assertIsNotNone(db.current_op())
-        client.unlock()  # No error.
 
 
 class TestReadPreferences(TestReadPreferencesBase):
