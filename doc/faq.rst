@@ -77,12 +77,13 @@ Does PyMongo support Python 3?
 
 PyMongo supports Python 3.x where x >= 2. See the :doc:`python3` for details.
 
-Does PyMongo support asynchronous frameworks like Gevent, Tornado, or Twisted?
-------------------------------------------------------------------------------
+Does PyMongo support asynchronous frameworks like Gevent, asyncio, Tornado, or Twisted?
+---------------------------------------------------------------------------------------
 
 PyMongo fully supports :doc:`Gevent <examples/gevent>`.
 
-To use MongoDB with `Tornado <http://www.tornadoweb.org/>`_ see the
+To use MongoDB with `asyncio <https://docs.python.org/3/library/asyncio.html>`
+or `Tornado <http://www.tornadoweb.org/>`_, see the
 `Motor <https://github.com/mongodb/motor>`_ project.
 
 For `Twisted <http://twistedmatrix.com/>`_, see `TxMongo
