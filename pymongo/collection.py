@@ -1802,6 +1802,7 @@ class Collection(common.BaseObject):
 
         command_kwargs = {
             'pipeline': pipeline,
+            'codec_options': self.codec_options,
             'read_preference': self.read_preference,
             'tag_sets': self.tag_sets,
             'secondary_acceptable_latency_ms': (
