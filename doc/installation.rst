@@ -36,27 +36,21 @@ packages:
   of Python 3 beginning with Python 3.2.0 on operating systems other than
   Windows.
 
-Microsoft Windows
------------------
-
-We recommend using the `MS Windows installers` available from the `Python
-Package Index <http://pypi.python.org/pypi/pymongo/>`_.
-
 Installing with pip
 -------------------
 
-To use `pip <http://pypi.python.org/pypi/pip>`_
-to install pymongo on platforms other than Windows::
+We recommend using `pip <http://pypi.python.org/pypi/pip>`_
+to install pymongo on all platforms::
 
-  $ pip install pymongo
+  $ python -m pip install pymongo
 
 To get a specific version of pymongo::
 
-  $ pip install pymongo==3.0.3
+  $ python -m pip install pymongo==3.1.1
 
 To upgrade using pip::
 
-  $ pip install --upgrade pymongo
+  $ python -m pip install --upgrade pymongo
 
 .. note::
   pip does not support installing python packages in .egg format. If you would
@@ -69,11 +63,11 @@ Installing with easy_install
 To use ``easy_install`` from
 `setuptools <http://pypi.python.org/pypi/setuptools>`_ do::
 
-  $ easy_install pymongo
+  $ python -m easy_install pymongo
 
 To upgrade do::
 
-  $ easy_install -U pymongo
+  $ python -m easy_install -U pymongo
 
 Dependencies for installing C Extensions on Unix
 ------------------------------------------------
@@ -94,13 +88,22 @@ Fedora, etc.) should issue the following command::
 
   $ sudo yum install gcc python-devel
 
-OSX
----
+Installing from source
+----------------------
 
-MongoDB, Inc. provides PyMongo in .egg format for Apple provided Python
-versions on OSX 10.7 and newer (usually 2.6 and 2.7). If you want
-to install PyMongo for other Python versions (or from source) you will have to
-install the following to build the C extensions:
+If you'd rather install directly from the source (i.e. to stay on the
+bleeding edge), install the C extension dependencies then check out the
+latest source from github and install the driver from the resulting tree::
+
+  $ git clone git://github.com/mongodb/mongo-python-driver.git pymongo
+  $ cd pymongo/
+  $ python setup.py install
+
+Installing from source on OSX
+.............................
+
+If you want to install PyMongo from source on OSX you will have to install the
+following to build the C extensions:
 
 **Snow Leopard (10.6)** - Xcode 3 with 'UNIX Development Support'.
 
@@ -142,42 +145,29 @@ There are workarounds::
   # or pip
   $ CFLAGS=-Qunused-arguments pip install pymongo
 
-Installing from source
-----------------------
-
-If you'd rather install directly from the source (i.e. to stay on the
-bleeding edge), install the C extension dependencies then check out the
-latest source from github and install the driver from the resulting tree::
-
-  $ git clone git://github.com/mongodb/mongo-python-driver.git pymongo
-  $ cd pymongo/
-  $ python setup.py install
-
 
 Installing from source on Windows
 .................................
 
-.. note::
-
-  MongoDB, Inc. provides pre-built exe installers for 32-bit and 64-bit
-  Windows. We recommend that users install those packages (`available from
-  pypi <http://pypi.python.org/pypi/pymongo/>`_).
-
 If you want to install PyMongo with C extensions from source the following
-directions apply to both CPython and ActiveState's ActivePython:
+requirements apply to both CPython and ActiveState's ActivePython:
 
 64-bit Windows
 ~~~~~~~~~~~~~~
 
-For Python 3.3 and newer install Visual Studio 2010. For Python 3.2 and older
-install Visual Studio 2008. In either case you must use the full version as
-Visual C++ Express does not provide 64-bit compilers. Make sure that you check
-the "x64 Compilers and Tools" option under Visual C++.
+For Python 3.5 and newer install Visual Studio 2015. For Python 3.3 and 3.4
+install Visual Studio 2010. For Python 3.2 and older install Visual Studio
+2008, or the Microsoft Visual C++ Compiler for Python 2.7. You must use the
+full version of Visual Studio 2010 or 2008 as Visual C++ Express does not
+provide 64-bit compilers. Make sure that you check the "x64 Compilers and
+Tools" option under Visual C++.
 
 32-bit Windows
 ~~~~~~~~~~~~~~
 
-For Python 3.3 and newer install Visual C++ 2010 Express.
+For Python 3.5 and newer install Visual Studio 2015.
+
+For Python 3.3 and 3.4 install Visual C++ 2010 Express.
 
 For Python 2.6 through 3.2 install Visual C++ 2008 Express SP1.
 
@@ -222,7 +212,7 @@ depending on your platform and the version of python you use to compile.
 Copy this file to the target system and issue the following command to install the
 package::
 
-  $ sudo easy_install pymongo-3.1-py2.7-linux-x86_64.egg
+  $ sudo python -m easy_install pymongo-3.1-py2.7-linux-x86_64.egg
 
 Installing a beta or release candidate
 --------------------------------------
@@ -233,9 +223,9 @@ but can be found on the
 `github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
 They can be installed by passing the full URL for the tag to pip::
 
-  $ pip install https://github.com/mongodb/mongo-python-driver/archive/3.2rc0.tar.gz
+  $ python -m pip install https://github.com/mongodb/mongo-python-driver/archive/3.2rc0.tar.gz
 
 or easy_install::
 
-  $ easy_install https://github.com/mongodb/mongo-python-driver/archive/3.2rc0.tar.gz
+  $ python -m easy_install https://github.com/mongodb/mongo-python-driver/archive/3.2rc0.tar.gz
 
