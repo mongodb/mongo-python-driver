@@ -468,6 +468,10 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
             read_preference=ReadPreference.SECONDARY)
 
         fs = gridfs.GridFS(rsc.pymongo_test)
+
+        gin = fs.new_file()
+        self.assertEqual(gin._coll.read_preference, ReadPreference.PRIMARY)
+
         oid = fs.put(b'foo')
         content = fs.get(oid).read()
         self.assertEqual(b'foo', content)

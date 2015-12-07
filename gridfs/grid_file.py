@@ -29,6 +29,7 @@ from pymongo.cursor import Cursor
 from pymongo.errors import (ConfigurationError,
                             DuplicateKeyError,
                             OperationFailure)
+from pymongo.read_preferences import ReadPreference
 
 try:
     _SEEK_SET = os.SEEK_SET
@@ -155,12 +156,15 @@ class GridIn(object):
         if "chunk_size" in kwargs:
             kwargs["chunkSize"] = kwargs.pop("chunk_size")
 
+        coll = root_collection.with_options(
+            read_preference=ReadPreference.PRIMARY)
+
         kwargs['md5'] = md5()
         # Defaults
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
-        object.__setattr__(self, "_coll", root_collection)
-        object.__setattr__(self, "_chunks", root_collection.chunks)
+        object.__setattr__(self, "_coll", coll)
+        object.__setattr__(self, "_chunks", coll.chunks)
         object.__setattr__(self, "_file", kwargs)
         object.__setattr__(self, "_buffer", StringIO())
         object.__setattr__(self, "_position", 0)
