@@ -369,6 +369,56 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(0, self.db.fs.chunks.count(
             {"files_id": gin._id}))
 
+    def test_download_to_stream(self):
+        file1 = StringIO(b"hello world")
+        # Test with one chunk.
+        oid = self.fs.upload_from_stream("one_chunk", file1)
+        self.assertEqual(1, self.db.fs.chunks.count())
+        file2 = StringIO()
+        self.fs.download_to_stream(oid, file2)
+        file1.seek(0)
+        file2.seek(0)
+        self.assertEqual(file1.read(), file2.read())
+
+        # Test with many chunks.
+        self.db.drop_collection("fs.files")
+        self.db.drop_collection("fs.chunks")
+        file1.seek(0)
+        oid = self.fs.upload_from_stream("many_chunks",
+                                         file1,
+                                         chunk_size_bytes=1)
+        self.assertEqual(11, self.db.fs.chunks.count())
+        file2 = StringIO()
+        self.fs.download_to_stream(oid, file2)
+        file1.seek(0)
+        file2.seek(0)
+        self.assertEqual(file1.read(), file2.read())
+
+    def test_download_to_stream_by_name(self):
+        file1 = StringIO(b"hello world")
+        # Test with one chunk.
+        oid = self.fs.upload_from_stream("one_chunk", file1)
+        self.assertEqual(1, self.db.fs.chunks.count())
+        file2 = StringIO()
+        self.fs.download_to_stream_by_name("one_chunk", file2)
+        file1.seek(0)
+        file2.seek(0)
+        self.assertEqual(file1.read(), file2.read())
+
+        # Test with many chunks.
+        self.db.drop_collection("fs.files")
+        self.db.drop_collection("fs.chunks")
+        file1.seek(0)
+        self.fs.upload_from_stream("many_chunks", file1, chunk_size_bytes=1)
+        self.assertEqual(11, self.db.fs.chunks.count())
+
+        file2 = StringIO()
+        self.fs.download_to_stream_by_name("many_chunks", file2)
+        file1.seek(0)
+        file2.seek(0)
+        self.assertEqual(file1.read(), file2.read())
+
+
 class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
 
     def test_gridfs_replica_set(self):

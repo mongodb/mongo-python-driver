@@ -525,7 +525,7 @@ class GridFSBucket(object):
           # Get _id of file to read
           file_id = fs.upload_from_stream("test_file", "data I want to store!")
           # Get file to write to
-          file = open('myfile','rw')
+          file = open('myfile','rwb')
           fs.download_to_stream(file_id, file)
           contents = file.read()
 
@@ -536,7 +536,8 @@ class GridFSBucket(object):
           -`destination`: a file-like object implementing :meth:`write`.
         """
         gout = self.open_download_stream(file_id)
-        destination.write(gout)
+        for chunk in gout:
+            destination.write(chunk)
 
     def delete(self, file_id):
         """Given an file_id, delete this stored file's files collection document
@@ -663,7 +664,7 @@ class GridFSBucket(object):
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
           # Get file to write to
-          file = open('myfile','w')
+          file = open('myfile','wb')
           fs.download_to_stream_by_name("test_file", file)
 
         Raises :exc:`~gridfs.errors.NoFile` if no such version of
@@ -687,8 +688,8 @@ class GridFSBucket(object):
           -1 = the most recent revision
         """
         gout = self.open_download_stream_by_name(filename, revision)
-
-        destination.write(gout)
+        for chunk in gout:
+            destination.write(chunk)
 
     def rename(self, file_id, new_filename):
         """Renames the stored file with the specified file_id.
