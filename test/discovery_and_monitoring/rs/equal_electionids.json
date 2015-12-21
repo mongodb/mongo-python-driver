@@ -7,6 +7,7 @@
                     "a:27017": {
                         "electionId": null, 
                         "setName": null, 
+                        "setVersion": null, 
                         "type": "Unknown"
                     }, 
                     "b:27017": {
@@ -14,6 +15,7 @@
                             "$oid": "000000000000000000000001"
                         }, 
                         "setName": "rs", 
+                        "setVersion": 1, 
                         "type": "RSPrimary"
                     }
                 }, 
@@ -33,7 +35,8 @@
                         ], 
                         "ismaster": true, 
                         "ok": 1, 
-                        "setName": "rs"
+                        "setName": "rs", 
+                        "setVersion": 1
                     }
                 ], 
                 [
@@ -48,7 +51,8 @@
                         ], 
                         "ismaster": true, 
                         "ok": 1, 
-                        "setName": "rs"
+                        "setName": "rs", 
+                        "setVersion": 1
                     }
                 ]
             ]

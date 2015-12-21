@@ -33,6 +33,7 @@ class TopologyDescription(object):
             topology_type,
             server_descriptions,
             replica_set_name,
+            max_set_version,
             max_election_id):
         """Represent a topology of servers.
 
@@ -41,11 +42,13 @@ class TopologyDescription(object):
           - `server_descriptions`: dict of (address, ServerDescription) for
             all seeds
           - `replica_set_name`: replica set name or None
+          - `max_set_version`: greatest setVersion seen from a primary, or None
           - `max_election_id`: greatest electionId seen from a primary, or None
         """
         self._topology_type = topology_type
         self._replica_set_name = replica_set_name
         self._server_descriptions = server_descriptions
+        self._max_set_version = max_set_version
         self._max_election_id = max_election_id
 
         # Is PyMongo compatible with all servers' wire protocols?
@@ -107,6 +110,7 @@ class TopologyDescription(object):
             topology_type,
             sds,
             self._replica_set_name,
+            self._max_set_version,
             self._max_election_id)
 
     def server_descriptions(self):
@@ -121,6 +125,11 @@ class TopologyDescription(object):
     def replica_set_name(self):
         """The replica set name."""
         return self._replica_set_name
+
+    @property
+    def max_set_version(self):
+        """Greatest setVersion seen from a primary, or None."""
+        return self._max_set_version
 
     @property
     def max_election_id(self):
@@ -162,6 +171,7 @@ def updated_topology_description(topology_description, server_description):
     # TopologyDescription.
     topology_type = topology_description.topology_type
     set_name = topology_description.replica_set_name
+    max_set_version = topology_description.max_set_version
     max_election_id = topology_description.max_election_id
     server_type = server_description.server_type
 
@@ -177,6 +187,7 @@ def updated_topology_description(topology_description, server_description):
             TOPOLOGY_TYPE.Single,
             sds,
             set_name,
+            max_set_version,
             max_election_id)
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
@@ -195,8 +206,14 @@ def updated_topology_description(topology_description, server_description):
             sds.pop(address)
 
         elif server_type == SERVER_TYPE.RSPrimary:
-            topology_type, set_name, max_election_id = _update_rs_from_primary(
-                sds, set_name, server_description, max_election_id)
+            (topology_type,
+             set_name,
+             max_set_version,
+             max_election_id) = _update_rs_from_primary(sds,
+                                                        set_name,
+                                                        server_description,
+                                                        max_set_version,
+                                                        max_election_id)
 
         elif server_type in (
                 SERVER_TYPE.RSSecondary,
@@ -211,8 +228,14 @@ def updated_topology_description(topology_description, server_description):
             topology_type = _check_has_primary(sds)
 
         elif server_type == SERVER_TYPE.RSPrimary:
-            topology_type, set_name, max_election_id = _update_rs_from_primary(
-                sds, set_name, server_description, max_election_id)
+            (topology_type,
+             set_name,
+             max_set_version,
+             max_election_id) = _update_rs_from_primary(sds,
+                                                        set_name,
+                                                        server_description,
+                                                        max_set_version,
+                                                        max_election_id)
 
         elif server_type in (
                 SERVER_TYPE.RSSecondary,
@@ -226,21 +249,27 @@ def updated_topology_description(topology_description, server_description):
             topology_type = _check_has_primary(sds)
 
     # Return updated copy.
-    return TopologyDescription(topology_type, sds, set_name, max_election_id)
+    return TopologyDescription(topology_type,
+                               sds,
+                               set_name,
+                               max_set_version,
+                               max_election_id)
 
 
 def _update_rs_from_primary(
         sds,
         replica_set_name,
         server_description,
+        max_set_version,
         max_election_id):
     """Update topology description from a primary's ismaster response.
 
     Pass in a dict of ServerDescriptions, current replica set name, the
     ServerDescription we are processing, and the TopologyDescription's
-    max_election_id if any.
+    max_set_version and max_election_id if any.
 
-    Returns (new topology type, new replica_set_name, new max_election_id).
+    Returns (new topology type, new replica_set_name, new max_set_version,
+    new max_election_id).
     """
     if replica_set_name is None:
         replica_set_name = server_description.replica_set_name
@@ -249,16 +278,31 @@ def _update_rs_from_primary(
         # We found a primary but it doesn't have the replica_set_name
         # provided by the user.
         sds.pop(server_description.address)
-        return _check_has_primary(sds), replica_set_name, max_election_id
+        return (_check_has_primary(sds),
+                replica_set_name,
+                max_set_version,
+                max_election_id)
 
-    if server_description.election_id is not None:
-        if max_election_id and max_election_id > server_description.election_id:
+    max_election_tuple = max_set_version, max_election_id
+    if None not in server_description.election_tuple:
+        if (None not in max_election_tuple and
+                max_election_tuple > server_description.election_tuple):
+
             # Stale primary, set to type Unknown.
             address = server_description.address
             sds[address] = ServerDescription(address)
-            return _check_has_primary(sds), replica_set_name, max_election_id
+            return (_check_has_primary(sds),
+                    replica_set_name,
+                    max_set_version,
+                    max_election_id)
 
         max_election_id = server_description.election_id
+
+    if (server_description.set_version is not None and
+        (max_set_version is None or
+            server_description.set_version > max_set_version)):
+
+        max_set_version = server_description.set_version
 
     # We've heard from the primary. Is it the same primary as before?
     for server in sds.values():
@@ -282,7 +326,10 @@ def _update_rs_from_primary(
 
     # If the host list differs from the seed list, we may not have a primary
     # after all.
-    return _check_has_primary(sds), replica_set_name, max_election_id
+    return (_check_has_primary(sds),
+            replica_set_name,
+            max_set_version,
+            max_election_id)
 
 
 def _update_rs_with_primary_from_member(

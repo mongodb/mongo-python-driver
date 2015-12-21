@@ -1,5 +1,5 @@
 {
-    "description": "New primary with greater setVersion and electionId", 
+    "description": "Record max setVersion, even from primary without electionId", 
     "phases": [
         {
             "outcome": {
@@ -49,11 +49,8 @@
                         "type": "Unknown"
                     }, 
                     "b:27017": {
-                        "electionId": {
-                            "$oid": "000000000000000000000002"
-                        }, 
                         "setName": "rs", 
-                        "setVersion": 1, 
+                        "setVersion": 2, 
                         "type": "RSPrimary"
                     }
                 }, 
@@ -64,9 +61,6 @@
                 [
                     "b:27017", 
                     {
-                        "electionId": {
-                            "$oid": "000000000000000000000002"
-                        }, 
                         "hosts": [
                             "a:27017", 
                             "b:27017"
@@ -74,7 +68,7 @@
                         "ismaster": true, 
                         "ok": 1, 
                         "setName": "rs", 
-                        "setVersion": 1
+                        "setVersion": 2
                     }
                 ]
             ]
@@ -88,11 +82,8 @@
                         "type": "Unknown"
                     }, 
                     "b:27017": {
-                        "electionId": {
-                            "$oid": "000000000000000000000002"
-                        }, 
                         "setName": "rs", 
-                        "setVersion": 1, 
+                        "setVersion": 2, 
                         "type": "RSPrimary"
                     }
                 }, 
@@ -104,7 +95,7 @@
                     "a:27017", 
                     {
                         "electionId": {
-                            "$oid": "000000000000000000000001"
+                            "$oid": "000000000000000000000002"
                         }, 
                         "hosts": [
                             "a:27017", 

@@ -148,6 +148,14 @@ def check_outcome(self, topology, outcome):
             expected_server['setName'],
             actual_server_description.replica_set_name)
 
+        self.assertEqual(
+            expected_server.get('setVersion'),
+            actual_server_description.set_version)
+
+        self.assertEqual(
+            expected_server.get('electionId'),
+            actual_server_description.election_id)
+
     self.assertEqual(outcome['setName'], topology.description.replica_set_name)
     expected_topology_type = getattr(TOPOLOGY_TYPE, outcome['topologyType'])
     self.assertEqual(topology_type_name(expected_topology_type),

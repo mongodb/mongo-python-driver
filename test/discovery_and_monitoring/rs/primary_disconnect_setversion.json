@@ -1,5 +1,5 @@
 {
-    "description": "Disconnected from primary, reject primary with stale electionId", 
+    "description": "Disconnected from primary, reject primary with stale setVersion", 
     "phases": [
         {
             "outcome": {
@@ -11,10 +11,10 @@
                     }, 
                     "b:27017": {
                         "electionId": {
-                            "$oid": "000000000000000000000002"
+                            "$oid": "000000000000000000000001"
                         }, 
                         "setName": "rs", 
-                        "setVersion": 1, 
+                        "setVersion": 2, 
                         "type": "RSPrimary"
                     }
                 }, 
@@ -42,7 +42,7 @@
                     "b:27017", 
                     {
                         "electionId": {
-                            "$oid": "000000000000000000000002"
+                            "$oid": "000000000000000000000001"
                         }, 
                         "hosts": [
                             "a:27017", 
@@ -51,7 +51,7 @@
                         "ismaster": true, 
                         "ok": 1, 
                         "setName": "rs", 
-                        "setVersion": 1
+                        "setVersion": 2
                     }
                 ]
             ]
@@ -121,10 +121,10 @@
                 "servers": {
                     "a:27017": {
                         "electionId": {
-                            "$oid": "000000000000000000000003"
+                            "$oid": "000000000000000000000002"
                         }, 
                         "setName": "rs", 
-                        "setVersion": 1, 
+                        "setVersion": 2, 
                         "type": "RSPrimary"
                     }, 
                     "b:27017": {
@@ -141,7 +141,7 @@
                     "a:27017", 
                     {
                         "electionId": {
-                            "$oid": "000000000000000000000003"
+                            "$oid": "000000000000000000000002"
                         }, 
                         "hosts": [
                             "a:27017", 
@@ -150,7 +150,7 @@
                         "ismaster": true, 
                         "ok": 1, 
                         "setName": "rs", 
-                        "setVersion": 1
+                        "setVersion": 2
                     }
                 ]
             ]
@@ -160,10 +160,10 @@
                 "servers": {
                     "a:27017": {
                         "electionId": {
-                            "$oid": "000000000000000000000003"
+                            "$oid": "000000000000000000000002"
                         }, 
                         "setName": "rs", 
-                        "setVersion": 1, 
+                        "setVersion": 2, 
                         "type": "RSPrimary"
                     }, 
                     "b:27017": {

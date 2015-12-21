@@ -43,6 +43,7 @@ class Topology(object):
             topology_settings.get_topology_type(),
             topology_settings.get_server_descriptions(),
             topology_settings.replica_set_name,
+            None,
             None)
 
         self._description = topology_description
