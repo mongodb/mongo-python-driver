@@ -31,6 +31,7 @@ except ImportError:
     _HAS_POLL = False
 
 from pymongo import helpers, message
+from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 
@@ -115,7 +116,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     return response_doc
 
 
-def receive_message(sock, operation, request_id):
+def receive_message(
+        sock, operation, request_id, max_message_size=MAX_MESSAGE_SIZE):
     """Receive a raw BSON message or raise socket.error."""
     header = _receive_data_on_socket(sock, 16)
     length = _UNPACK_INT(header[:4])[0]
@@ -132,6 +134,10 @@ def receive_message(sock, operation, request_id):
 
     assert length > 16, ("wire protocol error: message length is shorter"
                          " than standard message header: %r" % (length,))
+
+    assert length <= max_message_size, (
+        "wire protocol error: message length (%r) is larger than server max "
+        "message size (%r)" % (length, max_message_size))
 
     return _receive_data_on_socket(sock, length - 16)
 

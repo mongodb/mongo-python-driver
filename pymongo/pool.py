@@ -20,6 +20,7 @@ import threading
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import u, itervalues
 from pymongo import auth, helpers, thread_util
+from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             ConfigurationError,
@@ -165,7 +166,8 @@ class SocketInfo(object):
         self.is_writable = ismaster.is_writable if ismaster else None
         self.max_wire_version = ismaster.max_wire_version if ismaster else None
         self.max_bson_size = ismaster.max_bson_size if ismaster else None
-        self.max_message_size = ismaster.max_message_size if ismaster else None
+        self.max_message_size = (
+            ismaster.max_message_size if ismaster else MAX_MESSAGE_SIZE)
         self.max_write_batch_size = (
             ismaster.max_write_batch_size if ismaster else None)
 
@@ -238,7 +240,8 @@ class SocketInfo(object):
         If any exception is raised, the socket is closed.
         """
         try:
-            return receive_message(self.sock, operation, request_id)
+            return receive_message(
+                self.sock, operation, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
