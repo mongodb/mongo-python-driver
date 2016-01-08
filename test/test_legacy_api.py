@@ -185,13 +185,14 @@ class TestLegacy(IntegrationTest):
         db = self.db
         db.drop_collection("test_insert_multiple_with_duplicate")
         collection = db.test_insert_multiple_with_duplicate
-        collection.ensure_index([('i', ASCENDING)], unique=True)
+        collection.create_index([('i', ASCENDING)], unique=True)
 
         # No error
         collection.insert([{'i': i} for i in range(5, 10)], w=0)
         wait_until(lambda: 5 == collection.count(), 'insert 5 documents')
 
-        collection.remove()
+        db.drop_collection("test_insert_multiple_with_duplicate")
+        collection.create_index([('i', ASCENDING)], unique=True)
 
         # No error
         collection.insert([{'i': 1}] * 2, w=0)
@@ -207,7 +208,7 @@ class TestLegacy(IntegrationTest):
             db.name, write_concern=WriteConcern(w=0))
 
         collection = db.test_insert_multiple_with_duplicate
-        collection.ensure_index([('i', ASCENDING)], unique=True)
+        collection.create_index([('i', ASCENDING)], unique=True)
 
         # No error.
         collection.insert([{'i': 1}] * 2)
