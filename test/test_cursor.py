@@ -226,6 +226,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(90, cursor._Cursor__max_await_time_ms)
 
         listener = EventListener()
+        listener.add_command_filter('killCursors')
         saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([])
         coll = single_client(

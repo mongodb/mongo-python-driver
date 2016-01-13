@@ -43,15 +43,25 @@ class EventListener(monitoring.CommandListener):
 
     def __init__(self):
         self.results = defaultdict(list)
+        self.filters = set()
+
+    def add_command_filter(self, command_name):
+        self.filters.add(command_name)
+
+    def remove_command_filter(self, command_name):
+        self.filters.remove(command_name)
 
     def started(self, event):
-        self.results['started'].append(event)
+        if event.command_name not in self.filters:
+            self.results['started'].append(event)
 
     def succeeded(self, event):
-        self.results['succeeded'].append(event)
+        if event.command_name not in self.filters:
+            self.results['succeeded'].append(event)
 
     def failed(self, event):
-        self.results['failed'].append(event)
+        if event.command_name not in self.filters:
+            self.results['failed'].append(event)
 
 
 def _connection_string_noauth(h, p):

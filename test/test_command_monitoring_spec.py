@@ -49,6 +49,7 @@ class TestAllScenarios(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
+        cls.listener.add_command_filter('killCursors')
         cls.saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([])
         cls.client = single_client(event_listeners=[cls.listener])
@@ -101,10 +102,11 @@ def create_test(scenario_def):
                 except OperationFailure:
                     pass
             elif name == 'find':
-                # XXX: Skip killCursors test when using the find command.
-                if (client_context.version.at_least(3, 1, 1) and
-                        'limit' in args):
-                    continue
+                if 'limit' in args:
+                    # XXX: Skip killCursors test when using the find command.
+                    if client_context.version.at_least(3, 1, 1):
+                        continue
+                    self.listener.remove_command_filter('killCursors')
                 if 'sort' in args:
                     args['sort'] = list(args['sort'].items())
                 try:
@@ -118,6 +120,7 @@ def create_test(scenario_def):
                     wait_until(
                         lambda: started[-1].command_name == 'killCursors',
                         "publish a start event for killCursors.")
+                    self.listener.add_command_filter('killCursors')
             else:
                 try:
                     getattr(coll, name)(**args)
