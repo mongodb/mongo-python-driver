@@ -26,7 +26,8 @@ import pymongo
 from bson.json_util import object_hook
 from pymongo import monitoring
 from pymongo.errors import OperationFailure
-from pymongo.read_preferences import make_read_preference
+from pymongo.read_preferences import (make_read_preference,
+                                      read_pref_mode_from_name)
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context
 from test.utils import single_client, wait_until, EventListener
@@ -49,7 +50,6 @@ class TestAllScenarios(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
-        cls.listener.add_command_filter('killCursors')
         cls.saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([])
         cls.client = single_client(event_listeners=[cls.listener])
@@ -68,27 +68,42 @@ def create_test(scenario_def):
         dbname = scenario_def['database_name']
         collname = scenario_def['collection_name']
 
-        # Clear the kill cursors queue.
-        self.client._kill_cursors_executor.wake()
-
         for test in scenario_def['tests']:
+            ver = client_context.version[:2]
+            if "ignore_if_server_version_greater_than" in test:
+                version = test["ignore_if_server_version_greater_than"]
+                if ver > tuple(map(int, version.split("."))):
+                    continue
+            if "ignore_if_server_version_less_than" in test:
+                version = test["ignore_if_server_version_less_than"]
+                if ver < tuple(map(int, version.split("."))):
+                    continue
+            if "ignore_if_topology_type" in test:
+                types = set(test["ignore_if_topology_type"])
+                if "sharded" in types and client_context.is_mongos:
+                    continue
+
             coll = self.client[dbname][collname]
             coll.drop()
             coll.insert_many(scenario_def['data'])
             self.listener.results.clear()
             name = camel_to_snake(test['operation']['name'])
-            args = test['operation']['arguments']
             # Don't send $readPreference to mongos before 2.4.
             if (client_context.version.at_least(2, 4, 0)
-                    and 'readPreference' in args):
-                pref = make_read_preference(
-                    args['readPreference']['mode'], None)
-                coll = coll.with_options(read_preference=pref)
-            if 'writeConcern' in args:
+                    and 'read_preference' in test['operation']):
+                mode = read_pref_mode_from_name(
+                    test['operation']['read_preference']['mode'])
                 coll = coll.with_options(
-                    write_concern=WriteConcern(**args['writeConcern']))
-            for arg in args:
-                args[camel_to_snake(arg)] = args.pop(arg)
+                    read_preference=make_read_preference(mode, None))
+
+            test_args = test['operation']['arguments']
+            if 'writeConcern' in test_args:
+                concern = test_args.pop('writeConcern')
+                coll = coll.with_options(
+                    write_concern=WriteConcern(**concern))
+            args = {}
+            for arg in test_args:
+                args[camel_to_snake(arg)] = test_args[arg]
 
             if name == 'bulk_write':
                 bulk_args = []
@@ -102,11 +117,6 @@ def create_test(scenario_def):
                 except OperationFailure:
                     pass
             elif name == 'find':
-                if 'limit' in args:
-                    # XXX: Skip killCursors test when using the find command.
-                    if client_context.version.at_least(3, 1, 1):
-                        continue
-                    self.listener.remove_command_filter('killCursors')
                 if 'sort' in args:
                     args['sort'] = list(args['sort'].items())
                 try:
@@ -114,13 +124,13 @@ def create_test(scenario_def):
                     tuple(coll.find(**args))
                 except OperationFailure:
                     pass
-                # Wait for the killCursors thread to run.
-                if 'limit' in args:
+                # Wait for the killCursors thread to run if necessary.
+                if 'limit' in args and client_context.version[:2] < (3, 1):
+                    self.client._kill_cursors_executor.wake()
                     started = self.listener.results['started']
                     wait_until(
                         lambda: started[-1].command_name == 'killCursors',
                         "publish a start event for killCursors.")
-                    self.listener.add_command_filter('killCursors')
             else:
                 try:
                     getattr(coll, name)(**args)
@@ -132,7 +142,8 @@ def create_test(scenario_def):
                 if event_type == "command_started_event":
                     event = self.listener.results['started'].pop(0)
                     # The tests substitute 42 for any number other than 0.
-                    if event.command_name == 'getMore':
+                    if (event.command_name == 'getMore'
+                            and event.command['getMore']):
                         event.command['getMore'] = 42
                     elif event.command_name == 'killCursors':
                         event.command['cursors'] = [42]
