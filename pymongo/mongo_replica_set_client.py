@@ -1439,6 +1439,10 @@ class MongoReplicaSetClient(common.BaseObject):
         """Disconnect from the replica set primary, unpin all members, and
         refresh our view of the replica set.
         """
+        self._disconnect()
+
+    def _disconnect(self):
+        """Internal disconnect helper."""
         rs_state = self.__rs_state
         if rs_state.primary_member:
             rs_state.primary_member.reset()
@@ -1523,7 +1527,7 @@ class MongoReplicaSetClient(common.BaseObject):
         assert response["number_returned"] == 1
         result = response["data"][0]
 
-        helpers._check_command_response(result, self.disconnect)
+        helpers._check_command_response(result, self._disconnect)
 
         # write commands - skip getLastError checking
         if is_command:
@@ -1534,7 +1538,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if error_msg is None:
             return result
         if error_msg.startswith("not master"):
-            self.disconnect()
+            self._disconnect()
             raise AutoReconnect(error_msg)
 
         code = result.get("code")
@@ -1645,7 +1649,7 @@ class MongoReplicaSetClient(common.BaseObject):
             except(ConnectionFailure, socket.error), why:
                 member.discard_socket(sock_info)
                 if _connection_to_use in (None, -1):
-                    self.disconnect()
+                    self._disconnect()
                 raise AutoReconnect(str(why))
             except:
                 sock_info.close()
@@ -1758,7 +1762,7 @@ class MongoReplicaSetClient(common.BaseObject):
         except AutoReconnect:
             if _connection_to_use in (-1, rs_state.writer):
                 # Primary's down. Refresh.
-                self.disconnect()
+                self._disconnect()
             raise
 
         # To provide some monotonic consistency, we use the same member as
@@ -1780,7 +1784,7 @@ class MongoReplicaSetClient(common.BaseObject):
                     self.__try_read(pinned_member, msg, **kwargs))
             except AutoReconnect, why:
                 if _must_use_master or mode == ReadPreference.PRIMARY:
-                    self.disconnect()
+                    self._disconnect()
                     raise
                 else:
                     errors.append(str(why))

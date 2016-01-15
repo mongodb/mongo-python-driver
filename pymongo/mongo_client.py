@@ -1089,7 +1089,7 @@ class MongoClient(common.BaseObject):
         warnings.warn("disconnect is deprecated in this version of PyMongo "
                       "and removed in PyMongo 3. Use close() instead.",
                       DeprecationWarning, stacklevel=2)
-        self.close()
+        self._disconnect()
 
     def close(self):
         """Disconnect from MongoDB.
@@ -1103,6 +1103,10 @@ class MongoClient(common.BaseObject):
         .. seealso:: :meth:`end_request`
         .. versionadded:: 2.1
         """
+        self._disconnect()
+
+    def _disconnect(self):
+        """Internal disconnect helper."""
         self.__connecting_lock.acquire()
         member, self.__member = self.__member, None
         self.__connecting_lock.release()

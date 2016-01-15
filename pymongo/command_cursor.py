@@ -120,7 +120,7 @@ class CommandCursor(object):
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
-            client.disconnect()
+            client._disconnect()
             raise
         self.__id = response["cursor_id"]
         if self.__id == 0:

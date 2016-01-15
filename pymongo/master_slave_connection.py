@@ -197,6 +197,10 @@ class MasterSlaveConnection(BaseObject):
         .. seealso:: Module :mod:`~pymongo.mongo_client`
         .. versionadded:: 1.10.1
         """
+        self._disconnect()
+
+    def _disconnect(self):
+        """Internal disconnect helper."""
         self.__master.disconnect()
         for slave in self.__slaves:
             slave.disconnect()
@@ -207,7 +211,7 @@ class MasterSlaveConnection(BaseObject):
         .. seealso:: :meth:`end_request`
         .. versionadded:: 2.8
         """
-        self.disconnect()
+        self._disconnect()
 
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.

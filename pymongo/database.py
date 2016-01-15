@@ -436,8 +436,8 @@ class Database(common.BaseObject):
         if check:
             msg = "command %s on namespace %s failed: %%s" % (
                 repr(command).replace("%", "%%"), self.name + '.$cmd')
-            helpers._check_command_response(result, self.connection.disconnect,
-                                            msg, allowable_errors)
+            helpers._check_command_response(
+                result, self.connection._disconnect, msg, allowable_errors)
 
         return result, cursor.conn_id
 
@@ -756,7 +756,7 @@ class Database(common.BaseObject):
         if error_msg is None:
             return None
         if error_msg.startswith("not master"):
-            self.__connection.disconnect()
+            self.__connection._disconnect()
         return error
 
     def last_status(self):

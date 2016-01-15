@@ -1038,7 +1038,7 @@ class Cursor(object):
             self.__killed = True
             # Make sure exhaust socket is returned immediately, if necessary.
             self.__die()
-            client.disconnect()
+            client._disconnect()
             raise
 
         self.__id = response["cursor_id"]
