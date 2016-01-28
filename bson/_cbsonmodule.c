@@ -1645,7 +1645,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     return result;
 }
 
-static PyObject* get_value(PyObject* self, const char* buffer,
+static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                            unsigned* position, unsigned char type,
                            unsigned max, const codec_options_t* options) {
     struct module_state *state = GETSTATE(self);
@@ -1815,7 +1815,7 @@ static PyObject* get_value(PyObject* self, const char* buffer,
                     Py_DECREF(value);
                     goto invalid;
                 }
-                to_append = get_value(self, buffer, position, bson_type,
+                to_append = get_value(self, name, buffer, position, bson_type,
                                       max - (unsigned)key_size, options);
                 Py_LeaveRecursiveCall();
                 if (!to_append) {
@@ -2343,11 +2343,38 @@ static PyObject* get_value(PyObject* self, const char* buffer,
         }
     default:
         {
-            PyObject* InvalidDocument = _error("InvalidDocument");
-            if (InvalidDocument) {
-                PyErr_SetString(InvalidDocument,
-                                "no c decoder for this type yet");
-                Py_DECREF(InvalidDocument);
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyObject* bobj = PyBytes_FromFormat("%c", type);
+                if (bobj) {
+                    PyObject* repr = PyObject_Repr(bobj);
+                    Py_DECREF(bobj);
+                    /*
+                     * See http://bugs.python.org/issue22023 for why we can't
+                     * just use PyUnicode_FromFormat with %S or %R to do this
+                     * work.
+                     */
+                    if (repr) {
+                        PyObject* left = PyUnicode_FromString(
+                            "Detected unknown BSON type ");
+                        if (left) {
+                            PyObject* lmsg = PyUnicode_Concat(left, repr);
+                            Py_DECREF(left);
+                            if (lmsg) {
+                                PyObject* errmsg = PyUnicode_FromFormat(
+                                    "%U for fieldname '%U'. Are you using the "
+                                    "latest driver version?", lmsg, name);
+                                if (errmsg) {
+                                    PyErr_SetObject(InvalidBSON, errmsg);
+                                    Py_DECREF(errmsg);
+                                }
+                                Py_DECREF(lmsg);
+                            }
+                        }
+                        Py_DECREF(repr);
+                    }
+                }
+                Py_DECREF(InvalidBSON);
             }
             goto invalid;
         }
@@ -2457,10 +2484,10 @@ static int _element_to_dict(PyObject* self, const char* string,
         return -1;
     }
     position += (unsigned)name_length + 1;
-    *value = get_value(self, string, &position, type,
+    *value = get_value(self, *name, string, &position, type,
                        max - position, options);
     if (!*value) {
-        Py_DECREF(name);
+        Py_DECREF(*name);
         return -1;
     }
     return position;

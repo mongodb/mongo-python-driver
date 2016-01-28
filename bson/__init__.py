@@ -93,7 +93,14 @@ _UNPACK_LONG = struct.Struct("<q").unpack
 _UNPACK_TIMESTAMP = struct.Struct("<II").unpack
 
 
-def _get_int(data, position, dummy0, dummy1):
+def _raise_unknown_type(element_type, element_name):
+    """Unknown type helper."""
+    raise InvalidBSON("Detected unknown BSON type %r for fieldname '%s'. Are "
+                      "you using the latest driver version?" % (
+                          element_type, element_name))
+
+
+def _get_int(data, position, dummy0, dummy1, dummy2):
     """Decode a BSON int32 to python int."""
     end = position + 4
     return _UNPACK_INT(data[position:end])[0], end
@@ -106,13 +113,13 @@ def _get_c_string(data, position, opts):
                          opts.unicode_decode_error_handler, True)[0], end + 1
 
 
-def _get_float(data, position, dummy0, dummy1):
+def _get_float(data, position, dummy0, dummy1, dummy2):
     """Decode a BSON double to python float."""
     end = position + 8
     return _UNPACK_FLOAT(data[position:end])[0], end
 
 
-def _get_string(data, position, obj_end, opts):
+def _get_string(data, position, obj_end, opts, dummy):
     """Decode a BSON string to python unicode string."""
     length = _UNPACK_INT(data[position:position + 4])[0]
     position += 4
@@ -125,7 +132,7 @@ def _get_string(data, position, obj_end, opts):
                          opts.unicode_decode_error_handler, True)[0], end + 1
 
 
-def _get_object(data, position, obj_end, opts):
+def _get_object(data, position, obj_end, opts, dummy):
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size = _UNPACK_INT(data[position:position + 4])[0]
     end = position + obj_size - 1
@@ -146,7 +153,7 @@ def _get_object(data, position, obj_end, opts):
     return obj, position
 
 
-def _get_array(data, position, obj_end, opts):
+def _get_array(data, position, obj_end, opts, element_name):
     """Decode a BSON array to python list."""
     size = _UNPACK_INT(data[position:position + 4])[0]
     end = position + size - 1
@@ -166,12 +173,16 @@ def _get_array(data, position, obj_end, opts):
         element_type = data[position:position + 1]
         # Just skip the keys.
         position = index(b'\x00', position) + 1
-        value, position = getter[element_type](data, position, obj_end, opts)
+        try:
+            value, position = getter[element_type](
+                data, position, obj_end, opts, element_name)
+        except KeyError:
+            _raise_unknown_type(element_type, element_name)
         append(value)
     return result, position + 1
 
 
-def _get_binary(data, position, dummy, opts):
+def _get_binary(data, position, dummy0, opts, dummy1):
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE(data[position:position + 5])
     position += 5
@@ -203,19 +214,19 @@ def _get_binary(data, position, dummy, opts):
     return value, end
 
 
-def _get_oid(data, position, dummy0, dummy1):
+def _get_oid(data, position, dummy0, dummy1, dummy2):
     """Decode a BSON ObjectId to bson.objectid.ObjectId."""
     end = position + 12
     return ObjectId(data[position:end]), end
 
 
-def _get_boolean(data, position, dummy0, dummy1):
+def _get_boolean(data, position, dummy0, dummy1, dummy2):
     """Decode a BSON true/false to python True/False."""
     end = position + 1
     return data[position:end] == b"\x01", end
 
 
-def _get_date(data, position, dummy, opts):
+def _get_date(data, position, dummy0, opts, dummy1):
     """Decode a BSON datetime to python datetime.datetime."""
     end = position + 8
     millis = _UNPACK_LONG(data[position:end])[0]
@@ -233,20 +244,21 @@ def _get_date(data, position, dummy, opts):
     return dt, end
 
 
-def _get_code(data, position, obj_end, opts):
+def _get_code(data, position, obj_end, opts, element_name):
     """Decode a BSON code to bson.code.Code."""
-    code, position = _get_string(data, position, obj_end, opts)
+    code, position = _get_string(data, position, obj_end, opts, element_name)
     return Code(code), position
 
 
-def _get_code_w_scope(data, position, obj_end, opts):
+def _get_code_w_scope(data, position, obj_end, opts, element_name):
     """Decode a BSON code_w_scope to bson.code.Code."""
-    code, position = _get_string(data, position + 4, obj_end, opts)
-    scope, position = _get_object(data, position, obj_end, opts)
+    code, position = _get_string(
+        data, position + 4, obj_end, opts, element_name)
+    scope, position = _get_object(data, position, obj_end, opts, element_name)
     return Code(code, scope), position
 
 
-def _get_regex(data, position, dummy0, opts):
+def _get_regex(data, position, dummy0, opts, dummy1):
     """Decode a BSON regex to bson.regex.Regex or a python pattern object."""
     pattern, position = _get_c_string(data, position, opts)
     bson_flags, position = _get_c_string(data, position, opts)
@@ -254,21 +266,22 @@ def _get_regex(data, position, dummy0, opts):
     return bson_re, position
 
 
-def _get_ref(data, position, obj_end, opts):
+def _get_ref(data, position, obj_end, opts, element_name):
     """Decode (deprecated) BSON DBPointer to bson.dbref.DBRef."""
-    collection, position = _get_string(data, position, obj_end, opts)
-    oid, position = _get_oid(data, position, obj_end, opts)
+    collection, position = _get_string(
+        data, position, obj_end, opts, element_name)
+    oid, position = _get_oid(data, position, obj_end, opts, element_name)
     return DBRef(collection, oid), position
 
 
-def _get_timestamp(data, position, dummy0, dummy1):
+def _get_timestamp(data, position, dummy0, dummy1, dummy2):
     """Decode a BSON timestamp to bson.timestamp.Timestamp."""
     end = position + 8
     inc, timestamp = _UNPACK_TIMESTAMP(data[position:end])
     return Timestamp(timestamp, inc), end
 
 
-def _get_int64(data, position, dummy0, dummy1):
+def _get_int64(data, position, dummy0, dummy1, dummy2):
     """Decode a BSON int64 to bson.int64.Int64."""
     end = position + 8
     return Int64(_UNPACK_LONG(data[position:end])[0]), end
@@ -285,11 +298,11 @@ _ELEMENT_GETTER = {
     BSONOBJ: _get_object,
     BSONARR: _get_array,
     BSONBIN: _get_binary,
-    BSONUND: lambda w, x, y, z: (None, x),  # Deprecated undefined
+    BSONUND: lambda v, w, x, y, z: (None, w),  # Deprecated undefined
     BSONOID: _get_oid,
     BSONBOO: _get_boolean,
     BSONDAT: _get_date,
-    BSONNUL: lambda w, x, y, z: (None, x),
+    BSONNUL: lambda v, w, x, y, z: (None, w),
     BSONRGX: _get_regex,
     BSONREF: _get_ref,  # Deprecated DBPointer
     BSONCOD: _get_code,
@@ -298,8 +311,8 @@ _ELEMENT_GETTER = {
     BSONINT: _get_int,
     BSONTIM: _get_timestamp,
     BSONLON: _get_int64,
-    BSONMIN: lambda w, x, y, z: (MinKey(), x),
-    BSONMAX: lambda w, x, y, z: (MaxKey(), x)}
+    BSONMIN: lambda v, w, x, y, z: (MinKey(), w),
+    BSONMAX: lambda v, w, x, y, z: (MaxKey(), w)}
 
 
 def _element_to_dict(data, position, obj_end, opts):
@@ -307,8 +320,12 @@ def _element_to_dict(data, position, obj_end, opts):
     element_type = data[position:position + 1]
     position += 1
     element_name, position = _get_c_string(data, position, opts)
-    value, position = _ELEMENT_GETTER[element_type](data,
-                                                    position, obj_end, opts)
+    try:
+        value, position = _ELEMENT_GETTER[element_type](data, position,
+                                                        obj_end, opts,
+                                                        element_name)
+    except KeyError:
+        _raise_unknown_type(element_type, element_name)
     return element_name, value, position
 if _USE_C:
     _element_to_dict = _cbson._element_to_dict
