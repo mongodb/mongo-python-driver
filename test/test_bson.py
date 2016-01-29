@@ -358,6 +358,24 @@ class TestBSON(unittest.TestCase):
         qcheck.check_unittest(self, encode_then_decode_backport_precedence,
                               qcheck.gen_mongo_dict(3))
 
+    def test_unknown_type(self):
+        # Repr value differs with major python version
+        part = "type %r for fieldname %r" % (b('\x13'), u"foo")
+        docs = [
+            b('\x0e\x00\x00\x00\x13foo\x00\x01\x00\x00\x00\x00'),
+            b('\x16\x00\x00\x00\x04foo\x00\x0c\x00\x00\x00\x130'
+              '\x00\x01\x00\x00\x00\x00\x00'),
+            b(' \x00\x00\x00\x04bar\x00\x16\x00\x00\x00\x030\x00\x0e\x00\x00'
+              '\x00\x13foo\x00\x01\x00\x00\x00\x00\x00\x00')]
+        for bs in docs:
+            try:
+                bson.BSON(bs).decode()
+            except Exception, exc:
+                self.assertTrue(isinstance(exc, InvalidBSON))
+                self.assertTrue(part in str(exc))
+            else:
+                self.fail("Failed to raise an exception.")
+
     def test_dbpointer(self):
         # *Note* - DBPointer and DBRef are *not* the same thing. DBPointer
         # is a deprecated BSON type. DBRef is a convention that does not

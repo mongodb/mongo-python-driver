@@ -1427,10 +1427,10 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     return result;
 }
 
-static PyObject* get_value(PyObject* self, const char* buffer, unsigned* position,
-                           unsigned char type, unsigned max, PyObject* as_class,
-                           unsigned char tz_aware, unsigned char uuid_subtype,
-                           unsigned char compile_re) {
+static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
+                           unsigned* position, unsigned char type, unsigned max,
+                           PyObject* as_class, unsigned char tz_aware,
+                           unsigned char uuid_subtype, unsigned char compile_re) {
     struct module_state *state = GETSTATE(self);
 
     PyObject* value = NULL;
@@ -1574,7 +1574,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                     Py_DECREF(value);
                     goto invalid;
                 }
-                to_append = get_value(self, buffer, position, bson_type,
+                to_append = get_value(self, name, buffer, position, bson_type,
                                       max - (unsigned)key_size,
                                       as_class, tz_aware, uuid_subtype,
                                       compile_re);
@@ -2078,11 +2078,50 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
         }
     default:
         {
-            PyObject* InvalidDocument = _error("InvalidDocument");
-            if (InvalidDocument) {
-                PyErr_SetString(InvalidDocument,
-                                "no c decoder for this type yet");
-                Py_DECREF(InvalidDocument);
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+#if PY_MAJOR_VERSION >= 3
+                PyObject* type_obj = PyBytes_FromFormat("%c", type);
+#else
+                PyObject* type_obj = PyString_FromFormat("%c", type);
+#endif
+                if (type_obj) {
+                    PyObject* type_repr = PyObject_Repr(type_obj);
+                    Py_DECREF(type_obj);
+                    if (type_repr) {
+                        PyObject* errmsg = NULL;
+#if PY_MAJOR_VERSION >= 3
+                        PyObject* left = PyUnicode_FromString(
+                            "Detected unknown BSON type ");
+                        if (left) {
+                            PyObject* lmsg = PyUnicode_Concat(left, type_repr);
+                            Py_DECREF(left);
+                            if (lmsg) {
+                                errmsg = PyUnicode_FromFormat(
+                                    "%U for fieldname '%U'. Are you using the "
+                                    "latest driver version?", lmsg, name);
+                                Py_DECREF(lmsg);
+                            }
+                        }
+#else
+                        PyObject* name_repr = PyObject_Repr(name);
+                        if (name_repr) {
+                            errmsg = PyString_FromFormat(
+                                "Detected unknown BSON type %s for fieldname %s."
+                                " Are you using the latest driver version?",
+                                PyString_AS_STRING(type_repr),
+                                PyString_AS_STRING(name_repr));
+                            Py_DECREF(name_repr);
+                        }
+#endif
+                        Py_DECREF(type_repr);
+                        if (errmsg) {
+                            PyErr_SetObject(InvalidBSON, errmsg);
+                            Py_DECREF(errmsg);
+                        }
+                    }
+                }
+                Py_DECREF(InvalidBSON);
             }
             goto invalid;
         }
@@ -2173,7 +2212,7 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
             return NULL;
         }
         position += (unsigned)name_length + 1;
-        value = get_value(self, string, &position, type,
+        value = get_value(self, name, string, &position, type,
                           max - position, as_class, tz_aware, uuid_subtype,
                           compile_re);
         if (!value) {
