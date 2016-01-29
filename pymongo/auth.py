@@ -15,6 +15,7 @@
 """Authentication helpers."""
 
 import hmac
+import sys
 import warnings
 try:
     import hashlib
@@ -79,17 +80,18 @@ if PY3:
     def _xor(fir, sec):
         """XOR two byte strings together (python 3.x)."""
         return _EMPTY.join([bytes([x ^ y]) for x, y in zip(fir, sec)])
-
-    _from_bytes = int.from_bytes
-    _to_bytes = int.to_bytes
 else:
-
-    from binascii import (hexlify as _hexlify,
-                          unhexlify as _unhexlify)
-
     def _xor(fir, sec):
         """XOR two byte strings together (python 2.x)."""
         return _EMPTY.join([chr(ord(x) ^ ord(y)) for x, y in zip(fir, sec)])
+
+
+if sys.version_info[:2] >= (3, 2):
+    _from_bytes = int.from_bytes
+    _to_bytes = int.to_bytes
+else:
+    from binascii import (hexlify as _hexlify,
+                          unhexlify as _unhexlify)
 
     def _from_bytes(value, dummy, int=int, _hexlify=_hexlify):
         """An implementation of int.from_bytes for python 2.x."""
