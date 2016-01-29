@@ -1901,7 +1901,6 @@ class Collection(common.BaseObject):
                                     read_concern=self.read_concern)
             else:
                 res = self._command(sock_info, cmd, slave_ok)
-            res = self._command(sock_info, cmd, slave_ok)
 
         if full_response:
             return res
