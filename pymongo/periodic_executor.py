@@ -79,8 +79,8 @@ class PeriodicExecutor(object):
         if self._thread is not None:
             try:
                 self._thread.join(timeout)
-            except ReferenceError:
-                # Thread already terminated.
+            except (ReferenceError, RuntimeError):
+                # Thread already terminated, or not yet started.
                 pass
 
     def wake(self):
