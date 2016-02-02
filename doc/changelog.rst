@@ -1,6 +1,24 @@
 Changelog
 =========
 
+Changes in Version 3.2.1
+------------------------
+
+Version 3.2.1 fixes a few issues reported since the release of 3.2, including
+running the mapreduce command twice when calling the
+:meth:`~pymongo.collection.Collection.inline_map_reduce` method and a
+:exc:`TypeError` being raised when calling
+:meth:`~gridfs.GridFSBucket.download_to_stream`. This release also
+improves error messaging around BSON decoding.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.2.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.2.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16312
+
 Changes in Version 3.2
 ----------------------
 
@@ -565,6 +583,38 @@ See the `PyMongo 3.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12501
+
+Changes in Version 2.9.2
+------------------------
+
+Version 2.9.2 restores Python 3.1 support, which was broken in PyMongo 2.8. It
+improves an error message when decoding BSON as well as fixes a couple other
+issues including :meth:`~pymongo.collection.Collection.aggregate` ignoring
+:attr:`~pymongo.collection.Collection.codec_options` and
+:meth:`~pymongo.database.Database.command` raising a superfluous
+`DeprecationWarning`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.9.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16303
+
+Changes in Version 2.9.1
+------------------------
+
+Version 2.9.1 fixes two interrupt handling issues in the C extensions and
+adapts a test case for a behavior change in MongoDB 3.2.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.9.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16208
 
 Changes in Version 2.9
 ----------------------
