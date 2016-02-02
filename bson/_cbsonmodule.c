@@ -458,6 +458,9 @@ int default_codec_options(struct module_state* state, codec_options_t* options) 
         state->CodecOptions, "bson.codec_options", "CodecOptions");
     PyObject* options_obj = PyObject_CallFunctionObjArgs(
         codec_options_func, NULL);
+    if (options_obj == NULL) {
+        return 0;
+    }
     return convert_codec_options(options_obj, options);
 }
 
@@ -1592,6 +1595,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     type_marker = _type_marker(dict);
     if (type_marker < 0) {
         destroy_codec_options(&options);
+        buffer_free(buffer);
         return NULL;
     } else if (101 == type_marker) {
         raw_bson_document_bytes_obj = PyObject_GetAttrString(dict, "raw");
@@ -2509,7 +2513,9 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
         return NULL;
     }
     if (PyTuple_GET_SIZE(args) < 4) {
-        default_codec_options(GETSTATE(self), &options);
+        if (!default_codec_options(GETSTATE(self), &options)) {
+            return NULL;
+        }
     }
 
 #if PY_MAJOR_VERSION >= 3
@@ -2522,9 +2528,9 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
         return NULL;
     }
 #if PY_MAJOR_VERSION >= 3
-    string = PyBytes_AsString(bson);
+    string = PyBytes_AS_STRING(bson);
 #else
-    string = PyString_AsString(bson);
+    string = PyString_AS_STRING(bson);
 #endif
 
     new_position = _element_to_dict(self, string, position, max, &options,
@@ -2687,7 +2693,9 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
         return NULL;
     }
     if (PyTuple_GET_SIZE(args) < 2) {
-        default_codec_options(GETSTATE(self), &options);
+        if (!default_codec_options(GETSTATE(self), &options)) {
+            return NULL;
+        }
     } else if (!convert_codec_options(options_obj, &options)) {
         return NULL;
     }
@@ -2699,6 +2707,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     if (!PyString_Check(bson)) {
         PyErr_SetString(PyExc_TypeError, "argument to decode_all must be a string");
 #endif
+        destroy_codec_options(&options);
         return NULL;
     }
 #if PY_MAJOR_VERSION >= 3
@@ -2709,6 +2718,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     string = PyString_AsString(bson);
 #endif
     if (!string) {
+        destroy_codec_options(&options);
         return NULL;
     }
 
