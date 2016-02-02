@@ -66,19 +66,20 @@ Delegated Authentication
 ------------------------
 .. versionadded: 2.5
 
-In MongoDB 2.4.x a separate authentication source can be specified.
-This feature was introduced in MongoDB 2.4 and removed in 2.6::
+If your user is defined in one database with a role that gives it
+authorization on a different database use the `source` option to specify
+the database in which the user is defined::
 
   >>> from pymongo import MongoClient
   >>> client = MongoClient('example.com')
-  >>> client.the_database.authenticate('user',
-  ...                                  'password',
-  ...                                  source='source_database')
+  >>> db = client.the_database
+  >>> db.authenticate('user', 'password', source='source_database')
   True
-  >>>
+
+Or the `authSource` URI option::
+
   >>> uri = "mongodb://user:password@example.com/?authSource=source_database"
-  >>> client = MongoClient(uri)
-  >>>
+  >>> db = MongoClient(uri).the_database
 
 MONGODB-X509
 ------------
