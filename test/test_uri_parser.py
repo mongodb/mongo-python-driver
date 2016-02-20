@@ -97,6 +97,7 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ConfigurationError, split_options, 'foo')
         self.assertRaises(ConfigurationError, split_options, 'foo=bar;foo')
         self.assertTrue(split_options('ssl=true'))
+        self.assertTrue(split_options('connect=true'))
         self.assertTrue(split_options('ssl_match_hostname=true'))
 
         # Test Invalid URI options that should throw warnings.
@@ -118,6 +119,8 @@ class TestURI(unittest.TestCase):
                               'connectTimeoutMS=-1e100000', warn=True)
             self.assertRaises(Warning, split_options,
                               'ssl=foo', warn=True)
+            self.assertRaises(Warning, split_options,
+                              'connect=foo', warn=True)
             self.assertRaises(Warning, split_options,
                               'ssl_match_hostname=foo', warn=True)
 
@@ -153,6 +156,7 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ValueError, split_options,
                           'connectTimeoutMS=-1e100000')
         self.assertRaises(ValueError, split_options, 'ssl=foo')
+        self.assertRaises(ValueError, split_options, 'connect=foo')
         self.assertRaises(ValueError, split_options, 'ssl_match_hostname=foo')
         if not (sys.platform == "win32" and sys.version_info <= (2, 5)):
             self.assertRaises(ValueError, split_options,
