@@ -33,10 +33,15 @@ from pymongo.read_preferences import ReadPreference
 from test import client_context, host, port, SkipTest, unittest, Version
 from test.utils import delay
 
-# YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS.
+# YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
 GSSAPI_PORT = int(os.environ.get('GSSAPI_PORT', '27017'))
-PRINCIPAL = os.environ.get('PRINCIPAL')
+GSSAPI_PRINCIPAL = os.environ.get('GSSAPI_PRINCIPAL')
+GSSAPI_SERVICE_NAME = os.environ.get('GSSAPI_SERVICE_NAME', 'mongodb')
+GSSAPI_CANONICALIZE = os.environ.get('GSSAPI_CANONICALIZE', 'false')
+GSSAPI_SERVICE_REALM = os.environ.get('GSSAPI_SERVICE_REALM')
+GSSAPI_PASS = os.environ.get('GSSAPI_PASS')
+GSSAPI_DB = os.environ.get('GSSAPI_DB', 'test')
 
 SASL_HOST = os.environ.get('SASL_HOST')
 SASL_PORT = int(os.environ.get('SASL_PORT', '27017'))
@@ -71,8 +76,9 @@ class TestGSSAPI(unittest.TestCase):
     def setUpClass(cls):
         if not HAVE_KERBEROS:
             raise SkipTest('Kerberos module not available.')
-        if not GSSAPI_HOST or not PRINCIPAL:
-            raise SkipTest('Must set GSSAPI_HOST and PRINCIPAL to test GSSAPI')
+        if not GSSAPI_HOST or not GSSAPI_PRINCIPAL:
+            raise SkipTest(
+               'Must set GSSAPI_HOST and GSSAPI_PRINCIPAL to test GSSAPI')
 
     def test_credentials_hashing(self):
         # GSSAPI credentials are properly hashed.
@@ -97,72 +103,94 @@ class TestGSSAPI(unittest.TestCase):
     def test_gssapi_simple(self):
         # Call authenticate() without authMechanismProperties.
         client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
-        self.assertTrue(client.test.authenticate(PRINCIPAL,
-                                                 mechanism='GSSAPI'))
-        client.test.collection.find_one()
+        db = client[GSSAPI_DB]
+        self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
+                                        GSSAPI_PASS,
+                                        mechanism='GSSAPI'))
+        db.collection.find_one()
 
         # Log in using URI, without authMechanismProperties.
-        uri = ('mongodb://%s@%s:%d/?authMechanism='
-               'GSSAPI' % (quote_plus(PRINCIPAL), GSSAPI_HOST, GSSAPI_PORT))
+        if GSSAPI_PASS is not None:
+            uri = ('mongodb://%s:%s@%s:%d/?authMechanism='
+                   'GSSAPI' % (quote_plus(GSSAPI_PRINCIPAL),
+                               GSSAPI_PASS,
+                               GSSAPI_HOST,
+                               GSSAPI_PORT))
+        else:
+            uri = ('mongodb://%s@%s:%d/?authMechanism='
+                   'GSSAPI' % (quote_plus(GSSAPI_PRINCIPAL),
+                               GSSAPI_HOST,
+                               GSSAPI_PORT))
         client = MongoClient(uri)
-        client.test.collection.find_one()
+        db = client[GSSAPI_DB]
+        db.collection.find_one()
+
+        mech_properties = 'SERVICE_NAME:%s' % (GSSAPI_SERVICE_NAME,)
+        mech_properties += (
+            ',CANONICALIZE_HOST_NAME:%s' % (GSSAPI_CANONICALIZE,))
+        if GSSAPI_SERVICE_NAME is not None:
+            mech_properties += ',SERVICE_NAME:%s' % (GSSAPI_SERVICE_NAME,)
 
         # Call authenticate() with authMechanismProperties.
-        self.assertTrue(client.test.authenticate(
-            PRINCIPAL, mechanism='GSSAPI',
-            authMechanismProperties='SERVICE_NAME:mongodb'))
-        client.test.collection.find_one()
+        self.assertTrue(db.authenticate(
+            GSSAPI_PRINCIPAL,
+            GSSAPI_PASS,
+            mechanism='GSSAPI',
+            authMechanismProperties=mech_properties))
+        db.collection.find_one()
 
         # Log in using URI, with authMechanismProperties.
-        uri = ('mongodb://%s@%s:%d/?authMechanism='
-               'GSSAPI;authMechanismProperties'
-               '=SERVICE_NAME:mongodb' % (quote_plus(PRINCIPAL),
-                                          GSSAPI_HOST, GSSAPI_PORT))
-        client = MongoClient(uri)
-        client.test.collection.find_one()
+        mech_uri = uri + '&authMechanismProperties=%s' % (mech_properties,)
+        client = MongoClient(mech_uri)
+        client[GSSAPI_DB].collection.find_one()
 
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
             client = MongoClient(GSSAPI_HOST,
-                                 port=GSSAPI_PORT,
+                                 GSSAPI_PORT,
                                  replicaSet=set_name)
+            db = client[GSSAPI_DB]
             # Without authMechanismProperties
-            self.assertTrue(client.test.authenticate(PRINCIPAL,
-                                                     mechanism='GSSAPI'))
-            client.database_names()
-            uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
-                   '=%s' % (quote_plus(PRINCIPAL),
-                            GSSAPI_HOST, GSSAPI_PORT, str(set_name)))
+            self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
+                                            GSSAPI_PASS,
+                                            mechanism='GSSAPI'))
+            db.collection_names()
+            uri = uri + '&replicaSet=%s' % (str(set_name),)
             client = MongoClient(uri)
-            client.database_names()
+            db = client[GSSAPI_DB]
+            db.collection_names()
 
             # With authMechanismProperties
-            self.assertTrue(client.test.authenticate(
-                PRINCIPAL, mechanism='GSSAPI',
-                authMechanismProperties='SERVICE_NAME:mongodb'))
-            client.database_names()
-            uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
-                   '=%s;authMechanismProperties'
-                   '=SERVICE_NAME:mongodb' % (quote_plus(PRINCIPAL),
-                                              GSSAPI_HOST,
-                                              GSSAPI_PORT,
-                                              str(set_name)))
-            client = MongoClient(uri)
-            client.database_names()
+            self.assertTrue(db.authenticate(
+                GSSAPI_PRINCIPAL,
+                GSSAPI_PASS,
+                mechanism='GSSAPI',
+                authMechanismProperties=mech_properties))
+            db.collection_names()
+            mech_uri = mech_uri + '&replicaSet=%s' % (str(set_name),)
+            client = MongoClient(mech_uri)
+            client[GSSAPI_DB].collection_names()
 
     def test_gssapi_threaded(self):
 
-        client = MongoClient(GSSAPI_HOST)
-        self.assertTrue(client.test.authenticate(PRINCIPAL,
-                                                 mechanism='GSSAPI'))
+        client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
+        db = client[GSSAPI_DB]
+        self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
+                                        GSSAPI_PASS,
+                                        mechanism='GSSAPI'))
+
 
         # Need one document in the collection. AutoAuthenticateThread does
         # collection.find_one with a 1-second delay, forcing it to check out
         # multiple sockets from the pool concurrently, proving that
         # auto-authentication works with GSSAPI.
-        collection = client.test.collection
-        collection.drop()
-        collection.insert_one({'_id': 1})
+        collection = db.test
+        if collection.count() == 0:
+            try:
+                collection.drop()
+                collection.insert_one({'_id': 1})
+            except OperationFailure:
+                raise SkipTest("User must be able to write.")
 
         threads = []
         for _ in range(4):
@@ -176,11 +204,13 @@ class TestGSSAPI(unittest.TestCase):
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
             client = MongoClient(GSSAPI_HOST,
+                                 GSSAPI_PORT,
                                  replicaSet=set_name,
                                  readPreference='secondary')
-            self.assertTrue(client.test.authenticate(PRINCIPAL,
-                                                     mechanism='GSSAPI'))
-            self.assertTrue(client.test.command('dbstats'))
+            db = client[GSSAPI_DB]
+            self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
+                                            GSSAPI_PASS,
+                                            mechanism='GSSAPI'))
 
             threads = []
             for _ in range(4):

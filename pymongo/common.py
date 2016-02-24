@@ -335,7 +335,9 @@ def validate_read_preference_tags(name, value):
     return tag_sets
 
 
-_MECHANISM_PROPS = frozenset(['SERVICE_NAME'])
+_MECHANISM_PROPS = frozenset(['SERVICE_NAME',
+                              'CANONICALIZE_HOST_NAME',
+                              'SERVICE_REALM'])
 
 
 def validate_auth_mechanism_properties(option, value):
@@ -353,7 +355,10 @@ def validate_auth_mechanism_properties(option, value):
             raise ValueError("%s is not a supported auth "
                              "mechanism property. Must be one of "
                              "%s." % (key, tuple(_MECHANISM_PROPS)))
-        props[key] = val
+        if key == 'CANONICALIZE_HOST_NAME':
+            props[key] = validate_boolean_or_string(key, val)
+        else:
+            props[key] = val
 
     return props
 

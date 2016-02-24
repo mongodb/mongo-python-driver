@@ -121,9 +121,14 @@ GSSAPI (Kerberos)
 .. versionadded:: 2.5
 
 GSSAPI (Kerberos) authentication is available in the Enterprise Edition of
-MongoDB, version 2.4 and newer. To authenticate using GSSAPI you must first
-install the python `kerberos`_ or `pykerberos`_ module using easy_install or
-pip. Make sure you run kinit before using the following authentication methods::
+MongoDB, version 2.4 and newer.
+
+Unix
+~~~~
+
+To authenticate using GSSAPI you must first install the python `kerberos`_ or
+`pykerberos`_ module using easy_install or pip. Make sure you run kinit before
+using the following authentication methods::
 
   $ kinit mongodbuser@EXAMPLE.COM
   mongodbuser@EXAMPLE.COM's Password: 
@@ -166,13 +171,32 @@ specify a custom service name with the ``authMechanismProperties`` option::
   ...     authMechanismProperties='SERVICE_NAME:myservicename')
   True
 
-.. note::
-   Kerberos support is only provided in environments supported by the python
-   `kerberos`_ or `pykerberos`_ modules. This currently limits support to
-   CPython and Unix environments.
+Windows (SSPI)
+~~~~~~~~~~~~~~
+.. versionadded:: 3.3
+
+First install the `winkerberos`_ module. Unlike authentication on Unix kinit is
+not used. If the user to authenticate is different from the user that owns the
+application process provide a password to authenticate::
+
+  >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM:mongodbuserpassword@example.com/?authMechanism=GSSAPI"
+
+Two extra ``authMechanismProperties`` are supported on Windows platforms:
+
+- CANONICALIZE_HOST_NAME - Uses the fully qualified domain name (FQDN) of the
+  MongoDB host for the server principal (GSSAPI libraries on Unix do this by
+  default)::
+
+    >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI&authMechanismProperties=CANONICALIZE_HOST_NAME:true"
+
+- SERVICE_REALM - This is used when the user's realm is different from the service's realm::
+
+    >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_REALM:otherrealm"
+
 
 .. _kerberos: http://pypi.python.org/pypi/kerberos
 .. _pykerberos: https://pypi.python.org/pypi/pykerberos
+.. _winkerberos: https://github.com/mongodb-labs/winkerberos
 
 SASL PLAIN (RFC 4616)
 ---------------------

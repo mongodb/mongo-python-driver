@@ -15,12 +15,16 @@
 """Authentication helpers."""
 
 import hmac
+import socket
 
 HAVE_KERBEROS = True
 try:
-    import kerberos
+    import winkerberos as kerberos
 except ImportError:
-    HAVE_KERBEROS = False
+    try:
+        import kerberos
+    except ImportError:
+        HAVE_KERBEROS = False
 
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
@@ -44,7 +48,10 @@ MongoCredential = namedtuple(
 """A hashable namedtuple of values used for authentication."""
 
 
-GSSAPIProperties = namedtuple('GSSAPIProperties', ['service_name'])
+GSSAPIProperties = namedtuple('GSSAPIProperties',
+                              ['service_name',
+                               'canonicalize_host_name',
+                               'service_realm'])
 """Mechanism properties for GSSAPI authentication."""
 
 
@@ -52,18 +59,23 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
     """Build and return a mechanism specific credentials tuple.
     """
     user = _unicode(user)
+    password = passwd if passwd is None else _unicode(passwd)
     if mech == 'GSSAPI':
         properties = extra.get('authmechanismproperties', {})
         service_name = properties.get('SERVICE_NAME', 'mongodb')
-        props = GSSAPIProperties(service_name=service_name)
-        # No password, source is always $external.
-        return MongoCredential(mech, '$external', user, None, props)
+        canonicalize = properties.get('CANONICALIZE_HOST_NAME', False)
+        service_realm = properties.get('SERVICE_REALM')
+        props = GSSAPIProperties(service_name=service_name,
+                                 canonicalize_host_name=canonicalize,
+                                 service_realm=service_realm)
+        # Source is always $external.
+        return MongoCredential(mech, '$external', user, password, props)
     elif mech == 'MONGODB-X509':
         return MongoCredential(mech, '$external', user, None, None)
     else:
         if passwd is None:
             raise ConfigurationError("A password is required.")
-        return MongoCredential(mech, source, user, _unicode(passwd), None)
+        return MongoCredential(mech, source, user, password, None)
 
 
 if PY3:
@@ -267,12 +279,28 @@ def _authenticate_gssapi(credentials, sock_info):
 
     try:
         username = credentials.username
-        gsn = credentials.mechanism_properties.service_name
+        password = credentials.password
+        props = credentials.mechanism_properties
         # Starting here and continuing through the while loop below - establish
         # the security context. See RFC 4752, Section 3.1, first paragraph.
         host = sock_info.address[0]
-        result, ctx = kerberos.authGSSClientInit(
-            gsn + '@' + host, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
+        if props.canonicalize_host_name:
+            host = socket.getfqdn(host)
+        service = props.service_name + '@' + host
+        if props.service_realm is not None:
+            service = service + '@' + props.service_realm
+
+        if password is not None:
+            if '@' in username:
+                user, domain = username.split('@', 1)
+            else:
+                user, domain = username, None
+            result, ctx = kerberos.authGSSClientInit(
+                service, gssflags=kerberos.GSS_C_MUTUAL_FLAG,
+                user=user, domain=domain, password=password)
+        else:
+            result, ctx = kerberos.authGSSClientInit(
+                service, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
 
         if result != kerberos.AUTH_GSS_COMPLETE:
             raise OperationFailure('Kerberos context failed to initialize.')
