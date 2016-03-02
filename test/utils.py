@@ -144,13 +144,15 @@ def is_mongos(client):
     return res.get('msg', '') == 'isdbgrid'
 
 def enable_text_search(client):
-    client.admin.command(
-        'setParameter', textSearchEnabled=True)
+    sinfo = client.server_info()
+    if 'versionArray' in sinfo and sinfo['versionArray'][:2] == [2, 4]:
+        client.admin.command(
+            'setParameter', textSearchEnabled=True)
 
-    if isinstance(client, MongoReplicaSetClient):
-        for host, port in client.secondaries:
-            MongoClient(host, port).admin.command(
-                'setParameter', textSearchEnabled=True)
+        if isinstance(client, MongoReplicaSetClient):
+            for host, port in client.secondaries:
+                MongoClient(host, port).admin.command(
+                    'setParameter', textSearchEnabled=True)
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):
     """
