@@ -96,9 +96,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
         response_doc = unpacked['data'][0]
         if check:
-            msg = "command %s on namespace %s failed: %%s" % (
-                repr(spec).replace("%", "%%"), ns)
-            helpers._check_command_response(response_doc, msg, allowable_errors)
+            helpers._check_command_response(response_doc, None, allowable_errors)
     except Exception as exc:
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
