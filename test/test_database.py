@@ -71,6 +71,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
     def test_name(self):
         self.assertRaises(TypeError, Database, self.client, 4)
         self.assertRaises(InvalidName, Database, self.client, "my db")
+        self.assertRaises(InvalidName, Database, self.client, 'my"db')
         self.assertRaises(InvalidName, Database, self.client, "my\x00db")
         self.assertRaises(InvalidName, Database,
                           self.client, u("my\u0000db"))
