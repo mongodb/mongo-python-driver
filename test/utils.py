@@ -273,14 +273,16 @@ def is_mongos(client):
 
 
 def enable_text_search(client):
-    client.admin.command(
-        'setParameter', textSearchEnabled=True)
+    sinfo = client.server_info()
+    if 'versionArray' in sinfo and sinfo['versionArray'][:2] == [2, 4]:
+        client.admin.command(
+            'setParameter', textSearchEnabled=True)
 
-    for host, port in client.secondaries:
-        client = MongoClient(host, port)
-        if client_context.auth_enabled:
-            client.admin.authenticate(db_user, db_pwd)
-        client.admin.command('setParameter', textSearchEnabled=True)
+        for host, port in client.secondaries:
+            client = MongoClient(host, port)
+            if client_context.auth_enabled:
+                client.admin.authenticate(db_user, db_pwd)
+            client.admin.command('setParameter', textSearchEnabled=True)
 
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):
