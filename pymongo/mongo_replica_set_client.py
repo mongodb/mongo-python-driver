@@ -1132,9 +1132,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         end = time.time()
         response = helpers._unpack_response(response)['data'][0]
-        msg = "command %s on namespace %s failed: %%s" % (
-            repr(spec).replace("%", "%%"), ns)
-        helpers._check_command_response(response, None, msg)
+        helpers._check_command_response(response, None)
         return response, end - start
 
     def __is_master(self, host):

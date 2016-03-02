@@ -434,10 +434,8 @@ class Database(common.BaseObject):
             result = doc
 
         if check:
-            msg = "command %s on namespace %s failed: %%s" % (
-                repr(command).replace("%", "%%"), self.name + '.$cmd')
             helpers._check_command_response(
-                result, self.connection._disconnect, msg, allowable_errors)
+                result, self.connection._disconnect, None, allowable_errors)
 
         return result, cursor.conn_id
 
