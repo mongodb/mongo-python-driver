@@ -540,7 +540,10 @@ class TestCursor(unittest.TestCase):
             # Hint is ignored
             self.assertEqual(1, collection.find({'i': 1}).hint("x_1").count())
 
-        self.assertEqual(2, collection.find().hint("x_1").count())
+        if version.at_least(self.client, (3, 3, 2)):
+            self.assertEqual(0, collection.find().hint("x_1").count())
+        else:
+            self.assertEqual(2, collection.find().hint("x_1").count())
 
     def test_where(self):
         db = self.db
