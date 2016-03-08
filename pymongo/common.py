@@ -407,7 +407,7 @@ def validate_ok_for_update(update):
 
 # journal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
-VALIDATORS = {
+URI_VALIDATORS = {
     'replicaset': validate_string_or_none,
     'w': validate_int_or_basestring,
     'wtimeout': validate_integer,
@@ -428,7 +428,6 @@ VALIDATORS = {
     'ssl_ca_certs': validate_readable,
     'ssl_match_hostname': validate_boolean_or_string,
     'readconcernlevel': validate_string_or_none,
-    'read_preference': validate_read_preference,
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
     'localthresholdms': validate_positive_float_or_zero,
@@ -436,12 +435,19 @@ VALIDATORS = {
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_string,
     'authmechanismproperties': validate_auth_mechanism_properties,
-    'document_class': validate_document_class,
     'tz_aware': validate_boolean_or_string,
     'uuidrepresentation': validate_uuid_representation,
     'connect': validate_boolean_or_string,
+}
+
+KW_VALIDATORS = {
+    'document_class': validate_document_class,
+    'read_preference': validate_read_preference,
     'event_listeners': _validate_event_listeners
 }
+
+VALIDATORS = URI_VALIDATORS.copy()
+VALIDATORS.update(KW_VALIDATORS)
 
 
 _AUTH_OPTIONS = frozenset(['authmechanismproperties'])
@@ -466,7 +472,7 @@ def validate(option, value):
     return lower, value
 
 
-def get_validated_options(options):
+def get_validated_options(options, warn=True):
     """Validate each entry in options and raise a warning if it is not valid.
     Returns a copy of options with invalid entries removed
     """
@@ -474,10 +480,13 @@ def get_validated_options(options):
     for opt, value in iteritems(options):
         lower = opt.lower()
         try:
-            validator = VALIDATORS.get(lower, raise_config_error)
+            validator = URI_VALIDATORS.get(lower, raise_config_error)
             value = validator(opt, value)
         except (ValueError, ConfigurationError) as exc:
-            warnings.warn(str(exc))
+            if warn:
+                warnings.warn(str(exc))
+            else:
+                raise
         else:
             validated_options[lower] = value
     return validated_options

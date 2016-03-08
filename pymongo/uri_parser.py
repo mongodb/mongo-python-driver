@@ -23,7 +23,7 @@ if PY3:
 else:
     from urllib import unquote_plus
 
-from pymongo.common import (validate as _validate, get_validated_options)
+from pymongo.common import get_validated_options
 from pymongo.errors import ConfigurationError, InvalidURI
 
 
@@ -165,10 +165,7 @@ def validate_options(opts, warn=False):
           invalid options will be ignored. Otherwise invalid options will
           cause errors.
     """
-    if warn:
-        return get_validated_options(opts)
-    else:
-        return dict([_validate(opt, val) for opt, val in iteritems(opts)])
+    return get_validated_options(opts, warn)
 
 
 def _parse_options(opts, delim):
