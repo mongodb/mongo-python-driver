@@ -214,18 +214,17 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms):
 class _Query(object):
     """A query operation."""
 
-    __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'ntoreturn', 'spec',
+    __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
                  'batch_size', 'name', 'read_concern')
 
-    def __init__(self, flags, db, coll, ntoskip, ntoreturn, spec, fields,
+    def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
                  batch_size, read_concern):
         self.flags = flags
         self.db = db
         self.coll = coll
         self.ntoskip = ntoskip
-        self.ntoreturn = ntoreturn
         self.spec = spec
         self.fields = fields
         self.codec_options = codec_options
@@ -260,12 +259,21 @@ class _Query(object):
 
         ns = _UJOIN % (self.db, self.coll)
         spec = self.spec
-        ntoreturn = self.ntoreturn
 
         if use_cmd:
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
             ntoreturn = -1  # All DB commands return 1 document
+        else:
+            # OP_QUERY treats ntoreturn of -1 and 1 the same, return
+            # one document and close the cursor. We have to use 2 for
+            # batch size if 1 is specified.
+            ntoreturn = self.batch_size == 1 and 2 or self.batch_size
+            if self.limit:
+                if ntoreturn:
+                    ntoreturn = min(self.limit, ntoreturn)
+                else:
+                    ntoreturn = self.limit
 
         if is_mongos:
             spec = _maybe_add_read_preference(spec,

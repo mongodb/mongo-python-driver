@@ -426,7 +426,7 @@ class Cursor(object):
             raise ValueError("batch_size must be >= 0")
         self.__check_okay_to_chain()
 
-        self.__batch_size = batch_size == 1 and 2 or batch_size
+        self.__batch_size = batch_size
         return self
 
     def skip(self, skip):
@@ -999,17 +999,10 @@ class Cursor(object):
             return len(self.__data)
 
         if self.__id is None:  # Query
-            ntoreturn = self.__batch_size
-            if self.__limit:
-                if self.__batch_size:
-                    ntoreturn = min(self.__limit, self.__batch_size)
-                else:
-                    ntoreturn = self.__limit
             self.__send_message(_Query(self.__query_flags,
                                        self.__collection.database.name,
                                        self.__collection.name,
                                        self.__skip,
-                                       ntoreturn,
                                        self.__query_spec(),
                                        self.__projection,
                                        self.__codec_options,

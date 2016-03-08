@@ -240,8 +240,8 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
                  slave_ok, codec_options, read_preference, cmd, listeners):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
-        0, db, coll, 0, ntoreturn, query, None,
-        codec_options, read_preference, 0, 0, DEFAULT_READ_CONCERN)
+        0, db, coll, 0, query, None,
+        codec_options, read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN)
 
     name = next(iter(cmd))
     duration = None

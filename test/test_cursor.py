@@ -540,6 +540,21 @@ class TestCursor(IntegrationTest):
         cursor_count(db.test.find().batch_size(100).limit(10), 10)
         cursor_count(db.test.find().batch_size(500).limit(10), 10)
 
+        cur = db.test.find().batch_size(1)
+        next(cur)
+        if client_context.version.at_least(3, 1, 9):
+            # find command batchSize should be 1
+            self.assertEqual(0, len(cur._Cursor__data))
+        else:
+            # OP_QUERY ntoreturn should be 2
+            self.assertEqual(1, len(cur._Cursor__data))
+        next(cur)
+        self.assertEqual(0, len(cur._Cursor__data))
+        next(cur)
+        self.assertEqual(0, len(cur._Cursor__data))
+        next(cur)
+        self.assertEqual(0, len(cur._Cursor__data))
+
     def test_limit_and_batch_size(self):
         db = self.db
         db.test.drop()
