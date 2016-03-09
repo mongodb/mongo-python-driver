@@ -27,3 +27,4 @@ MongoDB, you can start it like so:
    high_availability
    mod_wsgi
    requests
+   tailable
