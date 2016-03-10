@@ -301,7 +301,7 @@ class TestCollection(unittest.TestCase):
                     pass
                 coll.ensure_index('foo')
                 coll.drop_indexes()
-                coll.ensure_index('foo')
+                coll.create_index('foo')
 
         try:
             threads = []
@@ -315,8 +315,7 @@ class TestCollection(unittest.TestCase):
 
             joinall(threads)
 
-            wait_until(lambda: 'foo_1' in coll.index_information(),
-                       "find the foo_1 index")
+            self.assertTrue('foo_1' in coll.index_information())
         finally:
             coll.drop()
 
