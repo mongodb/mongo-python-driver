@@ -1160,7 +1160,7 @@ class TestLegacy(IntegrationTest):
                     pass
                 coll.ensure_index('foo')
                 coll.drop_indexes()
-                coll.ensure_index('foo')
+                coll.create_index('foo')
 
         try:
             threads = []
