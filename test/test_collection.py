@@ -315,7 +315,8 @@ class TestCollection(unittest.TestCase):
 
             joinall(threads)
 
-            self.assertTrue('foo_1' in coll.index_information())
+            wait_until(lambda: 'foo_1' in coll.index_information(),
+                       "find the foo_1 index")
         finally:
             coll.drop()
 
