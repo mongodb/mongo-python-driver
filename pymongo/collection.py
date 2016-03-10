@@ -1594,6 +1594,12 @@ class Collection(common.BaseObject):
             keys = helpers._index_list(key_or_list)
             name = kwargs["name"] = _gen_index_name(keys)
 
+        # Note that there is a race condition here. One thread could
+        # check if the index is cached and be preempted before creating
+        # and caching the index. This means multiple threads attempting
+        # to create the same index concurrently could send the index
+        # to the server two or more times. This has no practical impact
+        # other than wasted round trips.
         if not self.__database.connection._cached(self.__database.name,
                                                   self.__name, name):
             return self.create_index(key_or_list, cache_for, **kwargs)

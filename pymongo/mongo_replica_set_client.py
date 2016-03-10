@@ -584,6 +584,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__opts = {}
         self.__seeds = set()
         self.__index_cache = {}
+        self.__index_cache_lock = threading.Lock()
         self.__auth_credentials = {}
 
         self.__monitor = None
@@ -780,10 +781,14 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         cache = self.__index_cache
         now = datetime.datetime.utcnow()
-        return (dbname in cache and
-                coll in cache[dbname] and
-                index in cache[dbname][coll] and
-                now < cache[dbname][coll][index])
+        self.__index_cache_lock.acquire()
+        try:
+            return (dbname in cache and
+                    coll in cache[dbname] and
+                    index in cache[dbname][coll] and
+                    now < cache[dbname][coll][index])
+        finally:
+            self.__index_cache_lock.release()
 
     def _cache_index(self, dbase, collection, index, cache_for):
         """Add an index to the index cache for ensure_index operations.
@@ -791,17 +796,21 @@ class MongoReplicaSetClient(common.BaseObject):
         now = datetime.datetime.utcnow()
         expire = datetime.timedelta(seconds=cache_for) + now
 
-        if dbase not in self.__index_cache:
-            self.__index_cache[dbase] = {}
-            self.__index_cache[dbase][collection] = {}
-            self.__index_cache[dbase][collection][index] = expire
+        self.__index_cache_lock.acquire()
+        try:
+            if dbase not in self.__index_cache:
+                self.__index_cache[dbase] = {}
+                self.__index_cache[dbase][collection] = {}
+                self.__index_cache[dbase][collection][index] = expire
 
-        elif collection not in self.__index_cache[dbase]:
-            self.__index_cache[dbase][collection] = {}
-            self.__index_cache[dbase][collection][index] = expire
+            elif collection not in self.__index_cache[dbase]:
+                self.__index_cache[dbase][collection] = {}
+                self.__index_cache[dbase][collection][index] = expire
 
-        else:
-            self.__index_cache[dbase][collection][index] = expire
+            else:
+                self.__index_cache[dbase][collection][index] = expire
+        finally:
+            self.__index_cache_lock.release()
 
     def _purge_index(self, database_name,
                      collection_name=None, index_name=None):
@@ -811,22 +820,26 @@ class MongoReplicaSetClient(common.BaseObject):
 
         If `collection_name` is None purge an entire database.
         """
-        if not database_name in self.__index_cache:
-            return
+        self.__index_cache_lock.acquire()
+        try:
+            if not database_name in self.__index_cache:
+                return
 
-        if collection_name is None:
-            del self.__index_cache[database_name]
-            return
+            if collection_name is None:
+                del self.__index_cache[database_name]
+                return
 
-        if not collection_name in self.__index_cache[database_name]:
-            return
+            if not collection_name in self.__index_cache[database_name]:
+                return
 
-        if index_name is None:
-            del self.__index_cache[database_name][collection_name]
-            return
+            if index_name is None:
+                del self.__index_cache[database_name][collection_name]
+                return
 
-        if index_name in self.__index_cache[database_name][collection_name]:
-            del self.__index_cache[database_name][collection_name][index_name]
+            if index_name in self.__index_cache[database_name][collection_name]:
+                del self.__index_cache[database_name][collection_name][index_name]
+        finally:
+            self.__index_cache_lock.release()
 
     def _cache_credentials(self, source, credentials, connect=True):
         """Add credentials to the database authentication cache

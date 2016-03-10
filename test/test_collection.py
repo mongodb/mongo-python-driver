@@ -259,6 +259,66 @@ class TestCollection(unittest.TestCase):
             ctx.exit()
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
+    def test_ensure_index_threaded(self):
+        coll = self.db.threaded_index_creation
+        index_docs = []
+
+        class Indexer(threading.Thread):
+            def run(self):
+                coll.ensure_index('foo0')
+                coll.ensure_index('foo1')
+                coll.ensure_index('foo2')
+                index_docs.append(coll.index_information())
+
+        try:
+            threads = []
+            for _ in range(10):
+                t = Indexer()
+                t.setDaemon(True)
+                threads.append(t)
+
+            for thread in threads:
+                thread.start()
+
+            joinall(threads)
+
+            first = index_docs[0]
+            for index_doc in index_docs[1:]:
+                self.assertEqual(index_doc, first)
+        finally:
+            coll.drop()
+
+    def test_ensure_purge_index_threaded(self):
+        coll = self.db.threaded_index_creation
+
+        class Indexer(threading.Thread):
+            def run(self):
+                coll.ensure_index('foo')
+                try:
+                    coll.drop_index('foo')
+                except OperationFailure:
+                    # The index may have already been dropped.
+                    pass
+                coll.ensure_index('foo')
+                coll.drop_indexes()
+                coll.ensure_index('foo')
+
+        try:
+            threads = []
+            for _ in range(10):
+                t = Indexer()
+                t.setDaemon(True)
+                threads.append(t)
+
+            for thread in threads:
+                thread.start()
+
+            joinall(threads)
+
+            self.assertTrue('foo_1' in coll.index_information())
+        finally:
+            coll.drop()
+
     def test_ensure_unique_index_threaded(self):
         coll = self.db.test_unique_threaded
         coll.drop()
