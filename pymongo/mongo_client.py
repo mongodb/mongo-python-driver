@@ -353,6 +353,7 @@ class MongoClient(common.BaseObject):
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
+        self.__index_cache_lock = threading.Lock()
 
         super(MongoClient, self).__init__(options.codec_options,
                                           options.read_preference,
@@ -433,27 +434,29 @@ class MongoClient(common.BaseObject):
         """Test if `index` is cached."""
         cache = self.__index_cache
         now = datetime.datetime.utcnow()
-        return (dbname in cache and
-                coll in cache[dbname] and
-                index in cache[dbname][coll] and
-                now < cache[dbname][coll][index])
+        with self.__index_cache_lock:
+            return (dbname in cache and
+                    coll in cache[dbname] and
+                    index in cache[dbname][coll] and
+                    now < cache[dbname][coll][index])
 
     def _cache_index(self, dbname, collection, index, cache_for):
         """Add an index to the index cache for ensure_index operations."""
         now = datetime.datetime.utcnow()
         expire = datetime.timedelta(seconds=cache_for) + now
 
-        if database not in self.__index_cache:
-            self.__index_cache[dbname] = {}
-            self.__index_cache[dbname][collection] = {}
-            self.__index_cache[dbname][collection][index] = expire
+        with self.__index_cache_lock:
+            if database not in self.__index_cache:
+                self.__index_cache[dbname] = {}
+                self.__index_cache[dbname][collection] = {}
+                self.__index_cache[dbname][collection][index] = expire
 
-        elif collection not in self.__index_cache[dbname]:
-            self.__index_cache[dbname][collection] = {}
-            self.__index_cache[dbname][collection][index] = expire
+            elif collection not in self.__index_cache[dbname]:
+                self.__index_cache[dbname][collection] = {}
+                self.__index_cache[dbname][collection][index] = expire
 
-        else:
-            self.__index_cache[dbname][collection][index] = expire
+            else:
+                self.__index_cache[dbname][collection][index] = expire
 
     def _purge_index(self, database_name,
                      collection_name=None, index_name=None):
@@ -463,22 +466,23 @@ class MongoClient(common.BaseObject):
 
         If `collection_name` is None purge an entire database.
         """
-        if not database_name in self.__index_cache:
-            return
+        with self.__index_cache_lock:
+            if not database_name in self.__index_cache:
+                return
 
-        if collection_name is None:
-            del self.__index_cache[database_name]
-            return
+            if collection_name is None:
+                del self.__index_cache[database_name]
+                return
 
-        if not collection_name in self.__index_cache[database_name]:
-            return
+            if not collection_name in self.__index_cache[database_name]:
+                return
 
-        if index_name is None:
-            del self.__index_cache[database_name][collection_name]
-            return
+            if index_name is None:
+                del self.__index_cache[database_name][collection_name]
+                return
 
-        if index_name in self.__index_cache[database_name][collection_name]:
-            del self.__index_cache[database_name][collection_name][index_name]
+            if index_name in self.__index_cache[database_name][collection_name]:
+                del self.__index_cache[database_name][collection_name][index_name]
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
