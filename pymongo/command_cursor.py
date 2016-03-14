@@ -182,9 +182,10 @@ class CommandCursor(object):
             return len(self.__data)
 
         if self.__id:  # Get More
+            dbname, collname = self.__ns.split('.', 1)
             self.__send_message(
-                _GetMore(self.__collection.database.name,
-                         self.__collection.name,
+                _GetMore(dbname,
+                         collname,
                          self.__batch_size,
                          self.__id,
                          self.__collection.codec_options))
