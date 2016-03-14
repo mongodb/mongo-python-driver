@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 3.2.2
+------------------------
+
+Version 3.2.2 fixes a few issues reported since the release of 3.2.1, including
+a fix for using the `connect` option in the MongoDB URI and support for setting
+the batch size for a query to 1 when using MongoDB 3.2+.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.2.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.2.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16538
+
+
 Changes in Version 3.2.1
 ------------------------
 
