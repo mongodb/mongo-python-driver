@@ -600,6 +600,22 @@ in this release.
 
 .. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12501
 
+Changes in Version 2.9.3
+------------------------
+
+Version 2.9.3 fixes a few issues reported since the release of 2.9.2 including
+thread safety issues in :meth:`~pymongo.collection.Collection.ensure_index`,
+:meth:`~pymongo.collection.Collection.drop_index`, and
+:meth:`~pymongo.collection.Collection.drop_indexes`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.9.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16539
+
 Changes in Version 2.9.2
 ------------------------
 
