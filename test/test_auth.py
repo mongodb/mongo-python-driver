@@ -128,8 +128,8 @@ class TestGSSAPI(unittest.TestCase):
         mech_properties = 'SERVICE_NAME:%s' % (GSSAPI_SERVICE_NAME,)
         mech_properties += (
             ',CANONICALIZE_HOST_NAME:%s' % (GSSAPI_CANONICALIZE,))
-        if GSSAPI_SERVICE_NAME is not None:
-            mech_properties += ',SERVICE_NAME:%s' % (GSSAPI_SERVICE_NAME,)
+        if GSSAPI_SERVICE_REALM is not None:
+            mech_properties += ',SERVICE_REALM:%s' % (GSSAPI_SERVICE_REALM,)
 
         # Call authenticate() with authMechanismProperties.
         self.assertTrue(db.authenticate(
