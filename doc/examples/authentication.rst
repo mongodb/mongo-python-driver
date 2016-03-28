@@ -196,7 +196,7 @@ Two extra ``authMechanismProperties`` are supported on Windows platforms:
 
 .. _kerberos: http://pypi.python.org/pypi/kerberos
 .. _pykerberos: https://pypi.python.org/pypi/pykerberos
-.. _winkerberos: https://github.com/mongodb-labs/winkerberos
+.. _winkerberos: https://pypi.python.org/pypi/winkerberos/
 
 SASL PLAIN (RFC 4616)
 ---------------------
