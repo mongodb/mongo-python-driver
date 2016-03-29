@@ -3,11 +3,10 @@
 PyMongo and mod_wsgi
 ====================
 
-If you run your application under
-`mod_wsgi <http://code.google.com/p/modwsgi/>`_ and you use PyMongo with its C
-extensions enabled, follow these guidelines for best performance:
+To run your application under `mod_wsgi <http://code.google.com/p/modwsgi/>`_,
+follow these guidelines:
 
-* Run ``mod_wsgi`` in daemon mode with the ``WSGIDaemon`` directive.
+* Run ``mod_wsgi`` in daemon mode with the ``WSGIDaemonProcess`` directive.
 * Assign each application to a separate daemon with ``WSGIProcessGroup``.
 * Use ``WSGIApplicationGroup %{GLOBAL}`` to ensure your application is running
   in the daemon's main Python interpreter, not a sub interpreter.
@@ -41,7 +40,13 @@ daemon, still in the global application group::
         WSGIApplicationGroup %{GLOBAL}
     </VirtualHost>
 
-Background: Python C extensions in general have issues running in multiple
+Background: ``mod_wsgi`` can run in "embedded" mode when only WSGIScriptAlias
+is set, or "daemon" mode with WSGIDaemonProcess. In daemon mode, ``mod_wsgi``
+can run your application in the Python main interpreter, or in sub interpreters.
+The correct way to run a PyMongo application is in daemon mode, using the main
+interpreter.
+
+Python C extensions in general have issues running in multiple
 Python sub interpreters. These difficulties are explained in the documentation for
 `Py_NewInterpreter <http://docs.python.org/2/c-api/init.html#Py_NewInterpreter>`_
 and in the `Multiple Python Sub Interpreters
