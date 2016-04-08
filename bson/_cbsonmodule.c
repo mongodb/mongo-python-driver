@@ -50,6 +50,7 @@ struct module_state {
     PyObject* UTC;
     PyTypeObject* REType;
     PyObject* BSONInt64;
+    PyObject* Decimal128;
     PyObject* Mapping;
     PyObject* CodecOptions;
 };
@@ -359,6 +360,7 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->UTC, "bson.tz_util", "utc") ||
         _load_object(&state->Regex, "bson.regex", "Regex") ||
         _load_object(&state->BSONInt64, "bson.int64", "Int64") ||
+        _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
         _load_object(&state->Mapping, "collections", "Mapping") ||
         _load_object(&state->CodecOptions, "bson.codec_options", "CodecOptions")) {
@@ -892,6 +894,31 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                 return 0;
             }
             *(buffer_get_buffer(buffer) + type_byte) = 0x12;
+            return 1;
+        }
+    case 19:
+        {
+            /* Decimal128 */
+            const char* data;
+            PyObject* pystring = PyObject_GetAttrString(value, "bid");
+            if (!pystring) {
+                return 0;
+            }
+#if PY_MAJOR_VERSION >= 3
+            data = PyBytes_AsString(pystring);
+#else
+            data = PyString_AsString(pystring);
+#endif
+            if (!data) {
+                Py_DECREF(pystring);
+                return 0;
+            }
+            if (!buffer_write_bytes(buffer, data, 16)) {
+                Py_DECREF(pystring);
+                return 0;
+            }
+            Py_DECREF(pystring);
+            *(buffer_get_buffer(buffer) + type_byte) = 0x13;
             return 1;
         }
     case 100:
@@ -2385,6 +2412,29 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             value = PyObject_CallFunction(bson_int64_type, "L", ll);
             *position += 8;
             Py_DECREF(bson_int64_type);
+            break;
+        }
+    case 19:
+        {
+            PyObject* dec128;
+            if (max < 16) {
+                goto invalid;
+            }
+            if ((dec128 = _get_object(state->Decimal128,
+                                      "bson.decimal128",
+                                      "Decimal128"))) {
+                value = PyObject_CallMethod(dec128,
+                                            "from_bid",
+#if PY_MAJOR_VERSION >= 3
+                                            "y#",
+#else
+                                            "s#",
+#endif
+                                            buffer + *position,
+                                            16);
+                Py_DECREF(dec128);
+            }
+            *position += 16;
             break;
         }
     case 255:

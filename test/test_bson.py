@@ -408,13 +408,13 @@ class TestBSON(unittest.TestCase):
 
     def test_unknown_type(self):
         # Repr value differs with major python version
-        part = "type %r for fieldname 'foo'" % (b'\x13',)
+        part = "type %r for fieldname 'foo'" % (b'\x14',)
         docs = [
-            b'\x0e\x00\x00\x00\x13foo\x00\x01\x00\x00\x00\x00',
-            (b'\x16\x00\x00\x00\x04foo\x00\x0c\x00\x00\x00\x130'
+            b'\x0e\x00\x00\x00\x14foo\x00\x01\x00\x00\x00\x00',
+            (b'\x16\x00\x00\x00\x04foo\x00\x0c\x00\x00\x00\x140'
              b'\x00\x01\x00\x00\x00\x00\x00'),
             (b' \x00\x00\x00\x04bar\x00\x16\x00\x00\x00\x030\x00\x0e\x00\x00'
-             b'\x00\x13foo\x00\x01\x00\x00\x00\x00\x00\x00')]
+             b'\x00\x14foo\x00\x01\x00\x00\x00\x00\x00\x00')]
         for bs in docs:
             try:
                 bson.BSON(bs).decode()

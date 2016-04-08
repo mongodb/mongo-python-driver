@@ -34,6 +34,7 @@ from bson.code import Code
 from bson.codec_options import (
     CodecOptions, DEFAULT_CODEC_OPTIONS, _raw_document_class)
 from bson.dbref import DBRef
+from bson.decimal128 import Decimal128
 from bson.errors import (InvalidBSON,
                          InvalidDocument,
                          InvalidStringData)
@@ -82,6 +83,7 @@ BSONCWS = b"\x0F" # Javascript code with scope
 BSONINT = b"\x10" # 32bit int
 BSONTIM = b"\x11" # Timestamp
 BSONLON = b"\x12" # 64bit int
+BSONDEC = b"\x13" # Decimal128
 BSONMIN = b"\xFF" # Min key
 BSONMAX = b"\x7F" # Max key
 
@@ -289,6 +291,12 @@ def _get_int64(data, position, dummy0, dummy1, dummy2):
     return Int64(_UNPACK_LONG(data[position:end])[0]), end
 
 
+def _get_decimal128(data, position, dummy0, dummy1, dummy2):
+    """Decode a BSON decimal128 to bson.decimal128.Decimal128."""
+    end = position + 16
+    return Decimal128.from_bid(data[position:end]), end
+
+
 # Each decoder function's signature is:
 #   - data: bytes
 #   - position: int, beginning of object in 'data' to decode
@@ -313,6 +321,7 @@ _ELEMENT_GETTER = {
     BSONINT: _get_int,
     BSONTIM: _get_timestamp,
     BSONLON: _get_int64,
+    BSONDEC: _get_decimal128,
     BSONMIN: lambda v, w, x, y, z: (MinKey(), w),
     BSONMAX: lambda v, w, x, y, z: (MaxKey(), w)}
 
@@ -619,6 +628,11 @@ def _encode_long(name, value, dummy0, dummy1):
         raise OverflowError("BSON can only handle up to 8-byte ints")
 
 
+def _encode_decimal128(name, value, dummy0, dummy1):
+    """Encode bson.decimal128.Decimal128."""
+    return b"\x13" + name + value.bid
+
+
 def _encode_minkey(name, dummy0, dummy1, dummy2):
     """Encode bson.min_key.MinKey."""
     return b"\xFF" + name
@@ -659,6 +673,7 @@ _ENCODERS = {
     SON: _encode_mapping,
     Timestamp: _encode_timestamp,
     UUIDLegacy: _encode_binary,
+    Decimal128: _encode_decimal128,
     # Special case. This will never be looked up directly.
     collections.Mapping: _encode_mapping,
 }

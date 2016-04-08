@@ -14,6 +14,7 @@ Sub-modules:
    code
    codec_options
    dbref
+   decimal128
    errors
    int64
    json_util
