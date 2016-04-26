@@ -126,6 +126,9 @@ def _on_executor_deleted(ref):
 
 
 def _shutdown_executors():
+    if _EXECUTORS is None:
+        return
+
     # Copy the set. Stopping threads has the side effect of removing executors.
     executors = list(_EXECUTORS)
 
