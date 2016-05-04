@@ -1,4 +1,4 @@
-﻿{
+{
     "description": "Decimal128",
     "bson_type": "0x13",
     "test_key": "d",
@@ -292,18 +292,18 @@
             "extjson": "{\"d\" : {\"$numberDecimal\" : \"infiniTY\"}}"
         },
         {
-            "description": "Non-Canonical Parsing - infinity",
+            "description": "Non-Canonical Parsing - inf",
             "subject": "180000001364000000000000000000000000000000007800",
             "string": "Infinity",
             "to_extjson": false,
-            "extjson": "{\"d\" : {\"$numberDecimal\" : \"infinity\"}}"
+            "extjson": "{\"d\" : {\"$numberDecimal\" : \"inf\"}}"
         },
         {
-            "description": "Non-Canonical Parsing - inFinity",
+            "description": "Non-Canonical Parsing - inF",
             "subject": "180000001364000000000000000000000000000000007800",
             "string": "Infinity",
             "to_extjson": false,
-            "extjson": "{\"d\" : {\"$numberDecimal\" : \"inFinity\"}}"
+            "extjson": "{\"d\" : {\"$numberDecimal\" : \"inF\"}}"
         },
         {
             "description": "Non-Canonical Parsing - -infinity",
@@ -320,25 +320,25 @@
             "extjson": "{\"d\" : {\"$numberDecimal\" : \"-infiniTy\"}}"
         },
         {
-            "description": "Non-Canonical Parsing - -Infinity",
+            "description": "Non-Canonical Parsing - -Inf",
             "subject": "18000000136400000000000000000000000000000000F800",
             "string": "-Infinity",
             "to_extjson": false,
             "extjson": "{\"d\" : {\"$numberDecimal\" : \"-Infinity\"}}"
         },
         {
-            "description": "Non-Canonical Parsing - -infinity",
+            "description": "Non-Canonical Parsing - -inf",
             "subject": "18000000136400000000000000000000000000000000F800",
             "string": "-Infinity",
             "to_extjson": false,
             "extjson": "{\"d\" : {\"$numberDecimal\" : \"-inf\"}}"
         },
         {
-            "description": "Non-Canonical Parsing - -inFinity",
+            "description": "Non-Canonical Parsing - -inF",
             "subject": "18000000136400000000000000000000000000000000F800",
             "string": "-Infinity",
             "to_extjson": false,
-            "extjson": "{\"d\" : {\"$numberDecimal\" : \"-inFinity\"}}"
+            "extjson": "{\"d\" : {\"$numberDecimal\" : \"-inF\"}}"
         }
     ],
     "parseErrors": [
