@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for working with 128-bit IEEE 754-2008 decimal floating point numbers.
+"""Tools for working with the BSON decimal128 type.
+
+.. versionadded:: 3.4
+
+.. note:: The Decimal128 BSON type requires MongoDB 3.4+.
 """
 
 import decimal
@@ -52,9 +56,9 @@ _UNPACK_64 = struct.Struct("<Q").unpack
 
 _EXPONENT_MASK = 3 << 61
 _EXPONENT_BIAS = 6176
-_EXPONENT_MAX = 6111
-_EXPONENT_MIN = -6176
-_MAX_BIT_LENGTH = 113
+_EXPONENT_MAX = 6144
+_EXPONENT_MIN = -6143
+_MAX_DIGITS = 34
 
 _INF = 0x7800000000000000
 _NAN = 0x7c00000000000000
@@ -68,6 +72,34 @@ _PNAN = (_NAN, 0)
 _NSNAN = (_SNAN + _SIGN, 0)
 _PSNAN = (_SNAN, 0)
 
+_CTX_OPTIONS = {
+    'prec': _MAX_DIGITS,
+    'rounding': decimal.ROUND_HALF_EVEN,
+    'Emin': _EXPONENT_MIN,
+    'Emax': _EXPONENT_MAX,
+    'capitals': 1,
+    'flags': [],
+    'traps': [decimal.InvalidOperation,
+              decimal.Overflow,
+              decimal.Inexact]
+}
+
+if _PY3:
+    _CTX_OPTIONS['clamp'] = 1
+else:
+    _CTX_OPTIONS['_clamp'] = 1
+
+_DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())
+
+
+def create_decimal128_context():
+    """Returns an instance of :class:`decimal.Context` appropriate
+    for working with IEEE-754 128-bit decimal floating point values.
+    """
+    opts = _CTX_OPTIONS.copy()
+    opts['traps'] = []
+    return decimal.Context(**opts)
+
 
 def _decimal_to_128(value):
     """Converts a decimal.Decimal to BID (high bits, low bits).
@@ -75,6 +107,9 @@ def _decimal_to_128(value):
     :Parameters:
       - `value`: An instance of decimal.Decimal
     """
+    with decimal.localcontext(_DEC128_CTX) as ctx:
+        value = ctx.create_decimal(value)
+
     if value.is_infinite():
         return _NINF if value.is_signed() else _PINF
 
@@ -89,12 +124,6 @@ def _decimal_to_128(value):
 
     significand = int("".join([str(digit) for digit in digits]))
     bit_length = _bit_length(significand)
-    if exponent > _EXPONENT_MAX or exponent < _EXPONENT_MIN:
-        raise ValueError("Exponent is out of range for "
-                         "Decimal128 encoding %d" % (exponent,))
-    if bit_length > _MAX_BIT_LENGTH:
-        raise ValueError("Unscaled value is out of range for "
-                         "Decimal128 encoding %d" % (significand,))
 
     high = 0
     low = 0
@@ -135,7 +164,51 @@ class Decimal128(object):
       - `value`: An instance of :class:`decimal.Decimal`, string, or tuple of
         (high bits, low bits) from Binary Integer Decimal (BID) format.
 
-    .. note:: To match the behavior of MongoDB's Decimal128 implementation
+    .. note:: :class:`~Decimal128` uses an instance of :class:`decimal.Context`
+      configured for IEEE-754 Decimal128 when validating parameters.
+      Signals like :class:`decimal.InvalidOperation`, :class:`decimal.Inexact`,
+      and :class:`decimal.Overflow` are trapped and raised as exceptions::
+
+        >>> Decimal128(".13.1")
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+          ...
+        decimal.InvalidOperation: [<class 'decimal.ConversionSyntax'>]
+        >>>
+        >>> Decimal128("1E-6177")
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+          ...
+        decimal.Inexact: [<class 'decimal.Inexact'>]
+        >>>
+        >>> Decimal128("1E6145")
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+          ...
+        decimal.Overflow: [<class 'decimal.Overflow'>, <class 'decimal.Rounded'>]
+
+      To ensure the result of a calculation can always be stored as BSON
+      Decimal128 use the context returned by
+      :func:`create_decimal128_context`::
+
+        >>> import decimal
+        >>> decimal128_ctx = create_decimal128_context()
+        >>> with decimal.localcontext(decimal128_ctx) as ctx:
+        ...     Decimal128(ctx.create_decimal(".13.3"))
+        ...
+        Decimal128('NaN')
+        >>>
+        >>> with decimal.localcontext(decimal128_ctx) as ctx:
+        ...     Decimal128(ctx.create_decimal("1E-6177"))
+        ...
+        Decimal128('0E-6176')
+        >>>
+        >>> with decimal.localcontext(DECIMAL128_CTX) as ctx:
+        ...     Decimal128(ctx.create_decimal("1E6145"))
+        ...
+        Decimal128('Infinity')
+
+      To match the behavior of MongoDB's Decimal128 implementation
       str(Decimal(value)) may not match str(Decimal128(value)) for NaN values::
 
         >>> Decimal128(Decimal('NaN'))
@@ -176,16 +249,7 @@ class Decimal128(object):
     _type_marker = 19
 
     def __init__(self, value):
-        if isinstance(value, _string_type):
-            # Really? decimal.Decimal doesn't care...
-            if value.startswith(' ') or value.endswith(' '):
-                raise ValueError("leading or trailing whitespace")
-            try:
-                dec = decimal.Decimal(value)
-            except decimal.InvalidOperation as exc:
-                raise ValueError(str(exc))
-            self.__high, self.__low = _decimal_to_128(dec)
-        elif isinstance(value, decimal.Decimal):
+        if isinstance(value, (_string_type, decimal.Decimal)):
             self.__high, self.__low = _decimal_to_128(value)
         elif isinstance(value, (list, tuple)):
             if len(value) != 2:
@@ -234,7 +298,8 @@ class Decimal128(object):
         # Have to convert bytearray to bytes for python 2.6.
         digits = [int(digit) for digit in str(_from_bytes(bytes(arr), 'big'))]
 
-        return decimal.Decimal((sign, digits, exponent))
+        with decimal.localcontext(_DEC128_CTX) as ctx:
+            return ctx.create_decimal((sign, digits, exponent))
 
     @classmethod
     def from_bid(cls, value):

@@ -1,0 +1,131 @@
+{
+    "description": "Decimal128",
+    "bson_type": "0x13",
+    "test_key": "d",
+    "parseErrors": [
+        {
+            "description": "Incomplete Exponent",
+            "subject": "1e"
+        },
+        {
+            "description": "Exponent at the beginning",
+            "subject": "E01"
+        },
+        {
+            "description": "Just a decimal place",
+            "subject": "."
+        },
+        {
+            "description": "2 decimal places",
+            "subject": "..3"
+        },
+        {
+            "description": "2 decimal places",
+            "subject": ".13.3"
+        },
+        {
+            "description": "2 decimal places",
+            "subject": "1..3"
+        },
+        {
+            "description": "2 decimal places",
+            "subject": "1.3.4"
+        },
+        {
+            "description": "2 decimal places",
+            "subject": "1.34."
+        },
+        {
+            "description": "Decimal with no digits",
+            "subject": ".e"
+        },
+        {
+            "description": "2 signs",
+            "subject": "+-32.4"
+        },
+        {
+            "description": "2 signs",
+            "subject": "-+32.4"
+        },
+        {
+            "description": "2 negative signs",
+            "subject": "--32.4"
+        },
+        {
+            "description": "2 negative signs",
+            "subject": "-32.-4"
+        },
+        {
+            "description": "End in negative sign",
+            "subject": "32.0-"
+        },
+        {
+            "description": "2 negative signs",
+            "subject": "32.4E--21"
+        },
+        {
+            "description": "2 negative signs",
+            "subject": "32.4E-2-1"
+        },
+        {
+            "description": "2 signs",
+            "subject": "32.4E+-21"
+        },
+        {
+            "description": "Empty string",
+            "subject": ""
+        },
+        {
+            "description": "leading white space positive number",
+            "subject": " 1"
+        },
+        {
+            "description": "leading white space negative number",
+            "subject": " -1"
+        },
+        {
+            "description": "trailing white space",
+            "subject": "1 "
+        },
+        {
+            "description": "Invalid",
+            "subject": "E"
+        },
+        {
+            "description": "Invalid",
+            "subject": "invalid"
+        },
+        {
+            "description": "Invalid",
+            "subject": "i"
+        },
+        {
+            "description": "Invalid",
+            "subject": "in"
+        },
+        {
+            "description": "Invalid",
+            "subject": "-in"
+        },
+        {
+            "description": "Invalid",
+            "subject": "Na"
+        },
+        {
+            "description": "Invalid",
+            "subject": "-Na"
+        },
+        {
+            "description": "Invalid",
+            "subject": "1.23abc"
+        },
+        {
+            "description": "Invalid",
+            "subject": "1.23abcE+02"
+        },
+        {
+            "description": "Invalid",
+            "subject": "1.23E+0aabs2"
+        }
+    ]
+}

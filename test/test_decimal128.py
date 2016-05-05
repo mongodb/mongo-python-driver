@@ -15,18 +15,19 @@
 """Tests for Decimal128."""
 
 import codecs
+import glob
 import json
 import os.path
 import pickle
 import sys
 
 from binascii import unhexlify
-from decimal import Decimal
+from decimal import Decimal, DecimalException
 
 sys.path[0:0] = [""]
 
 from bson import BSON
-from bson.decimal128 import Decimal128
+from bson.decimal128 import Decimal128, create_decimal128_context
 from bson.json_util import dumps, loads
 from bson.py3compat import b
 from test import client_context, unittest
@@ -68,28 +69,40 @@ class TestDecimal128(unittest.TestCase):
         self.assertEqual(str(dsnan), str(dsnan128.to_decimal()))
         self.assertEqual(str(dnsnan), str(dnsnan128.to_decimal()))
 
+    def test_decimal128_context(self):
+        ctx = create_decimal128_context()
+        self.assertEqual("NaN", str(ctx.copy().create_decimal(".13.1")))
+        self.assertEqual("Infinity", str(ctx.copy().create_decimal("1E6145")))
+        self.assertEqual("0E-6176", str(ctx.copy().create_decimal("1E-6177")))
+
     def test_spec(self):
-        path = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            'decimal',
-            'decimal128.json')
-        with codecs.open(path, 'r', 'utf-8-sig') as fp:
-            suite = json.load(fp)
+        for path in glob.glob(os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                'decimal',
+                'decimal128*')):
+            with codecs.open(path, 'r', 'utf-8-sig') as fp:
+                suite = json.load(fp)
 
-        for test in suite['valid']:
-            subject = unhexlify(b(test['subject']))
-            doc = BSON(subject).decode()
-            self.assertEqual(BSON.encode(doc), subject)
+            for test in suite.get('valid', []):
+                subject = unhexlify(b(test['subject']))
+                doc = BSON(subject).decode()
+                self.assertEqual(BSON.encode(doc), subject)
 
-            self.assertEqual(str(doc['d']), test['string'])
+                if 'match_string' in test:
+                    self.assertEqual(
+                        str(Decimal128(test['string'])), test['match_string'])
+                else:
+                    self.assertEqual(str(doc['d']), test['string'])
 
-            if test.get('from_extjson', True):
-                self.assertEqual(doc, loads(test['extjson']))
+                if 'extjson' in test:
+                    if test.get('from_extjson', True):
+                        self.assertEqual(doc, loads(test['extjson']))
 
-            if test.get('to_extjson', True):
-                extjson = test['extjson'].replace(' ', '')
-                self.assertEqual(extjson, dumps(doc).replace(' ', ''))
+                    if test.get('to_extjson', True):
+                        extjson = test['extjson'].replace(' ', '')
+                        self.assertEqual(extjson, dumps(doc).replace(' ', ''))
 
-        for test in suite['parseErrors']:
-            self.assertRaises(ValueError, Decimal128, test['subject'])
+            for test in suite.get('parseErrors', []):
+                self.assertRaises(
+                    DecimalException, Decimal128, test['subject'])
 
