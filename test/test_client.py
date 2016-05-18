@@ -259,7 +259,7 @@ class TestClient(IntegrationTest):
 
         client = MongoClient(
             'mongodb://localhost:27017,localhost:27018/?replicaSet=replset'
-            '&connectTimeoutMS=12345',
+            '&connectTimeoutMS=12345&w=1&wtimeoutms=100',
             connect=False, document_class=SON)
 
         the_repr = repr(client)
@@ -269,8 +269,32 @@ class TestClient(IntegrationTest):
             "tz_aware=False, "
             "connect=False, ",
             the_repr)
-        self.assertIn("connecttimeoutms='12345'", the_repr)
-        self.assertIn("replicaset=", the_repr)
+        self.assertIn("connecttimeoutms=12345", the_repr)
+        self.assertIn("replicaset='replset'", the_repr)
+        self.assertIn("w=1", the_repr)
+        self.assertIn("wtimeoutms=100", the_repr)
+
+        self.assertEqual(eval(the_repr), client)
+
+        client = MongoClient("localhost:27017,localhost:27018",
+                             replicaSet='replset',
+                             connectTimeoutMS=12345,
+                             socketTimeoutMS=None,
+                             w=1,
+                             wtimeoutms=100,
+                             connect=False)
+        the_repr = repr(client)
+        self.assertIn('MongoClient(host=', the_repr)
+        self.assertIn(
+            "document_class=dict, "
+            "tz_aware=False, "
+            "connect=False, ",
+            the_repr)
+        self.assertIn("connecttimeoutms=12345", the_repr)
+        self.assertIn("replicaset='replset'", the_repr)
+        self.assertIn("sockettimeoutms=None", the_repr)
+        self.assertIn("w=1", the_repr)
+        self.assertIn("wtimeoutms=100", the_repr)
 
         self.assertEqual(eval(the_repr), client)
 

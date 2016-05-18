@@ -415,11 +415,8 @@ URI_VALIDATORS = {
     'fsync': validate_boolean_or_string,
     'j': validate_boolean_or_string,
     'journal': validate_boolean_or_string,
-    'connecttimeoutms': validate_timeout_or_none,
     'maxpoolsize': validate_positive_integer_or_none,
     'socketkeepalive': validate_boolean_or_string,
-    'sockettimeoutms': validate_timeout_or_none,
-    'waitqueuetimeoutms': validate_timeout_or_none,
     'waitqueuemultiple': validate_non_negative_integer_or_none,
     'ssl': validate_boolean_or_string,
     'ssl_keyfile': validate_readable,
@@ -431,7 +428,6 @@ URI_VALIDATORS = {
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
     'localthresholdms': validate_positive_float_or_zero,
-    'serverselectiontimeoutms': validate_timeout_or_zero,
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_string,
     'authmechanismproperties': validate_auth_mechanism_properties,
@@ -440,12 +436,20 @@ URI_VALIDATORS = {
     'connect': validate_boolean_or_string,
 }
 
+TIMEOUT_VALIDATORS = {
+    'connecttimeoutms': validate_timeout_or_none,
+    'sockettimeoutms': validate_timeout_or_none,
+    'waitqueuetimeoutms': validate_timeout_or_none,
+    'serverselectiontimeoutms': validate_timeout_or_zero,
+}
+
 KW_VALIDATORS = {
     'document_class': validate_document_class,
     'read_preference': validate_read_preference,
     'event_listeners': _validate_event_listeners
 }
 
+URI_VALIDATORS.update(TIMEOUT_VALIDATORS)
 VALIDATORS = URI_VALIDATORS.copy()
 VALIDATORS.update(KW_VALIDATORS)
 

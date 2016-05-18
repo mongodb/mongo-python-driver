@@ -839,8 +839,8 @@ class MongoClient(common.BaseObject):
                 else:
                     return 'document_class=%s.%s' % (value.__module__,
                                                      value.__name__)
-            if "ms" in option:
-                return "%s='%s'" % (option, int(value * 1000))
+            if option in common.TIMEOUT_VALIDATORS and value is not None:
+                return "%s=%s" % (option, int(value * 1000))
 
             return '%s=%r' % (option, value)
 
