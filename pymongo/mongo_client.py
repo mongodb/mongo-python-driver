@@ -1474,10 +1474,15 @@ class MongoClient(common.BaseObject):
         return not self == other
 
     def __repr__(self):
-        if len(self.__nodes) == 1:
-            return "MongoClient(%r, %r)" % self.address
+        nodes = self.__nodes.copy()
+        if not nodes:
+            # We haven't connected yet.
+            nodes = self.__seeds.copy()
+        if len(nodes) == 1:
+            address = iter(nodes).next()
+            return "MongoClient(%r, %r)" % address
         else:
-            return "MongoClient(%r)" % ["%s:%d" % n for n in self.__nodes]
+            return "MongoClient(%r)" % ["%s:%d" % n for n in nodes]
 
     def __getattr__(self, name):
         """Get a database by name.

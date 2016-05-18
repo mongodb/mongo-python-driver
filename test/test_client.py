@@ -214,7 +214,14 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_repr(self):
         # Making host a str avoids the 'u' prefix in Python 2, so the repr is
         # the same in Python 2 and 3.
-        self.assertEqual(repr(MongoClient(str(host), port)),
+        c = MongoClient(str(host), port)
+        self.assertEqual(repr(c),
+                         "MongoClient('%s', %d)" % (host, port))
+        c.close()
+        self.assertEqual(repr(c),
+                         "MongoClient('%s', %d)" % (host, port))
+        c = MongoClient(str(host), port, connect=False)
+        self.assertEqual(repr(c),
                          "MongoClient('%s', %d)" % (host, port))
 
     def test_getters(self):
