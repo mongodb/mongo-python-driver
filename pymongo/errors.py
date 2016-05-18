@@ -26,6 +26,10 @@ class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
 
 
+class ProtocolError(PyMongoError):
+    """Raised for failures related to the wire protocol."""
+
+
 class ConnectionFailure(PyMongoError):
     """Raised when a connection to the database cannot be made or is lost."""
 

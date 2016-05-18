@@ -32,7 +32,10 @@ except ImportError:
 
 from pymongo import helpers, message
 from pymongo.common import MAX_MESSAGE_SIZE
-from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
+from pymongo.errors import (AutoReconnect,
+                            NotMasterError,
+                            OperationFailure,
+                            ProtocolError)
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 
 _UNPACK_INT = struct.Struct("<i").unpack
@@ -121,21 +124,21 @@ def receive_message(
     length = _UNPACK_INT(header[:4])[0]
 
     actual_op = _UNPACK_INT(header[12:])[0]
-    assert operation == actual_op, ("wire protocol error: "
-                                    "unknown opcode %r" % (actual_op,))
+    if operation != actual_op:
+        raise ProtocolError("Got opcode %r but expected "
+                            "%r" % (actual_op, operation))
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         response_id = _UNPACK_INT(header[8:12])[0]
-        assert request_id == response_id, (
-            "wire protocol error: got response id %r but expected %r"
-            % (response_id, request_id))
-
-    assert length > 16, ("wire protocol error: message length is shorter"
-                         " than standard message header: %r" % (length,))
-
-    assert length <= max_message_size, (
-        "wire protocol error: message length (%r) is larger than server max "
-        "message size (%r)" % (length, max_message_size))
+        if request_id != response_id:
+            raise ProtocolError("Got response id %r but expected "
+                                "%r" % (response_id, request_id))
+    if length <= 16:
+        raise ProtocolError("Message length (%r) not longer than standard "
+                            "message header size (16)" % (length,))
+    if length > max_message_size:
+        raise ProtocolError("Message length (%r) is larger than server max "
+                            "message size (%r)" % (length, max_message_size))
 
     return _receive_data_on_socket(sock, length - 16)
 
