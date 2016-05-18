@@ -45,7 +45,7 @@
       .. automethod:: delete_many
       .. automethod:: aggregate
       .. automethod:: find(filter=None, projection=None, skip=0, limit=0, no_cursor_timeout=False, cursor_type=CursorType.NON_TAILABLE, sort=None, allow_partial_results=False, oplog_replay=False, modifiers=None, manipulate=True)
-      .. automethod:: find_one(filter_or_id=None, *args, **kwargs)
+      .. automethod:: find_one(filter=None, *args, **kwargs)
       .. automethod:: find_one_and_delete
       .. automethod:: find_one_and_replace(filter, replacement, projection=None, sort=None, return_document=ReturnDocument.BEFORE, **kwargs)
       .. automethod:: find_one_and_update(filter, update, projection=None, sort=None, return_document=ReturnDocument.BEFORE, **kwargs)
