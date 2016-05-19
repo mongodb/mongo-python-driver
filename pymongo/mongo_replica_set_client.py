@@ -548,6 +548,8 @@ class MongoReplicaSetClient(common.BaseObject):
 
           | **SSL configuration:**
 
+            See :doc:`/examples/tls` for examples.
+
           - `ssl`: If ``True``, create the connection to the servers using SSL.
             Defaults to ``False``.
           - `ssl_keyfile`: The private keyfile used to identify the local
