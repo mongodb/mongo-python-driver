@@ -262,11 +262,25 @@ class Cursor(object):
 
     @property
     def conn_id(self):
+        """**DEPRECATED** The server/client/pool this cursor lives on.
+
+        .. warning:: :attr:`conn_id` is deprecated in this version of
+          PyMongo and removed in PyMongo 3. Use :attr:`address` instead.
+
+        .. versionchanged:: 2.9.4
+          Deprecated conn_id.
+        """
+        return self.__connection_id
+
+    @property
+    def address(self):
         """The server/client/pool this cursor lives on.
 
         Could be (host, port), -1, or None depending on what
         client class executed the initial query or this cursor
         being advanced at all.
+
+        .. versionadded:: 2.9.4
         """
         return self.__connection_id
 

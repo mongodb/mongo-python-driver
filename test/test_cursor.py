@@ -1290,6 +1290,14 @@ self.assertFalse(c2.alive)
             client.set_cursor_manager(CursorManager)
             ctx.exit()
 
+    def test_conn_id_and_address(self):
+        self.db.test.remove()
+        self.db.test.insert([{} for _ in range(3)])
+
+        cursor = self.db.test.find()
+        list(cursor)
+        self.assertEqual(cursor.conn_id, cursor.address)
+
     def test_alive(self):
         self.db.test.remove()
         self.db.test.insert([{} for _ in range(3)])
