@@ -69,22 +69,44 @@ class TestJsonUtil(unittest.TestCase):
 
         jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000+0000"}}'
         self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000+0000"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
         jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000+00:00"}}'
         self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000+00:00"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000+00"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
         jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000Z"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000Z"}}'
         self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
         # No explicit offset
         jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000"}}'
         self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
         # Localtime behind UTC
         jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000-0800"}}'
         self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000000-0800"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
         jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000-08:00"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000000-08:00"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000000-08"}}'
         self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
         # Localtime ahead of UTC
         jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000+0100"}}'
         self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000000+0100"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
         jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000+01:00"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000000+01:00"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000000+01"}}'
         self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
 
         dtm = datetime.datetime(1, 1, 1, 1, 1, 1, 0, utc)

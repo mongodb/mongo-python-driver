@@ -145,23 +145,40 @@ def object_hook(dct):
         dtm = dct["$date"]
         # mongoexport 2.6 and newer
         if isinstance(dtm, string_type):
+            # Parse offset
+            if dtm[-1] == 'Z':
+                dt = dtm[:-1]
+                offset = 'Z'
+            elif dtm[-3] == ':':
+                # (+|-)HH:MM
+                dt = dtm[:-6]
+                offset = dtm[-6:]
+            elif dtm[-5] in ('+', '-'):
+                # (+|-)HHMM
+                dt = dtm[:-5]
+                offset = dtm[-5:]
+            elif dtm[-3] in ('+', '-'):
+                # (+|-)HH
+                dt = dtm[:-3]
+                offset = dtm[-3:]
+            else:
+                dt = dtm
+                offset = ''
+
             aware = datetime.datetime.strptime(
-                dtm[:23], "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo=utc)
-            offset = dtm[23:]
+                dt, "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo=utc)
+
             if not offset or offset == 'Z':
                 # UTC
                 return aware
             else:
-                if len(offset) == 5:
-                    # Offset from mongoexport is in format (+|-)HHMM
-                    secs = (int(offset[1:3]) * 3600 + int(offset[3:]) * 60)
-                elif ':' in offset and len(offset) == 6:
-                    # RFC-3339 format (+|-)HH:MM
+                if len(offset) == 6:
                     hours, minutes = offset[1:].split(':')
                     secs = (int(hours) * 3600 + int(minutes) * 60)
-                else:
-                    # Not RFC-3339 compliant or mongoexport output.
-                    raise ValueError("invalid format for offset")
+                elif len(offset) == 5:
+                    secs = (int(offset[1:3]) * 3600 + int(offset[3:]) * 60)
+                elif len(offset) == 3:
+                    secs = int(offset[1:3]) * 3600
                 if offset[0] == "-":
                     secs *= -1
                 return aware - datetime.timedelta(seconds=secs)
