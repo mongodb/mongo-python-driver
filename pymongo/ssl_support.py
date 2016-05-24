@@ -79,8 +79,6 @@ if HAVE_SSL:
         _WINCERTS = certfile
 
     # XXX: Possible future work.
-    # - Support CRL files? Only supported by CPython >= 2.7.9 and >= 3.4
-    #   http://bugs.python.org/issue8813
     # - OCSP? Not supported by python at all.
     #   http://bugs.python.org/issue17123
     # - Setting OP_NO_COMPRESSION? The server doesn't yet.
@@ -90,7 +88,7 @@ if HAVE_SSL:
     #   parameter.
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
-        certfile, keyfile, ca_certs, cert_reqs = args
+        certfile, keyfile, ca_certs, cert_reqs, crlfile = args
         # Note PROTOCOL_SSLv23 is about the most misleading name imaginable.
         # This configures the server and client to negotiate the
         # highest protocol version they both support. A very good thing.
@@ -105,6 +103,14 @@ if HAVE_SSL:
             ctx.options |= getattr(ssl, "OP_NO_SSLv3", 0)
         if certfile is not None:
             ctx.load_cert_chain(certfile, keyfile)
+        if crlfile is not None:
+            if not hasattr(ctx, "verify_flags"):
+                raise ConfigurationError(
+                    "Support for ssl_crlfile requires "
+                    "python2 2.7.9+ (pypy 2.5.1+) or python3 3.4+")
+            # Match the server's behavior.
+            ctx.verify_flags = ssl.VERIFY_CRL_CHECK_LEAF
+            ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
         elif cert_reqs != ssl.CERT_NONE:

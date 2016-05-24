@@ -424,6 +424,7 @@ URI_VALIDATORS = {
     'ssl_cert_reqs': validate_cert_reqs,
     'ssl_ca_certs': validate_readable,
     'ssl_match_hostname': validate_boolean_or_string,
+    'ssl_crlfile': validate_readable,
     'readconcernlevel': validate_string_or_none,
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,

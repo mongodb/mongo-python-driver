@@ -218,6 +218,9 @@ class MongoClient(common.BaseObject):
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``. Defaults to ``None``.
+          - `ssl_crlfile`: The path to a PEM or DER formatted certificate
+            revocation list. Only supported by python 2.9.7+ and python 3.4+.
+            Defaults to ``None``.
           - `ssl_match_hostname`: If ``True`` (the default), and
             `ssl_cert_reqs` is not ``ssl.CERT_NONE``, enables hostname
             verification using the :func:`~ssl.match_hostname` function from
