@@ -66,11 +66,18 @@ MongoDB project, please report it according to the `instructions here
 Installation
 ============
 
-If you have `setuptools
-<http://pythonhosted.org/setuptools/>`_ installed you
-should be able to do **easy_install pymongo** to install
-PyMongo. Otherwise you can download the project source and do **python
-setup.py install** to install.
+PyMongo can be installed with `pip <http://pypi.python.org/pypi/pip>`_::
+
+  $ python -m pip install pymongo
+
+Or ``easy_install`` from
+`setuptools <http://pypi.python.org/pypi/setuptools>`_::
+
+  $ python -m easy_install pymongo
+
+You can also download the project source and do::
+
+  $ python setup.py install
 
 Do **not** install the "bson" package. PyMongo comes with its own bson package;
 doing "easy_install bson" installs a third-party package that is incompatible
@@ -79,32 +86,39 @@ with PyMongo.
 Dependencies
 ============
 
-The PyMongo distribution is supported and tested on Python 2.x (where
-x >= 6) and Python 3.x (where x >= 2). PyMongo versions before 3.0 also
-support Python 2.4, 2.5, and 3.1.
+PyMongo supports Python 2.6, 2.7, and 3.2+.
 
-Optional packages:
+Optional dependencies for GSSAPI and TLS:
+
+GSSAPI authentication requires `pykerberos
+<https://pypi.python.org/pypi/pykerberos>`_ on Unix or `WinKerberos
+<https://pypi.python.org/pypi/winkerberos>`_ on Windows. The correct
+dependency can be installed automatically along with PyMongo::
+
+  $ python -m pip install pymongo[gssapi]
+
+TLS / SSL support may require `certifi
+<https://pypi.python.org/pypi/certifi>`_ or `wincertstore
+<https://pypi.python.org/pypi/wincertstore>`_ depending on the Python
+version in use. The necessary dependencies can be installed along with
+PyMongo::
+
+  $ python -m pip install pymongo[tls]
+
+You can install both dependencies automatically with the following
+command::
+
+  $ python -m pip install pymongo[gssapi,tls]
+
+Other optional packages:
 
 - `backports.pbkdf2 <https://pypi.python.org/pypi/backports.pbkdf2/>`_,
   improves authentication performance with SCRAM-SHA-1, the default
   authentication mechanism for MongoDB 3.0+. It especially improves
   performance on Python older than 2.7.8, or on Python 3 before Python 3.4.
-- `pykerberos <https://pypi.python.org/pypi/pykerberos>`_ is required for
-  the GSSAPI authentication mechanism.
 - `monotonic <https://pypi.python.org/pypi/monotonic>`_ adds support for
   a monotonic clock, which improves reliability in environments
   where clock adjustments are frequent. Not needed in Python 3.3+.
-- `wincertstore <https://pypi.python.org/pypi/wincertstore>`_ adds support
-  for verifying server SSL certificates using Windows provided CA
-  certificates on older versions of python. Not needed or used with versions
-  of Python 2 beginning with 2.7.9, or versions of Python 3 beginning with
-  3.4.0.
-- `certifi <https://pypi.python.org/pypi/certifi>`_ adds support for
-  using the Mozilla CA bundle with SSL to verify server certificates. Not
-  needed or used with versions of Python 2 beginning with 2.7.9 on any OS,
-  versions of Python 3 beginning with Python 3.4.0 on Windows, or versions
-  of Python 3 beginning with Python 3.2.0 on operating systems other than
-  Windows.
 
 
 Additional dependencies are:
