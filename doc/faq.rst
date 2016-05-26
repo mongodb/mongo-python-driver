@@ -283,11 +283,15 @@ timeouts can be turned off entirely. Pass ``no_cursor_timeout=True`` to
 
 How can I store :mod:`decimal.Decimal` instances?
 -------------------------------------------------
-MongoDB only supports IEEE 754 floating points - the same as the
-Python float type. The only way PyMongo could store Decimal instances
-would be to convert them to this standard, so you'd really only be
-storing floats anyway - we force users to do this conversion
-explicitly so that they are aware that it is happening.
+
+PyMongo >= 3.4 supports the Decimal128 BSON type introduced in MongoDB 3.4.
+See :mod:`~bson.decimal128` for more information.
+
+MongoDB <= 3.2 only supports IEEE 754 floating points - the same as the
+Python float type. The only way PyMongo could store Decimal instances to
+these versions of MongoDB would be to convert them to this standard, so
+you'd really only be storing floats anyway - we force users to do this
+conversion explicitly so that they are aware that it is happening.
 
 I'm saving ``9.99`` but when I query my document contains ``9.9900000000000002`` - what's going on here?
 --------------------------------------------------------------------------------------------------------
