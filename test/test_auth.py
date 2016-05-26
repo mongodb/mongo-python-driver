@@ -79,6 +79,15 @@ class TestGSSAPI(unittest.TestCase):
         if not GSSAPI_HOST or not GSSAPI_PRINCIPAL:
             raise SkipTest(
                'Must set GSSAPI_HOST and GSSAPI_PRINCIPAL to test GSSAPI')
+        cls.service_realm_required = (
+            GSSAPI_SERVICE_REALM is not None and
+            GSSAPI_SERVICE_REALM not in GSSAPI_PRINCIPAL)
+        mech_properties = 'SERVICE_NAME:%s' % (GSSAPI_SERVICE_NAME,)
+        mech_properties += (
+            ',CANONICALIZE_HOST_NAME:%s' % (GSSAPI_CANONICALIZE,))
+        if GSSAPI_SERVICE_REALM is not None:
+            mech_properties += ',SERVICE_REALM:%s' % (GSSAPI_SERVICE_REALM,)
+        cls.mech_properties = mech_properties
 
     def test_credentials_hashing(self):
         # GSSAPI credentials are properly hashed.
@@ -101,15 +110,8 @@ class TestGSSAPI(unittest.TestCase):
         self.assertEqual(3, len(set([creds0, creds1, creds2, creds3])))
 
     def test_gssapi_simple(self):
-        # Call authenticate() without authMechanismProperties.
         client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
         db = client[GSSAPI_DB]
-        self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
-                                        GSSAPI_PASS,
-                                        mechanism='GSSAPI'))
-        db.collection.find_one()
-
-        # Log in using URI, without authMechanismProperties.
         if GSSAPI_PASS is not None:
             uri = ('mongodb://%s:%s@%s:%d/?authMechanism='
                    'GSSAPI' % (quote_plus(GSSAPI_PRINCIPAL),
@@ -121,26 +123,30 @@ class TestGSSAPI(unittest.TestCase):
                    'GSSAPI' % (quote_plus(GSSAPI_PRINCIPAL),
                                GSSAPI_HOST,
                                GSSAPI_PORT))
-        client = MongoClient(uri)
-        db = client[GSSAPI_DB]
-        db.collection.find_one()
 
-        mech_properties = 'SERVICE_NAME:%s' % (GSSAPI_SERVICE_NAME,)
-        mech_properties += (
-            ',CANONICALIZE_HOST_NAME:%s' % (GSSAPI_CANONICALIZE,))
-        if GSSAPI_SERVICE_REALM is not None:
-            mech_properties += ',SERVICE_REALM:%s' % (GSSAPI_SERVICE_REALM,)
+        if not self.service_realm_required:
+            # Call authenticate() without authMechanismProperties.
+            self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
+                                            GSSAPI_PASS,
+                                            mechanism='GSSAPI'))
+            db.collection.find_one()
+
+            # Log in using URI, without authMechanismProperties.
+            client = MongoClient(uri)
+            db = client[GSSAPI_DB]
+            db.collection.find_one()
+
 
         # Call authenticate() with authMechanismProperties.
         self.assertTrue(db.authenticate(
             GSSAPI_PRINCIPAL,
             GSSAPI_PASS,
             mechanism='GSSAPI',
-            authMechanismProperties=mech_properties))
+            authMechanismProperties=self.mech_properties))
         db.collection.find_one()
 
         # Log in using URI, with authMechanismProperties.
-        mech_uri = uri + '&authMechanismProperties=%s' % (mech_properties,)
+        mech_uri = uri + '&authMechanismProperties=%s' % (self.mech_properties,)
         client = MongoClient(mech_uri)
         client[GSSAPI_DB].collection.find_one()
 
@@ -150,22 +156,24 @@ class TestGSSAPI(unittest.TestCase):
                                  GSSAPI_PORT,
                                  replicaSet=set_name)
             db = client[GSSAPI_DB]
-            # Without authMechanismProperties
-            self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
-                                            GSSAPI_PASS,
-                                            mechanism='GSSAPI'))
-            db.collection_names()
-            uri = uri + '&replicaSet=%s' % (str(set_name),)
-            client = MongoClient(uri)
-            db = client[GSSAPI_DB]
-            db.collection_names()
+
+            if not self.service_realm_required:
+                # Without authMechanismProperties
+                self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
+                                                GSSAPI_PASS,
+                                                mechanism='GSSAPI'))
+                db.collection_names()
+                uri = uri + '&replicaSet=%s' % (str(set_name),)
+                client = MongoClient(uri)
+                db = client[GSSAPI_DB]
+                db.collection_names()
 
             # With authMechanismProperties
             self.assertTrue(db.authenticate(
                 GSSAPI_PRINCIPAL,
                 GSSAPI_PASS,
                 mechanism='GSSAPI',
-                authMechanismProperties=mech_properties))
+                authMechanismProperties=self.mech_properties))
             db.collection_names()
             mech_uri = mech_uri + '&replicaSet=%s' % (str(set_name),)
             client = MongoClient(mech_uri)
@@ -175,9 +183,11 @@ class TestGSSAPI(unittest.TestCase):
 
         client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
         db = client[GSSAPI_DB]
-        self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
-                                        GSSAPI_PASS,
-                                        mechanism='GSSAPI'))
+        self.assertTrue(
+            db.authenticate(GSSAPI_PRINCIPAL,
+                            GSSAPI_PASS,
+                            mechanism='GSSAPI',
+                            authMechanismProperties=self.mech_properties))
 
 
         # Need one document in the collection. AutoAuthenticateThread does
@@ -208,9 +218,11 @@ class TestGSSAPI(unittest.TestCase):
                                  replicaSet=set_name,
                                  readPreference='secondary')
             db = client[GSSAPI_DB]
-            self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
-                                            GSSAPI_PASS,
-                                            mechanism='GSSAPI'))
+            self.assertTrue(
+                db.authenticate(GSSAPI_PRINCIPAL,
+                                GSSAPI_PASS,
+                                mechanism='GSSAPI',
+                                authMechanismProperties=self.mech_properties))
 
             threads = []
             for _ in range(4):
