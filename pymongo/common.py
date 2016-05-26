@@ -421,6 +421,7 @@ URI_VALIDATORS = {
     'ssl': validate_boolean_or_string,
     'ssl_keyfile': validate_readable,
     'ssl_certfile': validate_readable,
+    'ssl_pem_passphrase': validate_string_or_none,
     'ssl_cert_reqs': validate_cert_reqs,
     'ssl_ca_certs': validate_readable,
     'ssl_match_hostname': validate_boolean_or_string,

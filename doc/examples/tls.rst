@@ -82,9 +82,9 @@ Or, in the URI::
 Specifying a certificate revocation list
 ........................................
 
-Python2 2.7.9+ (pypy 2.5.1+) and python3 3.4+ provide support for certificate
-revocation lists. The `ssl_crlfile` option takes a path to a CRL file. It can
-be passed as a keyword argument::
+Python 2.7.9+ (pypy 2.5.1+) and 3.4+ provide support for certificate revocation
+lists. The `ssl_crlfile` option takes a path to a CRL file. It can be passed as
+a keyword argument::
 
   >>> client = pymongo.MongoClient('example.com',
   ...                              ssl=True,
@@ -112,5 +112,15 @@ the `ssl_keyfile` option::
   ...                              ssl=True,
   ...                              ssl_certfile='/path/to/client.pem',
   ...                              ssl_keyfile='/path/to/key.pem')
+
+Python 2.7.9+ (pypy 2.5.1+) and 3.3+ support providing a password or passphrase
+to decrypt encrypted private keys. Use the `ssl_pem_passphrase` option::
+
+  >>> client = pymongo.MongoClient('example.com',
+  ...                              ssl=True,
+  ...                              ssl_certfile='/path/to/client.pem',
+  ...                              ssl_keyfile='/path/to/key.pem',
+  ...                              ssl_pem_passphrase=<passphrase>)
+
 
 These options can also be passed as part of the MongoDB URI.

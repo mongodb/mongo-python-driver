@@ -88,7 +88,7 @@ if HAVE_SSL:
     #   parameter.
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
-        certfile, keyfile, ca_certs, cert_reqs, crlfile = args
+        certfile, keyfile, passphrase, ca_certs, cert_reqs, crlfile = args
         # Note PROTOCOL_SSLv23 is about the most misleading name imaginable.
         # This configures the server and client to negotiate the
         # highest protocol version they both support. A very good thing.
@@ -102,12 +102,23 @@ if HAVE_SSL:
             ctx.options |= getattr(ssl, "OP_NO_SSLv2", 0)
             ctx.options |= getattr(ssl, "OP_NO_SSLv3", 0)
         if certfile is not None:
-            ctx.load_cert_chain(certfile, keyfile)
+            if passphrase is not None:
+                vi = sys.version_info
+                # Since python just added a new parameter to an existing method
+                # this seems to be about the best we can do.
+                if (vi[0] == 2 and vi < (2, 7, 9) or
+                        vi[0] == 3 and vi < (3, 3)):
+                    raise ConfigurationError(
+                        "Support for ssl_pem_passphrase requires "
+                        "python 2.7.9+ (pypy 2.5.1+) or 3.3+")
+                ctx.load_cert_chain(certfile, keyfile, passphrase)
+            else:
+                ctx.load_cert_chain(certfile, keyfile)
         if crlfile is not None:
             if not hasattr(ctx, "verify_flags"):
                 raise ConfigurationError(
                     "Support for ssl_crlfile requires "
-                    "python2 2.7.9+ (pypy 2.5.1+) or python3 3.4+")
+                    "python 2.7.9+ (pypy 2.5.1+) or  3.4+")
             # Match the server's behavior.
             ctx.verify_flags = ssl.VERIFY_CRL_CHECK_LEAF
             ctx.load_verify_locations(crlfile)

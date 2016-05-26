@@ -70,6 +70,7 @@ def _parse_ssl_options(options):
 
     certfile = options.get('ssl_certfile')
     keyfile = options.get('ssl_keyfile')
+    passphrase = options.get('ssl_pem_passphrase')
     ca_certs = options.get('ssl_ca_certs')
     cert_reqs = options.get('ssl_cert_reqs')
     match_hostname = options.get('ssl_match_hostname', True)
@@ -88,7 +89,8 @@ def _parse_ssl_options(options):
         use_ssl = True
 
     if use_ssl is True:
-        ctx = get_ssl_context(certfile, keyfile, ca_certs, cert_reqs, crlfile)
+        ctx = get_ssl_context(
+            certfile, keyfile, passphrase, ca_certs, cert_reqs, crlfile)
         return ctx, match_hostname
     return None, match_hostname
 

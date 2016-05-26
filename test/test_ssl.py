@@ -43,6 +43,7 @@ from test.version import Version
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                          'certificates')
 CLIENT_PEM = os.path.join(CERT_PATH, 'client.pem')
+CLIENT_ENCRYPTED_PEM = os.path.join(CERT_PATH, 'client_encrypted.pem')
 CA_PEM = os.path.join(CERT_PATH, 'ca.pem')
 CRL_PEM = os.path.join(CERT_PATH, 'crl.pem')
 SIMPLE_SSL = False
@@ -223,6 +224,38 @@ class TestSSL(unittest.TestCase):
         db.test.insert_one({'ssl': True})
         self.assertTrue(db.test.find_one()['ssl'])
         client.drop_database('pymongo_ssl_test')
+
+    def test_ssl_pem_passphrase(self):
+        # Expects the server to be running with server.pem and ca.pem
+        #
+        #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
+        #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
+        if not CERT_SSL:
+            raise SkipTest("No mongod available over SSL with certs")
+
+        vi = sys.version_info
+        if vi[0] == 2 and vi < (2, 7, 9) or vi[0] == 3 and vi < (3, 3):
+            self.assertRaises(
+                ConfigurationError,
+                MongoClient,
+                'server',
+                ssl=True,
+                ssl_certfile=CLIENT_ENCRYPTED_PEM,
+                ssl_pem_passphrase="clientpassword",
+                ssl_ca_certs=CA_PEM,
+                serverSelectionTimeoutMS=100)
+        else:
+            connected(MongoClient('server',
+                                  ssl=True,
+                                  ssl_certfile=CLIENT_ENCRYPTED_PEM,
+                                  ssl_pem_passphrase="clientpassword",
+                                  ssl_ca_certs=CA_PEM,
+                                  serverSelectionTimeoutMS=100))
+
+            uri_fmt = ("mongodb://server/?ssl=true"
+                       "&ssl_certfile=%s&ssl_pem_passphrase=clientpassword"
+                       "&ssl_ca_certs=%s&serverSelectionTimeoutMS=100")
+            connected(MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM)))
 
     def test_cert_ssl(self):
         # Expects the server to be running with server.pem and ca.pem.
@@ -515,7 +548,7 @@ class TestSSL(unittest.TestCase):
             os.environ.pop('SSL_CERT_FILE')
 
     def test_system_certs_config_error(self):
-        ctx = get_ssl_context(None, None, None, ssl.CERT_NONE, None)
+        ctx = get_ssl_context(None, None, None, None, ssl.CERT_NONE, None)
         if ((sys.platform != "win32"
              and hasattr(ctx, "set_default_verify_paths"))
                 or hasattr(ctx, "load_default_certs")):
@@ -547,11 +580,11 @@ class TestSSL(unittest.TestCase):
         # Force the test on Windows, regardless of environment.
         ssl_support.HAVE_WINCERTSTORE = False
         try:
-            ctx = get_ssl_context(None, None, CA_PEM, ssl.CERT_REQUIRED, None)
+            ctx = get_ssl_context(None, None, None, CA_PEM, ssl.CERT_REQUIRED, None)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-            ctx = get_ssl_context(None, None, None, None, None)
+            ctx = get_ssl_context(None, None, None, None, None, None)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, ssl_support.certifi.where())
         finally:
@@ -568,11 +601,11 @@ class TestSSL(unittest.TestCase):
         if not ssl_support.HAVE_WINCERTSTORE:
             raise SkipTest("Need wincertstore to test wincertstore.")
 
-        ctx = get_ssl_context(None, None, CA_PEM, ssl.CERT_REQUIRED, None)
+        ctx = get_ssl_context(None, None, None, CA_PEM, ssl.CERT_REQUIRED, None)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-        ctx = get_ssl_context(None, None, None, None, None)
+        ctx = get_ssl_context(None, None, None, None, None, None)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 
