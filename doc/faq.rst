@@ -373,7 +373,7 @@ How can I use PyMongo from Django?
 framework. Django includes an ORM, :mod:`django.db`. Currently,
 there's no official MongoDB backend for Django.
 
-`django-mongodb-engine <https://django-mongodb-engine.readthedocs.org/>`_
+`django-mongodb-engine <https://django-mongodb-engine.readthedocs.io/>`_
 is an unofficial MongoDB backend that supports Django aggregations, (atomic)
 updates, embedded objects, Map/Reduce and GridFS. It allows you to use most
 of Django's built-in features, including the ORM, admin, authentication, site
