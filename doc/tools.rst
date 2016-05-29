@@ -80,7 +80,7 @@ Manga
   github <http://github.com/wladston/manga>`_.
   
 MotorEngine
-  `MotorEngine <http://motorengine.readthedocs.org/>`_ is a port of
+  `MotorEngine <https://motorengine.readthedocs.io/>`_ is a port of
   MongoEngine to Motor, for asynchronous access with Tornado.
   It implements the same modeling APIs to be data-portable, meaning that a
   model defined in MongoEngine can be read in MotorEngine. The source is
@@ -92,10 +92,10 @@ This section lists tools and adapters that have been designed to work with
 various Python frameworks and libraries.
 
 * `Django MongoDB Engine
-  <http://django-mongodb-engine.readthedocs.org/en/latest/>`_ is a MongoDB
+  <https://django-mongodb-engine.readthedocs.io/en/latest/>`_ is a MongoDB
   database backend for Django that completely integrates with its ORM.
   For more information `see the tutorial
-  <http://django-mongodb-engine.readthedocs.org/en/latest/tutorial.html>`_.
+  <https://django-mongodb-engine.readthedocs.io/en/latest/tutorial.html>`_.
 * `mango <http://github.com/vpulim/mango>`_ provides MongoDB backends for
   Django sessions and authentication (bypassing :mod:`django.db` entirely).
 * `Django MongoEngine

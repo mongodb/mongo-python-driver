@@ -47,5 +47,5 @@ handler to end background greenlets when your application receives SIGHUP:
 Applications using uWSGI prior to 1.9.16 are affected by this issue,
 or newer uWSGI versions with the ``-gevent-wait-for-hub`` option.
 See `the uWSGI changelog for details
-<http://uwsgi-docs.readthedocs.org/en/latest/Changelog-1.9.16.html#important-change-in-the-gevent-plugin-shutdown-reload-procedure>`_.
+<https://uwsgi-docs.readthedocs.io/en/latest/Changelog-1.9.16.html#important-change-in-the-gevent-plugin-shutdown-reload-procedure>`_.
 
