@@ -163,6 +163,10 @@ class Collection(common.BaseObject):
         if create or kwargs:
             self.__create(kwargs)
 
+        self.__write_response_codec_options = self.codec_options._replace(
+            unicode_decode_error_handler='replace',
+            document_class=dict)
+
     def _socket_for_reads(self):
         return self.__database.client._socket_for_reads(self.read_preference)
 
@@ -506,17 +510,19 @@ class Collection(common.BaseObject):
             if bypass_doc_val and sock_info.max_wire_version >= 4:
                 command['bypassDocumentValidation'] = True
             # Insert command.
-            result = sock_info.command(self.__database.name,
-                                       command,
-                                       codec_options=self.codec_options,
-                                       check_keys=check_keys)
+            result = sock_info.command(
+                self.__database.name,
+                command,
+                codec_options=self.__write_response_codec_options,
+                check_keys=check_keys)
             _check_write_command_response([(0, result)])
         else:
             # Legacy OP_INSERT.
             self._legacy_write(
                 sock_info, 'insert', command, acknowledged, op_id,
                 bypass_doc_val, message.insert, self.__full_name, [doc],
-                check_keys, acknowledged, concern, False, self.codec_options)
+                check_keys, acknowledged, concern, False,
+                self.__write_response_codec_options)
         if not isinstance(doc, RawBSONDocument):
             return doc.get('_id')
 
@@ -575,13 +581,13 @@ class Collection(common.BaseObject):
             # Batched insert command.
             results = message._do_batched_write_command(
                 self.database.name + ".$cmd", message._INSERT, command,
-                gen(), check_keys, self.codec_options, bwc)
+                gen(), check_keys, self.__write_response_codec_options, bwc)
             _check_write_command_response(results)
         else:
             # Legacy batched OP_INSERT.
             message._do_batched_insert(self.__full_name, gen(), check_keys,
                                        acknowledged, concern, not ordered,
-                                       self.codec_options, bwc)
+                                       self.__write_response_codec_options, bwc)
         return ids
 
     def insert_one(self, document, bypass_document_validation=False):
@@ -704,9 +710,10 @@ class Collection(common.BaseObject):
 
             # The command result has to be published for APM unmodified
             # so we make a shallow copy here before adding updatedExisting.
-            result = sock_info.command(self.__database.name,
-                                       command,
-                                       codec_options=self.codec_options).copy()
+            result = sock_info.command(
+                self.__database.name,
+                command,
+                codec_options=self.__write_response_codec_options).copy()
             _check_write_command_response([(0, result)])
             # Add the updatedExisting field for compatibility.
             if result.get('n') and 'upserted' not in result:
@@ -725,7 +732,7 @@ class Collection(common.BaseObject):
                 sock_info, 'update', command, acknowledged, op_id,
                 bypass_doc_val, message.update, self.__full_name, upsert,
                 multi, criteria, document, acknowledged, concern, check_keys,
-                self.codec_options)
+                self.__write_response_codec_options)
 
     def replace_one(self, filter, replacement, upsert=False,
                     bypass_document_validation=False):
@@ -911,9 +918,10 @@ class Collection(common.BaseObject):
 
         if sock_info.max_wire_version > 1 and acknowledged:
             # Delete command.
-            result = sock_info.command(self.__database.name,
-                                       command,
-                                       codec_options=self.codec_options)
+            result = sock_info.command(
+                self.__database.name,
+                command,
+                codec_options=self.__write_response_codec_options)
             _check_write_command_response([(0, result)])
             return result
         else:
@@ -921,7 +929,8 @@ class Collection(common.BaseObject):
             return self._legacy_write(
                 sock_info, 'delete', command, acknowledged, op_id,
                 False, message.delete, self.__full_name, criteria,
-                acknowledged, concern, self.codec_options, int(not multi))
+                acknowledged, concern, self.__write_response_codec_options,
+                int(not multi))
 
     def delete_one(self, filter):
         """Delete a single document matching the filter.
@@ -1192,11 +1201,11 @@ class Collection(common.BaseObject):
     def _count(self, cmd):
         """Internal count helper."""
         with self._socket_for_reads() as (sock_info, slave_ok):
-            res = self._command(sock_info, cmd, slave_ok,
-                                allowable_errors=["ns missing"],
-                                codec_options=self.codec_options._replace(
-                                    document_class=dict),
-                                read_concern=self.read_concern)
+            res = self._command(
+                sock_info, cmd, slave_ok,
+                allowable_errors=["ns missing"],
+                codec_options=self.__write_response_codec_options,
+                read_concern=self.read_concern)
         if res.get("errmsg", "") == "ns missing":
             return 0
         return int(res["n"])

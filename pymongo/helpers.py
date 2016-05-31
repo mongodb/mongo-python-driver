@@ -38,6 +38,9 @@ from pymongo.read_concern import DEFAULT_READ_CONCERN
 
 _UUNDER = u("_")
 
+_UNICODE_REPLACE_CODEC_OPTIONS = CodecOptions(
+    unicode_decode_error_handler='replace')
+
 
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over."""
@@ -87,7 +90,9 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
+def _unpack_response(response,
+                     cursor_id=None,
+                     codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary

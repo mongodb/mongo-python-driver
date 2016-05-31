@@ -203,7 +203,10 @@ class _Bulk(object):
     def __init__(self, collection, ordered, bypass_document_validation):
         """Initialize a _Bulk instance.
         """
-        self.collection = collection
+        self.collection = collection.with_options(
+            codec_options=collection.codec_options._replace(
+                unicode_decode_error_handler='replace',
+                document_class=dict))
         self.ordered = ordered
         self.ops = []
         self.name = "%s.%s" % (collection.database.name, collection.name)

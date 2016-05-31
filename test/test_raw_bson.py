@@ -111,3 +111,17 @@ class TestRawBSONDocument(unittest.TestCase):
             uuid_representation=JAVA_LEGACY)).find_one()
         self.assertEqual(rbd['embedded'][0]['_id'],
                          result['embedded'][0]['_id'])
+
+    @client_context.require_connection
+    def test_write_response_raw_bson(self):
+        coll = self.client.get_database(
+            'pymongo_test',
+            codec_options=CodecOptions(document_class=RawBSONDocument)).test_raw
+
+        # No Exceptions raised while handling write response.
+        coll.insert_one(self.document)
+        coll.delete_one(self.document)
+        coll.insert_many([self.document])
+        coll.delete_many(self.document)
+        coll.update_one(self.document, {'$set': {'a': 'b'}}, upsert=True)
+        coll.update_many(self.document, {'$set': {'b': 'c'}})

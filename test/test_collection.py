@@ -1116,6 +1116,75 @@ class TestCollection(IntegrationTest):
         self.assertIsNotNone(context.exception.details)
         self.assertEqual(1, db.test.count())
 
+    def test_write_error_text_handling(self):
+        db = self.db
+        db.drop_collection("test")
+
+        db.test.create_index("text", unique=True)
+
+        # Test workaround for SERVER-24007
+        data = (b'a\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
+                b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83')
+
+        text = data.decode("utf8")
+        db.test.insert_one({"text": text})
+
+        # Should raise DuplicateKeyError, not InvalidBSON
+        self.assertRaises(DuplicateKeyError,
+                          db.test.insert_one,
+                          {"text": text})
+
+        self.assertRaises(DuplicateKeyError,
+                          db.test.insert,
+                          {"text": text})
+
+        self.assertRaises(DuplicateKeyError,
+                          db.test.insert,
+                          [{"text": text}])
+
+        self.assertRaises(DuplicateKeyError,
+                          db.test.replace_one,
+                          {"_id": ObjectId()},
+                          {"text": text},
+                          upsert=True)
+
+        self.assertRaises(DuplicateKeyError,
+                          db.test.update,
+                          {"_id": ObjectId()},
+                          {"text": text},
+                          upsert=True)
+
+        # Should raise BulkWriteError, not InvalidBSON
+        self.assertRaises(BulkWriteError,
+                          db.test.insert_many,
+                          [{"text": text}])
+
     def test_wtimeout(self):
         # Ensure setting wtimeout doesn't disable write concern altogether.
         # See SERVER-12596.
