@@ -65,7 +65,7 @@ if HAVE_SSL:
             return value
         raise ValueError("The value of %s must be one of: "
                          "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
-                         "`ssl.CERT_REQUIRED" % (option,))
+                         "`ssl.CERT_REQUIRED`" % (option,))
 
     def _load_wincerts():
         """Set _WINCERTS to an instance of wincertstore.Certfile."""
