@@ -82,31 +82,50 @@ class TestDecimal128(unittest.TestCase):
     def test_spec(self):
         for path in glob.glob(os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
-                'decimal',
-                'decimal128*')):
-            with codecs.open(path, 'r', 'utf-8-sig') as fp:
+                "decimal",
+                "decimal128*")):
+            with codecs.open(path, "r", "utf-8-sig") as fp:
                 suite = json.load(fp)
 
-            for test in suite.get('valid', []):
-                subject = unhexlify(b(test['subject']))
-                doc = BSON(subject).decode()
-                self.assertEqual(BSON.encode(doc), subject)
+            for case in suite.get("valid", []):
+                B = unhexlify(b(case["bson"]))
+                E = case["extjson"].replace(" ", "")
 
-                if 'match_string' in test:
-                    self.assertEqual(
-                        str(Decimal128(test['string'])), test['match_string'])
+                if "canonical_bson" in case:
+                    cB = unhexlify(b(case["canonical_bson"]))
                 else:
-                    self.assertEqual(str(doc['d']), test['string'])
+                    cB = B
 
-                if 'extjson' in test:
-                    if test.get('from_extjson', True):
-                        self.assertEqual(doc, loads(test['extjson']))
+                if "canonical_extjson" in case:
+                    cE = case["canonical_extjson"].replace(" ", "")
+                else:
+                    cE = E
 
-                    if test.get('to_extjson', True):
-                        extjson = test['extjson'].replace(' ', '')
-                        self.assertEqual(extjson, dumps(doc).replace(' ', ''))
+                self.assertEqual(BSON().encode(BSON(B).decode()), cB)
 
-            for test in suite.get('parseErrors', []):
+                if B != cB:
+                    self.assertEqual(BSON().encode(BSON(cB).decode()), cB)
+
+                self.assertEqual(
+                    dumps(BSON(B).decode()).replace(" ", ""), cE)
+                self.assertEqual(
+                    dumps(loads(E)).replace(" ", ""), cE)
+
+                if B != cB:
+                    self.assertEqual(
+                        dumps(BSON(cB).decode()).replace(" ", ""), cE)
+
+                if E != cE:
+                    self.assertEqual(
+                        dumps(loads(cE)).replace(" ", ""), cE)
+
+                if "lossy" not in case:
+                    self.assertEqual(BSON().encode(loads(E)), cB)
+
+                    if E != cE:
+                        self.assertEqual(BSON().encode(loads(cE)), cB)
+
+            for test in suite.get("parseErrors", []):
                 self.assertRaises(
-                    DecimalException, Decimal128, test['subject'])
+                    DecimalException, Decimal128, test["string"])
 
