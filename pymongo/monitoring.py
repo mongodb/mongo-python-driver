@@ -154,7 +154,7 @@ class TopologyListener(_EventListener):
         """
         raise NotImplementedError
 
-    def changed(self, event):
+    def description_changed(self, event):
         """Abstract method to handle a `TopologyDescriptionChangedEvent`.
 
         :Parameters:
@@ -184,7 +184,7 @@ class ServerListener(_EventListener):
         """
         raise NotImplementedError
 
-    def changed(self, event):
+    def description_changed(self, event):
         """Abstract method to handle a `ServerDescriptionChangedEvent`.
 
         :Parameters:
@@ -225,7 +225,7 @@ def register(listener):
     """Register a global event listener.
 
     :Parameters:
-      - `listener`: A subclasses of :class:`CommandListener,`
+      - `listener`: A subclasses of :class:`CommandListener`,
         :class:`ServerHeartbeatListener`, :class:`ServerListener`, or
         :class:`TopologyListener`.
     """
