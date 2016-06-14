@@ -187,6 +187,77 @@ class ClientUnitTest(unittest.TestCase):
 
 class TestClient(IntegrationTest):
 
+    def test_max_idle_time_reaper(self):
+        with client_knobs(kill_cursor_frequency=0.1):
+            # Assert reaper doesn't remove sockets when maxIdleTimeMS not set
+            client = MongoClient(host, port)
+            server = client._get_topology().select_server(any_server_selector)
+            with server._pool.get_socket({}) as sock_info:
+                pass
+            time.sleep(1)
+            self.assertEqual(1, len(server._pool.sockets))
+            self.assertTrue(sock_info in server._pool.sockets)
+
+            # Assert reaper removes idle socket and replaces it with a new one
+            client = MongoClient(host, port, maxIdleTimeMS=.5, minPoolSize=1)
+            server = client._get_topology().select_server(any_server_selector)
+            with server._pool.get_socket({}) as sock_info:
+                pass
+            time.sleep(2)
+            self.assertEqual(1, len(server._pool.sockets))
+            self.assertFalse(sock_info in server._pool.sockets)
+
+            # Assert reaper has removed idle socket and NOT replaced it
+            client = MongoClient(host, port, maxIdleTimeMS=.5)
+            server = client._get_topology().select_server(any_server_selector)
+            with server._pool.get_socket({}):
+                pass
+            time.sleep(1)
+            self.assertEqual(0, len(server._pool.sockets))
+
+    def test_min_pool_size(self):
+        with client_knobs(kill_cursor_frequency=.1):
+            client = MongoClient(host, port)
+            server = client._get_topology().select_server(any_server_selector)
+            time.sleep(1)
+            self.assertEqual(0, len(server._pool.sockets))
+
+            # Assert that pool started up at minPoolSize
+            client = MongoClient(host, port, minPoolSize=10)
+            server = client._get_topology().select_server(any_server_selector)
+            time.sleep(1)
+            self.assertEqual(10, len(server._pool.sockets))
+
+            # Assert that if a socket is closed, a new one takes its place
+            with server._pool.get_socket({}) as sock_info:
+                sock_info.close()
+            time.sleep(1)
+            self.assertEqual(10, len(server._pool.sockets))
+            self.assertFalse(sock_info in server._pool.sockets)
+
+    def test_max_idle_time_checkout(self):
+        with client_knobs(kill_cursor_frequency=99999999):
+            client = MongoClient(host, port, maxIdleTimeMS=.5)
+            time.sleep(1)
+            server = client._get_topology().select_server(any_server_selector)
+            with server._pool.get_socket({}) as sock_info:
+                pass
+            time.sleep(1)
+            with server._pool.get_socket({}) as new_sock_info:
+                self.assertNotEqual(sock_info, new_sock_info)
+            self.assertEqual(1, len(server._pool.sockets))
+            self.assertFalse(sock_info in server._pool.sockets)
+            self.assertTrue(new_sock_info in server._pool.sockets)
+
+            client = MongoClient(host, port)
+            server = client._get_topology().select_server(any_server_selector)
+            with server._pool.get_socket({}) as sock_info:
+                pass
+            time.sleep(1)
+            with server._pool.get_socket({}) as new_sock_info:
+                self.assertEqual(sock_info, new_sock_info)
+            self.assertEqual(1, len(server._pool.sockets))
+
     def test_constants(self):
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"
@@ -797,23 +868,6 @@ class TestClient(IntegrationTest):
                 return True
 
         wait_until(raises_cursor_not_found, 'close cursor')
-
-    def test_kill_cursors_with_server_unavailable(self):
-        with client_knobs(kill_cursor_frequency=9999999):
-            client = MongoClient('doesnt exist', connect=False,
-                                 serverSelectionTimeoutMS=0)
-
-            # Wait for the first tick of the periodic kill-cursors to pass.
-            time.sleep(1)
-
-            # Enqueue a kill-cursors message.
-            client.close_cursor(1234, ('doesnt-exist', 27017))
-
-            with warnings.catch_warnings(record=True) as user_warnings:
-                client._process_kill_cursors_queue()
-
-            self.assertIn("couldn't close cursor on ('doesnt-exist', 27017)",
-                          str(user_warnings[0].message))
 
     def test_lazy_connect_w0(self):
         # Ensure that connect-on-demand works when the first operation is

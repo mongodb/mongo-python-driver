@@ -34,7 +34,6 @@ access:
 import contextlib
 import datetime
 import threading
-import warnings
 import weakref
 from collections import defaultdict
 
@@ -124,10 +123,16 @@ class MongoClient(common.BaseObject):
 
           | **Other optional parameters can be passed as keyword arguments:**
 
-          - `maxPoolSize` (optional): The maximum number of connections
-            that the pool will open simultaneously. If this is set, operations
-            will block if there are `maxPoolSize` outstanding connections
-            from the pool. Defaults to 100. Cannot be 0.
+          - `maxPoolSize` (optional): The maximum allowable number of
+            concurrent connections to each connected server. Requests to a
+            server will block if there are `maxPoolSize` outstanding
+            connections to the requested server. Defaults to 100. Cannot be 0.
+          - `minPoolSize` (optional): The minimum required number of concurrent
+            connections that the pool will maintain to each connected server.
+            Default is 0.
+          - `maxIdleTimeMS` (optional): The maximum number of milliseconds that
+            a connection can remain idle in the pool before being removed and
+            replaced. Defaults to `None` (no limit).
           - `socketTimeoutMS`: (integer or None) Controls how long (in
             milliseconds) the driver will wait for a response after sending an
             ordinary (non-monitoring) database operation before concluding that
@@ -390,7 +395,7 @@ class MongoClient(common.BaseObject):
             client = self_ref()
             if client is None:
                 return False  # Stop the executor.
-            MongoClient._process_kill_cursors_queue(client)
+            MongoClient._process_periodic_tasks(client)
             return True
 
         executor = periodic_executor.PeriodicExecutor(
@@ -598,14 +603,33 @@ class MongoClient(common.BaseObject):
 
     @property
     def max_pool_size(self):
-        """The maximum number of sockets the pool will open concurrently.
+        """The maximum allowable number of concurrent connections to each
+        connected server. Requests to a server will block if there are
+        `maxPoolSize` outstanding connections to the requested server.
+        Defaults to 100. Cannot be 0.
 
-        When the pool has reached `max_pool_size`, operations block waiting for
-        a socket to be returned to the pool. If ``waitQueueTimeoutMS`` is set,
-        a blocked operation will raise :exc:`~pymongo.errors.ConnectionFailure`
-        after a timeout. By default ``waitQueueTimeoutMS`` is not set.
+        When a server's pool has reached `max_pool_size`, operations for that
+        server block waiting for a socket to be returned to the pool. If
+        ``waitQueueTimeoutMS`` is set, a blocked operation will raise
+        :exc:`~pymongo.errors.ConnectionFailure` after a timeout.
+        By default ``waitQueueTimeoutMS`` is not set.
         """
         return self.__options.pool_options.max_pool_size
+
+    @property
+    def min_pool_size(self):
+        """The minimum required number of concurrent connections that the pool
+        will maintain to each connected server. Default is 0.
+        """
+        return self.__options.pool_options.min_pool_size
+
+    @property
+    def max_idle_time_ms(self):
+        """The maximum number of milliseconds that a connection can remain
+        idle in the pool before being removed and replaced. Defaults to
+        `None` (no limit).
+        """
+        return self.__options.pool_options.max_idle_time_ms
 
     @property
     def nodes(self):
@@ -945,8 +969,9 @@ class MongoClient(common.BaseObject):
         self.__kill_cursors_queue.append((address, cursor_ids))
 
     # This method is run periodically by a background thread.
-    def _process_kill_cursors_queue(self):
-        """Process any pending kill cursors requests."""
+    def _process_periodic_tasks(self):
+        """Process any pending kill cursors requests and
+        maintain connection pool parameters."""
         address_to_cursor_ids = defaultdict(list)
 
         # Other threads or the GC may append to the queue concurrently.
@@ -1018,9 +1043,12 @@ class MongoClient(common.BaseObject):
                                     duration, reply, 'killCursors', request_id,
                                     address)
 
-                except ConnectionFailure as exc:
-                    warnings.warn("couldn't close cursor on %s: %s"
-                                  % (address, exc))
+                except Exception:
+                    helpers._handle_exception()
+        try:
+            self._topology.update_pool()
+        except Exception:
+            helpers._handle_exception()
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""

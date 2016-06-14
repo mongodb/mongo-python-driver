@@ -64,6 +64,12 @@ CONNECT_TIMEOUT = 20.0
 # Default value for maxPoolSize.
 MAX_POOL_SIZE = 100
 
+# Default value for minPoolSize.
+MIN_POOL_SIZE = 0
+
+# Default value for maxIdleTimeMS.
+MAX_IDLE_TIME_MS = None
+
 # Default value for localThresholdMS.
 LOCAL_THRESHOLD_MS = 15
 
@@ -441,6 +447,8 @@ URI_VALIDATORS = {
     'tz_aware': validate_boolean_or_string,
     'uuidrepresentation': validate_uuid_representation,
     'connect': validate_boolean_or_string,
+    'event_listeners': _validate_event_listeners,
+    'minpoolsize': validate_non_negative_integer
 }
 
 TIMEOUT_VALIDATORS = {
@@ -448,6 +456,7 @@ TIMEOUT_VALIDATORS = {
     'sockettimeoutms': validate_timeout_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,
     'serverselectiontimeoutms': validate_timeout_or_zero,
+    'maxidletimems': validate_timeout_or_none,
 }
 
 KW_VALIDATORS = {

@@ -70,6 +70,7 @@ import sys
 import traceback
 
 from collections import namedtuple, Sequence
+from pymongo.helpers import _handle_exception
 
 _Listeners = namedtuple('Listeners', ('command_listeners',))
 
@@ -132,22 +133,6 @@ def register(listener):
     _validate_event_listeners('listener', [listener])
     _LISTENERS.command_listeners.append(listener)
 
-
-def _handle_exception():
-    """Print exceptions raised by subscribers to stderr."""
-    # Heavily influenced by logging.Handler.handleError.
-
-    # See note here:
-    # https://docs.python.org/3.4/library/sys.html#sys.__stderr__
-    if sys.stderr:
-        einfo = sys.exc_info()
-        try:
-            traceback.print_exception(einfo[0], einfo[1], einfo[2],
-                                      None, sys.stderr)
-        except IOError:
-            pass
-        finally:
-            del einfo
 
 # Note - to avoid bugs from forgetting which if these is all lowercase and
 # which are camelCase, and at the same time avoid having to add a test for

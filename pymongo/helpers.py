@@ -17,6 +17,8 @@
 import collections
 import datetime
 import struct
+import sys
+import traceback
 
 import bson
 from bson.codec_options import CodecOptions
@@ -337,3 +339,20 @@ def _fields_list_to_dict(fields, option_name):
 
     raise TypeError("%s must be a mapping or "
                     "list of key names" % (option_name,))
+
+
+def _handle_exception():
+    """Print exceptions raised by subscribers to stderr."""
+    # Heavily influenced by logging.Handler.handleError.
+
+    # See note here:
+    # https://docs.python.org/3.4/library/sys.html#sys.__stderr__
+    if sys.stderr:
+        einfo = sys.exc_info()
+        try:
+            traceback.print_exception(einfo[0], einfo[1], einfo[2],
+                                      None, sys.stderr)
+        except IOError:
+            pass
+        finally:
+            del einfo

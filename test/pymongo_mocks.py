@@ -192,7 +192,7 @@ class MockClient(MongoClient):
 
         return response, rtt
 
-    def _process_kill_cursors_queue(self):
+    def _process_periodic_tasks(self):
         # Avoid the background thread causing races, e.g. a surprising
         # reconnect while we're trying to test a disconnected client.
         pass

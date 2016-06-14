@@ -67,18 +67,22 @@ def _raise_connection_failure(address, error):
 
 class PoolOptions(object):
 
-    __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
+    __slots__ = ('__max_pool_size', '__min_pool_size', '__max_idle_time_ms',
+                 '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
                  '__event_listeners')
 
-    def __init__(self, max_pool_size=100, connect_timeout=None,
+    def __init__(self, max_pool_size=100, min_pool_size=0,
+                 max_idle_time_ms=None, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=False,
                  event_listeners=None):
 
         self.__max_pool_size = max_pool_size
+        self.__min_pool_size = min_pool_size
+        self.__max_idle_time_ms = max_idle_time_ms
         self.__connect_timeout = connect_timeout
         self.__socket_timeout = socket_timeout
         self.__wait_queue_timeout = wait_queue_timeout
@@ -90,11 +94,33 @@ class PoolOptions(object):
 
     @property
     def max_pool_size(self):
-        """The maximum number of connections that the pool will open
-        simultaneously. If this is set, operations will block if there
-        are `max_pool_size` outstanding connections.
+        """The maximum allowable number of concurrent connections to each
+        connected server. Requests to a server will block if there are
+        `maxPoolSize` outstanding connections to the requested server.
+        Defaults to 100. Cannot be 0.
+
+        When a server's pool has reached `max_pool_size`, operations for that
+        server block waiting for a socket to be returned to the pool. If
+        ``waitQueueTimeoutMS`` is set, a blocked operation will raise
+        :exc:`~pymongo.errors.ConnectionFailure` after a timeout.
+        By default ``waitQueueTimeoutMS`` is not set.
         """
         return self.__max_pool_size
+
+    @property
+    def min_pool_size(self):
+        """The minimum required number of concurrent connections that the pool
+        will maintain to each connected server. Default is 0.
+        """
+        return self.__min_pool_size
+
+    @property
+    def max_idle_time_ms(self):
+        """The maximum number of milliseconds that a connection can remain
+        idle in the pool before being removed and replaced. Defaults to
+        `None` (no limit).
+        """
+        return self.__max_idle_time_ms
 
     @property
     def connect_timeout(self):
@@ -459,6 +485,7 @@ class Pool:
 
         self.sockets = set()
         self.lock = threading.Lock()
+        self.active_sockets = 0
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
@@ -483,9 +510,25 @@ class Pool:
             self.pool_id += 1
             self.pid = os.getpid()
             sockets, self.sockets = self.sockets, set()
+            self.active_sockets = 0
 
         for sock_info in sockets:
             sock_info.close()
+
+    def remove_stale_sockets(self):
+        with self.lock:
+            if self.opts.max_idle_time_ms is not None:
+                for sock_info in self.sockets.copy():
+                    age = _time() - sock_info.last_checkout
+                    if age > self.opts.max_idle_time_ms:
+                        self.sockets.remove(sock_info)
+                        sock_info.close()
+
+        while len(
+                self.sockets) + self.active_sockets < self.opts.min_pool_size:
+            sock_info = self.connect()
+            with self.lock:
+                self.sockets.add(sock_info)
 
     def connect(self):
         """Connect to Mongo and return a new SocketInfo.
@@ -560,6 +603,8 @@ class Pool:
         if not self._socket_semaphore.acquire(
                 True, self.opts.wait_queue_timeout):
             self._raise_wait_queue_timeout()
+        with self.lock:
+            self.active_sockets += 1
 
         # We've now acquired the semaphore and must release it on error.
         try:
@@ -571,6 +616,12 @@ class Pool:
             except KeyError:
                 # Can raise ConnectionFailure or CertificateError.
                 sock_info, from_pool = self.connect(), False
+            # If socket is idle, open a new one.
+            if self.opts.max_idle_time_ms is not None:
+                age = _time() - sock_info.last_checkout
+                if age > self.opts.max_idle_time_ms:
+                    sock_info.close()
+                    sock_info, from_pool = self.connect(), False
 
             if from_pool:
                 # Can raise ConnectionFailure.
@@ -578,6 +629,8 @@ class Pool:
 
         except:
             self._socket_semaphore.release()
+            with self.lock:
+                self.active_sockets -= 1
             raise
 
         sock_info.last_checkout = _time()
@@ -595,6 +648,8 @@ class Pool:
                     self.sockets.add(sock_info)
 
         self._socket_semaphore.release()
+        with self.lock:
+            self.active_sockets -= 1
 
     def _check(self, sock_info):
         """This side-effecty function checks if this pool has been reset since
