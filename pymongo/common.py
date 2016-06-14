@@ -450,7 +450,6 @@ URI_VALIDATORS = {
     'tz_aware': validate_boolean_or_string,
     'uuidrepresentation': validate_uuid_representation,
     'connect': validate_boolean_or_string,
-    'event_listeners': _validate_event_listeners,
     'minpoolsize': validate_non_negative_integer
 }
 
