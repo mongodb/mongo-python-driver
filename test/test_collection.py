@@ -2064,7 +2064,7 @@ class TestCollection(IntegrationTest):
     def test_find_one_and_write_concern(self):
         listener = EventListener()
         saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([])
+        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         db = single_client(event_listeners=[listener])[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection(

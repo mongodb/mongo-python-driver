@@ -7,12 +7,33 @@
    .. autofunction:: register(listener)
    .. autoclass:: CommandListener
       :members:
+   .. autoclass:: ServerListener
+      :members:
+   .. autoclass:: ServerHeartbeatListener
+      :members:
+   .. autoclass:: TopologyListener
+      :members:
    .. autoclass:: CommandStartedEvent
       :members:
-      :inherited-members:
    .. autoclass:: CommandSucceededEvent
       :members:
-      :inherited-members:
    .. autoclass:: CommandFailedEvent
       :members:
-      :inherited-members:
+   .. autoclass:: ServerDescriptionChangedEvent
+      :members:
+   .. autoclass:: ServerOpeningEvent
+      :members:
+   .. autoclass:: ServerClosedEvent
+      :members:
+   .. autoclass:: TopologyDescriptionChangedEvent
+      :members:
+   .. autoclass:: TopologyOpenedEvent
+      :members:
+   .. autoclass:: TopologyClosedEvent
+      :members:
+   .. autoclass:: ServerHeartbeatStartedEvent
+      :members:
+   .. autoclass:: ServerHeartbeatSucceededEvent
+      :members:
+   .. autoclass:: ServerHeartbeatFailedEvent
+      :members:

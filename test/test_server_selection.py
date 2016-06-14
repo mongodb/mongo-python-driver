@@ -55,6 +55,9 @@ class MockPool(object):
     def reset(self):
         pass
 
+    def remove_stale_sockets(self):
+        pass
+
 
 class MockMonitor(object):
     def __init__(self, server_description, topology, pool, topology_settings):

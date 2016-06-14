@@ -64,6 +64,39 @@ class EventListener(monitoring.CommandListener):
             self.results['failed'].append(event)
 
 
+class ServerAndTopologyEventListener(monitoring.ServerListener,
+                                     monitoring.TopologyListener):
+    """Listens to all events."""
+
+    def __init__(self):
+        self.results = []
+
+    def opened(self, event):
+        self.results.append(event)
+
+    def description_changed(self, event):
+        self.results.append(event)
+
+    def closed(self, event):
+        self.results.append(event)
+
+
+class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
+    """Listens to only server heartbeat events."""
+
+    def __init__(self):
+        self.results = []
+
+    def started(self, event):
+        self.results.append(event)
+
+    def succeeded(self, event):
+        self.results.append(event)
+
+    def failed(self, event):
+        self.results.append(event)
+
+
 def _connection_string_noauth(h, p):
     if h.startswith("mongodb://"):
         return h
@@ -146,7 +179,7 @@ def get_command_line(client):
 
 def server_started_with_option(client, cmdline_opt, config_opt):
     """Check if the server was started with a particular option.
-    
+
     :Parameters:
       - `cmdline_opt`: The command line option (i.e. --nojournal)
       - `config_opt`: The config file option (i.e. nojournal)

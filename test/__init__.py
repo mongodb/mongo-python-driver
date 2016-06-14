@@ -58,16 +58,20 @@ class client_knobs(object):
     def __init__(
             self,
             heartbeat_frequency=None,
-            kill_cursor_frequency=None):
+            kill_cursor_frequency=None,
+            events_queue_frequency=None):
         self.heartbeat_frequency = heartbeat_frequency
         self.kill_cursor_frequency = kill_cursor_frequency
+        self.events_queue_frequency = events_queue_frequency
 
         self.old_heartbeat_frequency = None
         self.old_kill_cursor_frequency = None
+        self.old_events_queue_frequency = None
 
     def enable(self):
         self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
         self.old_kill_cursor_frequency = common.KILL_CURSOR_FREQUENCY
+        self.old_events_queue_frequency = common.EVENTS_QUEUE_FREQUENCY
 
         if self.heartbeat_frequency is not None:
             common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
@@ -75,12 +79,16 @@ class client_knobs(object):
         if self.kill_cursor_frequency is not None:
             common.KILL_CURSOR_FREQUENCY = self.kill_cursor_frequency
 
+        if self.events_queue_frequency is not None:
+            common.EVENTS_QUEUE_FREQUENCY = self.events_queue_frequency
+
     def __enter__(self):
         self.enable()
 
     def disable(self):
         common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
         common.KILL_CURSOR_FREQUENCY = self.old_kill_cursor_frequency
+        common.EVENTS_QUEUE_FREQUENCY = self.old_events_queue_frequency
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable()
@@ -108,7 +116,7 @@ class ClientContext(object):
             client = pymongo.MongoClient(host, port,
                                          serverSelectionTimeoutMS=100)
             client.admin.command('ismaster')  # Can we connect?
-            
+
             # If so, then reset client to defaults.
             self.client = pymongo.MongoClient(host, port)
 

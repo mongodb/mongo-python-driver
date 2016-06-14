@@ -44,6 +44,9 @@ class Monitor(object):
         self._pool = pool
         self._settings = topology_settings
         self._avg_round_trip_time = MovingAverage()
+        self._listeners = self._settings._pool_options.event_listeners
+        pub = self._listeners is not None
+        self._publish = pub and self._listeners.enabled_for_server_heartbeat
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the monitor is freed, stop the executor soon.
@@ -61,7 +64,7 @@ class Monitor(object):
             name="pymongo_server_monitor_thread")
 
         self._executor = executor
-        
+
         # Avoid cycles. When self or topology is freed, stop executor soon.
         self_ref = weakref.ref(self, executor.close)
         self._topology = weakref.proxy(topology, executor.close)
@@ -110,24 +113,34 @@ class Monitor(object):
         address = self._server_description.address
         retry = self._server_description.server_type != SERVER_TYPE.Unknown
 
+        start = _time()
         try:
             return self._check_once()
         except ReferenceError:
             raise
         except Exception as error:
+            error_time = _time() - start
             self._topology.reset_pool(address)
             default = ServerDescription(address, error=error)
             if not retry:
+                if self._publish:
+                    self._listeners.publish_server_heartbeat_failed(
+                        address, error_time, error)
                 self._avg_round_trip_time.reset()
                 # Server type defaults to Unknown.
                 return default
 
             # Try a second and final time. If it fails return original error.
+            start = _time()
             try:
                 return self._check_once()
             except ReferenceError:
                 raise
-            except Exception:
+            except Exception as error:
+                error_time = _time() - start
+                if self._publish:
+                    self._listeners.publish_server_heartbeat_failed(
+                        address, error_time, error)
                 self._avg_round_trip_time.reset()
                 return default
 
@@ -136,13 +149,19 @@ class Monitor(object):
 
         Returns a ServerDescription, or raises an exception.
         """
+        address = self._server_description.address
+        if self._publish:
+            self._listeners.publish_server_heartbeat_started(address)
         with self._pool.get_socket({}) as sock_info:
             response, round_trip_time = self._check_with_socket(sock_info)
             self._avg_round_trip_time.add_sample(round_trip_time)
             sd = ServerDescription(
-                address=self._server_description.address,
+                address=address,
                 ismaster=response,
                 round_trip_time=self._avg_round_trip_time.get())
+            if self._publish:
+                self._listeners.publish_server_heartbeat_succeeded(
+                    address, round_trip_time, response)
 
             return sd
 

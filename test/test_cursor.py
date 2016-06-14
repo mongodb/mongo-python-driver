@@ -228,7 +228,7 @@ class TestCursor(IntegrationTest):
         listener = EventListener()
         listener.add_command_filter('killCursors')
         saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([])
+        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         coll = single_client(
             event_listeners=[listener])[self.db.name].pymongo_test
         results = listener.results

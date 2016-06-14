@@ -49,6 +49,9 @@ HEARTBEAT_FREQUENCY = 10
 # Frequency to process kill-cursors, in seconds. See MongoClient.close_cursor.
 KILL_CURSOR_FREQUENCY = 1
 
+# Frequency to process events queue, in seconds.
+EVENTS_QUEUE_FREQUENCY = 1
+
 # How long to wait, in seconds, for a suitable server to be found before
 # aborting an operation. For example, if the client attempts an insert
 # during a replica set election, SERVER_SELECTION_TIMEOUT governs the

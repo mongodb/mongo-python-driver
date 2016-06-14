@@ -18,14 +18,21 @@ import os
 import random
 import threading
 import warnings
+import weakref
 
-from bson.py3compat import itervalues
+from bson.py3compat import itervalues, PY3
+if PY3:
+    import queue as Queue
+else:
+    import Queue
+
 from pymongo import common
+from pymongo import periodic_executor
 from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
-from pymongo.errors import ServerSelectionTimeoutError, InvalidOperation
+from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
 from pymongo.server_selectors import (any_server_selector,
@@ -35,9 +42,42 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 
 
+def process_events_queue(queue_ref):
+    q = queue_ref()
+    if not q:
+        return False  # Cancel PeriodicExecutor.
+
+    while True:
+        try:
+            event = q.get_nowait()
+        except Queue.Empty:
+            break
+        else:
+            fn, args = event
+            fn(*args)
+
+    return True  # Continue PeriodicExecutor.
+
+
 class Topology(object):
     """Monitor a topology of one or more servers."""
     def __init__(self, topology_settings):
+        self._topology_id = topology_settings._topology_id
+        self._listeners = topology_settings._pool_options.event_listeners
+        pub = self._listeners is not None
+        self._publish_server = pub and self._listeners.enabled_for_server
+        self._publish_tp = pub and self._listeners.enabled_for_topology
+
+        # Create events queue if there are publishers.
+        self._events = None
+        self._events_thread = None
+
+        if self._publish_server or self._publish_tp:
+            self._events = Queue.Queue(maxsize=100)
+
+        if self._publish_tp:
+            self._events.put((self._listeners.publish_topology_opened,
+                             (self._topology_id,)))
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
@@ -47,6 +87,17 @@ class Topology(object):
             None)
 
         self._description = topology_description
+        if self._publish_tp:
+            self._events.put((
+                self._listeners.publish_topology_description_changed,
+                (TopologyDescription(
+                    TOPOLOGY_TYPE.Unknown, {}, None, None, None),
+                 self._description, self._topology_id)))
+        for seed in topology_settings.seeds:
+            if self._publish_server:
+                self._events.put((self._listeners.publish_server_opened,
+                                 (seed, self._topology_id)))
+
         # Store the seed list to help diagnose errors in _error_message().
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
@@ -54,6 +105,23 @@ class Topology(object):
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
         self._pid = None
+
+        if self._publish_server or self._publish_tp:
+            def target():
+                return process_events_queue(weak)
+
+            executor = periodic_executor.PeriodicExecutor(
+                interval=common.EVENTS_QUEUE_FREQUENCY,
+                min_interval=0.5,
+                target=target,
+                name="pymongo_events_thread")
+
+            # We strongly reference the executor and it weakly references
+            # the queue via this closure. When the topology is freed, stop
+            # the executor soon.
+            weak = weakref.ref(self._events)
+            self.__events_executor = executor
+            executor.open()
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -173,10 +241,24 @@ class Topology(object):
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
             if self._description.has_server(server_description.address):
+                td_old = self._description
+                if self._publish_server:
+                    old_server_description = td_old._server_descriptions[
+                        server_description.address]
+                    self._events.put((
+                        self._listeners.publish_server_description_changed,
+                        (old_server_description, server_description,
+                         server_description.address, self._topology_id)))
+
                 self._description = updated_topology_description(
                     self._description, server_description)
 
                 self._update_servers()
+
+                if self._publish_tp:
+                    self._events.put((
+                        self._listeners.publish_topology_description_changed,
+                        (td_old, self._description, self._topology_id)))
 
                 # Wake waiters in select_servers().
                 self._condition.notify_all()
@@ -218,7 +300,6 @@ class Topology(object):
 
             descriptions = selector(self._description.known_servers)
             return set([d.address for d in descriptions])
-
 
     def get_secondaries(self):
         """Return set of secondary addresses."""
@@ -269,6 +350,12 @@ class Topology(object):
             # Mark all servers Unknown.
             self._description = self._description.reset()
             self._update_servers()
+        # Publish only after releasing the lock.
+        if self._publish_tp:
+            self._events.put((self._listeners.publish_topology_closed,
+                              (self._topology_id,)))
+        if self._publish_server or self._publish_tp:
+            self.__events_executor.close()
 
     @property
     def description(self):
@@ -282,6 +369,10 @@ class Topology(object):
         if not self._opened:
             self._opened = True
             self._update_servers()
+
+            # Start or restart the events publishing thread.
+            if self._publish_tp or self._publish_server:
+                self.__events_executor.open()
         else:
             # Restart monitors if we forked since previous call.
             for server in itervalues(self._servers):
@@ -343,10 +434,16 @@ class Topology(object):
                     pool=self._create_pool_for_monitor(address),
                     topology_settings=self._settings)
 
+                weak = None
+                if self._publish_server:
+                    weak = weakref.ref(self._events)
                 server = Server(
                     server_description=sd,
                     pool=self._create_pool_for_server(address),
-                    monitor=monitor)
+                    monitor=monitor,
+                    topology_id=self._topology_id,
+                    listeners=self._listeners,
+                    events=weak)
 
                 self._servers[address] = server
                 server.open()
@@ -372,7 +469,8 @@ class Topology(object):
             socket_timeout=options.connect_timeout,
             ssl_context=options.ssl_context,
             ssl_match_hostname=options.ssl_match_hostname,
-            socket_keepalive=True)
+            socket_keepalive=True,
+            event_listeners=options.event_listeners)
 
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)

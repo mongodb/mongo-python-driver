@@ -39,7 +39,7 @@ class TestCommandMonitoring(unittest.TestCase):
         cls.listener = EventListener()
         cls.saved_listeners = monitoring._LISTENERS
         # Don't use any global subscribers.
-        monitoring._LISTENERS = monitoring._Listeners([])
+        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         cls.client = single_client(event_listeners=[cls.listener])
 
     @classmethod

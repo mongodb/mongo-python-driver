@@ -71,6 +71,9 @@ class MockMonitor(object):
     def close(self):
         pass
 
+    def remove_stale_sockets(self):
+        pass
+
 
 def create_mock_topology(uri, monitor_class=MockMonitor):
     # Some tests in the spec include URIs like mongodb://A/?connect=direct,

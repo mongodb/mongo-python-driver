@@ -51,7 +51,7 @@ class TestAllScenarios(unittest.TestCase):
     def setUpClass(cls):
         cls.listener = EventListener()
         cls.saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([])
+        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         cls.client = single_client(event_listeners=[cls.listener])
 
     @classmethod
