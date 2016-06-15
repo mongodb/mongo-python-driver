@@ -1360,11 +1360,10 @@ class Collection(common.BaseObject):
         See the MongoDB documentation for a full list of supported options by
         server version.
 
-        .. warning:: `dropDups` is not supported by MongoDB 2.7.5 or newer. The
+        .. warning:: `dropDups` is not supported by MongoDB 3.0 or newer. The
           option is silently ignored by the server and unique index builds
           using the option will fail if a duplicate value is detected.
 
-        .. note:: `expireAfterSeconds` requires server version **>= 2.2**
         .. note:: `partialFilterExpression` requires server version **>= 3.2**
 
         :Parameters:

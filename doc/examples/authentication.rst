@@ -88,7 +88,7 @@ MONGODB-X509
 The MONGODB-X509 mechanism authenticates a username derived from the
 distinguished subject name of the X.509 certificate presented by the driver
 during SSL negotiation. This authentication method requires the use of SSL
-connections with certificate validation and is available in MongoDB 2.5.1
+connections with certificate validation and is available in MongoDB 2.6
 and newer::
 
   >>> import ssl
@@ -202,7 +202,7 @@ SASL PLAIN (RFC 4616)
 ---------------------
 .. versionadded:: 2.6
 
-MongoDB Enterprise Edition versions 2.5.0 and newer support the SASL PLAIN
+MongoDB Enterprise Edition version 2.6 and newer support the SASL PLAIN
 authentication mechanism, initially intended for delegating authentication
 to an LDAP server. Using the PLAIN mechanism is very similar to MONGODB-CR.
 These examples use the $external virtual database for LDAP support::

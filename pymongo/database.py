@@ -559,11 +559,6 @@ class Database(common.BaseObject):
         Returns a dict of validation info. Raises CollectionInvalid if
         validation fails.
 
-        With MongoDB < 1.9 the result dict will include a `result` key
-        with a string value that represents the validation results. With
-        MongoDB >= 1.9 the `result` key no longer exists and the results
-        are split into individual fields in the result dict.
-
         :Parameters:
           - `name_or_collection`: A Collection object or the name of a
             collection to validate.
@@ -572,7 +567,7 @@ class Database(common.BaseObject):
           - `full`: Have the server do a more thorough scan of the
             collection. Use with `scandata` for a thorough scan
             of the structure of the collection and the individual
-            documents. Ignored in MongoDB versions before 1.9.
+            documents.
         """
         name = name_or_collection
         if isinstance(name, Collection):

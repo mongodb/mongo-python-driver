@@ -151,9 +151,8 @@ documents that will be mapped over:
   {u'_id': u'cat', u'value': 1.0}
   {u'_id': u'dog', u'value': 1.0}
 
-With MongoDB 1.8.0 or newer you can use :class:`~bson.son.SON` or
-:class:`collections.OrderedDict` to specify a different database to store the
-result collection:
+You can use :class:`~bson.son.SON` or :class:`collections.OrderedDict` to
+specify a different database to store the result collection:
 
 .. doctest::
 
