@@ -22,7 +22,7 @@ import traceback
 
 import bson
 from bson.codec_options import CodecOptions
-from bson.py3compat import itervalues, string_type, iteritems, u
+from bson.py3compat import itervalues, string_type, iteritems
 from bson.son import SON
 from pymongo import ASCENDING
 from pymongo.errors import (CursorNotFound,
@@ -38,7 +38,7 @@ from pymongo.message import _Query, _convert_exception
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 
 
-_UUNDER = u("_")
+_UUNDER = u"_"
 
 _UNICODE_REPLACE_CODEC_OPTIONS = CodecOptions(
     unicode_decode_error_handler='replace')

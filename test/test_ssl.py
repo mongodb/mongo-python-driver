@@ -200,10 +200,6 @@ class TestSSL(unittest.TestCase):
         if not HAVE_SSL:
             raise SkipTest("The ssl module is not available.")
 
-        if sys.version.startswith('3.0'):
-            raise SkipTest("Python 3.0.x has problems "
-                           "with SSL and socket timeouts.")
-
     def test_simple_ssl(self):
         # Expects the server to be running with ssl and with
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation

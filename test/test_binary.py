@@ -26,7 +26,6 @@ import bson
 
 from bson.binary import *
 from bson.codec_options import CodecOptions
-from bson.py3compat import u
 from bson.son import SON
 from test import client_context, unittest
 from pymongo.mongo_client import MongoClient
@@ -81,7 +80,7 @@ class TestBinary(unittest.TestCase):
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Binary, None)
-        self.assertRaises(TypeError, Binary, u("hello"))
+        self.assertRaises(TypeError, Binary, u"hello")
         self.assertRaises(TypeError, Binary, 5)
         self.assertRaises(TypeError, Binary, 10.2)
         self.assertRaises(TypeError, Binary, b"hello", None)

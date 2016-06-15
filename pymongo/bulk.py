@@ -18,7 +18,6 @@
 """
 
 from bson.objectid import ObjectId
-from bson.py3compat import u
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.common import (validate_is_mapping,
@@ -50,11 +49,11 @@ _COMMANDS = ('insert', 'update', 'delete')
 # These string literals are used when we create fake server return
 # documents client side. We use unicode literals in python 2.x to
 # match the actual return values from the server.
-_UID = u("_id")
-_UCODE = u("code")
-_UERRMSG = u("errmsg")
-_UINDEX = u("index")
-_UOP = u("op")
+_UID = u"_id"
+_UCODE = u"code"
+_UERRMSG = u"errmsg"
+_UINDEX = u"index"
+_UOP = u"op"
 
 
 class _Run(object):

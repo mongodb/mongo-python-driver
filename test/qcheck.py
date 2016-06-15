@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 from bson.binary import Binary
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.py3compat import MAXSIZE, PY3, iteritems, u
+from bson.py3compat import MAXSIZE, PY3, iteritems
 from bson.son import SON
 
 if PY3:
@@ -91,9 +91,9 @@ def gen_unichar():
 
 
 def gen_unicode(gen_length):
-    return lambda: u("").join([x for x in
-                               gen_list(gen_unichar(), gen_length)() if
-                               x not in ".$"])
+    return lambda: u"".join([x for x in
+                             gen_list(gen_unichar(), gen_length)() if
+                             x not in ".$"])
 
 
 def gen_list(generator, gen_length):
@@ -124,7 +124,7 @@ def gen_regexp(gen_length):
     # TODO our patterns only consist of one letter.
     # this is because of a bug in CPython's regex equality testing,
     # which I haven't quite tracked down, so I'm just ignoring it...
-    pattern = lambda: u("").join(gen_list(choose_lifted(u("a")), gen_length)())
+    pattern = lambda: u"".join(gen_list(choose_lifted(u"a"), gen_length)())
 
     def gen_flags():
         flags = 0

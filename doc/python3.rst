@@ -6,7 +6,7 @@ Python 3 FAQ
 What Python 3 versions are supported?
 -------------------------------------
 
-PyMongo supports Python 3.x where x >= 2.
+PyMongo supports CPython 3.3+ and PyPy3.
 
 Are there any PyMongo behavior changes with Python 3?
 -----------------------------------------------------
@@ -20,8 +20,8 @@ with subtype 0.
 For example, let's insert a :class:`bytes` instance using Python 3 then
 read it back. Notice the byte string is decoded back to :class:`bytes`::
 
-  Python 3.2.5 (default, Feb 26 2014, 12:40:25)
-  [GCC 4.7.3] on linux2
+  Python 3.3.5 (default, Apr 29 2016, 11:04:32)
+  [GCC 4.9.3] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
   >>> c = pymongo.MongoClient()
@@ -46,10 +46,7 @@ Why can't I share pickled ObjectIds between some versions of Python 2 and 3?
 ----------------------------------------------------------------------------
 
 Instances of :class:`~bson.objectid.ObjectId` pickled using Python 2
-can always be unpickled using Python 3. Due to
-`http://bugs.python.org/issue13505 <http://bugs.python.org/issue13505>`_
-you must use Python 3.2.3 or newer to pickle instances of ObjectId if you
-need to unpickle them in Python 2.
+can always be unpickled using Python 3.
 
 If you pickled an ObjectId using Python 2 and want to unpickle it using
 Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
@@ -65,8 +62,8 @@ Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
   >>> pickle.dumps(oid)
   'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\...'
 
-  Python 3.2.5 (default, Feb 26 2014, 12:40:25)
-  [GCC 4.7.3] on linux2
+  Python 3.3.5 (default, Apr 29 2016, 11:04:32)
+  [GCC 4.9.3] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle
   >>> pickle.loads(b'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\...', encoding='latin-1')
@@ -74,10 +71,10 @@ Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
 
 
 If you need to pickle ObjectIds using Python 3 and unpickle them using Python 2
-you must use Python 3.2.3 or newer and ``protocol <= 2``::
+you must use ``protocol <= 2``::
 
-  Python 3.2.3 (v3.2.3:3d0686d90f55, Apr 10 2012, 11:25:50)
-  [GCC 4.2.1 (Apple Inc. build 5666) (dot 3)] on darwin
+  Python 3.3.5 (default, Apr 29 2016, 11:04:32)
+  [GCC 4.9.3] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle
   >>> from bson.objectid import ObjectId
@@ -93,44 +90,4 @@ you must use Python 3.2.3 or newer and ``protocol <= 2``::
   >>> import pickle
   >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c_codecs\nencode\...')
   ObjectId('4f96f20c430ee6bd06000000')
-
-
-Unfortunately this won't work if you pickled the ObjectId using a Python 3
-version older than 3.2.3::
-
-  Python 3.2.2 (default, Mar 21 2012, 14:32:23)
-  [GCC 4.5.3] on linux2
-  Type "help", "copyright", "credits" or "license" for more information.
-  >>> import pickle
-  >>> from bson.objectid import ObjectId
-  >>> oid = ObjectId()
-  >>> pickle.dumps(oid, protocol=2)
-  b'\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c__builtin__\nbytes\...'
-
-  Python 2.4.6 (#1, Apr 12 2012, 14:48:24)
-  [GCC 4.5.3] on linux3
-  Type "help", "copyright", "credits" or "license" for more information.
-  >>> import pickle
-  >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c__builtin__\nbytes\...')
-  Traceback (most recent call last):
-    File "<stdin>", line 1, in ?
-    File "/usr/lib/python2.4/pickle.py", line 1394, in loads
-      return Unpickler(file).load()
-    File "/usr/lib/python2.4/pickle.py", line 872, in load
-      dispatch[key](self)
-    File "/usr/lib/python2.4/pickle.py", line 1104, in load_global
-      klass = self.find_class(module, name)
-    File "/usr/lib/python2.4/pickle.py", line 1140, in find_class
-      klass = getattr(mod, name)
-    AttributeError: 'module' object has no attribute 'bytes'
-
-.. warning::
-
-  Unpickling in Python 2.6 or 2.7 an ObjectId pickled in a Python 3 version
-  older than 3.2.3 will seem to succeed but the resulting ObjectId instance
-  will contain garbage data.
-
-  >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c__builtin__\nbytes\...)
-  ObjectId('5b37392c203135302c203234362c2034352c203235312c203136352c2033342c203532...')
-
 

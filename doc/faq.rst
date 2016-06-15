@@ -85,7 +85,7 @@ thread, all sockets are closed.
 Does PyMongo support Python 3?
 ------------------------------
 
-PyMongo supports Python 3.x where x >= 2. See the :doc:`python3` for details.
+PyMongo supports CPython 3.3+ and PyPy3. See the :doc:`python3` for details.
 
 Does PyMongo support asynchronous frameworks like Gevent, asyncio, Tornado, or Twisted?
 ---------------------------------------------------------------------------------------

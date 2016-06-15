@@ -22,7 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.code import Code
-from bson.py3compat import u, PY3
+from bson.py3compat import PY3
 from bson.son import SON
 from pymongo import (MongoClient,
                      monitoring,
@@ -807,7 +807,7 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(3, db.test.find().where('this.x < 3').count())
         self.assertEqual(10, db.test.find().count())
-        self.assertEqual(3, db.test.find().where(u('this.x < 3')).count())
+        self.assertEqual(3, db.test.find().where(u'this.x < 3').count())
         self.assertEqual([0, 1, 2],
                          [a["x"] for a in
                           db.test.find().where('this.x < 3')])

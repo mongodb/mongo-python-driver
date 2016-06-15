@@ -38,7 +38,7 @@ from bson.codec_options import CodecOptions
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
-from bson.py3compat import PY3, u, text_type, iteritems, StringIO
+from bson.py3compat import PY3, text_type, iteritems, StringIO
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset
@@ -125,24 +125,24 @@ class TestBSON(unittest.TestCase):
         def helper(doc):
             self.assertEqual(doc, (BSON.encode(doc_class(doc))).decode())
         helper({})
-        helper({"test": u("hello")})
+        helper({"test": u"hello"})
         self.assertTrue(isinstance(BSON.encode({"hello": "world"})
                                    .decode()["hello"],
                                    text_type))
         helper({"mike": -10120})
         helper({"long": Int64(10)})
         helper({"really big long": 2147483648})
-        helper({u("hello"): 0.0013109})
+        helper({u"hello": 0.0013109})
         helper({"something": True})
         helper({"false": False})
-        helper({"an array": [1, True, 3.8, u("world")]})
-        helper({"an object": doc_class({"test": u("something")})})
+        helper({"an array": [1, True, 3.8, u"world"]})
+        helper({"an object": doc_class({"test": u"something"})})
         helper({"a binary": Binary(b"test", 100)})
         helper({"a binary": Binary(b"test", 128)})
         helper({"a binary": Binary(b"test", 254)})
         helper({"another binary": Binary(b"test", 2)})
-        helper(SON([(u('test dst'), datetime.datetime(1993, 4, 4, 2))]))
-        helper(SON([(u('test negative dst'),
+        helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
+        helper(SON([(u'test negative dst',
                      datetime.datetime(1, 1, 1, 1, 1, 1))]))
         helper({"big float": float(10000000000)})
         helper({"ref": DBRef("coll", 5)})
@@ -175,7 +175,7 @@ class TestBSON(unittest.TestCase):
 
     def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
-        self.assertRaises(TypeError, is_valid, u("test"))
+        self.assertRaises(TypeError, is_valid, u"test")
         self.assertRaises(TypeError, is_valid, 10.4)
 
         self.assertInvalid(b"test")
@@ -261,22 +261,22 @@ class TestBSON(unittest.TestCase):
                               qcheck.gen_string(qcheck.gen_range(0, 40)))
 
     def test_basic_decode(self):
-        self.assertEqual({"test": u("hello world")},
+        self.assertEqual({"test": u"hello world"},
                          BSON(b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C"
                               b"\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F"
                               b"\x72\x6C\x64\x00\x00").decode())
-        self.assertEqual([{"test": u("hello world")}, {}],
+        self.assertEqual([{"test": u"hello world"}, {}],
                          decode_all(b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
                                     b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
                                     b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                                     b"\x05\x00\x00\x00\x00"))
-        self.assertEqual([{"test": u("hello world")}, {}],
+        self.assertEqual([{"test": u"hello world"}, {}],
                          list(decode_iter(
                             b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
                             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
                             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                             b"\x05\x00\x00\x00\x00")))
-        self.assertEqual([{"test": u("hello world")}, {}],
+        self.assertEqual([{"test": u"hello world"}, {}],
                          list(decode_file_iter(StringIO(
                             b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
                             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
@@ -338,11 +338,11 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(TypeError, BSON.encode, [])
 
         self.assertEqual(BSON.encode({}), BSON(b"\x05\x00\x00\x00\x00"))
-        self.assertEqual(BSON.encode({"test": u("hello world")}),
+        self.assertEqual(BSON.encode({"test": u"hello world"}),
                          b"\x1B\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0C\x00"
                          b"\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C"
                          b"\x64\x00\x00")
-        self.assertEqual(BSON.encode({u("mike"): 100}),
+        self.assertEqual(BSON.encode({u"mike": 100}),
                          b"\x0F\x00\x00\x00\x10\x6D\x69\x6B\x65\x00\x64\x00"
                          b"\x00\x00\x00")
         self.assertEqual(BSON.encode({"hello": 1.5}),
@@ -618,14 +618,14 @@ class TestBSON(unittest.TestCase):
     # The C extension was segfaulting on unicode RegExs, so we have this test
     # that doesn't really test anything but the lack of a segfault.
     def test_unicode_regex(self):
-        regex = re.compile(u('revisi\xf3n'))
+        regex = re.compile(u'revisi\xf3n')
         BSON.encode({"regex": regex}).decode()
 
     def test_non_string_keys(self):
         self.assertRaises(InvalidDocument, BSON.encode, {8.9: "test"})
 
     def test_utf8(self):
-        w = {u("aéあ"): u("aéあ")}
+        w = {u"aéあ": u"aéあ"}
         self.assertEqual(w, BSON.encode(w).decode())
 
         # b'a\xe9' == u"aé".encode("iso-8859-1")
@@ -645,7 +645,7 @@ class TestBSON(unittest.TestCase):
 
             # The next two tests only make sense in python 2.x since
             # you can't use `bytes` type as document keys in python 3.x.
-            x = {u("aéあ").encode("utf-8"): u("aéあ").encode("utf-8")}
+            x = {u"aéあ".encode("utf-8"): u"aéあ".encode("utf-8")}
             self.assertEqual(w, BSON.encode(x).decode())
 
             z = {iso8859_bytes: "hello"}
@@ -658,16 +658,16 @@ class TestBSON(unittest.TestCase):
         # This test doesn't make much sense in Python2
         # since {'a': '\x00'} == {'a': u'\x00'}.
         # Decoding here actually returns {'a': '\x00'}
-        doc = {"a": u("\x00")}
+        doc = {"a": u"\x00"}
         self.assertEqual(doc, BSON.encode(doc).decode())
 
         self.assertRaises(InvalidDocument, BSON.encode, {b"\x00": "a"})
-        self.assertRaises(InvalidDocument, BSON.encode, {u("\x00"): "a"})
+        self.assertRaises(InvalidDocument, BSON.encode, {u"\x00": "a"})
 
         self.assertRaises(InvalidDocument, BSON.encode,
                           {"a": re.compile(b"ab\x00c")})
         self.assertRaises(InvalidDocument, BSON.encode,
-                          {"a": re.compile(u("ab\x00c"))})
+                          {"a": re.compile(u"ab\x00c")})
 
     def test_move_id(self):
         self.assertEqual(b"\x19\x00\x00\x00\x02_id\x00\x02\x00\x00\x00a\x00"
@@ -758,8 +758,8 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(doc1, BSON(doc1_bson).decode())
 
         # Valid Python regex, with flags.
-        re2 = re.compile(u('.*'), re.I | re.M | re.S | re.U | re.X)
-        bson_re2 = Regex(u('.*'), re.I | re.M | re.S | re.U | re.X)
+        re2 = re.compile(u'.*', re.I | re.M | re.S | re.U | re.X)
+        bson_re2 = Regex(u'.*', re.I | re.M | re.S | re.U | re.X)
 
         doc2_with_re = {'r': re2}
         doc2_with_bson_re = {'r': bson_re2}
@@ -932,7 +932,7 @@ class TestCodecOptions(unittest.TestCase):
 
         dec = BSON.decode(invalid_key, CodecOptions(
             unicode_decode_error_handler="replace"))
-        self.assertEqual(dec, {replaced_key: u("foobar")})
+        self.assertEqual(dec, {replaced_key: u"foobar"})
 
         dec = BSON.decode(invalid_key, CodecOptions(
             unicode_decode_error_handler="ignore"))

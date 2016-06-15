@@ -31,7 +31,7 @@ from bson.regex import Regex
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from bson.py3compat import u, itervalues
+from bson.py3compat import itervalues
 from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
@@ -1050,7 +1050,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(obj["_id"], numeric)
 
         for x in db.test.find():
-            self.assertEqual(x["hello"], u("world"))
+            self.assertEqual(x["hello"], u"world")
             self.assertTrue("_id" in x)
 
     def test_invalid_key_names(self):
@@ -1988,11 +1988,11 @@ class TestCollection(IntegrationTest):
     def test_messages_with_unicode_collection_names(self):
         db = self.db
 
-        db[u("Employés")].insert_one({"x": 1})
-        db[u("Employés")].replace_one({"x": 1}, {"x": 2})
-        db[u("Employés")].delete_many({})
-        db[u("Employés")].find_one()
-        list(db[u("Employés")].find())
+        db[u"Employés"].insert_one({"x": 1})
+        db[u"Employés"].replace_one({"x": 1}, {"x": 2})
+        db[u"Employés"].delete_many({})
+        db[u"Employés"].find_one()
+        list(db[u"Employés"].find())
 
     def test_drop_indexes_non_existent(self):
         self.db.drop_collection("test")

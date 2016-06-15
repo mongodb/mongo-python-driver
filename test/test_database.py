@@ -27,7 +27,7 @@ from bson.int64 import Int64
 from bson.regex import Regex
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.py3compat import u, string_type, text_type, PY3
+from bson.py3compat import string_type, text_type, PY3
 from bson.son import SON
 from pymongo import (MongoClient,
                      ALL,
@@ -74,7 +74,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
         self.assertRaises(InvalidName, Database, self.client, 'my"db')
         self.assertRaises(InvalidName, Database, self.client, "my\x00db")
         self.assertRaises(InvalidName, Database,
-                          self.client, u("my\u0000db"))
+                          self.client, u"my\u0000db")
         self.assertEqual("name", Database(self.client, "name").name)
 
     def test_equality(self):
@@ -129,7 +129,7 @@ class TestDatabase(IntegrationTest):
     def test_repr(self):
         self.assertEqual(repr(Database(self.client, "pymongo_test")),
                          "Database(%r, %s)" % (self.client,
-                                               repr(u("pymongo_test"))))
+                                               repr(u"pymongo_test")))
 
     def test_create_collection(self):
         db = Database(self.client, "pymongo_test")
@@ -144,19 +144,19 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(InvalidName, db.create_collection, "coll..ection")
 
         test = db.create_collection("test")
-        self.assertTrue(u("test") in db.collection_names())
-        test.insert_one({"hello": u("world")})
+        self.assertTrue(u"test" in db.collection_names())
+        test.insert_one({"hello": u"world"})
         self.assertEqual(db.test.find_one()["hello"], "world")
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
-        self.assertTrue(u("test.foo") in db.collection_names())
+        self.assertTrue(u"test.foo" in db.collection_names())
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
     def test_collection_names(self):
         db = Database(self.client, "pymongo_test")
-        db.test.insert_one({"dummy": u("object")})
-        db.test.mike.insert_one({"dummy": u("object")})
+        db.test.insert_one({"dummy": u"object"})
+        db.test.mike.insert_one({"dummy": u"object"})
 
         colls = db.collection_names()
         self.assertTrue("test" in colls)
@@ -195,22 +195,22 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, db.drop_collection, 5)
         self.assertRaises(TypeError, db.drop_collection, None)
 
-        db.test.insert_one({"dummy": u("object")})
+        db.test.insert_one({"dummy": u"object"})
         self.assertTrue("test" in db.collection_names())
         db.drop_collection("test")
         self.assertFalse("test" in db.collection_names())
 
-        db.test.insert_one({"dummy": u("object")})
+        db.test.insert_one({"dummy": u"object"})
         self.assertTrue("test" in db.collection_names())
-        db.drop_collection(u("test"))
+        db.drop_collection(u"test")
         self.assertFalse("test" in db.collection_names())
 
-        db.test.insert_one({"dummy": u("object")})
+        db.test.insert_one({"dummy": u"object"})
         self.assertTrue("test" in db.collection_names())
         db.drop_collection(db.test)
         self.assertFalse("test" in db.collection_names())
 
-        db.test.insert_one({"dummy": u("object")})
+        db.test.insert_one({"dummy": u"object"})
         self.assertTrue("test" in db.collection_names())
         db.test.drop()
         self.assertFalse("test" in db.collection_names())
@@ -224,7 +224,7 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, db.validate_collection, 5)
         self.assertRaises(TypeError, db.validate_collection, None)
 
-        db.test.insert_one({"dummy": u("object")})
+        db.test.insert_one({"dummy": u"object"})
 
         self.assertRaises(OperationFailure, db.validate_collection,
                           "test.doesnotexist")
@@ -358,11 +358,11 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(isinstance(auth._password_digest("mike", "password"),
                                    text_type))
         self.assertEqual(auth._password_digest("mike", "password"),
-                         u("cd7e45b3b2767dc2fa9b6b548457ed00"))
+                         u"cd7e45b3b2767dc2fa9b6b548457ed00")
         self.assertEqual(auth._password_digest("mike", "password"),
-                         auth._password_digest(u("mike"), u("password")))
-        self.assertEqual(auth._password_digest("Gustave", u("Dor\xe9")),
-                         u("81e0e2364499209f466e75926a162d73"))
+                         auth._password_digest(u"mike", u"password"))
+        self.assertEqual(auth._password_digest("Gustave", u"Dor\xe9"),
+                         u"81e0e2364499209f466e75926a162d73")
 
     @client_context.require_auth
     def test_authenticate_add_remove_user(self):
@@ -403,7 +403,7 @@ class TestDatabase(IntegrationTest):
         db.logout()
 
         # Unicode name and password.
-        db.authenticate(u("mike"), u("password"))
+        db.authenticate(u"mike", u"password")
         db.logout()
 
         auth_db.remove_user("mike")
@@ -412,16 +412,16 @@ class TestDatabase(IntegrationTest):
 
         # Add / authenticate / change password
         self.assertRaises(OperationFailure,
-                          db.authenticate, "Gustave", u("Dor\xe9"))
-        auth_db.add_user("Gustave", u("Dor\xe9"), roles=["dbOwner"])
-        db.authenticate("Gustave", u("Dor\xe9"))
+                          db.authenticate, "Gustave", u"Dor\xe9")
+        auth_db.add_user("Gustave", u"Dor\xe9", roles=["dbOwner"])
+        db.authenticate("Gustave", u"Dor\xe9")
 
         # Change password.
         auth_db.add_user("Gustave", "password", roles=["dbOwner"])
         db.logout()
         self.assertRaises(OperationFailure,
-                          db.authenticate, "Gustave", u("Dor\xe9"))
-        self.assertTrue(db.authenticate("Gustave", u("password")))
+                          db.authenticate, "Gustave", u"Dor\xe9")
+        self.assertTrue(db.authenticate("Gustave", u"password"))
 
         if not client_context.version.at_least(2, 5, 3, -1):
             # Add a readOnly user
@@ -429,7 +429,7 @@ class TestDatabase(IntegrationTest):
                 auth_db.add_user("Ross", "password", read_only=True)
 
             db.logout()
-            db.authenticate("Ross", u("password"))
+            db.authenticate("Ross", u"password")
             self.assertTrue(
                 auth_db.system.users.find({"readOnly": True}).count())
 
@@ -621,7 +621,7 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, db.eval, [])
 
         self.assertEqual(3, db.eval("function (x) {return x;}", 3))
-        self.assertEqual(3, db.eval(u("function (x) {return x;}"), 3))
+        self.assertEqual(3, db.eval(u"function (x) {return x;}", 3))
 
         self.assertEqual(None,
                          db.eval("function (x) {db.test.save({y:x});}", 5))
@@ -643,18 +643,18 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.test.drop()
 
-        a_doc = SON({"hello": u("world")})
+        a_doc = SON({"hello": u"world"})
         a_key = db.test.insert_one(a_doc).inserted_id
         self.assertTrue(isinstance(a_doc["_id"], ObjectId))
         self.assertEqual(a_doc["_id"], a_key)
         self.assertEqual(a_doc, db.test.find_one({"_id": a_doc["_id"]}))
         self.assertEqual(a_doc, db.test.find_one(a_key))
         self.assertEqual(None, db.test.find_one(ObjectId()))
-        self.assertEqual(a_doc, db.test.find_one({"hello": u("world")}))
-        self.assertEqual(None, db.test.find_one({"hello": u("test")}))
+        self.assertEqual(a_doc, db.test.find_one({"hello": u"world"}))
+        self.assertEqual(None, db.test.find_one({"hello": u"test"}))
 
         b = db.test.find_one()
-        b["hello"] = u("mike")
+        b["hello"] = u"mike"
         db.test.replace_one({"_id": b["_id"]}, b)
 
         self.assertNotEqual(a_doc, db.test.find_one(a_key))

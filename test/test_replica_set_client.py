@@ -22,7 +22,6 @@ import time
 sys.path[0:0] = [""]
 
 from bson.codec_options import CodecOptions
-from bson.py3compat import u
 from bson.son import SON
 from pymongo.common import partition_node
 from pymongo.errors import (AutoReconnect,
@@ -228,8 +227,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
         uri = "mongodb://%slocalhost:%d,[::1]:%d" % (auth_str, port, port)
         client = MongoClient(uri, replicaSet=self.name)
-        client.pymongo_test.test.insert_one({"dummy": u("object")})
-        client.pymongo_test_bernie.test.insert_one({"dummy": u("object")})
+        client.pymongo_test.test.insert_one({"dummy": u"object"})
+        client.pymongo_test_bernie.test.insert_one({"dummy": u"object"})
 
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)

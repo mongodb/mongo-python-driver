@@ -26,7 +26,7 @@ import struct
 
 import bson
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import b, StringIO, u
+from bson.py3compat import b, StringIO
 from bson.son import SON
 try:
     from pymongo import _cmessage
@@ -61,7 +61,7 @@ _OP_MAP = {
     _DELETE: b'\x04deletes\x00\x00\x00\x00\x00',
 }
 
-_UJOIN = u("%s.%s")
+_UJOIN = u"%s.%s"
 
 
 def _randint():

@@ -18,7 +18,7 @@ import socket
 import threading
 
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import u, itervalues
+from bson.py3compat import itervalues
 from pymongo import auth, helpers, thread_util
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import (AutoReconnect,
@@ -42,7 +42,7 @@ from pymongo.server_type import SERVER_TYPE
 # while the main thread holds the import lock, getaddrinfo deadlocks trying
 # to import the IDNA codec. Import it here, where presumably we're on the
 # main thread, to avoid the deadlock. See PYTHON-607.
-u('foo').encode('idna')
+u'foo'.encode('idna')
 
 try:
     from ssl import match_hostname, CertificateError

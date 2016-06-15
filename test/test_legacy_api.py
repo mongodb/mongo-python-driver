@@ -25,7 +25,6 @@ sys.path[0:0] = [""]
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.py3compat import u
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import (ConfigurationError,
@@ -117,7 +116,7 @@ class TestLegacy(IntegrationTest):
         db = self.db
         db.test.drop()
         self.assertEqual(0, len(list(db.test.find())))
-        doc = {"hello": u("world")}
+        doc = {"hello": u"world"}
         _id = db.test.insert(doc)
         self.assertEqual(1, len(list(db.test.find())))
         self.assertEqual(doc, db.test.find_one())
@@ -159,13 +158,13 @@ class TestLegacy(IntegrationTest):
         # Tests legacy insert.
         db = self.db
         db.drop_collection("test")
-        doc1 = {"hello": u("world")}
-        doc2 = {"hello": u("mike")}
+        doc1 = {"hello": u"world"}
+        doc2 = {"hello": u"mike"}
         self.assertEqual(db.test.find().count(), 0)
         ids = db.test.insert([doc1, doc2])
         self.assertEqual(db.test.find().count(), 2)
-        self.assertEqual(doc1, db.test.find_one({"hello": u("world")}))
-        self.assertEqual(doc2, db.test.find_one({"hello": u("mike")}))
+        self.assertEqual(doc1, db.test.find_one({"hello": u"world"}))
+        self.assertEqual(doc2, db.test.find_one({"hello": u"mike"}))
 
         self.assertEqual(2, len(ids))
         self.assertEqual(doc1["_id"], ids[0])
@@ -237,7 +236,7 @@ class TestLegacy(IntegrationTest):
 
         db.drop_collection("test")
         self.assertEqual(db.test.find().count(), 0)
-        db.test.insert(({"hello": u("world")}, {"hello": u("world")}))
+        db.test.insert(({"hello": u"world"}, {"hello": u"world"}))
         self.assertEqual(db.test.find().count(), 2)
 
         db.drop_collection("test")
@@ -915,7 +914,7 @@ class TestLegacy(IntegrationTest):
         db.test.b.remove({})
         db.test.c.remove({})
 
-        a = {"hello": u("world")}
+        a = {"hello": u"world"}
         db.test.a.save(a)
 
         b = {"test": a}
