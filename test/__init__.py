@@ -135,11 +135,11 @@ class ClientContext(object):
                 self.rs_client = pymongo.MongoClient(
                     pair, replicaSet=self.replica_set_name)
 
-                nodes = [partition_node(node)
+                nodes = [partition_node(node.lower())
                          for node in self.ismaster.get('hosts', [])]
-                nodes.extend([partition_node(node)
+                nodes.extend([partition_node(node.lower())
                               for node in self.ismaster.get('passives', [])])
-                nodes.extend([partition_node(node)
+                nodes.extend([partition_node(node.lower())
                               for node in self.ismaster.get('arbiters', [])])
                 self.nodes = set(nodes)
 

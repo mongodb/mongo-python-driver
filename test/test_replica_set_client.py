@@ -64,7 +64,7 @@ class TestReplicaSetClientBase(IntegrationTest):
         cls.w = client_context.w
 
         ismaster = client_context.ismaster
-        cls.hosts = set(partition_node(h) for h in ismaster['hosts'])
+        cls.hosts = set(partition_node(h.lower()) for h in ismaster['hosts'])
         cls.arbiters = set(partition_node(h)
                            for h in ismaster.get("arbiters", []))
 
@@ -75,9 +75,10 @@ class TestReplicaSetClientBase(IntegrationTest):
             if m['stateStr'] == 'PRIMARY'
         ][0]
 
-        cls.primary = partition_node(primary_info['name'])
+        cls.primary = partition_node(primary_info['name'].lower())
         cls.secondaries = set(
-            partition_node(m['name']) for m in repl_set_status['members']
+            partition_node(m['name'].lower())
+            for m in repl_set_status['members']
             if m['stateStr'] == 'SECONDARY')
 
 
