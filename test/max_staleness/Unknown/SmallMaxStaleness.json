@@ -1,0 +1,17 @@
+{
+    "heartbeatFrequencyMS": 10000, 
+    "read_preference": {
+        "maxStalenessMS": 1, 
+        "mode": "Nearest"
+    }, 
+    "suitable_servers": [], 
+    "topology_description": {
+        "servers": [
+            {
+                "address": "a:27017", 
+                "type": "Unknown"
+            }
+        ], 
+        "type": "Unknown"
+    }
+}
