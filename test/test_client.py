@@ -378,7 +378,8 @@ class TestClient(IntegrationTest):
 
     def test_getters(self):
         self.assertEqual(client_context.client.address, (host, port))
-        self.assertEqual(client_context.nodes, self.client.nodes)
+        wait_until(lambda: client_context.nodes == self.client.nodes,
+                   "find all nodes")
 
     def test_database_names(self):
         self.client.pymongo_test.test.insert_one({"dummy": u"object"})
