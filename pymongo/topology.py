@@ -284,9 +284,7 @@ class Topology(object):
             if topology_type != TOPOLOGY_TYPE.ReplicaSetWithPrimary:
                 return None
 
-            description = writable_server_selector(
-                self._description.known_servers)[0]
-
+            description = writable_server_selector(self._description)[0]
             return description.address
 
     def _get_replica_set_members(self, selector):
@@ -298,7 +296,7 @@ class Topology(object):
                                      TOPOLOGY_TYPE.ReplicaSetNoPrimary):
                 return set()
 
-            descriptions = selector(self._description.known_servers)
+            descriptions = selector(self._description)
             return set([d.address for d in descriptions])
 
     def get_secondaries(self):
@@ -417,7 +415,7 @@ class Topology(object):
             return apply_local_threshold(self._settings.local_threshold_ms,
                                          self._description.known_servers)
         else:
-            sds = selector(self._description.known_servers)
+            sds = selector(self._description)
             return apply_local_threshold(
                 self._settings.local_threshold_ms, sds)
 

@@ -12,41 +12,39 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Criteria to select some ServerDescriptions out of a list."""
+"""Criteria to select some ServerDescriptions from a TopologyDescription."""
 
 from pymongo.server_type import SERVER_TYPE
 
 
-def any_server_selector(server_descriptions):
-    return server_descriptions
+def any_server_selector(td):
+    return td.known_servers
 
 
-def readable_server_selector(server_descriptions):
-    return [s for s in server_descriptions if s.is_readable]
+def readable_server_selector(td):
+    return [s for s in td.known_servers if s.is_readable]
 
 
-def writable_server_selector(server_descriptions):
-    return [s for s in server_descriptions if s.is_writable]
+def writable_server_selector(td):
+    return [s for s in td.known_servers if s.is_writable]
 
 
-def secondary_server_selector(server_descriptions):
-    return [s for s in server_descriptions
+def secondary_server_selector(td):
+    return [s for s in td.known_servers
             if s.server_type == SERVER_TYPE.RSSecondary]
 
 
-def arbiter_server_selector(server_descriptions):
-    return [s for s in server_descriptions
+def arbiter_server_selector(td):
+    return [s for s in td.known_servers
             if s.server_type == SERVER_TYPE.RSArbiter]
 
 
-def writable_preferred_server_selector(server_descriptions):
+def writable_preferred_server_selector(td):
     """Like PrimaryPreferred but doesn't use tags or latency."""
-    return (
-        writable_server_selector(server_descriptions) or
-        secondary_server_selector(server_descriptions))
+    return writable_server_selector(td) or secondary_server_selector(td)
 
 
-def single_tag_set_server_selector(tag_set, server_descriptions):
+def apply_single_tag_set(tag_set, server_descriptions):
     """All servers matching one tag set.
 
     A tag set is a dict. A server matches if its tags are a superset:
@@ -69,7 +67,7 @@ def single_tag_set_server_selector(tag_set, server_descriptions):
     return [s for s in server_descriptions if tags_match(s.tags)]
 
 
-def tag_sets_server_selector(tag_sets, server_descriptions):
+def apply_tag_sets(tag_sets, server_descriptions):
     """All servers match a list of tag sets.
 
     tag_sets is a list of dicts. The empty tag set {} matches any server,
@@ -84,7 +82,7 @@ def tag_sets_server_selector(tag_sets, server_descriptions):
     first.
     """
     for tag_set in tag_sets:
-        selected = single_tag_set_server_selector(tag_set, server_descriptions)
+        selected = apply_single_tag_set(tag_set, server_descriptions)
         if selected:
             return selected
 
@@ -115,13 +113,11 @@ def apply_local_threshold(latency_ms, server_descriptions):
         if (s.round_trip_time - fastest) <= latency_ms / 1000.]
 
 
-def secondary_with_tags_server_selector(tag_sets, server_descriptions):
+def secondary_with_tags_server_selector(tag_sets, td):
     """All near-enough secondaries matching the tag sets."""
-    return tag_sets_server_selector(
-        tag_sets, secondary_server_selector(server_descriptions))
+    return apply_tag_sets(tag_sets, secondary_server_selector(td))
 
 
-def member_with_tags_server_selector(tag_sets, server_descriptions):
+def member_with_tags_server_selector(tag_sets, td):
     """All near-enough members matching the tag sets."""
-    return tag_sets_server_selector(
-        tag_sets, readable_server_selector(server_descriptions))
+    return apply_tag_sets(tag_sets, readable_server_selector(td))

@@ -151,9 +151,9 @@ class Primary(_ServerMode):
     def __init__(self):
         super(Primary, self).__init__(_PRIMARY)
 
-    def __call__(self, server_descriptions):
-        """Return matching ServerDescriptions from a list."""
-        return writable_server_selector(server_descriptions)
+    def __call__(self, td):
+        """Return matching ServerDescriptions from a TopologyDescription."""
+        return writable_server_selector(td)
 
     def __repr__(self):
         return "Primary()"
@@ -182,15 +182,13 @@ class PrimaryPreferred(_ServerMode):
     def __init__(self, tag_sets=None):
         super(PrimaryPreferred, self).__init__(_PRIMARY_PREFERRED, tag_sets)
 
-    def __call__(self, server_descriptions):
-        """Return matching ServerDescriptions from a list."""
-        writable_servers = writable_server_selector(server_descriptions)
+    def __call__(self, td):
+        """Return matching ServerDescriptions from a TopologyDescription."""
+        writable_servers = writable_server_selector(td)
         if writable_servers:
             return writable_servers
         else:
-            return secondary_with_tags_server_selector(
-                self.tag_sets,
-                server_descriptions)
+            return secondary_with_tags_server_selector(self.tag_sets, td)
 
 
 class Secondary(_ServerMode):
@@ -210,11 +208,9 @@ class Secondary(_ServerMode):
     def __init__(self, tag_sets=None):
         super(Secondary, self).__init__(_SECONDARY, tag_sets)
 
-    def __call__(self, server_descriptions):
-        """Return matching ServerDescriptions from a list."""
-        return secondary_with_tags_server_selector(
-            self.tag_sets,
-            server_descriptions)
+    def __call__(self, td):
+        """Return matching ServerDescriptions from a TopologyDescription."""
+        return secondary_with_tags_server_selector(self.tag_sets, td)
 
 
 class SecondaryPreferred(_ServerMode):
@@ -234,16 +230,14 @@ class SecondaryPreferred(_ServerMode):
     def __init__(self, tag_sets=None):
         super(SecondaryPreferred, self).__init__(_SECONDARY_PREFERRED, tag_sets)
 
-    def __call__(self, server_descriptions):
-        """Return matching ServerDescriptions from a list."""
-        secondaries = secondary_with_tags_server_selector(
-            self.tag_sets,
-            server_descriptions)
+    def __call__(self, td):
+        """Return matching ServerDescriptions from a TopologyDescription."""
+        secondaries = secondary_with_tags_server_selector(self.tag_sets, td)
 
         if secondaries:
             return secondaries
         else:
-            return writable_server_selector(server_descriptions)
+            return writable_server_selector(td)
 
 
 class Nearest(_ServerMode):
@@ -263,11 +257,9 @@ class Nearest(_ServerMode):
     def __init__(self, tag_sets=None):
         super(Nearest, self).__init__(_NEAREST, tag_sets)
 
-    def __call__(self, server_descriptions):
-        """Return matching ServerDescriptions from a list."""
-        return member_with_tags_server_selector(
-            self.tag_sets or [{}],
-            server_descriptions)
+    def __call__(self, td):
+        """Return matching ServerDescriptions from a TopologyDescription."""
+        return member_with_tags_server_selector(self.tag_sets or [{}], td)
 
 
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
