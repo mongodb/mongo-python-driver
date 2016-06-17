@@ -34,7 +34,9 @@ access:
 import contextlib
 import datetime
 import threading
+import warnings
 import weakref
+
 from collections import defaultdict
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -358,7 +360,7 @@ class MongoClient(common.BaseObject):
 
         self.__default_database_name = dbase
         self.__lock = threading.Lock()
-        self.__cursor_manager = CursorManager(self)
+        self.__cursor_manager = None
         self.__kill_cursors_queue = []
 
         self._event_listeners = options.pool_options.event_listeners
@@ -712,7 +714,7 @@ class MongoClient(common.BaseObject):
         self._topology.close()
 
     def set_cursor_manager(self, manager_class):
-        """Set this client's cursor manager.
+        """DEPRECATED - Set this client's cursor manager.
 
         Raises :class:`TypeError` if `manager_class` is not a subclass of
         :class:`~pymongo.cursor_manager.CursorManager`. A cursor manager
@@ -723,9 +725,16 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `manager_class`: cursor manager to use
 
+        .. versionchanged:: 3.3
+           Deprecated, for real this time.
+
         .. versionchanged:: 3.0
            Undeprecated.
         """
+        warnings.warn(
+            "set_cursor_manager is Deprecated",
+            DeprecationWarning,
+            stacklevel=2)
         manager = manager_class(self)
         if not isinstance(manager, CursorManager):
             raise TypeError("manager_class must be a subclass of "
@@ -920,11 +929,16 @@ class MongoClient(common.BaseObject):
         return database.Database(self, name)
 
     def close_cursor(self, cursor_id, address=None):
-        """Close a single database cursor.
+        """Send a kill cursors message soon with the given id.
 
         Raises :class:`TypeError` if `cursor_id` is not an instance of
         ``(int, long)``. What closing the cursor actually means
         depends on this client's cursor manager.
+
+        This method may be called from a :class:`~pymongo.cursor.Cursor`
+        destructor during garbage collection, so it isn't safe to take a
+        lock or do network I/O. Instead, we schedule the cursor to be closed
+        soon on a background thread.
 
         :Parameters:
           - `cursor_id`: id of cursor to close
@@ -938,18 +952,16 @@ class MongoClient(common.BaseObject):
         if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
-        self.__cursor_manager.close(cursor_id, address)
+        if self.__cursor_manager is not None:
+            self.__cursor_manager.close(cursor_id, address)
+        else:
+            self.__kill_cursors_queue.append((address, [cursor_id]))
 
     def kill_cursors(self, cursor_ids, address=None):
-        """Send a kill cursors message soon with the given ids.
+        """DEPRECATED - Send a kill cursors message soon with the given ids.
 
         Raises :class:`TypeError` if `cursor_ids` is not an instance of
         ``list``.
-
-        This method may be called from a :class:`~pymongo.cursor.Cursor`
-        destructor during garbage collection, so it isn't safe to take a
-        lock or do network I/O. Instead, we schedule the cursor to be closed
-        soon on a background thread.
 
         :Parameters:
           - `cursor_ids`: list of cursor ids to kill
@@ -957,11 +969,19 @@ class MongoClient(common.BaseObject):
             If it is not provided, the client attempts to close the cursor on
             the primary or standalone, or a mongos server.
 
+        .. versionchanged:: 3.3
+           Deprecated.
+
         .. versionchanged:: 3.0
            Now accepts an `address` argument. Schedules the cursors to be
            closed on a background thread instead of sending the message
            immediately.
         """
+        warnings.warn(
+            "kill_cursors is deprecated.",
+            DeprecationWarning,
+            stacklevel=2)
+
         if not isinstance(cursor_ids, list):
             raise TypeError("cursor_ids must be a list")
 

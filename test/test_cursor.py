@@ -30,9 +30,7 @@ from pymongo import (MongoClient,
                      DESCENDING,
                      ALL,
                      OFF)
-from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import CursorType
-from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
@@ -1216,38 +1214,6 @@ class TestCursor(IntegrationTest):
         cursor = self.db.test.find()
         next(cursor)
         self.assertRaises(InvalidOperation, cursor.comment, 'hello')
-
-    def test_cursor_transfer(self):
-
-        # This is just a test, don't try this at home...
-
-        client = client_context.rs_or_standalone_client
-        db = client.pymongo_test
-
-        db.test.delete_many({})
-        db.test.insert_many([{'_id': i} for i in range(200)])
-
-        class CManager(CursorManager):
-            def __init__(self, client):
-                super(CManager, self).__init__(client)
-
-            def close(self, dummy, dummy2):
-                # Do absolutely nothing...
-                pass
-
-        client.set_cursor_manager(CManager)
-        self.addCleanup(client.set_cursor_manager, CursorManager)
-        docs = []
-        cursor = db.test.find().batch_size(10)
-        docs.append(next(cursor))
-        cursor.close()
-        docs.extend(cursor)
-        self.assertEqual(len(docs), 10)
-        cmd_cursor = {'id': cursor.cursor_id, 'firstBatch': []}
-        ccursor = CommandCursor(cursor.collection, cmd_cursor,
-                                cursor.address, retrieved=cursor.retrieved)
-        docs.extend(ccursor)
-        self.assertEqual(len(docs), 200)
 
     def test_modifiers(self):
         cur = self.db.test.find()
