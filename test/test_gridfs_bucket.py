@@ -23,6 +23,7 @@ import time
 import gridfs
 
 from bson.binary import Binary
+from bson.objectid import ObjectId
 from bson.py3compat import StringIO, string_type
 from gridfs.errors import NoFile, CorruptGridFile
 from pymongo.errors import (ConfigurationError,
@@ -270,12 +271,36 @@ class TestGridfs(IntegrationTest):
         self.assertRaises(NoFile, self.fs.open_download_stream_by_name,
                           "test", revision=-4)
 
-    def test_upload_from_stream_filelike(self):
+    def test_upload_from_stream(self):
         oid = self.fs.upload_from_stream("test_file",
                                          StringIO(b"hello world"),
                                          chunk_size_bytes=1)
         self.assertEqual(11, self.db.fs.chunks.count())
         self.assertEqual(b"hello world",
+                         self.fs.open_download_stream(oid).read())
+
+    def test_upload_from_stream_with_id(self):
+        oid = ObjectId()
+        self.fs.upload_from_stream_with_id(oid,
+                                           "test_file_custom_id",
+                                           StringIO(b"custom id"),
+                                           chunk_size_bytes=1)
+        self.assertEqual(b"custom id",
+                         self.fs.open_download_stream(oid).read())
+
+    def test_open_upload_stream(self):
+        gin = self.fs.open_upload_stream("from_stream")
+        gin.write(b"from stream")
+        gin.close()
+        self.assertEqual(b"from stream",
+                         self.fs.open_download_stream(gin._id).read())
+
+    def test_open_upload_stream_with_id(self):
+        oid = ObjectId()
+        gin = self.fs.open_upload_stream_with_id(oid, "from_stream_custom_id")
+        gin.write(b"from stream with custom id")
+        gin.close()
+        self.assertEqual(b"from stream with custom id",
                          self.fs.open_download_stream(oid).read())
 
     def test_missing_length_iter(self):

@@ -450,6 +450,53 @@ class GridFSBucket(object):
 
         return GridIn(self._collection, **opts)
 
+    def open_upload_stream_with_id(
+            self, file_id, filename, chunk_size_bytes=None, metadata=None):
+        """Opens a Stream that the application can write the contents of the
+        file to.
+
+        The user must specify the file id and filename, and can choose to add
+        any additional information in the metadata field of the file document
+        or modify the chunk size.
+        For example::
+
+          my_db = MongoClient().test
+          fs = GridFSBucket(my_db)
+          grid_in, file_id = fs.open_upload_stream(
+                ObjectId(),
+                "test_file",
+                chunk_size_bytes=4,
+                metadata={"contentType": "text/plain"})
+          grid_in.write("data I want to store!")
+          grid_in.close()  # uploaded on close
+
+        Returns an instance of :class:`~gridfs.grid_file.GridIn`.
+
+        Raises :exc:`~gridfs.errors.NoFile` if no such version of
+        that file exists.
+        Raises :exc:`~ValueError` if `filename` is not a string.
+
+        :Parameters:
+          - `file_id`: The id to use for this file. The id must not have
+            already been used for another file.
+          - `filename`: The name of the file to upload.
+          - `chunk_size_bytes` (options): The number of bytes per chunk of this
+            file. Defaults to the chunk_size_bytes in :class:`GridFSBucket`.
+          - `metadata` (optional): User data for the 'metadata' field of the
+            files collection document. If not provided the metadata field will
+            be omitted from the files collection document.
+        """
+        validate_string("filename", filename)
+
+        opts = {"_id": file_id,
+                "filename": filename,
+                "chunk_size": (chunk_size_bytes if chunk_size_bytes
+                               is not None else self._chunk_size_bytes)}
+        if metadata is not None:
+            opts["metadata"] = metadata
+
+        return GridIn(self._collection, **opts)
+
     def upload_from_stream(self, filename, source, chunk_size_bytes=None,
                            metadata=None):
         """Uploads a user file to a GridFS bucket.
@@ -487,6 +534,43 @@ class GridFSBucket(object):
             gin.write(source)
 
         return gin._id
+
+    def upload_from_stream_with_id(self, file_id, filename, source,
+                                   chunk_size_bytes=None, metadata=None):
+        """Uploads a user file to a GridFS bucket with a custom file id.
+
+        Reads the contents of the user file from `source` and uploads
+        it to the file `filename`. Source can be a string or file-like object.
+        For example::
+
+          my_db = MongoClient().test
+          fs = GridFSBucket(my_db)
+          file_id = fs.upload_from_stream(
+              ObjectId(),
+              "test_file",
+              "data I want to store!",
+              chunk_size_bytes=4,
+              metadata={"contentType": "text/plain"})
+
+        Raises :exc:`~gridfs.errors.NoFile` if no such version of
+        that file exists.
+        Raises :exc:`~ValueError` if `filename` is not a string.
+
+        :Parameters:
+          - `file_id`: The id to use for this file. The id must not have
+            already been used for another file.
+          - `filename`: The name of the file to upload.
+          - `source`: The source stream of the content to be uploaded. Must be
+            a file-like object that implements :meth:`read` or a string.
+          - `chunk_size_bytes` (options): The number of bytes per chunk of this
+            file. Defaults to the chunk_size_bytes of :class:`GridFSBucket`.
+          - `metadata` (optional): User data for the 'metadata' field of the
+            files collection document. If not provided the metadata field will
+            be omitted from the files collection document.
+        """
+        with self.open_upload_stream_with_id(
+                file_id, filename, chunk_size_bytes, metadata) as gin:
+            gin.write(source)
 
     def open_download_stream(self, file_id):
         """Opens a Stream from which the application can read the contents of
