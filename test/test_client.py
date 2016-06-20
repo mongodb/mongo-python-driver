@@ -191,7 +191,6 @@ class TestClient(IntegrationTest):
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
-            time.sleep(1)
             self.assertEqual(1, len(server._pool.sockets))
             self.assertTrue(sock_info in server._pool.sockets)
 
@@ -200,56 +199,62 @@ class TestClient(IntegrationTest):
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
-            time.sleep(2)
             self.assertEqual(1, len(server._pool.sockets))
-            self.assertFalse(sock_info in server._pool.sockets)
+            wait_until(lambda: sock_info not in server._pool.sockets,
+                       "reaper removes stale socket eventually")
+            wait_until(lambda: 1 == len(server._pool.sockets),
+                       "reaper replaces stale socket with new one")
 
             # Assert reaper has removed idle socket and NOT replaced it
             client = MongoClient(host, port, maxIdleTimeMS=.5)
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}):
                 pass
-            time.sleep(1)
-            self.assertEqual(0, len(server._pool.sockets))
+            wait_until(
+                lambda: 0 == len(server._pool.sockets),
+                "stale socket reaped and new one NOT added to the pool")
 
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=.1):
             client = MongoClient(host, port)
             server = client._get_topology().select_server(any_server_selector)
-            time.sleep(1)
             self.assertEqual(0, len(server._pool.sockets))
 
             # Assert that pool started up at minPoolSize
             client = MongoClient(host, port, minPoolSize=10)
             server = client._get_topology().select_server(any_server_selector)
-            time.sleep(1)
-            self.assertEqual(10, len(server._pool.sockets))
+            wait_until(lambda: 10 == len(server._pool.sockets),
+                       "pool initialized with 10 sockets")
 
             # Assert that if a socket is closed, a new one takes its place
             with server._pool.get_socket({}) as sock_info:
                 sock_info.close()
-            time.sleep(1)
-            self.assertEqual(10, len(server._pool.sockets))
+            wait_until(lambda: 10 == len(server._pool.sockets),
+                       "a closed socket gets replaced from the pool")
             self.assertFalse(sock_info in server._pool.sockets)
 
     def test_max_idle_time_checkout(self):
+        # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = MongoClient(host, port, maxIdleTimeMS=.5)
-            time.sleep(1)
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
-            time.sleep(1)
+            self.assertEqual(1, len(server._pool.sockets))
+            time.sleep(1) #  Sleep so that the socket becomes stale.
+
             with server._pool.get_socket({}) as new_sock_info:
                 self.assertNotEqual(sock_info, new_sock_info)
             self.assertEqual(1, len(server._pool.sockets))
             self.assertFalse(sock_info in server._pool.sockets)
             self.assertTrue(new_sock_info in server._pool.sockets)
 
+            # Test that sockets are reused if maxIdleTimeMS is not set.
             client = MongoClient(host, port)
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
+            self.assertEqual(1, len(server._pool.sockets))
             time.sleep(1)
             with server._pool.get_socket({}) as new_sock_info:
                 self.assertEqual(sock_info, new_sock_info)
