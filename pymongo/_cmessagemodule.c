@@ -85,7 +85,7 @@ static int add_last_error(PyObject* self, buffer_t buffer,
         PyErr_NoMemory();
         return 0;
     }
-    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+    if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"  /* responseTo */
                             "\xd4\x07\x00\x00"  /* opcode */
@@ -134,8 +134,10 @@ static int add_last_error(PyObject* self, buffer_t buffer,
 
     message_length = buffer_get_position(buffer) - message_start;
     document_length = buffer_get_position(buffer) - document_start;
-    memcpy(buffer_get_buffer(buffer) + message_start, &message_length, 4);
-    memcpy(buffer_get_buffer(buffer) + document_start, &document_length, 4);
+    buffer_write_int32_at_position(
+        buffer, message_start, (int32_t)message_length);
+    buffer_write_int32_at_position(
+        buffer, document_start, (int32_t)document_length);
     return 1;
 }
 
@@ -147,12 +149,12 @@ static int init_insert_buffer(buffer_t buffer, int request_id, int options,
         PyErr_NoMemory();
         return length_location;
     }
-    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+    if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"
                             "\xd2\x07\x00\x00",
                             8) ||
-        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
+        !buffer_write_int32(buffer, (int32_t)options) ||
         !buffer_write_bytes(buffer,
                             coll_name,
                             coll_name_len + 1)) {
@@ -266,7 +268,8 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
 
     message_length = buffer_get_position(buffer) - length_location;
-    memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
+    buffer_write_int32_at_position(
+        buffer, length_location, (int32_t)message_length);
 
     if (safe) {
         if (!add_last_error(self, buffer, request_id, collection_name,
@@ -344,7 +347,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
         PyErr_NoMemory();
         return NULL;
     }
-    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+    if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"
                             "\xd1\x07\x00\x00"
@@ -353,7 +356,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
         !buffer_write_bytes(buffer,
                             collection_name,
                             collection_name_length + 1) ||
-        !buffer_write_bytes(buffer, (const char*)&flags, 4)) {
+        !buffer_write_int32(buffer, (int32_t)flags)) {
         destroy_codec_options(&options);
         buffer_free(buffer);
         PyMem_Free(collection_name);
@@ -381,7 +384,8 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     max_size = (cur_size > max_size) ? cur_size : max_size;
 
     message_length = buffer_get_position(buffer) - length_location;
-    memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
+    buffer_write_int32_at_position(
+        buffer, length_location, (int32_t)message_length);
 
     if (safe) {
         if (!add_last_error(self, buffer, request_id, collection_name,
@@ -451,13 +455,13 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         PyErr_NoMemory();
         return NULL;
     }
-    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+    if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer, "\x00\x00\x00\x00\xd4\x07\x00\x00", 8) ||
-        !buffer_write_bytes(buffer, (const char*)&flags, 4) ||
+        !buffer_write_int32(buffer, (int32_t)flags) ||
         !buffer_write_bytes(buffer, collection_name,
                             collection_name_length + 1) ||
-        !buffer_write_bytes(buffer, (const char*)&num_to_skip, 4) ||
-        !buffer_write_bytes(buffer, (const char*)&num_to_return, 4)) {
+        !buffer_write_int32(buffer, (int32_t)num_to_skip) ||
+        !buffer_write_int32(buffer, (int32_t)num_to_return)) {
         destroy_codec_options(&options);
         buffer_free(buffer);
         PyMem_Free(collection_name);
@@ -489,7 +493,8 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     PyMem_Free(collection_name);
 
     message_length = buffer_get_position(buffer) - length_location;
-    memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
+    buffer_write_int32_at_position(
+        buffer, length_location, (int32_t)message_length);
 
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
@@ -534,7 +539,7 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
         PyErr_NoMemory();
         return NULL;
     }
-    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+    if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"
                             "\xd5\x07\x00\x00"
@@ -542,8 +547,8 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
         !buffer_write_bytes(buffer,
                             collection_name,
                             collection_name_length + 1) ||
-        !buffer_write_bytes(buffer, (const char*)&num_to_return, 4) ||
-        !buffer_write_bytes(buffer, (const char*)&cursor_id, 8)) {
+        !buffer_write_int32(buffer, (int32_t)num_to_return) ||
+        !buffer_write_int64(buffer, (int64_t)cursor_id)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
@@ -552,7 +557,8 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     PyMem_Free(collection_name);
 
     message_length = buffer_get_position(buffer) - length_location;
-    memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
+    buffer_write_int32_at_position(
+        buffer, length_location, (int32_t)message_length);
 
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
@@ -721,8 +727,8 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             if (!empty) {
                 buffer_update_position(buffer, before);
                 message_length = buffer_get_position(buffer) - length_location;
-                memcpy(buffer_get_buffer(buffer) + length_location,
-                       &message_length, 4);
+                buffer_write_int32_at_position(
+                    buffer, length_location, (int32_t)message_length);
                 result = _send_insert(self, ctx, last_error_args, buffer,
                                       collection_name, collection_name_length,
                                       request_id, send_safe, &options,
@@ -765,7 +771,8 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             /* Roll back to the beginning of this document. */
             buffer_update_position(buffer, before);
             message_length = buffer_get_position(buffer) - length_location;
-            memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
+            buffer_write_int32_at_position(
+                buffer, length_location, (int32_t)message_length);
 
             result = _send_insert(self, ctx, last_error_args, buffer,
                                   collection_name, collection_name_length,
@@ -850,7 +857,8 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     }
 
     message_length = buffer_get_position(buffer) - length_location;
-    memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
+    buffer_write_int32_at_position(
+        buffer, length_location, (int32_t)message_length);
 
     /* Send the last (or only) batch */
     result = _send_insert(self, ctx, last_error_args, buffer,
@@ -902,11 +910,11 @@ _send_write_command(PyObject* ctx, buffer_t buffer, int lst_len_loc,
     int request_id = rand();
     int position = buffer_get_position(buffer);
     int length = position - lst_len_loc - 1;
-    memcpy(buffer_get_buffer(buffer) + lst_len_loc, &length, 4);
+    buffer_write_int32_at_position(buffer, lst_len_loc, (int32_t)length);
     length = position - cmd_len_loc;
-    memcpy(buffer_get_buffer(buffer) + cmd_len_loc, &length, 4);
-    memcpy(buffer_get_buffer(buffer), &position, 4);
-    memcpy(buffer_get_buffer(buffer) + 4, &request_id, 4);
+    buffer_write_int32_at_position(buffer, cmd_len_loc, (int32_t)length);
+    buffer_write_int32_at_position(buffer, 0, (int32_t)position);
+    buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
 
     /* Send the current batch */
     result = PyObject_CallMethod(ctx, "write_command",

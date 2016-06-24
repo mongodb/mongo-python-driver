@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "bson-endian.h"
+
 #ifndef _CBSONMODULE_H
 #define _CBSONMODULE_H
 
@@ -93,8 +95,24 @@ typedef struct codec_options_t {
 #define _cbson_destroy_codec_options_RETURN void
 #define _cbson_destroy_codec_options_PROTO (codec_options_t* options)
 
+#define _cbson_buffer_write_double_INDEX 6
+#define _cbson_buffer_write_double_RETURN int
+#define _cbson_buffer_write_double_PROTO (buffer_t buffer, double data)
+
+#define _cbson_buffer_write_int32_INDEX 7
+#define _cbson_buffer_write_int32_RETURN int
+#define _cbson_buffer_write_int32_PROTO (buffer_t buffer, int32_t data)
+
+#define _cbson_buffer_write_int64_INDEX 8
+#define _cbson_buffer_write_int64_RETURN int
+#define _cbson_buffer_write_int64_PROTO (buffer_t buffer, int64_t data)
+
+#define _cbson_buffer_write_int32_at_position_INDEX 9
+#define _cbson_buffer_write_int32_at_position_RETURN void
+#define _cbson_buffer_write_int32_at_position_PROTO (buffer_t buffer, int position, int32_t data)
+
 /* Total number of C API pointers */
-#define _cbson_API_POINTER_COUNT 6
+#define _cbson_API_POINTER_COUNT 10
 
 #ifdef _CBSON_MODULE
 /* This section is used when compiling _cbsonmodule */
@@ -110,6 +128,14 @@ static _cbson_decode_and_write_pair_RETURN decode_and_write_pair _cbson_decode_a
 static _cbson_convert_codec_options_RETURN convert_codec_options _cbson_convert_codec_options_PROTO;
 
 static _cbson_destroy_codec_options_RETURN destroy_codec_options _cbson_destroy_codec_options_PROTO;
+
+static _cbson_buffer_write_double_RETURN buffer_write_double _cbson_buffer_write_double_PROTO;
+
+static _cbson_buffer_write_int32_RETURN buffer_write_int32 _cbson_buffer_write_int32_PROTO;
+
+static _cbson_buffer_write_int64_RETURN buffer_write_int64 _cbson_buffer_write_int64_PROTO;
+
+static _cbson_buffer_write_int32_at_position_RETURN buffer_write_int32_at_position _cbson_buffer_write_int32_at_position_PROTO;
 
 #else
 /* This section is used in modules that use _cbsonmodule's API */
@@ -127,6 +153,14 @@ static void **_cbson_API;
 #define convert_codec_options (*(_cbson_convert_codec_options_RETURN (*)_cbson_convert_codec_options_PROTO) _cbson_API[_cbson_convert_codec_options_INDEX])
 
 #define destroy_codec_options (*(_cbson_destroy_codec_options_RETURN (*)_cbson_destroy_codec_options_PROTO) _cbson_API[_cbson_destroy_codec_options_INDEX])
+
+#define buffer_write_double (*(_cbson_buffer_write_double_RETURN (*)_cbson_buffer_write_double_PROTO) _cbson_API[_cbson_buffer_write_double_INDEX])
+
+#define buffer_write_int32 (*(_cbson_buffer_write_int32_RETURN (*)_cbson_buffer_write_int32_PROTO) _cbson_API[_cbson_buffer_write_int32_INDEX])
+
+#define buffer_write_int64 (*(_cbson_buffer_write_int64_RETURN (*)_cbson_buffer_write_int64_PROTO) _cbson_API[_cbson_buffer_write_int64_INDEX])
+
+#define buffer_write_int32_at_position (*(_cbson_buffer_write_int32_at_position_RETURN (*)_cbson_buffer_write_int32_at_position_PROTO) _cbson_API[_cbson_buffer_write_int32_at_position_INDEX])
 
 #define _cbson_IMPORT _cbson_API = (void **)PyCapsule_Import("_cbson._C_API", 0)
 

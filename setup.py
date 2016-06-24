@@ -275,14 +275,6 @@ The optional C extensions are currently not supported\n
 by this python implementation.\n
 *****************************************************\n
 """)
-elif sys.byteorder == "big":
-    sys.stdout.write("""
-*****************************************************\n
-The optional C extensions are currently not supported\n
-on big endian platforms and will not be built.\n
-Performance may be degraded.\n
-*****************************************************\n
-""")
 else:
     extra_opts['ext_modules'] = ext_modules
 
