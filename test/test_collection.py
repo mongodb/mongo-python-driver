@@ -65,6 +65,7 @@ from test import client_context, host, port, unittest
 class TestCollectionNoConnect(unittest.TestCase):
 
     @classmethod
+    @client_context.require_connection
     def setUpClass(cls):
         client = MongoClient(host, port, connect=False)
         cls.db = client.pymongo_test

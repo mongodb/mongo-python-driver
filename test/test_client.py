@@ -77,6 +77,7 @@ class ClientUnitTest(unittest.TestCase):
     """MongoClient tests that don't require a server."""
 
     @classmethod
+    @client_context.require_connection
     def setUpClass(cls):
         cls.client = MongoClient(host, port, connect=False,
                                  serverSelectionTimeoutMS=100)

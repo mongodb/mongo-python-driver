@@ -130,7 +130,7 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertEqual(0, cursor._Cursor__query_flags)
 
         # Exhaust - which mongos doesn't support
-        if not self.db.client.is_mongos:
+        if client_context.client is not None and not self.db.client.is_mongos:
             cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
             self.assertEqual(64, cursor._Cursor__query_flags)
             cursor2 = self.db.test.find().add_option(64)

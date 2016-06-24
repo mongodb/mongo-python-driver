@@ -34,6 +34,7 @@ from gridfs.errors import NoFile
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from test import (IntegrationTest,
+                  client_context,
                   host,
                   port,
                   unittest,
@@ -44,6 +45,7 @@ from test.utils import rs_or_single_client
 class TestGridFileNoConnect(unittest.TestCase):
 
     @classmethod
+    @client_context.require_connection
     def setUpClass(cls):
         client = MongoClient(host, port, connect=False)
         cls.db = client.pymongo_test

@@ -65,6 +65,7 @@ if PY3:
 class TestDatabaseNoConnect(unittest.TestCase):
 
     @classmethod
+    @client_context.require_connection
     def setUpClass(cls):
         cls.client = MongoClient(host, port, connect=False)
 

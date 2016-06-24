@@ -121,7 +121,7 @@ class ClientContext(object):
             self.client = pymongo.MongoClient(host, port)
 
         except pymongo.errors.ConnectionFailure:
-            self.client = None
+            self.client = self.rs_or_standalone_client = None
         else:
             self.connected = True
             self.ismaster = self.client.admin.command('ismaster')
