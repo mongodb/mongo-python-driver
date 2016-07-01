@@ -140,6 +140,8 @@ class ClientOptions(object):
         self.__write_concern = _parse_write_concern(options)
         self.__read_concern = _parse_read_concern(options)
         self.__connect = options.get('connect')
+        self.__heartbeat_frequency = options.get(
+            'heartbeatfrequencyms', common.HEARTBEAT_FREQUENCY)
 
     @property
     def _options(self):
@@ -170,6 +172,11 @@ class ClientOptions(object):
     def server_selection_timeout(self):
         """The server selection timeout for this instance in seconds."""
         return self.__server_selection_timeout
+
+    @property
+    def heartbeat_frequency(self):
+        """The monitoring frequency in seconds."""
+        return self.__heartbeat_frequency
 
     @property
     def pool_options(self):

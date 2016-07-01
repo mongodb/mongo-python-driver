@@ -71,7 +71,9 @@ class TestHeartbeatMonitoring(unittest.TestCase):
         monitoring._LISTENERS = cls.saved_listeners
 
     def create_mock_monitor(self, responses, uri, expected_results):
-        with client_knobs(heartbeat_frequency=0.1, events_queue_frequency=0.1):
+        with client_knobs(heartbeat_frequency=0.1,
+                          min_heartbeat_interval=0.1,
+                          events_queue_frequency=0.1):
             class MockMonitor(Monitor):
                 def _check_with_socket(self, sock_info):
                     if isinstance(responses[1], Exception):

@@ -58,7 +58,7 @@ class Monitor(object):
             return True
 
         executor = periodic_executor.PeriodicExecutor(
-            interval=common.HEARTBEAT_FREQUENCY,
+            interval=self._settings.heartbeat_frequency,
             min_interval=common.MIN_HEARTBEAT_INTERVAL,
             target=target,
             name="pymongo_server_monitor_thread")

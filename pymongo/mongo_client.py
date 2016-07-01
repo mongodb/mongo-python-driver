@@ -159,6 +159,9 @@ class MongoClient(common.BaseObject):
           - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
             packets on connected sockets. Defaults to ``False`` (do not send
             keep-alive packets).
+          - `heartbeatFrequencyMS`: (optional) The number of milliseconds
+            between periodic server checks, or None to accept the default
+            frequency of 10 seconds.
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
 
@@ -389,7 +392,8 @@ class MongoClient(common.BaseObject):
             monitor_class=monitor_class,
             condition_class=condition_class,
             local_threshold_ms=options.local_threshold_ms,
-            server_selection_timeout=options.server_selection_timeout)
+            server_selection_timeout=options.server_selection_timeout,
+            heartbeat_frequency=options.heartbeat_frequency)
 
         self._topology = Topology(self._topology_settings)
         if connect:

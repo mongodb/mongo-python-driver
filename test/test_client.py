@@ -40,6 +40,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             NetworkTimeout,
                             InvalidURI)
+from pymongo.monitoring import ServerHeartbeatStartedEvent
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import SocketInfo
 from pymongo.read_preferences import ReadPreference
@@ -61,6 +62,7 @@ from test import (client_context,
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
+                        HeartbeatEventListener,
                         remove_all_users,
                         server_is_master_with_slave,
                         get_pool,
@@ -69,6 +71,7 @@ from test.utils import (assertRaisesExactly,
                         wait_until,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
+                        single_client,
                         lazy_client_trial,
                         NTHREADS)
 
@@ -898,6 +901,25 @@ class TestClient(IntegrationTest):
                 operation=message._GetMore('pymongo_test', 'collection',
                                            101, 1234, client.codec_options),
                 address=('not-a-member', 27017))
+
+    def test_heartbeat_frequency_ms(self):
+        listener = HeartbeatEventListener()
+        uri = "mongodb://%s:%d/?heartbeatFrequencyMS=500" % (host, port)
+        client = single_client(uri, event_listeners=[listener])
+        time.sleep(3)
+        started_events = [r for r in listener.results
+                          if isinstance(r, ServerHeartbeatStartedEvent)]
+
+        # Frequency is 500ms, expect 5 or 6 events in 3 sec, but be forgiving.
+        self.assertGreaterEqual(len(started_events), 4)
+        client.close()
+
+    def test_small_heartbeat_frequency_ms(self):
+        uri = "mongodb://example/?heartbeatFrequencyMS=499"
+        with self.assertRaises(ConfigurationError) as context:
+            MongoClient(uri)
+
+        self.assertIn('heartbeatFrequencyMS', str(context.exception))
 
 
 class TestExhaustCursor(IntegrationTest):

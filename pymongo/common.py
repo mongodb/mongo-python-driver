@@ -458,6 +458,7 @@ TIMEOUT_VALIDATORS = {
     'sockettimeoutms': validate_timeout_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,
     'serverselectiontimeoutms': validate_timeout_or_zero,
+    'heartbeatfrequencyms': validate_timeout_or_none,
     'maxidletimems': validate_timeout_or_none,
 }
 
