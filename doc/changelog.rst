@@ -1,6 +1,31 @@
 Changelog
 =========
 
+Changes in Version 3.3
+----------------------
+
+Version 3.3 adds the following major new features:
+
+- C extensions support on big endian systems.
+- Kerberos authentication support on Windows using `WinKerberos
+  <https://pypi.python.org/pypi/winkerberos>`_.
+- A new ``ssl_clrfile`` option to support certificate revocation lists.
+- A new ``ssl_pem_passphrase`` option to support encrypted key files.
+- Support for publishing server discovery and monitoring events. See
+  :mod:`~pymongo.monitoring` for details.
+- New connection pool options ``minPoolSize`` and ``maxIdleTimeMS``.
+
+.. warning:: PyMongo 3.3 drops support for MongoDB versions older than 2.4.
+  It also drops support for python 3.2 (pypy3 continues to be supported).
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16005
+
 Changes in Version 3.2.2
 ------------------------
 
