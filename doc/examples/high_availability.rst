@@ -96,7 +96,9 @@ the following connects to the replica set we just created::
 The addresses passed to :meth:`~pymongo.mongo_client.MongoClient` are called
 the *seeds*. As long as at least one of the seeds is online, MongoClient
 discovers all the members in the replica set, and determines which is the
-current primary and which are secondaries or arbiters.
+current primary and which are secondaries or arbiters. Each seed must be the
+address of a single mongod. Multihomed and round robin DNS addresses are
+**not** supported.
 
 The :class:`~pymongo.mongo_client.MongoClient` constructor is non-blocking:
 the constructor returns immediately while the client connects to the replica
@@ -325,11 +327,12 @@ mongos Load Balancing
 ---------------------
 
 An instance of :class:`~pymongo.mongo_client.MongoClient` can be configured
-with a list of mongos servers:
+with a list of addresses of mongos servers:
 
   >>> client = MongoClient('mongodb://host1,host2,host3')
 
-Each member of the list must be a mongos server. The client continuously
+Each member of the list must be a single mongos server. Multihomed and round
+robin DNS addresses are **not** supported. The client continuously
 monitors all the mongoses' availability, and its network latency to each.
 
 PyMongo distributes operations evenly among the set of mongoses within its
@@ -352,3 +355,7 @@ But it excuses host3: host3 is 20ms beyond the lowest-latency server.
 If we set ``localThresholdMS`` to 30 ms all servers are within the threshold:
 
   >>> client = MongoClient('mongodb://host1,host2,host3/?localThresholdMS=30')
+
+.. warning:: Do **not** connect PyMongo to a pool of mongos instances through a
+  load balancer. A single socket connection must always be routed to the same
+  mongos instance for proper cursor support.
