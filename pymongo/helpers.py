@@ -59,7 +59,7 @@ def _index_list(key_or_list, direction=None):
     else:
         if isinstance(key_or_list, string_type):
             return [(key_or_list, ASCENDING)]
-        elif not isinstance(key_or_list, (list, tuple)):
+        elif not isinstance(key_or_list, (list, tuple, SON)):
             raise TypeError("if no direction is specified, "
                             "key_or_list must be an instance of list")
         return key_or_list

@@ -16,6 +16,7 @@
 
 from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
+import bson
 
 
 class _WriteOp(object):
@@ -243,7 +244,10 @@ class IndexModel(object):
         keys = _index_list(keys)
         if "name" not in kwargs:
             kwargs["name"] = _gen_index_name(keys)
-        kwargs["key"] = _index_document(keys)
+        if isinstance(keys, bson.SON):
+            kwargs["key"] = keys
+        else:
+            kwargs["key"] = _index_document(keys)
         self.__document = kwargs
 
     @property
@@ -252,3 +256,36 @@ class IndexModel(object):
         command.
         """
         return self.__document
+
+    @staticmethod
+    def from_son(kwargs):
+        """
+        SON documents returned from collection.list_indexes()
+
+        :param kwargs:
+        :return:
+        """
+        attrs = dict(kwargs)
+        return IndexModel(attrs.pop("key"), **attrs)
+
+    def __eq__(self, other):
+        """
+        An IndexModel is equal even if the names are not the same.
+        Assuming one is constructed by the user and another is returned by the
+        driver.
+
+        :param other:
+        :return:
+        """
+        if isinstance(other, IndexModel):
+           other = other.document
+        skipped_keys = ["v", "ns", "background", "name"]
+        all_keys = set(list(self.document.keys()) + list(other.keys()))
+        filtered_keys = [key for key in all_keys if key not in skipped_keys]
+        for key in filtered_keys:
+            if self.document.get(key) != other.get(key):
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self == other
