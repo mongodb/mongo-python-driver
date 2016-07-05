@@ -56,7 +56,7 @@ eg "$sort":
   ...     {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
   ...     {"$sort": SON([("count", -1), ("_id", -1)])}
   ... ]
-  >>> list(db.things.aggregate(pipeline))
+  >>> list(db.things.aggregate(pipeline)['result'])
   [{u'count': 3, u'_id': u'cat'}, {u'count': 2, u'_id': u'dog'}, {u'count': 1, u'_id': u'mouse'}]
 
 To run an explain plan for this aggregation use the
