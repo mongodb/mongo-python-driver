@@ -625,6 +625,12 @@ class Database(common.BaseObject):
                     ReadPreference.PRIMARY, cmd, self.client._event_listeners)
                 return x.get('data', [None])[0]
 
+    def current_op(self):
+        """Get information on oeprations currently running
+        (same as: db.currentOp() in JavaScript console)
+        """
+        return self['$cmd.sys.inprog'].find_one()
+
     def profiling_level(self):
         """Get the database's current profiling level.
 
