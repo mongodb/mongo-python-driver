@@ -51,17 +51,6 @@ Or, in the URI::
   >>> uri = 'mongodb://example.com/?ssl=true&ssl_cert_reqs=CERT_NONE'
   >>> client = pymongo.MongoClient(uri)
 
-You can also configure optional certificate verification, if a certificate is
-provided by the server::
-
-  >>> import ssl
-  >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_cert_reqs=ssl.CERT_OPTIONAL)
-  >>>
-  >>> uri = 'mongodb://example.com/?ssl=true&ssl_cert_reqs=CERT_OPTIONAL'
-  >>> client = pymongo.MongoClient(uri)
-
 Specifying a CA file
 ....................
 

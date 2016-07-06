@@ -217,14 +217,15 @@ class MongoClient(common.BaseObject):
           - `ssl_cert_reqs`: Specifies whether a certificate is required from
             the other side of the connection, and whether it will be validated
             if provided. It must be one of the three values ``ssl.CERT_NONE``
-            (certificates ignored), ``ssl.CERT_OPTIONAL``
-            (not required, but validated if provided), or ``ssl.CERT_REQUIRED``
-            (required and validated). If the value of this parameter is not
-            ``ssl.CERT_NONE`` and a value is not provided for ``ssl_ca_certs``
-            PyMongo will attempt to load system provided CA certificates.
-            If the python version in use does not support loading system CA
-            certificates then the ``ssl_ca_certs`` parameter must point
-            to a file of CA certificates. Implies ``ssl=True``. Defaults to
+            (certificates ignored), ``ssl.CERT_REQUIRED`` (certificates
+            required and validated), or ``ssl.CERT_OPTIONAL`` (the same as
+            CERT_REQUIRED, unless the server was configured to use anonymous
+            ciphers). If the value of this parameter is not ``ssl.CERT_NONE``
+            and a value is not provided for ``ssl_ca_certs`` PyMongo will
+            attempt to load system provided CA certificates. If the python
+            version in use does not support loading system CA certificates
+            then the ``ssl_ca_certs`` parameter must point to a file of CA
+            certificates. Implies ``ssl=True``. Defaults to
             ``ssl.CERT_REQUIRED`` if not provided and ``ssl=True``.
           - `ssl_ca_certs`: The ca_certs file contains a set of concatenated
             "certification authority" certificates, which are used to validate
