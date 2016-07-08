@@ -14,6 +14,8 @@ Version 3.3 adds the following major new features:
 - Support for publishing server discovery and monitoring events. See
   :mod:`~pymongo.monitoring` for details.
 - New connection pool options ``minPoolSize`` and ``maxIdleTimeMS``.
+- New ``heartbeatFrequencyMS`` option controls the rate at which background
+  monitoring threads re-check servers. Default is once every 10 seconds.
 
 .. warning:: PyMongo 3.3 drops support for MongoDB versions older than 2.4.
   It also drops support for python 3.2 (pypy3 continues to be supported).
