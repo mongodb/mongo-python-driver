@@ -40,7 +40,8 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             NetworkTimeout,
                             InvalidURI)
-from pymongo.monitoring import ServerHeartbeatStartedEvent
+from pymongo.monitoring import (ServerHeartbeatListener,
+                                ServerHeartbeatStartedEvent)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import SocketInfo
 from pymongo.read_preferences import ReadPreference
@@ -903,16 +904,43 @@ class TestClient(IntegrationTest):
                 address=('not-a-member', 27017))
 
     def test_heartbeat_frequency_ms(self):
-        listener = HeartbeatEventListener()
-        uri = "mongodb://%s:%d/?heartbeatFrequencyMS=500" % (host, port)
-        client = single_client(uri, event_listeners=[listener])
-        time.sleep(3)
-        started_events = [r for r in listener.results
-                          if isinstance(r, ServerHeartbeatStartedEvent)]
+        class HeartbeatStartedListener(ServerHeartbeatListener):
+            def __init__(self):
+                self.results = []
 
-        # Frequency is 500ms, expect 5 or 6 events in 3 sec, but be forgiving.
-        self.assertGreaterEqual(len(started_events), 4)
-        client.close()
+            def started(self, event):
+                self.results.append(event)
+
+            def succeeded(self, event):
+                pass
+
+            def failed(self, event):
+                pass
+
+        old_init = ServerHeartbeatStartedEvent.__init__
+
+        def init(self, *args):
+            old_init(self, *args)
+            self.time = time.time()
+
+        try:
+            ServerHeartbeatStartedEvent.__init__ = init
+            listener = HeartbeatStartedListener()
+            uri = "mongodb://%s:%d/?heartbeatFrequencyMS=500" % (host, port)
+            client = single_client(uri, event_listeners=[listener])
+            wait_until(lambda: len(listener.results) >= 2,
+                       "record two ServerHeartbeatStartedEvents")
+
+            events = listener.results
+
+            # Default heartbeatFrequencyMS is 10 sec. Check the interval was
+            # closer to 0.5 sec with heartbeatFrequencyMS configured.
+            self.assertAlmostEqual(
+                events[1].time - events[0].time, 0.5, delta=2)
+
+            client.close()
+        finally:
+            ServerHeartbeatStartedEvent.__init__ = old_init
 
     def test_small_heartbeat_frequency_ms(self):
         uri = "mongodb://example/?heartbeatFrequencyMS=499"
