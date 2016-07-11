@@ -116,9 +116,9 @@ def dumps(obj, *args, **kwargs):
 def loads(s, *args, **kwargs):
     """Helper function that wraps :class:`json.loads`.
 
-    Automatically passes the object_hook for BSON type conversion.
+    Automatically passes the object_pairs_hook for BSON type conversion.
     """
-    kwargs['object_hook'] = lambda dct: object_hook(dct)
+    kwargs['object_pairs_hook'] = object_pairs_hook
     return json.loads(s, *args, **kwargs)
 
 
@@ -136,7 +136,8 @@ def _json_convert(obj):
         return obj
 
 
-def object_hook(dct):
+def object_pairs_hook(pairs):
+    dct = SON(pairs)
     if "$oid" in dct:
         return ObjectId(str(dct["$oid"]))
     if "$ref" in dct:
