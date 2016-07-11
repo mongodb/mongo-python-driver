@@ -112,6 +112,9 @@ class TestJsonUtil(unittest.TestCase):
         dtm = datetime.datetime(1, 1, 1, 1, 1, 1, 0, utc)
         jsn = '{"dt": {"$date": -62135593139000}}'
         self.assertEqual(dtm, json_util.loads(jsn)["dt"])
+        self.assertEqual(-62135593139000,
+                         json_util.dt_utc_milliseconds(dtm))
+        self.assertEqual(json_util.utc_milliseconds_dt(-62135593139000), dtm)
         jsn = '{"dt": {"$date": {"$numberLong": "-62135593139000"}}}'
         self.assertEqual(dtm, json_util.loads(jsn)["dt"])
 

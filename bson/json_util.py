@@ -100,6 +100,23 @@ _RE_OPT_TABLE = {
 }
 
 
+def dt_utc_milliseconds(obj):
+    """Helper function to convert a datetime obj to milliseconds in utc.
+    """
+    # TODO share this code w/ bson.py?
+    if obj.utcoffset() is not None:
+        obj = obj - obj.utcoffset()
+    return int(calendar.timegm(obj.timetuple()) * 1000 +
+               obj.microsecond / 1000)
+
+
+def utc_milliseconds_dt(millis):
+    """Helper function to convert milliseconds to datetime in utc.
+    """
+    return (datetime.datetime.utcfromtimestamp(0) +
+            datetime.timedelta(milliseconds=millis)).replace(tzinfo=utc)
+
+
 def dumps(obj, *args, **kwargs):
     """Helper function that wraps :class:`json.dumps`.
 
@@ -228,12 +245,7 @@ def default(obj):
     if isinstance(obj, DBRef):
         return _json_convert(obj.as_doc())
     if isinstance(obj, datetime.datetime):
-        # TODO share this code w/ bson.py?
-        if obj.utcoffset() is not None:
-            obj = obj - obj.utcoffset()
-        millis = int(calendar.timegm(obj.timetuple()) * 1000 +
-                     obj.microsecond / 1000)
-        return {"$date": millis}
+        return {"$date": dt_utc_milliseconds(obj)}
     if isinstance(obj, (RE_TYPE, Regex)):
         flags = ""
         if obj.flags & re.IGNORECASE:
