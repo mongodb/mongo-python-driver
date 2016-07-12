@@ -16,10 +16,10 @@
 
 from collections import Mapping
 
+from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import (member_with_tags_server_selector,
-                                      secondary_with_tags_server_selector,
-                                      writable_server_selector)
+                                      secondary_with_tags_server_selector)
 
 
 _PRIMARY = 0
@@ -62,19 +62,33 @@ def _validate_tag_sets(tag_sets):
     return tag_sets
 
 
+def _validate_max_staleness(max_staleness):
+    """Validate maxStalenessMS."""
+    if max_staleness is None:
+        return 0.0
+
+    errmsg = "maxStalenessMS must be an integer or float"
+    try:
+        max_staleness = float(max_staleness)
+    except ValueError:
+        raise ValueError(errmsg)
+    except TypeError:
+        raise TypeError(errmsg)
+
+    return max_staleness
+
+
 class _ServerMode(object):
     """Base class for all read preferences.
     """
 
-    __slots__ = ("__mongos_mode", "__mode", "__tag_sets")
+    __slots__ = ("__mongos_mode", "__mode", "__tag_sets", "__max_staleness")
 
-    def __init__(self, mode, tag_sets=None):
-        if mode == _PRIMARY and tag_sets is not None:
-            raise ConfigurationError("Read preference primary "
-                                     "cannot be combined with tags")
+    def __init__(self, mode, tag_sets=None, max_staleness=None):
         self.__mongos_mode = _MONGOS_MODES[mode]
         self.__mode = mode
         self.__tag_sets = _validate_tag_sets(tag_sets)
+        self.__max_staleness = _validate_max_staleness(max_staleness)
 
     @property
     def name(self):
@@ -111,6 +125,23 @@ class _ServerMode(object):
         """
         return list(self.__tag_sets) if self.__tag_sets else [{}]
 
+    @property
+    def max_staleness(self):
+        """This read preference's maxStalenessMS, converted to seconds."""
+        return self.__max_staleness
+
+    @property
+    def min_wire_version(self):
+        """The wire protocol version the server must support.
+
+        Some read preferences impose version requirements on all servers in the
+        topology. E.g., maxStalenessMS requires MongoDB 3.4 / maxWireVersion 5.
+
+        All servers' maxWireVersion must be at least this read preference's
+        `min_wire_version`, or the driver raises `ConfigurationError`.
+        """
+        return 5 if self.__max_staleness else 0
+
     def __repr__(self):
         return "%s(tag_sets=%r)" % (
             self.name, self.__tag_sets)
@@ -118,7 +149,8 @@ class _ServerMode(object):
     def __eq__(self, other):
         if isinstance(other, _ServerMode):
             return (self.mode == other.mode and
-                    self.tag_sets == other.tag_sets)
+                    self.tag_sets == other.tag_sets and
+                    self.max_staleness == other.max_staleness)
         return NotImplemented
 
     def __ne__(self, other):
@@ -129,13 +161,16 @@ class _ServerMode(object):
 
         Needed explicitly because __slots__() defined.
         """
-        return {'mode': self.__mode, 'tag_sets': self.__tag_sets}
+        return {'mode': self.__mode,
+                'tag_sets': self.__tag_sets,
+                'max_staleness': self.__max_staleness}
 
     def __setstate__(self, value):
         """Restore from pickling."""
         self.__mode = value['mode']
         self.__mongos_mode = _MONGOS_MODES[self.__mode]
         self.__tag_sets = _validate_tag_sets(value['tag_sets'])
+        self.__max_staleness = value['max_staleness']
 
 
 class Primary(_ServerMode):
@@ -151,9 +186,9 @@ class Primary(_ServerMode):
     def __init__(self):
         super(Primary, self).__init__(_PRIMARY)
 
-    def __call__(self, td):
-        """Return matching ServerDescriptions from a TopologyDescription."""
-        return writable_server_selector(td)
+    def __call__(self, selection):
+        """Apply this read preference to a Selection."""
+        return selection.primary_selection
 
     def __repr__(self):
         return "Primary()"
@@ -177,18 +212,24 @@ class PrimaryPreferred(_ServerMode):
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` to use if the primary is not
         available.
+      - `max_staleness`: The :attr:`~max_staleness` to use if the primary is
+        not available.
     """
 
-    def __init__(self, tag_sets=None):
-        super(PrimaryPreferred, self).__init__(_PRIMARY_PREFERRED, tag_sets)
+    def __init__(self, tag_sets=None, max_staleness=None):
+        super(PrimaryPreferred, self).__init__(_PRIMARY_PREFERRED,
+                                               tag_sets,
+                                               max_staleness)
 
-    def __call__(self, td):
-        """Return matching ServerDescriptions from a TopologyDescription."""
-        writable_servers = writable_server_selector(td)
-        if writable_servers:
-            return writable_servers
+    def __call__(self, selection):
+        """Apply this read preference to Selection."""
+        if selection.primary:
+            return selection.primary_selection
         else:
-            return secondary_with_tags_server_selector(self.tag_sets, td)
+            return secondary_with_tags_server_selector(
+                self.tag_sets,
+                max_staleness_selectors.select(
+                    self.max_staleness, selection))
 
 
 class Secondary(_ServerMode):
@@ -202,15 +243,19 @@ class Secondary(_ServerMode):
       secondaries. An error is raised if no secondaries are available.
 
     :Parameters:
-      - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
+      - `tag_sets`: The :attr:`~tag_sets` for this read preference.
+      - `max_staleness`: The :attr:`~max_staleness` for this read preference.
     """
 
-    def __init__(self, tag_sets=None):
-        super(Secondary, self).__init__(_SECONDARY, tag_sets)
+    def __init__(self, tag_sets=None, max_staleness=None):
+        super(Secondary, self).__init__(_SECONDARY, tag_sets, max_staleness)
 
-    def __call__(self, td):
-        """Return matching ServerDescriptions from a TopologyDescription."""
-        return secondary_with_tags_server_selector(self.tag_sets, td)
+    def __call__(self, selection):
+        """Apply this read preference to Selection."""
+        return secondary_with_tags_server_selector(
+            self.tag_sets,
+            max_staleness_selectors.select(
+                self.max_staleness, selection))
 
 
 class SecondaryPreferred(_ServerMode):
@@ -224,20 +269,26 @@ class SecondaryPreferred(_ServerMode):
       secondaries, or the primary if no secondary is available.
 
     :Parameters:
-      - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
+      - `tag_sets`: The :attr:`~tag_sets` for this read preference.
+      - `max_staleness`: The :attr:`~max_staleness` for this read preference.
     """
 
-    def __init__(self, tag_sets=None):
-        super(SecondaryPreferred, self).__init__(_SECONDARY_PREFERRED, tag_sets)
+    def __init__(self, tag_sets=None, max_staleness=None):
+        super(SecondaryPreferred, self).__init__(_SECONDARY_PREFERRED,
+                                                 tag_sets,
+                                                 max_staleness)
 
-    def __call__(self, td):
-        """Return matching ServerDescriptions from a TopologyDescription."""
-        secondaries = secondary_with_tags_server_selector(self.tag_sets, td)
+    def __call__(self, selection):
+        """Apply this read preference to Selection."""
+        secondaries = secondary_with_tags_server_selector(
+            self.tag_sets,
+            max_staleness_selectors.select(
+                self.max_staleness, selection))
 
         if secondaries:
             return secondaries
         else:
-            return writable_server_selector(td)
+            return selection.primary_selection
 
 
 class Nearest(_ServerMode):
@@ -251,27 +302,35 @@ class Nearest(_ServerMode):
       members.
 
     :Parameters:
-      - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
+      - `tag_sets`: The :attr:`~tag_sets` for this read preference.
+      - `max_staleness`: The :attr:`~max_staleness` for this read preference.
     """
 
-    def __init__(self, tag_sets=None):
-        super(Nearest, self).__init__(_NEAREST, tag_sets)
+    def __init__(self, tag_sets=None, max_staleness=None):
+        super(Nearest, self).__init__(_NEAREST, tag_sets, max_staleness)
 
-    def __call__(self, td):
-        """Return matching ServerDescriptions from a TopologyDescription."""
-        return member_with_tags_server_selector(self.tag_sets or [{}], td)
+    def __call__(self, selection):
+        """Apply this read preference to Selection."""
+        return member_with_tags_server_selector(
+            self.tag_sets,
+            max_staleness_selectors.select(
+                self.max_staleness, selection))
 
 
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
                          Secondary, SecondaryPreferred, Nearest)
 
-def make_read_preference(mode, tag_sets):
+
+def make_read_preference(mode, tag_sets, max_staleness=None):
     if mode == _PRIMARY:
         if tag_sets not in (None, [{}]):
             raise ConfigurationError("Read preference primary "
                                      "cannot be combined with tags")
+        if max_staleness:
+            raise ConfigurationError("Read preference primary cannot be "
+                                     "combined with maxStalenessMS")
         return Primary()
-    return _ALL_READ_PREFERENCES[mode](tag_sets)
+    return _ALL_READ_PREFERENCES[mode](tag_sets, max_staleness)
 
 
 _MODES = (

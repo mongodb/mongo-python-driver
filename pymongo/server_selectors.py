@@ -1,4 +1,4 @@
-# Copyright 2014-2015 MongoDB, Inc.
+# Copyright 2014-2016 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -17,45 +17,108 @@
 from pymongo.server_type import SERVER_TYPE
 
 
-def any_server_selector(td):
-    return td.known_servers
+class Selection(object):
+    """Input or output of a server selector function."""
+
+    @classmethod
+    def from_topology_description(cls, topology_description):
+        known_servers = topology_description.known_servers
+        primary = None
+        for sd in known_servers:
+            if sd.server_type == SERVER_TYPE.RSPrimary:
+                primary = sd
+                break
+
+        return Selection(topology_description,
+                         topology_description.known_servers,
+                         topology_description.common_wire_version,
+                         primary)
+
+    def __init__(self,
+                 topology_description,
+                 server_descriptions,
+                 common_wire_version,
+                 primary):
+        self.topology_description = topology_description
+        self.server_descriptions = server_descriptions
+        self.primary = primary
+        self.common_wire_version = common_wire_version
+
+    def with_server_descriptions(self, server_descriptions):
+        return Selection(self.topology_description,
+                         server_descriptions,
+                         self.common_wire_version,
+                         self.primary)
+
+    def secondary_with_max_last_write_date(self):
+        smax = None
+        for s in self.topology_description.known_servers:
+            if s.server_type == SERVER_TYPE.RSSecondary:
+                if not smax:
+                    smax = s
+                else:
+                    if s.last_write_date > smax.last_write_date:
+                        smax = s
+
+        return smax
+
+    @property
+    def primary_selection(self):
+        primaries = [self.primary] if self.primary else []
+        return self.with_server_descriptions(primaries)
+
+    @property
+    def heartbeat_frequency(self):
+        return self.topology_description.heartbeat_frequency
+
+    def __bool__(self):
+        return bool(self.server_descriptions)
+
+    __nonzero__ = __bool__  # Python 2.
+
+    def __getitem__(self, item):
+        return self.server_descriptions[item]
 
 
-def readable_server_selector(td):
-    return [s for s in td.known_servers if s.is_readable]
+def any_server_selector(selection):
+    return selection
 
 
-def writable_server_selector(td):
-    return [s for s in td.known_servers if s.is_writable]
+def readable_server_selector(selection):
+    return selection.with_server_descriptions(
+        [s for s in selection.server_descriptions if s.is_readable])
 
 
-def secondary_server_selector(td):
-    return [s for s in td.known_servers
-            if s.server_type == SERVER_TYPE.RSSecondary]
+def writable_server_selector(selection):
+    return selection.with_server_descriptions(
+        [s for s in selection.server_descriptions if s.is_writable])
 
 
-def arbiter_server_selector(td):
-    return [s for s in td.known_servers
-            if s.server_type == SERVER_TYPE.RSArbiter]
+def secondary_server_selector(selection):
+    return selection.with_server_descriptions(
+        [s for s in selection.server_descriptions
+         if s.server_type == SERVER_TYPE.RSSecondary])
 
 
-def writable_preferred_server_selector(td):
+def arbiter_server_selector(selection):
+    return selection.with_server_descriptions(
+        [s for s in selection.server_descriptions
+         if s.server_type == SERVER_TYPE.RSArbiter])
+
+
+def writable_preferred_server_selector(selection):
     """Like PrimaryPreferred but doesn't use tags or latency."""
-    return writable_server_selector(td) or secondary_server_selector(td)
+    return (writable_server_selector(selection) or
+            secondary_server_selector(selection))
 
 
-def apply_single_tag_set(tag_set, server_descriptions):
+def apply_single_tag_set(tag_set, selection):
     """All servers matching one tag set.
 
     A tag set is a dict. A server matches if its tags are a superset:
     A server tagged {'a': '1', 'b': '2'} matches the tag set {'a': '1'}.
 
     The empty tag set {} matches any server.
-
-    The `server_descriptions` passed to this function should have
-    non-readable servers (e.g. RSGhost, RSArbiter, Unknown) filtered
-    out (e.g. by readable_server_selector or secondary_server_selector)
-    first.
     """
     def tags_match(server_tags):
         for key, value in tag_set.items():
@@ -64,10 +127,11 @@ def apply_single_tag_set(tag_set, server_descriptions):
 
         return True
 
-    return [s for s in server_descriptions if tags_match(s.tags)]
+    return selection.with_server_descriptions(
+        [s for s in selection.server_descriptions if tags_match(s.tags)])
 
 
-def apply_tag_sets(tag_sets, server_descriptions):
+def apply_tag_sets(tag_sets, selection):
     """All servers match a list of tag sets.
 
     tag_sets is a list of dicts. The empty tag set {} matches any server,
@@ -75,49 +139,20 @@ def apply_tag_sets(tag_sets, server_descriptions):
     [{'a': 'value'}, {}] expresses a preference for servers tagged
     {'a': 'value'}, but accepts any server if none matches the first
     preference.
-
-    The `server_descriptions` passed to this function should have
-    non-readable servers (e.g. RSGhost, RSArbiter, Unknown) filtered
-    out (e.g. by readable_server_selector or secondary_server_selector)
-    first.
     """
     for tag_set in tag_sets:
-        selected = apply_single_tag_set(tag_set, server_descriptions)
-        if selected:
-            return selected
+        with_tag_set = apply_single_tag_set(tag_set, selection)
+        if with_tag_set:
+            return with_tag_set
 
-    return []
-
-
-def apply_local_threshold(latency_ms, server_descriptions):
-    """All servers with round trip times within latency_ms of the fastest one.
-
-    No ServerDescription's round_trip_time can be None.
-
-    The `server_descriptions` passed to this function should have
-    non-readable servers (e.g. RSGhost, RSArbiter, Unknown) filtered
-    out (e.g. by readable_server_selector or secondary_server_selector)
-    first.
-    """
-    if not server_descriptions:
-        # Avoid ValueError from min() with empty sequence.
-        return []
-
-    # round_trip_time is in seconds.
-    if any(s for s in server_descriptions if s.round_trip_time is None):
-        raise ValueError("Not all servers' round trip times are known")
-
-    fastest = min(s.round_trip_time for s in server_descriptions)
-    return [
-        s for s in server_descriptions
-        if (s.round_trip_time - fastest) <= latency_ms / 1000.]
+    return selection.with_server_descriptions([])
 
 
-def secondary_with_tags_server_selector(tag_sets, td):
+def secondary_with_tags_server_selector(tag_sets, selection):
     """All near-enough secondaries matching the tag sets."""
-    return apply_tag_sets(tag_sets, secondary_server_selector(td))
+    return apply_tag_sets(tag_sets, secondary_server_selector(selection))
 
 
-def member_with_tags_server_selector(tag_sets, td):
+def member_with_tags_server_selector(tag_sets, selection):
     """All near-enough members matching the tag sets."""
-    return apply_tag_sets(tag_sets, readable_server_selector(td))
+    return apply_tag_sets(tag_sets, readable_server_selector(selection))

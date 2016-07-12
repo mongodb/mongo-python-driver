@@ -1,4 +1,4 @@
-# Copyright 2014-2015 MongoDB, Inc.
+# Copyright 2014-2016 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -28,13 +28,13 @@ TOPOLOGY_TYPE = namedtuple('TopologyType', ['Single', 'ReplicaSetNoPrimary',
 
 
 class TopologyDescription(object):
-    def __init__(
-            self,
-            topology_type,
-            server_descriptions,
-            replica_set_name,
-            max_set_version,
-            max_election_id):
+    def __init__(self,
+                 topology_type,
+                 server_descriptions,
+                 replica_set_name,
+                 max_set_version,
+                 max_election_id,
+                 topology_settings):
         """Represent a topology of servers.
 
         :Parameters:
@@ -44,12 +44,16 @@ class TopologyDescription(object):
           - `replica_set_name`: replica set name or None
           - `max_set_version`: greatest setVersion seen from a primary, or None
           - `max_election_id`: greatest electionId seen from a primary, or None
+          - `topology_settings`: a TopologySettings
         """
         self._topology_type = topology_type
         self._replica_set_name = replica_set_name
         self._server_descriptions = server_descriptions
         self._max_set_version = max_set_version
         self._max_election_id = max_election_id
+
+        # The heartbeat_frequency is used in staleness estimates.
+        self._topology_settings = topology_settings
 
         # Is PyMongo compatible with all servers' wire protocols?
         self._incompatible_err = None
@@ -111,7 +115,8 @@ class TopologyDescription(object):
             sds,
             self._replica_set_name,
             self._max_set_version,
-            self._max_election_id)
+            self._max_election_id,
+            self._topology_settings)
 
     def server_descriptions(self):
         """Dict of (address, ServerDescription)."""
@@ -141,6 +146,19 @@ class TopologyDescription(object):
         """List of Servers of types besides Unknown."""
         return [s for s in self._server_descriptions.values()
                 if s.is_server_type_known]
+
+    @property
+    def common_wire_version(self):
+        """Minimum of all servers' max wire versions, or None."""
+        servers = self.known_servers
+        if servers:
+            return min(s.max_wire_version for s in self.known_servers)
+
+        return None
+
+    @property
+    def heartbeat_frequency(self):
+        return self._topology_settings.heartbeat_frequency
 
 
 # If topology type is Unknown and we receive an ismaster response, what should
@@ -188,7 +206,8 @@ def updated_topology_description(topology_description, server_description):
             sds,
             set_name,
             max_set_version,
-            max_election_id)
+            max_election_id,
+            topology_description._topology_settings)
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type == SERVER_TYPE.Standalone:
@@ -253,7 +272,8 @@ def updated_topology_description(topology_description, server_description):
                                sds,
                                set_name,
                                max_set_version,
-                               max_election_id)
+                               max_election_id,
+                               topology_description._topology_settings)
 
 
 def _update_rs_from_primary(

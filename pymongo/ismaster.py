@@ -132,3 +132,7 @@ class IsMaster(object):
         me = self._doc.get('me')
         if me:
             return common.clean_node(me)
+
+    @property
+    def last_write_date(self):
+        return self._doc.get('lastWriteDate')

@@ -186,6 +186,15 @@ class ClientUnitTest(unittest.TestCase):
         c = MongoClient(uri, connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
+    def test_primary_read_pref_with_tags(self):
+        # No tags allowed with "primary".
+        with self.assertRaises(ConfigurationError):
+            MongoClient('mongodb://host/?readpreferencetags=dc:east')
+
+        with self.assertRaises(ConfigurationError):
+            MongoClient('mongodb://host/?'
+                        'readpreference=primary&readpreferencetags=dc:east')
+
 
 class TestClient(IntegrationTest):
 

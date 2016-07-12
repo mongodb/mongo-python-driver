@@ -1,4 +1,4 @@
-# Copyright 2014-2015 MongoDB, Inc.
+# Copyright 2014-2016 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -32,14 +32,14 @@ from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
 from pymongo.server_selectors import (any_server_selector,
-                                      apply_local_threshold,
                                       arbiter_server_selector,
                                       secondary_server_selector,
-                                      writable_server_selector)
+                                      writable_server_selector,
+                                      Selection)
 
 
 def process_events_queue(queue_ref):
@@ -84,15 +84,17 @@ class Topology(object):
             topology_settings.get_server_descriptions(),
             topology_settings.replica_set_name,
             None,
-            None)
+            None,
+            topology_settings)
 
         self._description = topology_description
         if self._publish_tp:
+            initial_td = TopologyDescription(TOPOLOGY_TYPE.Unknown, {}, None,
+                                             None, None, self._settings)
             self._events.put((
                 self._listeners.publish_topology_description_changed,
-                (TopologyDescription(
-                    TOPOLOGY_TYPE.Unknown, {}, None, None, None),
-                 self._description, self._topology_id)))
+                (initial_td, self._description, self._topology_id)))
+
         for seed in topology_settings.seeds:
             if self._publish_server:
                 self._events.put((self._listeners.publish_server_opened,
@@ -284,8 +286,7 @@ class Topology(object):
             if topology_type != TOPOLOGY_TYPE.ReplicaSetWithPrimary:
                 return None
 
-            description = writable_server_selector(self._description)[0]
-            return description.address
+            return writable_server_selector(self._new_selection())[0].address
 
     def _get_replica_set_members(self, selector):
         """Return set of replica set member addresses."""
@@ -296,8 +297,7 @@ class Topology(object):
                                      TOPOLOGY_TYPE.ReplicaSetNoPrimary):
                 return set()
 
-            descriptions = selector(self._description)
-            return set([d.address for d in descriptions])
+            return set([sd.address for sd in selector(self._new_selection())])
 
     def get_secondaries(self):
         """Return set of secondary addresses."""
@@ -359,6 +359,13 @@ class Topology(object):
     def description(self):
         return self._description
 
+    def _new_selection(self):
+        """A Selection object, initially including all known servers.
+
+        Hold the lock when calling this.
+        """
+        return Selection.from_topology_description(self._description)
+
     def _ensure_opened(self):
         """Start monitors, or restart after a fork.
 
@@ -405,6 +412,15 @@ class Topology(object):
             server.request_check()
 
     def _apply_selector(self, selector, address):
+        if getattr(selector, 'min_wire_version', 0):
+            common_wv = self._description.common_wire_version
+            if common_wv and common_wv < selector.min_wire_version:
+                raise ConfigurationError(
+                    "%s requires min wire version %d, but topology's min"
+                    " wire version is %d" % (selector,
+                                             selector.min_wire_version,
+                                             common_wv))
+
         if self._description.topology_type == TOPOLOGY_TYPE.Single:
             # Ignore the selector.
             return self._description.known_servers
@@ -412,12 +428,21 @@ class Topology(object):
             sd = self._description.server_descriptions().get(address)
             return [sd] if sd else []
         elif self._description.topology_type == TOPOLOGY_TYPE.Sharded:
-            return apply_local_threshold(self._settings.local_threshold_ms,
-                                         self._description.known_servers)
+            # Ignore the read preference, but apply localThresholdMS.
+            return self._apply_local_threshold(self._new_selection())
         else:
-            sds = selector(self._description)
-            return apply_local_threshold(
-                self._settings.local_threshold_ms, sds)
+            return self._apply_local_threshold(selector(self._new_selection()))
+
+    def _apply_local_threshold(self, selection):
+        """Return list of servers from Selection that are in latency window."""
+        if not selection:
+            return []
+
+        # Round trip time in seconds.
+        fastest = min(s.round_trip_time for s in selection.server_descriptions)
+        threshold = self._settings.local_threshold_ms / 1000.0
+        return [s for s in selection.server_descriptions
+                if (s.round_trip_time - fastest) <= threshold]
 
     def _update_servers(self):
         """Sync our Servers from TopologyDescription.server_descriptions.

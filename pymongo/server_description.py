@@ -14,8 +14,20 @@
 
 """Represent one server in the topology."""
 
+from bson import EPOCH_NAIVE
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
+from pymongo.monotonic import time as _time
+
+
+def _total_seconds(delta):
+    """Total seconds in the duration."""
+    if hasattr(delta, 'total_seconds'):
+        return delta.total_seconds()
+
+    # Python 2.6.
+    return ((delta.days * 86400 + delta.seconds) * 10 ** 6 +
+            delta.microseconds) / 10.0 ** 6
 
 
 class ServerDescription(object):
@@ -33,7 +45,7 @@ class ServerDescription(object):
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
-        '_set_version', '_election_id')
+        '_set_version', '_election_id', '_last_write_date', '_last_update_time')
 
     def __init__(
             self,
@@ -61,7 +73,15 @@ class ServerDescription(object):
         self._is_readable = ismaster.is_readable
         self._round_trip_time = round_trip_time
         self._me = ismaster.me
+        self._last_update_time = _time()
         self._error = error
+
+        if ismaster.last_write_date:
+            # Convert from datetime to seconds.
+            delta = ismaster.last_write_date - EPOCH_NAIVE
+            self._last_write_date = _total_seconds(delta)
+        else:
+            self._last_write_date = None
 
     @property
     def address(self):
@@ -125,6 +145,14 @@ class ServerDescription(object):
     @property
     def me(self):
         return self._me
+
+    @property
+    def last_write_date(self):
+        return self._last_write_date
+
+    @property
+    def last_update_time(self):
+        return self._last_update_time
 
     @property
     def round_trip_time(self):

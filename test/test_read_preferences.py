@@ -1,4 +1,4 @@
-# Copyright 2011-2015 MongoDB, Inc.
+# Copyright 2011-2016 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,9 +30,9 @@ from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import (ReadPreference, MovingAverage,
                                       Primary, PrimaryPreferred,
                                       Secondary, SecondaryPreferred,
-                                      Nearest, _ServerMode)
+                                      Nearest)
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import readable_server_selector
+from pymongo.server_selectors import readable_server_selector, Selection
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
@@ -48,8 +48,23 @@ from test.utils import connected, single_client, one, wait_until, rs_client
 from test.version import Version
 
 
+class TestSelections(unittest.TestCase):
+    def test_bool(self):
+        client = single_client()
+
+        wait_until(lambda: client.address, "discover primary")
+        selection = Selection.from_topology_description(
+            client._topology.description)
+
+        self.assertTrue(selection)
+        self.assertFalse(selection.with_server_descriptions([]))
+
+
 class TestReadPreferenceObjects(unittest.TestCase):
-    prefs = [Primary(), Secondary(), Nearest(tag_sets=[{'a': 1}, {'b': 2}])]
+    prefs = [Primary(),
+             Secondary(),
+             Nearest(tag_sets=[{'a': 1}, {'b': 2}]),
+             SecondaryPreferred(max_staleness=30)]
 
     def test_pickle(self):
         for pref in self.prefs:
@@ -158,14 +173,6 @@ class TestReadPreferences(TestReadPreferencesBase):
             rs_client, read_preference='foo')
 
     def test_tag_sets_validation(self):
-        # Can't use tags with PRIMARY
-        self.assertRaises(ConfigurationError, _ServerMode,
-                          0, tag_sets=[{'k': 'v'}])
-
-        # ... but empty tag sets are ok with PRIMARY
-        self.assertRaises(ConfigurationError, _ServerMode,
-                          0, tag_sets=[{}])
-
         S = Secondary(tag_sets=[{}])
         self.assertEqual(
             [{}],
