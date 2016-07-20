@@ -78,6 +78,7 @@ import uuid
 from bson import EPOCH_AWARE, RE_TYPE, SON
 from bson.binary import Binary
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
 from bson.int64 import Int64
 from bson.max_key import MaxKey
@@ -100,8 +101,26 @@ _RE_OPT_TABLE = {
 }
 
 
+class JSONOptions(CodecOptions):
+    """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
+
+    :Parameters:
+      - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
+    """
+
+    def __new__(cls, *args, **kwargs):
+        self = super(JSONOptions, cls).__new__(cls, *args, **kwargs)
+        return self
+
+    def __repr__(self):
+        return 'JSONOptions(%s)' % (self._arguments_repr(),)
+
+
+DEFAULT_JSON_OPTIONS = JSONOptions()
+
+
 def dumps(obj, *args, **kwargs):
-    """Helper function that wraps :class:`json.dumps`.
+    """Helper function that wraps :func:`json.dumps`.
 
     Recursive function that handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
@@ -110,33 +129,36 @@ def dumps(obj, *args, **kwargs):
        Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
        instances.
     """
-    return json.dumps(_json_convert(obj), *args, **kwargs)
+    json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
+    return json.dumps(_json_convert(obj, json_options), *args, **kwargs)
 
 
 def loads(s, *args, **kwargs):
-    """Helper function that wraps :class:`json.loads`.
+    """Helper function that wraps :func:`json.loads`.
 
     Automatically passes the object_hook for BSON type conversion.
     """
-    kwargs['object_hook'] = lambda dct: object_hook(dct)
+    json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
+    kwargs["object_hook"] = lambda dct: object_hook(dct, json_options)
     return json.loads(s, *args, **kwargs)
 
 
-def _json_convert(obj):
+def _json_convert(obj, json_options=DEFAULT_JSON_OPTIONS):
     """Recursive helper method that converts BSON types so they can be
     converted into json.
     """
     if hasattr(obj, 'iteritems') or hasattr(obj, 'items'):  # PY3 support
-        return SON(((k, _json_convert(v)) for k, v in iteritems(obj)))
+        return SON(((k, _json_convert(v, json_options))
+                    for k, v in iteritems(obj)))
     elif hasattr(obj, '__iter__') and not isinstance(obj, (text_type, bytes)):
-        return list((_json_convert(v) for v in obj))
+        return list((_json_convert(v, json_options) for v in obj))
     try:
-        return default(obj)
+        return default(obj, json_options)
     except TypeError:
         return obj
 
 
-def object_hook(dct):
+def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
     if "$oid" in dct:
         return ObjectId(str(dct["$oid"]))
     if "$ref" in dct:
@@ -220,7 +242,7 @@ def object_hook(dct):
     return dct
 
 
-def default(obj):
+def default(obj, json_options=DEFAULT_JSON_OPTIONS):
     # We preserve key order when rendering SON, DBRef, etc. as JSON by
     # returning a SON for those types instead of a dict.
     if isinstance(obj, ObjectId):
