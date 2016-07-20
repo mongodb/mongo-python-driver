@@ -42,6 +42,7 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import CursorType
 from pymongo.errors import (DocumentTooLarge,
                             DuplicateKeyError,
+                            ExecutionTimeout,
                             InvalidDocument,
                             InvalidName,
                             InvalidOperation,
@@ -1558,6 +1559,22 @@ class TestCollection(IntegrationTest):
         self.assertEqual(
             set(range(8000)),
             set(doc['_id'] for doc in docs))
+
+    @client_context.require_version_min(3, 3, 10)
+    @client_context.require_test_commands
+    def test_parallel_scan_max_time_ms(self):
+            self.client.admin.command("configureFailPoint",
+                                      "maxTimeAlwaysTimeOut",
+                                      mode="alwaysOn")
+            try:
+                self.assertRaises(ExecutionTimeout,
+                                  self.db.test.parallel_scan,
+                                  3,
+                                  maxTimeMS=1)
+            finally:
+                self.client.admin.command("configureFailPoint",
+                                          "maxTimeAlwaysTimeOut",
+                                          mode="off")
 
     def test_group(self):
         db = self.db

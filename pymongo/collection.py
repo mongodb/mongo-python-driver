@@ -1144,7 +1144,7 @@ class Collection(common.BaseObject):
         """
         return Cursor(self, *args, **kwargs)
 
-    def parallel_scan(self, num_cursors):
+    def parallel_scan(self, num_cursors, **kwargs):
         """Scan this entire collection in parallel.
 
         Returns a list of up to ``num_cursors`` cursors that can be iterated
@@ -1180,8 +1180,15 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `num_cursors`: the number of cursors to return
+          - `**kwargs`: additional options for the parallelCollectionScan
+            command can be passed as keyword arguments.
 
         .. note:: Requires server version **>= 2.5.5**.
+
+        .. versionchanged:: 3.4
+           Added back support for arbitrary keyword arguments. MongoDB 3.4
+           adds support for maxTimeMS as an option to the
+           parallelCollectionScan command.
 
         .. versionchanged:: 3.0
            Removed support for arbitrary keyword arguments, since
@@ -1189,6 +1196,7 @@ class Collection(common.BaseObject):
         """
         cmd = SON([('parallelCollectionScan', self.__name),
                    ('numCursors', num_cursors)])
+        cmd.update(kwargs)
 
         with self._socket_for_reads() as (sock_info, slave_ok):
             result = self._command(sock_info, cmd, slave_ok,
