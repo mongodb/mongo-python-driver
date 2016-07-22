@@ -17,9 +17,9 @@
 This module provides two helper methods `dumps` and `loads` that wrap the
 native :mod:`json` methods and provide explicit BSON conversion to and from
 json.  This allows for specialized encoding and decoding of BSON documents
-into `Mongo Extended JSON
-<http://www.mongodb.org/display/DOCS/Mongo+Extended+JSON>`_'s *Strict*
-mode.  This lets you encode / decode BSON documents to JSON even when
+into `MongoDB Extended JSON
+<http://www.mongodb.org/display/DOCS/Mongo+Extended+JSON>`_'s *Strict
+mode*.  This lets you encode / decode BSON documents to JSON even when
 they use special BSON types.
 
 Example usage (serialization):
@@ -68,17 +68,19 @@ but it will be faster as there is less recursion.
 """
 
 import base64
-import calendar
 import collections
 import datetime
 import json
 import re
 import uuid
 
+import bson
 from bson import EPOCH_AWARE, RE_TYPE, SON
-from bson.binary import Binary
+from bson.binary import (Binary, JAVA_LEGACY, CSHARP_LEGACY, OLD_UUID_SUBTYPE,
+                         UUID_SUBTYPE)
 from bson.code import Code
 from bson.codec_options import CodecOptions
+from bson.errors import InvalidDatetime
 from bson.dbref import DBRef
 from bson.int64 import Int64
 from bson.max_key import MaxKey
@@ -105,18 +107,68 @@ class JSONOptions(CodecOptions):
     """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
     :Parameters:
+      - `strict_number_long`: If ``True``, :class:`~bson.int64.Int64` objects
+        are encoded to MongoDB Extended JSON's *Strict mode* type
+        `NumberLong`, ie ``'{"$numberLong": "<number>" }'``. Otherwise they
+        will be encoded as an `int`. Defaults to ``False``.
+      - `strict_date`: If ``True``, `datetime.datetime` objects are encoded to
+        MongoDB Extended JSON's *Strict mode* type `Date`. Otherwise it will
+        be encoded as milliseconds since Unix epoch. Defaults to ``False``.
+      - `strict_uuid`: If ``True``, :class:`uuid.UUID` object are encoded to
+        MongoDB Extended JSON's *Strict mode* type `Binary`. Otherwise it
+        will be encoded as ``'{"$uuid": "<hex>" }'``. Defaults to ``False``.
+      - `document_class`: BSON documents returned by :func:`loads` will be
+        decoded to an instance of this class. Must be a subclass of
+        :class:`collections.MutableMapping`. Defaults to :class:`dict`.
+      - `uuid_representation`: The BSON representation to use when encoding
+        and decoding instances of :class:`uuid.UUID`. Defaults to
+        :const:`~bson.binary.PYTHON_LEGACY`.
+      - `tz_aware`: If ``True``, MongoDB Extended JSON's *Strict mode* type
+        `Date` will be decoded to timezone aware instances of
+        :class:`datetime.datetime`. Otherwise they will be naive. Defaults
+        to ``True``.
+      - `tzinfo`: A :class:`datetime.tzinfo` subclass that specifies the
+        timezone from which :class:`~datetime.datetime` objects should be
+        decoded. Defaults to :const:`~bson.tz_util.utc`.
+      - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
       - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
+
+    .. seealso:: The documentation for `MongoDB Extended JSON
+       <http://www.mongodb.org/display/DOCS/Mongo+Extended+JSON>`_.
+
+    .. versionadded:: 3.4
     """
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, strict_number_long=False, strict_date=False,
+                strict_uuid=False, *args, **kwargs):
+        kwargs["tz_aware"] = kwargs.get("tz_aware", True)
+        if kwargs["tz_aware"]:
+            kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
         self = super(JSONOptions, cls).__new__(cls, *args, **kwargs)
+        self.strict_number_long = strict_number_long
+        self.strict_date = strict_date
+        self.strict_uuid = strict_uuid
         return self
 
-    def __repr__(self):
-        return 'JSONOptions(%s)' % (self._arguments_repr(),)
+    def _arguments_repr(self):
+        return 'strict_number_long=%r, strict_date=%r, strict_uuid=%r, %s' % (
+            self.strict_number_long,
+            self.strict_date,
+            self.strict_uuid,
+            super(JSONOptions, self)._arguments_repr())
 
 
 DEFAULT_JSON_OPTIONS = JSONOptions()
+"""The default :class:`JSONOptions` for JSON encoding/decoding.
+
+.. versionadded:: 3.4
+"""
+STRICT_JSON_OPTIONS = JSONOptions(strict_number_long=True, strict_date=True,
+                                  strict_uuid=True)
+""":class:`JSONOptions` for MongoDB Extended JSON's *Strict mode* encoding.
+
+.. versionadded:: 3.4
+"""
 
 
 def dumps(obj, *args, **kwargs):
@@ -124,6 +176,18 @@ def dumps(obj, *args, **kwargs):
 
     Recursive function that handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
+
+    Raises :class:`~bson.errors.InvalidDatetime` if `obj` contains a
+    :class:`datetime.datetime` without a timezone and
+    `json_options.strict_date` is ``True``.
+
+    :Parameters:
+      - `json_options`: A :class:`JSONOptions` instance used to modify the
+        encoding of MongoDB Extended JSON types. Defaults to
+        :const:`DEFAULT_JSON_OPTIONS`.
+
+    .. versionchanged:: 3.4
+       Accepts optional parameter `json_options`. See :class:`JSONOptions`.
 
     .. versionchanged:: 2.7
        Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
@@ -137,9 +201,18 @@ def loads(s, *args, **kwargs):
     """Helper function that wraps :func:`json.loads`.
 
     Automatically passes the object_hook for BSON type conversion.
+
+    :Parameters:
+      - `json_options`: A :class:`JSONOptions` instance used to modify the
+        decoding of MongoDB Extended JSON types. Defaults to
+        :const:`DEFAULT_JSON_OPTIONS`.
+
+    .. versionchanged:: 3.4
+       Accepts optional parameter `json_options`. See :class:`JSONOptions`.
     """
     json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
-    kwargs["object_hook"] = lambda dct: object_hook(dct, json_options)
+    kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(pairs,
+                                                                  json_options)
     return json.loads(s, *args, **kwargs)
 
 
@@ -156,6 +229,10 @@ def _json_convert(obj, json_options=DEFAULT_JSON_OPTIONS):
         return default(obj, json_options)
     except TypeError:
         return obj
+
+
+def object_pairs_hook(pairs, json_options=DEFAULT_JSON_OPTIONS):
+    return object_hook(json_options.document_class(pairs), json_options)
 
 
 def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
@@ -190,10 +267,7 @@ def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
             aware = datetime.datetime.strptime(
                 dt, "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo=utc)
 
-            if not offset or offset == 'Z':
-                # UTC
-                return aware
-            else:
+            if offset and offset != 'Z':
                 if len(offset) == 6:
                     hours, minutes = offset[1:].split(':')
                     secs = (int(hours) * 3600 + int(minutes) * 60)
@@ -203,14 +277,21 @@ def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
                     secs = int(offset[1:3]) * 3600
                 if offset[0] == "-":
                     secs *= -1
-                return aware - datetime.timedelta(seconds=secs)
+                aware = aware - datetime.timedelta(seconds=secs)
+
+            if json_options.tz_aware:
+                if json_options.tzinfo:
+                    aware = aware.astimezone(json_options.tzinfo)
+                return aware
+            else:
+                return aware.replace(tzinfo=None)
         # mongoexport 2.6 and newer, time before the epoch (SERVER-15275)
         elif isinstance(dtm, collections.Mapping):
-            secs = float(dtm["$numberLong"]) / 1000.0
+            millis = int(dtm["$numberLong"])
         # mongoexport before 2.6
         else:
-            secs = float(dtm) / 1000.0
-        return EPOCH_AWARE + datetime.timedelta(seconds=secs)
+            millis = int(dtm)
+        return bson._millis_to_datetime(millis, json_options)
     if "$regex" in dct:
         flags = 0
         # PyMongo always adds $options but some other tools may not.
@@ -227,7 +308,17 @@ def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
         subtype = int(dct["$type"], 16)
         if subtype >= 0xffffff80:  # Handle mongoexport values
             subtype = int(dct["$type"][6:], 16)
-        return Binary(base64.b64decode(dct["$binary"].encode()), subtype)
+        data = base64.b64decode(dct["$binary"].encode())
+        # special handling for UUID
+        if subtype == OLD_UUID_SUBTYPE:
+            if json_options.uuid_representation == CSHARP_LEGACY:
+                return uuid.UUID(bytes_le=data)
+            if json_options.uuid_representation == JAVA_LEGACY:
+                data = data[7::-1] + data[:7:-1]
+            return uuid.UUID(bytes=data)
+        if subtype == UUID_SUBTYPE:
+            return uuid.UUID(bytes=data)
+        return Binary(data, subtype)
     if "$code" in dct:
         return Code(dct["$code"], dct.get("$scope"))
     if "$uuid" in dct:
@@ -250,12 +341,22 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
     if isinstance(obj, DBRef):
         return _json_convert(obj.as_doc())
     if isinstance(obj, datetime.datetime):
-        # TODO share this code w/ bson.py?
-        if obj.utcoffset() is not None:
-            obj = obj - obj.utcoffset()
-        millis = int(calendar.timegm(obj.timetuple()) * 1000 +
-                     obj.microsecond / 1000)
-        return {"$date": millis}
+        if json_options.strict_date:
+            if not obj.tzinfo:
+                raise InvalidDatetime("datetime is not timezone aware", obj)
+            if obj >= EPOCH_AWARE:
+                return {"$date": "%s.%03d%s" % (
+                    obj.strftime("%Y-%m-%dT%H:%M:%S"),
+                    int(obj.microsecond / 1000),
+                    obj.strftime("%z"))}
+
+        millis = bson._datetime_to_millis(obj)
+        if json_options.strict_date:
+            return {"$date": {"$numberLong": str(millis)}}
+        else:
+            return {"$date": millis}
+    if json_options.strict_number_long and isinstance(obj, Int64):
+        return {"$numberLong": str(obj)}
     if isinstance(obj, (RE_TYPE, Regex)):
         flags = ""
         if obj.flags & re.IGNORECASE:
@@ -292,5 +393,18 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
             ('$binary', base64.b64encode(obj).decode()),
             ('$type', "00")])
     if isinstance(obj, uuid.UUID):
-        return {"$uuid": obj.hex}
+        if json_options.strict_uuid:
+            data = obj.bytes
+            subtype = OLD_UUID_SUBTYPE
+            if json_options.uuid_representation == CSHARP_LEGACY:
+                data = obj.bytes_le
+            elif json_options.uuid_representation == JAVA_LEGACY:
+                data = data[7::-1] + data[:7:-1]
+            elif json_options.uuid_representation == UUID_SUBTYPE:
+                subtype = UUID_SUBTYPE
+            return SON([
+                ('$binary', base64.b64encode(data).decode()),
+                ('$type', "%02x" % subtype)])
+        else:
+            return {"$uuid": obj.hex}
     raise TypeError("%r is not JSON serializable" % obj)

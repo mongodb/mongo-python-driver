@@ -230,18 +230,7 @@ def _get_date(data, position, dummy0, opts, dummy1):
     """Decode a BSON datetime to python datetime.datetime."""
     end = position + 8
     millis = _UNPACK_LONG(data[position:end])[0]
-    diff = ((millis % 1000) + 1000) % 1000
-    seconds = (millis - diff) / 1000
-    micros = diff * 1000
-    if opts.tz_aware:
-        dt = EPOCH_AWARE + datetime.timedelta(
-            seconds=seconds, microseconds=micros)
-        if opts.tzinfo:
-            dt = dt.astimezone(opts.tzinfo)
-    else:
-        dt = EPOCH_NAIVE + datetime.timedelta(
-            seconds=seconds, microseconds=micros)
-    return dt, end
+    return _millis_to_datetime(millis, opts), end
 
 
 def _get_code(data, position, obj_end, opts, element_name):
@@ -543,10 +532,7 @@ def _encode_bool(name, value, dummy0, dummy1):
 
 def _encode_datetime(name, value, dummy0, dummy1):
     """Encode datetime.datetime."""
-    if value.utcoffset() is not None:
-        value = value - value.utcoffset()
-    millis = int(calendar.timegm(value.timetuple()) * 1000 +
-                 value.microsecond / 1000)
+    millis = _datetime_to_millis(value)
     return b"\x09" + name + _PACK_LONG(millis)
 
 
@@ -746,6 +732,30 @@ def _dict_to_bson(doc, check_keys, opts, top_level=True):
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
 if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson
+
+
+def _millis_to_datetime(millis, opts):
+    """Convert milliseconds since epoch UTC to datetime."""
+    diff = ((millis % 1000) + 1000) % 1000
+    seconds = (millis - diff) / 1000
+    micros = diff * 1000
+    if opts.tz_aware:
+        dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds,
+                                              microseconds=micros)
+        if opts.tzinfo:
+            dt = dt.astimezone(opts.tzinfo)
+        return dt
+    else:
+        return EPOCH_NAIVE + datetime.timedelta(seconds=seconds,
+                                                microseconds=micros)
+
+
+def _datetime_to_millis(dtm):
+    """Convert datetime to milliseconds since epoch UTC."""
+    if dtm.utcoffset() is not None:
+        dtm = dtm - dtm.utcoffset()
+    return int(calendar.timegm(dtm.timetuple()) * 1000 +
+               dtm.microsecond / 1000)
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError(

@@ -22,9 +22,11 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from bson import json_util, EPOCH_AWARE
-from bson.binary import Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE
+from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
+from bson.binary import (Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE,
+                         JAVA_LEGACY, CSHARP_LEGACY, STANDARD)
 from bson.code import Code
+from bson.errors import InvalidDatetime
 from bson.dbref import DBRef
 from bson.int64 import Int64
 from bson.max_key import MaxKey
@@ -32,7 +34,7 @@ from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.timestamp import Timestamp
-from bson.tz_util import utc
+from bson.tz_util import FixedOffset, utc
 
 from test import unittest, IntegrationTest
 
@@ -40,11 +42,11 @@ PY3 = sys.version_info[0] == 3
 
 
 class TestJsonUtil(unittest.TestCase):
-    def round_tripped(self, doc):
-        return json_util.loads(json_util.dumps(doc))
+    def round_tripped(self, doc, **kwargs):
+        return json_util.loads(json_util.dumps(doc, **kwargs), **kwargs)
 
-    def round_trip(self, doc):
-        self.assertEqual(doc, self.round_tripped(doc))
+    def round_trip(self, doc, **kwargs):
+        self.assertEqual(doc, self.round_tripped(doc, **kwargs))
 
     def test_basic(self):
         self.round_trip({"hello": "world"})
@@ -115,6 +117,62 @@ class TestJsonUtil(unittest.TestCase):
         jsn = '{"dt": {"$date": {"$numberLong": "-62135593139000"}}}'
         self.assertEqual(dtm, json_util.loads(jsn)["dt"])
 
+        # Test dumps format
+        pre_epoch = {"dt": datetime.datetime(1, 1, 1, 1, 1, 1, 10000, utc)}
+        post_epoch = {"dt": datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc)}
+        json_options = json_util.JSONOptions(strict_date=True)
+        self.assertEqual(
+            '{"dt": {"$date": -62135593138990}}',
+            json_util.dumps(pre_epoch))
+        self.assertEqual(
+            '{"dt": {"$date": 63075661010}}',
+            json_util.dumps(post_epoch))
+        self.assertEqual(
+            '{"dt": {"$date": {"$numberLong": "-62135593138990"}}}',
+            json_util.dumps(pre_epoch, json_options=json_options))
+        self.assertEqual(
+            '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}',
+            json_util.dumps(post_epoch, json_options=json_options))
+
+        # Strict mode requires dates to have a timezone
+        pre_epoch_naive = {"dt": datetime.datetime(1, 1, 1, 1, 1, 1, 1000)}
+        post_epoch_naive = {"dt": datetime.datetime(1972, 1, 1, 1, 1, 1, 1000)}
+        self.assertRaises(InvalidDatetime, json_util.dumps, pre_epoch_naive,
+                          json_options=json_options)
+        self.assertRaises(InvalidDatetime, json_util.dumps, post_epoch_naive,
+                          json_options=json_options)
+
+        # Test tz_aware and tzinfo options
+        self.assertEqual(
+            datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc),
+            json_util.loads(
+                '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}')["dt"])
+        self.assertEqual(
+            datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc),
+            json_util.loads(
+                '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}',
+                json_options=json_util.JSONOptions(tz_aware=True,
+                                                   tzinfo=utc))["dt"])
+        self.assertEqual(
+            datetime.datetime(1972, 1, 1, 1, 1, 1, 10000),
+            json_util.loads(
+                '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}',
+                json_options=json_util.JSONOptions(tz_aware=False))["dt"])
+        self.round_trip(pre_epoch_naive, json_options=json_util.JSONOptions(
+            tz_aware=False))
+
+        # Test a non-utc timezone
+        pacific = FixedOffset(-8 * 60, 'US/Pacific')
+        aware_datetime = {"dt": datetime.datetime(2002, 10, 27, 6, 0, 0, 10000,
+                                                  pacific)}
+        self.assertEqual(
+            '{"dt": {"$date": "2002-10-27T06:00:00.010-0800"}}',
+            json_util.dumps(aware_datetime, json_options=json_options))
+        self.round_trip(aware_datetime, json_options=json_util.JSONOptions(
+            tz_aware=True, tzinfo=pacific))
+        self.round_trip(aware_datetime, json_options=json_util.JSONOptions(
+            strict_date=True, tz_aware=True, tzinfo=pacific))
+
     def test_regex_object_hook(self):
         # Extended JSON format regular expression.
         pat = 'a*b'
@@ -173,8 +231,26 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(dct, rtdct)
 
     def test_uuid(self):
-        self.round_trip(
-                {'uuid': uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')})
+        doc = {'uuid': uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')}
+        self.round_trip(doc)
+        self.assertEqual(
+            '{"uuid": {"$uuid": "f47ac10b58cc4372a5670e02b2c3d479"}}',
+            json_util.dumps(doc))
+        self.assertEqual(
+            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
+            json_util.dumps(doc, json_options=json_util.STRICT_JSON_OPTIONS))
+        self.assertEqual(
+            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
+            json_util.dumps(doc, json_options=json_util.JSONOptions(
+                strict_uuid=True, uuid_representation=STANDARD)))
+        self.assertEqual(doc, json_util.loads(
+            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}'))
+        self.assertEqual(doc, json_util.loads(
+            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}'))
+        self.round_trip(doc, json_options=json_util.JSONOptions(
+            strict_uuid=True, uuid_representation=JAVA_LEGACY))
+        self.round_trip(doc, json_options=json_util.JSONOptions(
+            strict_uuid=True, uuid_representation=CSHARP_LEGACY))
 
     def test_binary(self):
         bin_type_dict = {"bin": Binary(b"\x00\x01\x02\x03\x04")}
@@ -230,13 +306,24 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
 
     def test_undefined(self):
-        json = '{"name": {"$undefined": true}}'
-        self.assertIsNone(json_util.loads(json)['name'])
+        jsn = '{"name": {"$undefined": true}}'
+        self.assertIsNone(json_util.loads(jsn)['name'])
 
     def test_numberlong(self):
-        json = '{"weight": {"$numberLong": 65535}}'
-        self.assertEqual(json_util.loads(json)['weight'],
+        jsn = '{"weight": {"$numberLong": "65535"}}'
+        self.assertEqual(json_util.loads(jsn)['weight'],
                          Int64(65535))
+        self.assertEqual(json_util.dumps({"weight": Int64(65535)}),
+                         '{"weight": 65535}')
+        json_options = json_util.JSONOptions(strict_number_long=True)
+        self.assertEqual(json_util.dumps({"weight": Int64(65535)},
+                                         json_options=json_options),
+                         jsn)
+
+    def test_loads_document_class(self):
+        self.assertEqual(SON([("foo", "bar"), ("b", 1)]), json_util.loads(
+            '{"foo": "bar", "b": 1}',
+            json_options=json_util.JSONOptions(document_class=SON)))
 
 
 class TestJsonUtilRoundtrip(IntegrationTest):

@@ -109,7 +109,7 @@ class CodecOptions(_options_base):
                  self.unicode_decode_error_handler, self.tzinfo))
 
     def __repr__(self):
-        return 'CodecOptions(%s)' % (self._arguments_repr(),)
+        return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
 
 
 DEFAULT_CODEC_OPTIONS = CodecOptions()

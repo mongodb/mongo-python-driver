@@ -4,3 +4,4 @@
    :synopsis: Tools for using Python's json module with BSON documents
    :members:
    :undoc-members:
+   :member-order: bysource
