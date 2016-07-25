@@ -23,6 +23,7 @@ from pymongo import monitoring
 from pymongo.errors import ConnectionFailure
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
+from pymongo.pool import PoolOptions
 from test import unittest, client_knobs
 from test.utils import HeartbeatEventListener, single_client, wait_until
 
@@ -44,6 +45,7 @@ class MockPool(object):
     def __init__(self, *args, **kwargs):
         self.pool_id = 0
         self._lock = threading.Lock()
+        self.opts = PoolOptions()
 
     def get_socket(self, all_credentials):
         return MockSocketInfo()
@@ -75,7 +77,7 @@ class TestHeartbeatMonitoring(unittest.TestCase):
                           min_heartbeat_interval=0.1,
                           events_queue_frequency=0.1):
             class MockMonitor(Monitor):
-                def _check_with_socket(self, sock_info):
+                def _check_with_socket(self, sock_info, metadata=None):
                     if isinstance(responses[1], Exception):
                         raise responses[1]
                     return IsMaster(responses[1]), 99

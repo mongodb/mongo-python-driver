@@ -398,6 +398,17 @@ def validate_is_document_type(option, value):
                         "collections.MutableMapping" % (option,))
 
 
+def validate_appname_or_none(option, value):
+    """Validate the appname option."""
+    if value is None:
+        return value
+    validate_string(option, value)
+    # We need length in bytes, so encode utf8 first.
+    if len(value.encode('utf-8')) > 128:
+        raise ValueError("%s must be <= 128 bytes" % (option,))
+    return value
+
+
 def validate_ok_for_replace(replacement):
     """Validate a replacement document."""
     validate_is_mapping("replacement", replacement)
@@ -451,6 +462,7 @@ URI_VALIDATORS = {
     'uuidrepresentation': validate_uuid_representation,
     'connect': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
+    'appname': validate_appname_or_none,
 }
 
 TIMEOUT_VALIDATORS = {

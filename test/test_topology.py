@@ -55,6 +55,7 @@ class MockPool(object):
     def __init__(self, *args, **kwargs):
         self.pool_id = 0
         self._lock = threading.Lock()
+        self.opts = PoolOptions()
 
     def get_socket(self, all_credentials):
         return MockSocketInfo()
@@ -238,7 +239,7 @@ class TestSingleServerTopology(TopologyTest):
         available = True
 
         class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info):
+            def _check_with_socket(self, sock_info, metadata=None):
                 if available:
                     return IsMaster({'ok': 1}), round_trip_time
                 else:
@@ -541,7 +542,7 @@ class TestTopologyErrors(TopologyTest):
         ismaster_count = [0]
 
         class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info):
+            def _check_with_socket(self, sock_info, metadata=None):
                 ismaster_count[0] += 1
                 if ismaster_count[0] == 1:
                     return IsMaster({'ok': 1}), 0
@@ -562,7 +563,7 @@ class TestTopologyErrors(TopologyTest):
         ismaster_count = [0]
 
         class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info):
+            def _check_with_socket(self, sock_info, metadata=None):
                 ismaster_count[0] += 1
                 if ismaster_count[0] in (1, 3):
                     return IsMaster({'ok': 1}), 0
@@ -584,7 +585,7 @@ class TestTopologyErrors(TopologyTest):
         exception = AssertionError('internal error')
 
         class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info):
+            def _check_with_socket(self, sock_info, metadata=None):
                 raise exception
 
         t = create_mock_topology(monitor_class=TestMonitor)

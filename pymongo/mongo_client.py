@@ -162,6 +162,11 @@ class MongoClient(common.BaseObject):
           - `heartbeatFrequencyMS`: (optional) The number of milliseconds
             between periodic server checks, or None to accept the default
             frequency of 10 seconds.
+          - `appname`: (string or None) The name of the application that
+            created this MongoClient instance. MongoDB 3.4 and newer will
+            print this value in the server log upon establishing each
+            connection. It is also recorded in the slow query log and
+            profile collections.
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
 

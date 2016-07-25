@@ -111,11 +111,16 @@ class Monitor(object):
         # server's pool. If a server was once connected, change its type
         # to Unknown only after retrying once.
         address = self._server_description.address
-        retry = self._server_description.server_type != SERVER_TYPE.Unknown
+        retry = True
+        metadata = None
+        if self._server_description.server_type == SERVER_TYPE.Unknown:
+            retry = False
+            metadata = self._pool.opts.metadata
 
         start = _time()
         try:
-            return self._check_once()
+            # If the server type is unknown, send metadata with first check.
+            return self._check_once(metadata=metadata)
         except ReferenceError:
             raise
         except Exception as error:
@@ -144,7 +149,7 @@ class Monitor(object):
                 self._avg_round_trip_time.reset()
                 return default
 
-    def _check_once(self):
+    def _check_once(self, metadata=None):
         """A single attempt to call ismaster.
 
         Returns a ServerDescription, or raises an exception.
@@ -153,7 +158,8 @@ class Monitor(object):
         if self._publish:
             self._listeners.publish_server_heartbeat_started(address)
         with self._pool.get_socket({}) as sock_info:
-            response, round_trip_time = self._check_with_socket(sock_info)
+            response, round_trip_time = self._check_with_socket(
+                sock_info, metadata=metadata)
             self._avg_round_trip_time.add_sample(round_trip_time)
             sd = ServerDescription(
                 address=address,
@@ -165,14 +171,17 @@ class Monitor(object):
 
             return sd
 
-    def _check_with_socket(self, sock_info):
+    def _check_with_socket(self, sock_info, metadata=None):
         """Return (IsMaster, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.
         """
+        cmd = {'ismaster': 1}
+        if metadata is not None:
+            cmd['client'] = metadata
         start = _time()
         request_id, msg, max_doc_size = message.query(
-            0, 'admin.$cmd', 0, -1, {'ismaster': 1},
+            0, 'admin.$cmd', 0, -1, cmd,
             None, DEFAULT_CODEC_OPTIONS)
 
         # TODO: use sock_info.command()

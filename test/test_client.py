@@ -43,7 +43,7 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
 from pymongo.mongo_client import MongoClient
-from pymongo.pool import SocketInfo
+from pymongo.pool import SocketInfo, _METADATA
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
@@ -194,6 +194,20 @@ class ClientUnitTest(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             MongoClient('mongodb://host/?'
                         'readpreference=primary&readpreferencetags=dc:east')
+
+    def test_metadata(self):
+        metadata = _METADATA.copy()
+        metadata['application'] = {'name': 'foobar'}
+        client = MongoClient(
+            "mongodb://foo:27017/?appname=foobar&connect=false")
+        options = client._MongoClient__options
+        self.assertEqual(options.pool_options.metadata, metadata)
+        client = MongoClient('foo', 27017, appname='foobar', connect=False)
+        options = client._MongoClient__options
+        self.assertEqual(options.pool_options.metadata, metadata)
+        # No error
+        MongoClient(appname='x' * 128)
+        self.assertRaises(ValueError, MongoClient, appname='x' * 129)
 
 
 class TestClient(IntegrationTest):
