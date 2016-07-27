@@ -20,6 +20,7 @@ import threading
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import itervalues
+from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import (AutoReconnect,
@@ -559,10 +560,14 @@ class Pool:
         try:
             sock = _configured_socket(self.address, self.opts)
             if self.handshake:
+                cmd = SON([
+                    ('ismaster', 1),
+                    ('client', self.opts.metadata)
+                ])
                 ismaster = IsMaster(
                     command(sock,
                             'admin',
-                            {'ismaster': 1, 'client': self.opts.metadata},
+                            cmd,
                             False,
                             False,
                             ReadPreference.PRIMARY,

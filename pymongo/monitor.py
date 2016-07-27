@@ -17,6 +17,7 @@
 import weakref
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.son import SON
 from pymongo import common, helpers, message, periodic_executor
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
@@ -176,7 +177,7 @@ class Monitor(object):
 
         Can raise ConnectionFailure or OperationFailure.
         """
-        cmd = {'ismaster': 1}
+        cmd = SON([('ismaster', 1)])
         if metadata is not None:
             cmd['client'] = metadata
         start = _time()
