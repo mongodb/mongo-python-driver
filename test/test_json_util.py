@@ -20,7 +20,15 @@ import re
 import sys
 import uuid
 
+try:
+    import simplejson
+    HAS_SIMPLE_JSON = True
+except ImportError:
+    HAS_SIMPLE_JSON = False
+
 sys.path[0:0] = [""]
+
+from pymongo.errors import ConfigurationError
 
 from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
 from bson.binary import (Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE,
@@ -39,6 +47,7 @@ from bson.tz_util import FixedOffset, utc
 from test import unittest, IntegrationTest
 
 PY3 = sys.version_info[0] == 3
+PY26 = sys.version_info[:2] == (2, 6)
 
 
 class TestJsonUtil(unittest.TestCase):
@@ -321,9 +330,17 @@ class TestJsonUtil(unittest.TestCase):
                          jsn)
 
     def test_loads_document_class(self):
-        self.assertEqual(SON([("foo", "bar"), ("b", 1)]), json_util.loads(
-            '{"foo": "bar", "b": 1}',
-            json_options=json_util.JSONOptions(document_class=SON)))
+        # document_class dict should always work
+        self.assertEqual({"foo": "bar"}, json_util.loads(
+            '{"foo": "bar"}',
+            json_options=json_util.JSONOptions(document_class=dict)))
+        if PY26 and not HAS_SIMPLE_JSON:
+            self.assertRaises(
+                ConfigurationError, json_util.JSONOptions, document_class=SON)
+        else:
+            self.assertEqual(SON([("foo", "bar"), ("b", 1)]), json_util.loads(
+                '{"foo": "bar", "b": 1}',
+                json_options=json_util.JSONOptions(document_class=SON)))
 
 
 class TestJsonUtilRoundtrip(IntegrationTest):

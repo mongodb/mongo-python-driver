@@ -70,9 +70,23 @@ but it will be faster as there is less recursion.
 import base64
 import collections
 import datetime
-import json
 import re
+import sys
 import uuid
+
+_HAS_OBJECT_PAIRS_HOOK = True
+if sys.version_info[:2] == (2, 6):
+    # In Python 2.6, json does not include object_pairs_hook. Use simplejson
+    # instead.
+    try:
+        import simplejson as json
+    except ImportError:
+        import json
+        _HAS_OBJECT_PAIRS_HOOK = False
+else:
+    import json
+
+from pymongo.errors import ConfigurationError
 
 import bson
 from bson import EPOCH_AWARE, RE_TYPE, SON
@@ -105,6 +119,10 @@ _RE_OPT_TABLE = {
 
 class JSONOptions(CodecOptions):
     """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
+
+    Raises :exc:`~pymongo.errors.ConfigurationError` on Python 2.6 if
+    `simplejson <https://pypi.python.org/pypi/simplejson>`_ is not installed
+    and document_class is not the default (:class:`dict`).
 
     :Parameters:
       - `strict_number_long`: If ``True``, :class:`~bson.int64.Int64` objects
@@ -145,6 +163,11 @@ class JSONOptions(CodecOptions):
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
         self = super(JSONOptions, cls).__new__(cls, *args, **kwargs)
+        if not _HAS_OBJECT_PAIRS_HOOK and self.document_class != dict:
+            raise ConfigurationError(
+                "Support for JSONOptions.document_class on Python 2.6 "
+                "requires simplejson "
+                "(https://pypi.python.org/pypi/simplejson) to be installed.")
         self.strict_number_long = strict_number_long
         self.strict_date = strict_date
         self.strict_uuid = strict_uuid
@@ -177,7 +200,7 @@ def dumps(obj, *args, **kwargs):
     Recursive function that handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
 
-    Raises :class:`~bson.errors.InvalidDatetime` if `obj` contains a
+    Raises :exc:`~bson.errors.InvalidDatetime` if `obj` contains a
     :class:`datetime.datetime` without a timezone and
     `json_options.strict_date` is ``True``.
 
@@ -211,8 +234,11 @@ def loads(s, *args, **kwargs):
        Accepts optional parameter `json_options`. See :class:`JSONOptions`.
     """
     json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
-    kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(pairs,
-                                                                  json_options)
+    if _HAS_OBJECT_PAIRS_HOOK:
+        kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(
+            pairs, json_options)
+    else:
+        kwargs["object_hook"] = lambda obj: object_hook(obj, json_options)
     return json.loads(s, *args, **kwargs)
 
 

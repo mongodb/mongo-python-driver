@@ -1,6 +1,25 @@
 Changelog
 =========
 
+Changes in Version 3.4
+----------------------
+
+Version 3.4 implements the new server features introduced in MongoDB 3.4:
+
+Highlights include:
+
+- Finer control over JSON encoding/decoding with
+  :class:`~bson.json_util.JSONOptions`.
+
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.4 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.4 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16594
+
 Changes in Version 3.3
 ----------------------
 
