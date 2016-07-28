@@ -565,7 +565,7 @@ class TestBSON(unittest.TestCase):
         sys.setrecursionlimit(100)
         try:
             for evil_data in [evil_dict, evil_list]:
-                self.assertRaises(RuntimeError, BSON.encode, evil_data)
+                self.assertRaises(Exception, BSON.encode, evil_data)
         finally:
             sys.setrecursionlimit(depth)
 
