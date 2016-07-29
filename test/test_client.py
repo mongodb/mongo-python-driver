@@ -26,6 +26,7 @@ import traceback
 sys.path[0:0] = [""]
 
 from bson import BSON
+from bson.binary import PYTHON_LEGACY
 from bson.codec_options import CodecOptions
 from bson.py3compat import thread
 from bson.son import SON
@@ -208,6 +209,39 @@ class ClientUnitTest(unittest.TestCase):
         # No error
         MongoClient(appname='x' * 128)
         self.assertRaises(ValueError, MongoClient, appname='x' * 129)
+
+    def test_kwargs_codec_options(self):
+        # Ensure codec options are passed in correctly
+        document_class = dict
+        tz_aware = True
+        uuid_representation = 'pythonLegacy'
+        unicode_decode_error_handler = 'ignore'
+        tzinfo = utc
+        c = MongoClient(
+            document_class=document_class,
+            tz_aware=tz_aware,
+            uuidrepresentation=uuid_representation,
+            unicode_decode_error_handler=unicode_decode_error_handler,
+            tzinfo=tzinfo
+        )
+
+        self.assertEqual(c.codec_options.document_class, document_class)
+        self.assertEqual(c.codec_options.tz_aware, tz_aware)
+        self.assertEqual(c.codec_options.uuid_representation, PYTHON_LEGACY)
+        self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
+        self.assertEqual(c.codec_options.tzinfo, tzinfo)
+
+    def test_uri_codec_options(self):
+        # Ensure codec options are passed in correctly
+        uuid_representation = 'pythonLegacy'
+        unicode_decode_error_handler = 'ignore'
+        uri = "mongodb://%s:%d/foo?tz_aware=true&uuidrepresentation=%s&unicode_decode_error_handler=%s"\
+              % (host, port, uuid_representation, unicode_decode_error_handler)
+        c = MongoClient(uri, connect=False)
+
+        self.assertEqual(c.codec_options.tz_aware, True)
+        self.assertEqual(c.codec_options.uuid_representation, PYTHON_LEGACY)
+        self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
 
 
 class TestClient(IntegrationTest):
