@@ -81,7 +81,7 @@ class MongoClient(common.BaseObject):
             host=None,
             port=None,
             document_class=dict,
-            tz_aware=False,
+            tz_aware=None,
             connect=True,
             **kwargs):
         """Client for a MongoDB instance, a replica set, or a set of mongoses.
@@ -359,7 +359,7 @@ class MongoClient(common.BaseObject):
 
         keyword_opts = kwargs
         keyword_opts['document_class'] = document_class
-        keyword_opts['tz_aware'] = tz_aware
+        keyword_opts['tz_aware'] = tz_aware if tz_aware is not None else opts.get('tz_aware', False)
         keyword_opts['connect'] = connect
         # Validate all keyword options.
         keyword_opts = dict(common.validate(k, v)
