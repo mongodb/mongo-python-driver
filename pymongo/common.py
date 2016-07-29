@@ -16,8 +16,8 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import collections
-import warnings
 import datetime
+import warnings
 
 from bson.binary import (STANDARD, PYTHON_LEGACY,
                          JAVA_LEGACY, CSHARP_LEGACY)
