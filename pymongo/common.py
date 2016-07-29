@@ -17,6 +17,7 @@
 
 import collections
 import warnings
+import datetime
 
 from bson.binary import (STANDARD, PYTHON_LEGACY,
                          JAVA_LEGACY, CSHARP_LEGACY)
@@ -419,6 +420,27 @@ def validate_ok_for_update(update):
         raise ValueError('update only works with $ operators')
 
 
+_UNICODE_DECODE_ERROR_HANDLERS = frozenset(['strict', 'replace', 'ignore'])
+
+
+def validate_unicode_decode_error_handler(dummy, value):
+    """Validate the Unicode decode error handler option of CodecOptions.
+    """
+    if value not in _UNICODE_DECODE_ERROR_HANDLERS:
+        raise ValueError("%s is an invalid Unicode decode error handler. "
+                         "Must be one of "
+                         "%s" % (value, tuple(_UNICODE_DECODE_ERROR_HANDLERS)))
+    return value
+
+
+def validate_tzinfo(dummy, value):
+    """Validate the tzinfo option
+    """
+    if value is not None and not isinstance(value, datetime.tzinfo):
+        raise TypeError("%s must be an instance of datetime.tzinfo" % value)
+    return value
+
+
 # journal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
 URI_VALIDATORS = {
@@ -450,7 +472,8 @@ URI_VALIDATORS = {
     'tz_aware': validate_boolean_or_string,
     'uuidrepresentation': validate_uuid_representation,
     'connect': validate_boolean_or_string,
-    'minpoolsize': validate_non_negative_integer
+    'minpoolsize': validate_non_negative_integer,
+    'unicode_decode_error_handler': validate_unicode_decode_error_handler
 }
 
 TIMEOUT_VALIDATORS = {
@@ -459,13 +482,14 @@ TIMEOUT_VALIDATORS = {
     'waitqueuetimeoutms': validate_timeout_or_none,
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'heartbeatfrequencyms': validate_timeout_or_none,
-    'maxidletimems': validate_timeout_or_none,
+    'maxidletimems': validate_timeout_or_none
 }
 
 KW_VALIDATORS = {
     'document_class': validate_document_class,
     'read_preference': validate_read_preference,
-    'event_listeners': _validate_event_listeners
+    'event_listeners': _validate_event_listeners,
+    'tzinfo': validate_tzinfo
 }
 
 URI_VALIDATORS.update(TIMEOUT_VALIDATORS)
