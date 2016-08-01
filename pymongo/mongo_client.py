@@ -359,8 +359,12 @@ class MongoClient(common.BaseObject):
 
         keyword_opts = kwargs
         keyword_opts['document_class'] = document_class
-        keyword_opts['tz_aware'] = tz_aware if tz_aware is not None else opts.get('tz_aware', False)
-        keyword_opts['connect'] = connect if connect is not None else opts.get('connect', True)
+        if tz_aware is None:
+            tz_aware = opts.get('tz_aware', False)
+        if connect is None:
+            connect = opts.get('connect', True)
+        keyword_opts['tz_aware'] = tz_aware
+        keyword_opts['connect'] = connect
         # Validate all keyword options.
         keyword_opts = dict(common.validate(k, v)
                             for k, v in keyword_opts.items())
