@@ -493,7 +493,8 @@ class Topology(object):
             ssl_context=options.ssl_context,
             ssl_match_hostname=options.ssl_match_hostname,
             socket_keepalive=True,
-            event_listeners=options.event_listeners)
+            event_listeners=options.event_listeners,
+            appname=options.appname)
 
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)

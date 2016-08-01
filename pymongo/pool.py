@@ -80,7 +80,7 @@ class PoolOptions(object):
                  '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
-                 '__event_listeners', '__metadata')
+                 '__event_listeners', '__appname', '__metadata')
 
     def __init__(self, max_pool_size=100, min_pool_size=0,
                  max_idle_time_ms=None, connect_timeout=None,
@@ -100,6 +100,7 @@ class PoolOptions(object):
         self.__ssl_match_hostname = ssl_match_hostname
         self.__socket_keepalive = socket_keepalive
         self.__event_listeners = event_listeners
+        self.__appname = appname
         self.__metadata = _METADATA.copy()
         if appname:
             self.__metadata['application'] = {'name': appname}
@@ -184,6 +185,12 @@ class PoolOptions(object):
         """An instance of pymongo.monitoring._EventListeners.
         """
         return self.__event_listeners
+
+    @property
+    def appname(self):
+        """The application name, for sending with ismaster in server handshake.
+        """
+        return self.__appname
 
     @property
     def metadata(self):
