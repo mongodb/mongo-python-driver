@@ -139,7 +139,7 @@ class Monitor(object):
             # Try a second and final time. If it fails return original error.
             start = _time()
             try:
-                return self._check_once()
+                return self._check_once(metadata=self._pool.opts.metadata)
             except ReferenceError:
                 raise
             except Exception as error:
