@@ -35,7 +35,11 @@ import pymongo.errors
 
 from bson.py3compat import _unicode
 from pymongo import common
+from pymongo.ssl_support import HAVE_SSL
 from test.version import Version
+
+if HAVE_SSL:
+    import ssl
 
 # hostnames retrieved from isMaster will be of unicode type in Python 2,
 # so ensure these hostnames are unicodes, too. It makes tests like
@@ -52,6 +56,24 @@ port3 = int(os.environ.get("DB_PORT3", 27019))
 
 db_user = _unicode(os.environ.get("DB_USER", "user"))
 db_pwd = _unicode(os.environ.get("DB_PASSWORD", "password"))
+
+CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                         'certificates')
+CLIENT_PEM = os.path.join(CERT_PATH, 'client.pem')
+
+
+def is_server_resolvable():
+    """Returns True if 'server' is resolvable."""
+    socket_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(1)
+    try:
+        try:
+            socket.gethostbyname('server')
+            return True
+        except socket.error:
+            return False
+    finally:
+        socket.setdefaulttimeout(socket_timeout)
 
 
 class client_knobs(object):
@@ -119,18 +141,38 @@ class ClientContext(object):
         self.is_mongos = False
         self.is_rs = False
         self.has_ipv6 = False
+        self.ssl_cert_none = False
+        self.ssl_certfile = False
+        self.server_is_resolvable = is_server_resolvable()
 
-        try:
-            client = pymongo.MongoClient(host, port,
-                                         serverSelectionTimeoutMS=100)
-            client.admin.command('ismaster')  # Can we connect?
+        self.client = self.rs_or_standalone_client = None
 
-            # If so, then reset client to defaults.
-            self.client = pymongo.MongoClient(host, port)
+        def connect(**kwargs):
+            try:
+                client = pymongo.MongoClient(
+                    host, port, serverSelectionTimeoutMS=100, **kwargs)
+                client.admin.command('ismaster')  # Can we connect?
+                # If connected, then return client with default timeout
+                return pymongo.MongoClient(host, port, **kwargs)
+            except pymongo.errors.ConnectionFailure:
+                return None
 
-        except pymongo.errors.ConnectionFailure:
-            self.client = self.rs_or_standalone_client = None
-        else:
+        self.client = connect()
+
+        if HAVE_SSL and not self.client:
+            # Is MongoDB configured for SSL?
+            self.client = connect(ssl=True, ssl_cert_reqs=ssl.CERT_NONE)
+            if self.client:
+                self.ssl_cert_none = True
+
+            # Can client connect with certfile?
+            client = connect(ssl=True,  ssl_cert_reqs=ssl.CERT_NONE,
+                             ssl_certfile=CLIENT_PEM,)
+            if client:
+                self.ssl_certfile = True
+                self.client = client
+
+        if self.client:
             self.connected = True
             self.ismaster = self.client.admin.command('ismaster')
             self.w = len(self.ismaster.get("hosts", [])) or 1
@@ -338,6 +380,36 @@ class ClientContext(object):
                              "Test commands must be enabled",
                              func=func)
 
+    def require_ssl(self, func):
+        """Run a test only if the client can connect over SSL."""
+        return self._require(self.ssl_cert_none or self.ssl_certfile,
+                             "Must be able to connect via SSL",
+                             func=func)
+
+    def require_no_ssl(self, func):
+        """Run a test only if the client can connect over SSL."""
+        return self._require(not (self.ssl_cert_none or self.ssl_certfile),
+                             "Must be able to connect without SSL",
+                             func=func)
+
+    def require_ssl_cert_none(self, func):
+        """Run a test only if the client can connect with ssl.CERT_NONE."""
+        return self._require(self.ssl_cert_none,
+                             "Must be able to connect with ssl.CERT_NONE",
+                             func=func)
+
+    def require_ssl_certfile(self, func):
+        """Run a test only if the client can connect with ssl_certfile."""
+        return self._require(self.ssl_certfile,
+                             "Must be able to connect with ssl_certfile",
+                             func=func)
+
+    def require_server_resolvable(self, func):
+        """Run a test only if the hostname 'server' is resolvable."""
+        return self._require(self.server_is_resolvable,
+                             "No hosts entry for 'server'. Cannot validate "
+                             "hostname in the certificate",
+                             func=func)
 
 # Reusable client context
 client_context = ClientContext()
