@@ -178,7 +178,9 @@ class Collection(common.BaseObject):
     def _command(self, sock_info, command, slave_ok=False,
                  read_preference=None,
                  codec_options=None, check=True, allowable_errors=None,
-                 read_concern=DEFAULT_READ_CONCERN):
+                 read_concern=DEFAULT_READ_CONCERN,
+                 write_concern=None,
+                 parse_write_concern_error=False):
         """Internal command helper.
 
         :Parameters:
@@ -191,6 +193,11 @@ class Collection(common.BaseObject):
           - `allowable_errors`: errors to ignore if `check` is True
           - `read_concern` (optional) - An instance of
             :class:`~pymongo.read_concern.ReadConcern`.
+          - `write_concern`: An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. This option is only
+            valid for MongoDB 3.4 and above.
+          - `parse_write_concern_error` (optional): Whether to parse a
+            ``writeConcernError`` field in the command response.
 
         :Returns:
 
@@ -198,14 +205,17 @@ class Collection(common.BaseObject):
 
           (result document, address of server the command was run on)
         """
-        return sock_info.command(self.__database.name,
-                                 command,
-                                 slave_ok,
-                                 read_preference or self.read_preference,
-                                 codec_options or self.codec_options,
-                                 check,
-                                 allowable_errors,
-                                 read_concern=read_concern)
+        return sock_info.command(
+            self.__database.name,
+            command,
+            slave_ok,
+            read_preference or self.read_preference,
+            codec_options or self.codec_options,
+            check,
+            allowable_errors,
+            read_concern=read_concern,
+            write_concern=write_concern,
+            parse_write_concern_error=parse_write_concern_error)
 
     def __create(self, options):
         """Sends a create command with the given options.
@@ -217,7 +227,9 @@ class Collection(common.BaseObject):
             cmd.update(options)
         with self._socket_for_writes() as sock_info:
             self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY)
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                write_concern=self.write_concern,
+                parse_write_concern_error=True)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -1268,6 +1280,13 @@ class Collection(common.BaseObject):
            introduced in MongoDB **2.6** and cannot be used with earlier
            versions.
 
+        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+           this collection is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
         .. versionadded:: 3.0
         """
         if not isinstance(indexes, list):
@@ -1285,7 +1304,9 @@ class Collection(common.BaseObject):
                    ('indexes', list(gen_indexes()))])
         with self._socket_for_writes() as sock_info:
             self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY)
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                write_concern=self.write_concern,
+                parse_write_concern_error=True)
         return names
 
     def __create_index(self, keys, index_options):
@@ -1303,7 +1324,9 @@ class Collection(common.BaseObject):
             cmd = SON([('createIndexes', self.name), ('indexes', [index])])
             try:
                 self._command(
-                    sock_info, cmd, read_preference=ReadPreference.PRIMARY)
+                    sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                    write_concern=self.write_concern,
+                    parse_write_concern_error=True)
             except OperationFailure as exc:
                 if exc.code in common.COMMAND_NOT_FOUND_CODES:
                     index["ns"] = self.__full_name
@@ -1374,6 +1397,10 @@ class Collection(common.BaseObject):
 
         .. note:: `partialFilterExpression` requires server version **>= 3.2**
 
+        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+           this collection is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
         :Parameters:
           - `keys`: a single key or a list of (key, direction)
             pairs specifying the index to create
@@ -1381,6 +1408,9 @@ class Collection(common.BaseObject):
             options (see the above list) should be passed as keyword
             arguments
 
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
         .. versionchanged:: 3.2
             Added partialFilterExpression to support partial indexes.
         .. versionchanged:: 3.0
@@ -1436,6 +1466,15 @@ class Collection(common.BaseObject):
 
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error.
+
+        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+           this collection is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
+
         """
         self.__database.client._purge_index(self.__database.name, self.__name)
         self.drop_index("*")
@@ -1459,6 +1498,15 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `index_or_name`: index (or name of index) to drop
+
+        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+           this collection is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
+
         """
         name = index_or_name
         if isinstance(index_or_name, list):
@@ -1474,7 +1522,9 @@ class Collection(common.BaseObject):
             self._command(sock_info,
                           cmd,
                           read_preference=ReadPreference.PRIMARY,
-                          allowable_errors=["ns not found"])
+                          allowable_errors=["ns not found"],
+                          write_concern=self.write_concern,
+                          parse_write_concern_error=True)
 
     def reindex(self):
         """Rebuilds all indexes on this collection.
@@ -1482,11 +1532,22 @@ class Collection(common.BaseObject):
         .. warning:: reindex blocks all other operations (indexes
            are built in the foreground) and will be slow for large
            collections.
+
+        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+           this collection is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
+
         """
         cmd = SON([("reIndex", self.__name)])
         with self._socket_for_writes() as sock_info:
             return self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY)
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                write_concern=self.write_concern,
+                parse_write_concern_error=True)
 
     def list_indexes(self):
         """Get a cursor over the index documents for this collection.
@@ -1625,6 +1686,10 @@ class Collection(common.BaseObject):
            use :meth:`~pymongo.database.Database.command` instead. An
            example is included in the :ref:`aggregate-examples` documentation.
 
+        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+           this collection is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
         :Parameters:
           - `pipeline`: a list of aggregation pipeline stages
           - `**kwargs` (optional): See list of options above.
@@ -1633,6 +1698,9 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
         .. versionchanged:: 3.0
            The :meth:`aggregate` method always returns a CommandCursor. The
            pipeline argument must be a list.
@@ -1674,18 +1742,25 @@ class Collection(common.BaseObject):
                     if batch_size is not None:
                         kwargs["cursor"]["batchSize"] = batch_size
 
+            dollar_out = pipeline and '$out' in pipeline[-1]
+            if (sock_info.max_wire_version >= 5 and dollar_out and
+                    self.write_concern):
+                cmd['writeConcern'] = self.write_concern.document
+
             cmd.update(kwargs)
 
             # Apply this Collection's read concern if $out is not in the
             # pipeline.
             if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
-                if pipeline and '$out' in pipeline[-1]:
-                    result = self._command(sock_info, cmd, slave_ok)
+                if dollar_out:
+                    result = self._command(sock_info, cmd, slave_ok,
+                                           parse_write_concern_error=True)
                 else:
                     result = self._command(sock_info, cmd, slave_ok,
                                            read_concern=self.read_concern)
             else:
-                result = self._command(sock_info, cmd, slave_ok)
+                result = self._command(sock_info, cmd, slave_ok,
+                                       parse_write_concern_error=dollar_out)
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -1764,6 +1839,15 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional arguments to the rename command
             may be passed as keyword arguments to this helper method
             (i.e. ``dropTarget=True``)
+
+        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+           this collection is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
+
         """
         if not isinstance(new_name, string_type):
             raise TypeError("new_name must be an "
@@ -1778,9 +1862,11 @@ class Collection(common.BaseObject):
 
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
-        cmd.update(kwargs)
         with self._socket_for_writes() as sock_info:
-            sock_info.command('admin', cmd)
+            if sock_info.max_wire_version >= 5 and self.write_concern:
+                cmd['writeConcern'] = self.write_concern.document
+            cmd.update(kwargs)
+            sock_info.command('admin', cmd, parse_write_concern_error=True)
 
     def distinct(self, key, filter=None, **kwargs):
         """Get a list of distinct values for `key` among all documents
@@ -1848,6 +1934,14 @@ class Collection(common.BaseObject):
            mapReduce on a secondary use the :meth:`inline_map_reduce` method
            instead.
 
+        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
+           this collection is automatically applied to this operation (if the
+           output is not inline) when using MongoDB >= 3.4.
+
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
+
         .. seealso:: :doc:`/examples/aggregation`
 
         .. versionchanged:: 2.2
@@ -1856,6 +1950,7 @@ class Collection(common.BaseObject):
         .. _map reduce command: http://docs.mongodb.org/manual/reference/command/mapReduce/
 
         .. mongodoc:: mapreduce
+
         """
         if not isinstance(out, (string_type, collections.Mapping)):
             raise TypeError("'out' must be an instance of "
@@ -1865,17 +1960,24 @@ class Collection(common.BaseObject):
                    ("map", map),
                    ("reduce", reduce),
                    ("out", out)])
-        cmd.update(kwargs)
 
+        inline = 'inline' in cmd['out']
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
+            if (sock_info.max_wire_version >= 5 and self.write_concern and
+                    not inline):
+                cmd['writeConcern'] = self.write_concern.document
+            cmd.update(kwargs)
             if (sock_info.max_wire_version >= 4 and 'readConcern' not in cmd and
-                    'inline' in cmd['out']):
+                    inline):
+                # No need to parse 'writeConcernError' here, since the command
+                # is an inline map reduce.
                 response = self._command(
                     sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
                     read_concern=self.read_concern)
             else:
                 response = self._command(
-                    sock_info, cmd, slave_ok, ReadPreference.PRIMARY)
+                    sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
+                    parse_write_concern_error=not inline)
 
         if full_response or not response.get('result'):
             return response

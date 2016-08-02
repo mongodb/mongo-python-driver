@@ -106,3 +106,5 @@ class WriteConcern(object):
     def __ne__(self, other):
         return self.document != other.document
 
+    def __bool__(self):
+        return bool(self.document)

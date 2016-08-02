@@ -1107,6 +1107,15 @@ class MongoClient(common.BaseObject):
           - `name_or_database`: the name of a database to drop, or a
             :class:`~pymongo.database.Database` instance representing the
             database to drop
+
+        .. note:: The :attr:`~pymongo.mongo_client.MongoClient.write_concern` of
+           this client is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
+        .. versionchanged:: 3.4
+           Apply this client's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
+
         """
         name = name_or_database
         if isinstance(name, database.Database):
@@ -1117,8 +1126,15 @@ class MongoClient(common.BaseObject):
                             "of %s or a Database" % (string_type.__name__,))
 
         self._purge_index(name)
-        self[name].command("dropDatabase",
-                           read_preference=ReadPreference.PRIMARY)
+        with self._socket_for_reads(
+                ReadPreference.PRIMARY) as (sock_info, slave_ok):
+            self[name]._command(
+                sock_info,
+                "dropDatabase",
+                slave_ok=slave_ok,
+                read_preference=ReadPreference.PRIMARY,
+                write_concern=self.write_concern,
+                parse_write_concern_error=True)
 
     def get_default_database(self):
         """Get the database named in the MongoDB connection URI.

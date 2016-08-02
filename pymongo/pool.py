@@ -237,7 +237,9 @@ class SocketInfo(object):
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
                 allowable_errors=None, check_keys=False,
-                read_concern=DEFAULT_READ_CONCERN):
+                read_concern=DEFAULT_READ_CONCERN,
+                write_concern=None,
+                parse_write_concern_error=False):
         """Execute a command or raise ConnectionFailure or OperationFailure.
 
         :Parameters:
@@ -250,18 +252,24 @@ class SocketInfo(object):
           - `allowable_errors`: errors to ignore if `check` is True
           - `check_keys`: if True, check `spec` for invalid keys
           - `read_concern`: The read concern for this command.
+          - `write_concern`: The write concern for this command.
+          - `parse_write_concern_error`: Whether to parse the
+            ``writeConcernError` field in the command response.
         """
         if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
             raise ConfigurationError(
                 'read concern level of %s is not valid '
                 'with a max wire version of %d.'
                 % (read_concern.level, self.max_wire_version))
+        if self.max_wire_version >= 5 and write_concern:
+            spec['writeConcern'] = write_concern.document
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
                            check, allowable_errors, self.address,
                            check_keys, self.listeners, self.max_bson_size,
-                           read_concern)
+                           read_concern,
+                           parse_write_concern_error=parse_write_concern_error)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

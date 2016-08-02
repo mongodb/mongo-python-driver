@@ -16,6 +16,7 @@
 
 """Test the collection module."""
 
+import contextlib
 import re
 import sys
 import threading
@@ -59,7 +60,8 @@ from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
 from test.utils import (is_mongos, enable_text_search, get_pool,
                         rs_or_single_client, single_client,
-                        wait_until, EventListener)
+                        wait_until, EventListener,
+                        IMPOSSIBLE_WRITE_CONCERN)
 from test import client_context, host, port, unittest
 
 
@@ -124,6 +126,29 @@ class TestCollection(IntegrationTest):
     def tearDownClass(cls):
         cls.db.drop_collection("test_large_limit")
 
+    @contextlib.contextmanager
+    def write_concern_collection(self):
+        if client_context.version.at_least(3, 3, 9) and client_context.is_rs:
+            with self.assertRaises(WriteConcernError):
+                # Unsatisfiable write concern.
+                yield Collection(
+                    self.db, 'test',
+                    write_concern=WriteConcern(w=len(client_context.nodes) + 1))
+        else:
+            yield self.db.test
+
+    @client_context.require_version_min(3, 3, 9)
+    def test_create(self):
+        # No Exception.
+        db = client_context.rs_or_standalone_client.pymongo_test
+        db.create_test_no_wc.drop()
+        Collection(db, name='create_test_no_wc', create=True)
+        with self.assertRaises(OperationFailure):
+            Collection(
+                db, name='create-test-wc',
+                write_concern=IMPOSSIBLE_WRITE_CONCERN,
+                create=True)
+
     def test_drop_nonexistent_collection(self):
         self.db.drop_collection('test')
         self.assertFalse('test' in self.db.collection_names())
@@ -181,6 +206,9 @@ class TestCollection(IntegrationTest):
             db.test.create_indexes,
             [IndexModel('a', unique=True)])
 
+        with self.write_concern_collection() as coll:
+            coll.create_indexes([IndexModel('hello')])
+
     def test_create_index(self):
         db = self.db
 
@@ -221,6 +249,9 @@ class TestCollection(IntegrationTest):
         self.assertRaises(
             DuplicateKeyError, db.test.create_index, 'a', unique=True)
 
+        with self.write_concern_collection() as coll:
+            coll.create_index([('hello', DESCENDING)])
+
     def test_drop_index(self):
         db = self.db
         db.test.drop_indexes()
@@ -247,6 +278,9 @@ class TestCollection(IntegrationTest):
         self.assertEqual(len(db.test.index_information()), 2)
         self.assertTrue("hello_1" in db.test.index_information())
 
+        with self.write_concern_collection() as coll:
+            coll.drop_index('hello_1')
+
     def test_reindex(self):
         db = self.db
         db.drop_collection("test")
@@ -272,6 +306,9 @@ class TestCollection(IntegrationTest):
                 check_result(result)
         else:
             check_result(reindexed)
+
+        with self.write_concern_collection() as coll:
+            coll.reindex()
 
     def test_list_indexes(self):
         db = self.db
@@ -1453,6 +1490,11 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, CommandCursor))
         self.assertEqual([{'foo': [1, 2]}], list(result))
 
+        # Test write concern.
+        out_pipeline = [pipeline, {'$out': 'output-collection'}]
+        with self.write_concern_collection() as coll:
+            coll.aggregate(out_pipeline)
+
     def test_aggregate_raw_bson(self):
         db = self.db
         db.drop_collection("test")
@@ -1739,6 +1781,9 @@ class TestCollection(IntegrationTest):
         self.assertRaises(OperationFailure, db.foo.rename, "test")
         db.foo.rename("test", dropTarget=True)
 
+        with self.write_concern_collection() as coll:
+            coll.rename('foo')
+
     def test_find_one(self):
         db = self.db
         db.drop_collection("test")
@@ -2002,6 +2047,9 @@ class TestCollection(IntegrationTest):
         full_result = db.test.inline_map_reduce(map, reduce,
                                                 full_response=True)
         self.assertEqual(6, full_result["counts"]["emit"])
+
+        with self.write_concern_collection() as coll:
+            coll.map_reduce(map, reduce, 'output')
 
     def test_messages_with_unicode_collection_names(self):
         db = self.db

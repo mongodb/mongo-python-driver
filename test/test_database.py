@@ -41,7 +41,8 @@ from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             ExecutionTimeout,
                             InvalidName,
-                            OperationFailure)
+                            OperationFailure,
+                            WriteConcernError)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
@@ -55,7 +56,8 @@ from test.utils import (ignore_deprecations,
                         remove_all_users,
                         rs_or_single_client_noauth,
                         rs_or_single_client,
-                        server_started_with_auth)
+                        server_started_with_auth,
+                        IMPOSSIBLE_WRITE_CONCERN)
 
 
 if PY3:
@@ -218,6 +220,12 @@ class TestDatabase(IntegrationTest):
         db.test.drop()
 
         db.drop_collection(db.test.doesnotexist)
+
+        if client_context.version.at_least(3, 3, 9) and client_context.is_rs:
+            db_wc = Database(self.client, 'pymongo_test',
+                             write_concern=IMPOSSIBLE_WRITE_CONCERN)
+            with self.assertRaises(WriteConcernError):
+                db_wc.drop_collection('test')
 
     def test_validate_collection(self):
         db = self.client.pymongo_test

@@ -45,7 +45,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, check=True,
             allowable_errors=None, address=None,
             check_keys=False, listeners=None, max_bson_size=None,
-            read_concern=DEFAULT_READ_CONCERN):
+            read_concern=DEFAULT_READ_CONCERN,
+            parse_write_concern_error=False):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -63,6 +64,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
       - `max_bson_size`: The maximum encoded bson size for this server
       - `read_concern`: The read concern for this command.
+      - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
+        field in the command response.
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
@@ -99,7 +102,9 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
         response_doc = unpacked['data'][0]
         if check:
-            helpers._check_command_response(response_doc, None, allowable_errors)
+            helpers._check_command_response(
+                response_doc, None, allowable_errors,
+                parse_write_concern_error=parse_write_concern_error)
     except Exception as exc:
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration

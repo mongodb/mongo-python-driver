@@ -39,6 +39,9 @@ from test import (client_context,
 from test.version import Version
 
 
+IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=len(client_context.nodes) + 1)
+
+
 class EventListener(monitoring.CommandListener):
 
     def __init__(self):

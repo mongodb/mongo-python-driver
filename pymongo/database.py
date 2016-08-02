@@ -378,19 +378,27 @@ class Database(common.BaseObject):
 
     def _command(self, sock_info, command, slave_ok=False, value=1, check=True,
                  allowable_errors=None, read_preference=ReadPreference.PRIMARY,
-                 codec_options=DEFAULT_CODEC_OPTIONS, **kwargs):
+                 codec_options=DEFAULT_CODEC_OPTIONS,
+                 write_concern=None,
+                 parse_write_concern_error=False, **kwargs):
         """Internal command helper."""
         if isinstance(command, string_type):
             command = SON([(command, value)])
+
+        if sock_info.max_wire_version >= 5 and write_concern:
+            command['writeConcern'] = write_concern.document
+
         command.update(kwargs)
 
-        return sock_info.command(self.__name,
-                                 command,
-                                 slave_ok,
-                                 read_preference,
-                                 codec_options,
-                                 check,
-                                 allowable_errors)
+        return sock_info.command(
+            self.__name,
+            command,
+            slave_ok,
+            read_preference,
+            codec_options,
+            check,
+            allowable_errors,
+            parse_write_concern_error=parse_write_concern_error)
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
@@ -539,6 +547,15 @@ class Database(common.BaseObject):
         :Parameters:
           - `name_or_collection`: the name of a collection to drop or the
             collection object itself
+
+        .. note:: The :attr:`~pymongo.database.Database.write_concern` of
+           this database is automatically applied to this operation when using
+           MongoDB >= 3.4.
+
+        .. versionchanged:: 3.4
+           Apply this database's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
+
         """
         name = name_or_collection
         if isinstance(name, Collection):
@@ -550,7 +567,13 @@ class Database(common.BaseObject):
 
         self.__client._purge_index(self.__name, name)
 
-        self.command("drop", _unicode(name), allowable_errors=["ns not found"])
+        with self.__client._socket_for_reads(
+                ReadPreference.PRIMARY) as (sock_info, slave_ok):
+            return self._command(
+                sock_info, 'drop', slave_ok, _unicode(name),
+                allowable_errors=['ns not found'],
+                write_concern=self.write_concern,
+                parse_write_concern_error=True)
 
     def validate_collection(self, name_or_collection,
                             scandata=False, full=False):

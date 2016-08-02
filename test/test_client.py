@@ -40,7 +40,8 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure,
                             NetworkTimeout,
-                            InvalidURI)
+                            InvalidURI,
+                            WriteConcernError)
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
 from pymongo.mongo_client import MongoClient
@@ -64,7 +65,6 @@ from test import (client_context,
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
-                        HeartbeatEventListener,
                         remove_all_users,
                         server_is_master_with_slave,
                         get_pool,
@@ -75,6 +75,7 @@ from test.utils import (assertRaisesExactly,
                         rs_or_single_client_noauth,
                         single_client,
                         lazy_client_trial,
+                        IMPOSSIBLE_WRITE_CONCERN,
                         NTHREADS)
 
 
@@ -462,6 +463,12 @@ class TestClient(IntegrationTest):
         self.assertIn("pymongo_test", dbs)
         self.assertIn("pymongo_test2", dbs)
         self.client.drop_database("pymongo_test")
+
+        if client_context.version.at_least(3, 3, 9) and client_context.is_rs:
+            wc_client = rs_or_single_client(w=len(client_context.nodes) + 1)
+            with self.assertRaises(WriteConcernError):
+                wc_client.drop_database('pymongo_test2')
+
         self.client.drop_database(self.client.pymongo_test2)
 
         raise SkipTest("This test often fails due to SERVER-2329")

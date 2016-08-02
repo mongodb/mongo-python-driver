@@ -145,7 +145,8 @@ def _unpack_response(response,
     return result
 
 
-def _check_command_response(response, msg=None, allowable_errors=None):
+def _check_command_response(response, msg=None, allowable_errors=None,
+                            parse_write_concern_error=False):
     """Check the response to a command for errors.
     """
     if "ok" not in response:
@@ -162,6 +163,10 @@ def _check_command_response(response, msg=None, allowable_errors=None):
         raise WTimeoutError(response.get("errmsg", response.get("err")),
                             response.get("code"),
                             response)
+
+    if parse_write_concern_error and 'writeConcernError' in response:
+        wce = response['writeConcernError']
+        raise WriteConcernError(wce['errmsg'], wce['code'], wce)
 
     if not response["ok"]:
 
