@@ -324,8 +324,13 @@ class Database(common.BaseObject):
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
             default) the :attr:`read_concern` of this :class:`Database` is
             used.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 3.4
+           Added the collation option.
 
         .. versionchanged:: 3.0
            Added the codec_options, read_preference, and write_concern options.

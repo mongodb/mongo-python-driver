@@ -24,7 +24,9 @@ from pymongo.common import (validate_is_mapping,
                             validate_is_document_type,
                             validate_ok_for_replace,
                             validate_ok_for_update)
+from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (BulkWriteError,
+                            ConfigurationError,
                             DocumentTooLarge,
                             InvalidOperation,
                             OperationFailure)
@@ -212,6 +214,7 @@ class _Bulk(object):
         self.namespace = collection.database.name + '.$cmd'
         self.executed = False
         self.bypass_doc_val = bypass_document_validation
+        self.uses_collation = False
 
     def add_insert(self, document):
         """Add an insert document to the list of ops.
@@ -222,26 +225,40 @@ class _Bulk(object):
             document['_id'] = ObjectId()
         self.ops.append((_INSERT, document))
 
-    def add_update(self, selector, update, multi=False, upsert=False):
+    def add_update(self, selector, update, multi=False, upsert=False,
+                   collation=None):
         """Create an update document and add it to the list of ops.
         """
         validate_ok_for_update(update)
         cmd = SON([('q', selector), ('u', update),
                    ('multi', multi), ('upsert', upsert)])
+        collation = validate_collation_or_none(collation)
+        if collation is not None:
+            self.uses_collation = True
+            cmd['collation'] = collation
         self.ops.append((_UPDATE, cmd))
 
-    def add_replace(self, selector, replacement, upsert=False):
+    def add_replace(self, selector, replacement, upsert=False,
+                    collation=None):
         """Create a replace document and add it to the list of ops.
         """
         validate_ok_for_replace(replacement)
         cmd = SON([('q', selector), ('u', replacement),
                    ('multi', False), ('upsert', upsert)])
+        collation = validate_collation_or_none(collation)
+        if collation is not None:
+            self.uses_collation = True
+            cmd['collation'] = collation
         self.ops.append((_UPDATE, cmd))
 
-    def add_delete(self, selector, limit):
+    def add_delete(self, selector, limit, collation=None):
         """Create a delete document and add it to the list of ops.
         """
         cmd = SON([('q', selector), ('limit', limit)])
+        collation = validate_collation_or_none(collation)
+        if collation is not None:
+            self.uses_collation = True
+            cmd['collation'] = collation
         self.ops.append((_DELETE, cmd))
 
     def gen_ordered(self):
@@ -464,6 +481,10 @@ class _Bulk(object):
 
         client = self.collection.database.client
         with client._socket_for_writes() as sock_info:
+            if sock_info.max_wire_version < 5 and self.uses_collation:
+                raise ConfigurationError(
+                    'Specifying a collation is unsupported with a max wire '
+                    'version of %d.' % (sock_info.max_wire_version,))
             if not write_concern.acknowledged:
                 self.execute_no_results(sock_info, generator)
             elif sock_info.max_wire_version > 1:
@@ -476,11 +497,12 @@ class BulkUpsertOperation(object):
     """An interface for adding upsert operations.
     """
 
-    __slots__ = ('__selector', '__bulk')
+    __slots__ = ('__selector', '__bulk', '__collation')
 
-    def __init__(self, selector, bulk):
+    def __init__(self, selector, bulk, collation):
         self.__selector = selector
         self.__bulk = bulk
+        self.__collation = collation
 
     def update_one(self, update):
         """Update one document matching the selector.
@@ -489,7 +511,8 @@ class BulkUpsertOperation(object):
           - `update` (dict): the update operations to apply
         """
         self.__bulk.add_update(self.__selector,
-                               update, multi=False, upsert=True)
+                               update, multi=False, upsert=True,
+                               collation=self.__collation)
 
     def update(self, update):
         """Update all documents matching the selector.
@@ -498,7 +521,8 @@ class BulkUpsertOperation(object):
           - `update` (dict): the update operations to apply
         """
         self.__bulk.add_update(self.__selector,
-                               update, multi=True, upsert=True)
+                               update, multi=True, upsert=True,
+                               collation=self.__collation)
 
     def replace_one(self, replacement):
         """Replace one entire document matching the selector criteria.
@@ -506,18 +530,20 @@ class BulkUpsertOperation(object):
         :Parameters:
           - `replacement` (dict): the replacement document
         """
-        self.__bulk.add_replace(self.__selector, replacement, upsert=True)
+        self.__bulk.add_replace(self.__selector, replacement, upsert=True,
+                                collation=self.__collation)
 
 
 class BulkWriteOperation(object):
     """An interface for adding update or remove operations.
     """
 
-    __slots__ = ('__selector', '__bulk')
+    __slots__ = ('__selector', '__bulk', '__collation')
 
-    def __init__(self, selector, bulk):
+    def __init__(self, selector, bulk, collation):
         self.__selector = selector
         self.__bulk = bulk
+        self.__collation = collation
 
     def update_one(self, update):
         """Update one document matching the selector criteria.
@@ -525,7 +551,8 @@ class BulkWriteOperation(object):
         :Parameters:
           - `update` (dict): the update operations to apply
         """
-        self.__bulk.add_update(self.__selector, update, multi=False)
+        self.__bulk.add_update(self.__selector, update, multi=False,
+                               collation=self.__collation)
 
     def update(self, update):
         """Update all documents matching the selector criteria.
@@ -533,7 +560,8 @@ class BulkWriteOperation(object):
         :Parameters:
           - `update` (dict): the update operations to apply
         """
-        self.__bulk.add_update(self.__selector, update, multi=True)
+        self.__bulk.add_update(self.__selector, update, multi=True,
+                               collation=self.__collation)
 
     def replace_one(self, replacement):
         """Replace one entire document matching the selector criteria.
@@ -541,17 +569,20 @@ class BulkWriteOperation(object):
         :Parameters:
           - `replacement` (dict): the replacement document
         """
-        self.__bulk.add_replace(self.__selector, replacement)
+        self.__bulk.add_replace(self.__selector, replacement,
+                                collation=self.__collation)
 
     def remove_one(self):
         """Remove a single document matching the selector criteria.
         """
-        self.__bulk.add_delete(self.__selector, _DELETE_ONE)
+        self.__bulk.add_delete(self.__selector, _DELETE_ONE,
+                               collation=self.__collation)
 
     def remove(self):
         """Remove all documents matching the selector criteria.
         """
-        self.__bulk.add_delete(self.__selector, _DELETE_ALL)
+        self.__bulk.add_delete(self.__selector, _DELETE_ALL,
+                               collation=self.__collation)
 
     def upsert(self):
         """Specify that all chained update operations should be
@@ -561,7 +592,8 @@ class BulkWriteOperation(object):
           - A :class:`BulkUpsertOperation` instance, used to add
             update operations to this bulk operation.
         """
-        return BulkUpsertOperation(self.__selector, self.__bulk)
+        return BulkUpsertOperation(self.__selector, self.__bulk,
+                                   self.__collation)
 
 
 class BulkOperationBuilder(object):
@@ -594,19 +626,26 @@ class BulkOperationBuilder(object):
         """
         self.__bulk = _Bulk(collection, ordered, bypass_document_validation)
 
-    def find(self, selector):
+    def find(self, selector, collation=None):
         """Specify selection criteria for bulk operations.
 
         :Parameters:
           - `selector` (dict): the selection criteria for update
             and remove operations.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         :Returns:
           - A :class:`BulkWriteOperation` instance, used to add
             update and remove operations to this bulk operation.
+
+        .. versionchanged:: 3.4
+           Added the `collation` option.
+
         """
         validate_is_mapping("selector", selector)
-        return BulkWriteOperation(selector, self.__bulk)
+        return BulkWriteOperation(selector, self.__bulk, collation)
 
     def insert(self, document):
         """Insert a single document.

@@ -31,6 +31,7 @@ from pymongo import (common,
                      message)
 from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor
+from pymongo.collation import validate_collation_or_none
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
@@ -85,10 +86,10 @@ class Collection(common.BaseObject):
         :meth:`~pymongo.database.Database.create_collection` for valid
         options.
 
-        If `create` is ``True`` or additional keyword arguments are
-        present a create command will be sent. Otherwise, a create
-        command will not be sent and the collection will be created
-        implicitly on first use.
+        If `create` is ``True``, `collation` is specified, or any additional
+        keyword arguments are present, a ``create`` command will be
+        sent. Otherwise, a ``create`` command will not be sent and the
+        collection will be created implicitly on first use.
 
         :Parameters:
           - `database`: the database to get a collection from
@@ -106,8 +107,15 @@ class Collection(common.BaseObject):
           - `read_concern` (optional): An instance of
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
             default) database.read_concern is used.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. If a collation is provided,
+            it will be passed to the create collection command. This option is
+            only supported on MongoDB 3.4 and above.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 3.4
+           Support the `collation` option.
 
         .. versionchanged:: 3.2
            Added the read_concern option.
@@ -156,12 +164,13 @@ class Collection(common.BaseObject):
         if "\x00" in name:
             raise InvalidName("collection names must not contain the "
                               "null character")
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
 
         self.__database = database
         self.__name = _unicode(name)
         self.__full_name = _UJOIN % (self.__database.name, self.__name)
-        if create or kwargs:
-            self.__create(kwargs)
+        if create or kwargs or collation:
+            self.__create(kwargs, collation)
 
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler='replace',
@@ -181,7 +190,8 @@ class Collection(common.BaseObject):
                  codec_options=None, check=True, allowable_errors=None,
                  read_concern=DEFAULT_READ_CONCERN,
                  write_concern=None,
-                 parse_write_concern_error=False):
+                 parse_write_concern_error=False,
+                 collation=None):
         """Internal command helper.
 
         :Parameters:
@@ -199,6 +209,8 @@ class Collection(common.BaseObject):
             valid for MongoDB 3.4 and above.
           - `parse_write_concern_error` (optional): Whether to parse a
             ``writeConcernError`` field in the command response.
+          - `collation` (optional) - An instance of
+            :class:`~pymongo.collation.Collation`.
 
         :Returns:
 
@@ -216,9 +228,10 @@ class Collection(common.BaseObject):
             allowable_errors,
             read_concern=read_concern,
             write_concern=write_concern,
-            parse_write_concern_error=parse_write_concern_error)
+            parse_write_concern_error=parse_write_concern_error,
+            collation=collation)
 
-    def __create(self, options):
+    def __create(self, options, collation):
         """Sends a create command with the given options.
         """
         cmd = SON([("create", self.__name)])
@@ -230,7 +243,8 @@ class Collection(common.BaseObject):
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 write_concern=self.write_concern,
-                parse_write_concern_error=True)
+                parse_write_concern_error=True,
+                collation=collation)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -700,19 +714,31 @@ class Collection(common.BaseObject):
     def _update(self, sock_info, criteria, document, upsert=False,
                 check_keys=True, multi=False, manipulate=False,
                 write_concern=None, op_id=None, ordered=True,
-                bypass_doc_val=False):
+                bypass_doc_val=False, collation=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         if manipulate:
             document = self.__database._fix_incoming(document, self)
+        collation = validate_collation_or_none(collation)
         concern = (write_concern or self.write_concern).document
         acknowledged = concern.get("w") != 0
+        update_doc = SON([('q', criteria),
+                          ('u', document),
+                          ('multi', multi),
+                          ('upsert', upsert)])
+        if collation is not None:
+            if sock_info.max_wire_version < 5:
+                raise ConfigurationError(
+                    'Specifying a collation is unsupported with a max wire '
+                    'version of %d.' % (sock_info.max_wire_version,))
+            elif not acknowledged:
+                raise ConfigurationError(
+                    'Collation is unsupported for unacknowledged writes.')
+            else:
+                update_doc['collation'] = collation
         command = SON([('update', self.name),
                        ('ordered', ordered),
-                       ('updates', [SON([('q', criteria),
-                                         ('u', document),
-                                         ('multi', multi),
-                                         ('upsert', upsert)])])])
+                       ('updates', [update_doc])])
         if concern:
             command['writeConcern'] = concern
         if sock_info.max_wire_version > 1 and acknowledged:
@@ -747,7 +773,7 @@ class Collection(common.BaseObject):
                 self.__write_response_codec_options)
 
     def replace_one(self, filter, replacement, upsert=False,
-                    bypass_document_validation=False):
+                    bypass_document_validation=False, collation=None):
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -785,12 +811,18 @@ class Collection(common.BaseObject):
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
             ``False``.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.4
+          Added the `collation` option.
 
         .. versionchanged:: 3.2
           Added bypass_document_validation support
@@ -801,11 +833,13 @@ class Collection(common.BaseObject):
         common.validate_ok_for_replace(replacement)
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, replacement, upsert,
-                                  bypass_doc_val=bypass_document_validation)
+                                  bypass_doc_val=bypass_document_validation,
+                                  collation=collation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False,
-                   bypass_document_validation=False):
+                   bypass_document_validation=False,
+                   collation=None):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -834,12 +868,18 @@ class Collection(common.BaseObject):
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
             ``False``.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.4
+          Added the `collation` option.
 
         .. versionchanged:: 3.2
           Added bypass_document_validation support
@@ -851,11 +891,12 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
                                   check_keys=False,
-                                  bypass_doc_val=bypass_document_validation)
+                                  bypass_doc_val=bypass_document_validation,
+                                  collation=collation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False,
-                    bypass_document_validation=False):
+                    bypass_document_validation=False, collation=None):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -881,15 +922,21 @@ class Collection(common.BaseObject):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
-          - `bypass_document_validation`: (optional) If ``True``, allows the
+          - `bypass_document_validation` (optional): If ``True``, allows the
             write to opt-out of document level validation. Default is
             ``False``.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.4
+          Added the `collation` option.
 
         .. versionchanged:: 3.2
           Added bypass_document_validation support
@@ -901,7 +948,8 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
                                   check_keys=False, multi=True,
-                                  bypass_doc_val=bypass_document_validation)
+                                  bypass_doc_val=bypass_document_validation,
+                                  collation=collation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def drop(self):
@@ -916,15 +964,28 @@ class Collection(common.BaseObject):
 
     def _delete(
             self, sock_info, criteria, multi,
-            write_concern=None, op_id=None, ordered=True):
+            write_concern=None, op_id=None, ordered=True,
+            collation=None):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         concern = (write_concern or self.write_concern).document
         acknowledged = concern.get("w") != 0
+        delete_doc = SON([('q', criteria),
+                          ('limit', int(not multi))])
+        collation = validate_collation_or_none(collation)
+        if collation is not None:
+            if sock_info.max_wire_version < 5:
+                raise ConfigurationError(
+                    'Specifying a collation is unsupported with a max wire '
+                    'version of %d.' % (sock_info.max_wire_version,))
+            elif not acknowledged:
+                raise ConfigurationError(
+                    'Collation is unsupported for unacknowledged writes.')
+            else:
+                delete_doc['collation'] = collation
         command = SON([('delete', self.name),
                        ('ordered', ordered),
-                       ('deletes', [SON([('q', criteria),
-                                         ('limit', int(not multi))])])])
+                       ('deletes', [delete_doc])])
         if concern:
             command['writeConcern'] = concern
 
@@ -944,7 +1005,7 @@ class Collection(common.BaseObject):
                 acknowledged, concern, self.__write_response_codec_options,
                 int(not multi))
 
-    def delete_one(self, filter):
+    def delete_one(self, filter, collation=None):
         """Delete a single document matching the filter.
 
           >>> db.test.count({'x': 1})
@@ -957,16 +1018,24 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `filter`: A query that matches the document to delete.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
+
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
+
+        .. versionchanged:: 3.4
+          Added the `collation` option.
 
         .. versionadded:: 3.0
         """
         with self._socket_for_writes() as sock_info:
-            return DeleteResult(self._delete(sock_info, filter, False),
+            return DeleteResult(self._delete(sock_info, filter, False,
+                                             collation=collation),
                                 self.write_concern.acknowledged)
 
-    def delete_many(self, filter):
+    def delete_many(self, filter, collation=None):
         """Delete one or more documents matching the filter.
 
           >>> db.test.count({'x': 1})
@@ -979,13 +1048,21 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `filter`: A query that matches the documents to delete.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
+
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
+
+        .. versionchanged:: 3.4
+          Added the `collation` option.
 
         .. versionadded:: 3.0
         """
         with self._socket_for_writes() as sock_info:
-            return DeleteResult(self._delete(sock_info, filter, True),
+            return DeleteResult(self._delete(sock_info, filter, True,
+                                             collation=collation),
                                 self.write_concern.acknowledged)
 
     def find_one(self, filter=None, *args, **kwargs):
@@ -1108,6 +1185,9 @@ class Collection(common.BaseObject):
             a single batch.
           - `manipulate` (optional): **DEPRECATED** - If True (the default),
             apply any outgoing SON manipulators before returning.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         .. note:: There are a number of caveats to using
           :attr:`~pymongo.cursor.CursorType.EXHAUST` as cursor_type:
@@ -1124,6 +1204,9 @@ class Collection(common.BaseObject):
             completely iterated the underlying :class:`~socket.socket`
             connection will be closed and discarded without being returned to
             the connection pool.
+
+        .. versionchanged:: 3.4
+           Support the `collation` option.
 
         .. versionchanged:: 3.0
            Changed the parameter names `spec`, `fields`, `timeout`, and
@@ -1218,14 +1301,15 @@ class Collection(common.BaseObject):
         return [CommandCursor(self, cursor['cursor'], sock_info.address)
                 for cursor in result['cursors']]
 
-    def _count(self, cmd):
+    def _count(self, cmd, collation=None):
         """Internal count helper."""
         with self._socket_for_reads() as (sock_info, slave_ok):
             res = self._command(
                 sock_info, cmd, slave_ok,
                 allowable_errors=["ns missing"],
                 codec_options=self.__write_response_codec_options,
-                read_concern=self.read_concern)
+                read_concern=self.read_concern,
+                collation=collation)
         if res.get("errmsg", "") == "ns missing":
             return 0
         return int(res["n"])
@@ -1244,6 +1328,9 @@ class Collection(common.BaseObject):
             returning results.
           - `maxTimeMS` (int): The maximum amount of time to allow the count
             command to run, in milliseconds.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         The :meth:`count` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
@@ -1252,6 +1339,10 @@ class Collection(common.BaseObject):
           - `filter` (optional): A query document that selects which documents
             to count in the collection.
           - `**kwargs` (optional): See list of options above.
+
+        .. versionchanged:: 3.4
+           Support the `collation` option.
+
         """
         cmd = SON([("count", self.__name)])
         if filter is not None:
@@ -1260,8 +1351,9 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        return self._count(cmd)
+        return self._count(cmd, collation)
 
     def create_indexes(self, indexes):
         """Create one or more indexes on this collection.
@@ -1320,9 +1412,18 @@ class Collection(common.BaseObject):
         """
         index_doc = helpers._index_document(keys)
         index = {"key": index_doc}
+        collation = validate_collation_or_none(
+            index_options.pop('collation', None))
         index.update(index_options)
 
         with self._socket_for_writes() as sock_info:
+            if collation is not None:
+                if sock_info.max_wire_version < 5:
+                    raise ConfigurationError(
+                        'Specifying a collation is unsupported with a max wire '
+                        'version of %d.' % (sock_info.max_wire_version,))
+                else:
+                    index['collation'] = collation
             cmd = SON([('createIndexes', self.name), ('indexes', [index])])
             try:
                 self._command(
@@ -1390,6 +1491,9 @@ class Collection(common.BaseObject):
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
             a partial index.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
@@ -1413,7 +1517,7 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
-           when connected to MongoDB >= 3.4.
+           when connected to MongoDB >= 3.4. Support the `collation` option.
         .. versionchanged:: 3.2
             Added partialFilterExpression to support partial indexes.
         .. versionchanged:: 3.0
@@ -1673,6 +1777,9 @@ class Collection(common.BaseObject):
             mongos does not support returning aggregate results using a cursor.
             The default is ``True``. Set this to ``False`` when upgrading a 2.4
             or older sharded cluster to 2.6 or newer (see the warning below).
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`. Please note that using the ``$out`` pipeline stage
@@ -1703,7 +1810,7 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
-           when connected to MongoDB >= 3.4.
+           when connected to MongoDB >= 3.4. Support the `collation` option.
         .. versionchanged:: 3.0
            The :meth:`aggregate` method always returns a CommandCursor. The
            pipeline argument must be a list.
@@ -1726,6 +1833,7 @@ class Collection(common.BaseObject):
         if "explain" in kwargs:
             raise ConfigurationError("The explain option is not supported. "
                                      "Use Database.command instead.")
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
 
         cmd = SON([("aggregate", self.__name),
                    ("pipeline", pipeline)])
@@ -1757,13 +1865,16 @@ class Collection(common.BaseObject):
             if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
                 if dollar_out:
                     result = self._command(sock_info, cmd, slave_ok,
-                                           parse_write_concern_error=True)
+                                           parse_write_concern_error=True,
+                                           collation=collation)
                 else:
                     result = self._command(sock_info, cmd, slave_ok,
-                                           read_concern=self.read_concern)
+                                           read_concern=self.read_concern,
+                                           collation=collation)
             else:
                 result = self._command(sock_info, cmd, slave_ok,
-                                       parse_write_concern_error=dollar_out)
+                                       parse_write_concern_error=dollar_out,
+                                       collation=collation)
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -1807,6 +1918,8 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional arguments to the group command
             may be passed as keyword arguments to this helper method
 
+        .. versionchanged:: 3.4
+           Added the `collation` option.
         .. versionchanged:: 2.2
            Removed deprecated argument: command
         """
@@ -1823,10 +1936,12 @@ class Collection(common.BaseObject):
             group["finalize"] = Code(finalize)
 
         cmd = SON([("group", group)])
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
 
         with self._socket_for_reads() as (sock_info, slave_ok):
-            return self._command(sock_info, cmd, slave_ok)["retval"]
+            return self._command(sock_info, cmd, slave_ok,
+                                 collation=collation)["retval"]
 
     def rename(self, new_name, **kwargs):
         """Rename this collection.
@@ -1883,6 +1998,9 @@ class Collection(common.BaseObject):
 
           - `maxTimeMS` (int): The maximum amount of time to allow the count
             command to run, in milliseconds.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
 
         The :meth:`distinct` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
@@ -1893,6 +2011,10 @@ class Collection(common.BaseObject):
           - `filter` (optional): A query document that specifies the documents
             from which to retrieve the distinct values.
           - `**kwargs` (optional): See list of options above.
+
+        .. versionchanged:: 3.4
+           Support the `collation` option.
+
         """
         if not isinstance(key, string_type):
             raise TypeError("key must be an "
@@ -1903,10 +2025,12 @@ class Collection(common.BaseObject):
             if "query" in kwargs:
                 raise ConfigurationError("can't pass both filter and query")
             kwargs["query"] = filter
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
         with self._socket_for_reads() as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
-                                 read_concern=self.read_concern)["values"]
+                                 read_concern=self.read_concern,
+                                 collation=collation)["values"]
 
     def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.
@@ -1947,6 +2071,8 @@ class Collection(common.BaseObject):
 
         .. seealso:: :doc:`/examples/aggregation`
 
+        .. versionchanged:: 3.4
+           Added the `collation` option.
         .. versionchanged:: 2.2
            Removed deprecated arguments: merge_output and reduce_output
 
@@ -1963,6 +2089,8 @@ class Collection(common.BaseObject):
                    ("map", map),
                    ("reduce", reduce),
                    ("out", out)])
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        cmd.update(kwargs)
 
         inline = 'inline' in cmd['out']
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
@@ -1976,11 +2104,13 @@ class Collection(common.BaseObject):
                 # is an inline map reduce.
                 response = self._command(
                     sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
-                    read_concern=self.read_concern)
+                    read_concern=self.read_concern,
+                    collation=collation)
             else:
                 response = self._command(
                     sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
-                    parse_write_concern_error=not inline)
+                    parse_write_concern_error=not inline,
+                    collation=collation)
 
         if full_response or not response.get('result'):
             return response
@@ -2015,18 +2145,25 @@ class Collection(common.BaseObject):
             helper method, e.g.::
 
             >>> db.test.inline_map_reduce(map, reduce, limit=2)
+
+        .. versionchanged:: 3.4
+           Added the `collation` option.
+
         """
         cmd = SON([("mapreduce", self.__name),
                    ("map", map),
                    ("reduce", reduce),
                    ("out", {"inline": 1})])
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
         with self._socket_for_reads() as (sock_info, slave_ok):
             if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
                 res = self._command(sock_info, cmd, slave_ok,
-                                    read_concern=self.read_concern)
+                                    read_concern=self.read_concern,
+                                    collation=collation)
             else:
-                res = self._command(sock_info, cmd, slave_ok)
+                res = self._command(sock_info, cmd, slave_ok,
+                                    collation=collation)
 
         if full_response:
             return res
@@ -2040,6 +2177,7 @@ class Collection(common.BaseObject):
         if not isinstance(return_document, bool):
             raise ValueError("return_document must be "
                              "ReturnDocument.BEFORE or ReturnDocument.AFTER")
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd = SON([("findAndModify", self.__name),
                    ("query", filter),
                    ("new", return_document)])
@@ -2059,7 +2197,8 @@ class Collection(common.BaseObject):
                     cmd['writeConcern'] = wc_doc
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
-                                allowable_errors=[_NO_OBJ_ERROR])
+                                allowable_errors=[_NO_OBJ_ERROR],
+                                collation=collation)
             _check_write_command_response([(0, out)])
         return out.get("value")
 
@@ -2114,6 +2253,8 @@ class Collection(common.BaseObject):
            3.2. Note that using an elevated write concern with this command may
            be slower compared to using the default write concern.
 
+        .. versionchanged:: 3.4
+           Added the `collation` option.
         .. versionadded:: 3.0
 
         """
@@ -2168,6 +2309,8 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.4
+           Added the `collation` option.
         .. versionchanged:: 3.2
            Respects write concern.
 
@@ -2263,6 +2406,8 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.4
+           Added the `collation` option.
         .. versionchanged:: 3.2
            Respects write concern.
 
@@ -2293,6 +2438,7 @@ class Collection(common.BaseObject):
         common.validate_is_document_type("to_save", to_save)
 
         write_concern = None
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         if kwargs:
             write_concern = WriteConcern(**kwargs)
 
@@ -2302,7 +2448,8 @@ class Collection(common.BaseObject):
                                     check_keys, manipulate, write_concern)
             else:
                 self._update(sock_info, {"_id": to_save["_id"]}, to_save, True,
-                             check_keys, False, manipulate, write_concern)
+                             check_keys, False, manipulate, write_concern,
+                             collation=collation)
                 return to_save.get("_id")
 
     def insert(self, doc_or_docs, manipulate=True,
@@ -2350,11 +2497,13 @@ class Collection(common.BaseObject):
                 check_keys = False
 
         write_concern = None
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         if kwargs:
             write_concern = WriteConcern(**kwargs)
         with self._socket_for_writes() as sock_info:
             return self._update(sock_info, spec, document, upsert,
-                                check_keys, multi, manipulate, write_concern)
+                                check_keys, multi, manipulate, write_concern,
+                                collation=collation)
 
     def remove(self, spec_or_id=None, multi=True, **kwargs):
         """Remove a document(s) from this collection.
@@ -2372,10 +2521,12 @@ class Collection(common.BaseObject):
         if not isinstance(spec_or_id, collections.Mapping):
             spec_or_id = {"_id": spec_or_id}
         write_concern = None
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         if kwargs:
             write_concern = WriteConcern(**kwargs)
         with self._socket_for_writes() as sock_info:
-            return self._delete(sock_info, spec_or_id, multi, write_concern)
+            return self._delete(sock_info, spec_or_id, multi, write_concern,
+                                collation=collation)
 
     def find_and_modify(self, query={}, update=None,
                         upsert=False, sort=None, full_response=False,
@@ -2423,6 +2574,8 @@ class Collection(common.BaseObject):
         if fields is not None:
             kwargs["fields"] = helpers._fields_list_to_dict(fields, "fields")
 
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
+
         cmd = SON([("findAndModify", self.__name)])
         cmd.update(kwargs)
         with self._socket_for_writes() as sock_info:
@@ -2432,7 +2585,8 @@ class Collection(common.BaseObject):
                     cmd['writeConcern'] = wc_doc
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
-                                allowable_errors=[_NO_OBJ_ERROR])
+                                allowable_errors=[_NO_OBJ_ERROR],
+                                collation=collation)
             _check_write_command_response([(0, out)])
 
         if not out['ok']:

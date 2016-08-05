@@ -15,6 +15,7 @@
 """Operation class definitions."""
 
 from pymongo.common import validate_boolean, validate_is_mapping
+from pymongo.collation import validate_collation_or_none
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
 
 
@@ -224,6 +225,8 @@ class IndexModel(object):
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
             a partial index.
+          - `collation`: An instance of `~pymongo.collation.Collation` that
+            specifies the collation to use in MongoDB >= 3.4.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
@@ -244,7 +247,10 @@ class IndexModel(object):
         if "name" not in kwargs:
             kwargs["name"] = _gen_index_name(keys)
         kwargs["key"] = _index_document(keys)
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
         self.__document = kwargs
+        if collation is not None:
+            self.__document['collation'] = collation
 
     @property
     def document(self):

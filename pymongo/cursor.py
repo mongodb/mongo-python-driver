@@ -27,6 +27,7 @@ from bson.py3compat import (iteritems,
 from bson.son import SON
 from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping
+from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidOperation,
@@ -104,7 +105,8 @@ class Cursor(object):
                  limit=0, no_cursor_timeout=False,
                  cursor_type=CursorType.NON_TAILABLE,
                  sort=None, allow_partial_results=False, oplog_replay=False,
-                 modifiers=None, batch_size=0, manipulate=True):
+                 modifiers=None, batch_size=0, manipulate=True,
+                 collation=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -158,6 +160,7 @@ class Cursor(object):
         self.__max = None
         self.__min = None
         self.__manipulate = manipulate
+        self.__collation = validate_collation_or_none(collation)
 
         # Exhaust cursor support
         self.__exhaust = False
@@ -248,7 +251,7 @@ class Cursor(object):
                            "max_time_ms", "max_await_time_ms", "comment",
                            "max", "min", "ordering", "explain", "hint",
                            "batch_size", "max_scan", "manipulate",
-                           "query_flags", "modifiers")
+                           "query_flags", "modifiers", "collation")
         data = dict((k, v) for k, v in iteritems(self.__dict__)
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
@@ -705,7 +708,7 @@ class Cursor(object):
             if self.__skip:
                 cmd["skip"] = self.__skip
 
-        return self.__collection._count(cmd)
+        return self.__collection._count(cmd, self.__collation)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -731,6 +734,8 @@ class Cursor(object):
             options['maxTimeMS'] = self.__max_time_ms
         if self.__comment:
             options['$comment'] = self.__comment
+        if self.__collation is not None:
+            options['collation'] = self.__collation
 
         return self.__collection.distinct(key, **options)
 
@@ -821,6 +826,24 @@ class Cursor(object):
             code = Code(code)
 
         self.__spec["$where"] = code
+        return self
+
+    def collation(self, collation):
+        """Adds a :class:`~pymongo.collation.Collation` to this query.
+
+        This option is only supported on MongoDB 3.4 and above.
+
+        Raises :exc:`TypeError` if `collation` is not an instance of
+        :class:`~pymongo.collation.Collation` or a ``dict``. Raises
+        :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor` has
+        already been used. Only the last collation applied to this cursor has
+        any effect.
+
+        :Parameters:
+          - `collation`: An instance of :class:`~pymongo.collation.Collation`.
+        """
+        self.__check_okay_to_chain()
+        self.__collation = validate_collation_or_none(collation)
         return self
 
     def __send_message(self, operation):
@@ -1009,7 +1032,8 @@ class Cursor(object):
                                        self.__read_preference,
                                        self.__limit,
                                        self.__batch_size,
-                                       self.__read_concern))
+                                       self.__read_concern,
+                                       self.__collation))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More

@@ -114,7 +114,12 @@ class Server(object):
                     'with a max wire version of %d.'
                     % (operation.read_concern.level,
                        sock_info.max_wire_version))
-
+            if (isinstance(operation, _Query) and
+                    sock_info.max_wire_version < 5 and
+                    operation.collation is not None):
+                raise ConfigurationError(
+                    'Specifying a collation is unsupported with a max wire '
+                    'version of %d.' % (sock_info.max_wire_version,))
             message = operation.get_message(
                 set_slave_okay, sock_info.is_mongos, use_find_cmd)
             request_id, data, max_doc_size = self._split_message(message)

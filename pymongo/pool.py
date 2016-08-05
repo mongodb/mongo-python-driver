@@ -350,7 +350,8 @@ class SocketInfo(object):
                 allowable_errors=None, check_keys=False,
                 read_concern=DEFAULT_READ_CONCERN,
                 write_concern=None,
-                parse_write_concern_error=False):
+                parse_write_concern_error=False,
+                collation=None):
         """Execute a command or raise ConnectionFailure or OperationFailure.
 
         :Parameters:
@@ -366,21 +367,31 @@ class SocketInfo(object):
           - `write_concern`: The write concern for this command.
           - `parse_write_concern_error`: Whether to parse the
             ``writeConcernError`` field in the command response.
+          - `collation`: The collation for this command.
         """
         if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
             raise ConfigurationError(
                 'read concern level of %s is not valid '
                 'with a max wire version of %d.'
                 % (read_concern.level, self.max_wire_version))
+        if not (write_concern is None or write_concern.acknowledged or
+                collation is None):
+            raise ConfigurationError(
+                'Collation is unsupported for unacknowledged writes.')
         if self.max_wire_version >= 5 and write_concern:
             spec['writeConcern'] = write_concern.document
+        elif self.max_wire_version < 5 and collation is not None:
+            raise ConfigurationError(
+                'Specifying a collation is unsupported with a max wire '
+                'version of %d.' % (self.max_wire_version,))
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
                            check, allowable_errors, self.address,
                            check_keys, self.listeners, self.max_bson_size,
                            read_concern,
-                           parse_write_concern_error=parse_write_concern_error)
+                           parse_write_concern_error=parse_write_concern_error,
+                           collation=collation)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

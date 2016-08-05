@@ -46,7 +46,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             allowable_errors=None, address=None,
             check_keys=False, listeners=None, max_bson_size=None,
             read_concern=DEFAULT_READ_CONCERN,
-            parse_write_concern_error=False):
+            parse_write_concern_error=False,
+            collation=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -66,6 +67,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `read_concern`: The read concern for this command.
       - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
         field in the command response.
+      - `collation`: The collation for this command.
+
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
@@ -76,6 +79,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern.level:
         spec['readConcern'] = read_concern.document
+    if collation is not None:
+        spec['collation'] = collation
 
     publish = listeners is not None and listeners.enabled_for_commands
     if publish:

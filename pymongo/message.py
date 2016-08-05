@@ -167,7 +167,8 @@ def _gen_explain_command(
 
 
 def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
-                      options, read_concern=DEFAULT_READ_CONCERN):
+                      options, read_concern=DEFAULT_READ_CONCERN,
+                      collation=None):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
@@ -192,6 +193,8 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
         cmd['batchSize'] = batch_size
     if read_concern.level:
         cmd['readConcern'] = read_concern.document
+    if collation:
+        cmd['collation'] = collation
 
     if options:
         cmd.update([(opt, True)
@@ -216,11 +219,11 @@ class _Query(object):
 
     __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
-                 'batch_size', 'name', 'read_concern')
+                 'batch_size', 'name', 'read_concern', 'collation')
 
     def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
-                 batch_size, read_concern):
+                 batch_size, read_concern, collation):
         self.flags = flags
         self.db = db
         self.coll = coll
@@ -232,6 +235,7 @@ class _Query(object):
         self.read_concern = read_concern
         self.limit = limit
         self.batch_size = batch_size
+        self.collation = collation
         self.name = 'find'
 
     def as_command(self):
@@ -247,7 +251,8 @@ class _Query(object):
                 self.read_concern), self.db
         return _gen_find_command(
             self.coll, self.spec, self.fields, self.ntoskip, self.limit,
-            self.batch_size, self.flags, self.read_concern), self.db
+            self.batch_size, self.flags, self.read_concern,
+            self.collation), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""
