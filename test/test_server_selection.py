@@ -102,7 +102,8 @@ def make_server_description(server, hosts):
 
     return ServerDescription(clean_node(server['address']),
                              IsMaster(ismaster_response),
-                             round_trip_time=server['avg_rtt_ms'])
+                             # round_trip_time is in seconds.
+                             round_trip_time=server['avg_rtt_ms'] / 1000.0)
 
 
 class TestAllScenarios(unittest.TestCase):
