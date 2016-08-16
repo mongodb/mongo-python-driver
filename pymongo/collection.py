@@ -34,6 +34,7 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
+from pymongo.helpers import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import _WriteOp, IndexModel
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
@@ -1325,6 +1326,7 @@ class Collection(common.BaseObject):
             try:
                 self._command(
                     sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                    codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                     write_concern=self.write_concern,
                     parse_write_concern_error=True)
             except OperationFailure as exc:
