@@ -1277,8 +1277,10 @@ class Collection(common.BaseObject):
         cmd = SON([('createIndexes', self.name),
                    ('indexes', list(gen_indexes()))])
         with self._socket_for_writes() as sock_info:
-            self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY)
+            self._command(sock_info,
+                          cmd,
+                          codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                          read_preference=ReadPreference.PRIMARY)
         return names
 
     def __create_index(self, keys, index_options):
