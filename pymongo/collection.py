@@ -1306,6 +1306,7 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                 write_concern=self.write_concern,
                 parse_write_concern_error=True)
         return names
