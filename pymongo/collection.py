@@ -34,6 +34,7 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
+from pymongo.helpers import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import _WriteOp, IndexModel
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
@@ -1276,8 +1277,10 @@ class Collection(common.BaseObject):
         cmd = SON([('createIndexes', self.name),
                    ('indexes', list(gen_indexes()))])
         with self._socket_for_writes() as sock_info:
-            self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY)
+            self._command(sock_info,
+                          cmd,
+                          codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                          read_preference=ReadPreference.PRIMARY)
         return names
 
     def __create_index(self, keys, index_options):
@@ -1294,8 +1297,10 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             cmd = SON([('createIndexes', self.name), ('indexes', [index])])
             try:
-                self._command(
-                    sock_info, cmd, read_preference=ReadPreference.PRIMARY)
+                self._command(sock_info,
+                              cmd,
+                              codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                              read_preference=ReadPreference.PRIMARY)
             except OperationFailure as exc:
                 if exc.code in common.COMMAND_NOT_FOUND_CODES:
                     index["ns"] = self.__full_name
