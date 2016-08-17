@@ -1,0 +1,18 @@
+{
+    "description": "Timestamp type",
+    "bson_type": "0x11",
+    "test_key": "a",
+    "valid": [
+        {
+            "description": "Timestamp: (123456789, 42)",
+            "bson": "100000001161002A00000015CD5B0700",
+            "extjson": "{\"a\" : {\"$timestamp\" : {\"t\" : 123456789, \"i\" : 42}}}"
+        }
+    ],
+    "decodeErrors": [
+        {
+            "description": "Truncated timestamp field",
+            "bson": "0f0000001161002A00000015CD5B00"
+        }
+    ]
+}

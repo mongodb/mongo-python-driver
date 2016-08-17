@@ -1,0 +1,27 @@
+{
+    "description": "Boolean",
+    "bson_type": "0x08",
+    "test_key": "b",
+    "valid": [
+        {
+            "description": "True",
+            "bson": "090000000862000100",
+            "extjson": "{\"b\" : true}"
+        },
+        {
+            "description": "False",
+            "bson": "090000000862000000",
+            "extjson": "{\"b\" : false}"
+        }
+    ],
+    "decodeErrors": [
+        {
+            "description": "Invalid boolean value of 2",
+            "bson": "090000000862000200"
+        },
+        {
+            "description": "Invalid boolean value of -1",
+            "bson": "09000000086200FF00"
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    "description": "DBPointer type (deprecated)",
+    "bson_type": "0x0C",
+    "deprecated": true,
+    "test_key": "a",
+    "valid": [
+        {
+            "description": "DBpointer",
+            "bson": "1A0000000C610002000000620056E1FC72E0C917E9C471416100"
+        },
+        {
+            "description": "With two-byte UTF-8",
+            "bson": "1B0000000C610003000000C3A90056E1FC72E0C917E9C471416100"
+        }
+    ],
+    "decodeErrors": [
+        {
+            "description": "String with negative length",
+            "bson": "1A0000000C6100FFFFFFFF620056E1FC72E0C917E9C471416100"
+        },
+        {
+            "description": "String with zero length",
+            "bson": "1A0000000C610000000000620056E1FC72E0C917E9C471416100"
+        },
+        {
+            "description": "String not null terminated",
+            "bson": "1A0000000C610002000000626256E1FC72E0C917E9C471416100"
+        },
+        {
+            "description": "short OID (less than minimum length for field)",
+            "bson": "160000000C61000300000061620056E1FC72E0C91700"
+        },
+        {
+            "description": "short OID (greater than minimum, but truncated)",
+            "bson": "1A0000000C61000300000061620056E1FC72E0C917E9C4716100"
+        },
+        {
+            "description": "String with bad UTF-8",
+            "bson": "1A0000000C610002000000E90056E1FC72E0C917E9C471416100"
+        }
+    ]
+}

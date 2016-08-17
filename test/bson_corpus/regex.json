@@ -1,0 +1,37 @@
+{
+    "description": "Regular Expression type",
+    "bson_type": "0x0B",
+    "test_key": "a",
+    "valid": [
+        {
+            "description": "empty regex with no options",
+            "bson": "0A0000000B6100000000",
+            "extjson": "{\"a\" : {\"$regex\" : \"\", \"$options\" : \"\"}}"
+        },
+        {
+            "description": "regex without options",
+            "bson": "0D0000000B6100616263000000",
+            "extjson": "{\"a\" : {\"$regex\" : \"abc\", \"$options\" : \"\"}}"
+        },
+        {
+            "description": "regex with options",
+            "bson": "0F0000000B610061626300696D0000",
+            "extjson": "{\"a\" : {\"$regex\" : \"abc\", \"$options\" : \"im\"}}"
+        },
+        {
+            "description": "regex with slash",
+            "bson": "110000000B610061622F636400696D0000",
+            "extjson": "{\"a\" : {\"$regex\" : \"ab/cd\", \"$options\" : \"im\"}}"
+        }
+    ],
+    "decodeErrors": [
+        {
+            "description": "embedded null in pattern",
+            "bson": "0F0000000B610061006300696D0000"
+        },
+        {
+            "description": "embedded null in flags",
+            "bson": "100000000B61006162630069006D0000"
+        }
+    ]
+}

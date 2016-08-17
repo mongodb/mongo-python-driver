@@ -371,10 +371,15 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
             if not obj.tzinfo:
                 raise InvalidDatetime("datetime is not timezone aware", obj)
             if obj >= EPOCH_AWARE:
+                delta = obj.tzinfo.utcoffset(obj)
+                if (delta.days, delta.seconds, delta.microseconds) == (0, 0, 0):
+                    tz_string = 'Z'
+                else:
+                    tz_string = obj.strftime('%z')
                 return {"$date": "%s.%03d%s" % (
                     obj.strftime("%Y-%m-%dT%H:%M:%S"),
                     int(obj.microsecond / 1000),
-                    obj.strftime("%z"))}
+                    tz_string)}
 
         millis = bson._datetime_to_millis(obj)
         if json_options.strict_date:

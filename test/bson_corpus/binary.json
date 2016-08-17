@@ -1,0 +1,69 @@
+{
+    "description": "Binary type",
+    "bson_type": "0x05",
+    "test_key": "x",
+    "valid": [
+        {
+            "description": "subtype 0x00 (Zero-length)",
+            "bson": "0D000000057800000000000000",
+            "extjson": "{\"x\" : {\"$binary\" : \"\", \"$type\" : \"00\"}}"
+        },
+        {
+            "description": "subtype 0x00",
+            "bson": "0F0000000578000200000000FFFF00",
+            "extjson": "{\"x\" : {\"$binary\" : \"//8=\", \"$type\" : \"00\"}}"
+        },
+        {
+            "description": "subtype 0x01",
+            "bson": "0F0000000578000200000001FFFF00",
+            "extjson": "{\"x\" : {\"$binary\" : \"//8=\", \"$type\" : \"01\"}}"
+        },
+        {
+            "description": "subtype 0x02",
+            "bson": "13000000057800060000000202000000ffff00",
+            "extjson": "{\"x\" : {\"$binary\" : \"//8=\", \"$type\" : \"02\"}}"
+        },
+        {
+            "description": "subtype 0x03",
+            "bson": "1D000000057800100000000373FFD26444B34C6990E8E7D1DFC035D400",
+            "extjson": "{\"x\" : {\"$binary\" : \"c//SZESzTGmQ6OfR38A11A==\", \"$type\" : \"03\"}}"
+        },
+        {
+            "description": "subtype 0x04",
+            "bson": "1D000000057800100000000473FFD26444B34C6990E8E7D1DFC035D400",
+            "extjson": "{\"x\" : {\"$binary\" : \"c//SZESzTGmQ6OfR38A11A==\", \"$type\" : \"04\"}}"
+        },
+        {
+            "description": "subtype 0x05",
+            "bson": "1D000000057800100000000573FFD26444B34C6990E8E7D1DFC035D400",
+            "extjson": "{\"x\" : {\"$binary\" : \"c//SZESzTGmQ6OfR38A11A==\", \"$type\" : \"05\"}}"
+        },
+        {
+            "description": "subtype 0x80",
+            "bson": "0F0000000578000200000080FFFF00",
+            "extjson": "{\"x\" : {\"$binary\" : \"//8=\", \"$type\" : \"80\"}}"
+        }
+    ],
+    "decodeErrors": [
+        {
+            "description": "Length longer than document",
+            "bson": "1D000000057800FF0000000573FFD26444B34C6990E8E7D1DFC035D400"
+        },
+        {
+            "description": "Negative length",
+            "bson": "0D000000057800FFFFFFFF0000"
+        },
+        {
+            "description": "subtype 0x02 length too long ",
+            "bson": "13000000057800060000000203000000FFFF00"
+        },
+        {
+            "description": "subtype 0x02 length too short",
+            "bson": "13000000057800060000000201000000FFFF00"
+        },
+        {
+            "description": "subtype 0x02 length negative one",
+            "bson": "130000000578000600000002FFFFFFFFFFFF00"
+        }
+    ]
+}

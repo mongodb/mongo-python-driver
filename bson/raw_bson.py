@@ -21,6 +21,7 @@ from bson import _UNPACK_INT, _iterate_elements
 from bson.py3compat import iteritems
 from bson.codec_options import (
     CodecOptions, DEFAULT_CODEC_OPTIONS, _RAW_BSON_DOCUMENT_MARKER)
+from bson.errors import InvalidBSON
 
 
 class RawBSONDocument(collections.Mapping):
@@ -66,11 +67,16 @@ class RawBSONDocument(collections.Mapping):
     def __inflated(self):
         if self.__inflated_doc is None:
             # We already validated the object's size when this document was
-            # created, so no need to do that again.
-            self.__inflated_doc = dict(
-                element for element in _iterate_elements(
-                    self.__raw, 4, _UNPACK_INT(self.__raw[:4])[0] - 1,
-                    self.__codec_options))
+            # created, so no need to do that again. We still need to check the
+            # size of all the elements and compare to the document size.
+            object_size = _UNPACK_INT(self.__raw[:4])[0] - 1
+            position = 0
+            self.__inflated_doc = {}
+            for key, value, position in _iterate_elements(
+                    self.__raw, 4, object_size, self.__codec_options):
+                self.__inflated_doc[key] = value
+            if position != object_size:
+                raise InvalidBSON('bad object or element length')
         return self.__inflated_doc
 
     def __getitem__(self, item):

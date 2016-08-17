@@ -1860,6 +1860,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 }
                 Py_DECREF(to_append);
             }
+            if (*position != end) {
+                goto invalid;
+            }
             (*position)++;
             break;
         }
@@ -1868,7 +1871,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             PyObject* data;
             PyObject* st;
             PyObject* type_to_create;
-            uint32_t length;
+            uint32_t length, length2;
             unsigned char subtype;
 
             if (max < 5) {
@@ -1882,8 +1885,15 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
             subtype = (unsigned char)buffer[*position + 4];
             *position += 5;
-            if (subtype == 2 && length < 4) {
-                goto invalid;
+            if (subtype == 2) {
+                if (length < 4) {
+                    goto invalid;
+                }
+                memcpy(&length2, buffer + *position, 4);
+                length2 = BSON_UINT32_FROM_LE(length2);
+                if (length2 != length - 4) {
+                    goto invalid;
+                }
             }
 #if PY_MAJOR_VERSION >= 3
             /* Python3 special case. Decode BSON binary subtype 0 to bytes. */
@@ -2020,7 +2030,19 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 8:
         {
-            value = buffer[(*position)++] ? Py_True : Py_False;
+            char boolean_raw = buffer[(*position)++];
+            if (0 == boolean_raw) {
+                value = Py_False;
+            } else if (1 == boolean_raw) {
+                value = Py_True;
+            } else {
+                PyObject* InvalidBSON = _error("InvalidBSON");
+                if (InvalidBSON) {
+                    PyErr_Format(InvalidBSON, "invalid boolean value: %x", boolean_raw);
+                    Py_DECREF(InvalidBSON);
+                }
+                return NULL;
+            }
             Py_INCREF(value);
             break;
         }

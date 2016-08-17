@@ -179,10 +179,13 @@ def _get_array(data, position, obj_end, opts, element_name):
         except KeyError:
             _raise_unknown_type(element_type, element_name)
         append(value)
+
+    if position != end + 1:
+        raise InvalidBSON('bad array length')
     return result, position + 1
 
 
-def _get_binary(data, position, dummy0, opts, dummy1):
+def _get_binary(data, position, obj_end, opts, dummy1):
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE(data[position:position + 5])
     position += 5
@@ -193,6 +196,8 @@ def _get_binary(data, position, dummy0, opts, dummy1):
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
     end = position + length
+    if length < 0 or end > obj_end:
+        raise InvalidBSON('bad binary object length')
     if subtype in (3, 4):
         # Java Legacy
         uuid_representation = opts.uuid_representation
@@ -223,7 +228,12 @@ def _get_oid(data, position, dummy0, dummy1, dummy2):
 def _get_boolean(data, position, dummy0, dummy1, dummy2):
     """Decode a BSON true/false to python True/False."""
     end = position + 1
-    return data[position:end] == b"\x01", end
+    boolean_byte = data[position:end]
+    if boolean_byte == b'\x00':
+        return False, end
+    elif boolean_byte == b'\x01':
+        return True, end
+    raise InvalidBSON('invalid boolean value: %r' % boolean_byte)
 
 
 def _get_date(data, position, dummy0, opts, dummy1):
@@ -241,9 +251,12 @@ def _get_code(data, position, obj_end, opts, element_name):
 
 def _get_code_w_scope(data, position, obj_end, opts, element_name):
     """Decode a BSON code_w_scope to bson.code.Code."""
+    code_end = position + _UNPACK_INT(data[position:position + 4])[0]
     code, position = _get_string(
-        data, position + 4, obj_end, opts, element_name)
-    scope, position = _get_object(data, position, obj_end, opts, element_name)
+        data, position + 4, code_end, opts, element_name)
+    scope, position = _get_object(data, position, code_end, opts, element_name)
+    if position != code_end:
+        raise InvalidBSON('scope outside of javascript code boundaries')
     return Code(code, scope), position
 
 
@@ -324,14 +337,17 @@ def _iterate_elements(data, position, obj_end, opts):
     end = obj_end - 1
     while position < end:
         (key, value, position) = _element_to_dict(data, position, obj_end, opts)
-        yield key, value
+        yield key, value, position
 
 
 def _elements_to_dict(data, position, obj_end, opts):
     """Decode a BSON document."""
     result = opts.document_class()
-    for key, value in _iterate_elements(data, position, obj_end, opts):
+    pos = position
+    for key, value, pos in _iterate_elements(data, position, obj_end, opts):
         result[key] = value
+    if pos != obj_end:
+        raise InvalidBSON('bad object or element length')
     return result
 
 

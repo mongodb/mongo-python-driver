@@ -1,0 +1,38 @@
+{
+    "description": "Int64 type",
+    "bson_type": "0x12",
+    "test_key": "a",
+    "valid": [
+        {
+            "description": "MinValue",
+            "bson": "10000000126100000000000000008000",
+            "extjson": "{\"a\" : {\"$numberLong\" : \"-9223372036854775808\"}}"
+        },
+        {
+            "description": "MaxValue",
+            "bson": "10000000126100FFFFFFFFFFFFFF7F00",
+            "extjson": "{\"a\" : {\"$numberLong\" : \"9223372036854775807\"}}"
+        },
+        {
+            "description": "-1",
+            "bson": "10000000126100FFFFFFFFFFFFFFFF00",
+            "extjson": "{\"a\" : {\"$numberLong\" : \"-1\"}}"
+        },
+        {
+            "description": "0",
+            "bson": "10000000126100000000000000000000",
+            "extjson": "{\"a\" : {\"$numberLong\" : \"0\"}}"
+        },
+        {
+            "description": "1",
+            "bson": "10000000126100010000000000000000",
+            "extjson": "{\"a\" : {\"$numberLong\" : \"1\"}}"
+        }
+    ],
+    "decodeErrors": [
+        {
+            "description": "int64 field truncated",
+            "bson": "0C0000001261001234567800"
+        }
+    ]
+}
