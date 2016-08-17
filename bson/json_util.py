@@ -271,4 +271,6 @@ def default(obj):
             ('$type', "00")])
     if isinstance(obj, uuid.UUID):
         return {"$uuid": obj.hex}
+    if isinstance(obj, Int64):
+        return {'$numberLong': str(obj)}
     raise TypeError("%r is not JSON serializable" % obj)
