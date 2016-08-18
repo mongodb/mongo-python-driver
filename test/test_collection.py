@@ -1491,9 +1491,10 @@ class TestCollection(IntegrationTest):
         self.assertEqual([{'foo': [1, 2]}], list(result))
 
         # Test write concern.
-        out_pipeline = [pipeline, {'$out': 'output-collection'}]
-        with self.write_concern_collection() as coll:
-            coll.aggregate(out_pipeline)
+        if client_context.version.at_least(2, 6):
+            out_pipeline = [pipeline, {'$out': 'output-collection'}]
+            with self.write_concern_collection() as coll:
+                coll.aggregate(out_pipeline)
 
     def test_aggregate_raw_bson(self):
         db = self.db
