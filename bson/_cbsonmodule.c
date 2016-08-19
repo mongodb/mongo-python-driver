@@ -809,7 +809,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                 return 0;
             }
 
-            if (!PyDict_Size(scope)) {
+            if (scope == Py_None) {
                 Py_DECREF(scope);
                 *(buffer_get_buffer(buffer) + type_byte) = 0x0D;
                 return write_string(buffer, value);

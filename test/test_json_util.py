@@ -314,6 +314,10 @@ class TestJsonUtil(unittest.TestCase):
         # Check order.
         self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
 
+        no_scope = Code('function() {}')
+        self.assertEqual(
+            '{"$code": "function() {}"}', json_util.dumps(no_scope))
+
     def test_undefined(self):
         jsn = '{"name": {"$undefined": true}}'
         self.assertIsNone(json_util.loads(jsn)['name'])

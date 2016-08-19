@@ -10,7 +10,11 @@ Highlights include:
 
 - Finer control over JSON encoding/decoding with
   :class:`~bson.json_util.JSONOptions`.
+- Allow :class:`~bson.code.Code` objects to have a scope of ``None``, signifying
+  no scope. Also allow encoding Code objects with an empty scope (i.e. ``{}``).
 
+  .. warning:: Starting in PyMongo 3.4, :attr:`~bson.code.Code.scope` may return
+     ``None``, as the default scope is ``None`` instead of ``{}``.
 
 Issues Resolved
 ...............

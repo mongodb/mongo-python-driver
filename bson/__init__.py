@@ -572,7 +572,7 @@ def _encode_code(name, value, dummy, opts):
     """Encode bson.code.Code."""
     cstring = _make_c_string(value)
     cstrlen = len(cstring)
-    if not value.scope:
+    if value.scope is None:
         return b"\x0D" + name + _PACK_INT(cstrlen) + cstring
     scope = _dict_to_bson(value.scope, False, opts, False)
     full_length = _PACK_INT(8 + cstrlen + len(scope))

@@ -391,6 +391,11 @@ class TestBSON(unittest.TestCase):
                          b"=\x00\x00\x00\x0f$field\x000\x00\x00\x00\x1f\x00"
                          b"\x00\x00return function(){ return x; }\x00\t\x00"
                          b"\x00\x00\x08x\x00\x00\x00\x00")
+        unicode_empty_scope = Code(u"function(){ return 'héllo';}", {})
+        self.assertEqual(BSON.encode({'$field': unicode_empty_scope}),
+                         b"8\x00\x00\x00\x0f$field\x00+\x00\x00\x00\x1e\x00"
+                         b"\x00\x00function(){ return 'h\xc3\xa9llo';}\x00\x05"
+                         b"\x00\x00\x00\x00\x00")
         a = ObjectId(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")
         self.assertEqual(BSON.encode({"oid": a}),
                          b"\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02"

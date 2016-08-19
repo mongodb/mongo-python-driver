@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright 2009-2015 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,19 +48,26 @@ class TestCode(unittest.TestCase):
         self.assertTrue(a_code.endswith("world"))
         self.assertTrue(isinstance(a_code, Code))
         self.assertFalse(isinstance(a_string, Code))
-        self.assertEqual(a_code.scope, {})
-        a_code.scope["my_var"] = 5
-        self.assertEqual(a_code.scope, {"my_var": 5})
+        self.assertIsNone(a_code.scope)
+        with_scope = Code('hello world', {'my_var': 5})
+        self.assertEqual({'my_var': 5}, with_scope.scope)
+        empty_scope = Code('hello world', {})
+        self.assertEqual({}, empty_scope.scope)
+        another_scope = Code(with_scope, {'new_var': 42})
+        self.assertEqual(str(with_scope), str(another_scope))
+        self.assertEqual({'new_var': 42, 'my_var': 5}, another_scope.scope)
+        # No error.
+        Code(u'héllø world¡')
 
     def test_repr(self):
-        c = Code("hello world")
+        c = Code("hello world", {})
         self.assertEqual(repr(c), "Code('hello world', {})")
         c.scope["foo"] = "bar"
         self.assertEqual(repr(c), "Code('hello world', {'foo': 'bar'})")
         c = Code("hello world", {"blah": 3})
         self.assertEqual(repr(c), "Code('hello world', {'blah': 3})")
         c = Code("\x08\xFF")
-        self.assertEqual(repr(c), "Code(%s, {})" % (repr("\x08\xFF"),))
+        self.assertEqual(repr(c), "Code(%s, None)" % (repr("\x08\xFF"),))
 
     def test_equality(self):
         b = Code("hello")
@@ -67,14 +76,14 @@ class TestCode(unittest.TestCase):
         self.assertEqual(c, Code("hello", {"foo": 5}))
         self.assertNotEqual(c, Code("hello", {"foo": 6}))
         self.assertEqual(b, Code("hello"))
-        self.assertEqual(b, Code("hello", {}))
+        self.assertEqual(b, Code("hello", None))
         self.assertNotEqual(b, Code("hello "))
         self.assertNotEqual("hello", Code("hello"))
 
         # Explicitly test inequality
         self.assertFalse(c != Code("hello", {"foo": 5}))
         self.assertFalse(b != Code("hello"))
-        self.assertFalse(b != Code("hello", {}))
+        self.assertFalse(b != Code("hello", None))
 
     def test_hash(self):
         self.assertRaises(TypeError, hash, Code("hello world"))

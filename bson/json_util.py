@@ -409,6 +409,8 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
     if isinstance(obj, Timestamp):
         return {"$timestamp": SON([("t", obj.time), ("i", obj.inc)])}
     if isinstance(obj, Code):
+        if obj.scope is None:
+            return SON([('$code', str(obj))])
         return SON([('$code', str(obj)), ('$scope', obj.scope)])
     if isinstance(obj, Binary):
         return SON([
