@@ -537,7 +537,7 @@ class TestSSL(IntegrationTest):
                                   ssl_cert_reqs=ssl.CERT_NONE,
                                   ssl_certfile=CA_PEM,
                                   serverSelectionTimeoutMS=100))
-        except (ConnectionFailure, ssl.SSLError):
+        except (ConnectionFailure, ConfigurationError):
             pass
         else:
             self.fail("Invalid certificate accepted.")

@@ -102,18 +102,22 @@ if HAVE_SSL:
             ctx.options |= getattr(ssl, "OP_NO_SSLv2", 0)
             ctx.options |= getattr(ssl, "OP_NO_SSLv3", 0)
         if certfile is not None:
-            if passphrase is not None:
-                vi = sys.version_info
-                # Since python just added a new parameter to an existing method
-                # this seems to be about the best we can do.
-                if (vi[0] == 2 and vi < (2, 7, 9) or
-                        vi[0] == 3 and vi < (3, 3)):
-                    raise ConfigurationError(
-                        "Support for ssl_pem_passphrase requires "
-                        "python 2.7.9+ (pypy 2.5.1+) or 3.3+")
-                ctx.load_cert_chain(certfile, keyfile, passphrase)
-            else:
-                ctx.load_cert_chain(certfile, keyfile)
+            try:
+                if passphrase is not None:
+                    vi = sys.version_info
+                    # Since python just added a new parameter to an existing method
+                    # this seems to be about the best we can do.
+                    if (vi[0] == 2 and vi < (2, 7, 9) or
+                            vi[0] == 3 and vi < (3, 3)):
+                        raise ConfigurationError(
+                            "Support for ssl_pem_passphrase requires "
+                            "python 2.7.9+ (pypy 2.5.1+) or 3.3+")
+                    ctx.load_cert_chain(certfile, keyfile, passphrase)
+                else:
+                    ctx.load_cert_chain(certfile, keyfile)
+            except ssl.SSLError as exc:
+                raise ConfigurationError(
+                    "Private key doesn't match certificate: %s" % (exc,))
         if crlfile is not None:
             if not hasattr(ctx, "verify_flags"):
                 raise ConfigurationError(
