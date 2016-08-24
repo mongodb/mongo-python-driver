@@ -140,7 +140,7 @@ class TestJsonUtil(unittest.TestCase):
             '{"dt": {"$date": {"$numberLong": "-62135593138990"}}}',
             json_util.dumps(pre_epoch, json_options=json_options))
         self.assertEqual(
-            '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}',
+            '{"dt": {"$date": "1972-01-01T01:01:01.010Z"}}',
             json_util.dumps(post_epoch, json_options=json_options))
 
         # Strict mode requires dates to have a timezone
