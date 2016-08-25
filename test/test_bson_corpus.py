@@ -19,13 +19,14 @@ import functools
 import glob
 import json
 import os
+import sys
 
 from bson import BSON, json_util
 from bson.binary import STANDARD
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
 from bson.errors import InvalidBSON
-from bson.py3compat import text_type
+from bson.py3compat import text_type, b
 
 from test import unittest
 
@@ -84,10 +85,10 @@ def create_test(case_spec):
                 encode_extjson = to_extjson
                 encode_bson = to_bson
 
-            B = binascii.unhexlify(valid_case['bson'])
+            B = binascii.unhexlify(b(valid_case['bson']))
 
             if 'canonical_bson' in valid_case:
-                cB = binascii.unhexlify(valid_case['canonical_bson'])
+                cB = binascii.unhexlify(b(valid_case['canonical_bson']))
             else:
                 cB = B
 
@@ -99,7 +100,11 @@ def create_test(case_spec):
                     self.assertIsInstance(
                         decode_bson(cB)[test_key],
                         _DEPRECATED_BSON_TYPES[bson_type])
-            else:
+            # PyPy3 can't handle NaN with a payload from struct.(un)pack
+            # if endianness is specified in the format string.
+            elif not ('PyPy' in sys.version and
+                      sys.version_info[:2] < (3, 3) and
+                      valid_case['description'] == 'NaN with payload'):
                 # Test round-tripping encoding/decoding the type.
                 self.assertEqual(encode_bson(decode_bson(B)), cB)
 
@@ -155,7 +160,8 @@ def create_test(case_spec):
 
             for decode_error_case in case_spec.get('decodeErrors', []):
                 with self.assertRaises(InvalidBSON):
-                    decode_bson(binascii.unhexlify(decode_error_case['bson']))
+                    decode_bson(
+                        binascii.unhexlify(b(decode_error_case['bson'])))
 
     return run_test
 
