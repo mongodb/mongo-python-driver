@@ -46,7 +46,7 @@ _WINCERTS = None
 
 if HAVE_SSL:
     try:
-        # Python 3.2 and above.
+        # Python 2.7.9+, 3.2+, PyPy 2.5.1+, etc.
         from ssl import SSLContext
     except ImportError:
         from pymongo.ssl_context import SSLContext
@@ -81,7 +81,6 @@ if HAVE_SSL:
     # XXX: Possible future work.
     # - OCSP? Not supported by python at all.
     #   http://bugs.python.org/issue17123
-    # - Setting OP_NO_COMPRESSION? The server doesn't yet.
     # - Adding an ssl_context keyword argument to MongoClient? This might
     #   be useful for sites that have unusual requirements rather than
     #   trying to expose every SSLContext option through a keyword/uri
@@ -94,13 +93,15 @@ if HAVE_SSL:
         # highest protocol version they both support. A very good thing.
         ctx = SSLContext(ssl.PROTOCOL_SSLv23)
         if hasattr(ctx, "options"):
-            # Explicitly disable SSLv2 and SSLv3. Note that up to
-            # date versions of MongoDB 2.4 and above already do this,
-            # python disables SSLv2 by default in >= 2.7.7 and >= 3.3.4
-            # and SSLv3 in >= 3.4.3. There is no way for us to do this
-            # explicitly for python 2.6 or 2.7 before 2.7.9.
+            # Explicitly disable SSLv2, SSLv3 and TLS compression. Note that
+            # up to date versions of MongoDB 2.4 and above already disable
+            # SSLv2 and SSLv3, python disables SSLv2 by default in >= 2.7.7
+            # and >= 3.3.4 and SSLv3 in >= 3.4.3. There is no way for us to do
+            # any of this explicitly for python 2.6 or 2.7 before 2.7.9.
             ctx.options |= getattr(ssl, "OP_NO_SSLv2", 0)
             ctx.options |= getattr(ssl, "OP_NO_SSLv3", 0)
+            # OpenSSL >= 1.0.0
+            ctx.options |= getattr(ssl, "OP_NO_COMPRESSION", 0)
         if certfile is not None:
             try:
                 if passphrase is not None:
