@@ -1,7 +1,20 @@
-# Backport of the match_hostname logic introduced in python 3.2
-# http://hg.python.org/releasing/3.3.5/file/993955b807b3/Lib/ssl.py
+# Backport of the match_hostname logic from python 3.5, with small
+# changes to support IP address matching on python 2.6, 2.7, 3.3, and 3.4.
 
 import re
+import sys
+
+try:
+    # Python 3.3+, or the ipaddress module from pypi.
+    from ipaddress import ip_address
+except ImportError:
+    ip_address = lambda address: None
+
+# ipaddress.ip_address requires unicode
+if sys.version_info[0] < 3:
+    _unicode = unicode
+else:
+    _unicode = lambda value: value
 
 
 class CertificateError(ValueError):
@@ -59,21 +72,43 @@ def _dnsname_match(dn, hostname, max_wildcards=1):
     return pat.match(hostname)
 
 
+def _ipaddress_match(ipname, host_ip):
+    """Exact matching of IP addresses.
+
+    RFC 6125 explicitly doesn't define an algorithm for this
+    (section 1.7.2 - "Out of Scope").
+    """
+    # OpenSSL may add a trailing newline to a subjectAltName's IP address
+    ip = ip_address(_unicode(ipname).rstrip())
+    return ip == host_ip
+
+
 def match_hostname(cert, hostname):
     """Verify that *cert* (in decoded format as returned by
     SSLSocket.getpeercert()) matches the *hostname*.  RFC 2818 and RFC 6125
-    rules are followed, but IP addresses are not accepted for *hostname*.
+    rules are followed.
 
     CertificateError is raised on failure. On success, the function
     returns nothing.
     """
     if not cert:
-        raise ValueError("empty or no certificate")
+        raise ValueError("empty or no certificate, match_hostname needs a "
+                         "SSL socket or SSL context with either "
+                         "CERT_OPTIONAL or CERT_REQUIRED")
+    try:
+        host_ip = ip_address(_unicode(hostname))
+    except (ValueError, UnicodeError):
+        # Not an IP address (common case)
+        host_ip = None
     dnsnames = []
     san = cert.get('subjectAltName', ())
     for key, value in san:
         if key == 'DNS':
-            if _dnsname_match(value, hostname):
+            if host_ip is None and _dnsname_match(value, hostname):
+                return
+            dnsnames.append(value)
+        elif key == 'IP Address':
+            if host_ip is not None and _ipaddress_match(value, host_ip):
                 return
             dnsnames.append(value)
     if not dnsnames:

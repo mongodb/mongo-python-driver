@@ -32,7 +32,9 @@ possible `wincertstore <https://pypi.python.org/pypi/wincertstore>`_ can be
 used with older python versions. Users of operating systems other than Windows
 that are stuck on python versions older than 2.7.9 can install
 `certifi <https://pypi.python.org/pypi/certifi>`_ to use the Mozilla CA bundle
-for certificate verification.
+for certificate verification. Users of python 2.x that require IP address
+support for hostname matching must install the `ipaddress
+<https://pypi.python.org/pypi/ipaddress>`_ module.
 
 Certificate verification policy
 ...............................

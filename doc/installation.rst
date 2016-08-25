@@ -56,7 +56,8 @@ dependency can be installed automatically along with PyMongo::
 
   $ python -m pip install pymongo[gssapi]
 
-TLS / SSL support may require `certifi
+TLS / SSL support may require `ipaddress
+<https://pypi.python.org/pypi/ipaddress>`_ and `certifi
 <https://pypi.python.org/pypi/certifi>`_ or `wincertstore
 <https://pypi.python.org/pypi/wincertstore>`_ depending on the Python
 version in use. The necessary dependencies can be installed along with

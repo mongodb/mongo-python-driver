@@ -26,6 +26,12 @@ except ImportError:
     # Python 2
     from urllib import quote_plus
 
+try:
+    import ipaddress
+    _HAVE_IPADDRESS = True
+except ImportError:
+    _HAVE_IPADDRESS = False
+
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
@@ -247,6 +253,15 @@ class TestSSL(IntegrationTest):
                                  ssl_ca_certs=CA_PEM)
 
         self.assertClientWorks(client)
+
+        if _HAVE_IPADDRESS and socket.gethostbyname('server') == '127.0.0.1':
+            client = MongoClient('127.0.0.1',
+                                 ssl=True,
+                                 ssl_certfile=CLIENT_PEM,
+                                 ssl_cert_reqs=ssl.CERT_REQUIRED,
+                                 ssl_ca_certs=CA_PEM)
+            self.assertClientWorks(client)
+
 
     @client_context.require_ssl_certfile
     @client_context.require_server_resolvable

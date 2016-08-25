@@ -38,6 +38,8 @@ from pymongo.network import (command,
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
+# Always use our backport so we always have support for IP address matching
+from pymongo.ssl_match_hostname import match_hostname, CertificateError
 
 
 _METADATA = {
@@ -52,12 +54,6 @@ _METADATA = {
 # to import the IDNA codec. Import it here, where presumably we're on the
 # main thread, to avoid the deadlock. See PYTHON-607.
 u'foo'.encode('idna')
-
-try:
-    from ssl import match_hostname, CertificateError
-except ImportError:
-    # These don't require the ssl module
-    from pymongo.ssl_match_hostname import match_hostname, CertificateError
 
 
 def _raise_connection_failure(address, error):
