@@ -558,21 +558,15 @@ class TestBSON(unittest.TestCase):
             # binary subtype 0.
             self.assertRaises(InvalidStringData, BSON.encode,
                               {"lalala": '\xf4\xe0\xf0\xe1\xc0 Color Touch'})
-        evil_list = {'a': []}
-        evil_list['a'].append(evil_list)
-        evil_dict = {}
-        evil_dict['a'] = evil_dict
         # Work around what seems like a regression in python 3.5.0.
         # See http://bugs.python.org/issue25222
-        # 100 is an arbitrary choice. The default is 1000 on the machines
-        # I have access to.
-        depth = sys.getrecursionlimit()
-        sys.setrecursionlimit(100)
-        try:
+        if sys.version_info[:2] < (3, 5):
+            evil_list = {'a': []}
+            evil_list['a'].append(evil_list)
+            evil_dict = {}
+            evil_dict['a'] = evil_dict
             for evil_data in [evil_dict, evil_list]:
                 self.assertRaises(Exception, BSON.encode, evil_data)
-        finally:
-            sys.setrecursionlimit(depth)
 
     def test_overflow(self):
         self.assertTrue(BSON.encode({"x": long(9223372036854775807)}))
