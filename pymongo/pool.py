@@ -18,8 +18,14 @@ import socket
 import sys
 import threading
 
+try:
+    import ssl
+    _HAVE_SNI = getattr(ssl, 'HAS_SNI', False)
+except ImportError:
+    _HAVE_SNI = False
+
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import itervalues
+from bson.py3compat import itervalues, _unicode
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
 from pymongo.common import MAX_MESSAGE_SIZE
@@ -40,6 +46,51 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
 # Always use our backport so we always have support for IP address matching
 from pymongo.ssl_match_hostname import match_hostname, CertificateError
+
+# For SNI support. According to RFC6066, section 3, IPv4 and IPv6 literals are
+# not permitted for SNI hostname.
+try:
+    from ipaddress import ip_address
+    def is_ip_address(address):
+        try:
+            ip_address(_unicode(address))
+            return True
+        except (ValueError, UnicodeError):
+            return False
+except ImportError:
+    if hasattr(socket, 'inet_pton') and socket.has_ipv6:
+        # Most *nix, recent Windows
+        def is_ip_address(address):
+            try:
+                # inet_pton rejects IPv4 literals with leading zeros
+                # (e.g. 192.168.0.01), inet_aton does not, and we
+                # can connect to them without issue. Use inet_aton.
+                socket.inet_aton(address)
+                return True
+            except socket.error:
+                try:
+                    socket.inet_pton(socket.AF_INET6, address)
+                    return True
+                except socket.error:
+                    return False
+    else:
+        # No inet_pton
+        def is_ip_address(address):
+            try:
+                socket.inet_aton(address)
+                return True
+            except socket.error:
+                if ':' in address:
+                    # ':' is not a valid character for a hostname. If we get
+                    # here a few things have to be true:
+                    #   - We're on a recent version of python 2.7 (2.7.9+).
+                    #     2.6 and older 2.7 versions don't support SNI.
+                    #   - We're on Windows XP or some unusual Unix that doesn't
+                    #     have inet_pton.
+                    #   - The application is using IPv6 literals with TLS, which
+                    #     is pretty unusual.
+                    return True
+                return False
 
 
 _METADATA = {
@@ -482,14 +533,20 @@ def _configured_socket(address, options):
     ssl_context = options.ssl_context
 
     if ssl_context is not None:
+        host = address[0]
         try:
-            sock = ssl_context.wrap_socket(sock)
+            # According to RFC6066, section 3, IPv4 and IPv6 literals are
+            # not permitted for SNI hostname.
+            if _HAVE_SNI and not is_ip_address(host):
+                sock = ssl_context.wrap_socket(sock, server_hostname=host)
+            else:
+                sock = ssl_context.wrap_socket(sock)
         except IOError as exc:
             sock.close()
             raise ConnectionFailure("SSL handshake failed: %s" % (str(exc),))
         if ssl_context.verify_mode and options.ssl_match_hostname:
             try:
-                match_hostname(sock.getpeercert(), hostname=address[0])
+                match_hostname(sock.getpeercert(), hostname=host)
             except CertificateError:
                 sock.close()
                 raise
