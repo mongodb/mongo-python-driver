@@ -792,7 +792,7 @@ class Collection(common.BaseObject):
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False,
-                   bypass_document_validation=False):
+                   bypass_document_validation=False, **kwargs):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -821,6 +821,18 @@ class Collection(common.BaseObject):
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
             ``False``.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
+
+        .. versionchanged:: 3.3.1
+           Respects write concern.
+
+        .. warning:: Starting in PyMongo 3.3.1, this command uses the
+           :class:`~pymongo.write_concern.WriteConcern` of this
+           :class:`~pymongo.collection.Collection` when connected to MongoDB >=
+           3.2. Note that using an elevated write concern with this command may
+           be slower compared to using the default write concern.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -835,14 +847,18 @@ class Collection(common.BaseObject):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_update(update)
+
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
-                                  check_keys=False,
+                                  check_keys=False, write_concern=write_concern,
                                   bypass_doc_val=bypass_document_validation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False,
-                    bypass_document_validation=False):
+                    bypass_document_validation=False, **kwargs):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -871,6 +887,18 @@ class Collection(common.BaseObject):
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
             ``False``.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
+
+        .. versionchanged:: 3.3.1
+           Respects write concern.
+
+        .. warning:: Starting in PyMongo 3.3.1, this command uses the
+           :class:`~pymongo.write_concern.WriteConcern` of this
+           :class:`~pymongo.collection.Collection` when connected to MongoDB >=
+           3.2. Note that using an elevated write concern with this command may
+           be slower compared to using the default write concern.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -885,9 +913,13 @@ class Collection(common.BaseObject):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_update(update)
+
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
-                                  check_keys=False, multi=True,
+                                  check_keys=False, multi=True, write_concern=write_concern,
                                   bypass_doc_val=bypass_document_validation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
