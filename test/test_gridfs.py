@@ -79,9 +79,7 @@ class TestGridfsNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(
-            client_context.host, client_context.port, connect=False)
-        cls.db = client.pymongo_test
+        cls.db = MongoClient(connect=False).pymongo_test
 
     def test_gridfs(self):
         self.assertRaises(TypeError, gridfs.GridFS, "foo")
@@ -512,9 +510,8 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
         self.assertRaises(ConnectionFailure, fs.put, 'data')
 
     def tearDown(self):
-        rsc = client_context.rs_client
-        rsc.pymongo_test.drop_collection('fs.files')
-        rsc.pymongo_test.drop_collection('fs.chunks')
+        self.client.pymongo_test.drop_collection('fs.files')
+        self.client.pymongo_test.drop_collection('fs.chunks')
 
 
 if __name__ == "__main__":

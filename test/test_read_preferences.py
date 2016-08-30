@@ -47,6 +47,8 @@ from test.version import Version
 
 
 class TestSelections(unittest.TestCase):
+
+    @client_context.require_connection
     def test_bool(self):
         client = single_client()
 
@@ -293,7 +295,9 @@ class TestReadPreferences(TestReadPreferencesBase):
 class ReadPrefTester(MongoClient):
     def __init__(self, *args, **kwargs):
         self.has_read_from = set()
-        super(ReadPrefTester, self).__init__(*args, **kwargs)
+        client_options = client_context.ssl_client_options.copy()
+        client_options.update(kwargs)
+        super(ReadPrefTester, self).__init__(*args, **client_options)
 
     @contextlib.contextmanager
     def _socket_for_reads(self, read_preference):

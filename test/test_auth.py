@@ -31,7 +31,7 @@ from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
 from test import client_context, SkipTest, unittest, Version
-from test.utils import delay
+from test.utils import delay, rs_or_single_client_noauth, single_client_noauth
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -305,14 +305,11 @@ class TestSASLPlain(unittest.TestCase):
         self.assertRaises(OperationFailure, bad_pwd.admin.command, 'ismaster')
 
 
-
 class TestSCRAMSHA1(unittest.TestCase):
 
     @client_context.require_auth
     @client_context.require_version_min(2, 7, 2)
     def setUp(self):
-        self.replica_set_name = client_context.replica_set_name
-
         # Before 2.7.7, SCRAM-SHA-1 had to be enabled from the command line.
         if client_context.version < Version(2, 7, 7):
             cmd_line = client_context.cmd_line
@@ -321,7 +318,7 @@ class TestSCRAMSHA1(unittest.TestCase):
                     {}).get('authenticationMechanisms', ''):
                 raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
 
-        client = client_context.rs_or_standalone_client
+        client = client_context.client
         client.pymongo_test.add_user(
             'user', 'pass',
             roles=['userAdmin', 'readWrite'],
@@ -329,42 +326,36 @@ class TestSCRAMSHA1(unittest.TestCase):
 
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
-        client = MongoClient(host, port)
+        client = rs_or_single_client_noauth()
         self.assertTrue(client.pymongo_test.authenticate(
             'user', 'pass', mechanism='SCRAM-SHA-1'))
         client.pymongo_test.command('dbstats')
 
-        client = MongoClient('mongodb://user:pass@%s:%d/pymongo_test'
-                             '?authMechanism=SCRAM-SHA-1' % (host, port))
+        client = rs_or_single_client_noauth(
+            'mongodb://user:pass@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1'
+            % (host, port))
         client.pymongo_test.command('dbstats')
 
-        if self.replica_set_name:
-            client = MongoClient(host, port,
-                                 replicaSet='%s' % (self.replica_set_name,))
-            self.assertTrue(client.pymongo_test.authenticate(
-                'user', 'pass', mechanism='SCRAM-SHA-1'))
-            client.pymongo_test.command('dbstats')
-
+        if client_context.is_rs:
             uri = ('mongodb://user:pass'
                    '@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1'
-                   '&replicaSet=%s' % (host, port, self.replica_set_name))
-            client = MongoClient(uri)
+                   '&replicaSet=%s' % (host, port,
+                                       client_context.replica_set_name))
+            client = single_client_noauth(uri)
             client.pymongo_test.command('dbstats')
             db = client.get_database(
                 'pymongo_test', read_preference=ReadPreference.SECONDARY)
             db.command('dbstats')
 
     def tearDown(self):
-        client_context.rs_or_standalone_client.pymongo_test.remove_user('user')
+        client_context.client.pymongo_test.remove_user('user')
 
 
 class TestAuthURIOptions(unittest.TestCase):
 
     @client_context.require_auth
     def setUp(self):
-        client = MongoClient(client_context.host, client_context.port)
-        response = client.admin.command('ismaster')
-        self.replica_set_name = str(response.get('setName', ''))
+        client = rs_or_single_client_noauth()
         client_context.client.admin.add_user('admin', 'pass',
                                              roles=['userAdminAnyDatabase',
                                                     'dbAdminAnyDatabase',
@@ -374,12 +365,10 @@ class TestAuthURIOptions(unittest.TestCase):
         client.pymongo_test.add_user('user', 'pass',
                                      roles=['userAdmin', 'readWrite'])
 
-        if self.replica_set_name:
-            # GLE requires authentication.
-            client.admin.authenticate('admin', 'pass')
+        if client_context.is_rs:
             # Make sure the admin user is replicated after calling add_user
             # above. This avoids a race in the replica set tests below.
-            client.admin.command('getLastError', w=len(response['hosts']))
+            client.admin.command('getLastError', w=client_context.w)
         self.client = client
 
     def tearDown(self):
@@ -393,14 +382,14 @@ class TestAuthURIOptions(unittest.TestCase):
     def test_uri_options(self):
         # Test default to admin
         host, port = client_context.host, client_context.port
-        client = MongoClient(
+        client = rs_or_single_client_noauth(
             'mongodb://admin:pass@%s:%d' % (host, port))
         self.assertTrue(client.admin.command('dbstats'))
 
-        if self.replica_set_name:
-            uri = ('mongodb://admin:pass'
-                   '@%s:%d/?replicaSet=%s' % (host, port, self.replica_set_name))
-            client = MongoClient(uri)
+        if client_context.is_rs:
+            uri = ('mongodb://admin:pass@%s:%d/?replicaSet=%s' % (
+                host, port, client_context.replica_set_name))
+            client = single_client_noauth(uri)
             self.assertTrue(client.admin.command('dbstats'))
             db = client.get_database(
                 'admin', read_preference=ReadPreference.SECONDARY)
@@ -408,14 +397,14 @@ class TestAuthURIOptions(unittest.TestCase):
 
         # Test explicit database
         uri = 'mongodb://user:pass@%s:%d/pymongo_test' % (host, port)
-        client = MongoClient(uri)
+        client = rs_or_single_client_noauth(uri)
         self.assertRaises(OperationFailure, client.admin.command, 'dbstats')
         self.assertTrue(client.pymongo_test.command('dbstats'))
 
-        if self.replica_set_name:
-            uri = ('mongodb://user:pass@%s:%d'
-                   '/pymongo_test?replicaSet=%s' % (host, port, self.replica_set_name))
-            client = MongoClient(uri)
+        if client_context.is_rs:
+            uri = ('mongodb://user:pass@%s:%d/pymongo_test?replicaSet=%s' % (
+                host, port, client_context.replica_set_name))
+            client = single_client_noauth(uri)
             self.assertRaises(OperationFailure,
                               client.admin.command, 'dbstats')
             self.assertTrue(client.pymongo_test.command('dbstats'))
@@ -426,15 +415,16 @@ class TestAuthURIOptions(unittest.TestCase):
         # Test authSource
         uri = ('mongodb://user:pass@%s:%d'
                '/pymongo_test2?authSource=pymongo_test' % (host, port))
-        client = MongoClient(uri)
+        client = rs_or_single_client_noauth(uri)
         self.assertRaises(OperationFailure,
                           client.pymongo_test2.command, 'dbstats')
         self.assertTrue(client.pymongo_test.command('dbstats'))
 
-        if self.replica_set_name:
+        if client_context.is_rs:
             uri = ('mongodb://user:pass@%s:%d/pymongo_test2?replicaSet='
-                   '%s;authSource=pymongo_test' % (host, port, self.replica_set_name))
-            client = MongoClient(uri)
+                   '%s;authSource=pymongo_test' % (
+                host, port, client_context.replica_set_name))
+            client = single_client_noauth(uri)
             self.assertRaises(OperationFailure,
                               client.pymongo_test2.command, 'dbstats')
             self.assertTrue(client.pymongo_test.command('dbstats'))
@@ -449,7 +439,7 @@ class TestDelegatedAuth(unittest.TestCase):
     @client_context.require_version_max(2, 5, 3)
     @client_context.require_version_min(2, 4, 0)
     def setUp(self):
-        self.client = client_context.rs_or_standalone_client
+        self.client = client_context.client
 
     def tearDown(self):
         self.client.pymongo_test.remove_user('user')
@@ -465,7 +455,7 @@ class TestDelegatedAuth(unittest.TestCase):
         self.client.pymongo_test2.add_user('user',
                                            userSource='pymongo_test',
                                            roles=['read'])
-        auth_c = MongoClient(client_context.host, client_context.port)
+        auth_c = rs_or_single_client_noauth()
         self.assertRaises(OperationFailure,
                           auth_c.pymongo_test2.foo.find_one)
         # Auth must occur on the db where the user is defined.

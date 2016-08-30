@@ -131,7 +131,7 @@ class Disconnect(threading.Thread):
 
 class TestThreads(IntegrationTest):
     def setUp(self):
-        self.db = client_context.rs_or_standalone_client.pymongo_test
+        self.db = self.client.pymongo_test
 
     def test_threading(self):
         self.db.drop_collection("test")

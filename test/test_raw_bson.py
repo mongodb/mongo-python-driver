@@ -22,7 +22,7 @@ class TestRawBSONDocument(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.client = client_context.rs_or_standalone_client
+        cls.client = client_context.client
 
     def tearDown(self):
         if client_context.connected:

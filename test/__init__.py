@@ -35,7 +35,7 @@ import pymongo.errors
 
 from bson.py3compat import _unicode
 from pymongo import common
-from pymongo.ssl_support import HAVE_SSL
+from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
 from test.version import Version
 
 if HAVE_SSL:
@@ -53,7 +53,18 @@ db_pwd = _unicode(os.environ.get("DB_PASSWORD", "password"))
 
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                          'certificates')
-CLIENT_PEM = os.path.join(CERT_PATH, 'client.pem')
+CLIENT_PEM = os.environ.get('CLIENT_PEM',
+                            os.path.join(CERT_PATH, 'client.pem'))
+CA_PEM = os.environ.get('CA_PEM', os.path.join(CERT_PATH, 'ca.pem'))
+CERT_REQS = validate_cert_reqs('CERT_REQS', os.environ.get('CERT_REQS'))
+
+_SSL_OPTIONS = dict(ssl=True)
+if CLIENT_PEM:
+    _SSL_OPTIONS['ssl_certfile'] = CLIENT_PEM
+if CA_PEM:
+    _SSL_OPTIONS['ssl_ca_certs'] = CA_PEM
+if CERT_REQS is not None:
+    _SSL_OPTIONS['ssl_cert_reqs'] = CERT_REQS
 
 
 def is_server_resolvable():
@@ -68,6 +79,17 @@ def is_server_resolvable():
             return False
     finally:
         socket.setdefaulttimeout(socket_timeout)
+
+
+def _connect(host, port, **kwargs):
+    try:
+        client = pymongo.MongoClient(
+            host, port, serverSelectionTimeoutMS=100, **kwargs)
+        client.admin.command('ismaster')  # Can we connect?
+        # If connected, then return client with default timeout
+        return pymongo.MongoClient(host, port, **kwargs)
+    except pymongo.errors.ConnectionFailure:
+        return None
 
 
 class client_knobs(object):
@@ -129,7 +151,6 @@ class ClientContext(object):
         self.w = None
         self.nodes = set()
         self.replica_set_name = None
-        self.rs_client = None
         self.cmd_line = None
         self.version = Version(-1)  # Needs to be comparable with Version
         self.auth_enabled = False
@@ -137,40 +158,22 @@ class ClientContext(object):
         self.is_mongos = False
         self.is_rs = False
         self.has_ipv6 = False
+        self.ssl = False
         self.ssl_cert_none = False
         self.ssl_certfile = False
         self.server_is_resolvable = is_server_resolvable()
-
-        self.client = self.rs_or_standalone_client = None
-
-        def connect(**kwargs):
-            try:
-                client = pymongo.MongoClient(
-                    self.host,
-                    self.port,
-                    serverSelectionTimeoutMS=100,
-                    **kwargs)
-                client.admin.command('ismaster')  # Can we connect?
-                # If connected, then return client with default timeout
-                return pymongo.MongoClient(self.host, self.port, **kwargs)
-            except pymongo.errors.ConnectionFailure:
-                return None
-
-        self.client = connect()
+        self.ssl_client_options = {}
+        self.client = _connect(self.host, self.port)
 
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
-            self.client = connect(ssl=True, ssl_cert_reqs=ssl.CERT_NONE)
+            self.client = _connect(self.host, self.port, **_SSL_OPTIONS)
             if self.client:
-                self.ssl_cert_none = True
-
-            # Can client connect with certfile?
-            client = connect(ssl=True,
-                             ssl_cert_reqs=ssl.CERT_NONE,
-                             ssl_certfile=CLIENT_PEM,)
-            if client:
+                self.ssl = True
+                self.ssl_client_options = _SSL_OPTIONS
                 self.ssl_certfile = True
-                self.client = client
+                if _SSL_OPTIONS.get('ssl_cert_reqs') == ssl.CERT_NONE:
+                    self.ssl_cert_none = True
 
         if self.client:
             self.connected = True
@@ -178,16 +181,16 @@ class ClientContext(object):
             self.w = len(self.ismaster.get("hosts", [])) or 1
             self.nodes = set([(self.host, self.port)])
             self.replica_set_name = self.ismaster.get('setName', '')
-            self.rs_client = None
             self.version = Version.from_client(self.client)
             if self.replica_set_name:
                 self.is_rs = True
-                self.rs_client = pymongo.MongoClient(
-                    self.ismaster['primary'], replicaSet=self.replica_set_name)
+                self.client = pymongo.MongoClient(
+                    self.ismaster['primary'],
+                    replicaSet=self.replica_set_name,
+                    **self.ssl_client_options)
                 # Force connection
-                self.rs_client.admin.command('ismaster')
-                self.host, self.port = self.rs_client.primary
-                self.client = connect()
+                self.client.admin.command('ismaster')
+                self.host, self.port = self.client.primary
 
                 nodes = [partition_node(node.lower())
                          for node in self.ismaster.get('hosts', [])]
@@ -196,8 +199,6 @@ class ClientContext(object):
                 nodes.extend([partition_node(node.lower())
                               for node in self.ismaster.get('arbiters', [])])
                 self.nodes = set(nodes)
-
-            self.rs_or_standalone_client = self.rs_client or self.client
 
             try:
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
@@ -221,9 +222,6 @@ class ClientContext(object):
                     self.client.admin.add_user(db_user, db_pwd, **roles)
                     self.client.admin.authenticate(db_user, db_pwd)
 
-                if self.rs_client:
-                    self.rs_client.admin.authenticate(db_user, db_pwd)
-
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
 
@@ -233,12 +231,17 @@ class ClientContext(object):
                 params = self.cmd_line['parsed'].get('setParameter', [])
                 if 'enableTestCommands=1' in params:
                     self.test_commands_enabled = True
+                else:
+                    params = self.cmd_line['parsed'].get('setParameter', {})
+                    if params.get('enableTestCommands') == '1':
+                        self.test_commands_enabled = True
 
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
             self.has_ipv6 = self._server_started_with_ipv6()
 
-        # Do this after we connect so we know who the primary is.
-        self.pair = "%s:%d" % (self.host, self.port)
+    @property
+    def pair(self):
+        return "%s:%d" % (self.host, self.port)
 
     def _check_user_provided(self):
         try:
@@ -391,13 +394,13 @@ class ClientContext(object):
 
     def require_ssl(self, func):
         """Run a test only if the client can connect over SSL."""
-        return self._require(self.ssl_cert_none or self.ssl_certfile,
+        return self._require(self.ssl,
                              "Must be able to connect via SSL",
                              func=func)
 
     def require_no_ssl(self, func):
         """Run a test only if the client can connect over SSL."""
-        return self._require(not (self.ssl_cert_none or self.ssl_certfile),
+        return self._require(not self.ssl,
                              "Must be able to connect without SSL",
                              func=func)
 
@@ -430,7 +433,7 @@ class IntegrationTest(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        cls.client = client_context.rs_or_standalone_client
+        cls.client = client_context.client
         cls.db = cls.client.pymongo_test
 
 

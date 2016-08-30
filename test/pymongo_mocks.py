@@ -23,7 +23,7 @@ from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, NetworkTimeout
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
-from pymongo.pool import Pool, PoolOptions
+from pymongo.pool import Pool
 from pymongo.server_description import ServerDescription
 
 from test import client_context
@@ -39,9 +39,7 @@ class MockPool(Pool):
         self.mock_host, self.mock_port = pair
 
         # Actually connect to the default server.
-        Pool.__init__(self,
-                      (default_host, default_port),
-                      PoolOptions(connect_timeout=20))
+        Pool.__init__(self, (default_host, default_port), *args, **kwargs)
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
@@ -125,7 +123,10 @@ class MockClient(MongoClient):
         kwargs['_pool_class'] = partial(MockPool, self)
         kwargs['_monitor_class'] = partial(MockMonitor, self)
 
-        super(MockClient, self).__init__(*args, **kwargs)
+        client_options = client_context.ssl_client_options.copy()
+        client_options.update(kwargs)
+
+        super(MockClient, self).__init__(*args, **client_options)
 
     def kill_host(self, host):
         """Host is like 'a:1'."""

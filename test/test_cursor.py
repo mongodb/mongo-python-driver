@@ -24,8 +24,8 @@ sys.path[0:0] = [""]
 from bson.code import Code
 from bson.py3compat import PY3
 from bson.son import SON
-from pymongo import (MongoClient,
-                     monitoring,
+from pymongo import (monitoring,
+                     MongoClient,
                      ASCENDING,
                      DESCENDING,
                      ALL,
@@ -38,7 +38,8 @@ from test import (client_context,
                   SkipTest,
                   unittest,
                   IntegrationTest)
-from test.utils import server_started_with_auth, single_client, EventListener
+from test.utils import (rs_or_single_client,
+                        EventListener)
 
 if PY3:
     long = int
@@ -48,9 +49,7 @@ class TestCursorNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(
-            client_context.host, client_context.port, connect=False)
-        cls.db = client.test
+        cls.db = MongoClient(connect=False).test
 
     def test_deepcopy_cursor_littered_with_regexes(self):
         cursor = self.db.test.find({
@@ -128,8 +127,15 @@ class TestCursorNoConnect(unittest.TestCase):
         cursor.remove_option(128)
         self.assertEqual(0, cursor._Cursor__query_flags)
 
+
+class TestCursor(IntegrationTest):
+
+    def test_add_remove_option_exhaust(self):
         # Exhaust - which mongos doesn't support
-        if client_context.client is not None and not self.db.client.is_mongos:
+        if client_context.is_mongos:
+            with self.assertRaises(InvalidOperation):
+                self.db.test.find(cursor_type=CursorType.EXHAUST)
+        else:
             cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
             self.assertEqual(64, cursor._Cursor__query_flags)
             cursor2 = self.db.test.find().add_option(64)
@@ -139,9 +145,6 @@ class TestCursorNoConnect(unittest.TestCase):
             cursor.remove_option(64)
             self.assertEqual(0, cursor._Cursor__query_flags)
             self.assertFalse(cursor._Cursor__exhaust)
-
-
-class TestCursor(IntegrationTest):
 
     @client_context.require_version_min(2, 5, 3, -1)
     def test_max_time_ms(self):
@@ -226,7 +229,7 @@ class TestCursor(IntegrationTest):
         listener.add_command_filter('killCursors')
         saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
-        coll = single_client(
+        coll = rs_or_single_client(
             event_listeners=[listener])[self.db.name].pymongo_test
         results = listener.results
 
@@ -312,6 +315,7 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_test_commands
+    @client_context.require_no_mongos
     def test_max_time_ms_getmore(self):
         # Test that Cursor handles server timeout error in response to getmore.
         coll = self.db.pymongo_test
@@ -1172,7 +1176,7 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_no_mongos
     def test_comment(self):
-        if server_started_with_auth(self.db.client):
+        if client_context.auth_enabled:
             raise SkipTest("SERVER-4754 - This test uses profiling.")
 
         # MongoDB 3.1.5 changed the ns for commands.

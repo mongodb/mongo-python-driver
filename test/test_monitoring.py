@@ -28,7 +28,10 @@ from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context, client_knobs
-from test.utils import single_client, wait_until, EventListener
+from test.utils import (EventListener,
+                        rs_or_single_client,
+                        single_client,
+                        wait_until)
 
 
 class TestCommandMonitoring(unittest.TestCase):
@@ -40,7 +43,7 @@ class TestCommandMonitoring(unittest.TestCase):
         cls.saved_listeners = monitoring._LISTENERS
         # Don't use any global subscribers.
         monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
-        cls.client = single_client(event_listeners=[cls.listener])
+        cls.client = rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
@@ -384,7 +387,7 @@ class TestCommandMonitoring(unittest.TestCase):
 
     @client_context.require_replica_set
     def test_not_master_error(self):
-        address = next(iter(client_context.rs_client.secondaries))
+        address = next(iter(client_context.client.secondaries))
         client = single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         client.admin.command('ismaster')

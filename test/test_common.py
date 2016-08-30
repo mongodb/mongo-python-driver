@@ -23,7 +23,6 @@ from bson.binary import UUIDLegacy, PYTHON_LEGACY, STANDARD
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from pymongo.mongo_client import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
 from test import client_context, unittest, IntegrationTest
@@ -165,10 +164,10 @@ class TestCommon(IntegrationTest):
                                     {"count": 0}, reduce))
 
     def test_write_concern(self):
-        c = MongoClient(connect=False)
+        c = rs_or_single_client(connect=False)
         self.assertEqual(WriteConcern(), c.write_concern)
 
-        c = MongoClient(connect=False, w=2, wtimeout=1000)
+        c = rs_or_single_client(connect=False, w=2, wtimeout=1000)
         wc = WriteConcern(w=2, wtimeout=1000)
         self.assertEqual(wc, c.write_concern)
 
@@ -199,24 +198,22 @@ class TestCommon(IntegrationTest):
         self.assertTrue(new_coll.insert_one(doc))
         self.assertRaises(OperationFailure, coll.insert_one, doc)
 
-        m = MongoClient("mongodb://%s/" % (pair,),
-                        replicaSet=client_context.replica_set_name)
+        m = rs_or_single_client("mongodb://%s/" % (pair,),
+                                replicaSet=client_context.replica_set_name)
 
         coll = m.pymongo_test.write_concern_test
         self.assertRaises(OperationFailure, coll.insert_one, doc)
-        m = MongoClient("mongodb://%s/?w=0" % (pair,),
-                        replicaSet=client_context.replica_set_name)
+        m = rs_or_single_client("mongodb://%s/?w=0" % (pair,),
+                                replicaSet=client_context.replica_set_name)
 
         coll = m.pymongo_test.write_concern_test
         coll.insert_one(doc)
 
         # Equality tests
         direct = connected(single_client(w=0))
-        self.assertEqual(direct,
-                         connected(MongoClient("mongodb://%s/?w=0" % (pair,))))
-
-        self.assertFalse(direct !=
-                         connected(MongoClient("mongodb://%s/?w=0" % (pair,))))
+        direct2 = connected(single_client("mongodb://%s/?w=0" % (pair,)))
+        self.assertEqual(direct, direct2)
+        self.assertFalse(direct != direct2)
 
 
 if __name__ == "__main__":

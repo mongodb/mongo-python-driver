@@ -36,7 +36,7 @@ from bson.py3compat import itervalues
 from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
-from pymongo import MongoClient, monitoring
+from pymongo import monitoring
 from pymongo.bulk import BulkWriteError
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
@@ -50,6 +50,7 @@ from pymongo.errors import (DocumentTooLarge,
                             OperationFailure,
                             WriteConcernError)
 from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
+from pymongo.mongo_client import MongoClient
 from pymongo.operations import *
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (InsertOneResult,
@@ -66,13 +67,12 @@ from test import client_context, unittest
 
 
 class TestCollectionNoConnect(unittest.TestCase):
+    """Test Collection features on a client that does not connect.
+    """
 
     @classmethod
-    @client_context.require_connection
     def setUpClass(cls):
-        client = MongoClient(
-            client_context.host, client_context.port, connect=False)
-        cls.db = client.pymongo_test
+        cls.db = MongoClient(connect=False).pymongo_test
 
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
@@ -91,12 +91,6 @@ class TestCollectionNoConnect(unittest.TestCase):
         self.assertRaises(InvalidName, make_col, self.db.test, "test.")
         self.assertRaises(InvalidName, make_col, self.db.test, "tes..t")
         self.assertRaises(InvalidName, make_col, self.db.test, "tes\x00t")
-
-        self.assertTrue(isinstance(self.db.test, Collection))
-        self.assertEqual(self.db.test, self.db["test"])
-        self.assertEqual(self.db.test, Collection(self.db, "test"))
-        self.assertEqual(self.db.test.mike, self.db["test.mike"])
-        self.assertEqual(self.db.test["mike"], self.db["test.mike"])
 
     def test_getattr(self):
         coll = self.db.test
@@ -138,10 +132,17 @@ class TestCollection(IntegrationTest):
         else:
             yield self.db.test
 
+    def test_equality(self):
+        self.assertTrue(isinstance(self.db.test, Collection))
+        self.assertEqual(self.db.test, self.db["test"])
+        self.assertEqual(self.db.test, Collection(self.db, "test"))
+        self.assertEqual(self.db.test.mike, self.db["test.mike"])
+        self.assertEqual(self.db.test["mike"], self.db["test.mike"])
+
     @client_context.require_version_min(3, 3, 9)
     def test_create(self):
         # No Exception.
-        db = client_context.rs_or_standalone_client.pymongo_test
+        db = client_context.client.pymongo_test
         db.create_test_no_wc.drop()
         Collection(db, name='create_test_no_wc', create=True)
         with self.assertRaises(OperationFailure):
@@ -810,7 +811,6 @@ class TestCollection(IntegrationTest):
             DocumentTooLarge, coll.delete_one, {'data': large})
 
     @client_context.require_version_min(3, 1, 9, -1)
-    @client_context.require_no_auth
     def test_insert_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -860,7 +860,6 @@ class TestCollection(IntegrationTest):
                           bypass_document_validation=True)
 
     @client_context.require_version_min(3, 1, 9, -1)
-    @client_context.require_no_auth
     def test_replace_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -901,7 +900,6 @@ class TestCollection(IntegrationTest):
                           {"x": 1}, bypass_document_validation=True)
 
     @client_context.require_version_min(3, 1, 9, -1)
-    @client_context.require_no_auth
     def test_update_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -980,7 +978,6 @@ class TestCollection(IntegrationTest):
                           {"$inc": {"x": 1}}, bypass_document_validation=True)
 
     @client_context.require_version_min(3, 1, 9, -1)
-    @client_context.require_no_auth
     def test_bypass_document_validation_bulk_write(self):
         db = self.db
         db.test.drop()

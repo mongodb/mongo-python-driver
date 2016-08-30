@@ -38,6 +38,7 @@ from test import (client_context,
                   client_knobs,
                   IntegrationTest,
                   unittest,
+                  SkipTest,
                   db_pwd,
                   db_user,
                   MockClientTest)
@@ -106,7 +107,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         self.assertIn(client_context.pair, repr(client))
 
     def test_properties(self):
-        c = client_context.rs_client
+        c = client_context.client
         c.admin.command('ping')
 
         wait_until(lambda: c.primary == self.primary, "discover primary")
@@ -132,9 +133,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
         secondary = Secondary(tag_sets=tag_sets)
-        c = MongoClient(
-            client_context.pair,
-            replicaSet=self.name,
+        c = rs_client(
             maxPoolSize=25,
             document_class=SON,
             tz_aware=True,
@@ -213,19 +212,17 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             # No error.
             coll.find_one()
 
-    @client_context.require_replica_set
     @client_context.require_ipv6
     def test_ipv6(self):
         port = client_context.port
-        c = MongoClient("mongodb://[::1]:%d" % (port,), replicaSet=self.name)
+        c = rs_client("mongodb://[::1]:%d" % (port,))
 
         # Client switches to IPv4 once it has first ismaster response.
         msg = 'discovered primary with IPv4 address "%r"' % (self.primary,)
         wait_until(lambda: c.primary == self.primary, msg)
 
         # Same outcome with both IPv4 and IPv6 seeds.
-        c = MongoClient("[::1]:%d,localhost:%d" % (port, port),
-                        replicaSet=self.name)
+        c = rs_client("[::1]:%d,localhost:%d" % (port, port))
 
         wait_until(lambda: c.primary == self.primary, msg)
 
@@ -235,7 +232,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             auth_str = ""
 
         uri = "mongodb://%slocalhost:%d,[::1]:%d" % (auth_str, port, port)
-        client = MongoClient(uri, replicaSet=self.name)
+        client = rs_client(uri)
         client.pymongo_test.test.insert_one({"dummy": u"object"})
         client.pymongo_test_bernie.test.insert_one({"dummy": u"object"})
 

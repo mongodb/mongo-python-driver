@@ -34,20 +34,18 @@ from gridfs.errors import NoFile
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from test import (IntegrationTest,
-                  client_context,
                   unittest,
                   qcheck)
 from test.utils import rs_or_single_client
 
 
 class TestGridFileNoConnect(unittest.TestCase):
+    """Test GridFile features on a client that does not connect.
+    """
 
     @classmethod
-    @client_context.require_connection
     def setUpClass(cls):
-        client = MongoClient(
-            client_context.host, client_context.port, connect=False)
-        cls.db = client.pymongo_test
+        cls.db = MongoClient(connect=False).pymongo_test
 
     def test_grid_in_custom_opts(self):
         self.assertRaises(TypeError, GridIn, "foo")
@@ -72,17 +70,6 @@ class TestGridFileNoConnect(unittest.TestCase):
         self.assertEqual("text/html", b.content_type)
         self.assertEqual(1000, b.chunk_size)
         self.assertEqual(100, b.baz)
-
-    def test_grid_out_cursor_options(self):
-        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
-                          projection={"filename": 1})
-
-        cursor = GridOutCursor(self.db.fs, {})
-        cursor_clone = cursor.clone()
-        self.assertEqual(cursor_clone.__dict__, cursor.__dict__)
-
-        self.assertRaises(NotImplementedError, cursor.add_option, 0)
-        self.assertRaises(NotImplementedError, cursor.remove_option, 0)
 
 
 class TestGridFile(IntegrationTest):
@@ -238,6 +225,17 @@ class TestGridFile(IntegrationTest):
         for attr in ["_id", "name", "content_type", "length", "chunk_size",
                      "upload_date", "aliases", "metadata", "md5"]:
             self.assertRaises(AttributeError, setattr, b, attr, 5)
+
+    def test_grid_out_cursor_options(self):
+        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
+                          projection={"filename": 1})
+
+        cursor = GridOutCursor(self.db.fs, {})
+        cursor_clone = cursor.clone()
+        self.assertEqual(cursor_clone.__dict__, cursor.__dict__)
+
+        self.assertRaises(NotImplementedError, cursor.add_option, 0)
+        self.assertRaises(NotImplementedError, cursor.remove_option, 0)
 
     def test_grid_out_custom_opts(self):
         one = GridIn(self.db.fs, _id=5, filename="my_file",
@@ -607,7 +605,6 @@ Bye"""))
         infile = GridIn(fs, file_id=-1, chunk_size=1)
         self.assertRaises(ServerSelectionTimeoutError, infile.write, b'data')
         self.assertRaises(ServerSelectionTimeoutError, infile.close)
-
 
     def test_unacknowledged(self):
         # w=0 is prohibited.

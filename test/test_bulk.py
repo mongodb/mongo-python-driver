@@ -21,7 +21,6 @@ sys.path[0:0] = [""]
 from bson import InvalidDocument, SON
 from bson.objectid import ObjectId
 from bson.py3compat import string_type
-from pymongo import MongoClient
 from pymongo.operations import *
 from pymongo.common import partition_node
 from pymongo.errors import (BulkWriteError,
@@ -33,7 +32,11 @@ from test import (client_context,
                   unittest,
                   IntegrationTest,
                   SkipTest)
-from test.utils import oid_generated_on_client, remove_all_users, wait_until
+from test.utils import (oid_generated_on_client,
+                        remove_all_users,
+                        rs_or_single_client_noauth,
+                        single_client,
+                        wait_until)
 
 
 class BulkTestBase(IntegrationTest):
@@ -137,7 +140,6 @@ class TestBulk(BulkTestBase):
         bulk.find({})
 
     @client_context.require_version_min(3, 1, 9, -1)
-    @client_context.require_no_auth
     def test_bypass_document_validation_bulk_op(self):
 
         # Test insert
@@ -971,7 +973,7 @@ class TestBulkWriteConcern(BulkTestBase):
         if cls.w > 1:
             for member in client_context.ismaster['hosts']:
                 if member != client_context.ismaster['primary']:
-                    cls.secondary = MongoClient(*partition_node(member))
+                    cls.secondary = single_client(*partition_node(member))
                     break
 
         # We tested wtimeout errors by specifying a write concern greater than
@@ -1243,7 +1245,7 @@ class TestBulkAuthorization(BulkTestBase):
     def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = MongoClient(client_context.host, client_context.port)
+        cli = rs_or_single_client_noauth()
         db = cli.pymongo_test
         coll = db.test
         db.authenticate('readonly', 'pw')
@@ -1254,7 +1256,7 @@ class TestBulkAuthorization(BulkTestBase):
     def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = MongoClient(client_context.host, client_context.port)
+        cli = rs_or_single_client_noauth()
         db = cli.pymongo_test
         coll = db.test
         db.authenticate('noremove', 'pw')

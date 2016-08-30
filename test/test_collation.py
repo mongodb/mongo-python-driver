@@ -91,6 +91,7 @@ def raisesConfigurationErrorForOldMongoDB(func):
 class TestCollation(unittest.TestCase):
 
     @classmethod
+    @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
         cls.saved_listeners = monitoring._LISTENERS

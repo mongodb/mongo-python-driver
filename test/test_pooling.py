@@ -166,6 +166,10 @@ class _TestPoolingBase(unittest.TestCase):
             pair=(client_context.host, client_context.port),
             *args,
             **kwargs):
+        # Start the pool with the correct ssl options.
+        pool_options = client_context.client._topology_settings.pool_options
+        kwargs['ssl_context'] = pool_options.ssl_context
+        kwargs['ssl_match_hostname'] = pool_options.ssl_match_hostname
         return Pool(pair, PoolOptions(*args, **kwargs))
 
 
@@ -173,14 +177,12 @@ class TestPooling(_TestPoolingBase):
     def test_max_pool_size_validation(self):
         host, port = client_context.host, client_context.port
         self.assertRaises(
-            ValueError, MongoClient, host=host, port=port,
-            maxPoolSize=-1)
+            ValueError, MongoClient, host=host, port=port, maxPoolSize=-1)
 
         self.assertRaises(
-            ValueError, MongoClient, host=host, port=port,
-            maxPoolSize='foo')
+            ValueError, MongoClient, host=host, port=port, maxPoolSize='foo')
 
-        c = MongoClient(host=host, port=port, maxPoolSize=100)
+        c = MongoClient(host=host, port=port, maxPoolSize=100, connect=False)
         self.assertEqual(c.max_pool_size, 100)
 
     def test_no_disconnect(self):
