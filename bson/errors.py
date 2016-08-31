@@ -38,16 +38,3 @@ class InvalidDocument(BSONError):
 class InvalidId(BSONError):
     """Raised when trying to create an ObjectId from invalid data.
     """
-
-
-class JSONError(Exception):
-    """Base class for all JSON exceptions.
-    """
-
-
-class InvalidDatetime(JSONError):
-    """Raised when trying to encode a datetime without a timezone.
-
-    Only raised when
-    :class:`JSONOptions.strict_date <bson.json_util.JSONOptions>` is ``True``.
-    """

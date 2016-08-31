@@ -31,10 +31,11 @@ sys.path[0:0] = [""]
 from pymongo.errors import ConfigurationError
 
 from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
+from bson.json_util import (DatetimeRepresentation,
+                            STRICT_JSON_OPTIONS)
 from bson.binary import (Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY, STANDARD)
 from bson.code import Code
-from bson.errors import InvalidDatetime
 from bson.dbref import DBRef
 from bson.int64 import Int64
 from bson.max_key import MaxKey
@@ -129,7 +130,6 @@ class TestJsonUtil(unittest.TestCase):
         # Test dumps format
         pre_epoch = {"dt": datetime.datetime(1, 1, 1, 1, 1, 1, 10000, utc)}
         post_epoch = {"dt": datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc)}
-        json_options = json_util.JSONOptions(strict_date=True)
         self.assertEqual(
             '{"dt": {"$date": -62135593138990}}',
             json_util.dumps(pre_epoch))
@@ -138,18 +138,31 @@ class TestJsonUtil(unittest.TestCase):
             json_util.dumps(post_epoch))
         self.assertEqual(
             '{"dt": {"$date": {"$numberLong": "-62135593138990"}}}',
-            json_util.dumps(pre_epoch, json_options=json_options))
+            json_util.dumps(pre_epoch, json_options=STRICT_JSON_OPTIONS))
         self.assertEqual(
             '{"dt": {"$date": "1972-01-01T01:01:01.010Z"}}',
-            json_util.dumps(post_epoch, json_options=json_options))
+            json_util.dumps(post_epoch, json_options=STRICT_JSON_OPTIONS))
 
-        # Strict mode requires dates to have a timezone
-        pre_epoch_naive = {"dt": datetime.datetime(1, 1, 1, 1, 1, 1, 1000)}
-        post_epoch_naive = {"dt": datetime.datetime(1972, 1, 1, 1, 1, 1, 1000)}
-        self.assertRaises(InvalidDatetime, json_util.dumps, pre_epoch_naive,
-                          json_options=json_options)
-        self.assertRaises(InvalidDatetime, json_util.dumps, post_epoch_naive,
-                          json_options=json_options)
+        number_long_options = json_util.JSONOptions(
+            datetime_representation=DatetimeRepresentation.NUMBERLONG)
+        self.assertEqual(
+            '{"dt": {"$date": {"$numberLong": "63075661010"}}}',
+            json_util.dumps(post_epoch, json_options=number_long_options))
+        self.assertEqual(
+            '{"dt": {"$date": {"$numberLong": "-62135593138990"}}}',
+            json_util.dumps(pre_epoch, json_options=number_long_options))
+
+        # ISO8601 mode assumes naive datetimes are UTC
+        pre_epoch_naive = {"dt": datetime.datetime(1, 1, 1, 1, 1, 1, 10000)}
+        post_epoch_naive = {
+            "dt": datetime.datetime(1972, 1, 1, 1, 1, 1, 10000)}
+        self.assertEqual(
+            '{"dt": {"$date": {"$numberLong": "-62135593138990"}}}',
+            json_util.dumps(pre_epoch_naive, json_options=STRICT_JSON_OPTIONS))
+        self.assertEqual(
+            '{"dt": {"$date": "1972-01-01T01:01:01.010Z"}}',
+            json_util.dumps(post_epoch_naive,
+                            json_options=STRICT_JSON_OPTIONS))
 
         # Test tz_aware and tzinfo options
         self.assertEqual(
@@ -176,11 +189,12 @@ class TestJsonUtil(unittest.TestCase):
                                                   pacific)}
         self.assertEqual(
             '{"dt": {"$date": "2002-10-27T06:00:00.010-0800"}}',
-            json_util.dumps(aware_datetime, json_options=json_options))
+            json_util.dumps(aware_datetime, json_options=STRICT_JSON_OPTIONS))
         self.round_trip(aware_datetime, json_options=json_util.JSONOptions(
             tz_aware=True, tzinfo=pacific))
         self.round_trip(aware_datetime, json_options=json_util.JSONOptions(
-            strict_date=True, tz_aware=True, tzinfo=pacific))
+            datetime_representation=DatetimeRepresentation.ISO8601,
+            tz_aware=True, tzinfo=pacific))
 
     def test_regex_object_hook(self):
         # Extended JSON format regular expression.

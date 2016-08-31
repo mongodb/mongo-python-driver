@@ -21,7 +21,7 @@ import json
 import os
 import sys
 
-from bson import BSON, json_util
+from bson import BSON, EPOCH_AWARE, json_util
 from bson.binary import STANDARD
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
@@ -51,19 +51,26 @@ class TestBSONCorpus(unittest.TestCase):
 
 # Need to set tz_aware=True in order to use "strict" dates in extended JSON.
 codec_options = CodecOptions(tz_aware=True)
+json_options = json_util.JSONOptions(
+        strict_number_long=True,
+        strict_uuid=True,
+        datetime_representation=json_util.DatetimeRepresentation.NUMBERLONG)
 # We normally encode UUID as binary subtype 0x03,
 # but we'll need to encode to subtype 0x04 for one of the tests.
 codec_options_uuid_04 = codec_options._replace(uuid_representation=STANDARD)
-json_options_uuid_04 = json_util.JSONOptions(strict_number_long=True,
-                                             strict_uuid=True,
-                                             strict_date=True,
-                                             uuid_representation=STANDARD)
-to_extjson = functools.partial(json_util.dumps,
-                               json_options=json_util.STRICT_JSON_OPTIONS)
+json_options_uuid_04 = json_util.JSONOptions(
+        strict_number_long=True,
+        strict_uuid=True,
+        datetime_representation=json_util.DatetimeRepresentation.NUMBERLONG,
+        uuid_representation=STANDARD)
+json_options_iso8601 = json_util.JSONOptions(
+    datetime_representation=json_util.DatetimeRepresentation.ISO8601)
+to_extjson = functools.partial(json_util.dumps, json_options=json_options)
 to_extjson_uuid_04 = functools.partial(json_util.dumps,
                                        json_options=json_options_uuid_04)
-decode_extjson = functools.partial(json_util.loads,
-                                   json_options=json_util.STRICT_JSON_OPTIONS)
+to_extjson_iso8601 = functools.partial(json_util.dumps,
+                                       json_options=json_options_iso8601)
+decode_extjson = functools.partial(json_util.loads, json_options=json_options)
 to_bson_uuid_04 = functools.partial(BSON.encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(BSON.encode, codec_options=codec_options)
@@ -128,7 +135,7 @@ def create_test(case_spec):
                     continue
 
                 # Normalize extended json by parsing it with the built-in
-                # json library. This accounts for discrepencies in spacing,
+                # json library. This accounts for discrepancies in spacing,
                 # key ordering, etc.
                 normalized_cE = json.loads(cE)
 
@@ -139,6 +146,18 @@ def create_test(case_spec):
                 self.assertEqual(
                     json.loads(encode_extjson(decode_extjson(E))),
                     normalized_cE)
+
+                if bson_type == '0x09':
+                    # Test datetime can output ISO8601 to match extjson or
+                    # $numberLong to match canonical_extjson if the datetime
+                    # is pre-epoch.
+                    if decode_extjson(E)[test_key] >= EPOCH_AWARE:
+                        normalized_date = json.loads(E)
+                    else:
+                        normalized_date = normalized_cE
+                    self.assertEqual(
+                        json.loads(to_extjson_iso8601(decode_extjson(cE))),
+                        normalized_date)
 
                 if B != cB:
                     self.assertEqual(

@@ -94,7 +94,6 @@ from bson.binary import (Binary, JAVA_LEGACY, CSHARP_LEGACY, OLD_UUID_SUBTYPE,
                          UUID_SUBTYPE)
 from bson.code import Code
 from bson.codec_options import CodecOptions
-from bson.errors import InvalidDatetime
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
 from bson.int64 import Int64
@@ -118,6 +117,42 @@ _RE_OPT_TABLE = {
 }
 
 
+class DatetimeRepresentation:
+    LEGACY = 0
+    """Legacy MongoDB Extended JSON datetime representation.
+
+    :class:`datetime.datetime` instances will be encoded to JSON in the
+    format `{"$date": <dateAsMilliseconds>}`, where `dateAsMilliseconds` is
+    a 64-bit signed integer giving the number of milliseconds since the Unix
+    epoch UTC. This was the default encoding before PyMongo version 3.4.
+
+    .. versionadded:: 3.4
+    """
+
+    NUMBERLONG = 1
+    """NumberLong datetime representation.
+
+    :class:`datetime.datetime` instances will be encoded to JSON in the
+    format `{"$date": {"$numberLong": "<dateAsMilliseconds>"}}`,
+    where `dateAsMilliseconds` is the string representation of a 64-bit signed
+    integer giving the number of milliseconds since the Unix epoch UTC.
+
+    .. versionadded:: 3.4
+    """
+
+    ISO8601 = 2
+    """ISO-8601 datetime representation.
+
+    :class:`datetime.datetime` instances greater than or equal to the Unix
+    epoch UTC will be encoded to JSON in the format `{"$date": "<ISO-8601>"}`.
+    :class:`datetime.datetime` instances before the Unix epoch UTC will be
+    encoded as if the datetime representation is
+    :const:`~DatetimeRepresentation.NUMBERLONG`.
+
+    .. versionadded:: 3.4
+    """
+
+
 class JSONOptions(CodecOptions):
     """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
@@ -130,9 +165,9 @@ class JSONOptions(CodecOptions):
         are encoded to MongoDB Extended JSON's *Strict mode* type
         `NumberLong`, ie ``'{"$numberLong": "<number>" }'``. Otherwise they
         will be encoded as an `int`. Defaults to ``False``.
-      - `strict_date`: If ``True``, `datetime.datetime` objects are encoded to
-        MongoDB Extended JSON's *Strict mode* type `Date`. Otherwise it will
-        be encoded as milliseconds since Unix epoch. Defaults to ``False``.
+      - `datetime_representation`: The representation to use when encoding
+        instances of :class:`datetime.datetime`. Defaults to
+        :const:`~DatetimeRepresentation.LEGACY`.
       - `strict_uuid`: If ``True``, :class:`uuid.UUID` object are encoded to
         MongoDB Extended JSON's *Strict mode* type `Binary`. Otherwise it
         will be encoded as ``'{"$uuid": "<hex>" }'``. Defaults to ``False``.
@@ -158,11 +193,18 @@ class JSONOptions(CodecOptions):
     .. versionadded:: 3.4
     """
 
-    def __new__(cls, strict_number_long=False, strict_date=False,
+    def __new__(cls, strict_number_long=False,
+                datetime_representation=DatetimeRepresentation.LEGACY,
                 strict_uuid=False, *args, **kwargs):
         kwargs["tz_aware"] = kwargs.get("tz_aware", True)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
+        if datetime_representation not in (DatetimeRepresentation.LEGACY,
+                                           DatetimeRepresentation.NUMBERLONG,
+                                           DatetimeRepresentation.ISO8601):
+            raise ConfigurationError(
+                "JSONOptions.datetime_representation must be one of LEGACY,"
+                "NUMBERLONG, or ISO8601 from DatetimeRepresentation.")
         self = super(JSONOptions, cls).__new__(cls, *args, **kwargs)
         if not _HAS_OBJECT_PAIRS_HOOK and self.document_class != dict:
             raise ConfigurationError(
@@ -170,16 +212,18 @@ class JSONOptions(CodecOptions):
                 "requires simplejson "
                 "(https://pypi.python.org/pypi/simplejson) to be installed.")
         self.strict_number_long = strict_number_long
-        self.strict_date = strict_date
+        self.datetime_representation = datetime_representation
         self.strict_uuid = strict_uuid
         return self
 
     def _arguments_repr(self):
-        return 'strict_number_long=%r, strict_date=%r, strict_uuid=%r, %s' % (
-            self.strict_number_long,
-            self.strict_date,
-            self.strict_uuid,
-            super(JSONOptions, self)._arguments_repr())
+        return ('strict_number_long=%r, '
+                'datetime_representation=%r, '
+                'strict_uuid=%r, %s' % (
+                 self.strict_number_long,
+                 self.datetime_representation,
+                 self.strict_uuid,
+                 super(JSONOptions, self)._arguments_repr()))
 
 
 DEFAULT_JSON_OPTIONS = JSONOptions()
@@ -187,8 +231,11 @@ DEFAULT_JSON_OPTIONS = JSONOptions()
 
 .. versionadded:: 3.4
 """
-STRICT_JSON_OPTIONS = JSONOptions(strict_number_long=True, strict_date=True,
-                                  strict_uuid=True)
+
+STRICT_JSON_OPTIONS = JSONOptions(
+    strict_number_long=True,
+    datetime_representation=DatetimeRepresentation.ISO8601,
+    strict_uuid=True)
 """:class:`JSONOptions` for MongoDB Extended JSON's *Strict mode* encoding.
 
 .. versionadded:: 3.4
@@ -200,10 +247,6 @@ def dumps(obj, *args, **kwargs):
 
     Recursive function that handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
-
-    Raises :exc:`~bson.errors.InvalidDatetime` if `obj` contains a
-    :class:`datetime.datetime` without a timezone and
-    `json_options.strict_date` is ``True``.
 
     :Parameters:
       - `json_options`: A :class:`JSONOptions` instance used to modify the
@@ -370,12 +413,13 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
     if isinstance(obj, DBRef):
         return _json_convert(obj.as_doc())
     if isinstance(obj, datetime.datetime):
-        if json_options.strict_date:
+        if (json_options.datetime_representation ==
+                DatetimeRepresentation.ISO8601):
             if not obj.tzinfo:
-                raise InvalidDatetime("datetime is not timezone aware", obj)
+                obj = obj.replace(tzinfo=utc)
             if obj >= EPOCH_AWARE:
-                delta = obj.tzinfo.utcoffset(obj)
-                if (delta.days, delta.seconds, delta.microseconds) == (0, 0, 0):
+                off = obj.tzinfo.utcoffset(obj)
+                if (off.days, off.seconds, off.microseconds) == (0, 0, 0):
                     tz_string = 'Z'
                 else:
                     tz_string = obj.strftime('%z')
@@ -385,10 +429,10 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
                     tz_string)}
 
         millis = bson._datetime_to_millis(obj)
-        if json_options.strict_date:
-            return {"$date": {"$numberLong": str(millis)}}
-        else:
+        if (json_options.datetime_representation ==
+                DatetimeRepresentation.LEGACY):
             return {"$date": millis}
+        return {"$date": {"$numberLong": str(millis)}}
     if json_options.strict_number_long and isinstance(obj, Int64):
         return {"$numberLong": str(obj)}
     if isinstance(obj, (RE_TYPE, Regex)):
