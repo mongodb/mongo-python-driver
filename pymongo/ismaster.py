@@ -62,6 +62,14 @@ class IsMaster(object):
             or self._is_writable)
 
     @property
+    def document(self):
+        """The complete ismaster command response document.
+
+        .. versionadded:: 3.4
+        """
+        return self._doc.copy()
+
+    @property
     def server_type(self):
         return self._server_type
 
