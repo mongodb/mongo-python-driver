@@ -17,9 +17,11 @@
 from collections import namedtuple
 
 from pymongo import common
-from pymongo.server_type import SERVER_TYPE
 from pymongo.errors import ConfigurationError
+from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import Selection
+from pymongo.server_type import SERVER_TYPE
 
 
 TOPOLOGY_TYPE = namedtuple('TopologyType', ['Single', 'ReplicaSetNoPrimary',
@@ -159,6 +161,71 @@ class TopologyDescription(object):
     @property
     def heartbeat_frequency(self):
         return self._topology_settings.heartbeat_frequency
+
+    def apply_selector(self, selector, address):
+
+        def apply_local_threshold(selection):
+            if not selection:
+                return []
+
+            settings = self._topology_settings
+
+            # Round trip time in seconds.
+            fastest = min(
+                s.round_trip_time for s in selection.server_descriptions)
+            threshold = settings.local_threshold_ms / 1000.0
+            return [s for s in selection.server_descriptions
+                    if (s.round_trip_time - fastest) <= threshold]
+
+        if getattr(selector, 'min_wire_version', 0):
+            common_wv = self.common_wire_version
+            if common_wv and common_wv < selector.min_wire_version:
+                raise ConfigurationError(
+                    "%s requires min wire version %d, but topology's min"
+                    " wire version is %d" % (selector,
+                                             selector.min_wire_version,
+                                             common_wv))
+
+        if self.topology_type == TOPOLOGY_TYPE.Single:
+            # Ignore the selector.
+            return self.known_servers
+        elif address:
+            description = self.server_descriptions().get(address)
+            return [description] if description else []
+        elif self.topology_type == TOPOLOGY_TYPE.Sharded:
+            # Ignore the read preference, but apply localThresholdMS.
+            return apply_local_threshold(
+                Selection.from_topology_description(self))
+        else:
+            return apply_local_threshold(
+                selector(Selection.from_topology_description(self)))
+
+    def has_readable_server(self, read_preference=ReadPreference.PRIMARY):
+        """Does this topology have any readable servers available matching the
+        given read preference?
+
+        :Parameters:
+          - `read_preference`: an instance of a read preference from
+            :mod:`~pymongo.read_preferences`. Defaults to
+            :attr:`~pymongo.ReadPreference.PRIMARY`.
+
+        .. note:: When connected directly to a single server this method
+          always returns ``True``.
+
+        .. versionadded:: 3.4
+        """
+        common.validate_read_preference("read_preference", read_preference)
+        return any(self.apply_selector(read_preference, None))
+
+    def has_writable_server(self):
+        """Does this topology have a writable server available?
+
+        .. note:: When connected directly to a single server this method
+          always returns ``True``.
+
+        .. versionadded:: 3.4
+        """
+        return self.has_readable_server(ReadPreference.PRIMARY)
 
 
 # If topology type is Unknown and we receive an ismaster response, what should

@@ -222,6 +222,14 @@ class TestSingleServerTopology(TopologyTest):
             s = t.select_server(writable_server_selector)
             self.assertEqual(server_type, s.description.server_type)
 
+            # Topology type single is always readable and writable regardless
+            # of server type or state.
+            self.assertTrue(t.description.has_writable_server())
+            self.assertTrue(t.description.has_readable_server())
+            self.assertTrue(t.description.has_readable_server(Secondary()))
+            self.assertTrue(t.description.has_readable_server(
+                Secondary(tag_sets=[{'tag': 'does-not-exist'}])))
+
     def test_reopen(self):
         t = create_mock_topology()
 
@@ -290,6 +298,75 @@ class TestSingleServerTopology(TopologyTest):
 
 
 class TestMultiServerTopology(TopologyTest):
+    def test_readable_writable(self):
+        t = create_mock_topology(replica_set_name='rs')
+        got_ismaster(t, ('a', 27017), {
+            'ok': 1,
+            'ismaster': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+
+        got_ismaster(t, ('b', 27017), {
+            'ok': 1,
+            'ismaster': False,
+            'secondary': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+
+        self.assertTrue(t.description.has_writable_server())
+        self.assertTrue(t.description.has_readable_server())
+        self.assertTrue(
+            t.description.has_readable_server(Secondary()))
+        self.assertFalse(
+            t.description.has_readable_server(
+                Secondary(tag_sets=[{'tag': 'exists'}])))
+
+        t = create_mock_topology(replica_set_name='rs')
+        got_ismaster(t, ('a', 27017), {
+            'ok': 1,
+            'ismaster': False,
+            'secondary': False,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+
+        got_ismaster(t, ('b', 27017), {
+            'ok': 1,
+            'ismaster': False,
+            'secondary': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+
+        self.assertFalse(t.description.has_writable_server())
+        self.assertFalse(t.description.has_readable_server())
+        self.assertTrue(
+            t.description.has_readable_server(Secondary()))
+        self.assertFalse(
+            t.description.has_readable_server(
+                Secondary(tag_sets=[{'tag': 'exists'}])))
+
+        t = create_mock_topology(replica_set_name='rs')
+        got_ismaster(t, ('a', 27017), {
+            'ok': 1,
+            'ismaster': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+
+        got_ismaster(t, ('b', 27017), {
+            'ok': 1,
+            'ismaster': False,
+            'secondary': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b'],
+            'tags': {'tag': 'exists'}})
+
+        self.assertTrue(t.description.has_writable_server())
+        self.assertTrue(t.description.has_readable_server())
+        self.assertTrue(
+            t.description.has_readable_server(Secondary()))
+        self.assertTrue(
+            t.description.has_readable_server(
+                Secondary(tag_sets=[{'tag': 'exists'}])))
+
     def test_close(self):
         t = create_mock_topology(replica_set_name='rs')
         got_ismaster(t, ('a', 27017), {

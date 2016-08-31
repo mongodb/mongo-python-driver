@@ -32,7 +32,7 @@ from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
-from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
+from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
 from pymongo.server_selectors import (any_server_selector,
@@ -179,7 +179,8 @@ class Topology(object):
 
             now = _time()
             end_time = now + server_timeout
-            server_descriptions = self._apply_selector(selector, address)
+            server_descriptions = self._description.apply_selector(
+                selector, address)
 
             while not server_descriptions:
                 # No suitable servers.
@@ -192,12 +193,13 @@ class Topology(object):
 
                 # Release the lock and wait for the topology description to
                 # change, or for a timeout. We won't miss any changes that
-                # came after our most recent _apply_selector call, since we've
+                # came after our most recent apply_selector call, since we've
                 # held the lock until now.
                 self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
                 self._description.check_compatible()
                 now = _time()
-                server_descriptions = self._apply_selector(selector, address)
+                server_descriptions = self._description.apply_selector(
+                    selector, address)
 
             return [self.get_server_by_address(sd.address)
                     for sd in server_descriptions]
@@ -410,39 +412,6 @@ class Topology(object):
         """Wake all monitors. Hold the lock when calling this."""
         for server in self._servers.values():
             server.request_check()
-
-    def _apply_selector(self, selector, address):
-        if getattr(selector, 'min_wire_version', 0):
-            common_wv = self._description.common_wire_version
-            if common_wv and common_wv < selector.min_wire_version:
-                raise ConfigurationError(
-                    "%s requires min wire version %d, but topology's min"
-                    " wire version is %d" % (selector,
-                                             selector.min_wire_version,
-                                             common_wv))
-
-        if self._description.topology_type == TOPOLOGY_TYPE.Single:
-            # Ignore the selector.
-            return self._description.known_servers
-        elif address:
-            sd = self._description.server_descriptions().get(address)
-            return [sd] if sd else []
-        elif self._description.topology_type == TOPOLOGY_TYPE.Sharded:
-            # Ignore the read preference, but apply localThresholdMS.
-            return self._apply_local_threshold(self._new_selection())
-        else:
-            return self._apply_local_threshold(selector(self._new_selection()))
-
-    def _apply_local_threshold(self, selection):
-        """Return list of servers from Selection that are in latency window."""
-        if not selection:
-            return []
-
-        # Round trip time in seconds.
-        fastest = min(s.round_trip_time for s in selection.server_descriptions)
-        threshold = self._settings.local_threshold_ms / 1000.0
-        return [s for s in selection.server_descriptions
-                if (s.round_trip_time - fastest) <= threshold]
 
     def _update_servers(self):
         """Sync our Servers from TopologyDescription.server_descriptions.
