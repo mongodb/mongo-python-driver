@@ -9,6 +9,40 @@ Is PyMongo thread-safe?
 PyMongo is thread-safe and provides built-in connection pooling
 for threaded applications.
 
+.. _pymongo-fork-safe:
+
+Is PyMongo fork-safe?
+---------------------
+
+PyMongo is not fork safe. Instances of
+:class:`~pymongo.mongo_client.MongoClient` MUST be created *after* any calls to
+``fork``. If that's not possible, then clients created before ``fork`` should be
+created with `connect=False` in the constructor and not used for any operations
+until after all forks are done. These practices are the only way to avoid
+deadlock with PyMongo. PyMongo will attempt to issue a warning if there is a
+chance of this deadlock occurring.
+
+PyMongo has multiple threads with shared state, protected by a number of
+:class:`~threading.Lock` instances, which are themselves `not fork-safe`_. The
+driver is therefore subject to the same limitations as any other multithreaded
+code that uses :class:`~threading.Lock` (and mutexes in general). One of these
+limitations is that the locks become useless after a ``fork``. During the fork,
+all locks are copied over to the child process in the same state as they were in
+the parent: if they were locked, the copied locks are also locked. The child
+created by ``fork`` only has one thread, so any locks that were taken out by
+other threads in the parent will never be released in the child. The next time
+the child process attempts to acquire one of these locks, deadlock occurs.
+
+A MongoClient created with `connect=False` does not start any threads or take
+any locks. Provided your code does not use the client for any operations until
+after all calls to ``fork`` are complete, a client created this way is safe to
+use after forking.
+
+For a long but interesting read about the problems of Python locks in
+multithreaded contexts with ``fork``, see http://bugs.python.org/issue6721.
+
+.. _not fork-safe: http://bugs.python.org/issue6721
+
 .. _connection-pooling:
 
 How does connection pooling work in PyMongo?
@@ -444,16 +478,13 @@ just that field::
 
 Using PyMongo with Multiprocessing
 ----------------------------------
-There are a few things to be aware of when using multiprocessing with PyMongo.
-On certain platforms (`defined here <https://hg.python.org/cpython/file/d2b8354e87f5/Modules/socketmodule.c#l187>`_)
-:class:`~pymongo.mongo_client.MongoClient` MUST be initialized with ``connect=False`` if a :class:`~pymongo.mongo_client.MongoClient` used in a
-child process is initialized before forking. If ``connect`` cannot be False,
-then :class:`~pymongo.mongo_client.MongoClient` must be initialized AFTER forking.
 
-This is because CPython must acquire a lock before calling
-`getaddrinfo() <https://hg.python.org/cpython/file/d2b8354e87f5/Modules/socketmodule.c#l4203>`_.
-A deadlock will occur if the :class:`~pymongo.mongo_client.MongoClient`'s parent process forks (on the main
-thread) while its monitor thread is in the getaddrinfo() system call.
+On Unix systems, multiprocessing uses ``fork``. Instances of
+:class:`~pymongo.mongo_client.MongoClient` MUST be created *after* any calls to
+``fork``. If that's not possible, then clients created before ``fork`` should be
+created with `connect=False` in the constructor and not used for any operations
+until after all forks are done. These practices are the only way to avoid
+deadlock with PyMongo. PyMongo will attempt to issue a warning if there is a
+chance of this deadlock occurring.
 
-PyMongo will issue a warning if there is a chance of this deadlock occurring.
-
+.. seealso:: :ref:`pymongo-fork-safe`

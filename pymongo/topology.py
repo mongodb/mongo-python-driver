@@ -130,24 +130,24 @@ class Topology(object):
 
         No effect if called multiple times.
 
-        .. warning:: To avoid a deadlock during Python's getaddrinfo call,
-          will generate a warning if open() is called from a different
-          process than the one that initialized the Topology. To prevent this
-          from happening, MongoClient must be created after any forking OR
-          MongoClient must be started with connect=False.
-        """
-        with self._lock:
-            if self._pid is None:
-                self._pid = os.getpid()
-            else:
-                if os.getpid() != self._pid:
-                    warnings.warn(
-                        "MongoClient opened before fork. Create MongoClient "
-                        "with connect=False, or create client after forking. "
-                        "See PyMongo's documentation for details: http://api."
-                        "mongodb.org/python/current/faq.html#using-pymongo-"
-                        "with-multiprocessing>")
+        .. warning:: Topology is shared among multiple threads and is protected
+          by mutual exclusion. Using Topology from a process other than the one
+          that initialized it will emit a warning and may result in deadlock. To
+          prevent this from happening, MongoClient must be created after any
+          forking OR MongoClient must be started with connect=False.
 
+        """
+        if self._pid is None:
+            self._pid = os.getpid()
+        else:
+            if os.getpid() != self._pid:
+                warnings.warn(
+                    "MongoClient opened before fork. Create MongoClient "
+                    "with connect=False, or create client after forking. "
+                    "See PyMongo's documentation for details: http://api."
+                    "mongodb.org/python/current/faq.html#pymongo-fork-safe>")
+
+        with self._lock:
             self._ensure_opened()
 
     def select_servers(self,
