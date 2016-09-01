@@ -301,7 +301,7 @@ class SocketInfo(object):
           - `read_concern`: The read concern for this command.
           - `write_concern`: The write concern for this command.
           - `parse_write_concern_error`: Whether to parse the
-            ``writeConcernError` field in the command response.
+            ``writeConcernError`` field in the command response.
         """
         if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
             raise ConfigurationError(
