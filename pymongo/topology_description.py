@@ -129,6 +129,14 @@ class TopologyDescription(object):
         return self._topology_type
 
     @property
+    def topology_type_name(self):
+        """The topology type as a human readable string.
+
+        .. versionadded:: 3.4
+        """
+        return TOPOLOGY_TYPE._fields[self._topology_type]
+
+    @property
     def replica_set_name(self):
         """The replica set name."""
         return self._replica_set_name

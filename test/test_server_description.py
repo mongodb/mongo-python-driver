@@ -42,6 +42,7 @@ class TestServerDescription(unittest.TestCase):
     def test_mongos(self):
         s = parse_ismaster_response({'ok': 1, 'msg': 'isdbgrid'})
         self.assertEqual(SERVER_TYPE.Mongos, s.server_type)
+        self.assertEqual('Mongos', s.server_type_name)
         self.assertTrue(s.is_writable)
         self.assertTrue(s.is_readable)
 
@@ -50,6 +51,7 @@ class TestServerDescription(unittest.TestCase):
             {'ok': 1, 'ismaster': True, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSPrimary, s.server_type)
+        self.assertEqual('RSPrimary', s.server_type_name)
         self.assertTrue(s.is_writable)
         self.assertTrue(s.is_readable)
 
@@ -58,6 +60,7 @@ class TestServerDescription(unittest.TestCase):
             {'ok': 1, 'ismaster': False, 'secondary': True, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSSecondary, s.server_type)
+        self.assertEqual('RSSecondary', s.server_type_name)
         self.assertFalse(s.is_writable)
         self.assertTrue(s.is_readable)
 
@@ -66,6 +69,7 @@ class TestServerDescription(unittest.TestCase):
             {'ok': 1, 'ismaster': False, 'arbiterOnly': True, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSArbiter, s.server_type)
+        self.assertEqual('RSArbiter', s.server_type_name)
         self.assertFalse(s.is_writable)
         self.assertFalse(s.is_readable)
 
@@ -74,6 +78,7 @@ class TestServerDescription(unittest.TestCase):
             {'ok': 1, 'ismaster': False, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSOther, s.server_type)
+        self.assertEqual('RSOther', s.server_type_name)
 
         s = parse_ismaster_response({
             'ok': 1,
@@ -90,6 +95,7 @@ class TestServerDescription(unittest.TestCase):
         s = parse_ismaster_response({'ok': 1, 'isreplicaset': True})
 
         self.assertEqual(SERVER_TYPE.RSGhost, s.server_type)
+        self.assertEqual('RSGhost', s.server_type_name)
         self.assertFalse(s.is_writable)
         self.assertFalse(s.is_readable)
 

@@ -224,6 +224,7 @@ class TestSingleServerTopology(TopologyTest):
 
             # Topology type single is always readable and writable regardless
             # of server type or state.
+            self.assertEqual(t.description.topology_type_name, 'Single')
             self.assertTrue(t.description.has_writable_server())
             self.assertTrue(t.description.has_readable_server())
             self.assertTrue(t.description.has_readable_server(Secondary()))
@@ -313,6 +314,8 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
+        self.assertTrue(
+            t.description.topology_type_name, 'ReplicaSetWithPrimary')
         self.assertTrue(t.description.has_writable_server())
         self.assertTrue(t.description.has_readable_server())
         self.assertTrue(
@@ -336,6 +339,8 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
+        self.assertTrue(
+            t.description.topology_type_name, 'ReplicaSetNoPrimary')
         self.assertFalse(t.description.has_writable_server())
         self.assertFalse(t.description.has_readable_server())
         self.assertTrue(
@@ -359,6 +364,8 @@ class TestMultiServerTopology(TopologyTest):
             'hosts': ['a', 'b'],
             'tags': {'tag': 'exists'}})
 
+        self.assertTrue(
+            t.description.topology_type_name, 'ReplicaSetWithPrimary')
         self.assertTrue(t.description.has_writable_server())
         self.assertTrue(t.description.has_readable_server())
         self.assertTrue(

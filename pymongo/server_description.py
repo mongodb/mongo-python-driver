@@ -92,6 +92,14 @@ class ServerDescription(object):
         return self._server_type
 
     @property
+    def server_type_name(self):
+        """The server type as a human readable string.
+
+        .. versionadded:: 3.4
+        """
+        return SERVER_TYPE._fields[self._server_type]
+
+    @property
     def all_hosts(self):
         """List of hosts, passives, and arbiters known to this server."""
         return self._all_hosts
