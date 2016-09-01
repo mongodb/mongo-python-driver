@@ -14,6 +14,8 @@
 
 """Tools to monitor driver events.
 
+.. versionadded:: 3.1
+
 Use :func:`register` to register global listeners for specific events.
 Listeners must inherit from one of the abstract classes below and implement
 the correct functions for that class.
@@ -44,6 +46,74 @@ For example, a simple command logger might be implemented like this::
                          "microseconds".format(event))
 
     monitoring.register(CommandLogger())
+
+Server discovery and monitoring events are also available. For example::
+
+    class ServerLogger(monitoring.ServerListener):
+
+        def opened(self, event):
+            logging.info("Server {0.server_address} added to topology "
+                         "{0.topology_id}".format(event))
+
+        def description_changed(self, event):
+            previous_server_type = event.previous_description.server_type
+            new_server_type = event.new_description.server_type
+            if new_server_type != previous_server_type:
+                # server_type_name was added in PyMongo 3.4
+                logging.info(
+                    "Server {0.server_address} changed type from "
+                    "{0.previous_description.server_type_name} to "
+                    "{0.new_description.server_type_name}".format(event))
+
+        def closed(self, event):
+            logging.warning("Server {0.server_address} removed from topology "
+                            "{0.topology_id}".format(event))
+
+
+    class HeartbeatLogger(monitoring.ServerHeartbeatListener):
+
+        def started(self, event):
+            logging.info("Heartbeat sent to server "
+                         "{0.connection_id}".format(event))
+
+        def succeeded(self, event):
+            # The reply.document attribute was added in PyMongo 3.4.
+            logging.info("Heartbeat to server {0.connection_id} "
+                         "succeeded with reply "
+                         "{0.reply.document}".format(event))
+
+        def failed(self, event):
+            logging.warning("Heartbeat to server {0.connection_id} "
+                            "failed with error {0.reply}".format(event))
+
+    class TopologyLogger(monitoring.TopologyListener):
+
+        def opened(self, event):
+            logging.info("Topology with id {0.topology_id} "
+                         "opened".format(event))
+
+        def description_changed(self, event):
+            logging.info("Topology description updated for "
+                         "topology id {0.topology_id}".format(event))
+            previous_topology_type = event.previous_description.topology_type
+            new_topology_type = event.new_description.topology_type
+            if new_topology_type != previous_topology_type:
+                # topology_type_name was added in PyMongo 3.4
+                logging.info(
+                    "Topology {0.topology_id} changed type from "
+                    "{0.previous_description.topology_type_name} to "
+                    "{0.new_description.topology_type_name}".format(event))
+            # The has_writable_server and has_readable_server methods
+            # were added in PyMongo 3.4.
+            if not event.new_description.has_writable_server():
+                logging.warning("No writable servers available.")
+            if not event.new_description.has_readable_server():
+                logging.warning("No readable servers available.")
+
+        def closed(self, event):
+            logging.info("Topology with id {0.topology_id} "
+                         "closed".format(event))
+
 
 Event listeners can also be registered per instance of
 :class:`~pymongo.mongo_client.MongoClient`::
@@ -78,13 +148,13 @@ _LISTENERS = _Listeners([], [], [], [])
 
 
 class _EventListener(object):
-    """Abstract base class for all event listeners. """
+    """Abstract base class for all event listeners."""
 
 
 class CommandListener(_EventListener):
     """Abstract base class for command listeners.
     Handles `CommandStartedEvent`, `CommandSucceededEvent`,
-    and `CommandFailedEvent`"""
+    and `CommandFailedEvent`."""
 
     def started(self, event):
         """Abstract method to handle a `CommandStartedEvent`.
@@ -114,7 +184,10 @@ class CommandListener(_EventListener):
 class ServerHeartbeatListener(_EventListener):
     """Abstract base class for server heartbeat listeners.
     Handles `ServerHeartbeatStartedEvent`, `ServerHeartbeatSucceededEvent`,
-    and `ServerHeartbeatFailedEvent`."""
+    and `ServerHeartbeatFailedEvent`.
+
+    .. versionadded:: 3.3
+    """
 
     def started(self, event):
         """Abstract method to handle a `ServerHeartbeatStartedEvent`.
@@ -144,7 +217,10 @@ class ServerHeartbeatListener(_EventListener):
 class TopologyListener(_EventListener):
     """Abstract base class for topology monitoring listeners.
     Handles `TopologyOpenedEvent`, `TopologyDescriptionChangedEvent`, and
-    `TopologyClosedEvent`."""
+    `TopologyClosedEvent`.
+
+    .. versionadded:: 3.3
+    """
 
     def opened(self, event):
         """Abstract method to handle a `TopologyOpenedEvent`.
@@ -174,7 +250,10 @@ class TopologyListener(_EventListener):
 class ServerListener(_EventListener):
     """Abstract base class for server listeners.
     Handles `ServerOpeningEvent`, `ServerDescriptionChangedEvent`, and
-    `ServerClosedEvent`."""
+    `ServerClosedEvent`.
+
+    .. versionadded:: 3.3
+    """
 
     def opened(self, event):
         """Abstract method to handle a `ServerOpeningEvent`.
@@ -405,7 +484,10 @@ class _ServerEvent(object):
 
 
 class ServerDescriptionChangedEvent(_ServerEvent):
-    """Published when server description changes."""
+    """Published when server description changes.
+
+    .. versionadded:: 3.3
+    """
 
     __slots__ = ('__previous_description', '__new_description')
 
@@ -416,25 +498,33 @@ class ServerDescriptionChangedEvent(_ServerEvent):
 
     @property
     def previous_description(self):
-        """The previous server description."""
+        """The previous
+        :class:`~pymongo.server_description.ServerDescription`."""
         return self.__previous_description
 
     @property
     def new_description(self):
-        """The new server description."""
+        """The new
+        :class:`~pymongo.server_description.ServerDescription`."""
         return self.__new_description
 
 
 class ServerOpeningEvent(_ServerEvent):
-    """Published when server is initialized."""
+    """Published when server is initialized.
+
+    .. versionadded:: 3.3
+    """
 
 
 class ServerClosedEvent(_ServerEvent):
-    """Published when server is closed."""
+    """Published when server is closed.
+
+    .. versionadded:: 3.3
+    """
 
 
 class TopologyEvent(object):
-    """Base class for topology description events"""
+    """Base class for topology description events."""
 
     __slots__ = ('__topology_id')
 
@@ -448,7 +538,10 @@ class TopologyEvent(object):
 
 
 class TopologyDescriptionChangedEvent(TopologyEvent):
-    """Published when the topology description changes."""
+    """Published when the topology description changes.
+
+    .. versionadded:: 3.3
+    """
 
     __slots__ = ('__previous_description', '__new_description')
 
@@ -459,25 +552,33 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
 
     @property
     def previous_description(self):
-        """The old topology description."""
+        """The previous
+        :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__previous_description
 
     @property
     def new_description(self):
-        """The new topology description."""
+        """The new
+        :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__new_description
 
 
 class TopologyOpenedEvent(TopologyEvent):
-    """Published when the topology is initialized."""
+    """Published when the topology is initialized.
+
+    .. versionadded:: 3.3
+    """
 
 
 class TopologyClosedEvent(TopologyEvent):
-    """Published when the topology is closed."""
+    """Published when the topology is closed.
+
+    .. versionadded:: 3.3
+    """
 
 
 class _ServerHeartbeatEvent(object):
-    """Base class for server heartbeat events"""
+    """Base class for server heartbeat events."""
 
     __slots__ = ('__connection_id')
 
@@ -486,17 +587,23 @@ class _ServerHeartbeatEvent(object):
 
     @property
     def connection_id(self):
-        """"The address (host, port) of the server this heartbeat was sent
-         to."""
+        """The address (host, port) of the server this heartbeat was sent
+        to."""
         return self.__connection_id
 
 
 class ServerHeartbeatStartedEvent(_ServerHeartbeatEvent):
-    """"Published when a heartbeat is started."""
+    """Published when a heartbeat is started.
+
+    .. versionadded:: 3.3
+    """
 
 
 class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
-    """Fired when the server heartbeat succeeds."""
+    """Fired when the server heartbeat succeeds.
+
+    .. versionadded:: 3.3
+    """
 
     __slots__ = ('__duration', '__reply')
 
@@ -512,13 +619,16 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
 
     @property
     def reply(self):
-        """The command reply."""
+        """An instance of :class:`~pymongo.ismaster.IsMaster`."""
         return self.__reply
 
 
 class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
     """Fired when the server heartbeat fails, either with an "ok: 0"
-    or a socket exception."""
+    or a socket exception.
+
+    .. versionadded:: 3.3
+    """
 
     __slots__ = ('__duration', '__reply')
 
@@ -534,7 +644,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
 
     @property
     def reply(self):
-        """The command reply."""
+        """A subclass of :exc:`Exception`."""
         return self.__reply
 
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Represent one server in the topology."""
+"""Represent one server the driver is connected to."""
 
 from bson import EPOCH_NAIVE
 from pymongo.server_type import SERVER_TYPE
@@ -85,10 +85,12 @@ class ServerDescription(object):
 
     @property
     def address(self):
+        """The address (host, port) of this server."""
         return self._address
 
     @property
     def server_type(self):
+        """The type of this server."""
         return self._server_type
 
     @property

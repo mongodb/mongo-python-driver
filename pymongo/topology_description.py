@@ -12,7 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Represent the topology of servers."""
+"""Represent a deployment of MongoDB servers."""
 
 from collections import namedtuple
 
@@ -37,7 +37,7 @@ class TopologyDescription(object):
                  max_set_version,
                  max_election_id,
                  topology_settings):
-        """Represent a topology of servers.
+        """Representation of a deployment of MongoDB servers.
 
         :Parameters:
           - `topology_type`: initial type
@@ -121,11 +121,13 @@ class TopologyDescription(object):
             self._topology_settings)
 
     def server_descriptions(self):
-        """Dict of (address, ServerDescription)."""
+        """Dict of (address,
+        :class:`~pymongo.server_description.ServerDescription`)."""
         return self._server_descriptions.copy()
 
     @property
     def topology_type(self):
+        """The type of this topology."""
         return self._topology_type
 
     @property
@@ -215,7 +217,7 @@ class TopologyDescription(object):
         :Parameters:
           - `read_preference`: an instance of a read preference from
             :mod:`~pymongo.read_preferences`. Defaults to
-            :attr:`~pymongo.ReadPreference.PRIMARY`.
+            :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
 
         .. note:: When connected directly to a single server this method
           always returns ``True``.
