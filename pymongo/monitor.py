@@ -126,12 +126,12 @@ class Monitor(object):
             raise
         except Exception as error:
             error_time = _time() - start
+            if self._publish:
+                self._listeners.publish_server_heartbeat_failed(
+                    address, error_time, error)
             self._topology.reset_pool(address)
             default = ServerDescription(address, error=error)
             if not retry:
-                if self._publish:
-                    self._listeners.publish_server_heartbeat_failed(
-                        address, error_time, error)
                 self._avg_round_trip_time.reset()
                 # Server type defaults to Unknown.
                 return default
