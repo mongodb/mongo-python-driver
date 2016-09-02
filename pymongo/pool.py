@@ -14,6 +14,7 @@
 
 import contextlib
 import os
+import platform
 import socket
 import sys
 import threading
@@ -25,7 +26,7 @@ except ImportError:
     _HAVE_SNI = False
 
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import itervalues, _unicode
+from bson.py3compat import imap, itervalues, _unicode
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
 from pymongo.common import MAX_MESSAGE_SIZE
@@ -93,11 +94,20 @@ except ImportError:
                 return False
 
 
-_METADATA = {
-    'driver': {'name': 'PyMongo', 'version': __version__},
-    'os': {'type': sys.platform},
-    'platform': sys.version
-}
+_METADATA = SON([
+    ('driver', SON([('name', 'PyMongo'), ('version', __version__)])),
+    ('os', SON([('type', sys.platform)])),
+])
+
+if platform.python_implementation().startswith('PyPy'):
+    _METADATA['platform'] = ' '.join(
+        (platform.python_implementation(),
+         '.'.join(imap(str, sys.pypy_version_info)),
+         "(Python %s)" % '.'.join(imap(str, sys.version_info))))
+else:
+    _METADATA['platform'] = ' '.join(
+        (platform.python_implementation(),
+         '.'.join(imap(str, sys.version_info))))
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
