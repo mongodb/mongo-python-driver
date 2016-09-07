@@ -14,3 +14,6 @@
    .. autoclass:: pymongo.collation.CollationCaseFirst
       :members:
       :member-order: bysource
+   .. autoclass:: pymongo.collation.CollationMaxVariable
+      :members:
+      :member-order: bysource

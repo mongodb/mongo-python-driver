@@ -119,8 +119,8 @@ class Collation(object):
           * :data:`~CollationStrength.IDENTICAL`
 
         Each successive level builds upon the previous. For example, a
-        `strength` of `~CollationStrength.SECONDARY` differentiates characters
-        based both on the unadorned base character and its accents.
+        `strength` of :data:`~CollationStrength.SECONDARY` differentiates
+        characters based both on the unadorned base character and its accents.
 
       - `numericOrdering`: (optional) If ``True``, order numbers numerically
         instead of in collation order (defaults to ``False``).
