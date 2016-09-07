@@ -96,14 +96,68 @@ except ImportError:
 
 _METADATA = SON([
     ('driver', SON([('name', 'PyMongo'), ('version', __version__)])),
-    ('os', SON([('type', sys.platform)])),
 ])
+
+if sys.platform.startswith('linux'):
+    _METADATA['os'] = SON([
+        ('type', platform.system()),
+        # Distro name and version (e.g. Ubuntu 16.04 xenial)
+        ('name', ' '.join([part for part in
+                           platform.linux_distribution() if part])),
+        ('architecture', platform.machine()),
+        # Kernel version (e.g. 4.4.0-17-generic).
+        ('version', platform.release())
+    ])
+elif sys.platform == 'darwin':
+    _METADATA['os'] = SON([
+        ('type', platform.system()),
+        ('name', platform.system()),
+        ('architecture', platform.machine()),
+        # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
+        # kernel version.
+        ('version', platform.mac_ver()[0])
+    ])
+elif sys.platform == 'win32':
+    _METADATA['os'] = SON([
+        ('type', platform.system()),
+        # "Windows XP", "Windows 7", "Windows 10", etc.
+        ('name', ' '.join((platform.system(), platform.release()))),
+        ('architecture', platform.machine()),
+        # Windows patch level (e.g. 5.1.2600-SP3)
+        ('version', '-'.join(platform.win32_ver()[1:3]))
+    ])
+elif sys.platform.startswith('java'):
+    _name, _ver, _arch = platform.java_ver()[-1]
+    _METADATA['os'] = SON([
+        # Linux, Windows 7, Mac OS X, etc.
+        ('type', _name),
+        ('name', _name),
+        # x86, x86_64, AMD64, etc.
+        ('architecture', _arch),
+        # Linux kernel version, OSX version, etc.
+        ('version', _ver)
+    ])
+else:
+    # Get potential alias (e.g. SunOS 5.11 becomes Solaris 2.11)
+    _aliased = platform.system_alias(
+        platform.system(), platform.release(), platform.version())
+    _METADATA['os'] = SON([
+        ('type', platform.system()),
+        ('name', ' '.join([part for part in _aliased[:2] if part])),
+        ('architecture', platform.machine()),
+        ('version', _aliased[2])
+    ])
 
 if platform.python_implementation().startswith('PyPy'):
     _METADATA['platform'] = ' '.join(
         (platform.python_implementation(),
          '.'.join(imap(str, sys.pypy_version_info)),
-         "(Python %s)" % '.'.join(imap(str, sys.version_info))))
+         '(Python %s)' % '.'.join(imap(str, sys.version_info))))
+elif sys.platform.startswith('java'):
+    _METADATA['platform'] = ' '.join(
+        (platform.python_implementation(),
+         '.'.join(imap(str, sys.version_info)),
+         '(%s)' % ' '.join((platform.system(), platform.release()))))
 else:
     _METADATA['platform'] = ' '.join(
         (platform.python_implementation(),
