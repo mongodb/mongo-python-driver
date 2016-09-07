@@ -32,6 +32,7 @@ Sub-modules:
    :maxdepth: 2
 
    database
+   collation
    collection
    command_cursor
    cursor

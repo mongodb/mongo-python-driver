@@ -729,8 +729,7 @@ class Collection(common.BaseObject):
         if collation is not None:
             if sock_info.max_wire_version < 5:
                 raise ConfigurationError(
-                    'Specifying a collation is unsupported with a max wire '
-                    'version of %d.' % (sock_info.max_wire_version,))
+                    'Must be connected to MongoDB 3.4+ to use collations.')
             elif not acknowledged:
                 raise ConfigurationError(
                     'Collation is unsupported for unacknowledged writes.')
@@ -976,8 +975,7 @@ class Collection(common.BaseObject):
         if collation is not None:
             if sock_info.max_wire_version < 5:
                 raise ConfigurationError(
-                    'Specifying a collation is unsupported with a max wire '
-                    'version of %d.' % (sock_info.max_wire_version,))
+                    'Must be connected to MongoDB 3.4+ to use collations.')
             elif not acknowledged:
                 raise ConfigurationError(
                     'Collation is unsupported for unacknowledged writes.')
@@ -1420,8 +1418,7 @@ class Collection(common.BaseObject):
             if collation is not None:
                 if sock_info.max_wire_version < 5:
                     raise ConfigurationError(
-                        'Specifying a collation is unsupported with a max wire '
-                        'version of %d.' % (sock_info.max_wire_version,))
+                        'Must be connected to MongoDB 3.4+ to use collations.')
                 else:
                     index['collation'] = collation
             cmd = SON([('createIndexes', self.name), ('indexes', [index])])

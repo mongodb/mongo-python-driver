@@ -483,9 +483,11 @@ class _Bulk(object):
         with client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version < 5 and self.uses_collation:
                 raise ConfigurationError(
-                    'Specifying a collation is unsupported with a max wire '
-                    'version of %d.' % (sock_info.max_wire_version,))
+                    'Must be connected to MongoDB 3.4+ to use a collation.')
             if not write_concern.acknowledged:
+                if self.uses_collation:
+                    raise ConfigurationError(
+                        'Collation is unsupported for unacknowledged writes.')
                 self.execute_no_results(sock_info, generator)
             elif sock_info.max_wire_version > 1:
                 return self.execute_command(sock_info, generator, write_concern)

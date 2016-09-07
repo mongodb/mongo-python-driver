@@ -382,8 +382,7 @@ class SocketInfo(object):
             spec['writeConcern'] = write_concern.document
         elif self.max_wire_version < 5 and collation is not None:
             raise ConfigurationError(
-                'Specifying a collation is unsupported with a max wire '
-                'version of %d.' % (self.max_wire_version,))
+                'Must be connected to MongoDB 3.4+ to use a collation.')
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
