@@ -19,6 +19,12 @@ everything you need to know to use **PyMongo**.
 :doc:`examples/index`
   Examples of how to perform specific tasks.
 
+:doc:`atlas`
+  Using PyMongo with MongoDB Atlas.
+
+:doc:`examples/tls`
+  Using PyMongo with TLS / SSL.
+
 :doc:`faq`
   Some questions that come up often.
 
@@ -85,6 +91,7 @@ Indices and tables
 .. toctree::
    :hidden:
 
+   atlas
    installation
    tutorial
    examples/index

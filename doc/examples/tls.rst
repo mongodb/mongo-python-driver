@@ -6,6 +6,37 @@ configuration options supported by PyMongo. See `the server documentation
 <http://docs.mongodb.org/manual/tutorial/configure-ssl/>`_ to configure
 MongoDB.
 
+Dependencies
+............
+
+For connections using TLS/SSL, PyMongo may require third party dependencies as
+determined by your version of Python. With PyMongo 3.3+, you can install
+PyMongo 3.3+ and any TLS/SSL-related dependencies using the following pip
+command::
+
+  $ python -m pip install pymongo[tls]
+
+Earlier versions of PyMongo require you to manually install the dependencies
+listed below.
+
+Python 2.x
+``````````
+The `ipaddress`_ module is required on all platforms.
+
+When using CPython < 2.7.9 or PyPy < 2.5.1:
+
+- On Windows, the `wincertstore`_ module is required.
+- On all other platforms, the `certifi`_ module is required.
+
+Python 3.x
+``````````
+On Windows, the `wincertstore`_ module is required when using CPython < 3.4.0
+or any version of PyPy3.
+
+.. _ipaddress: https://pypi.python.org/pypi/ipaddress
+.. _wincertstore: https://pypi.python.org/pypi/wincertstore
+.. _certifi: https://pypi.python.org/pypi/certifi
+
 Basic configuration
 ...................
 
@@ -22,19 +53,6 @@ Or passing ``ssl=true`` in the URI::
 This configures PyMongo to connect to the server using TLS, verify the server's
 certificate and verify that the host you are attempting to connect to is listed
 by that certificate.
-
-PyMongo attempts to use the operating system's CA certificates to verify the
-server's certificate when possible. Some versions of python may require an
-extra third party module for this to work properly. Users of Python 2 on
-Windows are encouraged to upgrade to python 2.7.9 or newer. Users of Python 3
-on Windows should upgrade to python 3.4.0 or newer. If upgrading is not
-possible `wincertstore <https://pypi.python.org/pypi/wincertstore>`_ can be
-used with older python versions. Users of operating systems other than Windows
-that are stuck on python versions older than 2.7.9 can install
-`certifi <https://pypi.python.org/pypi/certifi>`_ to use the Mozilla CA bundle
-for certificate verification. Users of python 2.x that require IP address
-support for hostname matching must install the `ipaddress
-<https://pypi.python.org/pypi/ipaddress>`_ module.
 
 Certificate verification policy
 ...............................
