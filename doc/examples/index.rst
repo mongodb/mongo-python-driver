@@ -18,6 +18,7 @@ MongoDB, you can start it like so:
 
    aggregation
    authentication
+   collations
    copydb
    bulk
    custom_type
