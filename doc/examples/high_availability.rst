@@ -69,7 +69,7 @@ After connecting, we run the initiate command to get things started::
   ...     {'_id': 1, 'host': 'localhost:27018'},
   ...     {'_id': 2, 'host': 'localhost:27019'}]}
   >>> c.admin.command("replSetInitiate", config)
-  {'info': 'Config now saved locally.  Should come online in about a minute.', 'ok': 1.0}
+  {'ok': 1.0, ...}
 
 The three ``mongod`` servers we started earlier will now coordinate
 and come online as a replica set.
@@ -85,13 +85,13 @@ one or more members of the set, along with the replica set name. Any of
 the following connects to the replica set we just created::
 
   >>> MongoClient('localhost', replicaset='foo')
-  MongoClient('localhost', 27017)
+  MongoClient(host=['localhost:27017'], replicaset='foo', ...)
   >>> MongoClient('localhost:27018', replicaset='foo')
-  MongoClient('localhost', 27018)
+  MongoClient(['localhost:27018'], replicaset='foo', ...)
   >>> MongoClient('localhost', 27019, replicaset='foo')
-  MongoClient('localhost', 27019)
+  MongoClient(['localhost:27019'], replicaset='foo', ...)
   >>> MongoClient('mongodb://localhost:27017,localhost:27018/?replicaSet=foo')
-  MongoClient(['localhost:27017', 'localhost:27018'])
+  MongoClient(['localhost:27017', 'localhost:27018'], replicaset='foo', ...)
 
 The addresses passed to :meth:`~pymongo.mongo_client.MongoClient` are called
 the *seeds*. As long as at least one of the seeds is online, MongoClient
@@ -103,13 +103,15 @@ address of a single mongod. Multihomed and round robin DNS addresses are
 The :class:`~pymongo.mongo_client.MongoClient` constructor is non-blocking:
 the constructor returns immediately while the client connects to the replica
 set using background threads. Note how, if you create a client and immediately
-print its string representation, the client only prints the single host it
-knows about. If you wait a moment, it discovers the whole replica set:
+print the string representation of its
+:attr:`~pymongo.mongo_client.MongoClient.nodes` attribute, the list may be
+empty initially. If you wait a moment, MongoClient discovers the whole replica
+set::
 
   >>> from time import sleep
-  >>> c = MongoClient(replicaset='foo'); print c; sleep(0.1); print c
-  MongoClient('localhost', 27017)
-  MongoClient([u'localhost:27019', u'localhost:27017', u'localhost:27018'])
+  >>> c = MongoClient(replicaset='foo'); print(c.nodes); sleep(0.1); print(c.nodes)
+  frozenset([])
+  frozenset([(u'localhost', 27019), (u'localhost', 27017), (u'localhost', 27018)])
 
 You need not wait for replica set discovery in your application, however.
 If you need to do any operation with a MongoClient, such as a
