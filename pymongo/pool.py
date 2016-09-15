@@ -93,6 +93,20 @@ except ImportError:
                     return True
                 return False
 
+try:
+    from fcntl import fcntl, F_GETFD, F_SETFD, FD_CLOEXEC
+    def _set_non_inheritable_non_atomic(fd):
+        """Set the close-on-exec flag on the given file descriptor."""
+        flags = fcntl(fd, F_GETFD)
+        fcntl(fd, F_SETFD, flags | FD_CLOEXEC)
+except ImportError:
+    # Windows, various platforms we don't claim to support
+    # (Jython, IronPython, ...), systems that don't provide
+    # everything we need from fcntl, etc.
+    def _set_non_inheritable_non_atomic(dummy):
+        """Dummy function for platforms that don't provide fcntl."""
+        pass
+
 
 _METADATA = SON([
     ('driver', SON([('name', 'PyMongo'), ('version', __version__)])),
@@ -557,6 +571,8 @@ def _create_connection(address, options):
             raise ConnectionFailure("UNIX-sockets are not supported "
                                     "on this system")
         sock = socket.socket(socket.AF_UNIX)
+        # SOCK_CLOEXEC not supported for Unix sockets.
+        _set_non_inheritable_non_atomic(sock.fileno())
         try:
             sock.connect(host)
             return sock
@@ -574,7 +590,18 @@ def _create_connection(address, options):
     err = None
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
         af, socktype, proto, dummy, sa = res
-        sock = socket.socket(af, socktype, proto)
+        # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
+        # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
+        # all file descriptors are created non-inheritable. See PEP 446.
+        try:
+            sock = socket.socket(
+                af, socktype | getattr(socket, 'SOCK_CLOEXEC', 0), proto)
+        except socket.error:
+            # Can SOCK_CLOEXEC be defined even if the kernel doesn't support
+            # it?
+            sock = socket.socket(af, socktype, proto)
+        # Fallback when SOCK_CLOEXEC isn't available.
+        _set_non_inheritable_non_atomic(sock.fileno())
         try:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.settimeout(options.connect_timeout)
