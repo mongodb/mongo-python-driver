@@ -127,7 +127,9 @@ class _ServerMode(object):
 
     @property
     def max_staleness(self):
-        """This read preference's maxStalenessMS, converted to seconds."""
+        """The maximum estimated length of time (in seconds) a replica set
+        secondary can fall behind the primary in replication before it will
+        no longer be selected for operations."""
         return self.__max_staleness
 
     @property
@@ -135,10 +137,11 @@ class _ServerMode(object):
         """The wire protocol version the server must support.
 
         Some read preferences impose version requirements on all servers in the
-        topology. E.g., maxStalenessMS requires MongoDB 3.4 / maxWireVersion 5.
+        topology (e.g. maxStalenessMS requires MongoDB 3.4 / maxWireVersion 5).
 
         All servers' maxWireVersion must be at least this read preference's
-        `min_wire_version`, or the driver raises `ConfigurationError`.
+        `min_wire_version`, or the driver raises
+        :exc:`~pymongo.errors.ConfigurationError`.
         """
         return 5 if self.__max_staleness else 0
 
@@ -212,8 +215,9 @@ class PrimaryPreferred(_ServerMode):
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` to use if the primary is not
         available.
-      - `max_staleness`: The :attr:`~max_staleness` to use if the primary is
-        not available.
+      - `max_staleness`: (integer or float, in seconds) The maximum estimated
+        length of time a replica set secondary can fall behind the primary in
+        replication before it will no longer be selected for operations.
     """
 
     def __init__(self, tag_sets=None, max_staleness=None):
@@ -244,7 +248,9 @@ class Secondary(_ServerMode):
 
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: The :attr:`~max_staleness` for this read preference.
+      - `max_staleness`: (integer or float, in seconds) The maximum estimated
+        length of time a replica set secondary can fall behind the primary in
+        replication before it will no longer be selected for operations.
     """
 
     def __init__(self, tag_sets=None, max_staleness=None):
@@ -270,7 +276,9 @@ class SecondaryPreferred(_ServerMode):
 
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: The :attr:`~max_staleness` for this read preference.
+      - `max_staleness`: (integer or float, in seconds) The maximum estimated
+        length of time a replica set secondary can fall behind the primary in
+        replication before it will no longer be selected for operations.
     """
 
     def __init__(self, tag_sets=None, max_staleness=None):
@@ -303,7 +311,9 @@ class Nearest(_ServerMode):
 
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: The :attr:`~max_staleness` for this read preference.
+      - `max_staleness`: (integer or float, in seconds) The maximum estimated
+        length of time a replica set secondary can fall behind the primary in
+        replication before it will no longer be selected for operations.
     """
 
     def __init__(self, tag_sets=None, max_staleness=None):

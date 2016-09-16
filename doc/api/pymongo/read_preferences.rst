@@ -5,7 +5,11 @@
    :synopsis: Utilities for choosing which member of a replica set to read from.
 
    .. autoclass:: pymongo.read_preferences.Primary
-      :inherited-members:
+
+      .. autoattribute:: document
+      .. autoattribute:: mode
+      .. autoattribute:: name
+
    .. autoclass:: pymongo.read_preferences.PrimaryPreferred
       :inherited-members:
    .. autoclass:: pymongo.read_preferences.Secondary

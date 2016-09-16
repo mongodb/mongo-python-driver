@@ -4,17 +4,59 @@ Changelog
 Changes in Version 3.4
 ----------------------
 
-Version 3.4 implements the new server features introduced in MongoDB 3.4:
+Version 3.4 implements the new server features introduced in MongoDB 3.4
+and a whole lot more:
 
 Highlights include:
 
+- Complete support for MongoDB 3.4:
+
+  - Unicode aware string comparison using :doc:`examples/collations`.
+  - Support for the new :class:`~bson.decimal128.Decimal128` BSON type.
+  - A new maxStalenessMS read preference option.
+  - :meth:`~pymongo.collection.Collection.parallel_scan` supports maxTimeMS.
+  - :attr:`~pymongo.write_concern.WriteConcern` is automatically
+    applied by all helpers for commands that write to the database when
+    connected to MongoDB 3.4+. This change affects the following helpers:
+
+    - :meth:`~pymongo.mongo_client.MongoClient.drop_database`
+    - :meth:`~pymongo.database.Database.create_collection`
+    - :meth:`~pymongo.database.Database.drop_collection`
+    - :meth:`~pymongo.collection.Collection.aggregate` (when using $out)
+    - :meth:`~pymongo.collection.Collection.create_indexes`
+    - :meth:`~pymongo.collection.Collection.create_index`
+    - :meth:`~pymongo.collection.Collection.drop_indexes`
+    - :meth:`~pymongo.collection.Collection.drop_indexes`
+    - :meth:`~pymongo.collection.Collection.drop_index`
+    - :meth:`~pymongo.collection.Collection.map_reduce` (when output is not
+      "inline")
+    - :meth:`~pymongo.collection.Collection.reindex`
+    - :meth:`~pymongo.collection.Collection.rename`
+
+- Improved support for logging server discovery and monitoring events. See
+  :mod:`~pymongo.monitoring` for examples.
+- Support for matching iPAddress subjectAltName values for TLS certificate
+  verification.
+- TLS compression is now explicitly disabled when possible.
+- The Server Name Indication (SNI) TLS extension is used when possible.
 - Finer control over JSON encoding/decoding with
   :class:`~bson.json_util.JSONOptions`.
-- Allow :class:`~bson.code.Code` objects to have a scope of ``None``, signifying
-  no scope. Also allow encoding Code objects with an empty scope (i.e. ``{}``).
+- Allow :class:`~bson.code.Code` objects to have a scope of ``None``,
+  signifying no scope. Also allow encoding Code objects with an empty scope
+  (i.e. ``{}``).
 
-  .. warning:: Starting in PyMongo 3.4, :attr:`~bson.code.Code.scope` may return
-     ``None``, as the default scope is ``None`` instead of ``{}``.
+.. warning:: Starting in PyMongo 3.4, :attr:`bson.code.Code.scope` may return
+  ``None``, as the default scope is ``None`` instead of ``{}``.
+
+.. note:: PyMongo 3.4+ attempts to create sockets non-inheritable when possible
+  (i.e. it sets the close-on-exec flag on socket file descriptors). Support
+  is limited to a subset of POSIX operating systems (not including Windows) and
+  the flag usually cannot be set in a single atomic operation. CPython 3.4+
+  implements `PEP 446`_, creating all file descriptors non-inheritable by
+  default. Users that require this behavior are encouraged to upgrade to
+  CPython 3.4+.
+
+.. _PEP 446: https://www.python.org/dev/peps/pep-0446/
 
 Issues Resolved
 ...............

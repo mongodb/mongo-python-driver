@@ -203,9 +203,19 @@ class MongoClient(common.BaseObject):
             match this name. Implies that the hosts specified are a seed list
             and the driver should attempt to find all members of the set.
             Defaults to ``None``.
-          - `read_preference`: The read preference for this client.
-            See :class:`~pymongo.read_preferences.ReadPreference` for all
-            available read preference options. Defaults to ``PRIMARY``.
+
+          | **Read Preference:**
+
+          - `readPreference`: The replica set read preference for this client.
+            One of ``primary``, ``primaryPreferred``, ``secondary``,
+            ``secondaryPreferred``, or ``nearest``. Defaults to ``primary``.
+          - `readPreferenceTags`: Specifies a tag set as a comma-separated list
+            of colon-separated key-value pairs. For example ``dc:ny,rack:1``.
+            Defaults to ``None``.
+          - `maxStalenessMS`: (integer or float, in milliseconds) The maximum
+            estimated length of time a replica set secondary can fall behind
+            the primary in replication before it will no longer be selected for
+            operations. Defaults to ``None`` (no limit).
 
           | **SSL configuration:**
 

@@ -42,7 +42,7 @@ class Code(str):
       - `**kwargs` (optional): scope variables can also be passed as
         keyword arguments. These are applied after `scope` and `code`.
 
-    ..versionchanged:: 3.4
+    .. versionchanged:: 3.4
       The default value for :attr:`scope` is ``None`` instead of ``{}``.
 
     """
@@ -82,7 +82,7 @@ class Code(str):
 
     @property
     def scope(self):
-        """Scope dictionary for this instance.
+        """Scope dictionary for this instance or ``None``.
         """
         return self.__scope
 
