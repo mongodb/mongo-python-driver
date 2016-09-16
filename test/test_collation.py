@@ -303,7 +303,7 @@ class TestCollation(unittest.TestCase):
             bulk.execute()
         self.assertIsNone(self.db.test.find_one({'foo': 42}))
 
-    @client_context.require_version_min(3, 4, 0)
+    @client_context.require_version_min(3, 3, 11)
     def test_indexes_same_keys_different_collations(self):
         self.db.test.drop()
         usa_collation = Collation('en_US')
