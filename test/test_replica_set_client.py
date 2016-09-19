@@ -33,6 +33,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+from bson import JAVA_LEGACY
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
@@ -1267,6 +1268,13 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self.assertFalse(client.alive())
         finally:
             ctx.exit()
+
+    def test_uuid_representation_kwarg(self):
+        client = MongoReplicaSetClient(uuidRepresentation='javaLegacy',
+                                       replicaSet='rs',
+                                       connect=False)
+
+        self.assertEqual(client.uuid_subtype, JAVA_LEGACY)
 
 
 class TestReplicaSetWireVersion(unittest.TestCase):

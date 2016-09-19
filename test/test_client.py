@@ -1125,6 +1125,12 @@ with client.start_request() as request:
         collection.find_one()
         cursor.close()
 
+    def test_uuid_representation_kwarg(self):
+        client = MongoClient(uuidRepresentation='javaLegacy',
+                             connect=False)
+
+        self.assertEqual(client.uuid_subtype, JAVA_LEGACY)
+
 
 class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
     def _get_client(self, **kwargs):

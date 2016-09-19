@@ -653,7 +653,9 @@ class MongoReplicaSetClient(common.BaseObject):
                 'max_pool_size', max_pool_size))
 
         common.validate_boolean('tz_aware', tz_aware)
-        uuid_representation = options.pop('uuidrepresentation', PYTHON_LEGACY)
+        uuid_representation = self.__opts.pop('uuidrepresentation',
+                                              PYTHON_LEGACY)
+
         self.__opts['codec_options'] = CodecOptions(
             document_class, tz_aware, uuid_representation)
 
