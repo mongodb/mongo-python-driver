@@ -159,6 +159,8 @@ def create_test(scenario_def):
         mode_string = mode_string[:1].lower() + mode_string[1:]
         mode = read_preferences.read_pref_mode_from_name(mode_string)
         max_staleness = pref_def.get('maxStalenessMS', 0) / 1000.0
+        if not max_staleness:
+            max_staleness = None
         tag_sets = pref_def.get('tag_sets')
 
         if scenario_def.get('error'):

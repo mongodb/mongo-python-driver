@@ -73,13 +73,16 @@ def _maybe_add_read_preference(spec, read_preference):
     """Add $readPreference to spec when appropriate."""
     mode = read_preference.mode
     tag_sets = read_preference.tag_sets
+    max_staleness = read_preference.max_staleness
     # Only add $readPreference if it's something other than primary to avoid
     # problems with mongos versions that don't support read preferences. Also,
     # for maximum backwards compatibility, don't add $readPreference for
-    # secondaryPreferred unless tags are in use (setting the slaveOkay bit
-    # has the same effect).
+    # secondaryPreferred unless tags or maxStalenessMS are in use (setting the
+    # slaveOkay bit has the same effect).
     if mode and (
-        mode != ReadPreference.SECONDARY_PREFERRED.mode or tag_sets != [{}]):
+        mode != ReadPreference.SECONDARY_PREFERRED.mode
+        or tag_sets != [{}]
+        or max_staleness):
 
         if "$query" not in spec:
             spec = SON([("$query", spec)])

@@ -63,17 +63,21 @@ def _validate_tag_sets(tag_sets):
 
 
 def _validate_max_staleness(max_staleness):
-    """Validate maxStalenessMS."""
+    """Validate max_staleness."""
     if max_staleness is None:
         return 0.0
 
-    errmsg = "maxStalenessMS must be an integer or float"
+    errmsg = "max_staleness must be an integer or float"
     try:
         max_staleness = float(max_staleness)
     except ValueError:
         raise ValueError(errmsg)
     except TypeError:
         raise TypeError(errmsg)
+
+    if not 0 < max_staleness < 1e9:
+        raise ValueError(
+            "max_staleness must be greater than 0 and less than one billion")
 
     return max_staleness
 
@@ -100,9 +104,12 @@ class _ServerMode(object):
     def document(self):
         """Read preference as a document.
         """
-        if self.__tag_sets in (None, [{}]):
-            return {'mode': self.__mongos_mode}
-        return {'mode': self.__mongos_mode, 'tags': self.__tag_sets}
+        doc = {'mode': self.__mongos_mode}
+        if self.__tag_sets not in (None, [{}]):
+            doc['tags'] = self.__tag_sets
+        if self.__max_staleness:
+            doc['maxStalenessMS'] = int(self.__max_staleness * 1000)
+        return doc
 
     @property
     def mode(self):
@@ -130,6 +137,8 @@ class _ServerMode(object):
         """The maximum estimated length of time (in seconds) a replica set
         secondary can fall behind the primary in replication before it will
         no longer be selected for operations."""
+        if not self.__max_staleness:
+            return None
         return self.__max_staleness
 
     @property
@@ -146,8 +155,8 @@ class _ServerMode(object):
         return 5 if self.__max_staleness else 0
 
     def __repr__(self):
-        return "%s(tag_sets=%r)" % (
-            self.name, self.__tag_sets)
+        return "%s(tag_sets=%r, max_staleness=%r)" % (
+            self.name, self.__tag_sets, self.max_staleness)
 
     def __eq__(self, other):
         if isinstance(other, _ServerMode):

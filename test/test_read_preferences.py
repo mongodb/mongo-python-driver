@@ -24,7 +24,7 @@ sys.path[0:0] = [""]
 
 from bson.py3compat import MAXSIZE
 from bson.son import SON
-from pymongo.errors import ConfigurationError
+from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.message import _maybe_add_read_preference
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import (ReadPreference, MovingAverage,
@@ -446,6 +446,77 @@ class TestMovingAverage(unittest.TestCase):
 
 class TestMongosAndReadPreference(unittest.TestCase):
 
+    def test_read_preference_document(self):
+
+        pref = Primary()
+        self.assertEqual(
+            pref.document,
+            {'mode': 'primary'})
+
+        pref = PrimaryPreferred()
+        self.assertEqual(
+            pref.document,
+            {'mode': 'primaryPreferred'})
+        pref = PrimaryPreferred(tag_sets=[{'dc': 'sf'}])
+        self.assertEqual(
+            pref.document,
+            {'mode': 'primaryPreferred', 'tags': [{'dc': 'sf'}]})
+        pref = PrimaryPreferred(
+            tag_sets=[{'dc': 'sf'}], max_staleness=30)
+        self.assertEqual(
+            pref.document,
+            {'mode': 'primaryPreferred',
+             'tags': [{'dc': 'sf'}],
+             'maxStalenessMS': 30000})
+
+        pref = Secondary()
+        self.assertEqual(
+            pref.document,
+            {'mode': 'secondary'})
+        pref = Secondary(tag_sets=[{'dc': 'sf'}])
+        self.assertEqual(
+            pref.document,
+            {'mode': 'secondary', 'tags': [{'dc': 'sf'}]})
+        pref = Secondary(
+            tag_sets=[{'dc': 'sf'}], max_staleness=30)
+        self.assertEqual(
+            pref.document,
+            {'mode': 'secondary',
+             'tags': [{'dc': 'sf'}],
+             'maxStalenessMS': 30000})
+
+        pref = SecondaryPreferred()
+        self.assertEqual(
+            pref.document,
+            {'mode': 'secondaryPreferred'})
+        pref = SecondaryPreferred(tag_sets=[{'dc': 'sf'}])
+        self.assertEqual(
+            pref.document,
+            {'mode': 'secondaryPreferred', 'tags': [{'dc': 'sf'}]})
+        pref = SecondaryPreferred(
+            tag_sets=[{'dc': 'sf'}], max_staleness=30)
+        self.assertEqual(
+            pref.document,
+            {'mode': 'secondaryPreferred',
+             'tags': [{'dc': 'sf'}],
+             'maxStalenessMS': 30000})
+
+        pref = Nearest()
+        self.assertEqual(
+            pref.document,
+            {'mode': 'nearest'})
+        pref = Nearest(tag_sets=[{'dc': 'sf'}])
+        self.assertEqual(
+            pref.document,
+            {'mode': 'nearest', 'tags': [{'dc': 'sf'}]})
+        pref = Nearest(
+            tag_sets=[{'dc': 'sf'}], max_staleness=30)
+        self.assertEqual(
+            pref.document,
+            {'mode': 'nearest',
+             'tags': [{'dc': 'sf'}],
+             'maxStalenessMS': 30000})
+
     def test_maybe_add_read_preference(self):
 
         # Primary doesn't add $readPreference
@@ -470,11 +541,16 @@ class TestMongosAndReadPreference(unittest.TestCase):
         self.assertEqual(
             out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
-        # SecondaryPreferred without tag_sets doesn't add $readPreference
+        # SecondaryPreferred without tag_sets or max_staleness doesn't add
+        # $readPreference
         pref = SecondaryPreferred()
         out = _maybe_add_read_preference({}, pref)
         self.assertEqual(out, {})
         pref = SecondaryPreferred(tag_sets=[{'dc': 'nyc'}])
+        out = _maybe_add_read_preference({}, pref)
+        self.assertEqual(
+            out, SON([("$query", {}), ("$readPreference", pref.document)]))
+        pref = SecondaryPreferred(max_staleness=120)
         out = _maybe_add_read_preference({}, pref)
         self.assertEqual(
             out, SON([("$query", {}), ("$readPreference", pref.document)]))
@@ -533,6 +609,39 @@ class TestMongosAndReadPreference(unittest.TestCase):
             self.assertEqual(first_id, results[-1]["_id"])
             self.assertEqual(last_id, results[0]["_id"])
 
+    @client_context.require_mongos
+    @client_context.require_version_min(3, 3, 12)
+    def test_mongos_max_staleness(self):
+        # Sanity check that we're sending maxStalenessMS
+        coll = client_context.client.pymongo_test.get_collection(
+            "test", read_preference=SecondaryPreferred(max_staleness=120))
+        # No error
+        coll.find_one()
+
+        coll = client_context.client.pymongo_test.get_collection(
+            "test", read_preference=SecondaryPreferred(max_staleness=10))
+        try:
+            coll.find_one()
+        except OperationFailure as exc:
+            self.assertEqual(160, exc.code)
+        else:
+            self.fail("mongos accepted invalid staleness")
+
+        coll = single_client(
+            readPreference='secondaryPreferred',
+            maxStalenessMS=120000).pymongo_test.test
+        # No error
+        coll.find_one()
+
+        coll = single_client(
+            readPreference='secondaryPreferred',
+            maxStalenessMS=10000).pymongo_test.test
+        try:
+            coll.find_one()
+        except OperationFailure as exc:
+            self.assertEqual(160, exc.code)
+        else:
+            self.fail("mongos accepted invalid staleness")
 
 if __name__ == "__main__":
     unittest.main()
