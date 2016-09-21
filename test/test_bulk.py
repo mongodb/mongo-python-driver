@@ -31,8 +31,6 @@ from pymongo.errors import (BulkWriteError,
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   unittest,
-                  host,
-                  port,
                   IntegrationTest,
                   SkipTest)
 from test.utils import oid_generated_on_client, remove_all_users, wait_until
@@ -1245,7 +1243,7 @@ class TestBulkAuthorization(BulkTestBase):
     def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = MongoClient(host, port)
+        cli = MongoClient(client_context.host, client_context.port)
         db = cli.pymongo_test
         coll = db.test
         db.authenticate('readonly', 'pw')
@@ -1256,7 +1254,7 @@ class TestBulkAuthorization(BulkTestBase):
     def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = MongoClient(host, port)
+        cli = MongoClient(client_context.host, client_context.port)
         db = cli.pymongo_test
         coll = db.test
         db.authenticate('noremove', 'pw')

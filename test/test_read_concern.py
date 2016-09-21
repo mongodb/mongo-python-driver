@@ -21,7 +21,7 @@ from pymongo import monitoring
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_concern import ReadConcern
 
-from test import client_context, pair, unittest
+from test import client_context, unittest
 from test.utils import single_client, EventListener
 
 
@@ -61,7 +61,7 @@ class TestReadConcern(unittest.TestCase):
         self.assertRaises(TypeError, ReadConcern, 42)
 
     def test_read_concern_uri(self):
-        uri = 'mongodb://%s/?readConcernLevel=majority' % (pair,)
+        uri = 'mongodb://%s/?readConcernLevel=majority' % (client_context.pair,)
         client = pymongo.MongoClient(uri)
         self.assertEqual(ReadConcern('majority'), client.read_concern)
 

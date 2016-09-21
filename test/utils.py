@@ -33,9 +33,7 @@ from pymongo.server_selectors import (any_server_selector,
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   db_user,
-                  db_pwd,
-                  host,
-                  port)
+                  db_pwd)
 from test.version import Version
 
 
@@ -115,29 +113,34 @@ def _connection_string(h, p):
         return _connection_string_noauth(h, p)
 
 
-def single_client_noauth(h=host, p=port, **kwargs):
+def single_client_noauth(
+        h=client_context.host, p=client_context.port, **kwargs):
     """Make a direct connection. Don't authenticate."""
-    return MongoClient(_connection_string_noauth(h, p), **kwargs)
+    return MongoClient(_connection_string_noauth(h, p), p, **kwargs)
 
 
-def single_client(h=host, p=port, **kwargs):
+def single_client(
+        h=client_context.host, p=client_context.port, **kwargs):
     """Make a direct connection, and authenticate if necessary."""
-    return MongoClient(_connection_string(h, p), **kwargs)
+    return MongoClient(_connection_string(h, p), p, **kwargs)
 
 
-def rs_client_noauth(h=host, p=port, **kwargs):
+def rs_client_noauth(
+        h=client_context.host, p=client_context.port, **kwargs):
     """Connect to the replica set. Don't authenticate."""
-    return MongoClient(_connection_string_noauth(h, p),
+    return MongoClient(_connection_string_noauth(h, p), p,
                        replicaSet=client_context.replica_set_name, **kwargs)
 
 
-def rs_client(h=host, p=port, **kwargs):
+def rs_client(
+        h=client_context.host, p=client_context.port, **kwargs):
     """Connect to the replica set and authenticate if necessary."""
-    return MongoClient(_connection_string(h, p),
+    return MongoClient(_connection_string(h, p), p,
                        replicaSet=client_context.replica_set_name, **kwargs)
 
 
-def rs_or_single_client_noauth(h=host, p=port, **kwargs):
+def rs_or_single_client_noauth(
+        h=client_context.host, p=client_context.port, **kwargs):
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Like rs_or_single_client, but does not authenticate.
@@ -148,7 +151,8 @@ def rs_or_single_client_noauth(h=host, p=port, **kwargs):
         return single_client_noauth(h, p, **kwargs)
 
 
-def rs_or_single_client(h=host, p=port, **kwargs):
+def rs_or_single_client(
+        h=client_context.host, p=client_context.port, **kwargs):
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Authenticates if necessary.

@@ -236,7 +236,7 @@ def create_test(scenario_def):
                         # Topology was garbage-collected.
                         self.close()
 
-            m = single_client(h=scenario_def['uri'],
+            m = single_client(h=scenario_def['uri'], p=27017,
                               event_listeners=(self.all_listener,),
                               _monitor_class=MockMonitor)
 

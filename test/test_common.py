@@ -26,7 +26,7 @@ from bson.objectid import ObjectId
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
-from test import client_context, pair, unittest, IntegrationTest
+from test import client_context, unittest, IntegrationTest
 from test.utils import connected, rs_or_single_client, single_client
 
 
@@ -183,6 +183,7 @@ class TestCommon(IntegrationTest):
         self.assertEqual(wc, db.write_concern)
 
     def test_mongo_client(self):
+        pair = client_context.pair
         m = rs_or_single_client(w=0)
         coll = m.pymongo_test.write_concern_test
         coll.drop()

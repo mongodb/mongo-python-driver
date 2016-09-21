@@ -24,14 +24,15 @@ from pymongo.son_manipulator import (NamespaceInjector,
                                      ObjectIdInjector,
                                      ObjectIdShuffler,
                                      SONManipulator)
-from test import qcheck, unittest, host, port
+from test import client_context, qcheck, unittest
 
 
 class TestSONManipulator(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(host, port, connect=False)
+        client = MongoClient(
+            client_context.host, client_context.port, connect=False)
         cls.db = client.pymongo_test
 
     def test_basic(self):

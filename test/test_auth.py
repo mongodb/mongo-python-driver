@@ -30,7 +30,7 @@ from pymongo import MongoClient
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
-from test import client_context, host, port, SkipTest, unittest, Version
+from test import client_context, SkipTest, unittest, Version
 from test.utils import delay
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
@@ -328,6 +328,7 @@ class TestSCRAMSHA1(unittest.TestCase):
             writeConcern={'w': client_context.w})
 
     def test_scram_sha1(self):
+        host, port = client_context.host, client_context.port
         client = MongoClient(host, port)
         self.assertTrue(client.pymongo_test.authenticate(
             'user', 'pass', mechanism='SCRAM-SHA-1'))
@@ -361,7 +362,7 @@ class TestAuthURIOptions(unittest.TestCase):
 
     @client_context.require_auth
     def setUp(self):
-        client = MongoClient(host, port)
+        client = MongoClient(client_context.host, client_context.port)
         response = client.admin.command('ismaster')
         self.replica_set_name = str(response.get('setName', ''))
         client_context.client.admin.add_user('admin', 'pass',
@@ -391,7 +392,9 @@ class TestAuthURIOptions(unittest.TestCase):
 
     def test_uri_options(self):
         # Test default to admin
-        client = MongoClient('mongodb://admin:pass@%s:%d' % (host, port))
+        host, port = client_context.host, client_context.port
+        client = MongoClient(
+            'mongodb://admin:pass@%s:%d' % (host, port))
         self.assertTrue(client.admin.command('dbstats'))
 
         if self.replica_set_name:
@@ -462,7 +465,7 @@ class TestDelegatedAuth(unittest.TestCase):
         self.client.pymongo_test2.add_user('user',
                                            userSource='pymongo_test',
                                            roles=['read'])
-        auth_c = MongoClient(host, port)
+        auth_c = MongoClient(client_context.host, client_context.port)
         self.assertRaises(OperationFailure,
                           auth_c.pymongo_test2.foo.find_one)
         # Auth must occur on the db where the user is defined.

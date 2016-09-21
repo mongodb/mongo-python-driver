@@ -62,7 +62,7 @@ from test.utils import (is_mongos, enable_text_search, get_pool,
                         rs_or_single_client, single_client,
                         wait_until, EventListener,
                         IMPOSSIBLE_WRITE_CONCERN)
-from test import client_context, host, port, unittest
+from test import client_context, unittest
 
 
 class TestCollectionNoConnect(unittest.TestCase):
@@ -70,7 +70,8 @@ class TestCollectionNoConnect(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        client = MongoClient(host, port, connect=False)
+        client = MongoClient(
+            client_context.host, client_context.port, connect=False)
         cls.db = client.pymongo_test
 
     def test_collection(self):

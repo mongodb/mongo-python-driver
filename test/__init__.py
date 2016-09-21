@@ -41,18 +41,12 @@ from test.version import Version
 if HAVE_SSL:
     import ssl
 
-# hostnames retrieved from isMaster will be of unicode type in Python 2,
-# so ensure these hostnames are unicodes, too. It makes tests like
-# `test_repr` predictable.
+# The host and port of a single mongod or mongos, or the seed host
+# for a replica set. Hostnames retrieved from isMaster will be of
+# unicode type in Python 2, so ensure these hostnames are unicodes,
+# too. It makes tests like `test_repr` predictable.
 host = _unicode(os.environ.get("DB_IP", 'localhost'))
 port = int(os.environ.get("DB_PORT", 27017))
-pair = '%s:%d' % (host, port)
-
-host2 = _unicode(os.environ.get("DB_IP2", 'localhost'))
-port2 = int(os.environ.get("DB_PORT2", 27018))
-
-host3 = _unicode(os.environ.get("DB_IP3", 'localhost'))
-port3 = int(os.environ.get("DB_PORT3", 27019))
 
 db_user = _unicode(os.environ.get("DB_USER", "user"))
 db_pwd = _unicode(os.environ.get("DB_PASSWORD", "password"))
@@ -128,6 +122,8 @@ class ClientContext(object):
 
     def __init__(self):
         """Create a client and grab essential information from the server."""
+        # Seed host. This may be updated further down.
+        self.host, self.port = host, port
         self.connected = False
         self.ismaster = {}
         self.w = None
@@ -150,10 +146,13 @@ class ClientContext(object):
         def connect(**kwargs):
             try:
                 client = pymongo.MongoClient(
-                    host, port, serverSelectionTimeoutMS=100, **kwargs)
+                    self.host,
+                    self.port,
+                    serverSelectionTimeoutMS=100,
+                    **kwargs)
                 client.admin.command('ismaster')  # Can we connect?
                 # If connected, then return client with default timeout
-                return pymongo.MongoClient(host, port, **kwargs)
+                return pymongo.MongoClient(self.host, self.port, **kwargs)
             except pymongo.errors.ConnectionFailure:
                 return None
 
@@ -166,7 +165,8 @@ class ClientContext(object):
                 self.ssl_cert_none = True
 
             # Can client connect with certfile?
-            client = connect(ssl=True,  ssl_cert_reqs=ssl.CERT_NONE,
+            client = connect(ssl=True,
+                             ssl_cert_reqs=ssl.CERT_NONE,
                              ssl_certfile=CLIENT_PEM,)
             if client:
                 self.ssl_certfile = True
@@ -176,14 +176,18 @@ class ClientContext(object):
             self.connected = True
             self.ismaster = self.client.admin.command('ismaster')
             self.w = len(self.ismaster.get("hosts", [])) or 1
-            self.nodes = set([(host, port)])
+            self.nodes = set([(self.host, self.port)])
             self.replica_set_name = self.ismaster.get('setName', '')
             self.rs_client = None
             self.version = Version.from_client(self.client)
             if self.replica_set_name:
                 self.is_rs = True
                 self.rs_client = pymongo.MongoClient(
-                    pair, replicaSet=self.replica_set_name)
+                    self.ismaster['primary'], replicaSet=self.replica_set_name)
+                # Force connection
+                self.rs_client.admin.command('ismaster')
+                self.host, self.port = self.rs_client.primary
+                self.client = connect()
 
                 nodes = [partition_node(node.lower())
                          for node in self.ismaster.get('hosts', [])]
@@ -233,6 +237,9 @@ class ClientContext(object):
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
             self.has_ipv6 = self._server_started_with_ipv6()
 
+        # Do this after we connect so we know who the primary is.
+        self.pair = "%s:%d" % (self.host, self.port)
+
     def _check_user_provided(self):
         try:
             self.client.admin.authenticate(db_user, db_pwd)
@@ -276,7 +283,7 @@ class ClientContext(object):
 
         # The server was started with --ipv6. Is there an IPv6 route to it?
         try:
-            for info in socket.getaddrinfo(host, port):
+            for info in socket.getaddrinfo(self.host, self.port):
                 if info[0] == socket.AF_INET6:
                     return True
         except socket.error:
@@ -290,7 +297,8 @@ class ClientContext(object):
             def wrap(*args, **kwargs):
                 # Always raise SkipTest if we can't connect to MongoDB
                 if not self.connected:
-                    raise SkipTest("Cannot connect to MongoDB on %s" % pair)
+                    raise SkipTest(
+                        "Cannot connect to MongoDB on %s" % (self.pair,))
                 if condition:
                     return f(*args, **kwargs)
                 raise SkipTest(msg)
@@ -304,9 +312,10 @@ class ClientContext(object):
 
     def require_connection(self, func):
         """Run a test only if we can connect to MongoDB."""
-        return self._require(self.connected,
-                             "Cannot connect to MongoDB on %s" % pair,
-                             func=func)
+        return self._require(
+            self.connected,
+            "Cannot connect to MongoDB on %s" % (self.pair,),
+            func=func)
 
     def require_version_min(self, *ver):
         """Run a test only if the server version is at least ``version``."""

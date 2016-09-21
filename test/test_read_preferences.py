@@ -39,8 +39,6 @@ from pymongo.write_concern import WriteConcern
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test import (SkipTest,
                   client_context,
-                  host,
-                  port,
                   unittest,
                   db_user,
                   db_pwd)
@@ -323,7 +321,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
     def setUpClass(cls):
         super(TestCommandAndReadPreference, cls).setUpClass()
         cls.c = ReadPrefTester(
-            '%s:%s' % (host, port),
+            client_context.pair,
             replicaSet=cls.name,
             # Ignore round trip times, to test ReadPreference modes only.
             localThresholdMS=1000*1000)

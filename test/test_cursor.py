@@ -37,8 +37,6 @@ from pymongo.errors import (InvalidOperation,
 from test import (client_context,
                   SkipTest,
                   unittest,
-                  host,
-                  port,
                   IntegrationTest)
 from test.utils import server_started_with_auth, single_client, EventListener
 
@@ -50,7 +48,8 @@ class TestCursorNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(host, port, connect=False)
+        client = MongoClient(
+            client_context.host, client_context.port, connect=False)
         cls.db = client.test
 
     def test_deepcopy_cursor_littered_with_regexes(self):

@@ -35,8 +35,6 @@ from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from test import (IntegrationTest,
                   client_context,
-                  host,
-                  port,
                   unittest,
                   qcheck)
 from test.utils import rs_or_single_client
@@ -47,7 +45,8 @@ class TestGridFileNoConnect(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        client = MongoClient(host, port, connect=False)
+        client = MongoClient(
+            client_context.host, client_context.port, connect=False)
         cls.db = client.pymongo_test
 
     def test_grid_in_custom_opts(self):

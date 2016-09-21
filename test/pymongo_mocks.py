@@ -26,7 +26,9 @@ from pymongo.monitor import Monitor
 from pymongo.pool import Pool, PoolOptions
 from pymongo.server_description import ServerDescription
 
-from test import host as default_host, port as default_port
+from test import client_context
+
+default_host, default_port = client_context.host, client_context.port
 
 
 class MockPool(Pool):

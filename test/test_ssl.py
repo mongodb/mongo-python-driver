@@ -42,9 +42,6 @@ from test import (IntegrationTest,
                   client_context,
                   db_pwd,
                   db_user,
-                  host,
-                  pair,
-                  port,
                   SkipTest,
                   unittest)
 from test.utils import remove_all_users, connected
@@ -211,12 +208,12 @@ class TestSSL(IntegrationTest):
         #
 
         # test that setting ssl_certfile causes ssl to be set to True
-        client = MongoClient(host, port,
+        client = MongoClient(client_context.host, client_context.port,
                              ssl_cert_reqs=ssl.CERT_NONE,
                              ssl_certfile=CLIENT_PEM)
         response = client.admin.command('ismaster')
         if 'setName' in response:
-            client = MongoClient(pair,
+            client = MongoClient(client_context.pair,
                                  replicaSet=response['setName'],
                                  w=len(response['hosts']),
                                  ssl_cert_reqs=ssl.CERT_NONE,
@@ -318,14 +315,14 @@ class TestSSL(IntegrationTest):
         response = self.client.admin.command('ismaster')
 
         with self.assertRaises(ConnectionFailure):
-            connected(MongoClient(pair,
+            connected(MongoClient(client_context.pair,
                                   ssl=True,
                                   ssl_certfile=CLIENT_PEM,
                                   ssl_cert_reqs=ssl.CERT_REQUIRED,
                                   ssl_ca_certs=CA_PEM,
                                   serverSelectionTimeoutMS=100))
 
-        connected(MongoClient(pair,
+        connected(MongoClient(client_context.pair,
                               ssl=True,
                               ssl_certfile=CLIENT_PEM,
                               ssl_cert_reqs=ssl.CERT_REQUIRED,
@@ -335,7 +332,7 @@ class TestSSL(IntegrationTest):
 
         if 'setName' in response:
             with self.assertRaises(ConnectionFailure):
-                connected(MongoClient(pair,
+                connected(MongoClient(client_context.pair,
                                       replicaSet=response['setName'],
                                       ssl=True,
                                       ssl_certfile=CLIENT_PEM,
@@ -343,7 +340,7 @@ class TestSSL(IntegrationTest):
                                       ssl_ca_certs=CA_PEM,
                                       serverSelectionTimeoutMS=100))
 
-            connected(MongoClient(pair,
+            connected(MongoClient(client_context.pair,
                                   replicaSet=response['setName'],
                                   ssl=True,
                                   ssl_certfile=CLIENT_PEM,
@@ -406,12 +403,12 @@ class TestSSL(IntegrationTest):
         try:
             with self.assertRaises(ConnectionFailure):
                 # Server cert is verified but hostname matching fails
-                connected(MongoClient(pair,
+                connected(MongoClient(client_context.pair,
                                       ssl=True,
                                       serverSelectionTimeoutMS=100))
 
             # Server cert is verified. Disable hostname matching.
-            connected(MongoClient(pair,
+            connected(MongoClient(client_context.pair,
                                   ssl=True,
                                   ssl_match_hostname=False,
                                   serverSelectionTimeoutMS=100))
@@ -494,8 +491,12 @@ class TestSSL(IntegrationTest):
     @client_context.require_auth
     @client_context.require_ssl_certfile
     def test_mongodb_x509_auth(self):
-        ssl_client = MongoClient(pair, ssl=True, ssl_cert_reqs=ssl.CERT_NONE,
-                                 ssl_certfile=CLIENT_PEM)
+        host, port = client_context.host, client_context.port
+        ssl_client = MongoClient(
+            client_context.pair,
+            ssl=True,
+            ssl_cert_reqs=ssl.CERT_NONE,
+            ssl_certfile=CLIENT_PEM)
         self.addCleanup(remove_all_users, ssl_client['$external'])
 
         ssl_client.admin.authenticate(db_user, db_pwd)

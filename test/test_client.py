@@ -53,9 +53,6 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
-                  host,
-                  pair,
-                  port,
                   SkipTest,
                   unittest,
                   IntegrationTest,
@@ -75,7 +72,6 @@ from test.utils import (assertRaisesExactly,
                         rs_or_single_client_noauth,
                         single_client,
                         lazy_client_trial,
-                        IMPOSSIBLE_WRITE_CONCERN,
                         NTHREADS)
 
 
@@ -85,8 +81,11 @@ class ClientUnitTest(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        cls.client = MongoClient(host, port, connect=False,
-                                 serverSelectionTimeoutMS=100)
+        cls.client = MongoClient(
+            client_context.host,
+            client_context.port,
+            connect=False,
+            serverSelectionTimeoutMS=100)
 
     def test_keyword_arg_defaults(self):
         client = MongoClient(socketTimeoutMS=None,
@@ -174,17 +173,22 @@ class ClientUnitTest(unittest.TestCase):
         self.assertRaises(TypeError, iterate)
 
     def test_get_default_database(self):
-        c = MongoClient("mongodb://%s:%d/foo" % (host, port), connect=False)
+        c = MongoClient(
+            "mongodb://%s:%d/foo" % (client_context.host, client_context.port),
+            connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
     def test_get_default_database_error(self):
         # URI with no database.
-        c = MongoClient("mongodb://%s:%d/" % (host, port), connect=False)
+        c = MongoClient(
+            "mongodb://%s:%d/" % (client_context.host, client_context.port),
+            connect=False)
         self.assertRaises(ConfigurationError, c.get_default_database)
 
     def test_get_default_database_with_authsource(self):
         # Ensure we distinguish database name from authSource.
-        uri = "mongodb://%s:%d/foo?authSource=src" % (host, port)
+        uri = "mongodb://%s:%d/foo?authSource=src" % (
+            client_context.host, client_context.port)
         c = MongoClient(uri, connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
@@ -229,26 +233,39 @@ class ClientUnitTest(unittest.TestCase):
 
         self.assertEqual(c.codec_options.document_class, document_class)
         self.assertEqual(c.codec_options.tz_aware, tz_aware)
-        self.assertEqual(c.codec_options.uuid_representation, _UUID_REPRESENTATIONS[uuid_representation_label])
-        self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
+        self.assertEqual(
+            c.codec_options.uuid_representation,
+            _UUID_REPRESENTATIONS[uuid_representation_label])
+        self.assertEqual(
+            c.codec_options.unicode_decode_error_handler,
+            unicode_decode_error_handler)
         self.assertEqual(c.codec_options.tzinfo, tzinfo)
 
     def test_uri_codec_options(self):
         # Ensure codec options are passed in correctly
         uuid_representation_label = 'javaLegacy'
         unicode_decode_error_handler = 'ignore'
-        uri = "mongodb://%s:%d/foo?tz_aware=true&uuidrepresentation=%s&unicode_decode_error_handler=%s"\
-              % (host, port, uuid_representation_label, unicode_decode_error_handler)
+        uri = ("mongodb://%s:%d/foo?tz_aware=true&uuidrepresentation="
+               "%s&unicode_decode_error_handler=%s" % (
+                   client_context.host,
+                   client_context.port,
+                   uuid_representation_label,
+                   unicode_decode_error_handler))
         c = MongoClient(uri, connect=False)
 
         self.assertEqual(c.codec_options.tz_aware, True)
-        self.assertEqual(c.codec_options.uuid_representation, _UUID_REPRESENTATIONS[uuid_representation_label])
-        self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
+        self.assertEqual(
+            c.codec_options.uuid_representation,
+            _UUID_REPRESENTATIONS[uuid_representation_label])
+        self.assertEqual(
+            c.codec_options.unicode_decode_error_handler,
+            unicode_decode_error_handler)
 
 
 class TestClient(IntegrationTest):
 
     def test_max_idle_time_reaper(self):
+        host, port = client_context.host, client_context.port
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove sockets when maxIdleTimeMS not set
             client = MongoClient(host, port)
@@ -279,6 +296,7 @@ class TestClient(IntegrationTest):
                 "stale socket reaped and new one NOT added to the pool")
 
     def test_min_pool_size(self):
+        host, port = client_context.host, client_context.port
         with client_knobs(kill_cursor_frequency=.1):
             client = MongoClient(host, port)
             server = client._get_topology().select_server(any_server_selector)
@@ -298,6 +316,7 @@ class TestClient(IntegrationTest):
             self.assertFalse(sock_info in server._pool.sockets)
 
     def test_max_idle_time_checkout(self):
+        host, port = client_context.host, client_context.port
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = MongoClient(host, port, maxIdleTimeMS=.5)
@@ -325,6 +344,7 @@ class TestClient(IntegrationTest):
             self.assertEqual(1, len(server._pool.sockets))
 
     def test_constants(self):
+        host, port = client_context.host, client_context.port
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"
         MongoClient.PORT = 123456789
@@ -342,6 +362,7 @@ class TestClient(IntegrationTest):
         connected(MongoClient())
 
     def test_init_disconnected(self):
+        host, port = client_context.host, client_context.port
         c = rs_or_single_client(connect=False)
         # is_primary causes client to block until connected
         self.assertIsInstance(c.is_primary, bool)
@@ -387,7 +408,8 @@ class TestClient(IntegrationTest):
 
     def test_host_w_port(self):
         with self.assertRaises(ValueError):
-            connected(MongoClient("%s:1234567" % host, connectTimeoutMS=1,
+            connected(MongoClient("%s:1234567" % (client_context.host,),
+                                  connectTimeoutMS=1,
                                   serverSelectionTimeoutMS=10))
 
     def test_repr(self):
@@ -438,10 +460,9 @@ class TestClient(IntegrationTest):
     @client_context.require_replica_set
     def test_repr_replica_set(self):
         self.assertIn("MongoClient(host=[", repr(self.client))
-        self.assertIn(pair, repr(self.client))
+        self.assertIn(client_context.pair, repr(self.client))
 
     def test_getters(self):
-        self.assertEqual(client_context.client.address, (host, port))
         wait_until(lambda: client_context.nodes == self.client.nodes,
                    "find all nodes")
 
@@ -496,6 +517,7 @@ class TestClient(IntegrationTest):
 
     @client_context.require_auth
     def test_auth_from_uri(self):
+        host, port = client_context.host, client_context.port
         self.client.admin.add_user("admin", "pass", roles=["root"])
         self.addCleanup(self.client.admin.remove_user, 'admin')
         self.addCleanup(remove_all_users, self.client.pymongo_test)
@@ -540,7 +562,8 @@ class TestClient(IntegrationTest):
         self.addCleanup(remove_all_users, self.client.pymongo_test)
 
         client = rs_or_single_client_noauth(
-            "mongodb://user1:pass@%s:%d/pymongo_test" % (host, port))
+            "mongodb://user1:pass@%s:%d/pymongo_test" % (
+                client_context.host, client_context.port))
 
         client.pymongo_test.test.find_one()
         with self.assertRaises(OperationFailure):
@@ -563,7 +586,8 @@ class TestClient(IntegrationTest):
     @client_context.require_auth
     def test_lazy_auth_raises_operation_failure(self):
         lazy_client = rs_or_single_client(
-            "mongodb://user:wrong@%s/pymongo_test" % host, connect=False)
+            "mongodb://user:wrong@%s/pymongo_test" % (client_context.host,),
+            connect=False)
 
         assertRaisesExactly(
             OperationFailure, lazy_client.test.collection.find_one)
@@ -572,8 +596,9 @@ class TestClient(IntegrationTest):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")
 
-        mongodb_socket = '/tmp/mongodb-27017.sock'
-        encoded_socket = '%2Ftmp%2Fmongodb-27017.sock'
+        mongodb_socket = '/tmp/mongodb-%d.sock' % (client_context.port,)
+        encoded_socket = (
+            '%2Ftmp%2F' + 'mongodb-%d.sock' % (client_context.port,))
         if not os.access(mongodb_socket, os.R_OK):
             raise SkipTest("Socket file is not accessible")
 
@@ -766,7 +791,7 @@ class TestClient(IntegrationTest):
         else:
             auth_str = ""
 
-        uri = "mongodb://%s[::1]:%d" % (auth_str, port)
+        uri = "mongodb://%s[::1]:%d" % (auth_str, client_context.port)
         if client_context.is_rs:
             uri += '/?replicaSet=' + client_context.replica_set_name
 
@@ -948,8 +973,11 @@ class TestClient(IntegrationTest):
 
     @client_context.require_no_replica_set
     def test_connect_to_standalone_using_replica_set_name(self):
-        client = MongoClient(pair, replicaSet='anything',
-                             serverSelectionTimeoutMS=100)
+        client = MongoClient(
+            client_context.host,
+            client_context.port,
+            replicaSet='anything',
+            serverSelectionTimeoutMS=100)
 
         with self.assertRaises(AutoReconnect):
             client.test.test.find_one()
@@ -960,9 +988,12 @@ class TestClient(IntegrationTest):
         # the topology before the getMore message is sent. Test that
         # MongoClient._send_message_with_response handles the error.
         with self.assertRaises(AutoReconnect):
-            client = MongoClient(host, port, connect=False,
-                                 serverSelectionTimeoutMS=100,
-                                 replicaSet=client_context.replica_set_name)
+            client = MongoClient(
+                client_context.host,
+                client_context.port,
+                connect=False,
+                serverSelectionTimeoutMS=100,
+                replicaSet=client_context.replica_set_name)
             client._send_message_with_response(
                 operation=message._GetMore('pymongo_test', 'collection',
                                            101, 1234, client.codec_options),
@@ -991,7 +1022,8 @@ class TestClient(IntegrationTest):
         try:
             ServerHeartbeatStartedEvent.__init__ = init
             listener = HeartbeatStartedListener()
-            uri = "mongodb://%s:%d/?heartbeatFrequencyMS=500" % (host, port)
+            uri = "mongodb://%s:%d/?heartbeatFrequencyMS=500" % (
+                client_context.host, client_context.port)
             client = single_client(uri, event_listeners=[listener])
             wait_until(lambda: len(listener.results) >= 2,
                        "record two ServerHeartbeatStartedEvents")

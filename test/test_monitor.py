@@ -21,7 +21,7 @@ from functools import partial
 sys.path[0:0] = [""]
 
 from pymongo.periodic_executor import _EXECUTORS
-from test import unittest, port, host, IntegrationTest
+from test import client_context, unittest, IntegrationTest
 from test.utils import single_client, one, connected, wait_until
 
 
@@ -32,7 +32,7 @@ def unregistered(ref):
 
 class TestMonitor(IntegrationTest):
     def test_atexit_hook(self):
-        client = single_client(host, port)
+        client = single_client(client_context.host, client_context.port)
         executor = one(client._topology._servers.values())._monitor._executor
         connected(client)
 

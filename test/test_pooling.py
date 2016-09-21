@@ -31,11 +31,10 @@ sys.path[0:0] = [""]
 
 from pymongo.network import socket_closed
 from pymongo.pool import Pool, PoolOptions
-from test import host, port, SkipTest, unittest, client_context
+from test import client_context, unittest
 from test.utils import (get_pool,
                         joinall,
                         delay,
-                        one,
                         rs_or_single_client)
 
 
@@ -162,12 +161,17 @@ class _TestPoolingBase(unittest.TestCase):
         db.unique.insert_one({"_id": "jesse"})
         db.test.insert_many([{} for _ in range(10)])
 
-    def create_pool(self, pair=(host, port), *args, **kwargs):
+    def create_pool(
+            self,
+            pair=(client_context.host, client_context.port),
+            *args,
+            **kwargs):
         return Pool(pair, PoolOptions(*args, **kwargs))
 
 
 class TestPooling(_TestPoolingBase):
     def test_max_pool_size_validation(self):
+        host, port = client_context.host, client_context.port
         self.assertRaises(
             ValueError, MongoClient, host=host, port=port,
             maxPoolSize=-1)
@@ -244,7 +248,7 @@ class TestPooling(_TestPoolingBase):
 
     def test_socket_closed(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((host, port))
+        s.connect((client_context.host, client_context.port))
         self.assertFalse(socket_closed(s))
         s.close()
         self.assertTrue(socket_closed(s))
@@ -287,7 +291,7 @@ class TestPooling(_TestPoolingBase):
         wait_queue_timeout = 2  # Seconds
         pool = self.create_pool(
             max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
-        
+
         with pool.get_socket({}) as sock_info:
             start = time.time()
             with self.assertRaises(ConnectionFailure):
@@ -305,7 +309,7 @@ class TestPooling(_TestPoolingBase):
     def test_no_wait_queue_timeout(self):
         # Verify get_socket() with no wait_queue_timeout blocks forever.
         pool = self.create_pool(max_pool_size=1)
-        
+
         # Reach max_size.
         with pool.get_socket({}) as s1:
             t = SocketGetter(self.c, pool)

@@ -35,8 +35,6 @@ from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test import (client_context,
                   unittest,
-                  host,
-                  port,
                   IntegrationTest)
 from test.utils import (joinall,
                         single_client,
@@ -81,7 +79,8 @@ class TestGridfsNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(host, port, connect=False)
+        client = MongoClient(
+            client_context.host, client_context.port, connect=False)
         cls.db = client.pymongo_test
 
     def test_gridfs(self):

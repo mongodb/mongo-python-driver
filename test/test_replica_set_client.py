@@ -36,10 +36,7 @@ from pymongo.read_preferences import ReadPreference, Secondary, Nearest
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
-                  host,
                   IntegrationTest,
-                  pair,
-                  port,
                   unittest,
                   db_pwd,
                   db_user,
@@ -90,19 +87,23 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
                 MongoReplicaSetClient()
 
     def test_connect(self):
-        client = MongoClient(pair, replicaSet='fdlksjfdslkjfd',
-                             serverSelectionTimeoutMS=100)
+        client = MongoClient(
+            client_context.pair,
+            replicaSet='fdlksjfdslkjfd',
+            serverSelectionTimeoutMS=100)
 
         with self.assertRaises(ConnectionFailure):
             client.test.test.find_one()
 
     def test_repr(self):
         with ignore_deprecations():
-            client = MongoReplicaSetClient(host, port,
-                                           replicaSet=self.name)
+            client = MongoReplicaSetClient(
+                client_context.host,
+                client_context.port,
+                replicaSet=self.name)
 
         self.assertIn("MongoReplicaSetClient(host=[", repr(client))
-        self.assertIn(pair, repr(client))
+        self.assertIn(client_context.pair, repr(client))
 
     def test_properties(self):
         c = client_context.rs_client
@@ -132,10 +133,14 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
         secondary = Secondary(tag_sets=tag_sets)
         c = MongoClient(
-            pair, replicaSet=self.name, maxPoolSize=25,
-            document_class=SON, tz_aware=True,
+            client_context.pair,
+            replicaSet=self.name,
+            maxPoolSize=25,
+            document_class=SON,
+            tz_aware=True,
             read_preference=secondary,
-            localThresholdMS=77, j=True)
+            localThresholdMS=77,
+            j=True)
 
         self.assertEqual(c.max_pool_size, 25)
 
@@ -157,8 +162,10 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         c.close()
 
     def test_auto_reconnect_exception_when_read_preference_is_secondary(self):
-        c = MongoClient(pair, replicaSet=self.name,
-                        serverSelectionTimeoutMS=100)
+        c = MongoClient(
+            client_context.pair,
+            replicaSet=self.name,
+            serverSelectionTimeoutMS=100)
         db = c.pymongo_test
 
         def raise_socket_error(*args, **kwargs):
@@ -209,6 +216,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
     @client_context.require_replica_set
     @client_context.require_ipv6
     def test_ipv6(self):
+        port = client_context.port
         c = MongoClient("mongodb://[::1]:%d" % (port,), replicaSet=self.name)
 
         # Client switches to IPv4 once it has first ismaster response.
@@ -291,7 +299,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             direct_client.pymongo_test.collection.insert_one({})
 
         db = direct_client.get_database(
-                "pymongo_test", write_concern=WriteConcern(w=0))
+            "pymongo_test", write_concern=WriteConcern(w=0))
         with self.assertRaises(NotMasterError):
             db.collection.insert_one({})
 

@@ -49,8 +49,6 @@ from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   SkipTest,
                   unittest,
-                  host,
-                  port,
                   IntegrationTest)
 from test.utils import (ignore_deprecations,
                         remove_all_users,
@@ -69,7 +67,8 @@ class TestDatabaseNoConnect(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        cls.client = MongoClient(host, port, connect=False)
+        cls.client = MongoClient(
+            client_context.host, client_context.port, connect=False)
 
     def test_name(self):
         self.assertRaises(TypeError, Database, self.client, 4)
