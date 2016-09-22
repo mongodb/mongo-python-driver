@@ -16,28 +16,55 @@
 """
 
 import os
+import sys
 import warnings
 
 import pymongo
 from nose.plugins.skip import SkipTest
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-# hostnames retrieved by MongoReplicaSetClient from isMaster will be of unicode
+# Hostnames retrieved by MongoReplicaSetClient from isMaster will be of unicode
 # type in Python 2, so ensure these hostnames are unicodes, too. It makes tests
 # like `test_repr` predictable.
+
+# A standalone mongod, mongos, or a seed for a replica set.
 host = unicode(os.environ.get("DB_IP", 'localhost'))
 port = int(os.environ.get("DB_PORT", 27017))
-pair = '%s:%d' % (host, port)
 
+# Only used by test_master_slave_connection.
 host2 = unicode(os.environ.get("DB_IP2", 'localhost'))
 port2 = int(os.environ.get("DB_PORT2", 27018))
 
+# Only used by test_master_slave_connection.
 host3 = unicode(os.environ.get("DB_IP3", 'localhost'))
 port3 = int(os.environ.get("DB_PORT3", 27019))
 
-db_user = unicode(os.environ.get("DB_USER", "administrator"))
+db_user = unicode(os.environ.get("DB_USER", "user"))
 db_pwd = unicode(os.environ.get("DB_PASSWORD", "password"))
 
+def _split_host_port(host_port):
+    host, port = host_port.split(':', 1)
+    return host, int(port)
+
+# When testing against a replica set, 'host' and 'port' need
+# to represent the primary.
+try:
+    _ismaster = pymongo.MongoClient(host, port).admin.command('ismaster')
+    # Master slave topologies don't use setName. The members also aren't
+    # aware of one another (e.g. ismaster doesn't have a 'hosts' field).
+    if 'setName' in _ismaster:
+        _primary = _ismaster['primary']
+        host, port = _split_host_port(_primary)
+        _secondaries = set(_ismaster['hosts']) - set([_primary])
+        for _idx, _host_port in enumerate(_secondaries):
+            _host, _port = _split_host_port(_host_port)
+            # Enumerate doesn't accept a start argument until python 2.6.
+            setattr(sys.modules[__name__], "host%d" % (_idx + 1,), _host)
+            setattr(sys.modules[__name__], "port%d" % (_idx + 1,), _port)
+except ConnectionFailure:
+    pass
+
+pair = '%s:%d' % (host, port)
 
 class AuthContext(object):
 

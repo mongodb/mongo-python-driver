@@ -561,7 +561,7 @@ class TestClientAuth(unittest.TestCase):
                 not version.at_least(authed_client, (2, 7, 1))):
             raise SkipTest("SERVER-8492")
 
-        mongodb_socket = '/tmp/mongodb-27017.sock'
+        mongodb_socket = '/tmp/mongodb-%d.sock' % (port,)
         if not os.access(mongodb_socket, os.R_OK):
             raise SkipTest("Socket file is not accessable")
 
