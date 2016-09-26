@@ -66,9 +66,9 @@ pygments_style = 'sphinx'
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = 'init'
 
-doctest_path = os.path.abspath('..')
+doctest_path = [os.path.abspath('..')]
 
-doctest_test_doctest_blocks = False
+doctest_test_doctest_blocks = ''
 
 doctest_global_setup = """
 from pymongo.mongo_client import MongoClient

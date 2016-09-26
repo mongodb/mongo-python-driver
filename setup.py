@@ -1,7 +1,6 @@
 import os
 import platform
 import re
-import subprocess
 import sys
 import warnings
 
@@ -25,6 +24,12 @@ from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError, DistutilsOptionError
 from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
+
+try:
+    import sphinx
+    _HAVE_SPHINX = True
+except ImportError:
+    _HAVE_SPHINX = False
 
 version = "3.4rc1.dev0"
 
@@ -125,6 +130,54 @@ class doc(Command):
         pass
 
     def run(self):
+
+        if not _HAVE_SPHINX:
+            raise RuntimeError(
+                "You must install Sphinx to build or test the documentation.")
+
+        if sys.version_info[0] >= 3:
+            import doctest
+            from doctest import OutputChecker as _OutputChecker
+
+            # Match u or U (possibly followed by r or R), removing it.
+            # r/R can follow u/U but not precede it. Don't match the
+            # single character string 'u' or 'U'.
+            _u_literal_re = re.compile(
+                r"(\W|^)(?<![\'\"])[uU]([rR]?[\'\"])", re.UNICODE)
+             # Match b or B (possibly followed by r or R), removing.
+             # r/R can follow b/B but not precede it. Don't match the
+             # single character string 'b' or 'B'.
+            _b_literal_re = re.compile(
+                r"(\W|^)(?<![\'\"])[bB]([rR]?[\'\"])", re.UNICODE)
+
+            class _StringPrefixFixer(_OutputChecker):
+
+                def check_output(self, want, got, optionflags):
+                    if sys.version_info[0] >= 3:
+                        # The docstrings are written with python 2.x in mind.
+                        # To make the doctests pass in python 3 we have to
+                        # strip the 'u' prefix from the expected results. The
+                        # actual results won't have that prefix.
+                        want = re.sub(_u_literal_re, r'\1\2', want)
+                        # We also have to strip the 'b' prefix from the actual
+                        # results since python 2.x expected results won't have
+                        # that prefix.
+                        got = re.sub(_b_literal_re, r'\1\2', got)
+                    return super(
+                        _StringPrefixFixer, self).check_output(
+                            want, got, optionflags)
+
+                def output_difference(self, example, got, optionflags):
+                    if sys.version_info[0] >= 3:
+                        example.want = re.sub(
+                            _u_literal_re, r'\1\2', example.want)
+                        got = re.sub(_b_literal_re, r'\1\2', got)
+                    return super(
+                        _StringPrefixFixer, self).output_difference(
+                            example, got, optionflags)
+
+            doctest.OutputChecker = _StringPrefixFixer
+
         if self.test:
             path = "doc/_build/doctest"
             mode = "doctest"
@@ -137,8 +190,7 @@ class doc(Command):
             except:
                 pass
 
-        status = subprocess.call(["sphinx-build", "-E",
-                                  "-b", mode, "doc", path])
+        status = sphinx.build_main(["-E", "-b", mode, "doc", path])
 
         if status:
             raise RuntimeError("documentation step '%s' failed" % (mode,))

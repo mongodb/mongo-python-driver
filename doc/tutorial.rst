@@ -157,8 +157,13 @@ document from the posts collection:
 
 .. doctest::
 
-  >>> posts.find_one()
-  {u'date': datetime.datetime(...), u'text': u'My first blog post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'mongodb', u'python', u'pymongo']}
+  >>> import pprint
+  >>> pprint.pprint(posts.find_one())
+  {u'_id': ObjectId('...'),
+   u'author': u'Mike',
+   u'date': datetime.datetime(...),
+   u'tags': [u'mongodb', u'python', u'pymongo'],
+   u'text': u'My first blog post!'}
 
 The result is a dictionary matching the one that we inserted previously.
 
@@ -171,8 +176,12 @@ our results to a document with author "Mike" we do:
 
 .. doctest::
 
-  >>> posts.find_one({"author": "Mike"})
-  {u'date': datetime.datetime(...), u'text': u'My first blog post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'mongodb', u'python', u'pymongo']}
+  >>> pprint.pprint(posts.find_one({"author": "Mike"}))
+  {u'_id': ObjectId('...'),
+   u'author': u'Mike',
+   u'date': datetime.datetime(...),
+   u'tags': [u'mongodb', u'python', u'pymongo'],
+   u'text': u'My first blog post!'}
 
 If we try with a different author, like "Eliot", we'll get no result:
 
@@ -191,8 +200,12 @@ We can also find a post by its ``_id``, which in our example is an ObjectId:
 
   >>> post_id
   ObjectId(...)
-  >>> posts.find_one({"_id": post_id})
-  {u'date': datetime.datetime(...), u'text': u'My first blog post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'mongodb', u'python', u'pymongo']}
+  >>> pprint.pprint(posts.find_one({"_id": post_id}))
+  {u'_id': ObjectId('...'),
+   u'author': u'Mike',
+   u'date': datetime.datetime(...),
+   u'tags': [u'mongodb', u'python', u'pymongo'],
+   u'text': u'My first blog post!'}
 
 Note that an ObjectId is not the same as its string representation:
 
@@ -278,11 +291,23 @@ document in the ``posts`` collection:
 .. doctest::
 
   >>> for post in posts.find():
-  ...   post
+  ...   pprint.pprint(post)
   ...
-  {u'date': datetime.datetime(...), u'text': u'My first blog post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'mongodb', u'python', u'pymongo']}
-  {u'date': datetime.datetime(2009, 11, 12, 11, 14), u'text': u'Another post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'bulk', u'insert']}
-  {u'date': datetime.datetime(2009, 11, 10, 10, 45), u'text': u'and pretty easy too!', u'_id': ObjectId('...'), u'author': u'Eliot', u'title': u'MongoDB is fun'}
+  {u'_id': ObjectId('...'),
+   u'author': u'Mike',
+   u'date': datetime.datetime(...),
+   u'tags': [u'mongodb', u'python', u'pymongo'],
+   u'text': u'My first blog post!'}
+  {u'_id': ObjectId('...'),
+   u'author': u'Mike',
+   u'date': datetime.datetime(...),
+   u'tags': [u'bulk', u'insert'],
+   u'text': u'Another post!'}
+  {u'_id': ObjectId('...'),
+   u'author': u'Eliot',
+   u'date': datetime.datetime(...),
+   u'text': u'and pretty easy too!',
+   u'title': u'MongoDB is fun'}
 
 Just like we did with :meth:`~pymongo.collection.Collection.find_one`,
 we can pass a document to :meth:`~pymongo.collection.Collection.find`
@@ -292,10 +317,18 @@ author is "Mike":
 .. doctest::
 
   >>> for post in posts.find({"author": "Mike"}):
-  ...   post
+  ...   pprint.pprint(post)
   ...
-  {u'date': datetime.datetime(...), u'text': u'My first blog post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'mongodb', u'python', u'pymongo']}
-  {u'date': datetime.datetime(2009, 11, 12, 11, 14), u'text': u'Another post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'bulk', u'insert']}
+  {u'_id': ObjectId('...'),
+   u'author': u'Mike',
+   u'date': datetime.datetime(...),
+   u'tags': [u'mongodb', u'python', u'pymongo'],
+   u'text': u'My first blog post!'}
+  {u'_id': ObjectId('...'),
+   u'author': u'Mike',
+   u'date': datetime.datetime(...),
+   u'tags': [u'bulk', u'insert'],
+   u'text': u'Another post!'}
 
 Counting
 --------
@@ -327,10 +360,18 @@ than a certain date, but also sort the results by author:
 
   >>> d = datetime.datetime(2009, 11, 12, 12)
   >>> for post in posts.find({"date": {"$lt": d}}).sort("author"):
-  ...   print post
+  ...   pprint.pprint(post)
   ...
-  {u'date': datetime.datetime(2009, 11, 10, 10, 45), u'text': u'and pretty easy too!', u'_id': ObjectId('...'), u'author': u'Eliot', u'title': u'MongoDB is fun'}
-  {u'date': datetime.datetime(2009, 11, 12, 11, 14), u'text': u'Another post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'bulk', u'insert']}
+  {u'_id': ObjectId('...'),
+   u'author': u'Eliot',
+   u'date': datetime.datetime(...),
+   u'text': u'and pretty easy too!',
+   u'title': u'MongoDB is fun'}
+  {u'_id': ObjectId('...'),
+   u'author': u'Mike',
+   u'date': datetime.datetime(...),
+   u'tags': [u'bulk', u'insert'],
+   u'text': u'Another post!'}
 
 Here we use the special ``"$lt"`` operator to do a range query, and
 also call :meth:`~pymongo.cursor.Cursor.sort` to sort the results
@@ -351,8 +392,8 @@ First, we'll need to create the index:
 
    >>> result = db.profiles.create_index([('user_id', pymongo.ASCENDING)],
    ...                                   unique=True)
-   >>> list(db.profiles.index_information())
-   [u'user_id_1', u'_id_']
+   >>> sorted(list(db.profiles.index_information()))
+   [u'_id_', u'user_id_1']
 
 Notice that we have two indexes now: one is the index on ``_id`` that MongoDB
 creates automatically, and the other is the index on ``user_id`` we just

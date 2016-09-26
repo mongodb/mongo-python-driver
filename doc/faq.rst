@@ -214,19 +214,15 @@ PyMongo represents BSON documents as Python dicts by default, and the order
 of keys in dicts is not defined. That is, a dict declared with the "a" key
 first is the same, to Python, as one with "b" first:
 
-.. doctest:: key-order
-
-  >>> print {'a': 1.0, 'b': 1.0}
+  >>> print({'a': 1.0, 'b': 1.0})
   {'a': 1.0, 'b': 1.0}
-  >>> print {'b': 1.0, 'a': 1.0}
+  >>> print({'b': 1.0, 'a': 1.0})
   {'a': 1.0, 'b': 1.0}
 
 Therefore, Python dicts are not guaranteed to show keys in the order they are
 stored in BSON. Here, "a" is shown before "b":
 
-.. doctest:: key-order
-
-  >>> print collection.find_one()
+  >>> print(collection.find_one())
   {u'_id': 1.0, u'subdocument': {u'a': 1.0, u'b': 1.0}}
 
 To preserve order when reading BSON, use the :class:`~bson.son.SON` class,
@@ -234,10 +230,11 @@ which is a dict that remembers its key order. First, get a handle to the
 collection, configured to use :class:`~bson.son.SON` instead of dict:
 
 .. doctest:: key-order
+  :options: +NORMALIZE_WHITESPACE
 
   >>> from bson import CodecOptions, SON
   >>> opts = CodecOptions(document_class=SON)
-  >>> opts  # doctest: +NORMALIZE_WHITESPACE
+  >>> opts
   CodecOptions(document_class=<class 'bson.son.SON'>,
                tz_aware=False,
                uuid_representation=PYTHON_LEGACY,
@@ -250,7 +247,7 @@ Now, documents and subdocuments in query results are represented with
 
 .. doctest:: key-order
 
-  >>> print collection_son.find_one()
+  >>> print(collection_son.find_one())
   SON([(u'_id', 1.0), (u'subdocument', SON([(u'b', 1.0), (u'a', 1.0)]))])
 
 The subdocument's actual storage layout is now visible: "b" is before "a".
@@ -260,14 +257,10 @@ serialized **to** BSON. But MongoDB considers subdocuments equal only if their
 keys have the same order. So if you use a dict to query on a subdocument it may
 not match:
 
-.. doctest:: key-order
-
   >>> collection.find_one({'subdocument': {'a': 1.0, 'b': 1.0}}) is None
   True
 
 Swapping the key order in your query makes no difference:
-
-.. doctest:: key-order
 
   >>> collection.find_one({'subdocument': {'b': 1.0, 'a': 1.0}}) is None
   True
@@ -275,8 +268,6 @@ Swapping the key order in your query makes no difference:
 ... because, as we saw above, Python considers the two dicts the same.
 
 There are two solutions. First, you can match the subdocument field-by-field:
-
-.. doctest:: key-order
 
   >>> collection.find_one({'subdocument.a': 1.0,
   ...                      'subdocument.b': 1.0})
@@ -288,8 +279,6 @@ in BSON. Additionally, this query now matches subdocuments with additional
 keys besides "a" and "b", whereas the previous query required an exact match.
 
 The second solution is to use a :class:`~bson.son.SON` to specify the key order:
-
-.. doctest:: key-order
 
   >>> query = {'subdocument': SON([('b', 1.0), ('a', 1.0)])}
   >>> collection.find_one(query)

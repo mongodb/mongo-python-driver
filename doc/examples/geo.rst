@@ -47,12 +47,13 @@ Using the geospatial index we can find documents near another point:
 
 .. doctest::
 
+  >>> import pprint
   >>> for doc in db.places.find({"loc": {"$near": [3, 6]}}).limit(3):
-  ...   repr(doc)  # doctest: +ELLIPSIS
+  ...   pprint.pprint(doc)
   ...
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
-  "{u'loc': [1, 2], u'_id': ObjectId('...')}"
+  {u'_id': ObjectId('...'), u'loc': [2, 5]}
+  {u'_id': ObjectId('...'), u'loc': [4, 4]}
+  {u'_id': ObjectId('...'), u'loc': [1, 2]}
 
 The $maxDistance operator requires the use of :class:`~bson.son.SON`:
 
@@ -61,11 +62,11 @@ The $maxDistance operator requires the use of :class:`~bson.son.SON`:
   >>> from bson.son import SON
   >>> query = {"loc": SON([("$near", [3, 6]), ("$maxDistance", 100)])}
   >>> for doc in db.places.find(query).limit(3):
-  ...   repr(doc)  # doctest: +ELLIPSIS
+  ...   pprint.pprint(doc)
   ...
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
-  "{u'loc': [1, 2], u'_id': ObjectId('...')}"
+  {u'_id': ObjectId('...'), u'loc': [2, 5]}
+  {u'_id': ObjectId('...'), u'loc': [4, 4]}
+  {u'_id': ObjectId('...'), u'loc': [1, 2]}
 
 It's also possible to query for all items within a given rectangle
 (specified by lower-left and upper-right coordinates):
@@ -74,9 +75,9 @@ It's also possible to query for all items within a given rectangle
 
   >>> query = {"loc": {"$within": {"$box": [[2, 2], [5, 6]]}}}
   >>> for doc in db.places.find(query).sort('_id'):
-  ...     repr(doc)
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
+  ...     pprint.pprint(doc)
+  {u'_id': ObjectId('...'), u'loc': [2, 5]}
+  {u'_id': ObjectId('...'), u'loc': [4, 4]}
 
 Or circle (specified by center point and radius):
 
@@ -84,11 +85,11 @@ Or circle (specified by center point and radius):
 
   >>> query = {"loc": {"$within": {"$center": [[0, 0], 6]}}}
   >>> for doc in db.places.find(query).sort('_id'):
-  ...   repr(doc)  # doctest: +ELLIPSIS
+  ...   pprint.pprint(doc)
   ...
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
-  "{u'loc': [1, 2], u'_id': ObjectId('...')}"
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
+  {u'_id': ObjectId('...'), u'loc': [2, 5]}
+  {u'_id': ObjectId('...'), u'loc': [1, 2]}
+  {u'_id': ObjectId('...'), u'loc': [4, 4]}
 
 geoNear queries are also supported using :class:`~bson.son.SON`::
 

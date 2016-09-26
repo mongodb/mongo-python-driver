@@ -26,9 +26,9 @@ access:
   >>> from pymongo import MongoClient
   >>> c = MongoClient()
   >>> c.test_database
-  Database(MongoClient('localhost', 27017), u'test_database')
+  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), u'test_database')
   >>> c['test-database']
-  Database(MongoClient('localhost', 27017), u'test-database')
+  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), u'test-database')
 """
 
 import contextlib
