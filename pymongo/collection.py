@@ -645,12 +645,13 @@ class Collection(common.BaseObject):
 
           >>> db.test.insert({"x": "y", "a": "b"})
           ObjectId('...')
-          >>> list(db.test.find())
-          [{u'a': u'b', u'x': u'y', u'_id': ObjectId('...')}]
+          >>> import pprint
+          >>> pprint.pprint(list(db.test.find()))
+          [{u'_id': ObjectId('...'), u'a': u'b', u'x': u'y'}]
           >>> db.test.update({"x": "y"}, {"$set": {"a": "c"}})
           {...}
-          >>> list(db.test.find())
-          [{u'a': u'c', u'x': u'y', u'_id': ObjectId('...')}]
+          >>> pprint.pprint(list(db.test.find()))
+          [{u'_id': ObjectId('...'), u'a': u'c', u'x': u'y'}]
 
         :Parameters:
           - `spec`: a ``dict`` or :class:`~bson.son.SON` instance

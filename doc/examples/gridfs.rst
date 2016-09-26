@@ -42,7 +42,7 @@ interface (the :meth:`~gridfs.GridFS.put` and
 
 .. doctest::
 
-  >>> a = fs.put("hello world")
+  >>> a = fs.put(b"hello world")
 
 :meth:`~gridfs.GridFS.put` creates a new file in GridFS, and returns
 the value of the file document's ``"_id"`` key. Given that ``"_id"``

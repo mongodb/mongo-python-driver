@@ -4,8 +4,17 @@
 #
 # This file is execfile()d with the current directory set to its containing dir.
 
-import sys, os
-sys.path[0:0] = [os.path.abspath('..')]
+import os
+import sys
+
+_path = os.path.abspath('..')
+sys.path[0:0] = [_path]
+if sys.version_info[0] >= 3:
+    import glob
+    ver = '.'.join(map(str, sys.version_info[:2]))
+    _path = glob.glob(
+        os.path.join(os.path.abspath('..'), 'build', 'lib*' + ver))[0]
+    sys.path[0:0] = [_path]
 
 import pymongo
 
@@ -65,9 +74,9 @@ pygments_style = 'sphinx'
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = 'init'
 
-doctest_path = os.path.abspath('..')
+doctest_path = [_path]
 
-doctest_test_doctest_blocks = False
+doctest_test_doctest_blocks = ''
 
 doctest_global_setup = """
 from pymongo.mongo_client import MongoClient

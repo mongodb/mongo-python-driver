@@ -51,15 +51,20 @@ eg "$sort":
     PyMongo version **>= 2.3**.
 
 .. doctest::
+  :options: +NORMALIZE_WHITESPACE
 
   >>> from bson.son import SON
-  >>> db.things.aggregate([
+  >>> import pprint
+  >>> pprint.pprint(db.things.aggregate([
   ...         {"$unwind": "$tags"},
   ...         {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
   ...         {"$sort": SON([("count", -1), ("_id", -1)])}
-  ...     ])
+  ...     ]))
   ...
-  {u'ok': 1.0, u'result': [{u'count': 3, u'_id': u'cat'}, {u'count': 2, u'_id': u'dog'}, {u'count': 1, u'_id': u'mouse'}]}
+  {u'ok': 1.0,
+   u'result': [{u'_id': u'cat', u'count': 3},
+               {u'_id': u'dog', u'count': 2},
+               {u'_id': u'mouse', u'count': 1}]}
 
 
 As well as simple aggregations the aggregation framework provides projection
@@ -115,7 +120,7 @@ iterate over the result collection:
 
   >>> result = db.things.map_reduce(mapper, reducer, "myresults")
   >>> for doc in result.find():
-  ...   print doc
+  ...   pprint.pprint(doc)
   ...
   {u'_id': u'cat', u'value': 3.0}
   {u'_id': u'dog', u'value': 2.0}
@@ -132,8 +137,12 @@ response to the map/reduce command, rather than just the result collection:
 
 .. doctest::
 
-  >>> db.things.map_reduce(mapper, reducer, "myresults", full_response=True)
-  {u'counts': {u'input': 4, u'reduce': 2, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': u'...'}
+  >>> pprint.pprint(
+  ...     db.things.map_reduce(mapper, reducer, "myresults", full_response=True))
+  {u'counts': {u'emit': 6, u'input': 4, u'output': 3, u'reduce': 2},
+   u'ok': ...,
+   u'result': u'...',
+   u'timeMillis': ...}
 
 All of the optional map/reduce parameters are also supported, simply pass them
 as keyword arguments. In this example we use the `query` parameter to limit the
@@ -141,9 +150,10 @@ documents that will be mapped over:
 
 .. doctest::
 
-  >>> result = db.things.map_reduce(mapper, reducer, "myresults", query={"x": {"$lt": 2}})
-  >>> for doc in result.find():
-  ...   print doc
+  >>> results = db.things.map_reduce(
+  ...     mapper, reducer, "myresults", query={"x": {"$lt": 2}})
+  >>> for doc in results.find():
+  ...   pprint.pprint(doc)
   ...
   {u'_id': u'cat', u'value': 1.0}
   {u'_id': u'dog', u'value': 1.0}
@@ -155,8 +165,16 @@ result collection:
 .. doctest::
 
   >>> from bson.son import SON
-  >>> db.things.map_reduce(mapper, reducer, out=SON([("replace", "results"), ("db", "outdb")]), full_response=True)
-  {u'counts': {u'input': 4, u'reduce': 2, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': {u'db': ..., u'collection': ...}}
+  >>> pprint.pprint(
+  ...     db.things.map_reduce(
+  ...         mapper,
+  ...         reducer,
+  ...         out=SON([("replace", "results"), ("db", "outdb")]),
+  ...         full_response=True))
+  {u'counts': {u'emit': 6, u'input': 4, u'output': 3, u'reduce': 2},
+   u'ok': ...,
+   u'result': {u'collection': ..., u'db': ...},
+   u'timeMillis': ...}
 
 .. seealso:: The full list of options for MongoDB's `map reduce engine <http://www.mongodb.org/display/DOCS/MapReduce>`_
 
@@ -184,7 +202,7 @@ Here we are doing a simple group and count of the occurrences of ``x`` values:
   ...
   >>> results = db.things.group(key={"x":1}, condition={}, initial={"count": 0}, reduce=reducer)
   >>> for doc in results:
-  ...   print doc
+  ...   pprint.pprint(doc)
   {u'count': 1.0, u'x': 1.0}
   {u'count': 2.0, u'x': 2.0}
   {u'count': 1.0, u'x': 3.0}

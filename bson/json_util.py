@@ -31,7 +31,7 @@ Example usage (serialization):
    >>> dumps([{'foo': [1, 2]},
    ...        {'bar': {'hello': 'world'}},
    ...        {'code': Code("function x() { return 1; }")},
-   ...        {'bin': Binary("\x01\x02\x03\x04")}])
+   ...        {'bin': Binary(b"\x01\x02\x03\x04")}])
    '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }", "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
 
 Example usage (deserialization):

@@ -68,10 +68,12 @@ use them with PyMongo:
 
 .. doctest::
 
+  >>> import pprint
   >>> db.test.insert({"custom": encode_custom(Custom(5))})
   ObjectId('...')
-  >>> db.test.find_one()
-  {u'_id': ObjectId('...'), u'custom': {u'x': 5, u'_type': u'custom'}}
+  >>> pprint.pprint(db.test.find_one())
+  {u'_id': ObjectId('...'),
+   u'custom': {u'_type': u'custom', u'x': 5}}
   >>> decode_custom(db.test.find_one()["custom"])
   <Custom object at ...>
   >>> decode_custom(db.test.find_one()["custom"]).x()
@@ -122,8 +124,9 @@ After doing so we can save and restore :class:`Custom` instances seamlessly:
   {...}
   >>> db.test.insert({"custom": Custom(5)})
   ObjectId('...')
-  >>> db.test.find_one()
-  {u'_id': ObjectId('...'), u'custom': <Custom object at ...>}
+  >>> pprint.pprint(db.test.find_one())
+  {u'_id': ObjectId('...'),
+   u'custom': <Custom object at ...>}
   >>> db.test.find_one()["custom"].x()
   5
 
@@ -139,8 +142,9 @@ This allows us to see what was actually saved to the database:
 
 .. doctest::
 
-  >>> db.test.find_one()
-  {u'_id': ObjectId('...'), u'custom': {u'x': 5, u'_type': u'custom'}}
+  >>> pprint.pprint(db.test.find_one())
+  {u'_id': ObjectId('...'),
+   u'custom': {u'_type': u'custom', u'x': 5}}
 
 which is the same format that we encode to with our
 :meth:`encode_custom` method!
@@ -163,7 +167,7 @@ from :class:`~bson.binary.Binary` instances:
 
   >>> from bson.binary import Binary
   >>> def to_binary(custom):
-  ...   return Binary(str(custom.x()), 128)
+  ...   return Binary(str(custom.x()).encode(), 128)
   ...
   >>> def from_binary(binary):
   ...   return Custom(int(binary))
@@ -209,8 +213,9 @@ seamlessly:
 
   >>> db.test.insert({"custom": Custom(5)})
   ObjectId('...')
-  >>> db.test.find_one()
-  {u'_id': ObjectId('...'), u'custom': <Custom object at ...>}
+  >>> pprint.pprint(db.test.find_one())
+  {u'_id': ObjectId('...'),
+   u'custom': <Custom object at ...>}
   >>> db.test.find_one()["custom"].x()
   5
 
@@ -222,5 +227,5 @@ clearing out the manipulators and repeating our
 .. doctest::
 
   >>> db = client.custom_type_example
-  >>> db.test.find_one()
+  >>> pprint.pprint(db.test.find_one())
   {u'_id': ObjectId('...'), u'custom': Binary('5', 128)}
