@@ -21,9 +21,13 @@ import threading
 
 try:
     import ssl
+    from ssl import SSLError
     _HAVE_SNI = getattr(ssl, 'HAS_SNI', False)
 except ImportError:
     _HAVE_SNI = False
+    class SSLError(socket.error):
+        pass
+
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import imap, itervalues, _unicode
@@ -194,6 +198,14 @@ def _raise_connection_failure(address, error):
     else:
         msg = '%s: %s' % (host, error)
     if isinstance(error, socket.timeout):
+        raise NetworkTimeout(msg)
+    elif isinstance(error, SSLError) and 'timed out' in str(error):
+        # CPython 2.6, 2.7, PyPy 2.x, and PyPy3 do not distinguish network
+        # timeouts from other SSLErrors (https://bugs.python.org/issue10272).
+        # Luckily, we can work around this limitation because the phrase
+        # 'timed out' appears in all the timeout related SSLErrors raised
+        # on the above platforms. CPython >= 3.2 and PyPy3.3 correctly raise
+        # socket.timeout.
         raise NetworkTimeout(msg)
     else:
         raise AutoReconnect(msg)
