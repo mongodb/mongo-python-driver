@@ -412,12 +412,13 @@ The index prevents us from inserting a document whose ``user_id`` is already in
 the collection:
 
 .. doctest::
+   :options: +IGNORE_EXCEPTION_DETAIL
 
    >>> new_profile = {'user_id': 213, 'name': 'Drew'}
    >>> duplicate_profile = {'user_id': 212, 'name': 'Tommy'}
    >>> result = db.profiles.insert_one(new_profile)  # This is fine.
    >>> result = db.profiles.insert_one(duplicate_profile)
    Traceback (most recent call last):
-   pymongo.errors.DuplicateKeyError: E11000 duplicate key error index: test_database.profiles.$user_id_1 dup key: { : 212 }
+   DuplicateKeyError: E11000 duplicate key error index: test_database.profiles.$user_id_1 dup key: { : 212 }
 
 .. seealso:: The MongoDB documentation on `indexes <http://www.mongodb.org/display/DOCS/Indexes>`_

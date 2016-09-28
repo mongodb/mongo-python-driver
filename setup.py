@@ -190,7 +190,7 @@ class doc(Command):
             except:
                 pass
 
-        status = sphinx.build_main(["-E", "-b", mode, "doc", path])
+        status = sphinx.main(["-E", "-b", mode, "doc", path])
 
         if status:
             raise RuntimeError("documentation step '%s' failed" % (mode,))
