@@ -64,7 +64,7 @@ eg "$sort":
   {u'ok': 1.0,
    u'result': [{u'_id': u'cat', u'count': 3},
                {u'_id': u'dog', u'count': 2},
-               {u'_id': u'mouse', u'count': 1}]}
+               {u'_id': u'mouse', u'count': 1}]...}
 
 
 As well as simple aggregations the aggregation framework provides projection

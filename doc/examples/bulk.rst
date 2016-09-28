@@ -118,7 +118,7 @@ the failure.
    'upserted': [],
    'writeConcernErrors': [],
    'writeErrors': [{u'code': 11000,
-                    u'errmsg': u'...E11000 duplicate key error...',
+                    u'errmsg': u'...E11000...duplicate key error...',
                     u'index': 1,
                     u'op': {'_id': 4}}]}
 
@@ -156,11 +156,11 @@ and fourth operations succeed.
    'upserted': [],
    'writeConcernErrors': [],
    'writeErrors': [{u'code': 11000,
-                    u'errmsg': u'...E11000 duplicate key error...',
+                    u'errmsg': u'...E11000...duplicate key error...',
                     u'index': 0,
                     u'op': {'_id': 1}},
                    {u'code': 11000,
-                    u'errmsg': u'...E11000 duplicate key error...',
+                    u'errmsg': u'...E11000...duplicate key error...',
                     u'index': 2,
                     u'op': {'_id': 3}}]}
 
@@ -193,7 +193,7 @@ regardless of execution order.
    'nRemoved': 0,
    'nUpserted': 0,
    'upserted': [],
-   'writeConcernErrors': [{u'code': 64,
+   'writeConcernErrors': [{u'code': 64...
                            u'errInfo': {u'wtimeout': True},
                            u'errmsg': u'waiting for replication timed out'}],
    'writeErrors': []}
