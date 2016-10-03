@@ -692,6 +692,25 @@ in this release.
 
 .. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12501
 
+Changes in Version 2.9.4
+------------------------
+
+Version 2.9.4 fixes issues reported since the release of 2.9.3.
+
+- Fixed __repr__ for closed instances of :class:`~pymongo.mongo_client.MongoClient`.
+- Fixed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` handling of
+  uuidRepresentation.
+- Fixed building and testing the documentation with python 3.x.
+- New documentation for :doc:`examples/tls` and :doc:`atlas`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.9.4 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9.4 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16885
+
 Changes in Version 2.9.3
 ------------------------
 
