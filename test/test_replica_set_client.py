@@ -23,7 +23,7 @@ sys.path[0:0] = [""]
 
 from bson.codec_options import CodecOptions
 from bson.son import SON
-from pymongo.common import partition_node
+from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, partition_node
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -322,7 +322,9 @@ class TestReplicaSetWireVersion(MockClientTest):
         c.set_wire_version_range('a:1', 2, 2)
 
         # A secondary doesn't overlap with us.
-        c.set_wire_version_range('b:2', 5, 6)
+        c.set_wire_version_range('b:2',
+                                 MAX_SUPPORTED_WIRE_VERSION + 1,
+                                 MAX_SUPPORTED_WIRE_VERSION + 2)
 
         def raises_configuration_error():
             try:
