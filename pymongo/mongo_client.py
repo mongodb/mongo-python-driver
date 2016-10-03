@@ -911,7 +911,7 @@ class MongoClient(common.BaseObject):
 
         # Host first...
         options = ['host=%r' % [
-            '%s:%d' % (host, port)
+            '%s:%d' % (host, port) if port is not None else host
             for host, port in self._topology_settings.seeds]]
         # ... then everything in self._constructor_args...
         options.extend(

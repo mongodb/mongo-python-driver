@@ -614,6 +614,8 @@ class TestClient(IntegrationTest):
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
 
+        self.assertTrue(mongodb_socket in repr(client))
+
         # Confirm it fails with a missing socket.
         self.assertRaises(
             ConnectionFailure,
