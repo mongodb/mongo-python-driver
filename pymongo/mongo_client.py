@@ -101,18 +101,40 @@ class MongoClient(common.BaseObject):
         database or auth information are passed, the last database,
         username, and password present will be used.  For username and
         passwords reserved characters like ':', '/', '+' and '@' must be
-        escaped following RFC 2396.
+        percent encoded following RFC 2396::
+
+            try:
+                # Python 3.x
+                from urllib.parse import quote_plus
+            except ImportError:
+                # Python 2.x
+                from urllib import quote_plus
+
+            uri = "mongodb://%s:%s@%s" % (
+                quote_plus(user), quote_plus(password), host)
+            client = MongoClient(uri)
+
+        Unix domain sockets are also supported. The socket path must be percent
+        encoded in the URI::
+
+            uri = "mongodb://%s:%s@%s" % (
+                quote_plus(user), quote_plus(password), quote_plus(socket_path))
+            client = MongoClient(uri)
+
+        But not when passed as a simple hostname::
+
+            client = MongoClient('/tmp/mongodb-27017.sock')
 
         .. warning:: When using PyMongo in a multiprocessing context, please
           read :ref:`multiprocessing` first.
 
         :Parameters:
-          - `host` (optional): hostname or IP address of a single mongod or
-            mongos instance to connect to, or a mongodb URI, or a list of
-            hostnames / mongodb URIs. If `host` is an IPv6 literal
-            it must be enclosed in '[' and ']' characters following
-            the RFC2732 URL syntax (e.g. '[::1]' for localhost). Multihomed
-            and round robin DNS addresses are **not** supported.
+          - `host` (optional): hostname or IP address or Unix domain socket
+            path of a single mongod or mongos instance to connect to, or a
+            mongodb URI, or a list of hostnames / mongodb URIs. If `host` is
+            an IPv6 literal it must be enclosed in '[' and ']' characters
+            following the RFC2732 URL syntax (e.g. '[::1]' for localhost).
+            Multihomed and round robin DNS addresses are **not** supported.
           - `port` (optional): port number on which to connect
           - `document_class` (optional): default class to use for
             documents returned from queries on this client
