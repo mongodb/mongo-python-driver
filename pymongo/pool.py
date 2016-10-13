@@ -431,7 +431,7 @@ class SocketInfo(object):
         if (self.max_bson_size is not None
                 and max_doc_size > self.max_bson_size):
             raise DocumentTooLarge(
-                "BSON document too large (%d bytes) - the connected server"
+                "BSON document too large (%d bytes) - the connected server "
                 "supports BSON document sizes up to %d bytes." %
                 (max_doc_size, self.max_bson_size))
 
