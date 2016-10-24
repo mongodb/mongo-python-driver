@@ -15,7 +15,7 @@
         }
     ],
     "read_preference": {
-        "maxStalenessMS": 50000,
+        "maxStalenessSeconds": 50,
         "mode": "Nearest"
     },
     "suitable_servers": [
@@ -37,7 +37,7 @@
             "lastUpdateTime": 25002,
             "lastWrite": {
                 "lastWriteDate": {
-                    "$numberLong": "1"
+                    "$numberLong": "2"
                 }
             },
             "maxWireVersion": 5,
@@ -64,7 +64,7 @@
                 "lastUpdateTime": 25002,
                 "lastWrite": {
                     "lastWriteDate": {
-                        "$numberLong": "1"
+                        "$numberLong": "2"
                     }
                 },
                 "maxWireVersion": 5,

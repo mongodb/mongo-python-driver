@@ -18,7 +18,7 @@
         }
     ],
     "read_preference": {
-        "maxStalenessMS": 50000,
+        "maxStalenessSeconds": 50,
         "mode": "PrimaryPreferred",
         "tag_sets": [
             {

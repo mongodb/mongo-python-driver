@@ -469,7 +469,7 @@ class TestMongosAndReadPreference(unittest.TestCase):
             pref.document,
             {'mode': 'primaryPreferred',
              'tags': [{'dc': 'sf'}],
-             'maxStalenessMS': 30000})
+             'maxStalenessSeconds': 30})
 
         pref = Secondary()
         self.assertEqual(
@@ -485,7 +485,7 @@ class TestMongosAndReadPreference(unittest.TestCase):
             pref.document,
             {'mode': 'secondary',
              'tags': [{'dc': 'sf'}],
-             'maxStalenessMS': 30000})
+             'maxStalenessSeconds': 30})
 
         pref = SecondaryPreferred()
         self.assertEqual(
@@ -501,7 +501,7 @@ class TestMongosAndReadPreference(unittest.TestCase):
             pref.document,
             {'mode': 'secondaryPreferred',
              'tags': [{'dc': 'sf'}],
-             'maxStalenessMS': 30000})
+             'maxStalenessSeconds': 30})
 
         pref = Nearest()
         self.assertEqual(
@@ -517,7 +517,7 @@ class TestMongosAndReadPreference(unittest.TestCase):
             pref.document,
             {'mode': 'nearest',
              'tags': [{'dc': 'sf'}],
-             'maxStalenessMS': 30000})
+             'maxStalenessSeconds': 30})
 
     def test_maybe_add_read_preference(self):
 
@@ -614,7 +614,7 @@ class TestMongosAndReadPreference(unittest.TestCase):
     @client_context.require_mongos
     @client_context.require_version_min(3, 3, 12)
     def test_mongos_max_staleness(self):
-        # Sanity check that we're sending maxStalenessMS
+        # Sanity check that we're sending maxStalenessSeconds
         coll = client_context.client.pymongo_test.get_collection(
             "test", read_preference=SecondaryPreferred(max_staleness=120))
         # No error
@@ -631,13 +631,13 @@ class TestMongosAndReadPreference(unittest.TestCase):
 
         coll = single_client(
             readPreference='secondaryPreferred',
-            maxStalenessMS=120000).pymongo_test.test
+            maxStalenessSeconds=120).pymongo_test.test
         # No error
         coll.find_one()
 
         coll = single_client(
             readPreference='secondaryPreferred',
-            maxStalenessMS=10000).pymongo_test.test
+            maxStalenessSeconds=10).pymongo_test.test
         try:
             coll.find_one()
         except OperationFailure as exc:

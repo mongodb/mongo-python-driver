@@ -108,7 +108,7 @@ class _ServerMode(object):
         if self.__tag_sets not in (None, [{}]):
             doc['tags'] = self.__tag_sets
         if self.__max_staleness:
-            doc['maxStalenessMS'] = int(self.__max_staleness * 1000)
+            doc['maxStalenessSeconds'] = int(self.__max_staleness)
         return doc
 
     @property
@@ -145,8 +145,8 @@ class _ServerMode(object):
     def min_wire_version(self):
         """The wire protocol version the server must support.
 
-        Some read preferences impose version requirements on all servers in the
-        topology (e.g. maxStalenessMS requires MongoDB 3.4 / maxWireVersion 5).
+        Some read preferences impose version requirements on all servers (e.g.
+        maxStalenessSeconds requires MongoDB 3.4 / maxWireVersion 5).
 
         All servers' maxWireVersion must be at least this read preference's
         `min_wire_version`, or the driver raises
@@ -347,7 +347,7 @@ def make_read_preference(mode, tag_sets, max_staleness=None):
                                      "cannot be combined with tags")
         if max_staleness:
             raise ConfigurationError("Read preference primary cannot be "
-                                     "combined with maxStalenessMS")
+                                     "combined with maxStalenessSeconds")
         return Primary()
     return _ALL_READ_PREFERENCES[mode](tag_sets, max_staleness)
 

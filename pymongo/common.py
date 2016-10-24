@@ -286,6 +286,15 @@ def validate_timeout_or_zero(option, value):
     return validate_positive_float(option, value) / 1000.0
 
 
+def validate_max_staleness(option, value):
+    """Validates a timeout specified in seconds returning
+    a value in floating point seconds.
+    """
+    if value is None:
+        return value
+    return validate_positive_float(option, value)
+
+
 def validate_read_preference(dummy, value):
     """Validate a read preference.
     """
@@ -495,7 +504,7 @@ TIMEOUT_VALIDATORS = {
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'heartbeatfrequencyms': validate_timeout_or_none,
     'maxidletimems': validate_timeout_or_none,
-    'maxstalenessms': validate_timeout_or_none
+    'maxstalenessseconds': validate_max_staleness,
 }
 
 KW_VALIDATORS = {

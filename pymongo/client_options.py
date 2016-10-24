@@ -44,8 +44,7 @@ def _parse_read_preference(options):
 
     mode = options.get('readpreference', 0)
     tags = options.get('readpreferencetags')
-    # common.validate() has converted from ms to seconds.
-    max_staleness = options.get('maxstalenessms')
+    max_staleness = options.get('maxstalenessseconds')
     return make_read_preference(mode, tags, max_staleness)
 
 

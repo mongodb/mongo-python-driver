@@ -12,7 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Criteria to select ServerDescriptions based on maxStalenessMS.
+"""Criteria to select ServerDescriptions based on maxStalenessSeconds.
 
 The Max Staleness Spec says: When there is a known primary P,
 a secondary S's staleness is estimated with this formula:
@@ -79,10 +79,10 @@ def select(max_staleness, selection):
 
     # Server Selection Spec: "A driver MUST raise an error if the
     # TopologyType is ReplicaSetWithPrimary or ReplicaSetNoPrimary and
-    # maxStalenessMS is less than twice heartbeatFrequencyMS."
+    # maxStalenessSeconds * 1000 is less than twice heartbeatFrequencyMS."
     if max_staleness < 2 * selection.heartbeat_frequency:
         raise ConfigurationError(
-            "maxStalenessMS must be twice heartbeatFrequencyMS")
+            "maxStalenessSeconds must be twice heartbeatFrequencyMS")
 
     if selection.primary:
         return _with_primary(max_staleness, selection)

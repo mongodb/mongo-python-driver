@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test maxStalenessMS support."""
+"""Test maxStalenessSeconds support."""
 
 import datetime
 import os
@@ -158,9 +158,7 @@ def create_test(scenario_def):
         mode_string = pref_def.get('mode', 'primary')
         mode_string = mode_string[:1].lower() + mode_string[1:]
         mode = read_preferences.read_pref_mode_from_name(mode_string)
-        max_staleness = pref_def.get('maxStalenessMS', 0) / 1000.0
-        if not max_staleness:
-            max_staleness = None
+        max_staleness = pref_def.get('maxStalenessSeconds')
         tag_sets = pref_def.get('tag_sets')
 
         if scenario_def.get('error'):
@@ -224,19 +222,19 @@ class TestMaxStaleness(unittest.TestCase):
     def test_max_staleness(self):
         # These tests are specified in max-staleness-tests.rst.
         with self.assertRaises(ConfigurationError):
-            MongoClient("mongodb://a/?maxStalenessMS=120000")
+            MongoClient("mongodb://a/?maxStalenessSeconds=120")
 
         with self.assertRaises(ConfigurationError):
             MongoClient("mongodb://a/?readPreference=primary&"
-                        "maxStalenessMS=120000")
+                        "maxStalenessSeconds=120")
 
         client = MongoClient("mongodb://host/?readPreference=secondary&"
-                             "maxStalenessMS=120000")
+                             "maxStalenessSeconds=120")
         self.assertEqual(120, client.read_preference.max_staleness)
 
         client = MongoClient("mongodb://a/?readPreference=secondary&"
-                             "maxStalenessMS=1")
-        self.assertEqual(0.001, client.read_preference.max_staleness)
+                             "maxStalenessSeconds=1")
+        self.assertEqual(1, client.read_preference.max_staleness)
 
 
 if __name__ == "__main__":
