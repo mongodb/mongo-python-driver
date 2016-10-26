@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.3.1
+------------------------
+
+Version 3.3.1 fixes a memory leak when decoding elements inside of a
+:class:`~bson.raw_bson.RawBSONDocument`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.3.1 release notes in Jira`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.3.1 release notes in Jira: https://jira.mongodb.org/browse/PYTHON/fixforversion/17636
+
+
 Changes in Version 3.3
 ----------------------
 
