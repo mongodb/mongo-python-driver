@@ -587,6 +587,9 @@ static int _write_regex_to_buffer(
     int_flags = PyInt_AsLong(py_flags);
 #endif
     Py_DECREF(py_flags);
+    if (int_flags == -1 && PyErr_Occurred()) {
+        return 0;
+    }
     py_pattern = PyObject_GetAttrString(value, "pattern");
     if (!py_pattern) {
         return 0;
@@ -860,6 +863,9 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             i = PyInt_AsLong(obj);
 #endif
             Py_DECREF(obj);
+            if (i == -1 && PyErr_Occurred()) {
+                return 0;
+            }
             if (!buffer_write_int32(buffer, (int32_t)i)) {
                 return 0;
             }
@@ -874,6 +880,9 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             i = PyInt_AsLong(obj);
 #endif
             Py_DECREF(obj);
+            if (i == -1 && PyErr_Occurred()) {
+                return 0;
+            }
             if (!buffer_write_int32(buffer, (int32_t)i)) {
                 return 0;
             }
@@ -991,12 +1000,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     /* No _type_marker attibute or not one of our types. */
 
     if (PyBool_Check(value)) {
-#if PY_MAJOR_VERSION >= 3
-        const long bool = PyLong_AsLong(value);
-#else
-        const long bool = PyInt_AsLong(value);
-#endif
-        const char c = bool ? 0x01 : 0x00;
+        const char c = (value == Py_True) ? 0x01 : 0x00;
         *(buffer_get_buffer(buffer) + type_byte) = 0x08;
         return buffer_write_bytes(buffer, &c, 1);
     }
