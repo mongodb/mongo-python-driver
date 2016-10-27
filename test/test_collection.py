@@ -1601,6 +1601,7 @@ class TestCollection(IntegrationTest):
             set(range(8000)),
             set(doc['_id'] for doc in docs))
 
+    @client_context.require_no_mongos
     @client_context.require_version_min(3, 3, 10)
     @client_context.require_test_commands
     def test_parallel_scan_max_time_ms(self):
