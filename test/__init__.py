@@ -144,8 +144,6 @@ class ClientContext(object):
 
     def __init__(self):
         """Create a client and grab essential information from the server."""
-        # Seed host. This may be updated further down.
-        self.host, self.port = host, port
         self.connected = False
         self.ismaster = {}
         self.w = None
@@ -163,11 +161,11 @@ class ClientContext(object):
         self.ssl_certfile = False
         self.server_is_resolvable = is_server_resolvable()
         self.ssl_client_options = {}
-        self.client = _connect(self.host, self.port)
+        self.client = _connect(host, port)
 
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
-            self.client = _connect(self.host, self.port, **_SSL_OPTIONS)
+            self.client = _connect(host, port, **_SSL_OPTIONS)
             if self.client:
                 self.ssl = True
                 self.ssl_client_options = _SSL_OPTIONS
@@ -177,21 +175,18 @@ class ClientContext(object):
 
         if self.client:
             self.connected = True
-            self.ismaster = self.client.admin.command('ismaster')
-            self.w = len(self.ismaster.get("hosts", [])) or 1
-            self.nodes = set([(self.host, self.port)])
-            self.replica_set_name = self.ismaster.get('setName', '')
-            self.version = Version.from_client(self.client)
-            if self.replica_set_name:
+            ismaster = self.client.admin.command('ismaster')
+            if 'setName' in ismaster:
+                self.replica_set_name = ismaster['setName']
                 self.is_rs = True
+                # It doesn't matter which member we use as the seed here.
                 self.client = pymongo.MongoClient(
-                    self.ismaster['primary'],
+                    host,
+                    port,
                     replicaSet=self.replica_set_name,
                     **self.ssl_client_options)
-                # Force connection
-                self.client.admin.command('ismaster')
-                self.host, self.port = self.client.primary
-
+                # Get the authoritative ismaster result from the primary.
+                self.ismaster = self.client.admin.command('ismaster')
                 nodes = [partition_node(node.lower())
                          for node in self.ismaster.get('hosts', [])]
                 nodes.extend([partition_node(node.lower())
@@ -199,6 +194,11 @@ class ClientContext(object):
                 nodes.extend([partition_node(node.lower())
                               for node in self.ismaster.get('arbiters', [])])
                 self.nodes = set(nodes)
+            else:
+                self.ismaster = ismaster
+                self.nodes = set([(host, port)])
+            self.w = len(self.ismaster.get("hosts", [])) or 1
+            self.version = Version.from_client(self.client)
 
             try:
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
@@ -238,6 +238,20 @@ class ClientContext(object):
 
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
             self.has_ipv6 = self._server_started_with_ipv6()
+
+    @property
+    def host(self):
+        if self.is_rs:
+            primary = self.client.primary
+            return primary[0] if primary is not None else host
+        return host
+
+    @property
+    def port(self):
+        if self.is_rs:
+            primary = self.client.primary
+            return primary[1] if primary is not None else port
+        return port
 
     @property
     def pair(self):

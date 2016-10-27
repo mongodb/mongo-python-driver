@@ -458,11 +458,6 @@ class TestClient(IntegrationTest):
 
         self.assertEqual(eval(the_repr), client)
 
-    @client_context.require_replica_set
-    def test_repr_replica_set(self):
-        self.assertIn("MongoClient(host=[", repr(self.client))
-        self.assertIn(client_context.pair, repr(self.client))
-
     def test_getters(self):
         wait_until(lambda: client_context.nodes == self.client.nodes,
                    "find all nodes")
