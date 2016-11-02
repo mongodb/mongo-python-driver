@@ -31,9 +31,30 @@ from pymongo.errors import ConfigurationError
 from pymongo.server_type import SERVER_TYPE
 
 
+def _validate_max_staleness(max_staleness,
+                            heartbeat_frequency,
+                            idle_write_period):
+    if max_staleness < heartbeat_frequency + idle_write_period:
+        raise ConfigurationError(
+            "maxStalenessSeconds must be at least heartbeatFrequencyMS +"
+            " %d seconds. maxStalenessSeconds is set to %d,"
+            " heartbeatFrequencyMS is set to %d." % (
+                idle_write_period, max_staleness,
+                heartbeat_frequency * 1000))
+
+
 def _with_primary(max_staleness, selection):
     """Apply max_staleness, in seconds, to a Selection with a known primary."""
     primary = selection.primary
+    assert primary
+
+    # Server Selection Spec: If the TopologyType is ReplicaSetWithPrimary, a
+    # client MUST raise an error if maxStaleness < heartbeatFrequency +
+    # (primary's idleWritePeriod).
+    _validate_max_staleness(max_staleness,
+                            selection.heartbeat_frequency,
+                            primary.idle_write_period)
+
     sds = []
 
     for s in selection.server_descriptions:
@@ -54,8 +75,24 @@ def _with_primary(max_staleness, selection):
 
 def _no_primary(max_staleness, selection):
     """Apply max_staleness, in seconds, to a Selection with no known primary."""
+    # Secondary that's replicated the most recent writes.
     smax = selection.secondary_with_max_last_write_date()
+    if not smax:
+        # No secondaries and no primary, short-circuit out of here.
+        return selection.with_server_descriptions([])
+
+    # Secondary we've most recently checked.
+    srecent = selection.secondary_with_max_last_update_time()
+    assert srecent
+
     sds = []
+
+    # Server Selection Spec: If the TopologyType is ReplicaSetNoPrimary, a
+    # client MUST raise an error if maxStaleness < heartbeatFrequency +
+    # (idleWritePeriod of secondary with greatest lastUpdateTime).
+    _validate_max_staleness(max_staleness,
+                            selection.heartbeat_frequency,
+                            srecent.idle_write_period)
 
     for s in selection.server_descriptions:
         if s.server_type == SERVER_TYPE.RSSecondary:
@@ -76,13 +113,6 @@ def select(max_staleness, selection):
     """Apply max_staleness, in seconds, to a Selection."""
     if not max_staleness:
         return selection
-
-    # Server Selection Spec: "A driver MUST raise an error if the
-    # TopologyType is ReplicaSetWithPrimary or ReplicaSetNoPrimary and
-    # maxStalenessSeconds * 1000 is less than twice heartbeatFrequencyMS."
-    if max_staleness < 2 * selection.heartbeat_frequency:
-        raise ConfigurationError(
-            "maxStalenessSeconds must be twice heartbeatFrequencyMS")
 
     if selection.primary:
         return _with_primary(max_staleness, selection)

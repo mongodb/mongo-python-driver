@@ -111,11 +111,10 @@ def make_server_description(server, hosts):
         ismaster_response['msg'] = 'isdbgrid'
 
     ismaster_response['lastWriteDate'] = make_last_write_date(server)
-    if 'maxWireVersion' in server:
-        ismaster_response['maxWireVersion'] = server['maxWireVersion']
 
-    if 'tags' in server:
-        ismaster_response['tags'] = server['tags']
+    for field in 'maxWireVersion', 'tags', 'idleWritePeriodMillis':
+        if field in server:
+            ismaster_response[field] = server[field]
 
     # Sets _last_update_time to now.
     sd = ServerDescription(clean_node(server['address']),

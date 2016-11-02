@@ -51,16 +51,16 @@ class Selection(object):
                          self.primary)
 
     def secondary_with_max_last_write_date(self):
-        smax = None
-        for s in self.topology_description.known_servers:
-            if s.server_type == SERVER_TYPE.RSSecondary:
-                if not smax:
-                    smax = s
-                else:
-                    if s.last_write_date > smax.last_write_date:
-                        smax = s
+        secondaries = secondary_server_selector(self)
+        if secondaries.server_descriptions:
+            return max(secondaries.server_descriptions,
+                       key=lambda sd: sd.last_write_date)
 
-        return smax
+    def secondary_with_max_last_update_time(self):
+        secondaries = secondary_server_selector(self)
+        if secondaries.server_descriptions:
+            return max(secondaries.server_descriptions,
+                       key=lambda sd: sd.last_update_time)
 
     @property
     def primary_selection(self):
@@ -70,6 +70,10 @@ class Selection(object):
     @property
     def heartbeat_frequency(self):
         return self.topology_description.heartbeat_frequency
+
+    @property
+    def topology_type(self):
+        return self.topology_description.topology_type
 
     def __bool__(self):
         return bool(self.server_descriptions)

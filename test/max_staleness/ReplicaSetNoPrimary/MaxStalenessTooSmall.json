@@ -17,7 +17,7 @@
                     }
                 },
                 "maxWireVersion": 5,
-                "type": "RSPrimary"
+                "type": "RSSecondary"
             },
             {
                 "address": "b:27017",
@@ -32,6 +32,6 @@
                 "type": "RSSecondary"
             }
         ],
-        "type": "ReplicaSetWithPrimary"
+        "type": "ReplicaSetNoPrimary"
     }
 }

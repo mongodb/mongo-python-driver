@@ -40,6 +40,11 @@ MIN_WIRE_VERSION = 0
 MAX_WIRE_VERSION = 0
 MAX_WRITE_BATCH_SIZE = 1000
 
+# Server Discovery and Monitoring Spec: The isMaster response of a replica set
+# member running MongoDB 3.4 or later may contain idleWritePeriodMillis. Set the
+# ServerDescription's idleWritePeriod to this value if present, else 10 seconds.
+IDLE_WRITE_PERIOD = 10
+
 # What this version of PyMongo supports.
 MIN_SUPPORTED_WIRE_VERSION = 0
 MAX_SUPPORTED_WIRE_VERSION = 5
