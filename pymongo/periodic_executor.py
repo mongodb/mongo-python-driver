@@ -47,12 +47,27 @@ class PeriodicExecutor(object):
         self._thread = None
         self._name = name
 
+        self._thread_will_exit = False
+        self._lock = threading.Lock()
+
     def open(self):
         """Start. Multiple calls have no effect.
 
         Not safe to call from multiple threads at once.
         """
-        self._stopped = False
+        with self._lock:
+            if self._thread_will_exit:
+                # If the background thread has read self._stopped as True
+                # there is a chance that it has not yet exited. The call to
+                # join should not block indefinitely because there is no
+                # other work done outside the while loop in self._run.
+                try:
+                    self._thread.join()
+                except ReferenceError:
+                    # Thread terminated.
+                    pass
+            self._thread_will_exit = False
+            self._stopped = False
         started = False
         try:
             started = self._thread and self._thread.is_alive()
@@ -87,8 +102,15 @@ class PeriodicExecutor(object):
         """Execute the target function soon."""
         self._event = True
 
+    def __should_stop(self):
+        with self._lock:
+            if self._stopped:
+                self._thread_will_exit = True
+                return True
+            return False
+
     def _run(self):
-        while not self._stopped:
+        while not self.__should_stop():
             try:
                 if not self._target():
                     self._stopped = True
