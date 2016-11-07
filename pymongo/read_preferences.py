@@ -108,7 +108,7 @@ class _ServerMode(object):
         if self.__tag_sets not in (None, [{}]):
             doc['tags'] = self.__tag_sets
         if self.__max_staleness:
-            doc['maxStalenessSeconds'] = int(self.__max_staleness)
+            doc['maxStalenessSeconds'] = self.__max_staleness
         return doc
 
     @property

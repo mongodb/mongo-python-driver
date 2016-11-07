@@ -519,6 +519,11 @@ class TestMongosAndReadPreference(unittest.TestCase):
              'tags': [{'dc': 'sf'}],
              'maxStalenessSeconds': 30})
 
+        pref = Nearest(max_staleness=1.5)
+        self.assertEqual(
+            pref.document,
+            {'mode': 'nearest', 'maxStalenessSeconds': 1.5})
+
     def test_maybe_add_read_preference(self):
 
         # Primary doesn't add $readPreference
