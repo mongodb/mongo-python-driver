@@ -710,12 +710,12 @@ class TestServerSelectionErrors(TopologyTest):
 
         self.assertMessage(
             'No replica set members match selector'
-            ' "Secondary(tag_sets=None, max_staleness=None)"',
+            ' "Secondary(tag_sets=None, max_staleness=-1)"',
             t, ReadPreference.SECONDARY)
 
         self.assertMessage(
             "No replica set members match selector"
-            " \"Secondary(tag_sets=[{'dc': 'ny'}], max_staleness=None)\"",
+            " \"Secondary(tag_sets=[{'dc': 'ny'}], max_staleness=-1)\"",
             t, Secondary(tag_sets=[{'dc': 'ny'}]))
 
     def test_bad_replica_set_name(self):

@@ -44,7 +44,7 @@ def _parse_read_preference(options):
 
     mode = options.get('readpreference', 0)
     tags = options.get('readpreferencetags')
-    max_staleness = options.get('maxstalenessseconds')
+    max_staleness = options.get('maxstalenessseconds', -1)
     return make_read_preference(mode, tags, max_staleness)
 
 

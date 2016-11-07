@@ -18,6 +18,7 @@ import datetime
 import os
 import time
 import sys
+import warnings
 
 sys.path[0:0] = [""]
 
@@ -162,7 +163,7 @@ def create_test(scenario_def):
         mode_string = pref_def.get('mode', 'primary')
         mode_string = mode_string[:1].lower() + mode_string[1:]
         mode = read_preferences.read_pref_mode_from_name(mode_string)
-        max_staleness = pref_def.get('maxStalenessSeconds')
+        max_staleness = pref_def.get('maxStalenessSeconds', -1)
         tag_sets = pref_def.get('tag_sets')
 
         if scenario_def.get('error'):
@@ -224,11 +225,19 @@ create_tests()
 
 class TestMaxStaleness(unittest.TestCase):
     def test_max_staleness(self):
+        client = MongoClient()
+        self.assertEqual(-1, client.read_preference.max_staleness)
+
+        client = MongoClient("mongodb://a/?readPreference=secondary")
+        self.assertEqual(-1, client.read_preference.max_staleness)
+
         # These tests are specified in max-staleness-tests.rst.
         with self.assertRaises(ConfigurationError):
+            # Default read pref "primary" can't be used with max staleness.
             MongoClient("mongodb://a/?maxStalenessSeconds=120")
 
         with self.assertRaises(ConfigurationError):
+            # Read pref "primary" can't be used with max staleness.
             MongoClient("mongodb://a/?readPreference=primary&"
                         "maxStalenessSeconds=120")
 
@@ -239,6 +248,32 @@ class TestMaxStaleness(unittest.TestCase):
         client = MongoClient("mongodb://a/?readPreference=secondary&"
                              "maxStalenessSeconds=1")
         self.assertEqual(1, client.read_preference.max_staleness)
+
+        client = MongoClient("mongodb://a/?readPreference=secondary&"
+                             "maxStalenessSeconds=-1")
+        self.assertEqual(-1, client.read_preference.max_staleness)
+
+        client = MongoClient(maxStalenessSeconds=-1, readPreference="nearest")
+        self.assertEqual(-1, client.read_preference.max_staleness)
+
+        with self.assertRaises(TypeError):
+            # Prohibit None.
+            MongoClient(maxStalenessSeconds=None, readPreference="nearest")
+
+    def test_max_staleness_zero(self):
+        # Zero is too small.
+        with self.assertRaises(ValueError) as ctx:
+            rs_or_single_client(maxStalenessSeconds=0,
+                                readPreference="nearest")
+
+        self.assertIn("must be greater than 0", str(ctx.exception))
+
+        with warnings.catch_warnings(record=True) as ctx:
+            warnings.simplefilter("always")
+            MongoClient("mongodb://host/?maxStalenessSeconds=0"
+                        "&readPreference=nearest")
+
+            self.assertIn("must be greater than 0", str(ctx[0]))
 
     @client_context.require_version_min(3, 3, 6)  # SERVER-8858
     def test_last_write_date(self):

@@ -292,11 +292,10 @@ def validate_timeout_or_zero(option, value):
 
 
 def validate_max_staleness(option, value):
-    """Validates a timeout specified in seconds returning
-    a value in floating point seconds.
-    """
-    if value is None:
-        return value
+    """Validates maxStalenessSeconds according to the Max Staleness Spec."""
+    if value == -1 or value == "-1":
+        # Default: No maximum staleness.
+        return -1
     return validate_positive_float(option, value)
 
 

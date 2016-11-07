@@ -255,7 +255,7 @@ class MongoClient(common.BaseObject):
           - `maxStalenessSeconds`: (integer or float) The maximum estimated
             length of time a replica set secondary can fall behind the primary
             in replication before it will no longer be selected for operations.
-            Defaults to ``None`` (no limit).
+            Defaults to ``-1``, meaning no maximum.
 
           | **SSL configuration:**
 

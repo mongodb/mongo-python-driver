@@ -34,6 +34,7 @@ from pymongo.server_type import SERVER_TYPE
 def _validate_max_staleness(max_staleness,
                             heartbeat_frequency,
                             idle_write_period):
+    # We checked for max staleness -1 before this, it must be positive here.
     if max_staleness < heartbeat_frequency + idle_write_period:
         raise ConfigurationError(
             "maxStalenessSeconds must be at least heartbeatFrequencyMS +"
@@ -46,7 +47,6 @@ def _validate_max_staleness(max_staleness,
 def _with_primary(max_staleness, selection):
     """Apply max_staleness, in seconds, to a Selection with a known primary."""
     primary = selection.primary
-    assert primary
 
     # Server Selection Spec: If the TopologyType is ReplicaSetWithPrimary, a
     # client MUST raise an error if maxStaleness < heartbeatFrequency +
@@ -83,7 +83,6 @@ def _no_primary(max_staleness, selection):
 
     # Secondary we've most recently checked.
     srecent = selection.secondary_with_max_last_update_time()
-    assert srecent
 
     sds = []
 
@@ -111,7 +110,7 @@ def _no_primary(max_staleness, selection):
 
 def select(max_staleness, selection):
     """Apply max_staleness, in seconds, to a Selection."""
-    if not max_staleness:
+    if max_staleness == -1:
         return selection
 
     if selection.primary:

@@ -62,22 +62,22 @@ def _validate_tag_sets(tag_sets):
     return tag_sets
 
 
+# Distinct from the validator in common.py for URI option "maxStalenessSeconds".
 def _validate_max_staleness(max_staleness):
     """Validate max_staleness."""
-    if max_staleness is None:
-        return 0.0
+    if max_staleness != -1:
+        errmsg = "max_staleness must be an integer or float"
+        try:
+            max_staleness = float(max_staleness)
+        except ValueError:
+            raise ValueError(errmsg)
+        except TypeError:
+            raise TypeError(errmsg)
 
-    errmsg = "max_staleness must be an integer or float"
-    try:
-        max_staleness = float(max_staleness)
-    except ValueError:
-        raise ValueError(errmsg)
-    except TypeError:
-        raise TypeError(errmsg)
-
-    if not 0 < max_staleness < 1e9:
-        raise ValueError(
-            "max_staleness must be greater than 0 and less than one billion")
+        if not 0 < max_staleness < 1e9:
+            raise ValueError(
+                "max_staleness must be greater than 0"
+                " and less than one billion")
 
     return max_staleness
 
@@ -88,7 +88,7 @@ class _ServerMode(object):
 
     __slots__ = ("__mongos_mode", "__mode", "__tag_sets", "__max_staleness")
 
-    def __init__(self, mode, tag_sets=None, max_staleness=None):
+    def __init__(self, mode, tag_sets=None, max_staleness=-1):
         self.__mongos_mode = _MONGOS_MODES[mode]
         self.__mode = mode
         self.__tag_sets = _validate_tag_sets(tag_sets)
@@ -107,7 +107,7 @@ class _ServerMode(object):
         doc = {'mode': self.__mongos_mode}
         if self.__tag_sets not in (None, [{}]):
             doc['tags'] = self.__tag_sets
-        if self.__max_staleness:
+        if self.__max_staleness != -1:
             doc['maxStalenessSeconds'] = self.__max_staleness
         return doc
 
@@ -136,9 +136,7 @@ class _ServerMode(object):
     def max_staleness(self):
         """The maximum estimated length of time (in seconds) a replica set
         secondary can fall behind the primary in replication before it will
-        no longer be selected for operations."""
-        if not self.__max_staleness:
-            return None
+        no longer be selected for operations, or -1 for no maximum."""
         return self.__max_staleness
 
     @property
@@ -152,11 +150,11 @@ class _ServerMode(object):
         `min_wire_version`, or the driver raises
         :exc:`~pymongo.errors.ConfigurationError`.
         """
-        return 5 if self.__max_staleness else 0
+        return 0 if self.__max_staleness == -1 else 5
 
     def __repr__(self):
         return "%s(tag_sets=%r, max_staleness=%r)" % (
-            self.name, self.__tag_sets, self.max_staleness)
+            self.name, self.__tag_sets, self.__max_staleness)
 
     def __eq__(self, other):
         if isinstance(other, _ServerMode):
@@ -182,7 +180,7 @@ class _ServerMode(object):
         self.__mode = value['mode']
         self.__mongos_mode = _MONGOS_MODES[self.__mode]
         self.__tag_sets = _validate_tag_sets(value['tag_sets'])
-        self.__max_staleness = value['max_staleness']
+        self.__max_staleness = _validate_max_staleness(value['max_staleness'])
 
 
 class Primary(_ServerMode):
@@ -227,9 +225,10 @@ class PrimaryPreferred(_ServerMode):
       - `max_staleness`: (integer or float, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
+        Default -1, meaning no maximum.
     """
 
-    def __init__(self, tag_sets=None, max_staleness=None):
+    def __init__(self, tag_sets=None, max_staleness=-1):
         super(PrimaryPreferred, self).__init__(_PRIMARY_PREFERRED,
                                                tag_sets,
                                                max_staleness)
@@ -260,9 +259,10 @@ class Secondary(_ServerMode):
       - `max_staleness`: (integer or float, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
+        Default -1, meaning no maximum.
     """
 
-    def __init__(self, tag_sets=None, max_staleness=None):
+    def __init__(self, tag_sets=None, max_staleness=-1):
         super(Secondary, self).__init__(_SECONDARY, tag_sets, max_staleness)
 
     def __call__(self, selection):
@@ -288,9 +288,10 @@ class SecondaryPreferred(_ServerMode):
       - `max_staleness`: (integer or float, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
+        Default -1, meaning no maximum.
     """
 
-    def __init__(self, tag_sets=None, max_staleness=None):
+    def __init__(self, tag_sets=None, max_staleness=-1):
         super(SecondaryPreferred, self).__init__(_SECONDARY_PREFERRED,
                                                  tag_sets,
                                                  max_staleness)
@@ -323,9 +324,10 @@ class Nearest(_ServerMode):
       - `max_staleness`: (integer or float, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
+        Default -1, meaning no maximum.
     """
 
-    def __init__(self, tag_sets=None, max_staleness=None):
+    def __init__(self, tag_sets=None, max_staleness=-1):
         super(Nearest, self).__init__(_NEAREST, tag_sets, max_staleness)
 
     def __call__(self, selection):
@@ -340,12 +342,12 @@ _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
                          Secondary, SecondaryPreferred, Nearest)
 
 
-def make_read_preference(mode, tag_sets, max_staleness=None):
+def make_read_preference(mode, tag_sets, max_staleness=-1):
     if mode == _PRIMARY:
         if tag_sets not in (None, [{}]):
             raise ConfigurationError("Read preference primary "
                                      "cannot be combined with tags")
-        if max_staleness:
+        if max_staleness != -1:
             raise ConfigurationError("Read preference primary cannot be "
                                      "combined with maxStalenessSeconds")
         return Primary()
