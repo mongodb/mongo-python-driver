@@ -38,6 +38,8 @@ class ServerDescription(object):
       - `ismaster`: Optional IsMaster instance
       - `round_trip_time`: Optional float
       - `error`: Optional, the last error attempting to connect to the server
+      - `from_handshake`: Optional, whether this is from expanding a connection
+        pool, rather than from background monitoring.
     """
 
     __slots__ = (
@@ -45,14 +47,16 @@ class ServerDescription(object):
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
-        '_set_version', '_election_id', '_last_write_date', '_last_update_time')
+        '_set_version', '_election_id', '_last_write_date', '_last_update_time',
+        '_from_handshake')
 
     def __init__(
             self,
             address,
             ismaster=None,
             round_trip_time=None,
-            error=None):
+            error=None,
+            from_handshake=False):
         self._address = address
         if not ismaster:
             ismaster = IsMaster({})
@@ -75,6 +79,7 @@ class ServerDescription(object):
         self._me = ismaster.me
         self._last_update_time = _time()
         self._error = error
+        self._from_handshake = from_handshake  # For tests.
 
         if ismaster.last_write_date:
             # Convert from datetime to seconds.

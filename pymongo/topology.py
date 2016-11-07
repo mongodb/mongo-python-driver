@@ -28,13 +28,13 @@ else:
 
 from pymongo import common
 from pymongo import periodic_executor
-from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
 from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
+from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       arbiter_server_selector,
                                       secondary_server_selector,
@@ -237,7 +237,10 @@ class Topology(object):
                                   address)
 
     def on_change(self, server_description):
-        """Process a new ServerDescription after an ismaster call completes."""
+        """Process a new ServerDescription after an ismaster call completes.
+
+        Returns False if the server was removed from the topology.
+        """
         # We do no I/O holding the lock.
         with self._lock:
             # Any monitored server was definitely in the topology description
@@ -266,6 +269,9 @@ class Topology(object):
 
                 # Wake waiters in select_servers().
                 self._condition.notify_all()
+                return self._description.has_server(server_description.address)
+            else:
+                return False
 
     def get_server_by_address(self, address):
         """Get a Server or None.
@@ -337,9 +343,13 @@ class Topology(object):
 
     def update_pool(self):
         # Remove any stale sockets and add new sockets if pool is too small.
+        # Avoid locking around network I/O, or deadlocking when a new connection
+        # opens and calls Topology.on_change() with the ismaster reply.
         with self._lock:
-            for server in self._servers.values():
-                server._pool.remove_stale_sockets()
+            pools = [server._pool for server in self._servers.values()]
+
+        for pool in pools:
+            pool.remove_stale_sockets()
 
     def close(self):
         """Clear pools and terminate monitors. Topology reopens on demand."""
@@ -448,22 +458,36 @@ class Topology(object):
                 self._servers.pop(address)
 
     def _create_pool_for_server(self, address):
-        return self._settings.pool_class(address, self._settings.pool_options)
+        # Server Discovery And Monitoring Spec: When a client calls ismaster
+        # to handshake a new connection for application operations, use the
+        # ismaster reply to update the topology.
+        ref = weakref.proxy(self)
+
+        def handshake_callback(address, ismaster, round_trip_time):
+            sd = ServerDescription(address, ismaster, round_trip_time,
+                                   from_handshake=True)
+
+            try:
+                # Return False if server was removed from topology.
+                return ref.on_change(sd)
+            except ReferenceError:
+                return True
+
+        server_pool_options = self._settings.pool_options.with_options(
+            handshake_callback=handshake_callback)
+
+        return self._settings.pool_class(address, server_pool_options)
 
     def _create_pool_for_monitor(self, address):
-        options = self._settings.pool_options
-
         # According to the Server Discovery And Monitoring Spec, monitors use
         # connect_timeout for both connect_timeout and socket_timeout. The
         # pool only has one socket so maxPoolSize and so on aren't needed.
-        monitor_pool_options = PoolOptions(
-            connect_timeout=options.connect_timeout,
-            socket_timeout=options.connect_timeout,
-            ssl_context=options.ssl_context,
-            ssl_match_hostname=options.ssl_match_hostname,
+        opts = self._settings.pool_options
+        monitor_pool_options = opts.with_options(
+            socket_timeout=opts.connect_timeout,
             socket_keepalive=True,
-            event_listeners=options.event_listeners,
-            appname=options.appname)
+            max_pool_size=None,
+            min_pool_size=None)
 
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)

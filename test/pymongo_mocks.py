@@ -58,6 +58,10 @@ class MockPool(Pool):
             sock_info.mock_port = self.mock_port
             yield sock_info
 
+    def _handshake_callback(self, ismaster, round_trip_time):
+        # Don't mock how PyMongo updates topology from ismaster reply.
+        return True
+
 
 class MockMonitor(Monitor):
     def __init__(

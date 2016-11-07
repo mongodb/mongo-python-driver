@@ -217,14 +217,15 @@ class PoolOptions(object):
                  '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
-                 '__event_listeners', '__appname', '__metadata')
+                 '__event_listeners', '__appname', '__metadata',
+                 '__handshake_callback')
 
     def __init__(self, max_pool_size=100, min_pool_size=0,
                  max_idle_time_ms=None, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=False,
-                 event_listeners=None, appname=None):
+                 event_listeners=None, appname=None, handshake_callback=None):
 
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -241,6 +242,27 @@ class PoolOptions(object):
         self.__metadata = _METADATA.copy()
         if appname:
             self.__metadata['application'] = {'name': appname}
+
+        self.__handshake_callback = handshake_callback
+
+    def with_options(self, **kwargs):
+        options = {
+            'max_pool_size': self.max_pool_size,
+            'min_pool_size': self.min_pool_size,
+            'max_idle_time_ms': self.max_idle_time_ms,
+            'connect_timeout': self.connect_timeout,
+            'socket_timeout': self.socket_timeout,
+            'wait_queue_timeout': self.wait_queue_timeout,
+            'wait_queue_multiple': self.wait_queue_multiple,
+            'ssl_context': self.ssl_context,
+            'ssl_match_hostname': self.ssl_match_hostname,
+            'socket_keepalive': self.socket_keepalive,
+            'event_listeners': self.event_listeners,
+            'appname': self.appname,
+            'handshake_callback': self.handshake_callback}
+
+        options.update(kwargs)
+        return PoolOptions(**options)
 
     @property
     def max_pool_size(self):
@@ -334,6 +356,11 @@ class PoolOptions(object):
         """A dict of metadata about the application, driver, os, and platform.
         """
         return self.__metadata.copy()
+
+    @property
+    def handshake_callback(self):
+        """Receives an ismaster reply and updates the topology."""
+        return self.__handshake_callback
 
 
 class SocketInfo(object):
@@ -746,6 +773,8 @@ class Pool:
                     ('ismaster', 1),
                     ('client', self.opts.metadata)
                 ])
+
+                start = _time()
                 ismaster = IsMaster(
                     command(sock,
                             'admin',
@@ -754,6 +783,9 @@ class Pool:
                             False,
                             ReadPreference.PRIMARY,
                             DEFAULT_CODEC_OPTIONS))
+
+                # Can raise ConnectionFailure.
+                self._handshake_callback(ismaster, _time() - start)
             else:
                 ismaster = None
             return SocketInfo(sock, self, ismaster, self.address)
@@ -761,6 +793,10 @@ class Pool:
             if sock is not None:
                 sock.close()
             _raise_connection_failure(self.address, error)
+        except:
+            if sock is not None:
+                sock.close()
+            raise
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
@@ -888,6 +924,14 @@ class Pool:
             return sock_info
         else:
             return self.connect()
+
+    def _handshake_callback(self, ismaster, round_trip_time):
+        callback = self.opts.handshake_callback
+        if callback:
+            kept = callback(self.address, ismaster, round_trip_time)
+            if not kept:
+                _raise_connection_failure(
+                    self.address, "server removed from topology")
 
     def _raise_wait_queue_timeout(self):
         raise ConnectionFailure(
