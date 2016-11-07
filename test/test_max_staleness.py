@@ -16,6 +16,7 @@
 
 import datetime
 import os
+import time
 import sys
 
 sys.path[0:0] = [""]
@@ -26,10 +27,12 @@ from pymongo.common import clean_node, HEARTBEAT_FREQUENCY
 from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo.ismaster import IsMaster
 from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import writable_server_selector
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology
-from test import unittest
 
+from test import client_context, unittest
+from test.utils import rs_or_single_client
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -110,7 +113,9 @@ def make_server_description(server, hosts):
     elif server_type == "Mongos":
         ismaster_response['msg'] = 'isdbgrid'
 
-    ismaster_response['lastWriteDate'] = make_last_write_date(server)
+    ismaster_response['lastWrite'] = {
+        'lastWriteDate': make_last_write_date(server)
+    }
 
     for field in 'maxWireVersion', 'tags', 'idleWritePeriodMillis':
         if field in server:
@@ -235,6 +240,27 @@ class TestMaxStaleness(unittest.TestCase):
                              "maxStalenessSeconds=1")
         self.assertEqual(1, client.read_preference.max_staleness)
 
+    @client_context.require_version_min(3, 3, 6)  # SERVER-8858
+    def test_last_write_date(self):
+        # From max-staleness-tests.rst, "Parse lastWriteDate".
+        client = rs_or_single_client(heartbeatFrequencyMS=500)
+        client.pymongo_test.test.insert_one({})
+        time.sleep(1)
+        server = client._topology.select_server(writable_server_selector)
+        last_write = server.description.last_write_date
+        self.assertTrue(last_write)
+        client.pymongo_test.test.insert_one({})
+        time.sleep(1)
+        server = client._topology.select_server(writable_server_selector)
+        self.assertGreater(server.description.last_write_date, last_write)
+        self.assertLess(server.description.last_write_date, last_write + 10)
+
+    @client_context.require_version_max(3, 3)
+    def test_last_write_date_absent(self):
+        # From max-staleness-tests.rst, "Absent lastWriteDate".
+        client = rs_or_single_client()
+        sd = client._topology.select_server(writable_server_selector)
+        self.assertIsNone(sd.description.last_write_date)
 
 if __name__ == "__main__":
     unittest.main()

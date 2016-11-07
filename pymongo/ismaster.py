@@ -143,7 +143,7 @@ class IsMaster(object):
 
     @property
     def last_write_date(self):
-        return self._doc.get('lastWriteDate')
+        return self._doc.get('lastWrite', {}).get('lastWriteDate')
 
     @property
     def idle_write_period(self):
