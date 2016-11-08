@@ -250,6 +250,10 @@ class TestMaxStaleness(unittest.TestCase):
         self.assertEqual(1, client.read_preference.max_staleness)
 
         client = MongoClient("mongodb://a/?readPreference=secondary&"
+                             "maxStalenessSeconds=1.5")
+        self.assertAlmostEqual(1.5, client.read_preference.max_staleness)
+
+        client = MongoClient("mongodb://a/?readPreference=secondary&"
                              "maxStalenessSeconds=-1")
         self.assertEqual(-1, client.read_preference.max_staleness)
 
