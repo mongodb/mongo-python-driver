@@ -1,5 +1,5 @@
 {
-    "heartbeatFrequencyMS": 1000,
+    "heartbeatFrequencyMS": 1100,
     "in_latency_window": [
         {
             "address": "a:27017",
@@ -15,7 +15,7 @@
         }
     ],
     "read_preference": {
-        "maxStalenessSeconds": 11,
+        "maxStalenessSeconds": 11.1,
         "mode": "Nearest"
     },
     "suitable_servers": [
