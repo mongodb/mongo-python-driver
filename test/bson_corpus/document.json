@@ -31,10 +31,6 @@
         {
             "description": "Invalid subdocument: bad string length in field",
             "bson": "1C00000003666F6F001200000002626172000500000062617A000000"
-        },
-        {
-            "description": "Subdocument too short, but terminator looks like EOO",
-            "bson": "140000000361000b0000001062000a0000000000"
         }
     ]
 }

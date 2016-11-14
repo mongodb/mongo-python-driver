@@ -22,6 +22,12 @@
             "description": "regex with slash",
             "bson": "110000000B610061622F636400696D0000",
             "extjson": "{\"a\" : {\"$regex\" : \"ab/cd\", \"$options\" : \"im\"}}"
+        },
+        {
+            "description": "flags not alphabetized",
+            "bson": "100000000B6100616263006D69780000",
+            "canonical_bson": "100000000B610061626300696D780000",
+            "extjson": "{\"a\" : {\"$regex\" : \"abc\", \"$options\" : \"imx\"}}"
         }
     ],
     "decodeErrors": [
