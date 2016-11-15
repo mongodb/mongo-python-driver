@@ -257,6 +257,10 @@ class ClientContext(object):
     def pair(self):
         return "%s:%d" % (self.host, self.port)
 
+    @property
+    def has_secondaries(self):
+        return bool(len(self.client.secondaries))
+
     def _check_user_provided(self):
         try:
             self.client.admin.authenticate(db_user, db_pwd)
@@ -366,6 +370,15 @@ class ClientContext(object):
         return self._require(self.is_rs,
                              "Not connected to a replica set",
                              func=func)
+
+    def require_secondaries_count(self, count):
+        """Run a test only if the client is connected to a replica set that has
+        `count` secondaries.
+        """
+        sec_count = len(self.client.secondaries)
+        return self._require(sec_count >= count,
+                             "Need %d secondaries, %d available"
+                             % (count, sec_count))
 
     def require_no_replica_set(self, func):
         """Run a test if the client is *not* connected to a replica set."""

@@ -77,6 +77,11 @@ class TestReadPreferenceObjects(unittest.TestCase):
 
 class TestReadPreferencesBase(TestReplicaSetClientBase):
 
+    @classmethod
+    @client_context.require_secondaries_count(1)
+    def setUpClass(cls):
+        super(TestReadPreferencesBase, cls).setUpClass()
+
     def setUp(self):
         super(TestReadPreferencesBase, self).setUp()
         # Insert some data so we can use cursors in read_from_which_host
@@ -158,6 +163,7 @@ class TestSingleSlaveOk(TestReadPreferencesBase):
 
 
 class TestReadPreferences(TestReadPreferencesBase):
+
     def test_mode_validation(self):
         for mode in (ReadPreference.PRIMARY,
                      ReadPreference.PRIMARY_PREFERRED,
@@ -322,6 +328,7 @@ _PREF_MAP = [
 class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
     @classmethod
+    @client_context.require_secondaries_count(1)
     def setUpClass(cls):
         super(TestCommandAndReadPreference, cls).setUpClass()
         cls.c = ReadPrefTester(

@@ -1524,7 +1524,7 @@ class TestCollection(IntegrationTest):
     @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor(self):
         db = self.db
-        if client_context.replica_set_name:
+        if client_context.has_secondaries:
             # Test that getMore messages are sent to the right server.
             db = self.client.get_database(
                 db.name,
@@ -1580,7 +1580,7 @@ class TestCollection(IntegrationTest):
     def test_parallel_scan(self):
         db = self.db
         db.drop_collection("test")
-        if client_context.replica_set_name:
+        if client_context.has_secondaries:
             # Test that getMore messages are sent to the right server.
             db = self.client.get_database(
                 db.name,

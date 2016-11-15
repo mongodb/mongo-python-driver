@@ -386,6 +386,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, failed.failure.get("ok"))
 
     @client_context.require_replica_set
+    @client_context.require_secondaries_count(1)
     def test_not_master_error(self):
         address = next(iter(client_context.client.secondaries))
         client = single_client(*address, event_listeners=[self.listener])

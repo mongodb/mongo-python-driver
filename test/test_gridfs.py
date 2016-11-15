@@ -459,6 +459,11 @@ class TestGridfs(IntegrationTest):
 
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
 
+    @classmethod
+    @client_context.require_secondaries_count(1)
+    def setUpClass(cls):
+        super(TestGridfsReplicaSet, cls).setUpClass()
+
     def test_gridfs_replica_set(self):
         rsc = rs_client(
             w=self.w,

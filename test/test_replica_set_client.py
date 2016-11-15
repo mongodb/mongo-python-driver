@@ -160,6 +160,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         self.assertEqual(c.max_bson_size, 16777216)
         c.close()
 
+    @client_context.require_secondaries_count(1)
     def test_auto_reconnect_exception_when_read_preference_is_secondary(self):
         c = MongoClient(
             client_context.pair,
@@ -180,6 +181,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         finally:
             socket.socket.sendall = old_sendall
 
+    @client_context.require_secondaries_count(1)
     def test_timeout_does_not_mark_member_down(self):
         # If a query times out, the client shouldn't mark the member "down".
 
@@ -285,9 +287,11 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
     def test_kill_cursor_explicit_primary(self):
         self._test_kill_cursor_explicit(ReadPreference.PRIMARY)
 
+    @client_context.require_secondaries_count(1)
     def test_kill_cursor_explicit_secondary(self):
         self._test_kill_cursor_explicit(ReadPreference.SECONDARY)
 
+    @client_context.require_secondaries_count(1)
     def test_not_master_error(self):
         secondary_address = one(self.secondaries)
         direct_client = single_client(*secondary_address)
