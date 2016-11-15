@@ -49,9 +49,9 @@ def check_result(expected_result, result):
         return list(result) == expected_result
 
     elif isinstance(result, _WriteResult):
-        for r in expected_result:
-            prop = camel_to_snake(r)
-            return getattr(result, prop) == expected_result[r]
+        for res in expected_result:
+            prop = camel_to_snake(res)
+            return getattr(result, prop) == expected_result[res]
     else:
         if not expected_result:
             return result is None
@@ -59,54 +59,52 @@ def check_result(expected_result, result):
             return result == expected_result
 
 
-def create_test(scenario_def, test, ignore_result):
+def create_test(scenario_def, test):
     def run_scenario(self):
-            # Load data.
-            assert scenario_def['data'], "tests must have non-empty data"
-            self.db.test.drop()
-            self.db.test.insert_many(scenario_def['data'])
+        # Load data.
+        assert scenario_def['data'], "tests must have non-empty data"
+        self.db.test.drop()
+        self.db.test.insert_many(scenario_def['data'])
 
-            # Convert command from CamelCase to pymongo.collection method.
-            operation = camel_to_snake(test['operation']['name'])
-            cmd = getattr(self.db.test, operation)
+        # Convert command from CamelCase to pymongo.collection method.
+        operation = camel_to_snake(test['operation']['name'])
+        cmd = getattr(self.db.test, operation)
 
-            # Convert arguments to snake_case and handle special cases.
-            arguments = test['operation']['arguments']
-            for arg_name in list(arguments):
-                c2s = camel_to_snake(arg_name)
-                # PyMongo accepts sort as list of tuples. Asserting len=1
-                # because ordering dicts from JSON in 2.6 is unwieldy.
-                if arg_name == "sort":
-                    sort_dict = arguments[arg_name]
-                    assert len(sort_dict) == 1, 'test can only have 1 sort key'
-                    arguments[arg_name] = list(iteritems(sort_dict))
-                # Named "key" instead not fieldName.
-                if arg_name == "fieldName":
-                    arguments["key"] = arguments.pop(arg_name)
-                # Aggregate uses "batchSize", while find uses batch_size.
-                elif arg_name == "batchSize" and operation == "aggregate":
-                    continue
-                # Requires boolean returnDocument.
-                elif arg_name == "returnDocument":
-                    arguments[c2s] = arguments[arg_name] == "After"
-                else:
-                    arguments[c2s] = arguments.pop(arg_name)
+        # Convert arguments to snake_case and handle special cases.
+        arguments = test['operation']['arguments']
+        for arg_name in list(arguments):
+            c2s = camel_to_snake(arg_name)
+            # PyMongo accepts sort as list of tuples. Asserting len=1
+            # because ordering dicts from JSON in 2.6 is unwieldy.
+            if arg_name == "sort":
+                sort_dict = arguments[arg_name]
+                assert len(sort_dict) == 1, 'test can only have 1 sort key'
+                arguments[arg_name] = list(iteritems(sort_dict))
+            # Named "key" instead not fieldName.
+            if arg_name == "fieldName":
+                arguments["key"] = arguments.pop(arg_name)
+            # Aggregate uses "batchSize", while find uses batch_size.
+            elif arg_name == "batchSize" and operation == "aggregate":
+                continue
+            # Requires boolean returnDocument.
+            elif arg_name == "returnDocument":
+                arguments[c2s] = arguments[arg_name] == "After"
+            else:
+                arguments[c2s] = arguments.pop(arg_name)
 
-            result = cmd(**arguments)
+        result = cmd(**arguments)
 
-            # Assert result is expected, excluding the $out aggregation test.
-            if not ignore_result:
-                check_result(test['outcome'].get('result'), result)
-
-            # Assert final state is expected.
-            expected_c = test['outcome'].get('collection')
-            if expected_c is not None:
-                expected_name = expected_c.get('name')
-                if expected_name is not None:
-                    db_coll = self.db[expected_name]
-                else:
-                    db_coll = self.db.test
-                self.assertEqual(list(db_coll.find()), expected_c['data'])
+        # Assert final state is expected.
+        expected_c = test['outcome'].get('collection')
+        if expected_c is not None:
+            expected_name = expected_c.get('name')
+            if expected_name is not None:
+                db_coll = self.db[expected_name]
+            else:
+                db_coll = self.db.test
+            self.assertEqual(list(db_coll.find()), expected_c['data'])
+        else:
+            check_result(test['outcome'].get('result'), result)
 
     return run_scenario
 
@@ -121,19 +119,25 @@ def create_tests():
 
             test_type = os.path.splitext(filename)[0]
 
+            min_ver, max_ver = None, None
+            if 'minServerVersion' in scenario_def:
+                min_ver = tuple(
+                    int(elt) for
+                    elt in scenario_def['minServerVersion'].split('.'))
+            if 'maxServerVersion' in scenario_def:
+                max_ver = tuple(
+                    int(elt) for
+                    elt in scenario_def['maxServerVersion'].split('.'))
+
             # Construct test from scenario.
             for test in scenario_def['tests']:
-                desc = test['description']
-                # Special case tests that require specific versions
-                if ("without an id specified" in desc or
-                        "FindOneAndReplace" in desc and "with upsert" in desc):
-                    new_test = client_context.require_version_min(2, 6, 0)(
-                        create_test(scenario_def, test, False))
-                elif desc == "Aggregate with $out":
-                    new_test = client_context.require_version_min(2, 6, 0)(
-                        create_test(scenario_def, test, True))
-                else:
-                    new_test = create_test(scenario_def, test, False)
+                new_test = create_test(scenario_def, test)
+                if min_ver is not None:
+                    new_test = client_context.require_version_min(*min_ver)(
+                        new_test)
+                if max_ver is not None:
+                    new_test = client_context.require_version_max(*max_ver)(
+                        new_test)
 
                 test_name = 'test_%s_%s_%s' % (
                     dirname,

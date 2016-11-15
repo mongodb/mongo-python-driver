@@ -13,95 +13,21 @@
             "x": 33
         }
     ],
+    "minServerVersion": "2.6",
     "tests": [
         {
-            "description": "FindOneAndDelete when many documents match",
-            "operation": {
-                "arguments": {
-                    "filter": {
-                        "_id": {
-                            "$gt": 1
-                        }
-                    },
-                    "projection": {
-                        "_id": 0,
-                        "x": 1
-                    },
-                    "sort": {
-                        "x": 1
-                    }
-                },
-                "name": "findOneAndDelete"
-            },
-            "outcome": {
-                "collection": {
-                    "data": [
-                        {
-                            "_id": 1,
-                            "x": 11
-                        },
-                        {
-                            "_id": 3,
-                            "x": 33
-                        }
-                    ]
-                },
-                "result": {
-                    "x": 22
-                }
-            }
-        },
-        {
-            "description": "FindOneAndDelete when one document matches",
-            "operation": {
-                "arguments": {
-                    "filter": {
-                        "_id": 2
-                    },
-                    "projection": {
-                        "_id": 0,
-                        "x": 1
-                    },
-                    "sort": {
-                        "x": 1
-                    }
-                },
-                "name": "findOneAndDelete"
-            },
-            "outcome": {
-                "collection": {
-                    "data": [
-                        {
-                            "_id": 1,
-                            "x": 11
-                        },
-                        {
-                            "_id": 3,
-                            "x": 33
-                        }
-                    ]
-                },
-                "result": {
-                    "x": 22
-                }
-            }
-        },
-        {
-            "description": "FindOneAndDelete when no documents match",
+            "description": "ReplaceOne with upsert when no documents match without an id specified", 
             "operation": {
                 "arguments": {
                     "filter": {
                         "_id": 4
                     },
-                    "projection": {
-                        "_id": 0,
+                    "replacement": {
                         "x": 1
                     },
-                    "sort": {
-                        "x": 1
-                    }
+                    "upsert": true
                 },
-                "name": "findOneAndDelete"
+                "name": "replaceOne"
             },
             "outcome": {
                 "collection": {
@@ -117,10 +43,61 @@
                         {
                             "_id": 3,
                             "x": 33
+                        },
+                        {
+                            "_id": 4,
+                            "x": 1
                         }
                     ]
                 },
-                "result": null
+                "result": {
+                    "matchedCount": 0,
+                    "modifiedCount": 0,
+                    "upsertedId": 4
+                }
+            }
+        },
+        {
+            "description": "ReplaceOne with upsert when no documents match with an id specified",
+            "operation": {
+                "arguments": {
+                    "filter": {
+                        "_id": 4
+                    },
+                    "replacement": {
+                        "_id": 4,
+                        "x": 1
+                    },
+                    "upsert": true
+                },
+                "name": "replaceOne"
+            },
+            "outcome": {
+                "collection": {
+                    "data": [
+                        {
+                            "_id": 1,
+                            "x": 11
+                        },
+                        {
+                            "_id": 2,
+                            "x": 22
+                        },
+                        {
+                            "_id": 3,
+                            "x": 33
+                        },
+                        {
+                            "_id": 4,
+                            "x": 1
+                        }
+                    ]
+                },
+                "result": {
+                    "matchedCount": 0,
+                    "modifiedCount": 0,
+                    "upsertedId": 4
+                }
             }
         }
     ]

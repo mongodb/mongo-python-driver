@@ -3,19 +3,31 @@
         {
             "_id": 1,
             "x": 11
+        },
+        {
+            "_id": 2,
+            "x": "ping"
         }
     ],
+    "minServerVersion": "3.3.11",
     "tests": [
         {
-            "description": "InsertOne with a non-existing document",
+            "description": "ReplaceOne when one document matches with collation",
             "operation": {
                 "arguments": {
-                    "document": {
+                    "collation": {
+                        "locale": "en_US",
+                        "strength": 2
+                    },
+                    "filter": {
+                        "x": "PING"
+                    },
+                    "replacement": {
                         "_id": 2,
-                        "x": 22
+                        "x": "pong"
                     }
                 },
-                "name": "insertOne"
+                "name": "replaceOne"
             },
             "outcome": {
                 "collection": {
@@ -26,12 +38,13 @@
                         },
                         {
                             "_id": 2,
-                            "x": 22
+                            "x": "pong"
                         }
                     ]
                 },
                 "result": {
-                    "insertedId": 2
+                    "matchedCount": 1,
+                    "modifiedCount": 1
                 }
             }
         }
