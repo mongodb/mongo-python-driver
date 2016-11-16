@@ -29,7 +29,7 @@ from pymongo.errors import (AutoReconnect,
 
 sys.path[0:0] = [""]
 
-from pymongo.network import socket_closed
+from pymongo.network import SocketChecker
 from pymongo.pool import Pool, PoolOptions
 from test import client_context, unittest
 from test.utils import (get_pool,
@@ -236,7 +236,8 @@ class TestPooling(_TestPoolingBase):
             # Simulate a closed socket without telling the SocketInfo it's
             # closed.
             sock_info.sock.close()
-            self.assertTrue(socket_closed(sock_info.sock))
+            self.assertTrue(
+                cx_pool.socket_checker.socket_closed(sock_info.sock))
 
         with cx_pool.get_socket({}) as new_sock_info:
             self.assertEqual(0, len(cx_pool.sockets))
@@ -251,9 +252,28 @@ class TestPooling(_TestPoolingBase):
     def test_socket_closed(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((client_context.host, client_context.port))
-        self.assertFalse(socket_closed(s))
+        socket_checker = SocketChecker()
+        self.assertFalse(socket_checker.socket_closed(s))
         s.close()
-        self.assertTrue(socket_closed(s))
+        self.assertTrue(socket_checker.socket_closed(s))
+
+    def test_socket_closed_thread_safe(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((client_context.host, client_context.port))
+        socket_checker = SocketChecker()
+
+        def check_socket():
+            for _ in range(1000):
+                self.assertFalse(socket_checker.socket_closed(s))
+
+        threads = []
+        for i in range(3):
+            thread = threading.Thread(target=check_socket)
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
 
     def test_return_socket_after_reset(self):
         pool = self.create_pool()

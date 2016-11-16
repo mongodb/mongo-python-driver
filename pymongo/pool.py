@@ -45,7 +45,7 @@ from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
 from pymongo.network import (command,
                              receive_message,
-                             socket_closed)
+                             SocketChecker)
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
@@ -703,6 +703,7 @@ class Pool:
 
         self._socket_semaphore = thread_util.create_semaphore(
             self.opts.max_pool_size, max_waiters)
+        self.socket_checker = SocketChecker()
 
     def reset(self):
         with self.lock:
@@ -879,7 +880,7 @@ class Pool:
                 and (
                     0 == self._check_interval_seconds
                     or age > self._check_interval_seconds)):
-            if socket_closed(sock_info.sock):
+            if self.socket_checker.socket_closed(sock_info.sock):
                 sock_info.close()
                 error = True
 
