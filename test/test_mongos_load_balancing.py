@@ -161,8 +161,14 @@ class TestMongosLoadBalancing(MockClientTest):
             client.db.command('ismaster')
         except:
             pass
-        # No error
-        client.db.command('ismaster')
+
+        # We eventually connect to a new mongos.
+        def connect_to_new_mongos():
+            try:
+                return client.db.command('ismaster')
+            except AutoReconnect:
+                pass
+        wait_until(connect_to_new_mongos, 'connect to a new mongos')
 
     def test_load_balancing(self):
         # Although the server selection JSON tests already prove that
