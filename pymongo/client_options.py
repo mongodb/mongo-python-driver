@@ -29,9 +29,9 @@ from pymongo.write_concern import WriteConcern
 
 def _parse_credentials(username, password, database, options):
     """Parse authentication credentials."""
-    if username is None:
-        return None
     mechanism = options.get('authmechanism', 'DEFAULT')
+    if username is None and mechanism != 'MONGODB-X509':
+        return None
     source = options.get('authsource', database or 'admin')
     return _build_credentials_tuple(
         mechanism, source, username, password, options)

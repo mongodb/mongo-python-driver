@@ -14,6 +14,8 @@ Highlights include:
   - Unicode aware string comparison using :doc:`examples/collations`.
   - Support for the new :class:`~bson.decimal128.Decimal128` BSON type.
   - A new maxStalenessSeconds read preference option.
+  - A username is no longer required for the MONGODB-X509 authentication
+    mechanism when connected to MongoDB >= 3.4.
   - :meth:`~pymongo.collection.Collection.parallel_scan` supports maxTimeMS.
   - :attr:`~pymongo.write_concern.WriteConcern` is automatically
     applied by all helpers for commands that write to the database when

@@ -58,7 +58,7 @@ GSSAPIProperties = namedtuple('GSSAPIProperties',
 def _build_credentials_tuple(mech, source, user, passwd, extra):
     """Build and return a mechanism specific credentials tuple.
     """
-    user = _unicode(user)
+    user = _unicode(user) if user is not None else None
     password = passwd if passwd is None else _unicode(passwd)
     if mech == 'GSSAPI':
         properties = extra.get('authmechanismproperties', {})
@@ -71,6 +71,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
         # Source is always $external.
         return MongoCredential(mech, '$external', user, password, props)
     elif mech == 'MONGODB-X509':
+        # user can be None.
         return MongoCredential(mech, '$external', user, None, None)
     else:
         if passwd is None:
@@ -415,8 +416,13 @@ def _authenticate_x509(credentials, sock_info):
     """Authenticate using MONGODB-X509.
     """
     query = SON([('authenticate', 1),
-                 ('mechanism', 'MONGODB-X509'),
-                 ('user', credentials.username)])
+                 ('mechanism', 'MONGODB-X509')])
+    if credentials.username is not None:
+        query['user'] = credentials.username
+    elif sock_info.max_wire_version < 5:
+        raise ConfigurationError(
+            "A username is required for MONGODB-X509 authentication "
+            "when connected to MongoDB versions older than 3.4.")
     sock_info.command('$external', query)
 
 

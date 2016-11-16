@@ -518,24 +518,47 @@ class TestSSL(IntegrationTest):
 
         coll = ssl_client.pymongo_test.test
         self.assertRaises(OperationFailure, coll.count)
+
+        if client_context.version.at_least(3, 3, 12):
+            self.assertTrue(
+                ssl_client.admin.authenticate(mechanism='MONGODB-X509'))
+            # No error
+            coll.find_one()
+            # MONGODB_X509_USERNAME and None aren't the same user, so we
+            # have to log out before continuing.
+            ssl_client.admin.logout()
+        else:
+            # Should require a username
+            with self.assertRaises(ConfigurationError):
+                ssl_client.admin.authenticate(mechanism='MONGODB-X509')
+
         self.assertTrue(ssl_client.admin.authenticate(
             MONGODB_X509_USERNAME, mechanism='MONGODB-X509'))
-        coll.drop()
+        # No error
+        coll.find_one()
+
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
                    quote_plus(MONGODB_X509_USERNAME), host, port))
-        # SSL options aren't supported in the URI...
-        self.assertTrue(MongoClient(uri, ssl=True,
-                                    ssl_cert_reqs=ssl.CERT_NONE,
-                                    ssl_certfile=CLIENT_PEM))
+        client = MongoClient(uri,
+                             ssl=True,
+                             ssl_cert_reqs=ssl.CERT_NONE,
+                             ssl_certfile=CLIENT_PEM)
+        # No error
+        client.pymongo_test.test.find_one()
 
-        # Should require a username
-        uri = ('mongodb://%s:%d/?authMechanism=MONGODB-X509' % (host,
-                                                                port))
-        client_bad = MongoClient(
-            uri, ssl=True, ssl_cert_reqs="CERT_NONE", ssl_certfile=CLIENT_PEM)
-        self.assertRaises(OperationFailure,
-                          client_bad.pymongo_test.test.delete_one, {})
+        uri = 'mongodb://%s:%d/?authMechanism=MONGODB-X509' % (host, port)
+        client = MongoClient(uri,
+                             ssl=True,
+                             ssl_cert_reqs=ssl.CERT_NONE,
+                             ssl_certfile=CLIENT_PEM)
+        if client_context.version.at_least(3, 3, 12):
+            # No error
+            client.pymongo_test.test.find_one()
+        else:
+            # Should require a username
+            with self.assertRaises(ConfigurationError):
+                client.pymongo_test.test.find_one()
 
         # Auth should fail if username and certificate do not match
         uri = ('mongodb://%s@%s:%d/?authMechanism='

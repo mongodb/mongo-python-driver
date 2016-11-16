@@ -966,7 +966,7 @@ class Database(common.BaseObject):
                 return
             raise
 
-    def authenticate(self, name, password=None,
+    def authenticate(self, name=None, password=None,
                      source=None, mechanism='DEFAULT', **kwargs):
         """Authenticate to use this database.
 
@@ -992,7 +992,9 @@ class Database(common.BaseObject):
             distinct client instances.
 
         :Parameters:
-          - `name`: the name of the user to authenticate.
+          - `name`: the name of the user to authenticate. Optional when
+            `mechanism` is MONGODB-X509 and the MongoDB server version is
+            >= 3.4.
           - `password` (optional): the password of the user to authenticate.
             Not used with GSSAPI or MONGODB-X509 authentication.
           - `source` (optional): the database to authenticate on. If not
@@ -1017,7 +1019,7 @@ class Database(common.BaseObject):
 
         .. mongodoc:: authenticate
         """
-        if not isinstance(name, string_type):
+        if name is not None and not isinstance(name, string_type):
             raise TypeError("name must be an "
                             "instance of %s" % (string_type.__name__,))
         if password is not None and not isinstance(password, string_type):
