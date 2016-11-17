@@ -280,6 +280,7 @@ class TestMaxStaleness(unittest.TestCase):
             self.assertIn("must be greater than 0", str(ctx[0]))
 
     @client_context.require_version_min(3, 3, 6)  # SERVER-8858
+    @client_context.require_replica_set
     def test_last_write_date(self):
         # From max-staleness-tests.rst, "Parse lastWriteDate".
         client = rs_or_single_client(heartbeatFrequencyMS=500)
