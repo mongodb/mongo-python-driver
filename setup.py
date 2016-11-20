@@ -316,7 +316,7 @@ else:
         extras_require['tls'].append("certifi")
 
 extra_opts = {
-    "packages": ["bson", "pymongo", "gridfs"]
+    "packages": ["bson", "pymongo", "gridfs"],
 }
 if sys.version_info[:2] == (2, 6):
     extra_opts['tests_require'] = "unittest2"
@@ -346,7 +346,7 @@ setup(
     maintainer_email="bernie@mongodb.com",
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
-    install_requires=[],
+    install_requires=["six"],
     license="Apache License, Version 2.0",
     classifiers=[
         "Development Status :: 5 - Production/Stable",

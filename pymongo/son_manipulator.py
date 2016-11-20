@@ -19,8 +19,16 @@ installed on a database by calling
 `pymongo.database.Database.add_son_manipulator`."""
 
 import collections
+from abc import ABCMeta, abstractmethod as abstract_method
+from codecs import decode
+from collections import Mapping as MappingType
+from hashlib import md5
+from sys import getdefaultencoding as get_default_encoding
+
+from six import binary_type, iteritems, text_type, with_metaclass
 
 from bson.dbref import DBRef
+from bson.errors import InvalidDocument
 from bson.objectid import ObjectId
 from bson.son import SON
 
@@ -175,6 +183,207 @@ class AutoReference(SONManipulator):
             return object
 
         return transform_dict(SON(son))
+
+
+class BaseKeyEscaper(with_metaclass(ABCMeta, SONManipulator)):
+    """
+    Escapes illegal keys, ensuring that the original values can be
+        recovered later.
+
+    Note that the escaped keys will be virtually impossible to query
+        for, but that's infinitely preferable to MongoDB refusing to
+        store the document in the first place.
+    """
+    magic_prefix = '__escaped__'
+    """Used to identify escaped keys."""
+
+    def __init__(self):
+        super(BaseKeyEscaper, self).__init__()
+
+        ##
+        # These attributes are only used when escaping keys.
+        ##
+
+        self.current_path = None
+        """
+        Keeps track of where we are in the document so that we can
+            populate the `__escapedKeys` dict correctly.
+        """
+
+        self.escaped_keys = None
+        """
+        Keeps track of any keys that we've escaped so that a
+            KeyEscaper can later unescape them.
+        """
+
+    @abstract_method
+    def escape_key(self, key):
+        """Escapes a single key."""
+        raise NotImplementedError(
+            'Not implemented in {cls}.'.format(cls=type(self).__name__),
+        )
+
+    def will_copy(self):
+        """Does this manipulator create a copy of the SON?"""
+        #
+        # `transform_incoming` does create a copy, but
+        #   `transform_outgoing` does not.  Well, we have to pick one!
+        #
+        # We'll go with `False` because it is not safe to assume that
+        #   this manipulator will create a copy of the SON.
+        #
+        return False
+
+    def transform_incoming(self, son, collection):
+        """
+        Transforms a document before it is stored to the database.
+        """
+        self.current_path = []
+        self.escaped_keys = {}
+
+        transformed = self._escape(son)
+        transformed[self.magic_prefix] = self.escaped_keys
+        return transformed
+
+    def transform_outgoing(self, son, collection):
+        """
+        Transforms a document after it is retrieved from the database.
+
+        Note that this method will directly modify the document!
+        """
+        escaped_keys = son.pop(self.magic_prefix, None)
+        return self._unescape(son, escaped_keys) if escaped_keys else son
+
+    def _escape(self, son):
+        """
+        Recursively crawls the document, transforming keys as it goes.
+        """
+        copy = SON()
+
+        for (key, value) in iteritems(son):
+            # Python 2 compatibility:  Binary strings are allowed, so long as
+            #   they can be converted to unicode strings.
+            if isinstance(key, binary_type):
+                # For consistent behavior, ensure same default encoding for
+                #   Py2k and Py3k.
+                encoding = get_default_encoding()
+                if encoding == 'ascii':
+                    encoding = 'utf-8'
+
+                try:
+                    key = decode(key, encoding)
+                except UnicodeDecodeError:
+                    pass
+
+            if not isinstance(key, text_type):
+                raise InvalidDocument(
+                    'documents must have only string keys, '
+                    'key was {path}[{actual!r}]'.format(
+                        actual=key,
+                        path='.'.join(self.current_path),
+                    ),
+                )
+
+            if (
+                        key.startswith('$')
+                    or  key.startswith(self.magic_prefix)
+                    or  ('.' in key)
+                    or  ('\x00' in key)
+            ):
+                key = self._escape_key(key)
+
+            if isinstance(value, MappingType):
+                self.current_path.append(key)
+                value = self._escape(value)
+                self.current_path.pop()
+
+            copy[key] = value
+
+        return copy
+
+    def _escape_key(self, key):
+        """
+        Transforms an illegal key into something that MongoDB will
+            approve of.
+        """
+        new_key = self.escape_key(key)
+
+        # Insert the escaped key into the correct location in
+        #   self.escaped_keys so that it can be unescaped later.
+        crawler = self.escaped_keys
+        for x in self.current_path:
+            crawler.setdefault(x, [None, {}])
+            crawler = crawler[x][1]
+
+        crawler[new_key] = [key, {}]
+
+        return new_key
+
+    def _unescape(self, son, escaped_keys):
+        """
+        Recursively crawls the document, restoring keys as it goes.
+        """
+        copy = SON()
+
+        for key, value in iteritems(son):
+            if key in escaped_keys:
+                r_key, r_children = escaped_keys[key]
+
+                if r_key is None:
+                    r_key = key
+
+                if r_children:
+                    copy[r_key] = self._unescape(son[key], r_children)
+                else:
+                    copy[r_key] = son[key]
+            else:
+                copy[key] = value
+
+        return copy
+
+
+class NonDeterministicKeyEscaper(BaseKeyEscaper):
+    """
+    A KeyEscaper that uses an internal counter to generate escaped keys.
+
+    This method is a bit faster and tends to yield smaller escaped keys
+      than DeterministicKeyEscaper, but the result is more difficult to
+      query.
+    """
+
+    def __init__(self):
+        super(NonDeterministicKeyEscaper, self).__init__()
+
+        self.escaped_key_count = None
+        """Used to ensure each escaped key is unique."""
+
+    def transform_incoming(self, son, collection):
+        self.escaped_key_count = 0
+
+        return \
+            super(NonDeterministicKeyEscaper, self) \
+                .transform_incoming(son, collection)
+
+    def escape_key(self, key):
+        escaped = self.magic_prefix + text_type(self.escaped_key_count)
+        self.escaped_key_count += 1
+        return escaped
+
+
+class DeterministicKeyEscaper(BaseKeyEscaper):
+    """
+    A KeyEscaper that uses hashes to escape unsafe keys.
+
+    This method is a little slower and tends to yield larger escaped keys
+      than NonDeterministicKeyEscaper, but you can execute queries
+      against the escaped keys more easily.
+    """
+
+    def escape_key(self, key):
+        # Note:  In Python 3, hashlib requires a byte string.
+        return self.magic_prefix + md5(key.encode('utf-8')).hexdigest()
+
+
 
 # TODO make a generic translator for custom types. Take encode, decode,
 # should_encode and should_decode functions and just encode and decode where
