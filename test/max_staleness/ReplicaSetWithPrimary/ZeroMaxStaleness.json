@@ -1,8 +1,7 @@
 {
     "error": true,
-    "heartbeatFrequencyMS": 500,
     "read_preference": {
-        "maxStalenessSeconds": 10.4,
+        "maxStalenessSeconds": 0,
         "mode": "Nearest"
     },
     "topology_description": {
@@ -13,11 +12,11 @@
                 "lastUpdateTime": 0,
                 "lastWrite": {
                     "lastWriteDate": {
-                        "$numberLong": "1"
+                        "$numberLong": "2"
                     }
                 },
                 "maxWireVersion": 5,
-                "type": "RSSecondary"
+                "type": "RSPrimary"
             },
             {
                 "address": "b:27017",
@@ -28,10 +27,10 @@
                         "$numberLong": "1"
                     }
                 },
-                "maxWireVersion": 5,
+                "maxWireVersion": 4,
                 "type": "RSSecondary"
             }
         ],
-        "type": "ReplicaSetNoPrimary"
+        "type": "ReplicaSetWithPrimary"
     }
 }

@@ -16,6 +16,7 @@
 
 from collections import Mapping
 
+from bson.py3compat import integer_types
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import (member_with_tags_server_selector,
@@ -62,22 +63,22 @@ def _validate_tag_sets(tag_sets):
     return tag_sets
 
 
-# Distinct from the validator in common.py for URI option "maxStalenessSeconds".
+def _invalid_max_staleness_msg(max_staleness):
+    return ("maxStalenessSeconds must be a positive integer, not %s" %
+            max_staleness)
+
+
+# Some duplication with common.py to avoid import cycle.
 def _validate_max_staleness(max_staleness):
     """Validate max_staleness."""
-    if max_staleness != -1:
-        errmsg = "max_staleness must be an integer or float"
-        try:
-            max_staleness = float(max_staleness)
-        except ValueError:
-            raise ValueError(errmsg)
-        except TypeError:
-            raise TypeError(errmsg)
+    if max_staleness == -1:
+        return -1
 
-        if not 0 < max_staleness < 1e9:
-            raise ValueError(
-                "max_staleness must be greater than 0"
-                " and less than one billion")
+    if not isinstance(max_staleness, integer_types):
+        raise TypeError(_invalid_max_staleness_msg(max_staleness))
+
+    if max_staleness <= 0:
+        raise ValueError(_invalid_max_staleness_msg(max_staleness))
 
     return max_staleness
 
@@ -222,10 +223,11 @@ class PrimaryPreferred(_ServerMode):
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` to use if the primary is not
         available.
-      - `max_staleness`: (integer or float, in seconds) The maximum estimated
+      - `max_staleness`: (integer, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
-        Default -1, meaning no maximum.
+        Default -1, meaning no maximum. If it is set, it must be at least
+        90 seconds.
     """
 
     def __init__(self, tag_sets=None, max_staleness=-1):
@@ -256,10 +258,11 @@ class Secondary(_ServerMode):
 
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: (integer or float, in seconds) The maximum estimated
+      - `max_staleness`: (integer, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
-        Default -1, meaning no maximum.
+        Default -1, meaning no maximum. If it is set, it must be at least
+        90 seconds.
     """
 
     def __init__(self, tag_sets=None, max_staleness=-1):
@@ -285,10 +288,11 @@ class SecondaryPreferred(_ServerMode):
 
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: (integer or float, in seconds) The maximum estimated
+      - `max_staleness`: (integer, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
-        Default -1, meaning no maximum.
+        Default -1, meaning no maximum. If it is set, it must be at least
+        90 seconds.
     """
 
     def __init__(self, tag_sets=None, max_staleness=-1):
@@ -321,10 +325,11 @@ class Nearest(_ServerMode):
 
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` for this read preference.
-      - `max_staleness`: (integer or float, in seconds) The maximum estimated
+      - `max_staleness`: (integer, in seconds) The maximum estimated
         length of time a replica set secondary can fall behind the primary in
         replication before it will no longer be selected for operations.
-        Default -1, meaning no maximum.
+        Default -1, meaning no maximum. If it is set, it must be at least
+        90 seconds.
     """
 
     def __init__(self, tag_sets=None, max_staleness=-1):

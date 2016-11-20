@@ -183,7 +183,7 @@ def create_test(scenario_def):
             tag_sets = pref_def.get('tag_sets')
 
             if scenario_def.get('error'):
-                with self.assertRaises(ConfigurationError):
+                with self.assertRaises((ConfigurationError, ValueError)):
                     # Error can be raised when making Read Pref or selecting.
                     pref = read_preferences.make_read_preference(
                         mode, tag_sets=tag_sets, max_staleness=max_staleness)

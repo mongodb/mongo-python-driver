@@ -60,8 +60,8 @@ Highlights include:
 
 Since 3.4rc0, the max staleness option has been renamed from ``maxStalenessMS``
 to ``maxStalenessSeconds``, its smallest value has changed from twice
-``heartbeatFrequencyMS`` to ``heartbeatFrequencyMS`` plus 10 seconds, and its
-default value has changed from ``None`` or 0 to -1.
+``heartbeatFrequencyMS`` to 90 seconds, and its default value has changed from
+``None`` or 0 to -1.
 
 .. _PEP 446: https://www.python.org/dev/peps/pep-0446/
 

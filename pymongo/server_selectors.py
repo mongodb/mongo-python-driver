@@ -56,12 +56,6 @@ class Selection(object):
             return max(secondaries.server_descriptions,
                        key=lambda sd: sd.last_write_date)
 
-    def secondary_with_max_last_update_time(self):
-        secondaries = secondary_server_selector(self)
-        if secondaries.server_descriptions:
-            return max(secondaries.server_descriptions,
-                       key=lambda sd: sd.last_update_time)
-
     @property
     def primary_selection(self):
         primaries = [self.primary] if self.primary else []

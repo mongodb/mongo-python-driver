@@ -45,8 +45,7 @@ class ServerDescription(object):
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
-        '_set_version', '_election_id', '_last_write_date', '_last_update_time',
-        '_idle_write_period')
+        '_set_version', '_election_id', '_last_write_date', '_last_update_time')
 
     def __init__(
             self,
@@ -75,7 +74,6 @@ class ServerDescription(object):
         self._round_trip_time = round_trip_time
         self._me = ismaster.me
         self._last_update_time = _time()
-        self._idle_write_period = ismaster.idle_write_period
         self._error = error
 
         if ismaster.last_write_date:
@@ -165,10 +163,6 @@ class ServerDescription(object):
     @property
     def last_update_time(self):
         return self._last_update_time
-
-    @property
-    def idle_write_period(self):
-        return self._idle_write_period
 
     @property
     def round_trip_time(self):

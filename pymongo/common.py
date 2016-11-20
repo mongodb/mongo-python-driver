@@ -40,11 +40,6 @@ MIN_WIRE_VERSION = 0
 MAX_WIRE_VERSION = 0
 MAX_WRITE_BATCH_SIZE = 1000
 
-# Server Discovery and Monitoring Spec: The isMaster response of a replica set
-# member running MongoDB 3.4 or later may contain idleWritePeriodMillis. Set the
-# ServerDescription's idleWritePeriod to this value if present, else 10 seconds.
-IDLE_WRITE_PERIOD = 10
-
 # What this version of PyMongo supports.
 MIN_SUPPORTED_WIRE_VERSION = 0
 MAX_SUPPORTED_WIRE_VERSION = 5
@@ -296,7 +291,7 @@ def validate_max_staleness(option, value):
     if value == -1 or value == "-1":
         # Default: No maximum staleness.
         return -1
-    return validate_positive_float(option, value)
+    return validate_positive_integer(option, value)
 
 
 def validate_read_preference(dummy, value):

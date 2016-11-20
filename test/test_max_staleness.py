@@ -57,6 +57,13 @@ class TestMaxStaleness(unittest.TestCase):
             MongoClient("mongodb://a/?readPreference=primary&"
                         "maxStalenessSeconds=120")
 
+        client = MongoClient("mongodb://host/?maxStalenessSeconds=-1")
+        self.assertEqual(-1, client.read_preference.max_staleness)
+
+        client = MongoClient("mongodb://host/?readPreference=primary&"
+                             "maxStalenessSeconds=-1")
+        self.assertEqual(-1, client.read_preference.max_staleness)
+
         client = MongoClient("mongodb://host/?readPreference=secondary&"
                              "maxStalenessSeconds=120")
         self.assertEqual(120, client.read_preference.max_staleness)
@@ -64,10 +71,6 @@ class TestMaxStaleness(unittest.TestCase):
         client = MongoClient("mongodb://a/?readPreference=secondary&"
                              "maxStalenessSeconds=1")
         self.assertEqual(1, client.read_preference.max_staleness)
-
-        client = MongoClient("mongodb://a/?readPreference=secondary&"
-                             "maxStalenessSeconds=1.5")
-        self.assertAlmostEqual(1.5, client.read_preference.max_staleness)
 
         client = MongoClient("mongodb://a/?readPreference=secondary&"
                              "maxStalenessSeconds=-1")
@@ -80,20 +83,38 @@ class TestMaxStaleness(unittest.TestCase):
             # Prohibit None.
             MongoClient(maxStalenessSeconds=None, readPreference="nearest")
 
+    def test_max_staleness_float(self):
+        with self.assertRaises(TypeError) as ctx:
+            rs_or_single_client(maxStalenessSeconds=1.5,
+                                readPreference="nearest")
+
+        self.assertIn("must be an integer", str(ctx.exception))
+
+        with warnings.catch_warnings(record=True) as ctx:
+            warnings.simplefilter("always")
+            client = MongoClient("mongodb://host/?maxStalenessSeconds=1.5"
+                                 "&readPreference=nearest")
+
+            # Option was ignored.
+            self.assertEqual(-1, client.read_preference.max_staleness)
+            self.assertIn("must be an integer", str(ctx[0]))
+
     def test_max_staleness_zero(self):
         # Zero is too small.
         with self.assertRaises(ValueError) as ctx:
             rs_or_single_client(maxStalenessSeconds=0,
                                 readPreference="nearest")
 
-        self.assertIn("must be greater than 0", str(ctx.exception))
+        self.assertIn("must be a positive integer", str(ctx.exception))
 
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter("always")
-            MongoClient("mongodb://host/?maxStalenessSeconds=0"
-                        "&readPreference=nearest")
+            client = MongoClient("mongodb://host/?maxStalenessSeconds=0"
+                                 "&readPreference=nearest")
 
-            self.assertIn("must be greater than 0", str(ctx[0]))
+            # Option was ignored.
+            self.assertEqual(-1, client.read_preference.max_staleness)
+            self.assertIn("must be a positive integer", str(ctx[0]))
 
     @client_context.require_version_min(3, 3, 6)  # SERVER-8858
     @client_context.require_replica_set

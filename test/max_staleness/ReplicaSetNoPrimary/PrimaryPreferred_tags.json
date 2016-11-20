@@ -7,7 +7,7 @@
             "lastUpdateTime": 0,
             "lastWrite": {
                 "lastWriteDate": {
-                    "$numberLong": "25002"
+                    "$numberLong": "125002"
                 }
             },
             "maxWireVersion": 5,
@@ -18,7 +18,7 @@
         }
     ],
     "read_preference": {
-        "maxStalenessSeconds": 50,
+        "maxStalenessSeconds": 150,
         "mode": "PrimaryPreferred",
         "tag_sets": [
             {
@@ -36,7 +36,7 @@
             "lastUpdateTime": 0,
             "lastWrite": {
                 "lastWriteDate": {
-                    "$numberLong": "25002"
+                    "$numberLong": "125002"
                 }
             },
             "maxWireVersion": 5,
@@ -54,7 +54,7 @@
                 "lastUpdateTime": 0,
                 "lastWrite": {
                     "lastWriteDate": {
-                        "$numberLong": "25002"
+                        "$numberLong": "125002"
                     }
                 },
                 "maxWireVersion": 5,

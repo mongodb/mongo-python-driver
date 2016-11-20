@@ -144,10 +144,3 @@ class IsMaster(object):
     @property
     def last_write_date(self):
         return self._doc.get('lastWrite', {}).get('lastWriteDate')
-
-    @property
-    def idle_write_period(self):
-        if 'idleWritePeriodMillis' in self._doc:
-            return self._doc['idleWritePeriodMillis'] / 1000.0
-        else:
-            return common.IDLE_WRITE_PERIOD

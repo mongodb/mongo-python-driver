@@ -252,10 +252,12 @@ class MongoClient(common.BaseObject):
           - `readPreferenceTags`: Specifies a tag set as a comma-separated list
             of colon-separated key-value pairs. For example ``dc:ny,rack:1``.
             Defaults to ``None``.
-          - `maxStalenessSeconds`: (integer or float) The maximum estimated
+          - `maxStalenessSeconds`: (integer) The maximum estimated
             length of time a replica set secondary can fall behind the primary
             in replication before it will no longer be selected for operations.
-            Defaults to ``-1``, meaning no maximum.
+            Defaults to ``-1``, meaning no maximum. If maxStalenessSeconds
+            is set, it must be a positive integer greater than or equal to
+            90 seconds.
 
           | **SSL configuration:**
 

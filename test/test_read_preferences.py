@@ -526,10 +526,14 @@ class TestMongosAndReadPreference(unittest.TestCase):
              'tags': [{'dc': 'sf'}],
              'maxStalenessSeconds': 30})
 
-        pref = Nearest(max_staleness=1.5)
-        self.assertEqual(
-            pref.document,
-            {'mode': 'nearest', 'maxStalenessSeconds': 1.5})
+        with self.assertRaises(TypeError):
+            Nearest(max_staleness=1.5)  # Float is prohibited.
+
+        with self.assertRaises(ValueError):
+            Nearest(max_staleness=0)
+
+        with self.assertRaises(ValueError):
+            Nearest(max_staleness=-2)
 
     def test_maybe_add_read_preference(self):
 
