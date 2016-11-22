@@ -62,93 +62,91 @@ class TestAllScenarios(unittest.TestCase):
         self.listener.results.clear()
 
 
-def create_test(scenario_def):
+def format_actual_results(results):
+    started = results['started']
+    succeeded = results['succeeded']
+    failed = results['failed']
+    msg = "\nStarted:   %r" % (started[0].command if len(started) else None,)
+    msg += "\nSucceeded: %r" % (succeeded[0].reply if len(succeeded) else None,)
+    msg += "\nFailed:    %r" % (failed[0].failure if len(failed) else None,)
+    return msg
+
+
+def create_test(scenario_def, test):
     def run_scenario(self):
-        self.assertTrue(scenario_def['tests'], "tests cannot be empty")
         dbname = scenario_def['database_name']
         collname = scenario_def['collection_name']
 
-        for test in scenario_def['tests']:
-            ver = client_context.version[:2]
-            if "ignore_if_server_version_greater_than" in test:
-                version = test["ignore_if_server_version_greater_than"]
-                if ver > tuple(map(int, version.split("."))):
-                    continue
-            if "ignore_if_server_version_less_than" in test:
-                version = test["ignore_if_server_version_less_than"]
-                if ver < tuple(map(int, version.split("."))):
-                    continue
-            if "ignore_if_topology_type" in test:
-                types = set(test["ignore_if_topology_type"])
-                if "sharded" in types and client_context.is_mongos:
-                    continue
+        coll = self.client[dbname][collname]
+        coll.drop()
+        coll.insert_many(scenario_def['data'])
+        self.listener.results.clear()
+        name = camel_to_snake(test['operation']['name'])
+        # Don't send $readPreference to mongos before 2.4.
+        if (client_context.version.at_least(2, 4, 0)
+                and 'read_preference' in test['operation']):
+            mode = read_pref_mode_from_name(
+                test['operation']['read_preference']['mode'])
+            coll = coll.with_options(
+                read_preference=make_read_preference(mode, None))
 
-            coll = self.client[dbname][collname]
-            coll.drop()
-            coll.insert_many(scenario_def['data'])
-            self.listener.results.clear()
-            name = camel_to_snake(test['operation']['name'])
-            # Don't send $readPreference to mongos before 2.4.
-            if (client_context.version.at_least(2, 4, 0)
-                    and 'read_preference' in test['operation']):
-                mode = read_pref_mode_from_name(
-                    test['operation']['read_preference']['mode'])
-                coll = coll.with_options(
-                    read_preference=make_read_preference(mode, None))
+        test_args = test['operation']['arguments']
+        if 'writeConcern' in test_args:
+            concern = test_args.pop('writeConcern')
+            coll = coll.with_options(
+                write_concern=WriteConcern(**concern))
+        args = {}
+        for arg in test_args:
+            args[camel_to_snake(arg)] = test_args[arg]
 
-            test_args = test['operation']['arguments']
-            if 'writeConcern' in test_args:
-                concern = test_args.pop('writeConcern')
-                coll = coll.with_options(
-                    write_concern=WriteConcern(**concern))
-            args = {}
-            for arg in test_args:
-                args[camel_to_snake(arg)] = test_args[arg]
+        if name == 'bulk_write':
+            bulk_args = []
+            for request in args['requests']:
+                opname = next(iter(request))
+                klass = opname[0:1].upper() + opname[1:]
+                arg = getattr(pymongo, klass)(**request[opname])
+                bulk_args.append(arg)
+            try:
+                coll.bulk_write(bulk_args, args.get('ordered', True))
+            except OperationFailure:
+                pass
+        elif name == 'find':
+            if 'sort' in args:
+                args['sort'] = list(args['sort'].items())
+            try:
+                # Iterate the cursor.
+                tuple(coll.find(**args))
+            except OperationFailure:
+                pass
+            # Wait for the killCursors thread to run if necessary.
+            if 'limit' in args and client_context.version[:2] < (3, 1):
+                self.client._kill_cursors_executor.wake()
+                started = self.listener.results['started']
+                wait_until(
+                    lambda: started[-1].command_name == 'killCursors',
+                    "publish a start event for killCursors.")
+        else:
+            try:
+                getattr(coll, name)(**args)
+            except OperationFailure:
+                pass
 
-            if name == 'bulk_write':
-                bulk_args = []
-                for request in args['requests']:
-                    opname = next(iter(request))
-                    klass = opname[0:1].upper() + opname[1:]
-                    arg = getattr(pymongo, klass)(**request[opname])
-                    bulk_args.append(arg)
-                try:
-                    coll.bulk_write(bulk_args, args.get('ordered', True))
-                except OperationFailure:
-                    pass
-            elif name == 'find':
-                if 'sort' in args:
-                    args['sort'] = list(args['sort'].items())
-                try:
-                    # Iterate the cursor.
-                    tuple(coll.find(**args))
-                except OperationFailure:
-                    pass
-                # Wait for the killCursors thread to run if necessary.
-                if 'limit' in args and client_context.version[:2] < (3, 1):
-                    self.client._kill_cursors_executor.wake()
-                    started = self.listener.results['started']
-                    wait_until(
-                        lambda: started[-1].command_name == 'killCursors',
-                        "publish a start event for killCursors.")
-            else:
-                try:
-                    getattr(coll, name)(**args)
-                except OperationFailure:
-                    pass
-
-            for expectation in test['expectations']:
-                event_type = next(iter(expectation))
-                if event_type == "command_started_event":
-                    event = self.listener.results['started'].pop(0)
+        res = self.listener.results
+        for expectation in test['expectations']:
+            event_type = next(iter(expectation))
+            if event_type == "command_started_event":
+                event = res['started'][0] if len(res['started']) else None
+                if event is not None:
                     # The tests substitute 42 for any number other than 0.
                     if (event.command_name == 'getMore'
                             and event.command['getMore']):
                         event.command['getMore'] = 42
                     elif event.command_name == 'killCursors':
                         event.command['cursors'] = [42]
-                elif event_type == "command_succeeded_event":
-                    event = self.listener.results['succeeded'].pop(0)
+            elif event_type == "command_succeeded_event":
+                event = (
+                    res['succeeded'].pop(0) if len(res['succeeded']) else None)
+                if event is not None:
                     reply = event.reply
                     # The tests substitute 42 for any number other than 0,
                     # and "" for any error message.
@@ -165,32 +163,69 @@ def create_test(scenario_def):
                         if 'cursorsKilled' in reply:
                             reply.pop('cursorsKilled')
                         reply['cursorsUnknown'] = [42]
-                elif event_type == "command_failed_event":
-                    event = self.listener.results['failed'].pop(0)
+                    # Found succeeded event. Pop related started event.
+                    res['started'].pop(0)
+            elif event_type == "command_failed_event":
+                event = res['failed'].pop(0) if len(res['failed']) else None
+                if event is not None:
+                    # Found failed event. Pop related started event.
+                    res['started'].pop(0)
+            else:
+                self.fail("Unknown event type")
+
+            if event is None:
+                event_name = event_type.split('_')[1]
+                self.fail(
+                    "Expected %s event for %s command. Actual "
+                    "results:%s" % (
+                        event_name,
+                        expectation[event_type]['command_name'],
+                        format_actual_results(res)))
+
+            for attr, expected in expectation[event_type].items():
+                actual = getattr(event, attr)
+                if isinstance(expected, dict):
+                    for key, val in expected.items():
+                        self.assertEqual(val, actual[key])
                 else:
-                    self.fail("Unknown event type")
-                for attr, expected in expectation[event_type].items():
-                    actual = getattr(event, attr)
-                    if isinstance(expected, dict):
-                        for key, val in expected.items():
-                            self.assertEqual(val, actual[key])
-                    else:
-                        self.assertEqual(actual, expected)
+                    self.assertEqual(actual, expected)
 
     return run_scenario
 
 
 def create_tests():
     for dirpath, _, filenames in os.walk(_TEST_PATH):
+        dirname = os.path.split(dirpath)[-1]
         for filename in filenames:
             with open(os.path.join(dirpath, filename)) as scenario_stream:
                 scenario_def = json.load(
                     scenario_stream, object_hook=object_hook)
+            assert bool(scenario_def.get('tests')), "tests cannot be empty"
             # Construct test from scenario.
-            new_test = create_test(scenario_def)
-            test_name = 'test_%s' % (os.path.splitext(filename)[0],)
-            new_test.__name__ = test_name
-            setattr(TestAllScenarios, new_test.__name__, new_test)
+            for test in scenario_def['tests']:
+                new_test = create_test(scenario_def, test)
+                if "ignore_if_server_version_greater_than" in test:
+                    version = test["ignore_if_server_version_greater_than"]
+                    ver = tuple(int(elt) for elt in version.split('.'))
+                    new_test = client_context.require_version_max(*ver)(
+                        new_test)
+                if "ignore_if_server_version_less_than" in test:
+                    version = test["ignore_if_server_version_less_than"]
+                    ver = tuple(int(elt) for elt in version.split('.'))
+                    new_test = client_context.require_version_min(*ver)(
+                        new_test)
+                if "ignore_if_topology_type" in test:
+                    types = set(test["ignore_if_topology_type"])
+                    if "sharded" in types:
+                        new_test = client_context.require_no_mongos(None)(
+                            new_test)
+
+                test_name = 'test_%s.%s.%s' % (
+                    dirname,
+                    os.path.splitext(filename)[0],
+                    str(test['description'].replace(" ", "_")))
+                new_test.__name__ = test_name
+                setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
 create_tests()
