@@ -22,7 +22,6 @@ import threading
 
 from bson.py3compat import imap
 from pymongo import common
-from pymongo import monitoring
 from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import Topology
@@ -38,7 +37,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.settings import TopologySettings
 from test import client_knobs, unittest
-from test.utils import rs_or_single_client, wait_until
+from test.utils import wait_until
 
 
 class MockSocketInfo(object):
@@ -297,23 +296,6 @@ class TestSingleServerTopology(TopologyTest):
             tries += 1
             if tries > 10:
                 self.fail("Didn't ever calculate correct new average")
-
-    def test_update_from_handshake(self):
-        class ServerHandshakes(monitoring.ServerListener, list):
-            def opened(self, e):
-                pass
-
-            def description_changed(self, e):
-                if e.new_description._from_handshake:
-                    self.append(e)
-
-            def closed(self, e):
-                pass
-
-        handshakes = ServerHandshakes()
-        client = rs_or_single_client(event_listeners=[handshakes])
-        client.admin.command('ping')
-        wait_until(lambda: handshakes, 'record handshakes')
 
 
 class TestMultiServerTopology(TopologyTest):
