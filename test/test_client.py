@@ -617,53 +617,6 @@ class TestClient(IntegrationTest):
             connected, MongoClient("mongodb://%2Ftmp%2Fnon-existent.sock",
                                    serverSelectionTimeoutMS=100))
 
-    def test_fork(self):
-        # Test using a client before and after a fork.
-        if sys.platform == "win32":
-            raise SkipTest("Can't fork on windows")
-        try:
-            import multiprocessing
-        except ImportError:
-            raise SkipTest("No multiprocessing module")
-
-        db = self.client.pymongo_test
-
-        # Ensure a socket is opened before the fork.
-        db.test.find_one()
-
-        def f(pipe):
-            try:
-                kill_cursors_executor = self.client._kill_cursors_executor
-                servers = self.client._topology.select_servers(
-                    any_server_selector)
-
-                # In child, only the thread that called fork() is alive.
-                # The first operation should revive the rest.
-                db.test.find_one()
-                wait_until(
-                    lambda: all(s._monitor._executor._thread.is_alive()
-                                for s in servers),
-                    "restart monitor threads")
-
-                wait_until(lambda: kill_cursors_executor._thread.is_alive(),
-                           "restart kill-cursors executor")
-            except:
-                traceback.print_exc()  # Aid debugging.
-                pipe.send(True)
-
-        parent_pipe, child_pipe = multiprocessing.Pipe()
-        p = multiprocessing.Process(target=f, args=(child_pipe,))
-        p.start()
-        p.join(10)
-        child_pipe.close()
-
-        # Pipe will only have data if the child process failed.
-        try:
-            parent_pipe.recv()
-            self.fail()
-        except EOFError:
-            pass
-
     def test_document_class(self):
         c = self.client
         db = c.pymongo_test
