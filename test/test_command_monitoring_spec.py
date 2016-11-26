@@ -122,9 +122,13 @@ def create_test(scenario_def, test):
             if 'limit' in args and client_context.version[:2] < (3, 1):
                 self.client._kill_cursors_executor.wake()
                 started = self.listener.results['started']
+                succeeded = self.listener.results['succeeded']
                 wait_until(
                     lambda: started[-1].command_name == 'killCursors',
                     "publish a start event for killCursors.")
+                wait_until(
+                    lambda: succeeded[-1].command_name == 'killCursors',
+                    "publish a succeeded event for killCursors.")
         else:
             try:
                 getattr(coll, name)(**args)
