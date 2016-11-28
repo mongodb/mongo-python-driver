@@ -435,11 +435,19 @@ Yes. See the configuration guide for :ref:`pymongo-and-mod_wsgi`.
 
 How can I use something like Python's :mod:`json` module to encode my documents to JSON?
 ----------------------------------------------------------------------------------------
-The :mod:`json` module won't work out of the box with all documents
-from PyMongo as PyMongo supports some special types (like
-:class:`~bson.objectid.ObjectId` and :class:`~bson.dbref.DBRef`)
-that are not supported in JSON. We've added some utilities for working
-with JSON in the :mod:`~bson.json_util` module.
+:mod:`~bson.json_util` is PyMongo's built in, flexible tool for using
+Python's :mod:`json` module with BSON documents and `MongoDB Extended JSON
+<https://docs.mongodb.com/manual/reference/mongodb-extended-json/>`_. The
+:mod:`json` module won't work out of the box with all documents from PyMongo
+as PyMongo supports some special types (like :class:`~bson.objectid.ObjectId`
+and :class:`~bson.dbref.DBRef`) that are not supported in JSON.
+
+`python-bsonjs <https://github.com/mongodb-labs/python-bsonjs>`_ is a fast
+BSON to MongoDB Extended JSON converter built on top of
+`libbson <https://github.com/mongodb/libbson>`_. `python-bsonjs` does not
+depend on PyMongo and can offer a nice performance improvement over
+:mod:`~bson.json_util`. `python-bsonjs` works best with PyMongo when using
+:class:`~bson.raw_bson.RawBSONDocument`.
 
 Why do I get OverflowError decoding dates stored by another language's driver?
 ------------------------------------------------------------------------------
