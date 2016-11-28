@@ -26,6 +26,17 @@ needs. Even if you eventually come to the decision to use one of these
 layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
+PyMODM
+   `PyMODM <https://github.com/mongodb/pymodm>`_ is an ORM-like framework on top
+   of PyMongo. PyMODM is maintained by engineers at MongoDB, Inc. and is quick
+   to adopt new MongoDB features. PyMODM is a "core" ODM, meaning that it
+   provides simple, extensible functionality that can be leveraged by other
+   libraries to target platforms like Django. At the same time, PyMODM is
+   powerful enough to be used for developing applications on its own.  Complete
+   documentation is available on `readthedocs
+   <https://pymodm.readthedocs.io/en/stable/>`_ in addition to a `Gitter channel
+   <https://gitter.im/mongodb/pymodm>`_ for discussing the project.
+
 Humongolus
    `Humongolus <https://github.com/entone/Humongolus>`_ is a lightweight ORM
    framework for Python and MongoDB. The name comes from the combination of
