@@ -27,7 +27,7 @@ layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
 PyMODM
-   `PyMODM <https://github.com/mongodb/pymodm>`_ is an ORM-like framework on top
+   `PyMODM <https://pypi.python.org/pypi/pymodm>`_ is an ORM-like framework on top
    of PyMongo. PyMODM is maintained by engineers at MongoDB, Inc. and is quick
    to adopt new MongoDB features. PyMODM is a "core" ODM, meaning that it
    provides simple, extensible functionality that can be leveraged by other
