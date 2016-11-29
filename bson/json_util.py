@@ -51,7 +51,7 @@ but it will be faster as there is less recursion.
    If your application does not need the flexibility offered by
    :class:`JSONOptions` and spends a large amount of time in the `json_util`
    module, look to
-   `python-bsonjs <https://github.com/mongodb-labs/python-bsonjs>`_ for a nice
+   `python-bsonjs <https://pypi.python.org/pypi/python-bsonjs>`_ for a nice
    performance improvement. `python-bsonjs` is a fast BSON to MongoDB
    Extended JSON converter for Python built on top of
    `libbson <https://github.com/mongodb/libbson>`_. `python-bsonjs` works best

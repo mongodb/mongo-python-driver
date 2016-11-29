@@ -442,7 +442,7 @@ Python's :mod:`json` module with BSON documents and `MongoDB Extended JSON
 as PyMongo supports some special types (like :class:`~bson.objectid.ObjectId`
 and :class:`~bson.dbref.DBRef`) that are not supported in JSON.
 
-`python-bsonjs <https://github.com/mongodb-labs/python-bsonjs>`_ is a fast
+`python-bsonjs <https://pypi.python.org/pypi/python-bsonjs>`_ is a fast
 BSON to MongoDB Extended JSON converter built on top of
 `libbson <https://github.com/mongodb/libbson>`_. `python-bsonjs` does not
 depend on PyMongo and can offer a nice performance improvement over
