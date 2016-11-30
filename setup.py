@@ -66,13 +66,16 @@ class test(Command):
         ("test-module=", "m", "Discover tests in specified module"),
         ("test-suite=", "s",
          "Test suite to run (e.g. 'some_module.test_suite')"),
-        ("failfast", "f", "Stop running tests on first failure or error")
+        ("failfast", "f", "Stop running tests on first failure or error"),
+        ("xunit-output=", "x",
+         "Generate a results directory with XUnit XML format")
     ]
 
     def initialize_options(self):
         self.test_module = None
         self.test_suite = None
         self.failfast = False
+        self.xunit_output = None
 
     def finalize_options(self):
         if self.test_suite is None and self.test_module is None:
@@ -90,6 +93,9 @@ class test(Command):
                 self.distribution.install_requires)
         if self.distribution.tests_require:
             self.distribution.fetch_build_eggs(self.distribution.tests_require)
+        if self.xunit_output:
+            self.distribution.fetch_build_eggs(
+                ["unittest-xml-reporting>=1.14.0,<2.0.0a0"])
         self.run_command('egg_info')
         build_ext_cmd = self.reinitialize_command('build_ext')
         build_ext_cmd.inplace = 1
@@ -109,8 +115,13 @@ class test(Command):
         else:
             suite = unittest.defaultTestLoader.loadTestsFromName(
                 self.test_suite)
-        result = PymongoTestRunner(verbosity=2,
-                                   failfast=self.failfast).run(suite)
+        if self.xunit_output:
+            from xmlrunner import XMLTestRunner
+            runner = XMLTestRunner(verbosity=2, failfast=self.failfast,
+                                   output=self.xunit_output)
+        else:
+            runner = PymongoTestRunner(verbosity=2, failfast=self.failfast)
+        result = runner.run(suite)
         sys.exit(not result.wasSuccessful())
 
 
@@ -319,7 +330,9 @@ extra_opts = {
     "packages": ["bson", "pymongo", "gridfs"]
 }
 if sys.version_info[:2] == (2, 6):
-    extra_opts['tests_require'] = "unittest2"
+    # We require unittest at most 0.8.0 because it's maximum version that
+    # can be installed properly on Solaris in Evergreen.
+    extra_opts['tests_require'] = "unittest2<=0.8.0"
 
 if "--no_ext" in sys.argv:
     sys.argv.remove("--no_ext")

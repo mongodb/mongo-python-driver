@@ -259,7 +259,7 @@ functions:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file: ${PROJECT_DIRECTORY}/mongodb-logs.tar.gz
+        local_file: src/mongodb-logs.tar.gz
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
         bucket: mciuploads
         permissions: public-read
@@ -281,7 +281,7 @@ functions:
     - command: archive.targz_pack
       params:
         target: "working-dir.tar.gz"
-        source_dir: ${PROJECT_DIRECTORY}/
+        source_dir: src/
         include:
           - "./**"
     - command: s3.put
@@ -312,9 +312,9 @@ functions:
         display_name: "drivers-dir.tar.gz"
 
   "upload test results":
-    - command: attach.results
+    - command: attach.xunit_results
       params:
-        file_location: "${PROJECT_DIRECTORY}/test-results.json"
+        file: "src/xunit-results/TEST-*.xml"
     - command: attach.results
       params:
         file_location: "${DRIVERS_TOOLS}/results.json"

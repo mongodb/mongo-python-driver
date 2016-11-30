@@ -18,29 +18,27 @@ OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 
 
 if [ "$AUTH" != "noauth" ]; then
-  export MONGOC_TEST_USER="bob"
-  export MONGOC_TEST_PASSWORD="pwd123"
+  export DB_USER="bob"
+  export DB_PASSWORD="pwd123"
 fi
 
 if [ "$SSL" != "nossl" ]; then
-   export MONGOC_TEST_SSL_PEM_FILE="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
-   export MONGOC_TEST_SSL_CA_FILE="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
+   export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
+   export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
 fi
 
-echo "Running $AUTH tests over $SSL, connecting to $MONGODB_URI"
+PYTHON=$(command -v python || command -v python3)
 
-# Run the tests, and store the results in a Evergreen compatible JSON results file
-case "$OS" in
-   cygwin*)
-      make test
-      ;;
+if [ "$PYTHON" == "" ]; then
+    echo "Cannot test without python or python3 installed!"
+    exit 1
+fi
 
-   sunos)
-      gmake -o test-libmongoc test TEST_ARGS="--no-fork -d -F test-results.json"
-      ;;
+echo "Running $AUTH tests over $SSL with python $PYTHON, connecting to $MONGODB_URI"
+$PYTHON -c 'import sys; print(sys.version)'
 
-   *)
-      make -o test-libmongoc test TEST_ARGS="--no-fork -d -F test-results.json"
-      ;;
-esac
+# Run the tests, and store the results in a Evergreen compatible JSON results
+# file test-results.json
 
+$PYTHON setup.py clean
+$PYTHON setup.py test --xunit-output=xunit-results
