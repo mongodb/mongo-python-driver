@@ -37,8 +37,8 @@ fi
 echo "Running $AUTH tests over $SSL with python $PYTHON, connecting to $MONGODB_URI"
 $PYTHON -c 'import sys; print(sys.version)'
 
-# Run the tests, and store the results in a Evergreen compatible JSON results
-# file test-results.json
+# Run the tests, and store the results in Evergreen compatible XUnit XML
+# files in the xunit-results/ directory.
 
 $PYTHON setup.py clean
 $PYTHON setup.py test --xunit-output=xunit-results
