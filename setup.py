@@ -33,12 +33,11 @@ except ImportError:
 
 version = "3.4.0"
 
-f = open("README.rst")
 try:
-    try:
-        readme_content = f.read()
-    except:
-        readme_content = ""
+    f = open("README.rst")
+    readme_content = f.read()
+except IOError:
+    readme_content = ""
 finally:
     f.close()
 
