@@ -27,6 +27,7 @@ from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
 from bson.errors import InvalidBSON
 from bson.py3compat import text_type, b
+from bson.son import SON
 
 from test import unittest
 
@@ -45,16 +46,8 @@ _DEPRECATED_BSON_TYPES = {
 }
 
 
-class TestBSONCorpus(unittest.TestCase):
-    pass
-
-
 # Need to set tz_aware=True in order to use "strict" dates in extended JSON.
-codec_options = CodecOptions(tz_aware=True)
-json_options = json_util.JSONOptions(
-        strict_number_long=True,
-        strict_uuid=True,
-        datetime_representation=json_util.DatetimeRepresentation.NUMBERLONG)
+codec_options = CodecOptions(tz_aware=True, document_class=SON)
 # We normally encode UUID as binary subtype 0x03,
 # but we'll need to encode to subtype 0x04 for one of the tests.
 codec_options_uuid_04 = codec_options._replace(uuid_representation=STANDARD)
@@ -65,16 +58,44 @@ json_options_uuid_04 = json_util.JSONOptions(
         uuid_representation=STANDARD)
 json_options_iso8601 = json_util.JSONOptions(
     datetime_representation=json_util.DatetimeRepresentation.ISO8601)
-to_extjson = functools.partial(json_util.dumps, json_options=json_options)
+to_extjson = functools.partial(
+    json_util.dumps, json_options=json_util.CANONICAL_JSON_OPTIONS)
 to_extjson_uuid_04 = functools.partial(json_util.dumps,
                                        json_options=json_options_uuid_04)
 to_extjson_iso8601 = functools.partial(json_util.dumps,
                                        json_options=json_options_iso8601)
-decode_extjson = functools.partial(json_util.loads, json_options=json_options)
+decode_extjson = functools.partial(
+    json_util.loads,
+    json_options=json_util.JSONOptions(canonical_extended_json=True,
+                                       document_class=SON))
 to_bson_uuid_04 = functools.partial(BSON.encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(BSON.encode, codec_options=codec_options)
+if json_util._HAS_OBJECT_PAIRS_HOOK:
+    loads = functools.partial(json.loads, object_pairs_hook=SON)
+else:
+    loads = json.loads
 decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
+
+
+class TestBSONCorpus(unittest.TestCase):
+    def test_all_bson_types(self):
+        # Because we can't round-trip all BSON types (see _DEPRECATED_BSON_TYPES
+        # above for how these are handled), make this test a special case,
+        # instead of mangling our create_test function below.
+        with open(os.path.join(_TEST_PATH, 'multi-type.json')) as spec_file:
+            case_spec = json.load(spec_file)
+        for valid_case in case_spec.get('valid', []):
+            B = binascii.unhexlify(b(valid_case['bson']))
+            E = valid_case['extjson']
+
+            # Make sure that the BSON and JSON decode to the same document.
+            self.assertEqual(
+                json_util.loads(
+                    E, json_options=json_util.CANONICAL_JSON_OPTIONS),
+                BSON(B).decode(
+                    codec_options=CodecOptions(
+                        document_class=SON, tz_aware=True)))
 
 
 def create_test(case_spec):
@@ -136,16 +157,16 @@ def create_test(case_spec):
                     continue
 
                 # Normalize extended json by parsing it with the built-in
-                # json library. This accounts for discrepancies in spacing,
-                # key ordering, etc.
-                normalized_cE = json.loads(cE)
+                # json library. This accounts for discrepancies in spacing.
+                # Key ordering is preserved when possible.
+                normalized_cE = loads(cE)
 
                 self.assertEqual(
-                    json.loads(encode_extjson(decode_bson(B))),
+                    loads(encode_extjson(decode_bson(B))),
                     normalized_cE)
 
                 self.assertEqual(
-                    json.loads(encode_extjson(decode_extjson(E))),
+                    loads(encode_extjson(decode_extjson(E))),
                     normalized_cE)
 
                 if bson_type == '0x09':
@@ -153,35 +174,42 @@ def create_test(case_spec):
                     # $numberLong to match canonical_extjson if the datetime
                     # is pre-epoch.
                     if decode_extjson(E)[test_key] >= EPOCH_AWARE:
-                        normalized_date = json.loads(E)
+                        normalized_date = loads(E)
                     else:
                         normalized_date = normalized_cE
                     self.assertEqual(
-                        json.loads(to_extjson_iso8601(decode_extjson(cE))),
+                        loads(to_extjson_iso8601(decode_extjson(cE))),
                         normalized_date)
 
                 if B != cB:
                     self.assertEqual(
-                        json.loads(encode_extjson(decode_bson(cB))),
+                        loads(encode_extjson(decode_bson(cB))),
                         normalized_cE)
 
                 if E != cE:
                     self.assertEqual(
-                        json.loads(encode_extjson(decode_extjson(cE))),
+                        loads(encode_extjson(decode_extjson(cE))),
                         normalized_cE)
 
                 if 'lossy' not in valid_case:
-                    self.assertEqual(encode_bson(decode_extjson(E)), cB)
+                    # Skip tests for document type in Python 2.6 that have
+                    # multiple keys, since we can't control key ordering when
+                    # parsing JSON.
+                    if json_util._HAS_OBJECT_PAIRS_HOOK or not (
+                            sys.version_info[:2] == (2, 6) and
+                            bson_type == '0x03' and
+                            len(decode_extjson(E)) > 1):
+                        self.assertEqual(encode_bson(decode_extjson(E)), cB)
 
-                    if E != cE:
-                        self.assertEqual(
-                            encode_bson(decode_extjson(cE)),
-                            cB)
+                        if E != cE:
+                            self.assertEqual(
+                                encode_bson(decode_extjson(cE)),
+                                cB)
 
-            for decode_error_case in case_spec.get('decodeErrors', []):
-                with self.assertRaises(InvalidBSON):
-                    decode_bson(
-                        binascii.unhexlify(b(decode_error_case['bson'])))
+        for decode_error_case in case_spec.get('decodeErrors', []):
+            with self.assertRaises(InvalidBSON):
+                decode_bson(
+                    binascii.unhexlify(b(decode_error_case['bson'])))
 
     return run_test
 
@@ -189,6 +217,9 @@ def create_test(case_spec):
 def create_tests():
     for filename in glob.glob(os.path.join(_TEST_PATH, '*.json')):
         test_suffix, _ = os.path.splitext(os.path.basename(filename))
+        if test_suffix == 'multi-type':
+            # Special case in TestBSONCorpus.
+            continue
         with open(filename) as bson_test_file:
             test_method = create_test(json.load(bson_test_file))
         setattr(TestBSONCorpus, 'test_' + test_suffix, test_method)

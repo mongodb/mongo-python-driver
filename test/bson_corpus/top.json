@@ -1,6 +1,23 @@
 {
     "description": "Top-level document validity",
     "bson_type": "0x00",
+    "valid": [
+        {
+            "description": "Document with keys that start with $",
+            "bson": "0f00000010246b6579002a00000000",
+            "extjson": "{\"$key\": {\"$numberInt\": \"42\"}}"
+        },
+        {
+            "description": "Document that resembles extended JSON, but with extra keys",
+            "bson": "3f00000002247265676578000c0000006e6f742d612d72656765780002246f7074696f6e7300020000006900022462616e616e6100050000007065656c0000",
+            "extjson": "{\"$regex\": \"not-a-regex\", \"$options\": \"i\", \"$banana\": \"peel\"}"
+        },
+        {
+            "description": "Document that resembles extended JSON, but with missing keys",
+            "bson": "1a000000022462696e6172790008000000616263646566670000",
+            "extjson": "{\"$binary\": \"abcdefg\"}"
+        }
+    ],
     "decodeErrors": [
         {
             "description": "An object size that's too small to even include the object size, but is a well-formed, empty object",
