@@ -6,58 +6,63 @@
         {
             "description": "+1.0",
             "bson": "10000000016400000000000000F03F00",
-            "extjson": "{\"d\" : 1.0}"
+            "extjson": "{\"d\" : {\"$numberDouble\": \"1.0\"}}"
         },
         {
             "description": "-1.0",
             "bson": "10000000016400000000000000F0BF00",
-            "extjson": "{\"d\" : -1.0}"
+            "extjson": "{\"d\" : {\"$numberDouble\": \"-1.0\"}}"
         },
         {
             "description": "+1.0001220703125",
             "bson": "10000000016400000000008000F03F00",
-            "extjson": "{\"d\" : 1.0001220703125}"
+            "extjson": "{\"d\" : {\"$numberDouble\": \"1.0001220703125\"}}"
         },
         {
             "description": "-1.0001220703125",
             "bson": "10000000016400000000008000F0BF00",
-            "extjson": "{\"d\" : -1.0001220703125}"
+            "extjson": "{\"d\" : {\"$numberDouble\": \"-1.0001220703125\"}}"
         },
         {
             "description": "+2.0001220703125e10",
             "bson": "1000000001640000807ca1a9a0124200",
-            "extjson": "{\"d\" : 2.0001220703125e10}"
+            "extjson": "{\"d\" : {\"$numberDouble\": \"20001220703.125\"}}"
         },
         {
             "description": "-2.0001220703125e10",
             "bson": "1000000001640000807ca1a9a012c200",
-            "extjson": "{\"d\" : -2.0001220703125e10}"
+            "extjson": "{\"d\" : {\"$numberDouble\": \"-20001220703.125\"}}"
         },
         {
             "description": "0.0",
             "bson": "10000000016400000000000000000000",
-            "extjson": "{\"d\" : 0.0}"
+            "extjson": "{\"d\" : {\"$numberDouble\": \"0.0\"}}"
         },
         {
             "description": "-0.0",
             "bson": "10000000016400000000000000008000",
-            "extjson": "{\"d\" : -0.0}"
+            "extjson": "{\"d\" : {\"$numberDouble\": \"-0.0\"}}"
         },
         {
             "description": "NaN",
-            "bson": "10000000016400000000000000F87F00"
+            "bson": "10000000016400000000000000F87F00",
+            "extjson": "{\"d\": {\"$numberDouble\": \"NaN\"}}"
         },
         {
             "description": "NaN with payload",
-            "bson": "10000000016400120000000000F87F00"
+            "bson": "10000000016400120000000000F87F00",
+            "extjson": "{\"d\": {\"$numberDouble\": \"NaN\"}}",
+            "lossy": true
         },
         {
             "description": "Inf",
-            "bson": "10000000016400000000000000F07F00"
+            "bson": "10000000016400000000000000F07F00",
+            "extjson": "{\"d\": {\"$numberDouble\": \"Infinity\"}}"
         },
         {
             "description": "-Inf",
-            "bson": "10000000016400000000000000F0FF00"
+            "bson": "10000000016400000000000000F0FF00",
+            "extjson": "{\"d\": {\"$numberDouble\": \"-Infinity\"}}"
         }
     ],
     "decodeErrors": [
