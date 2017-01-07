@@ -1089,7 +1089,7 @@ class Collection(common.BaseObject):
           - `max_time_ms` (optional): a value for max_time_ms may be
             specified as part of `**kwargs`, e.g.
 
-              >>> find_one(max_time_ms=100)
+              >>> collection.find_one(max_time_ms=100)
         """
         if (filter is not None and not
                 isinstance(filter, collections.Mapping)):
