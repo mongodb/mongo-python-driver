@@ -1361,7 +1361,7 @@ class Collection(common.BaseObject):
           ...                      ("world", ASCENDING)], name="hello_world")
           >>> index2 = IndexModel([("goodbye", DESCENDING)])
           >>> db.test.create_indexes([index1, index2])
-          ["hello_world"]
+          ["hello_world", "goodbye_-1"]
 
         :Parameters:
           - `indexes`: A list of :class:`~pymongo.operations.IndexModel`
