@@ -38,40 +38,32 @@ functions:
       params:
         working_dir: "src"
         script: |
-           echo "" > expansion.yml
-
            # Get the current unique version of this checkout
            if [ "${is_patch}" = "true" ]; then
-              VERSION=$(git describe)-patch-${version_id}
+              CURRENT_VERSION=$(git describe)-patch-${version_id}
            else
-              VERSION=latest
+              CURRENT_VERSION=latest
            fi
-           echo "CURRENT_VERSION: $VERSION" >> expansion.yml
 
-           # Python has path problems on Windows. Detect prospective mongo-orchestration home directory
-           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-           case "$OS" in
-              cygwin*)
-                 # Python has problems with unix style paths in cygwin. Must use c:\\ paths
-                 export DRIVERS_TOOLS="c:/drivers-tools"
-                 ;;
-              *)
-                 export DRIVERS_TOOLS="$PWD/../drivers-tools"
-                 ;;
-           esac
+           export DRIVERS_TOOLS="$(pwd)/../drivers-tools"
+
+           # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
+           if [ "Windows_NT" == "$OS" ]; then # Magic variable in cygwin
+              export DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
+           fi
+
            export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
            export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
            export UPLOAD_BUCKET="${project}"
-           export PROJECT_DIRECTORY="$PWD"
+           export PROJECT_DIRECTORY="$(pwd)"
 
-           echo 'DRIVERS_TOOLS: "$DRIVERS_TOOLS"' >> expansion.yml
-           echo 'MONGO_ORCHESTRATION_HOME: "$MONGO_ORCHESTRATION_HOME"' >> expansion.yml
-           echo 'MONGODB_BINARIES: "$MONGODB_BINARIES"' >> expansion.yml
-           echo 'UPLOAD_BUCKET: "$UPLOAD_BUCKET"' >> expansion.yml
-           echo 'PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"' >> expansion.yml
-
-           # Make it easier to get a good shell
-           cat <<EOT >> expansion.yml
+           cat <<EOT > expansion.yml
+           CURRENT_VERSION: "$CURRENT_VERSION"
+           DRIVERS_TOOLS: "$DRIVERS_TOOLS"
+           MONGO_ORCHESTRATION_HOME: "$MONGO_ORCHESTRATION_HOME"
+           MONGODB_BINARIES: "$MONGODB_BINARIES"
+           UPLOAD_BUCKET: "$UPLOAD_BUCKET"
+           PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
            PREPARE_SHELL: |
               set -o errexit
               set -o xtrace
@@ -85,18 +77,13 @@ functions:
               export PATH="$MONGODB_BINARIES:$PATH"
               export PROJECT="${project}"
            EOT
+           # See what we've done
+           cat expansion.yml
 
     # Load the expansion file to make an evergreen variable with the current unique version
     - command: expansions.update
       params:
         file: src/expansion.yml
-    - command: shell.exec
-      params:
-        continue_on_err: true
-        # Must be http as RHEL55 has https issues
-        script: |
-          ${PREPARE_SHELL}
-          pip install --upgrade git+git://github.com/mongodb/mongo-orchestration@master
 
   "prepare resources":
     - command: shell.exec
@@ -259,7 +246,7 @@ functions:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file: src/mongodb-logs.tar.gz
+        local_file: ${PROJECT_DIRECTORY}/mongodb-logs.tar.gz
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-mongodb-logs.tar.gz
         bucket: mciuploads
         permissions: public-read
@@ -269,7 +256,6 @@ functions:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        # FIXME: See EVG-1331
         local_file: ${DRIVERS_TOOLS}/.evergreen/orchestration/server.log
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
         bucket: mciuploads
@@ -281,7 +267,7 @@ functions:
     - command: archive.targz_pack
       params:
         target: "working-dir.tar.gz"
-        source_dir: src/
+        source_dir: ${PROJECT_DIRECTORY}/
         include:
           - "./**"
     - command: s3.put
@@ -312,12 +298,12 @@ functions:
         display_name: "drivers-dir.tar.gz"
 
   "upload test results":
-    - command: attach.xunit_results
-      params:
-        file: "src/xunit-results/TEST-*.xml"
     - command: attach.results
       params:
         file_location: "${DRIVERS_TOOLS}/results.json"
+    - command: attach.xunit_results
+      params:
+        file: "${PROJECT_DIRECTORY}/xunit-results/TEST-*.xml"
 
   "bootstrap mongo-orchestration":
     - command: shell.exec
@@ -344,7 +330,13 @@ functions:
       params:
         script: |
           ${PREPARE_SHELL}
-          cd $MONGO_ORCHESTRATION_HOME
+          cd "$MONGO_ORCHESTRATION_HOME"
+          # source the mongo-orchestration virtualenv if it exists
+          if [ -f venv/bin/activate ]; then
+            . venv/bin/activate
+          elif [ -f venv/Scripts/activate ]; then
+            . venv/Scripts/activate
+          fi
           mongo-orchestration stop
           cd -
           rm -rf $DRIVERS_TOOLS || true
@@ -695,6 +687,17 @@ axes:
         display_name: "RHEL 7.0"
         run_on: rhel70-small
 
+      - id: suse11-x86-64-test
+        display_name: "SUSE 11 (x86_64)"
+        run_on: suse11-test
+
+      - id: linux-64-amzn-test
+        display_name: "Amazon Linux (Enterprise)"
+        run_on: linux-64-amzn-test
+
+      - id: debian71-test
+        display_name: "Debian 7.1"
+        run_on: debian71-test
 
   - id: os-nossl
     display_name: OS
@@ -765,6 +768,13 @@ axes:
       - id: ubuntu1604-zseries-small
         display_name: "Ubuntu 16.04 (zSeries)"
         run_on: ubuntu1604-zseries-small
+
+  - id: os-requires-32
+    display_name: OS
+    values:
+      - id: suse12-x86-64-test
+        display_name: "SUSE 12 (x86_64)"
+        run_on: suse12-test
 
 
   - id: topology
@@ -875,6 +885,19 @@ buildvariants:
      - name: "test-3.4-sharded"
      - name: "test-3.4-standalone"
 
+- matrix_name: "tests-os-requires-32"
+  matrix_spec: {"os-requires-32": "*", auth: "*", ssl: "*" }
+  display_name: "${os-requires-32} ${auth} ${ssl}"
+  tasks:
+     - name: "test-latest-replicaset"
+     - name: "test-latest-sharded"
+     - name: "test-latest-standalone"
+     - name: "test-3.4-replicaset"
+     - name: "test-3.4-sharded"
+     - name: "test-3.4-standalone"
+     - name: "test-3.2-replicaset"
+     - name: "test-3.2-sharded"
+     - name: "test-3.2-standalone"
 
 
       # Platform notes
@@ -893,5 +916,7 @@ buildvariants:
       # Solaris MongoDB SSL builds are not available
       # Darwin MongoDB SSL builds are not available for 2.4 and 2.6
       # Windows does not support MongoDB 2.4
+      # Debian 7.1 does not support MongoDB 2.4
+      # SUSE12 x86_64 is only supported by MongoDB 3.2+
       # vim: set et sw=2 ts=2 :
 
