@@ -588,6 +588,7 @@ class TestClient(IntegrationTest):
         assertRaisesExactly(
             OperationFailure, lazy_client.test.collection.find_one)
 
+    @client_context.require_no_ssl
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")
