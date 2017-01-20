@@ -183,6 +183,7 @@ class TestThreads(IntegrationTest):
         error.join()
         okay.join()
 
+    @unittest.skip("PYTHON-1204")
     def test_client_disconnect(self):
         self.db.drop_collection("test")
         self.db.test.insert_many([{"x": i} for i in range(1000)])
