@@ -313,6 +313,7 @@ class TestSSL(IntegrationTest):
 
         self.assertClientWorks(client)
 
+    @unittest.skip("PYTHON-1208")
     @client_context.require_ssl_certfile
     def test_cert_ssl_validation_hostname_matching(self):
         # Expects the server to be running with server.pem and ca.pem
