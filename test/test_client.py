@@ -841,6 +841,7 @@ class TestClient(IntegrationTest):
             next(db.foo.find())
         )
 
+    @unittest.skipUnless(sys.platform == "win32", "PYTHON-1206")
     def test_operation_failure(self):
         # Ensure MongoClient doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
