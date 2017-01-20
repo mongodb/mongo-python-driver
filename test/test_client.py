@@ -736,6 +736,7 @@ class TestClient(IntegrationTest):
             aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
             naive.pymongo_test.test.find_one()["x"])
 
+    @client_context.require_no_ssl  # PYTHON-1221
     @client_context.require_ipv6
     def test_ipv6(self):
         if client_context.auth_enabled:
