@@ -214,6 +214,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             # No error.
             coll.find_one()
 
+    @unittest.skip("PYTHON-1203")
     @client_context.require_ipv6
     def test_ipv6(self):
         port = client_context.port
