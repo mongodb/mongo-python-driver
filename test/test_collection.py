@@ -1153,6 +1153,7 @@ class TestCollection(IntegrationTest):
         self.assertIsNotNone(context.exception.details)
         self.assertEqual(1, db.test.count())
 
+    @unittest.skip("PYTHON-1209")
     def test_write_error_text_handling(self):
         db = self.db
         db.drop_collection("test")
