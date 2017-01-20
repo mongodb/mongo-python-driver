@@ -796,6 +796,7 @@ class TestClient(IntegrationTest):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
         self.assertEqual(0, len(get_pool(client).sockets))
 
+    @unittest.skipUnless(sys.platform == "win32", "PYTHON-1205")
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):
             # We can't figure out how to raise an exception on a thread that's
