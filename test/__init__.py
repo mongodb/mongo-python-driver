@@ -259,6 +259,8 @@ class ClientContext(object):
 
     @property
     def has_secondaries(self):
+        if not self.client:
+            return False
         return bool(len(self.client.secondaries))
 
     def _check_user_provided(self):
@@ -375,7 +377,7 @@ class ClientContext(object):
         """Run a test only if the client is connected to a replica set that has
         `count` secondaries.
         """
-        sec_count = len(self.client.secondaries)
+        sec_count = 0 if not self.client else len(self.client.secondaries)
         return self._require(sec_count >= count,
                              "Need %d secondaries, %d available"
                              % (count, sec_count))
