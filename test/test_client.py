@@ -17,6 +17,7 @@
 import contextlib
 import datetime
 import os
+import signal
 import socket
 import struct
 import sys
@@ -796,7 +797,6 @@ class TestClient(IntegrationTest):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
         self.assertEqual(0, len(get_pool(client).sockets))
 
-    @unittest.skipUnless(sys.platform == "win32", "PYTHON-1205")
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):
             # We can't figure out how to raise an exception on a thread that's
@@ -816,31 +816,52 @@ class TestClient(IntegrationTest):
         db.drop_collection('foo')
         db.foo.insert_one({'_id': 1})
 
-        def interrupter():
-            # Raises KeyboardInterrupt in the main thread
-            time.sleep(0.25)
-            thread.interrupt_main()
-
-        thread.start_new_thread(interrupter, ())
-
-        raised = False
+        old_signal_handler = None
         try:
-            # Will be interrupted by a KeyboardInterrupt.
-            next(db.foo.find({'$where': where}))
-        except KeyboardInterrupt:
-            raised = True
+            # Platform-specific hacks for raising a KeyboardInterrupt on the
+            # main thread while find() is in-progress: On Windows, SIGALRM is
+            # unavailable so we use a second thread. In our Evergreen setup on
+            # Linux, the thread technique causes an error in the test at
+            # sock.recv(): TypeError: 'int' object is not callable
+            # We don't know what causes this, so we hack around it.
 
-        # Can't use self.assertRaises() because it doesn't catch system
-        # exceptions
-        self.assertTrue(raised, "Didn't raise expected KeyboardInterrupt")
+            if sys.platform == 'win32':
+                def interrupter():
+                    # Raises KeyboardInterrupt in the main thread
+                    time.sleep(0.25)
+                    thread.interrupt_main()
 
-        # Raises AssertionError due to PYTHON-294 -- Mongo's response to the
-        # previous find() is still waiting to be read on the socket, so the
-        # request id's don't match.
-        self.assertEqual(
-            {'_id': 1},
-            next(db.foo.find())
-        )
+                thread.start_new_thread(interrupter, ())
+            else:
+                # Convert SIGALRM to SIGINT -- it's hard to schedule a SIGINT
+                # for one second in the future, but easy to schedule SIGALRM.
+                def sigalarm(num, frame):
+                    raise KeyboardInterrupt
+
+                old_signal_handler = signal.signal(signal.SIGALRM, sigalarm)
+                signal.alarm(1)
+
+            raised = False
+            try:
+                # Will be interrupted by a KeyboardInterrupt.
+                next(db.foo.find({'$where': where}))
+            except KeyboardInterrupt:
+                raised = True
+
+            # Can't use self.assertRaises() because it doesn't catch system
+            # exceptions
+            self.assertTrue(raised, "Didn't raise expected KeyboardInterrupt")
+
+            # Raises AssertionError due to PYTHON-294 -- Mongo's response to
+            # the previous find() is still waiting to be read on the socket,
+            # so the request id's don't match.
+            self.assertEqual(
+                {'_id': 1},
+                next(db.foo.find())
+            )
+        finally:
+            if old_signal_handler:
+                signal.signal(signal.SIGALRM, old_signal_handler)
 
     @unittest.skipUnless(sys.platform == "win32", "PYTHON-1206")
     def test_operation_failure(self):
