@@ -43,12 +43,10 @@ gmtime64_r() is a 64-bit equivalent of gmtime_r().
     #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+/* Including Python.h fixes issues with interpreters built with -std=c99. */
+#include "Python.h"
+
 #include <time.h>
-#include <errno.h>
 #include "time64.h"
 #include "time64_limits.h"
 
@@ -112,7 +110,7 @@ static const int safe_years_low[SOLAR_CYCLE_LENGTH] = {
 #define CHEAT_YEARS 108
 
 #define IS_LEAP(n)      ((!(((n) + 1900) % 400) || (!(((n) + 1900) % 4) && (((n) + 1900) % 100))) != 0)
-#define WRAP(a,b,m)     ((a) = ((a) <  0  ) ? ((b)--, (a) + (m)) : (a))
+#define _TIME64_WRAP(a,b,m)     ((a) = ((a) <  0  ) ? ((b)--, (a) + (m)) : (a))
 
 #ifdef USE_SYSTEM_LOCALTIME
 #    define SHOULD_USE_SYSTEM_LOCALTIME(a)  (       \
@@ -574,9 +572,9 @@ struct TM *gmtime64_r (const Time64_T *in_time, struct TM *p)
     time /= 24;
     v_tm_tday = time;
 
-    WRAP (v_tm_sec, v_tm_min, 60);
-    WRAP (v_tm_min, v_tm_hour, 60);
-    WRAP (v_tm_hour, v_tm_tday, 24);
+    _TIME64_WRAP (v_tm_sec, v_tm_min, 60);
+    _TIME64_WRAP (v_tm_min, v_tm_hour, 60);
+    _TIME64_WRAP (v_tm_hour, v_tm_tday, 24);
 
     v_tm_wday = (int)((v_tm_tday + 4) % 7);
     if (v_tm_wday < 0)
