@@ -334,7 +334,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          AUTH=${AUTH} SSL=${SSL} MONGODB_URI="${MONGODB_URI}" sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} AUTH=${AUTH} SSL=${SSL} MONGODB_URI="${MONGODB_URI}" sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "cleanup":
     - command: shell.exec
@@ -746,10 +746,6 @@ axes:
         display_name: "SUSE 12 (x86_64)"
         run_on: suse12-test
 
-      - id: ubuntu-16.04
-        display_name: "Ubuntu 16.04"
-        run_on: ubuntu1604-test
-
       - id: rhel71-power8-test
         display_name: "RHEL 7.1 (POWER8)"
         run_on: rhel71-power8-test
@@ -827,6 +823,41 @@ axes:
         display_name: NoSSL
         variables:
            SSL: "nossl"
+  - id: python-version
+    display_name: "Python"
+    values:
+      - id: "2.6"
+        display_name: "Python 2.6"
+        variables:
+           PYTHON_BINARY: "/opt/python/2.6/bin/python"
+      - id: "2.7"
+        display_name: "Python 2.7"
+        variables:
+           PYTHON_BINARY: "/opt/python/2.7/bin/python"
+      - id: "3.3"
+        display_name: "Python 3.3"
+        variables:
+           PYTHON_BINARY: "/opt/python/3.3/bin/python3"
+      - id: "3.4"
+        display_name: "Python 3.4"
+        variables:
+           PYTHON_BINARY: "/opt/python/3.4/bin/python3"
+      - id: "3.5"
+        display_name: "Python 3.5"
+        variables:
+           PYTHON_BINARY: "/opt/python/3.5/bin/python3"
+      - id: "3.6"
+        display_name: "Python 3.6"
+        variables:
+           PYTHON_BINARY: "/opt/python/3.6/bin/python3"
+      - id: "pypy"
+        display_name: "PyPy"
+        variables:
+           PYTHON_BINARY: "/opt/python/pypy/bin/pypy"
+      - id: "pypy3"
+        display_name: "PyPy 3"
+        variables:
+           PYTHON_BINARY: "/opt/python/pypy3/bin/pypy3"
 
 
 buildvariants:
@@ -945,6 +976,48 @@ buildvariants:
      - name: "test-3.4-sharded_cluster"
      - name: "test-3.4-standalone"
 
+
+# Test all versions of Python against all versions of MongoDB >= 3.2.
+- matrix_name: "tests-python-version-ubuntu1604-test-ssl"
+  matrix_spec: {"python-version": "*", auth: "*", ssl: "ssl" }
+  display_name: "${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
+  run_on: ubuntu1604-test
+  tasks:
+     - name: "test-latest-replica_set"
+     - name: "test-latest-sharded_cluster"
+     - name: "test-latest-standalone"
+     - name: "test-3.4-replica_set"
+     - name: "test-3.4-sharded_cluster"
+     - name: "test-3.4-standalone"
+     - name: "test-3.2-replica_set"
+     - name: "test-3.2-sharded_cluster"
+     - name: "test-3.2-standalone"
+
+# Test all versions of Python against all versions on MongoDB <= 3.0.
+# MongoDB <=3.0 on Ubuntu 16.04 (x86_64) does not support SSL.
+- matrix_name: "tests-python-version-ubuntu1604-test-nossl"
+  matrix_spec: {"python-version": "*", auth: "*", ssl: "nossl" }
+  display_name: "${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
+  run_on: ubuntu1604-test
+  tasks:
+     - name: "test-latest-replica_set"
+     - name: "test-latest-sharded_cluster"
+     - name: "test-latest-standalone"
+     - name: "test-3.4-replica_set"
+     - name: "test-3.4-sharded_cluster"
+     - name: "test-3.4-standalone"
+     - name: "test-3.2-replica_set"
+     - name: "test-3.2-sharded_cluster"
+     - name: "test-3.2-standalone"
+     - name: "test-3.0-replica_set"
+     - name: "test-3.0-sharded_cluster"
+     - name: "test-3.0-standalone"
+     - name: "test-2.6-replica_set"
+     - name: "test-2.6-sharded_cluster"
+     - name: "test-2.6-standalone"
+     - name: "test-2.4-replica_set"
+     - name: "test-2.4-sharded_cluster"
+     - name: "test-2.4-standalone"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
