@@ -107,10 +107,11 @@ def create_test(case_spec):
                     self.assertIsInstance(
                         decode_bson(cB)[test_key],
                         _DEPRECATED_BSON_TYPES[bson_type])
-            # PyPy3 can't handle NaN with a payload from struct.(un)pack
-            # if endianness is specified in the format string.
-            elif not ('PyPy' in sys.version and
-                      sys.version_info[:2] < (3, 3) and
+            # PyPy3 and Jython can't handle NaN with a payload from
+            # struct.(un)pack if endianness is specified in the format string.
+            elif not ((('PyPy' in sys.version and
+                        sys.version_info[:2] < (3, 3)) or
+                       sys.platform.startswith("java")) and
                       valid_case['description'] == 'NaN with payload'):
                 # Test round-tripping encoding/decoding the type.
                 self.assertEqual(encode_bson(decode_bson(B)), cB)

@@ -927,7 +927,8 @@ class TestCodecOptions(unittest.TestCase):
 
         # Test handling of bad key value.
         invalid_key = BSON(enc[:7] + b'\xe9' + enc[8:])
-        replaced_key = b'ke\xef\xbf\xbdstr'.decode('utf-8')
+        replaced_key = b'ke\xe9str'.decode('utf-8', 'replace')
+        ignored_key = b'ke\xe9str'.decode('utf-8', 'ignore')
 
         dec = BSON.decode(invalid_key, CodecOptions(
             unicode_decode_error_handler="replace"))
@@ -935,7 +936,7 @@ class TestCodecOptions(unittest.TestCase):
 
         dec = BSON.decode(invalid_key, CodecOptions(
             unicode_decode_error_handler="ignore"))
-        self.assertEqual(dec, {"kestr": "foobar"})
+        self.assertEqual(dec, {ignored_key: u"foobar"})
 
         self.assertRaises(InvalidBSON, BSON.decode, invalid_key, CodecOptions(
             unicode_decode_error_handler="strict"))
@@ -945,15 +946,16 @@ class TestCodecOptions(unittest.TestCase):
 
         # Test handing of bad string value.
         invalid_val = BSON(enc[:18] + b'\xe9' + enc[19:])
-        replaced_val = b'fo\xef\xbf\xbdbar'.decode('utf-8')
+        replaced_val = b'fo\xe9bar'.decode('utf-8', 'replace')
+        ignored_val = b'fo\xe9bar'.decode('utf-8', 'ignore')
 
         dec = BSON.decode(invalid_val, CodecOptions(
             unicode_decode_error_handler="replace"))
-        self.assertEqual(dec, {"keystr": replaced_val})
+        self.assertEqual(dec, {u"keystr": replaced_val})
 
         dec = BSON.decode(invalid_val, CodecOptions(
             unicode_decode_error_handler="ignore"))
-        self.assertEqual(dec, {"keystr": "fobar"})
+        self.assertEqual(dec, {u"keystr": ignored_val})
 
         self.assertRaises(InvalidBSON, BSON.decode, invalid_val, CodecOptions(
             unicode_decode_error_handler="strict"))
@@ -971,7 +973,7 @@ class TestCodecOptions(unittest.TestCase):
 
         dec = BSON.decode(invalid_both, CodecOptions(
             unicode_decode_error_handler="ignore"))
-        self.assertEqual(dec, {"kestr": "fobar"})
+        self.assertEqual(dec, {ignored_key: ignored_val})
 
         self.assertRaises(InvalidBSON, BSON.decode, invalid_both, CodecOptions(
             unicode_decode_error_handler="strict"))
