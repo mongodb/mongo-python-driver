@@ -347,7 +347,10 @@ class TestDatabase(IntegrationTest):
     # We use 'aggregate' as our example command, since it's an easy way to
     # retrieve a BSON regex from a collection using a command. But until
     # MongoDB 2.3.2, aggregation turned regexes into strings: SERVER-6470.
+    # Note: MongoDB 3.5.2 requires the 'cursor' or 'explain' option for
+    # aggregate.
     @client_context.require_version_min(2, 3, 2)
+    @client_context.require_version_max(3, 5, 1)
     def test_command_with_regex(self):
         db = self.client.pymongo_test
         db.test.drop()
