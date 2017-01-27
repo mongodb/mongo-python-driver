@@ -863,19 +863,22 @@ class TestClient(IntegrationTest):
             if old_signal_handler:
                 signal.signal(signal.SIGALRM, old_signal_handler)
 
-    @unittest.skipUnless(sys.platform == "win32", "PYTHON-1206")
     def test_operation_failure(self):
         # Ensure MongoClient doesn't close socket after it gets an error
-        # response to getLastError. PYTHON-395.
-        pool = get_pool(self.client)
+        # response to getLastError. PYTHON-395. We need a new client here
+        # to avoid race conditions caused by replica set failover or idle
+        # socket reaping.
+        client = single_client()
+        client.pymongo_test.test.find_one()
+        pool = get_pool(client)
         socket_count = len(pool.sockets)
         self.assertGreaterEqual(socket_count, 1)
         old_sock_info = next(iter(pool.sockets))
-        self.client.pymongo_test.test.drop()
-        self.client.pymongo_test.test.insert_one({'_id': 'foo'})
+        client.pymongo_test.test.drop()
+        client.pymongo_test.test.insert_one({'_id': 'foo'})
         self.assertRaises(
             OperationFailure,
-            self.client.pymongo_test.test.insert_one, {'_id': 'foo'})
+            client.pymongo_test.test.insert_one, {'_id': 'foo'})
 
         self.assertEqual(socket_count, len(pool.sockets))
         new_sock_info = next(iter(pool.sockets))
