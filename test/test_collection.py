@@ -21,6 +21,7 @@ import re
 import sys
 import threading
 
+from codecs import utf_8_decode
 from collections import defaultdict
 
 sys.path[0:0] = [""]
@@ -1153,7 +1154,6 @@ class TestCollection(IntegrationTest):
         self.assertIsNotNone(context.exception.details)
         self.assertEqual(1, db.test.count())
 
-    @unittest.skip("PYTHON-1209")
     def test_write_error_text_handling(self):
         db = self.db
         db.drop_collection("test")
@@ -1190,7 +1190,7 @@ class TestCollection(IntegrationTest):
                 b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83'
                 b'\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83\xe2\x98\x83')
 
-        text = data.decode("utf8")
+        text = utf_8_decode(data, None, True)
         db.test.insert_one({"text": text})
 
         # Should raise DuplicateKeyError, not InvalidBSON
