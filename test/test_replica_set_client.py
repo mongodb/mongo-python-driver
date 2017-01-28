@@ -214,7 +214,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             # No error.
             coll.find_one()
 
-    @unittest.skip("PYTHON-1203")
     @client_context.require_ipv6
     def test_ipv6(self):
         port = client_context.port
@@ -225,7 +224,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         wait_until(lambda: c.primary == self.primary, msg)
 
         # Same outcome with both IPv4 and IPv6 seeds.
-        c = rs_client("[::1]:%d,localhost:%d" % (port, port))
+        c = rs_client("mongodb://[::1]:%d,localhost:%d" % (port, port))
 
         wait_until(lambda: c.primary == self.primary, msg)
 
