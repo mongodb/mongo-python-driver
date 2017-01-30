@@ -858,6 +858,10 @@ axes:
         display_name: "PyPy 3"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3/bin/pypy3"
+      - id: "jython2.7"
+        display_name: "Jython 2.7"
+        variables:
+           PYTHON_BINARY: "/opt/python/jython2.7/bin/jython"
 
 
 buildvariants:

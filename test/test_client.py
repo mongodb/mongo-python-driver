@@ -313,6 +313,7 @@ class TestClient(IntegrationTest):
                        "a closed socket gets replaced from the pool")
             self.assertFalse(sock_info in server._pool.sockets)
 
+    @unittest.skipIf(sys.platform.startswith('java'), 'PYTHON-1227')
     def test_max_idle_time_checkout(self):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
