@@ -66,7 +66,7 @@ MONGODB_X509_USERNAME = (
 # Also, make sure you have 'server' as an alias for localhost in /etc/hosts
 #
 # Note: For all replica set tests to pass, the replica set configuration must
-# use 'server' for the hostname of all hosts.
+# use 'localhost' for the hostname of all hosts.
 
 
 class TestClientSSL(unittest.TestCase):
@@ -177,7 +177,6 @@ class TestSSL(IntegrationTest):
         self.assertClientWorks(self.client)
 
     @client_context.require_ssl_certfile
-    @client_context.require_server_resolvable
     def test_ssl_pem_passphrase(self):
         # Expects the server to be running with server.pem and ca.pem
         #
@@ -188,21 +187,21 @@ class TestSSL(IntegrationTest):
             self.assertRaises(
                 ConfigurationError,
                 MongoClient,
-                'server',
+                'localhost',
                 ssl=True,
                 ssl_certfile=CLIENT_ENCRYPTED_PEM,
                 ssl_pem_passphrase="clientpassword",
                 ssl_ca_certs=CA_PEM,
                 serverSelectionTimeoutMS=100)
         else:
-            connected(MongoClient('server',
+            connected(MongoClient('localhost',
                                   ssl=True,
                                   ssl_certfile=CLIENT_ENCRYPTED_PEM,
                                   ssl_pem_passphrase="clientpassword",
                                   ssl_ca_certs=CA_PEM,
                                   serverSelectionTimeoutMS=100))
 
-            uri_fmt = ("mongodb://server/?ssl=true"
+            uri_fmt = ("mongodb://localhost/?ssl=true"
                        "&ssl_certfile=%s&ssl_pem_passphrase=clientpassword"
                        "&ssl_ca_certs=%s&serverSelectionTimeoutMS=100")
             connected(MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM)))
@@ -231,7 +230,6 @@ class TestSSL(IntegrationTest):
         self.assertClientWorks(client)
 
     @client_context.require_ssl_certfile
-    @client_context.require_server_resolvable
     @client_context.require_no_auth
     def test_cert_ssl_validation(self):
         # Expects the server to be running with server.pem and ca.pem
@@ -239,18 +237,18 @@ class TestSSL(IntegrationTest):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #
-        client = MongoClient('server',
+        client = MongoClient('localhost',
                              ssl=True,
                              ssl_certfile=CLIENT_PEM,
                              ssl_cert_reqs=ssl.CERT_REQUIRED,
                              ssl_ca_certs=CA_PEM)
         response = client.admin.command('ismaster')
         if 'setName' in response:
-            if response['primary'].split(":")[0] != 'server':
-                raise SkipTest("No hosts in the replicaset for 'server'. "
+            if response['primary'].split(":")[0] != 'localhost':
+                raise SkipTest("No hosts in the replicaset for 'localhost'. "
                                "Cannot validate hostname in the certificate")
 
-            client = MongoClient('server',
+            client = MongoClient('localhost',
                                  replicaSet=response['setName'],
                                  w=len(response['hosts']),
                                  ssl=True,
@@ -260,7 +258,9 @@ class TestSSL(IntegrationTest):
 
         self.assertClientWorks(client)
 
-        if _HAVE_IPADDRESS and socket.gethostbyname('server') == '127.0.0.1':
+        # Python 2.6 often can't read SANs from the peer cert.
+        # http://bugs.python.org/issue13034
+        if _HAVE_IPADDRESS and sys.version_info[:2] > (2, 6):
             client = MongoClient('127.0.0.1',
                                  ssl=True,
                                  ssl_certfile=CLIENT_PEM,
@@ -269,7 +269,6 @@ class TestSSL(IntegrationTest):
             self.assertClientWorks(client)
 
     @client_context.require_ssl_certfile
-    @client_context.require_server_resolvable
     @client_context.require_no_auth
     def test_cert_ssl_uri_support(self):
         # Expects the server to be running with server.pem and ca.pem
@@ -277,13 +276,12 @@ class TestSSL(IntegrationTest):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #
-        uri_fmt = ("mongodb://server/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
+        uri_fmt = ("mongodb://localhost/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
                    "=%s&ssl_ca_certs=%s&ssl_match_hostname=true")
         client = MongoClient(uri_fmt % (CLIENT_PEM, 'CERT_REQUIRED', CA_PEM))
         self.assertClientWorks(client)
 
     @client_context.require_ssl_certfile
-    @client_context.require_server_resolvable
     @client_context.require_no_auth
     def test_cert_ssl_validation_optional(self):
         # Expects the server to be running with server.pem and ca.pem
@@ -291,7 +289,7 @@ class TestSSL(IntegrationTest):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #
-        client = MongoClient('server',
+        client = MongoClient('localhost',
                              ssl=True,
                              ssl_certfile=CLIENT_PEM,
                              ssl_cert_reqs=ssl.CERT_OPTIONAL,
@@ -299,11 +297,11 @@ class TestSSL(IntegrationTest):
 
         response = client.admin.command('ismaster')
         if 'setName' in response:
-            if response['primary'].split(":")[0] != 'server':
-                raise SkipTest("No hosts in the replicaset for 'server'. "
+            if response['primary'].split(":")[0] != 'localhost':
+                raise SkipTest("No hosts in the replicaset for 'localhost'. "
                                "Cannot validate hostname in the certificate")
 
-            client = MongoClient('server',
+            client = MongoClient('localhost',
                                  replicaSet=response['setName'],
                                  w=len(response['hosts']),
                                  ssl=True,
@@ -313,8 +311,8 @@ class TestSSL(IntegrationTest):
 
         self.assertClientWorks(client)
 
-    @unittest.skip("PYTHON-1208")
     @client_context.require_ssl_certfile
+    @client_context.require_server_resolvable
     def test_cert_ssl_validation_hostname_matching(self):
         # Expects the server to be running with server.pem and ca.pem
         #
@@ -324,14 +322,14 @@ class TestSSL(IntegrationTest):
         response = self.client.admin.command('ismaster')
 
         with self.assertRaises(ConnectionFailure):
-            connected(MongoClient(client_context.pair,
+            connected(MongoClient('server',
                                   ssl=True,
                                   ssl_certfile=CLIENT_PEM,
                                   ssl_cert_reqs=ssl.CERT_REQUIRED,
                                   ssl_ca_certs=CA_PEM,
                                   serverSelectionTimeoutMS=100))
 
-        connected(MongoClient(client_context.pair,
+        connected(MongoClient('server',
                               ssl=True,
                               ssl_certfile=CLIENT_PEM,
                               ssl_cert_reqs=ssl.CERT_REQUIRED,
@@ -341,7 +339,7 @@ class TestSSL(IntegrationTest):
 
         if 'setName' in response:
             with self.assertRaises(ConnectionFailure):
-                connected(MongoClient(client_context.pair,
+                connected(MongoClient('server',
                                       replicaSet=response['setName'],
                                       ssl=True,
                                       ssl_certfile=CLIENT_PEM,
@@ -349,7 +347,7 @@ class TestSSL(IntegrationTest):
                                       ssl_ca_certs=CA_PEM,
                                       serverSelectionTimeoutMS=100))
 
-            connected(MongoClient(client_context.pair,
+            connected(MongoClient('server',
                                   replicaSet=response['setName'],
                                   ssl=True,
                                   ssl_certfile=CLIENT_PEM,
@@ -359,35 +357,34 @@ class TestSSL(IntegrationTest):
                                   serverSelectionTimeoutMS=100))
 
     @client_context.require_ssl_certfile
-    @client_context.require_server_resolvable
     def test_ssl_crlfile_support(self):
         if not hasattr(ssl, 'VERIFY_CRL_CHECK_LEAF'):
             self.assertRaises(
                 ConfigurationError,
                 MongoClient,
-                'server',
+                'localhost',
                 ssl=True,
                 ssl_ca_certs=CA_PEM,
                 ssl_crlfile=CRL_PEM,
                 serverSelectionTimeoutMS=100)
         else:
-            connected(MongoClient('server',
+            connected(MongoClient('localhost',
                                   ssl=True,
                                   ssl_ca_certs=CA_PEM,
                                   serverSelectionTimeoutMS=100))
 
             with self.assertRaises(ConnectionFailure):
-                connected(MongoClient('server',
+                connected(MongoClient('localhost',
                                       ssl=True,
                                       ssl_ca_certs=CA_PEM,
                                       ssl_crlfile=CRL_PEM,
                                       serverSelectionTimeoutMS=100))
 
-            uri_fmt = ("mongodb://server/?ssl=true&"
+            uri_fmt = ("mongodb://localhost/?ssl=true&"
                        "ssl_ca_certs=%s&serverSelectionTimeoutMS=100")
             connected(MongoClient(uri_fmt % (CA_PEM,)))
 
-            uri_fmt = ("mongodb://server/?ssl=true&ssl_crlfile=%s"
+            uri_fmt = ("mongodb://localhost/?ssl=true&ssl_crlfile=%s"
                        "&ssl_ca_certs=%s&serverSelectionTimeoutMS=100")
             with self.assertRaises(ConnectionFailure):
                 connected(MongoClient(uri_fmt % (CRL_PEM, CA_PEM)))
@@ -412,25 +409,25 @@ class TestSSL(IntegrationTest):
         try:
             with self.assertRaises(ConnectionFailure):
                 # Server cert is verified but hostname matching fails
-                connected(MongoClient(client_context.pair,
+                connected(MongoClient('server',
                                       ssl=True,
                                       serverSelectionTimeoutMS=100))
 
             # Server cert is verified. Disable hostname matching.
-            connected(MongoClient(client_context.pair,
+            connected(MongoClient('server',
                                   ssl=True,
                                   ssl_match_hostname=False,
                                   serverSelectionTimeoutMS=100))
 
             # Server cert and hostname are verified.
-            connected(MongoClient('server',
+            connected(MongoClient('localhost',
                                   ssl=True,
                                   serverSelectionTimeoutMS=100))
 
             # Server cert and hostname are verified.
             connected(
                 MongoClient(
-                    'mongodb://server/?ssl=true&serverSelectionTimeoutMS=100'))
+                    'mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100'))
         finally:
             os.environ.pop('SSL_CERT_FILE')
 

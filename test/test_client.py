@@ -738,9 +738,12 @@ class TestClient(IntegrationTest):
             aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
             naive.pymongo_test.test.find_one()["x"])
 
-    @client_context.require_no_ssl  # PYTHON-1221
     @client_context.require_ipv6
     def test_ipv6(self):
+        # http://bugs.python.org/issue13034
+        if sys.version_info[:2] == (2, 6) and client_context.ssl:
+            raise SkipTest("Python 2.6 can't parse SANs")
+
         if client_context.auth_enabled:
             auth_str = "%s:%s@" % (db_user, db_pwd)
         else:
