@@ -866,15 +866,6 @@ axes:
 
 buildvariants:
 
-# Test packaging and other release related routines
-- name: releng-release-archive-creator
-  display_name: "** Release Archive Creator"
-  run_on:
-    - ubuntu1404-build
-  tasks:
-    - ".releng" # Run all tasks with the "releng" tag
-
-
 - matrix_name: "tests-all"
   matrix_spec: {"os-fully-featured": "*", auth: "*", ssl: "*" }
   display_name: "${os-fully-featured} ${auth} ${ssl}"
