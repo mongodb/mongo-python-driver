@@ -819,7 +819,7 @@ class TestDatabase(IntegrationTest):
 
         self.assertEqual('outer', str(context.exception))
 
-    @client_context.require_version_min(2, 5, 3, -1)
+    @client_context.require_version_min(2, 6, 0)
     @client_context.require_test_commands
     @client_context.require_no_mongos
     def test_command_max_time_ms(self):
@@ -833,10 +833,10 @@ class TestDatabase(IntegrationTest):
                               'count', 'test', maxTimeMS=1)
             pipeline = [{'$project': {'name': 1, 'count': 1}}]
             # Database command helper.
-            db.command('aggregate', 'test', pipeline=pipeline)
+            db.command('aggregate', 'test', pipeline=pipeline, cursor={})
             self.assertRaises(ExecutionTimeout, db.command,
                               'aggregate', 'test',
-                              pipeline=pipeline, maxTimeMS=1)
+                              pipeline=pipeline, cursor={}, maxTimeMS=1)
             # Collection helper.
             db.test.aggregate(pipeline=pipeline)
             self.assertRaises(ExecutionTimeout,
