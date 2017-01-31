@@ -1,6 +1,25 @@
 Changelog
 =========
 
+.. warning:: PyMongo 2.x is in maintenance mode. Support for new MongoDB
+  features ended with the release of MongoDB 3.0 and PyMongo 2.8. Users are
+  strongly encouraged to upgrade to PyMongo 3.x. See the
+  :doc:`/migrate-to-pymongo3` for details.
+
+Changes in Version 2.9.5
+------------------------
+
+Version 2.9.5 works around ssl module deprecations in Python 3.6,
+and expected future ssl module deprecations.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.9.5 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9.5 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/17605
+
 Changes in Version 2.9.4
 ------------------------
 
