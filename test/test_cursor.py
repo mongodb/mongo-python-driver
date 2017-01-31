@@ -194,6 +194,7 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_max_await_time_ms(self):
+        raise SkipTest("PYTHON-1196")
         db = self.db
         db.pymongo_test.drop()
         coll = db.create_collection("pymongo_test", capped=True, size=4096)
