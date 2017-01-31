@@ -24,9 +24,14 @@ from pymongo.common import HAS_SSL
 from pymongo.errors import ConnectionFailure, ConfigurationError
 
 try:
-    from ssl import match_hostname
+    from ssl import match_hostname, CertificateError
 except ImportError:
-    from pymongo.ssl_match_hostname import match_hostname
+    from pymongo.ssl_match_hostname import match_hostname, CertificateError
+
+try:
+    from ssl import SSLContext as _SSLContext
+except ImportError:
+    from pymongo.ssl_context import SSLContext as _SSLContext
 
 if HAS_SSL:
     import ssl
@@ -182,15 +187,30 @@ class Pool:
         self.wait_queue_timeout = wait_queue_timeout
         self.wait_queue_multiple = wait_queue_multiple
         self.socket_keepalive = socket_keepalive
-        self.use_ssl = use_ssl
-        self.ssl_keyfile = ssl_keyfile
-        self.ssl_certfile = ssl_certfile
-        self.ssl_cert_reqs = ssl_cert_reqs
-        self.ssl_ca_certs = ssl_ca_certs
+        self.ssl_ctx = None
         self.ssl_match_hostname = ssl_match_hostname
 
-        if HAS_SSL and use_ssl and not ssl_cert_reqs:
-            self.ssl_cert_reqs = ssl.CERT_NONE
+        if HAS_SSL and use_ssl:
+            # PROTOCOL_TLS_CLIENT added and PROTOCOL_SSLv23
+            # deprecated in CPython 3.6
+            self.ssl_ctx = _SSLContext(
+                getattr(ssl, 'PROTOCOL_TLS_CLIENT', ssl.PROTOCOL_SSLv23))
+            # SSLContext.check_hostname was added in 2.7.9 and 3.4. Using it
+            # forces the use of SNI, which PyMongo 2.x doesn't support.
+            # PROTOCOL_TLS_CLIENT enables this by default. Since we call
+            # match_hostname directly disable this explicitly.
+            if hasattr(self.ssl_ctx, "check_hostname"):
+                self.ssl_ctx.check_hostname = False
+            if ssl_certfile is not None:
+                self.ssl_ctx.load_cert_chain(ssl_certfile, ssl_keyfile)
+            if ssl_ca_certs is not None:
+                self.ssl_ctx.load_verify_locations(ssl_ca_certs)
+            # PROTOCOL_TLS_CLIENT sets verify_mode to CERT_REQUIRED so
+            # we always have to set this explicitly.
+            if ssl_cert_reqs is not None:
+                self.ssl_ctx.verify_mode = ssl_cert_reqs
+            else:
+                self.ssl_ctx.verify_mode = ssl.CERT_NONE
 
         # Map self._ident.get() -> request socket
         self._tid_to_sock = {}
@@ -295,16 +315,15 @@ class Pool:
         sock = self.create_connection()
         hostname = self.pair[0]
 
-        if self.use_ssl:
+        if self.ssl_ctx is not None:
             try:
-                sock = ssl.wrap_socket(sock,
-                                       certfile=self.ssl_certfile,
-                                       keyfile=self.ssl_keyfile,
-                                       ca_certs=self.ssl_ca_certs,
-                                       cert_reqs=self.ssl_cert_reqs)
-                if self.ssl_cert_reqs and self.ssl_match_hostname:
+                sock = self.ssl_ctx.wrap_socket(sock)
+                if self.ssl_ctx.verify_mode and self.ssl_match_hostname:
                     match_hostname(sock.getpeercert(), hostname)
-
+            # CertificateError doesn't inherit from SSLError.
+            except CertificateError:
+                sock.close()
+                raise
             except ssl.SSLError:
                 sock.close()
                 raise ConnectionFailure("SSL handshake failed. MongoDB may "
