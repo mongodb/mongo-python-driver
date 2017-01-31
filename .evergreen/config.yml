@@ -436,53 +436,6 @@ tasks:
                genhtml --version || true
                valgrind --version || true
 
-# Release Engineering Matrix {{{
-    - name: make-release-archive
-      tags: ["releng"]
-      commands:
-        - func: "exec script"
-          vars:
-            file: ".evergreen/make-release.sh"
-        - func: "upload release"
-        - func: "upload build"
-
-    - name: make-docs
-      tags: ["releng"]
-      commands:
-        - func: "exec script"
-          vars:
-            file: ".evergreen/make-docs.sh"
-        - func: "upload docs"
-
-    - name: release-compile
-      tags: ["releng"]
-      depends_on:
-        - name: "make-release-archive"
-          variant: "releng-release-archive-creator"
-      commands:
-        # Fetch the make-release-archive generated archive, rather then the git clone
-        - func: "fetch build"
-        - func: "exec script"
-          vars:
-            file: ".evergreen/compile.sh"
-        - func: "upload build"
-
-    - name: release-compile-cmake
-      tags: ["releng"]
-      depends_on:
-        - name: "make-release-archive"
-          variant: "releng-release-archive-creator"
-      commands:
-        # Fetch the make-release-archive generated archive, rather then the git clone
-        - func: "fetch build"
-        - func: "exec compile script"
-          vars:
-            file: ".evergreen/compile.sh"
-            buildtool: "cmake"
-        - func: "upload build"
-# }}}
-
-
 # Standard test tasks {{{
 
     - name: "test-2.4-standalone"
