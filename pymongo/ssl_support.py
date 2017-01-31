@@ -91,7 +91,18 @@ if HAVE_SSL:
         # Note PROTOCOL_SSLv23 is about the most misleading name imaginable.
         # This configures the server and client to negotiate the
         # highest protocol version they both support. A very good thing.
-        ctx = SSLContext(ssl.PROTOCOL_SSLv23)
+        # PROTOCOL_TLS_CLIENT was added in CPython 3.6, deprecating
+        # PROTOCOL_SSLv23.
+        ctx = SSLContext(
+            getattr(ssl, "PROTOCOL_TLS_CLIENT", ssl.PROTOCOL_SSLv23))
+        # SSLContext.check_hostname was added in CPython 2.7.9 and 3.4.
+        # PROTOCOL_TLS_CLIENT enables it by default. Using it
+        # requires passing server_hostname to wrap_socket, which we already
+        # do for SNI support. To support older versions of Python we have to
+        # call match_hostname directly, so we disable check_hostname explicitly
+        # to avoid calling match_hostname twice.
+        if hasattr(ctx, "check_hostname"):
+            ctx.check_hostname = False
         if hasattr(ctx, "options"):
             # Explicitly disable SSLv2, SSLv3 and TLS compression. Note that
             # up to date versions of MongoDB 2.4 and above already disable
