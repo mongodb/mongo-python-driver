@@ -929,6 +929,12 @@ buildvariants:
 # Test all versions of Python against all versions of MongoDB >= 3.2.
 - matrix_name: "tests-python-version-ubuntu1604-test-ssl"
   matrix_spec: {"python-version": "*", auth: "*", ssl: "ssl" }
+  exclude_spec:
+    # PYTHON-498: disable Jython SSL tests
+    python-version: "jython2.7"
+    # EVG-1410: exlcude_spec must specifiy values for all axes
+    auth: "*"
+    ssl: "ssl"
   display_name: "${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
   run_on: ubuntu1604-test
   tasks:
