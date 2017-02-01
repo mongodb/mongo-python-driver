@@ -350,7 +350,7 @@ class TestDatabase(IntegrationTest):
     # Note: MongoDB 3.5.2 requires the 'cursor' or 'explain' option for
     # aggregate.
     @client_context.require_version_min(2, 3, 2)
-    @client_context.require_version_max(3, 5, 1)
+    @client_context.require_version_max(3, 5, 0)
     def test_command_with_regex(self):
         db = self.client.pymongo_test
         db.test.drop()

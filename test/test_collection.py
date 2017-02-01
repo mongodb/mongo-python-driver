@@ -1484,8 +1484,8 @@ class TestCollection(IntegrationTest):
         self.assertRaises(TypeError, db.test.aggregate, "wow")
 
         pipeline = {"$project": {"_id": False, "foo": True}}
-        # MongoDB 3.5.2+ requires either the 'cursor' or 'explain' options.
-        if client_context.version.at_least(3, 5, 2):
+        # MongoDB 3.5.1+ requires either the 'cursor' or 'explain' options.
+        if client_context.version.at_least(3, 5, 1):
             result = db.test.aggregate([pipeline])
         else:
             result = db.test.aggregate([pipeline], useCursor=False)
@@ -1510,8 +1510,8 @@ class TestCollection(IntegrationTest):
         coll = db.get_collection(
             'test',
             codec_options=CodecOptions(document_class=RawBSONDocument))
-        # MongoDB 3.5.2+ requires either the 'cursor' or 'explain' options.
-        if client_context.version.at_least(3, 5, 2):
+        # MongoDB 3.5.1+ requires either the 'cursor' or 'explain' options.
+        if client_context.version.at_least(3, 5, 1):
             result = coll.aggregate([pipeline])
         else:
             result = coll.aggregate([pipeline], useCursor=False)
