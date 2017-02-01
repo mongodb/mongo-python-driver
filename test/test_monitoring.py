@@ -503,6 +503,7 @@ class TestCommandMonitoring(unittest.TestCase):
             # when the thread last ran.
             self.assertIn(cursor_id, started.command['cursors'])
             self.assertEqual('killCursors', started.command_name)
+            self.assertIs(type(started.connection_id), tuple)
             self.assertEqual(cursor.address, started.connection_id)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertTrue(isinstance(started.request_id, int))
@@ -511,6 +512,7 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertTrue(isinstance(succeeded.duration_micros, int))
             self.assertEqual('killCursors', succeeded.command_name)
             self.assertTrue(isinstance(succeeded.request_id, int))
+            self.assertIs(type(succeeded.connection_id), tuple)
             self.assertEqual(cursor.address, succeeded.connection_id)
             # There could be more than one cursor_id here depending on
             # when the thread last ran.

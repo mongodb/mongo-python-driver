@@ -1106,8 +1106,12 @@ class MongoClient(common.BaseObject):
                             request_id, msg = message.kill_cursors(cursor_ids)
                             if publish:
                                 duration = datetime.datetime.now() - start
+                                # Here and below, address could be a tuple or
+                                # _CursorAddress. We always want to publish a
+                                # tuple to match the rest of the monitoring
+                                # API.
                                 listeners.publish_command_start(
-                                    spec, db, request_id, address)
+                                    spec, db, request_id, tuple(address))
                                 start = datetime.datetime.now()
 
                             try:
@@ -1118,7 +1122,7 @@ class MongoClient(common.BaseObject):
                                            + duration)
                                     listeners.publish_command_failure(
                                         dur, message._convert_exception(exc),
-                                        'killCursors', request_id, address)
+                                        'killCursors', request_id, tuple(address))
                                 raise
 
                             if publish:
@@ -1128,7 +1132,7 @@ class MongoClient(common.BaseObject):
                                 reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
                                 listeners.publish_command_success(
                                     duration, reply, 'killCursors', request_id,
-                                    address)
+                                    tuple(address))
 
                 except Exception:
                     helpers._handle_exception()
