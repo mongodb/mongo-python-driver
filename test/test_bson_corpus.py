@@ -47,7 +47,7 @@ _DEPRECATED_BSON_TYPES = {
 
 
 # Need to set tz_aware=True in order to use "strict" dates in extended JSON.
-codec_options = CodecOptions(tz_aware=True)
+codec_options = CodecOptions(tz_aware=True, document_class=SON)
 # We normally encode UUID as binary subtype 0x03,
 # but we'll need to encode to subtype 0x04 for one of the tests.
 codec_options_uuid_04 = codec_options._replace(uuid_representation=STANDARD)
@@ -65,7 +65,9 @@ to_extjson_uuid_04 = functools.partial(json_util.dumps,
 to_extjson_iso8601 = functools.partial(json_util.dumps,
                                        json_options=json_options_iso8601)
 decode_extjson = functools.partial(
-    json_util.loads, json_options=json_util.CANONICAL_JSON_OPTIONS)
+    json_util.loads,
+    json_options=json_util.JSONOptions(canonical_extended_json=True,
+                                       document_class=SON))
 to_bson_uuid_04 = functools.partial(BSON.encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(BSON.encode, codec_options=codec_options)
@@ -184,12 +186,18 @@ def create_test(case_spec):
                         normalized_cE)
 
                 if 'lossy' not in valid_case:
-                    self.assertEqual(encode_bson(decode_extjson(E)), cB)
+                    # Skip tests for document type in Python 2.6 that have
+                    # multiple keys, since we can't control key ordering when
+                    # parsing JSON.
+                    if not (sys.version_info[:2] == (2, 6) and
+                            bson_type == '0x03' and
+                            len(decode_extjson(E)) > 1):
+                        self.assertEqual(encode_bson(decode_extjson(E)), cB)
 
-                    if E != cE:
-                        self.assertEqual(
-                            encode_bson(decode_extjson(cE)),
-                            cB)
+                        if E != cE:
+                            self.assertEqual(
+                                encode_bson(decode_extjson(cE)),
+                                cB)
 
             for decode_error_case in case_spec.get('decodeErrors', []):
                 with self.assertRaises(InvalidBSON):
