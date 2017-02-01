@@ -172,15 +172,20 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         def raise_socket_error(*args, **kwargs):
             raise socket.error
 
-        old_sendall = socket.socket.sendall
-        socket.socket.sendall = raise_socket_error
+        # In Jython socket.socket is a function, not a class.
+        sock = socket.socket()
+        klass = sock.__class__
+        old_sendall = klass.sendall
+        klass.sendall = raise_socket_error
 
         try:
             cursor = db.get_collection(
                 "test", read_preference=ReadPreference.SECONDARY).find()
             self.assertRaises(AutoReconnect, cursor.next)
         finally:
-            socket.socket.sendall = old_sendall
+            klass.sendall = old_sendall
+            # Silence resource warnings.
+            sock.close()
 
     @client_context.require_secondaries_count(1)
     def test_timeout_does_not_mark_member_down(self):
