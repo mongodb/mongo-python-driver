@@ -26,12 +26,6 @@ except ImportError:
     # Python 2
     from urllib import quote_plus
 
-try:
-    import ipaddress
-    _HAVE_IPADDRESS = True
-except ImportError:
-    _HAVE_IPADDRESS = False
-
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
@@ -43,7 +37,8 @@ from test import (IntegrationTest,
                   db_pwd,
                   db_user,
                   SkipTest,
-                  unittest)
+                  unittest,
+                  HAVE_IPADDRESS)
 from test.utils import remove_all_users, connected
 
 if HAVE_SSL:
@@ -260,7 +255,7 @@ class TestSSL(IntegrationTest):
 
         # Python 2.6 often can't read SANs from the peer cert.
         # http://bugs.python.org/issue13034
-        if _HAVE_IPADDRESS and sys.version_info[:2] > (2, 6):
+        if HAVE_IPADDRESS and sys.version_info[:2] > (2, 6):
             client = MongoClient('127.0.0.1',
                                  ssl=True,
                                  ssl_certfile=CLIENT_PEM,

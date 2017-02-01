@@ -18,7 +18,13 @@
 import os
 import socket
 import sys
-from pymongo.common import partition_node
+import warnings
+
+try:
+    import ipaddress
+    HAVE_IPADDRESS = True
+except ImportError:
+    HAVE_IPADDRESS = False
 
 if sys.version_info[:2] == (2, 6):
     import unittest2 as unittest
@@ -26,7 +32,6 @@ if sys.version_info[:2] == (2, 6):
 else:
     import unittest
     from unittest import SkipTest
-import warnings
 
 from functools import wraps
 
@@ -35,6 +40,7 @@ import pymongo.errors
 
 from bson.py3compat import _unicode
 from pymongo import common
+from pymongo.common import partition_node
 from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
 from test.version import Version
 

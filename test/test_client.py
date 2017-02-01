@@ -59,7 +59,8 @@ from test import (client_context,
                   IntegrationTest,
                   db_pwd,
                   db_user,
-                  MockClientTest)
+                  MockClientTest,
+                  HAVE_IPADDRESS)
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
@@ -740,9 +741,12 @@ class TestClient(IntegrationTest):
 
     @client_context.require_ipv6
     def test_ipv6(self):
-        # http://bugs.python.org/issue13034
-        if sys.version_info[:2] == (2, 6) and client_context.ssl:
-            raise SkipTest("Python 2.6 can't parse SANs")
+        if client_context.ssl:
+            # http://bugs.python.org/issue13034
+            if sys.version_info[:2] == (2, 6):
+                raise SkipTest("Python 2.6 can't parse SANs")
+            if not HAVE_IPADDRESS:
+                raise SkipTest("Need the ipaddress module to test with SSL")
 
         if client_context.auth_enabled:
             auth_str = "%s:%s@" % (db_user, db_pwd)
