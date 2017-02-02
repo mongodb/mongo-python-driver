@@ -507,7 +507,7 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
     if isinstance(obj, ObjectId):
         return {"$oid": str(obj)}
     if isinstance(obj, DBRef):
-        return _json_convert(obj.as_doc())
+        return _json_convert(obj.as_doc(), json_options=json_options)
     if isinstance(obj, datetime.datetime):
         if (json_options.datetime_representation ==
                 DatetimeRepresentation.ISO8601):
