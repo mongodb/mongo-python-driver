@@ -315,6 +315,19 @@ Performance may be degraded.\n
 else:
     extra_opts['ext_modules'] = ext_modules
 
+# The nosetests command requires nose be available, otherwise the xunit
+# plugin will not work.
+# Note: projects listed in setup_requires will NOT be automatically installed
+# on the system where the setup script is being run. They are simply
+# downloaded to the ./.eggs directory if they're not locally available
+# already.
+# See:
+# https://nose.readthedocs.io/en/latest/api/commands.html#bootstrapping
+# https://nose.readthedocs.io/en/latest/setuptools_integration.html
+# https://setuptools.readthedocs.io/en/latest/setuptools.html#new-and-changed-setup-keywords
+if "nosetests" in sys.argv:
+    extra_opts["setup_requires"] = ["nose"]
+
 if PY3:
     extra_opts["use_2to3"] = True
     if should_run_tests:

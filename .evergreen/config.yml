@@ -307,7 +307,7 @@ functions:
         file_location: "${DRIVERS_TOOLS}/results.json"
     - command: attach.xunit_results
       params:
-        file: "src/xunit-results/TEST-*.xml"
+        file: "src/nosetests.xml"
 
   "bootstrap mongo-orchestration":
     - command: shell.exec
@@ -780,6 +780,14 @@ axes:
   - id: python-version
     display_name: "Python"
     values:
+      - id: "2.4"
+        display_name: "Python 2.4"
+        variables:
+           PYTHON_BINARY: "/opt/python/2.4/bin/python"
+      - id: "2.5"
+        display_name: "Python 2.5"
+        variables:
+           PYTHON_BINARY: "/opt/python/2.5/bin/python"
       - id: "2.6"
         display_name: "Python 2.6"
         variables:
@@ -812,6 +820,10 @@ axes:
         display_name: "PyPy 3"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3/bin/pypy3"
+      - id: "jython2.5"
+        display_name: "Jython 2.5"
+        variables:
+           PYTHON_BINARY: "/opt/python/jython2.5/bin/jython"
       - id: "jython2.7"
         display_name: "Jython 2.7"
         variables:
@@ -931,7 +943,7 @@ buildvariants:
   matrix_spec: {"python-version": "*", auth: "*", ssl: "ssl" }
   exclude_spec:
     # PYTHON-498: disable Jython SSL tests
-    python-version: "jython2.7"
+    python-version: ["jython2.5", "jython2.7"]
     # EVG-1410: exlcude_spec must specifiy values for all axes
     auth: "*"
     ssl: "ssl"

@@ -148,6 +148,8 @@ def setup():
 
 def teardown():
     client = auth_context.client
+    if not client:
+        return
     if auth_context.auth_enabled:
         auth_context.add_user_and_log_in()
 

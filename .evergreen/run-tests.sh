@@ -20,11 +20,6 @@ if [ "$AUTH" != "noauth" ]; then
     export DB_PASSWORD="pwd123"
 fi
 
-if [ "$SSL" != "nossl" ]; then
-    export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
-    export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
-fi
-
 if [ -z "$PYTHON_BINARY" ]; then
     PYTHON=$(command -v python || command -v python3)
     if [ -z "$PYTHON" ]; then
@@ -35,6 +30,34 @@ else
     PYTHON="$PYTHON_BINARY"
 fi
 
+PYTHON_VERSION=$($PYTHON -c 'import sys; sys.stdout.write(str(sys.version_info[0]))')
+
+if [ "$SSL" = "ssl" ]; then
+    if [ "$PYTHON_VERSION" = "3" ]; then
+        # We cannot pass arguments to the "nosetests" command with Python 3
+        # because of the hacks in setup.py to work around nose/2to3 usage.
+        # Instead, use the "test" command directly to run only test/test_ssl.py.
+        # Unfortunately, this does not produce XML output.
+        TEST_CMD="test --test-suite test.test_ssl"
+    else
+        # With Python 2 we use the nosetests command
+        # Run only test/test_ssl.py and produces nosetests.xml output.
+        TEST_CMD="nosetests --tests test/test_ssl.py"
+    fi
+else
+    # Run all the tests and produces nosetests.xml output.
+    TEST_CMD="nosetests"
+fi
+
+# Set verbose test output flag.
+if [ "$PYTHON_VERSION" = "3" ]; then
+    # With Python 3, the tests do not accept a "--verbosity=2" flag.
+    TEST_VERBOSITY="-v"
+else
+    # With Python 2, the tests accepts a "-v" flag but only "--verbosity=2"
+    # causes the verbose output we want.
+    TEST_VERBOSITY="--verbosity=2"
+fi
 
 echo "Running $AUTH tests over $SSL with python $PYTHON, connecting to $MONGODB_URI"
 $PYTHON -c 'import sys; print(sys.version)'
@@ -43,4 +66,4 @@ $PYTHON -c 'import sys; print(sys.version)'
 # files in the xunit-results/ directory.
 
 $PYTHON setup.py clean
-$PYTHON setup.py test --xunit-output=xunit-results
+$PYTHON setup.py $TEST_CMD $TEST_VERBOSITY
