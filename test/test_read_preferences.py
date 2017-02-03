@@ -523,7 +523,8 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                 ('geoSearch', 'test'), ('near', [33, 33]), ('maxDistance', 6),
                 ('search', {'type': 'restaurant'}), ('limit', 30)])))
 
-        if version.at_least(self.c, (2, 1, 0)):
+        if (version.at_least(self.c, (2, 1, 0)) and
+                not version.at_least(self.c, (3, 5, 1))):
             self._test_fn(
                 True, lambda: self.c.pymongo_test.command(SON([
                     ('aggregate', 'test'),
@@ -568,8 +569,8 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         ])))
 
     def test_aggregate_command_with_out(self):
-        if not version.at_least(self.c, (2, 5, 2)):
-            raise SkipTest("Aggregation with $out requires MongoDB >= 2.5.2")
+        if not version.at_least(self.c, (2, 6, 0)):
+            raise SkipTest("Aggregation with $out requires MongoDB >= 2.6.0")
 
         # Tests aggregate command when pipeline contains $out.
         self.c.pymongo_test.test.insert({"x": 1, "y": 1}, w=self.w)
@@ -584,12 +585,14 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             warnings.simplefilter("ignore", UserWarning)
             self._test_fn(False, lambda: self.c.pymongo_test.command(
                 "aggregate", "test",
-                pipeline=[{"$match": {"x": 1}}, {"$out": "agg_out"}]
+                pipeline=[{"$match": {"x": 1}}, {"$out": "agg_out"}],
+                cursor={}
             ))
 
             # Test aggregate when sent through the collection aggregate function.
             self._test_fn(False, lambda: self.c.pymongo_test.test.aggregate(
-                [{"$match": {"x": 2}}, {"$out": "agg_out"}]
+                [{"$match": {"x": 2}}, {"$out": "agg_out"}],
+                cursor={}
             ))
         finally:
             ctx.exit()
@@ -662,7 +665,9 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
     def test_aggregate(self):
         if version.at_least(self.c, (2, 1, 0)):
-            self._test_fn(True, lambda: self.c.pymongo_test.test.aggregate([]))
+            self._test_fn(
+                True,
+                lambda: self.c.pymongo_test.test.aggregate([], cursor={}))
 
 
 class TestMovingAverage(unittest.TestCase):

@@ -1460,12 +1460,9 @@ class TestCollection(unittest.TestCase):
 
         pipeline = {"$project": {"_id": False, "foo": True}}
         for result in [
-                db.test.aggregate(pipeline),
-                db.test.aggregate([pipeline]),
-                db.test.aggregate((pipeline,))]:
-
-            self.assertEqual(1.0, result['ok'])
-            self.assertEqual([{'foo': [1, 2]}], result['result'])
+                (db.test.aggregate(pl, cursor={})).next()
+                for pl in (pipeline, [pipeline], (pipeline,))]:
+            self.assertEqual({'foo': [1, 2]}, result)
 
     def test_aggregate_with_compile_re(self):
         # See SERVER-6470.
@@ -1478,10 +1475,10 @@ class TestCollection(unittest.TestCase):
         db.test.drop()
         db.test.insert({'r': re.compile('.*')})
 
-        result = db.test.aggregate([])
-        self.assertTrue(isinstance(result['result'][0]['r'], RE_TYPE))
-        result = db.test.aggregate([], compile_re=False)
-        self.assertTrue(isinstance(result['result'][0]['r'], Regex))
+        result = db.test.aggregate([], cursor={}).next()
+        self.assertTrue(isinstance(result['r'], RE_TYPE))
+        result = db.test.aggregate([], cursor={}, compile_re=False).next()
+        self.assertTrue(isinstance(result['r'], Regex))
 
     def test_aggregation_cursor_validation(self):
         # Regardless of version, should return CommandCursor when given
@@ -1491,10 +1488,11 @@ class TestCollection(unittest.TestCase):
         cursor = db.test.aggregate(projection, cursor={})
         self.assertTrue(isinstance(cursor, CommandCursor))
 
-        db = self.db
-        projection = {'$project': {'_id': '$_id'}}
-        cursor = db.test.aggregate(projection)
-        self.assertFalse(isinstance(cursor, CommandCursor))
+        if not version.at_least(self.db.connection, (3, 5, 1)):
+            db = self.db
+            projection = {'$project': {'_id': '$_id'}}
+            cursor = db.test.aggregate(projection)
+            self.assertFalse(isinstance(cursor, CommandCursor))
 
     def test_aggregation_cursor(self):
         db = self.db

@@ -345,6 +345,8 @@ class TestDatabase(unittest.TestCase):
             raise SkipTest(
                 "Retrieving a regex with aggregation requires "
                 "MongoDB >= 2.3.2")
+        if version.at_least(self.client, (3, 5, 1)):
+            raise SkipTest("SERVER-24623")
 
         db = self.client.pymongo_test
         db.test.drop()
@@ -736,12 +738,18 @@ class TestDatabase(unittest.TestCase):
                               'count', 'test', maxTimeMS=1)
             pipeline = [{'$project': {'name': 1, 'count': 1}}]
             # Database command helper.
-            db.command('aggregate', 'test', pipeline=pipeline)
-            self.assertRaises(ExecutionTimeout, db.command,
-                              'aggregate', 'test',
-                              pipeline=pipeline, maxTimeMS=1)
+            if not version.at_least(self.client, (3, 5, 1)):
+                db.command('aggregate', 'test', pipeline=pipeline)
+                self.assertRaises(ExecutionTimeout, db.command,
+                                  'aggregate', 'test',
+                                  pipeline=pipeline, maxTimeMS=1)
+            else:
+                db.command('aggregate', 'test', pipeline=pipeline, cursor={})
+                self.assertRaises(ExecutionTimeout, db.command,
+                                  'aggregate', 'test',
+                                  pipeline=pipeline, cursor={}, maxTimeMS=1)
             # Collection helper.
-            db.test.aggregate(pipeline=pipeline)
+            db.test.aggregate(pipeline=pipeline, cursor={})
             self.assertRaises(ExecutionTimeout,
                               db.test.aggregate, pipeline, maxTimeMS=1)
         finally:
