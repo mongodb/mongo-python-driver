@@ -48,7 +48,7 @@ SIMPLE_SSL = False
 CERT_SSL = False
 SERVER_IS_RESOLVABLE = False
 MONGODB_X509_USERNAME = (
-    "CN=client,OU=kerneluser,O=10Gen,L=New York City,ST=New York,C=US")
+    "C=US,ST=California,L=Palo Alto,O=,OU=Drivers,CN=client")
 
 # To fully test this start a mongod instance (built with SSL support) like so:
 # mongod --dbpath /path/to/data/directory --sslOnNormalPorts \
@@ -272,8 +272,6 @@ class TestSSL(unittest.TestCase):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
-        #
-        # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
@@ -298,8 +296,6 @@ class TestSSL(unittest.TestCase):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
-        #
-        # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
@@ -324,27 +320,21 @@ class TestSSL(unittest.TestCase):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
-        #
-        # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
-        if not SERVER_IS_RESOLVABLE:
-            raise SkipTest("No hosts entry for 'server'. Cannot validate "
-                           "hostname in the certificate")
-
-        client = MongoClient('server',
+        client = MongoClient('localhost',
                              ssl=True,
                              ssl_certfile=CLIENT_PEM,
                              ssl_cert_reqs=ssl.CERT_REQUIRED,
                              ssl_ca_certs=CA_PEM)
         response = client.admin.command('ismaster')
         if 'setName' in response:
-            if response['primary'].split(":")[0] != 'server':
-                raise SkipTest("No hosts in the replicaset for 'server'. "
+            if response['primary'].split(":")[0] != 'localhost':
+                raise SkipTest("No hosts in the replicaset for 'localhost'. "
                                "Cannot validate hostname in the certificate")
 
-            client = MongoReplicaSetClient('server',
+            client = MongoReplicaSetClient('localhost',
                                            replicaSet=response['setName'],
                                            w=len(response['hosts']),
                                            ssl=True,
@@ -365,16 +355,10 @@ class TestSSL(unittest.TestCase):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
-        #
-        # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
-        if not SERVER_IS_RESOLVABLE:
-            raise SkipTest("No hosts entry for 'server'. Cannot validate "
-                           "hostname in the certificate")
-
-        uri_fmt = ("mongodb://server/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
+        uri_fmt = ("mongodb://localhost/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
                    "=%s&ssl_ca_certs=%s&ssl_match_hostname=true")
         client = MongoClient(uri_fmt % (CLIENT_PEM, 'CERT_REQUIRED', CA_PEM))
 
@@ -391,16 +375,10 @@ class TestSSL(unittest.TestCase):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
-        #
-        # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
-        if not SERVER_IS_RESOLVABLE:
-            raise SkipTest("No hosts entry for 'server'. Cannot validate "
-                           "hostname in the certificate")
-
-        client = MongoClient('server',
+        client = MongoClient('localhost',
                              ssl=True,
                              ssl_certfile=CLIENT_PEM,
                              ssl_cert_reqs=ssl.CERT_OPTIONAL,
@@ -408,11 +386,11 @@ class TestSSL(unittest.TestCase):
 
         response = client.admin.command('ismaster')
         if 'setName' in response:
-            if response['primary'].split(":")[0] != 'server':
-                raise SkipTest("No hosts in the replicaset for 'server'. "
+            if response['primary'].split(":")[0] != 'localhost':
+                raise SkipTest("No hosts in the replicaset for 'localhost'. "
                                "Cannot validate hostname in the certificate")
 
-            client = MongoReplicaSetClient('server',
+            client = MongoReplicaSetClient('localhost',
                                            replicaSet=response['setName'],
                                            w=len(response['hosts']),
                                            ssl=True,
@@ -433,17 +411,23 @@ class TestSSL(unittest.TestCase):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #   --sslCRLFile=/path/to/pymongo/test/certificates/crl.pem
+        #
+        # Also requires an /etc/hosts entry where "server" is resolvable
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
+
+        if not SERVER_IS_RESOLVABLE:
+            raise SkipTest("No hosts entry for 'server'. Cannot validate "
+                           "hostname in the certificate")
 
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         response = client.admin.command('ismaster')
 
-        uri = ("mongodb://%s/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
-               "=CERT_REQUIRED&ssl_ca_certs=%s" % (pair, CLIENT_PEM, CA_PEM))
+        uri = ("mongodb://server/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
+               "=CERT_REQUIRED&ssl_ca_certs=%s" % (CLIENT_PEM, CA_PEM))
 
         try:
-            MongoClient(pair,
+            MongoClient('server',
                         ssl=True,
                         ssl_certfile=CLIENT_PEM,
                         ssl_cert_reqs=ssl.CERT_REQUIRED,
@@ -459,7 +443,7 @@ class TestSSL(unittest.TestCase):
             pass
 
         # No error.
-        MongoClient(pair,
+        MongoClient('server',
                     ssl=True,
                     ssl_certfile=CLIENT_PEM,
                     ssl_cert_reqs=ssl.CERT_REQUIRED,
@@ -473,7 +457,7 @@ class TestSSL(unittest.TestCase):
             w = len(response['hosts'])
             uri = uri + "&replicaSet=%s&w=%d" % (name, w)
             try:
-                MongoReplicaSetClient(pair,
+                MongoReplicaSetClient('server',
                                       replicaSet=name,
                                       w=w,
                                       ssl=True,
@@ -491,7 +475,7 @@ class TestSSL(unittest.TestCase):
                 pass
 
             # No error.
-            MongoReplicaSetClient(pair,
+            MongoReplicaSetClient('server',
                                   replicaSet=name,
                                   w=w,
                                   ssl=True,
