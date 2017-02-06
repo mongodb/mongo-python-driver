@@ -382,14 +382,19 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         def raise_socket_error(*args, **kwargs):
             raise socket.error
 
-        old_sendall = socket.socket.sendall
-        socket.socket.sendall = raise_socket_error
+        # In Jython 2.7 socket.socket is a function, not a class.
+        sock = socket.socket()
+        klass = sock.__class__
+        old_sendall = klass.sendall
+        klass.sendall = raise_socket_error
 
         try:
             cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
             self.assertRaises(AutoReconnect, cursor.next)
         finally:
-            socket.socket.sendall = old_sendall
+            klass.sendall = old_sendall
+            # Silence resource warnings.
+            sock.close()
 
     def test_operations(self):
         c = self._get_client()
