@@ -17,6 +17,7 @@
 
 import os
 import sys
+import time
 import warnings
 
 import pymongo
@@ -49,18 +50,25 @@ def _split_host_port(host_port):
 # When testing against a replica set, 'host' and 'port' need
 # to represent the primary.
 try:
-    _ismaster = pymongo.MongoClient(host, port).admin.command('ismaster')
-    # Master slave topologies don't use setName. The members also aren't
-    # aware of one another (e.g. ismaster doesn't have a 'hosts' field).
-    if 'setName' in _ismaster:
-        _primary = _ismaster['primary']
-        host, port = _split_host_port(_primary)
-        _secondaries = set(_ismaster['hosts']) - set([_primary])
-        for _idx, _host_port in enumerate(_secondaries):
-            _host, _port = _split_host_port(_host_port)
-            # Enumerate doesn't accept a start argument until python 2.6.
-            setattr(sys.modules[__name__], "host%d" % (_idx + 1,), _host)
-            setattr(sys.modules[__name__], "port%d" % (_idx + 1,), _port)
+    # Try to find the primary for 10 seconds.
+    for _ in range(10):
+        _ismaster = pymongo.MongoClient(host, port).admin.command('ismaster')
+        # Master slave topologies don't use setName. The members also aren't
+        # aware of one another (e.g. ismaster doesn't have a 'hosts' field).
+        if 'setName' in _ismaster:
+            _primary = _ismaster.get('primary')
+            # No primary (yet?)
+            if _primary is None:
+                time.sleep(1)
+                continue
+            host, port = _split_host_port(_primary)
+            _secondaries = set(_ismaster['hosts']) - set([_primary])
+            for _idx, _host_port in enumerate(_secondaries):
+                _host, _port = _split_host_port(_host_port)
+                # Enumerate doesn't accept a start argument until python 2.6.
+                setattr(sys.modules[__name__], "host%d" % (_idx + 1,), _host)
+                setattr(sys.modules[__name__], "port%d" % (_idx + 1,), _port)
+        break
 except ConnectionFailure:
     pass
 
