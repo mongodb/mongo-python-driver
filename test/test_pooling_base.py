@@ -47,11 +47,18 @@ if sys.version_info[0] >= 3:
 try:
     import gevent
     from gevent import Greenlet, monkey, hub
-    import gevent.coros, gevent.event
+    import gevent.event
     has_gevent = True
 except ImportError:
     has_gevent = False
 
+if has_gevent:
+    try:
+        # gevent < 1.2
+        from gevent import coros as _coros
+    except ImportError:
+        # gevent >= 1.2
+        from gevent import lock as _coros
 
 def gc_collect_until_done(threads, timeout=60):
     start = time.time()
@@ -235,7 +242,7 @@ class CreateAndReleaseSocket(MongoThread):
             self.nthreads_run = 0
             self.use_greenlets = use_greenlets
             if use_greenlets:
-                self.lock = gevent.coros.RLock()
+                self.lock = _coros.RLock()
             else:
                 self.lock = threading.Lock()
             self.reset_ready()
@@ -290,7 +297,7 @@ class CreateAndReleaseSocketNoRendezvous(MongoThread):
             self.nthreads = nthreads
             self.nthreads_run = 0
             if use_greenlets:
-                self.lock = gevent.coros.RLock()
+                self.lock = _coros.RLock()
                 self.ready = gevent.event.Event()
             else:
                 self.lock = threading.Lock()
