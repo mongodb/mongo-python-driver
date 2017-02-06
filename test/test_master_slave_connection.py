@@ -51,20 +51,22 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         self.master = MongoClient(host, port)
 
         self.slaves = []
-        try:
-            self.slaves.append(MongoClient(
-                host2, port2, read_preference=ReadPreference.SECONDARY))
-        except ConnectionFailure:
-            pass
 
-        try:
-            self.slaves.append(MongoClient(
-                host3, port3, read_preference=ReadPreference.SECONDARY))
-        except ConnectionFailure:
-            pass
+        for hst, prt in ((host2, port2), (host3, port3)):
+            try:
+                slave = MongoClient(
+                    hst, prt, read_preference=ReadPreference.SECONDARY)
+            except ConnectionFailure:
+                continue
+
+            ismaster = slave.admin.command('ismaster')
+            if 'arbiterOnly' not in ismaster and ismaster.get('msg') != 'isdbgrid':
+                self.slaves.append(slave)
 
         if not self.slaves:
-            raise SkipTest("Not connected to master-slave set")
+            raise SkipTest(
+                "Not connected to master-slave or replica "
+                "set or no slaves or secondaries available.")
 
         self.ctx = catch_warnings()
         warnings.simplefilter("ignore", DeprecationWarning)
