@@ -796,6 +796,10 @@ axes:
         display_name: "Python 2.7"
         variables:
            PYTHON_BINARY: "/opt/python/2.7/bin/python"
+      - id: "3.2"
+        display_name: "Python 3.2"
+        variables:
+           PYTHON_BINARY: "/opt/python/3.2/bin/python3"
       - id: "3.3"
         display_name: "Python 3.3"
         variables:
