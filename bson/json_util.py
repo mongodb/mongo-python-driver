@@ -485,7 +485,7 @@ _CANONICAL_JSON_TABLE = {
 }
 
 
-def canonical_object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
+def canonical_object_hook(dct, json_options=CANONICAL_JSON_OPTIONS):
     keyset = frozenset(dct)
     converter = _CANONICAL_JSON_TABLE.get(keyset)
     if converter:
