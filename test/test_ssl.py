@@ -36,8 +36,8 @@ from pymongo.common import HAS_SSL, validate_cert_reqs
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
-from test import host, port, pair, version
-from test.utils import server_started_with_auth, remove_all_users
+from test import host, port, pair, version, db_user, db_pwd, AuthContext
+from test.utils import remove_all_users
 
 
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -98,6 +98,13 @@ if HAS_SSL:
 
     if CERT_SSL:
         SERVER_IS_RESOLVABLE = is_server_resolvable()
+
+    if SIMPLE_SSL or CERT_SSL:
+        ssl_auth_ctx = AuthContext(ssl=True, ssl_certfile=CLIENT_PEM)
+        if ssl_auth_ctx.auth_enabled:
+            ssl_auth_ctx.add_user_and_log_in()
+    else:
+        ssl_auth_ctx = None
 
 
 class TestClientSSL(unittest.TestCase):
@@ -244,6 +251,9 @@ class TestSSL(unittest.TestCase):
         if sys.version.startswith('3.0'):
             raise SkipTest("Python 3.0.x has problems "
                            "with SSL and socket timeouts.")
+
+        if ssl_auth_ctx and ssl_auth_ctx.auth_enabled:
+            raise SkipTest("Can't test with auth enabled.")
 
     def test_simple_ssl(self):
         # Expects the server to be running with ssl and with
@@ -486,6 +496,17 @@ class TestSSL(unittest.TestCase):
 
             MongoClient(uri + "&ssl_match_hostname=false")
 
+
+class TestX509Auth(unittest.TestCase):
+
+    def setUp(self):
+        if not HAS_SSL:
+            raise SkipTest("The ssl module is not available.")
+
+        if sys.version.startswith('3.0'):
+            raise SkipTest("Python 3.0.x has problems "
+                           "with SSL and socket timeouts.")
+
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests as well as
@@ -498,50 +519,64 @@ class TestSSL(unittest.TestCase):
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
-        client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
-        if not version.at_least(client, (2, 5, 3, -1)):
+        if not version.at_least(ssl_auth_ctx.client, (2, 5, 3, -1)):
             raise SkipTest("MONGODB-X509 tests require MongoDB 2.5.3 or newer")
-        if not server_started_with_auth(client):
+        if not ssl_auth_ctx.auth_enabled:
             raise SkipTest('Authentication is not enabled on server')
+
+        # This does two things:
+        # 1. Ensures we test against both client classes.
+        # 2. Ensures the tests pass regardless of what replica
+        #    set member became primary before the tests run.
+        ismaster = ssl_auth_ctx.client.admin.command('ismaster')
+        if 'setName' in ismaster:
+            get_client = lambda hst: MongoReplicaSetClient(
+                hst,
+                ssl=True,
+                ssl_certfile=CLIENT_PEM,
+                replicaSet=ismaster['setName'])
+        else:
+            get_client = lambda hst: MongoClient(
+                hst,
+                ssl=True,
+                ssl_certfile=CLIENT_PEM)
+
+        client = get_client(pair)
+        client.admin.authenticate(db_user, db_pwd)
         # Give admin all necessary privileges.
         client['$external'].add_user(MONGODB_X509_USERNAME, roles=[
             {'role': 'readWriteAnyDatabase', 'db': 'admin'},
             {'role': 'userAdminAnyDatabase', 'db': 'admin'}])
+        client.admin.logout()
         coll = client.pymongo_test.test
         self.assertRaises(OperationFailure, coll.count)
         self.assertTrue(client.admin.authenticate(MONGODB_X509_USERNAME,
                                                   mechanism='MONGODB-X509'))
         self.assertTrue(coll.remove())
+        client.admin.logout()
+
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (quote_plus(MONGODB_X509_USERNAME), host, port))
         # SSL options aren't supported in the URI...
-        self.assertTrue(MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM))
+        self.assertTrue(get_client(uri))
 
         # Should require a username
         uri = ('mongodb://%s:%d/?authMechanism=MONGODB-X509' % (host, port))
-        client_bad = MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM)
+        client_bad = get_client(uri)
         self.assertRaises(OperationFailure, client_bad.pymongo_test.test.remove)
 
         # Auth should fail if username and certificate do not match
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (quote_plus("not the username"), host, port))
-        self.assertRaises(ConfigurationError, MongoClient, uri,
-                          ssl=True, ssl_certfile=CLIENT_PEM)
+        self.assertRaises(ConfigurationError, get_client, uri)
+
         self.assertRaises(OperationFailure, client.admin.authenticate,
                           "not the username",
                           mechanism="MONGODB-X509")
 
-        # Invalid certificate (using CA certificate as client certificate)
-        uri = ('mongodb://%s@%s:%d/?authMechanism='
-               'MONGODB-X509' % (quote_plus(MONGODB_X509_USERNAME), host, port))
-        self.assertRaises(ConnectionFailure, MongoClient, uri,
-                          ssl=True, ssl_certfile=CA_PEM)
-        self.assertRaises(ConnectionFailure, MongoClient, pair,
-                          ssl=True, ssl_certfile=CA_PEM)
-
         # Cleanup
+        client.admin.authenticate(db_user, db_pwd)
         remove_all_users(client['$external'])
-        client['$external'].logout()
 
 if __name__ == "__main__":
     unittest.main()

@@ -201,10 +201,18 @@ class Pool:
             # match_hostname directly disable this explicitly.
             if hasattr(self.ssl_ctx, "check_hostname"):
                 self.ssl_ctx.check_hostname = False
+            # load_cert_chain and load_verify_locations can fail
+            # if the file contents are invalid.
             if ssl_certfile is not None:
-                self.ssl_ctx.load_cert_chain(ssl_certfile, ssl_keyfile)
+                try:
+                    self.ssl_ctx.load_cert_chain(ssl_certfile, ssl_keyfile)
+                except ssl.SSLError:
+                    pass
             if ssl_ca_certs is not None:
-                self.ssl_ctx.load_verify_locations(ssl_ca_certs)
+                try:
+                    self.ssl_ctx.load_verify_locations(ssl_ca_certs)
+                except ssl.SSLError:
+                    pass
             # PROTOCOL_TLS_CLIENT sets verify_mode to CERT_REQUIRED so
             # we always have to set this explicitly.
             if ssl_cert_reqs is not None:

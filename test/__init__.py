@@ -76,11 +76,11 @@ pair = '%s:%d' % (host, port)
 
 class AuthContext(object):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.auth_enabled = False
         self.restricted_localhost = False
         try:
-            self.client = pymongo.MongoClient(host, port)
+            self.client = pymongo.MongoClient(host, port, **kwargs)
         except ConnectionFailure:
             self.client = None
         else:
