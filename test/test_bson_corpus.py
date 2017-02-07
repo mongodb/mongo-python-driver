@@ -189,7 +189,8 @@ def create_test(case_spec):
                     # Skip tests for document type in Python 2.6 that have
                     # multiple keys, since we can't control key ordering when
                     # parsing JSON.
-                    if not (sys.version_info[:2] == (2, 6) and
+                    if json_util._HAS_OBJECT_PAIRS_HOOK or not (
+                            sys.version_info[:2] == (2, 6) and
                             bson_type == '0x03' and
                             len(decode_extjson(E)) > 1):
                         self.assertEqual(encode_bson(decode_extjson(E)), cB)
