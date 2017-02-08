@@ -590,7 +590,9 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
     if isinstance(obj, bool):
         return obj
     if json_options.canonical_extended_json and isinstance(obj, integer_types):
-        return {'$numberInt': text_type(obj)}
+        if -2 ** 31 <= obj < 2 ** 31:
+            return {'$numberInt': text_type(obj)}
+        return {'$numberLong': text_type(obj)}
     if json_options.canonical_extended_json and isinstance(obj, float):
         if math.isnan(obj):
             representation = 'NaN'
