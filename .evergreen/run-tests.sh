@@ -31,6 +31,7 @@ else
 fi
 
 PYTHON_VERSION=$($PYTHON -c 'import sys; sys.stdout.write(str(sys.version_info[0]))')
+PLATFORM=$($PYTHON -c 'import platform, sys; sys.stdout.write(platform.system())')
 
 if [ "$SSL" = "ssl" ]; then
     if [ "$PYTHON_VERSION" = "3" ]; then
@@ -59,6 +60,13 @@ else
     TEST_VERBOSITY="--verbosity=2"
 fi
 
+if [ "$PLATFORM" = "Java" ]; then
+    # Keep Jython 2.5 from running out of memory.
+    EXTRA_ARGS="-J-XX:-UseGCOverheadLimit -J-Xmx4096m"
+else
+    EXTRA_ARGS=""
+fi
+
 echo "Running $AUTH tests over $SSL with python $PYTHON, connecting to $MONGODB_URI"
 $PYTHON -c 'import sys; print(sys.version)'
 
@@ -66,4 +74,4 @@ $PYTHON -c 'import sys; print(sys.version)'
 # files in the xunit-results/ directory.
 
 $PYTHON setup.py clean
-$PYTHON setup.py $TEST_CMD $TEST_VERBOSITY
+$PYTHON $EXTRA_ARGS setup.py $TEST_CMD $TEST_VERBOSITY
