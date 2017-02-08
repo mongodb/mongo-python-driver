@@ -209,6 +209,8 @@ class MongoClient(common.BaseObject):
             profile collections.
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
+          - `use_sdam_tags`: use tags from isMaster to determine alternate
+            hosts to connect to after discovery.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -387,7 +389,7 @@ class MongoClient(common.BaseObject):
         opts = {}
         for entity in host:
             if "://" in entity:
-                if entity.startswith("mongodb://"):
+                if entity.tartswith("mongodb://"):
                     res = uri_parser.parse_uri(entity, port, warn=True)
                     seeds.update(res["nodelist"])
                     username = res["username"] or username
@@ -454,7 +456,8 @@ class MongoClient(common.BaseObject):
             condition_class=condition_class,
             local_threshold_ms=options.local_threshold_ms,
             server_selection_timeout=options.server_selection_timeout,
-            heartbeat_frequency=options.heartbeat_frequency)
+            heartbeat_frequency=options.heartbeat_frequency,
+            tags=options.tags)
 
         self._topology = Topology(self._topology_settings)
         if connect:
