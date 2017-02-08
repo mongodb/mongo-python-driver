@@ -398,7 +398,8 @@ pre:
   - func: "install dependencies"
 
 post:
-  - func: "upload working dir"
+  # Disabled, causing timeouts
+  # - func: "upload working dir"
   - func: "upload mo artifacts"
   - func: "upload test results"
   - func: "stop mongo-orchestration"
