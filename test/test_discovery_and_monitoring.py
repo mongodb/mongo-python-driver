@@ -87,7 +87,8 @@ def create_mock_topology(uri, monitor_class=MockMonitor):
         parsed_uri['nodelist'],
         replica_set_name=replica_set_name,
         pool_class=MockPool,
-        monitor_class=monitor_class)
+        monitor_class=monitor_class,
+        tags=parsed_uri['options'].get('tags', None))
 
     c = Topology(topology_settings)
     c.open()

@@ -1,0 +1,48 @@
+{
+    "description": "Replica set discovery from primary with tags",
+    "phases": [
+        {
+            "outcome": {
+                "servers": {
+                    "a:37017": {
+                        "setName": null,
+                        "type": "Unknown"
+                    }, 
+                    "b:37017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    },
+                    "a:27017": {
+                        "setName": "rs",
+                        "type": "RSPrimary"
+                    },
+                    "b:27017": {
+                        "setName": null,
+                        "type": "Unknown"
+                    }
+                },
+                "setName": "rs", 
+                "topologyType": "ReplicaSetWithPrimary"
+            }, 
+            "responses": [
+                [
+                    "a:27017", 
+                    {
+                        "hosts": [
+                            "a:27017", 
+                            "b:27017"
+                        ], 
+                        "ismaster": true, 
+                        "ok": 1, 
+                        "setName": "rs",
+                        "tags": [
+                            "a:37017",
+                            "b:37017"
+                        ]
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://a/?replicaSet=rs&tags=internal-public"
+}
