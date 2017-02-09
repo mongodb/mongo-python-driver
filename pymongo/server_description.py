@@ -15,6 +15,7 @@
 """Represent one server the driver is connected to."""
 
 from bson import EPOCH_NAIVE
+from pymongo.common import clean_node
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
@@ -76,7 +77,7 @@ class ServerDescription(object):
         self._me = ismaster.me
         self._last_update_time = _time()
         self._error = error
-        self._alternate_addresses = ismaster.tags
+        self._alternate_addresses = [clean_node(n) for n in ismaster.tags]
         # When connecting to that server fails, try it's alternate addresses
         # in order to find one that works. Later on, can set preference to
         # public or private alternate addresses.
