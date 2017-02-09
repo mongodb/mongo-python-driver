@@ -194,11 +194,10 @@ class Monitor(object):
         # result['data'][0]['hosts'].append(u'localhost:30000') # test for unreachable hosts, caught earlier
         # result['data'][0]['me'] = u'localhost:27019' # test for hosts whose 'me' does not match their address. Get ignored or removed from server list (even if in seed list), UNLESS primary.
 
-        # result['data'][0][u'hosts'] = [u'localhost:37017', u'localhost:37018', u'localhost:37019']
-        # result['data'][0][u'tags'] = [u'localhost:27017', u'localhost:27018', u'localhost:27019']
-        # import pprint
-        # x = pprint.pformat(result['data'][0], 4)
-        # print "ISMASTER: ON " + str(sock_info.address) + "\n" + str(x)
-        # print "SEED LIST " + str(self._settings.seeds)
+        result['data'][0][u'hosts'] = [u'localhost:37017', u'localhost:37018']
+        result['data'][0][u'tags'] = [u'localhost:27017', u'localhost:27018']
+        import pprint
+        x = pprint.pformat(result['data'][0], 4)
+        print "ISMASTER: ON " + str(sock_info.address) + "\n" + str(x)
 
         return IsMaster(result['data'][0]), _time() - start

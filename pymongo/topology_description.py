@@ -431,8 +431,9 @@ def _update_rs_from_primary(
     if tags is not None:
         for new_address in server_description.alternate_addresses:
             if new_address not in sds:
-                print "ADDING alt address", new_address
+                print "ADDING alt address", new_address # Add by "me", not by current address
                 sds[new_address] = ServerDescription(new_address)
+                # sds[server_description.address].alternate_addresses.push(new_address)
             else:
                 print "X alt address in sds already"
 
