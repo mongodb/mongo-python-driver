@@ -316,7 +316,8 @@ def updated_topology_description(topology_description, server_description):
                 SERVER_TYPE.RSArbiter,
                 SERVER_TYPE.RSOther):
             topology_type, set_name = _update_rs_no_primary_from_member(
-                sds, set_name, server_description, topology_description._topology_settings.tags)
+                sds, set_name, server_description,
+                topology_description._topology_settings.tags)
 
     elif topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
         if server_type in (SERVER_TYPE.Standalone, SERVER_TYPE.Mongos):
@@ -338,7 +339,8 @@ def updated_topology_description(topology_description, server_description):
                 SERVER_TYPE.RSArbiter,
                 SERVER_TYPE.RSOther):
             topology_type = _update_rs_with_primary_from_member(
-                sds, set_name, server_description, topology_description._topology_settings.tags)
+                sds, set_name, server_description,
+                topology_description._topology_settings.tags)
 
         else:
             # Server type is Unknown or RSGhost: did we just lose the primary?
@@ -446,7 +448,8 @@ def _update_rs_with_primary_from_member(
     if replica_set_name != server_description.replica_set_name:
         sds.pop(server_description.address)
     elif (server_description.me and
-          server_description.address != server_description.me and tags is None): # ignore servers whose 'me' field doesn't match the connected address
+          server_description.address != server_description.me and
+          tags is None):
         sds.pop(server_description.address)
 
     # Had this member been the primary?
@@ -480,7 +483,8 @@ def _update_rs_no_primary_from_member(
             sds[address] = ServerDescription(address)
 
     if (server_description.me and
-            server_description.address != server_description.me and tags is None): # ignore servers whose 'me' field doesn't match the connected address
+            server_description.address != server_description.me
+            and tags is None):
         sds.pop(server_description.address)
 
     return topology_type, replica_set_name

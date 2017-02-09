@@ -45,8 +45,8 @@ class ServerDescription(object):
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
-        '_set_version', '_election_id', '_last_write_date', '_last_update_time',
-        '_alternate_addresses')
+        '_set_version', '_election_id', '_last_write_date',
+        '_last_update_time', '_alternate_addresses')
 
     def __init__(
             self,
@@ -77,8 +77,9 @@ class ServerDescription(object):
         self._last_update_time = _time()
         self._error = error
         self._alternate_addresses = ismaster.tags
-        # When connecting to that server fails, try it's alternate addresses in order to find one that works
-        # Later on, can set preference to public or private alternate addresses.
+        # When connecting to that server fails, try it's alternate addresses
+        # in order to find one that works. Later on, can set preference to
+        # public or private alternate addresses.
 
         if ismaster.last_write_date:
             # Convert from datetime to seconds.
