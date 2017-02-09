@@ -189,4 +189,12 @@ class Monitor(object):
         sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)
+
+        # result['data'][0]['hosts'].append(result['data'][0]['hosts'][0]) # test for duplicate hosts, is ignored
+        result['data'][0]['hosts'].append(u'localhost:30000') # test for unreachable hosts, caught earlier
+        # result['data'][0]['me'] = u'localhost:27019' # test for hosts whose 'me' does not match their address. Get ignored or removed from server list (even if in seed list), UNLESS primary.
+        import pprint
+        x = pprint.pformat(result['data'][0], 4)
+        print "ISMASTER: ON " + str(sock_info.address) + "\n" + str(x)
+        print "SEED LIST " + str(self._settings.seeds)
         return IsMaster(result['data'][0]), _time() - start

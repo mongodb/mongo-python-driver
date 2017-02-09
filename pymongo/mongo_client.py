@@ -389,7 +389,7 @@ class MongoClient(common.BaseObject):
         opts = {}
         for entity in host:
             if "://" in entity:
-                if entity.tartswith("mongodb://"):
+                if entity.startswith("mongodb://"):
                     res = uri_parser.parse_uri(entity, port, warn=True)
                     seeds.update(res["nodelist"])
                     username = res["username"] or username

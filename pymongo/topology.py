@@ -446,6 +446,7 @@ class Topology(object):
             if not self._description.has_server(address):
                 server.close()
                 self._servers.pop(address)
+        print "Topology's server list at end of update_servers", self._servers.keys()
 
     def _create_pool_for_server(self, address):
         return self._settings.pool_class(address, self._settings.pool_options)
