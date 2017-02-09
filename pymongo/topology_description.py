@@ -351,7 +351,6 @@ def updated_topology_description(topology_description, server_description):
             topology_type = _check_has_primary(sds)
 
 
-    print "RETURNING SDS for new TD:", sds.keys()
     # Return updated copy.
     return TopologyDescription(topology_type,
                                sds,
@@ -424,18 +423,14 @@ def _update_rs_from_primary(
     # Discover new hosts from this primary's response.
     for new_address in server_description.all_hosts:
         if new_address not in sds:
-            print "ADDING new address", new_address
             sds[new_address] = ServerDescription(new_address)
 
     # Discover alternate addresses from tags
     if tags is not None:
         for new_address in server_description.alternate_addresses:
             if new_address not in sds:
-                print "ADDING alt address", new_address # Add by "me", not by current address
                 sds[new_address] = ServerDescription(new_address)
                 # sds[server_description.address].alternate_addresses.push(new_address)
-            else:
-                print "X alt address in sds already"
 
     # Remove hosts not in the response.
     if tags is None:  # TODO: should this ever happen, even if we have tags?
@@ -499,17 +494,13 @@ def _update_rs_no_primary_from_member(
     # it doesn't report. Only add new servers.
     for address in server_description.all_hosts:
         if address not in sds:
-            print "no-primary: adding host", address
             sds[address] = ServerDescription(address)
 
     # Discover alternate addresses from tags
     if tags is not None:
         for new_address in server_description.alternate_addresses:
             if new_address not in sds:
-                print "no-primary: adding alternate", new_address
                 sds[new_address] = ServerDescription(new_address)
-            else:
-                print "X alt address in sds already"
 
     if (server_description.me and
             server_description.address != server_description.me
