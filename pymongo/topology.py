@@ -418,8 +418,9 @@ class Topology(object):
 
         Hold the lock while calling this.
         """
-        for address, sd in self._description.server_descriptions().items():
-            if address not in self._servers:
+        for address, sd in self._description.server_descriptions().items(): #sd is ServerDescription
+            if address not in self._servers: # Address exists in TD but not Topology
+                print "creating monitor for ", address
                 monitor = self._settings.monitor_class(
                     server_description=sd,
                     topology=self,
