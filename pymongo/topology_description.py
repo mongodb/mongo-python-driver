@@ -305,11 +305,13 @@ def updated_topology_description(topology_description, server_description):
             (topology_type,
              set_name,
              max_set_version,
-             max_election_id) = _update_rs_from_primary(sds,
-                                                        set_name,
-                                                        server_description,
-                                                        max_set_version,
-                                                        max_election_id)
+             max_election_id) = _update_rs_from_primary(
+                sds,
+                set_name,
+                server_description,
+                max_set_version,
+                max_election_id,
+                topology_description._topology_settings.tags)
 
         elif server_type in (
                 SERVER_TYPE.RSSecondary,
@@ -328,11 +330,13 @@ def updated_topology_description(topology_description, server_description):
             (topology_type,
              set_name,
              max_set_version,
-             max_election_id) = _update_rs_from_primary(sds,
-                                                        set_name,
-                                                        server_description,
-                                                        max_set_version,
-                                                        max_election_id)
+             max_election_id) = _update_rs_from_primary(
+                sds,
+                set_name,
+                server_description,
+                max_set_version,
+                max_election_id,
+                topology_description._topology_settings.tags)
 
         elif server_type in (
                 SERVER_TYPE.RSSecondary,
@@ -360,7 +364,8 @@ def _update_rs_from_primary(
         replica_set_name,
         server_description,
         max_set_version,
-        max_election_id):
+        max_election_id,
+        tags):
     """Update topology description from a primary's ismaster response.
 
     Pass in a dict of ServerDescriptions, current replica set name, the
@@ -418,6 +423,12 @@ def _update_rs_from_primary(
     for new_address in server_description.all_hosts:
         if new_address not in sds:
             sds[new_address] = ServerDescription(new_address)
+
+    # Discover alternate addresses from tags
+    if tags is not None:
+        for new_address in server_description.alternate_addresses:
+            if new_address not in sds:
+                sds[new_address] = ServerDescription(new_address)
 
     # Remove hosts not in the response.
     for addr in set(sds) - server_description.all_hosts:
@@ -481,6 +492,12 @@ def _update_rs_no_primary_from_member(
     for address in server_description.all_hosts:
         if address not in sds:
             sds[address] = ServerDescription(address)
+
+    # Discover alternate addresses from tags
+    if tags is not None:
+        for new_address in server_description.alternate_addresses:
+            if new_address not in sds:
+                sds[new_address] = ServerDescription(new_address)
 
     if (server_description.me and
             server_description.address != server_description.me
