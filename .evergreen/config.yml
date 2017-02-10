@@ -666,17 +666,6 @@ axes:
         display_name: "Solaris"
         run_on: solaris
 
-      # TODO: move Windows to a matrix that runs SSL tests with MongoDB >= 2.6.
-      # SSL is available on Windows since MongoDB 2.6 but mongo-orchestration
-      # fails setting up the cluster.
-      - id: windows-64-vs2010-test
-        display_name: "Windows (VS2010)"
-        run_on: windows-64-vs2010-test
-
-      - id: windows-64-vs2015-test
-        display_name: "Windows (VS2015)"
-        run_on: windows-64-vs2015-test
-
   # OSes that support versions of MongoDB>=2.6 with SSL.
   - id: os-requires-26
     display_name: OS
@@ -817,6 +806,43 @@ axes:
         display_name: "Jython 2.7"
         variables:
            PYTHON_BINARY: "/opt/python/jython2.7/bin/jython"
+  #- id: windows-vs2008-python-version
+  #  display_name: "Windows Visual Studio 2008 Python"
+  #  values:
+  #    - id: "2.6"
+  #      display_name: "Python 2.6"
+  #      variables:
+  #         PYTHON_BINARY: "/cygdrive/c/python/Python26/python.exe"
+  #    - id: "2.7"
+  #      display_name: "Python 2.7"
+  #      variables:
+  #         PYTHON_BINARY: "/cygdrive/c/python/Python27/python.exe"
+  #    - id: "3.2"
+  #      display_name: "Python 3.2"
+  #      variables:
+  #         PYTHON_BINARY: "/cygdrive/c/python/Python32/python.exe"
+  - id: windows-vs2010-python-version
+    display_name: "Windows Visual Studio 2010 Python"
+    values:
+      - id: "3.3"
+        display_name: "Python 3.3"
+        variables:
+           PYTHON_BINARY: "/cygdrive/c/python/Python33/python.exe"
+      - id: "3.4"
+        display_name: "Python 3.4"
+        variables:
+           PYTHON_BINARY: "/cygdrive/c/python/Python34/python.exe"
+  - id: windows-vs2015-python-version
+    display_name: "Windows Visual Studio 2015 Python"
+    values:
+      - id: "3.5"
+        display_name: "Python 3.5"
+        variables:
+           PYTHON_BINARY: "/cygdrive/c/python/Python35/python.exe"
+      - id: "3.6"
+        display_name: "Python 3.6"
+        variables:
+           PYTHON_BINARY: "/cygdrive/c/python/Python36/python.exe"
 
 
 buildvariants:
@@ -955,6 +981,86 @@ buildvariants:
   matrix_spec: {"python-version": "*", auth: "*", ssl: "nossl" }
   display_name: "${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
   run_on: ubuntu1604-test
+  tasks:
+     - name: "test-latest-replica_set"
+     - name: "test-latest-sharded_cluster"
+     - name: "test-latest-standalone"
+     - name: "test-3.4-replica_set"
+     - name: "test-3.4-sharded_cluster"
+     - name: "test-3.4-standalone"
+     - name: "test-3.2-replica_set"
+     - name: "test-3.2-sharded_cluster"
+     - name: "test-3.2-standalone"
+     - name: "test-3.0-replica_set"
+     - name: "test-3.0-sharded_cluster"
+     - name: "test-3.0-standalone"
+     - name: "test-2.6-replica_set"
+     - name: "test-2.6-sharded_cluster"
+     - name: "test-2.6-standalone"
+     - name: "test-2.4-replica_set"
+     - name: "test-2.4-sharded_cluster"
+     - name: "test-2.4-standalone"
+
+# TODO: Figure out SSL on Windows.
+
+# Test Python 2.6, 2.7, and 3.2 against all versions on MongoDB >= 2.4
+# on Windows with Visual Studio 2008.
+#- matrix_name: "tests-windows-vs2008-python-version-nossl"
+#  matrix_spec: {"windows-vs2008-python-version": "*", auth: "*", ssl: "nossl" }
+#  display_name: "Windows 64 Visual Studio 2008 ${windows-vs2008-python-version} ${auth} ${ssl}"
+#  run_on: windows-64-vs2008-test
+#  tasks:
+#     - name: "test-latest-replica_set"
+#     - name: "test-latest-sharded_cluster"
+#     - name: "test-latest-standalone"
+#     - name: "test-3.4-replica_set"
+#     - name: "test-3.4-sharded_cluster"
+#     - name: "test-3.4-standalone"
+#     - name: "test-3.2-replica_set"
+#     - name: "test-3.2-sharded_cluster"
+#     - name: "test-3.2-standalone"
+#     - name: "test-3.0-replica_set"
+#     - name: "test-3.0-sharded_cluster"
+#     - name: "test-3.0-standalone"
+#     - name: "test-2.6-replica_set"
+#     - name: "test-2.6-sharded_cluster"
+#     - name: "test-2.6-standalone"
+#     - name: "test-2.4-replica_set"
+#     - name: "test-2.4-sharded_cluster"
+#     - name: "test-2.4-standalone"
+
+# Test Python 3.3 and 3.4 against all versions on MongoDB >= 2.4
+# on Windows with Visual Studio 2010.
+- matrix_name: "tests-windows-vs2010-python-version-nossl"
+  matrix_spec: {"windows-vs2010-python-version": "*", auth: "*", ssl: "nossl" }
+  display_name: "Windows 64 Visual Studio 2010 ${windows-vs2010-python-version} ${auth} ${ssl}"
+  run_on: windows-64-vs2010-test
+  tasks:
+     - name: "test-latest-replica_set"
+     - name: "test-latest-sharded_cluster"
+     - name: "test-latest-standalone"
+     - name: "test-3.4-replica_set"
+     - name: "test-3.4-sharded_cluster"
+     - name: "test-3.4-standalone"
+     - name: "test-3.2-replica_set"
+     - name: "test-3.2-sharded_cluster"
+     - name: "test-3.2-standalone"
+     - name: "test-3.0-replica_set"
+     - name: "test-3.0-sharded_cluster"
+     - name: "test-3.0-standalone"
+     - name: "test-2.6-replica_set"
+     - name: "test-2.6-sharded_cluster"
+     - name: "test-2.6-standalone"
+     - name: "test-2.4-replica_set"
+     - name: "test-2.4-sharded_cluster"
+     - name: "test-2.4-standalone"
+
+# Test Python 3.5 and 3.6 against all versions on MongoDB >= 2.4
+# on Windows with Visual Studio 2015.
+- matrix_name: "tests-windows-vs2015-python-version-nossl"
+  matrix_spec: {"windows-vs2015-python-version": "*", auth: "*", ssl: "nossl" }
+  display_name: "Windows 64 Visual Studio 2015 ${windows-vs2015-python-version} ${auth} ${ssl}"
+  run_on: windows-64-vs2015-test
   tasks:
      - name: "test-latest-replica_set"
      - name: "test-latest-sharded_cluster"
