@@ -16,12 +16,12 @@
         {
             "description": "Empty code string, non-empty scope",
             "bson": "1D0000000F61001500000001000000000C000000107800010000000000",
-            "extjson": "{\"a\" : {\"$code\" : \"\", \"$scope\" : {\"x\" : 1}}}"
+            "extjson": "{\"a\" : {\"$code\" : \"\", \"$scope\" : {\"x\" : {\"$numberInt\": \"1\"}}}}"
         },
         {
             "description": "Non-empty code string and non-empty scope",
             "bson": "210000000F6100190000000500000061626364000C000000107800010000000000",
-            "extjson": "{\"a\" : {\"$code\" : \"abcd\", \"$scope\" : {\"x\" : 1}}}"
+            "extjson": "{\"a\" : {\"$code\" : \"abcd\", \"$scope\" : {\"x\" : {\"$numberInt\": \"1\"}}}}"
         },
         {
             "description": "Unicode and embedded null in code string, empty scope",
