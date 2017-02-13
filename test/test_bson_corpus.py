@@ -71,6 +71,10 @@ decode_extjson = functools.partial(
 to_bson_uuid_04 = functools.partial(BSON.encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(BSON.encode, codec_options=codec_options)
+if json_util._HAS_OBJECT_PAIRS_HOOK:
+    loads = functools.partial(json.loads, object_pairs_hook=SON)
+else:
+    loads = json.loads
 decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
 
 
@@ -151,16 +155,16 @@ def create_test(case_spec):
                     continue
 
                 # Normalize extended json by parsing it with the built-in
-                # json library. This accounts for discrepancies in spacing,
-                # key ordering, etc.
-                normalized_cE = json.loads(cE)
+                # json library. This accounts for discrepancies in spacing.
+                # Key ordering is preserved when possible.
+                normalized_cE = loads(cE)
 
                 self.assertEqual(
-                    json.loads(encode_extjson(decode_bson(B))),
+                    loads(encode_extjson(decode_bson(B))),
                     normalized_cE)
 
                 self.assertEqual(
-                    json.loads(encode_extjson(decode_extjson(E))),
+                    loads(encode_extjson(decode_extjson(E))),
                     normalized_cE)
 
                 if bson_type == '0x09':
@@ -168,21 +172,21 @@ def create_test(case_spec):
                     # $numberLong to match canonical_extjson if the datetime
                     # is pre-epoch.
                     if decode_extjson(E)[test_key] >= EPOCH_AWARE:
-                        normalized_date = json.loads(E)
+                        normalized_date = loads(E)
                     else:
                         normalized_date = normalized_cE
                     self.assertEqual(
-                        json.loads(to_extjson_iso8601(decode_extjson(cE))),
+                        loads(to_extjson_iso8601(decode_extjson(cE))),
                         normalized_date)
 
                 if B != cB:
                     self.assertEqual(
-                        json.loads(encode_extjson(decode_bson(cB))),
+                        loads(encode_extjson(decode_bson(cB))),
                         normalized_cE)
 
                 if E != cE:
                     self.assertEqual(
-                        json.loads(encode_extjson(decode_extjson(cE))),
+                        loads(encode_extjson(decode_extjson(cE))),
                         normalized_cE)
 
                 if 'lossy' not in valid_case:
