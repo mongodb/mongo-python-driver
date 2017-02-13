@@ -200,10 +200,10 @@ def create_test(case_spec):
                                 encode_bson(decode_extjson(cE)),
                                 cB)
 
-            for decode_error_case in case_spec.get('decodeErrors', []):
-                with self.assertRaises(InvalidBSON):
-                    decode_bson(
-                        binascii.unhexlify(b(decode_error_case['bson'])))
+        for decode_error_case in case_spec.get('decodeErrors', []):
+            with self.assertRaises(InvalidBSON):
+                decode_bson(
+                    binascii.unhexlify(b(decode_error_case['bson'])))
 
     return run_test
 
