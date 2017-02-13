@@ -80,8 +80,9 @@ decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
 
 class TestBSONCorpus(unittest.TestCase):
     def test_all_bson_types(self):
-        # Because we can't round-trip all BSON types, make this test a special
-        # case, instead of mangling our create_test function below.
+        # Because we can't round-trip all BSON types (see _DEPRECATED_BSON_TYPES
+        # above for how these are handled), make this test a special case,
+        # instead of mangling our create_test function below.
         with open(os.path.join(_TEST_PATH, 'multi-type.json')) as spec_file:
             case_spec = json.load(spec_file)
         for valid_case in case_spec.get('valid', []):

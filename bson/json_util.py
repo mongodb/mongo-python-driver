@@ -563,7 +563,7 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
             return SON([('$code', str(obj))])
         return SON([
             ('$code', str(obj)),
-            ('$scope', _json_convert(obj.scope or {}, json_options))])
+            ('$scope', _json_convert(obj.scope, json_options))])
     if isinstance(obj, Binary):
         return SON([
             ('$binary', base64.b64encode(obj).decode()),
