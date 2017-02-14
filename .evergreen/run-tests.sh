@@ -13,6 +13,7 @@ AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 MONGODB_URI=${MONGODB_URI:-}
 PYTHON_BINARY=${PYTHON_BINARY:-}
+GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
 
 
 if [ "$AUTH" != "noauth" ]; then
@@ -43,4 +44,8 @@ $PYTHON -c 'import sys; print(sys.version)'
 # files in the xunit-results/ directory.
 
 $PYTHON setup.py clean
-$PYTHON setup.py test --xunit-output=xunit-results
+if [ -z "$GREEN_FRAMEWORK" ]; then
+    $PYTHON setup.py test --xunit-output=xunit-results
+else
+    $PYTHON green_framework_test.py $GREEN_FRAMEWORK --xunit-output=xunit-results
+fi
