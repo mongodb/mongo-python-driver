@@ -6,27 +6,33 @@
     "valid": [
         {
             "description": "Empty string",
-            "bson": "0D0000000E6100010000000000"
+            "bson": "0D0000000E6100010000000000",
+            "extjson": "{\"a\": {\"$symbol\": \"\"}}"
         },
         {
             "description": "Single character",
-            "bson": "0E0000000E610002000000620000"
+            "bson": "0E0000000E610002000000620000",
+            "extjson": "{\"a\": {\"$symbol\": \"b\"}}"
         },
         {
             "description": "Multi-character",
-            "bson": "190000000E61000D0000006162616261626162616261620000"
+            "bson": "190000000E61000D0000006162616261626162616261620000",
+            "extjson": "{\"a\": {\"$symbol\": \"abababababab\"}}"
         },
         {
             "description": "two-byte UTF-8 (\u00e9)",
-            "bson": "190000000E61000D000000C3A9C3A9C3A9C3A9C3A9C3A90000"
+            "bson": "190000000E61000D000000C3A9C3A9C3A9C3A9C3A9C3A90000",
+            "extjson": "{\"a\": {\"$symbol\": \"éééééé\"}}"
         },
         {
             "description": "three-byte UTF-8 (\u2606)",
-            "bson": "190000000E61000D000000E29886E29886E29886E298860000"
+            "bson": "190000000E61000D000000E29886E29886E29886E298860000",
+            "extjson": "{\"a\": {\"$symbol\": \"☆☆☆☆\"}}"
         },
         {
             "description": "Embedded nulls",
-            "bson": "190000000E61000D0000006162006261620062616261620000"
+            "bson": "190000000E61000D0000006162006261620062616261620000",
+            "extjson": "{\"a\": {\"$symbol\": \"ab\\u0000bab\\u0000babab\"}}"
         }
     ],
     "decodeErrors": [

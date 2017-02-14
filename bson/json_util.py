@@ -452,10 +452,15 @@ def _get_date(doc, json_options):
     return bson._millis_to_datetime(millis, json_options)
 
 
-def _get_dbpointer(doc, dummy):
-    ref_doc = doc['$dbPointer']
-    if len(ref_doc) == 2 and '$ref' in ref_doc and '$id' in ref_doc:
-        return DBRef(ref_doc['$ref'], ref_doc['$id'])
+def _get_dbpointer(doc, json_options):
+    dbref = doc['$dbPointer']
+    if isinstance(dbref, DBRef):
+        # DBPointer must not contain $db in its value.
+        if dbref.database is None:
+            return dbref
+        # Otherwise, this is just a regular document.
+        return json_options.document_class(
+            [('$dbPointer', json_options.document_class(dbref.as_doc()))])
     return doc
 
 
@@ -471,9 +476,10 @@ _CANONICAL_JSON_TABLE = {
     frozenset(['$maxKey']): lambda dummy0, dummy1: MaxKey(),
     frozenset(['$undefined']): lambda dummy0, dummy1: None,
     frozenset(['$dbPointer']): _get_dbpointer,
-    frozenset(['$ref', '$id']): lambda d, _: DBRef(d['$ref'], d['$id']),
+    frozenset(['$ref', '$id']): lambda d, _: DBRef(
+        d.pop('$ref'), d.pop('$id'), **d),
     frozenset(['$ref', '$id', '$db']): lambda d, _: DBRef(
-        d['$ref'], d['$id'], d['$db']),
+        d.pop('$ref'), d.pop('$id'), d.pop('$db'), **d),
     frozenset(['$regex', '$options']): lambda d, _: Regex(
         d['$regex'], d['$options']),
     frozenset(['$binary', '$type']): _get_binary,
@@ -486,13 +492,13 @@ _CANONICAL_JSON_TABLE = {
 
 
 def canonical_object_hook(dct, json_options=CANONICAL_JSON_OPTIONS):
-    keyset = frozenset(dct)
+    keyset = frozenset(key for key in dct if key.startswith('$'))
     converter = _CANONICAL_JSON_TABLE.get(keyset)
     if converter:
         return converter(dct, json_options)
     elif '$ref' in dct and '$id' in dct:
         # DBRef may contain other keys that don't start with $.
-        if any(key.startswith('$') for key in keyset - _DBREF_KEYS):
+        if keyset - _DBREF_KEYS:
             # Other keys start with $, so dct cannot be parsed as a DBRef.
             return dct
         else:

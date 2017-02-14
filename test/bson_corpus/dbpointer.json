@@ -6,11 +6,25 @@
     "valid": [
         {
             "description": "DBpointer",
-            "bson": "1A0000000C610002000000620056E1FC72E0C917E9C471416100"
+            "bson": "1A0000000C610002000000620056E1FC72E0C917E9C471416100",
+            "extjson": "{\"a\": {\"$dbPointer\": {\"$ref\": \"b\", \"$id\": {\"$oid\": \"56e1fc72e0c917e9c4714161\"}}}}"
+        },
+        {
+            "description": "DBpointer with opposite key order",
+            "bson": "1A0000000C610002000000620056E1FC72E0C917E9C471416100",
+            "extjson": "{\"a\": {\"$dbPointer\": {\"$id\": {\"$oid\": \"56e1fc72e0c917e9c4714161\"}, \"$ref\": \"b\"}}}",
+            "canonical_extjson": "{\"a\": {\"$dbPointer\": {\"$ref\": \"b\", \"$id\": {\"$oid\": \"56e1fc72e0c917e9c4714161\"}}}}"
+        },
+        {
+            "description": "DBpointer with extra keys",
+            "bson": "1A0000000C610002000000620056E1FC72E0C917E9C471416100",
+            "extjson": "{\"a\": {\"$dbPointer\": {\"a\": 1, \"$id\": {\"$oid\": \"56e1fc72e0c917e9c4714161\"}, \"c\": 1, \"$ref\": \"b\", \"c\": 1}}}",
+            "canonical_extjson": "{\"a\": {\"$dbPointer\": {\"$ref\": \"b\", \"$id\": {\"$oid\": \"56e1fc72e0c917e9c4714161\"}}}}"
         },
         {
             "description": "With two-byte UTF-8",
-            "bson": "1B0000000C610003000000C3A90056E1FC72E0C917E9C471416100"
+            "bson": "1B0000000C610003000000C3A90056E1FC72E0C917E9C471416100",
+            "extjson": "{\"a\": {\"$dbPointer\": {\"$ref\": \"é\", \"$id\": {\"$oid\": \"56e1fc72e0c917e9c4714161\"}}}}"
         }
     ],
     "decodeErrors": [
