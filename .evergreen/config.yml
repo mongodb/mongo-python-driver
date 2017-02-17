@@ -334,7 +334,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} GREEN_FRAMEWORK=${GREEN_FRAMEWORK} AUTH=${AUTH} SSL=${SSL} MONGODB_URI="${MONGODB_URI}" sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} GREEN_FRAMEWORK=${GREEN_FRAMEWORK} C_EXTENSIONS=${C_EXTENSIONS} AUTH=${AUTH} SSL=${SSL} MONGODB_URI="${MONGODB_URI}" sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "cleanup":
     - command: shell.exec
@@ -817,6 +817,13 @@ axes:
         display_name: "Gevent"
         variables:
           GREEN_FRAMEWORK: "gevent"
+  - id: c-extensions
+    display_name: "C Extensions"
+    values:
+      - id: "without-c-extensions"
+        display_name: "Without C Extensions"
+        variables:
+          C_EXTENSIONS: "--no_ext"
   #- id: windows-vs2008-python-version
   #  display_name: "Windows Visual Studio 2008 Python"
   #  values:
@@ -991,6 +998,36 @@ buildvariants:
 - matrix_name: "tests-python-version-ubuntu1604-test-nossl"
   matrix_spec: {"python-version": "*", auth: "*", ssl: "nossl" }
   display_name: "${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
+  run_on: ubuntu1604-test
+  tasks:
+     - name: "test-latest-replica_set"
+     - name: "test-latest-sharded_cluster"
+     - name: "test-latest-standalone"
+     - name: "test-3.4-replica_set"
+     - name: "test-3.4-sharded_cluster"
+     - name: "test-3.4-standalone"
+     - name: "test-3.2-replica_set"
+     - name: "test-3.2-sharded_cluster"
+     - name: "test-3.2-standalone"
+     - name: "test-3.0-replica_set"
+     - name: "test-3.0-sharded_cluster"
+     - name: "test-3.0-standalone"
+     - name: "test-2.6-replica_set"
+     - name: "test-2.6-sharded_cluster"
+     - name: "test-2.6-standalone"
+     - name: "test-2.4-replica_set"
+     - name: "test-2.4-sharded_cluster"
+     - name: "test-2.4-standalone"
+
+- matrix_name: "tests-python-version-ubuntu1604-without-c-extensions"
+  matrix_spec: {"python-version": "*", "c-extensions": "without-c-extensions", auth: "noauth", ssl: "nossl" }
+  exclude_spec:
+   # These interpreters are always tested without extensions.
+   - python-version: ["pypy", "pypy3", "jython2.7"]
+     c-extensions: "*"
+     auth: "*"
+     ssl: "*"
+  display_name: "${c-extensions} ${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
   run_on: ubuntu1604-test
   tasks:
      - name: "test-latest-replica_set"

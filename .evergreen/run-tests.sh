@@ -14,6 +14,7 @@ SSL=${SSL:-nossl}
 MONGODB_URI=${MONGODB_URI:-}
 PYTHON_BINARY=${PYTHON_BINARY:-}
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
+C_EXTENSIONS=${C_EXTENSIONS:-}
 
 
 if [ "$AUTH" != "noauth" ]; then
@@ -45,7 +46,8 @@ $PYTHON -c 'import sys; print(sys.version)'
 
 $PYTHON setup.py clean
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    $PYTHON setup.py test --xunit-output=xunit-results
+    $PYTHON setup.py $C_EXTENSIONS test --xunit-output=xunit-results
 else
+    # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK --xunit-output=xunit-results
 fi
