@@ -13,6 +13,7 @@ AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 MONGODB_URI=${MONGODB_URI:-}
 PYTHON_BINARY=${PYTHON_BINARY:-}
+C_EXTENSIONS=${C_EXTENSIONS:-}
 
 
 if [ "$AUTH" != "noauth" ]; then
@@ -74,4 +75,4 @@ $PYTHON -c 'import sys; print(sys.version)'
 # files in the xunit-results/ directory.
 
 $PYTHON setup.py clean
-$PYTHON $EXTRA_ARGS setup.py $TEST_CMD $TEST_VERBOSITY
+$PYTHON $EXTRA_ARGS setup.py $C_EXTENSIONS $TEST_CMD $TEST_VERBOSITY
