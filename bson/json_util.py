@@ -487,7 +487,7 @@ _CANONICAL_JSON_TABLE = {
     frozenset(['$code', '$scope']): lambda d, _: Code(
         d['$code'], d['$scope']),
     frozenset(['$timestamp']): lambda d, _: Timestamp(
-        int(d['$timestamp']) >> 32, int(d['$timestamp']) & 0xff)
+        int(d['$timestamp']) >> 32, int(d['$timestamp']) & 0xffffffff)
 }
 
 
