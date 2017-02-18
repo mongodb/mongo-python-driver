@@ -471,6 +471,31 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             ctx.exit()
 
         # Obedient commands.
+        # Geo stuff.
+        self.c.pymongo_test.test.create_index([('location', '2d')])
+
+        self.c.pymongo_test.test.create_index([('location', 'geoHaystack'),
+                                               ('key', 1)], bucketSize=100)
+
+        # Attempt to await replication of indexes replicated.
+        self.c.pymongo_test.test2.insert({}, w=self.w)
+        self.c.pymongo_test.test2.remove({}, w=self.w)
+
+        self._test_fn(True, lambda: self.c.pymongo_test.command(
+            'geoNear', 'test', near=[0, 0]))
+        self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
+            ('geoNear', 'test'), ('near', [0, 0])])))
+
+        self._test_fn(
+            True, lambda: self.c.pymongo_test.command(
+                'geoSearch', 'test', near=[33, 33], maxDistance=6,
+                search={'type': 'restaurant'}, limit=30))
+
+        self._test_fn(
+            True, lambda: self.c.pymongo_test.command(SON([
+                ('geoSearch', 'test'), ('near', [33, 33]), ('maxDistance', 6),
+                ('search', {'type': 'restaurant'}), ('limit', 30)])))
+
         self._test_fn(True, lambda: self.c.pymongo_test.command('group', {
             'ns': 'test', 'key': {'a': 1}, '$reduce': 'function(obj, prev) { }',
             'initial': {}}))
@@ -497,31 +522,6 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             'distinct', 'test', key='a', query={'a': 1}))
         self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
             ('distinct', 'test'), ('key', 'a'), ('query', {'a': 1})])))
-
-        # Geo stuff.
-        self.c.pymongo_test.test.create_index([('location', '2d')])
-
-        self.c.pymongo_test.test.create_index([('location', 'geoHaystack'),
-                                               ('key', 1)], bucketSize=100)
-
-        # Attempt to await replication of indexes replicated.
-        self.c.pymongo_test.test2.insert({}, w=self.w)
-        self.c.pymongo_test.test2.remove({}, w=self.w)
-
-        self._test_fn(True, lambda: self.c.pymongo_test.command(
-            'geoNear', 'test', near=[0, 0]))
-        self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
-            ('geoNear', 'test'), ('near', [0, 0])])))
-
-        self._test_fn(
-            True, lambda: self.c.pymongo_test.command(
-                'geoSearch', 'test', near=[33, 33], maxDistance=6,
-                search={'type': 'restaurant'}, limit=30))
-
-        self._test_fn(
-            True, lambda: self.c.pymongo_test.command(SON([
-                ('geoSearch', 'test'), ('near', [33, 33]), ('maxDistance', 6),
-                ('search', {'type': 'restaurant'}), ('limit', 30)])))
 
         if (version.at_least(self.c, (2, 1, 0)) and
                 not version.at_least(self.c, (3, 5, 1))):
