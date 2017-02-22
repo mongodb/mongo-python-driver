@@ -14,13 +14,14 @@
 
 """Tools for using Python's :mod:`json` module with BSON documents.
 
-This module provides two helper methods `dumps` and `loads` that wrap the
-native :mod:`json` methods and provide explicit BSON conversion to and from
-json.  This allows for specialized encoding and decoding of BSON documents
-into `MongoDB Extended JSON
-<http://www.mongodb.org/display/DOCS/Mongo+Extended+JSON>`_'s *Strict
-mode*.  This lets you encode / decode BSON documents to JSON even when
-they use special BSON types.
+This module provides two helper methods `dumps` and `loads` that wrap the native
+:mod:`json` methods and provide explicit BSON conversion to and from
+JSON. :class:`~bson.json_util.JSONOptions` provides a way to control how JSON is
+emitted and parsed, with the default being the legacy PyMongo format.
+:mod:`~bson.json_util` can also generate and parse `canonical extended JSON`_ when
+:data:`~bson.json_util.CANONICAL_JSON_OPTIONS` is provided.
+
+.. _canonical extended JSON: https://github.com/mongodb/specifications/blob/master/source/extended-json.rst
 
 Example usage (serialization):
 
@@ -41,6 +42,19 @@ Example usage (deserialization):
    >>> from bson.json_util import loads
    >>> loads('[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "00", "$binary": "AQIDBA=="}}]')
    [{u'foo': [1, 2]}, {u'bar': {u'hello': u'world'}}, {u'code': Code('function x() { return 1; }', {})}, {u'bin': Binary('...', 0)}]
+
+Example usage (with a :class:`~bson.json_util.JSONOptions` given):
+
+.. doctest::
+
+   >>> from bson import Binary, Code
+   >>> from bson.json_util import dumps, CANONICAL_JSON_OPTIONS
+   >>> dumps([{'foo': [1, 2]},
+   ...        {'bar': {'hello': 'world'}},
+   ...        {'code': Code("function x() { return 1; }")},
+   ...        {'bin': Binary(b"\x01\x02\x03\x04")}],
+   ...       json_options=CANONICAL_JSON_OPTIONS)
+   '[{"foo": [{"$numberInt": "1"}, {"$numberInt": "2"}]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
 
 Alternatively, you can manually pass the `default` to :func:`json.dumps`.
 It won't handle :class:`~bson.binary.Binary` and :class:`~bson.code.Code`
@@ -210,6 +224,9 @@ class JSONOptions(CodecOptions):
 
     .. versionadded:: 3.4
 
+    .. versionchanged:: 3.5
+       Accepts the optional parameter `canonical_extended_json`.
+
     """
 
     def __new__(cls, strict_number_long=False,
@@ -269,7 +286,7 @@ STRICT_JSON_OPTIONS = JSONOptions(
 """
 
 CANONICAL_JSON_OPTIONS = JSONOptions(canonical_extended_json=True)
-""":class:`JSONOptions` for canonical extended JSON.
+""":class:`JSONOptions` for `canonical extended JSON`_.
 
 .. versionadded:: 3.5
 """
