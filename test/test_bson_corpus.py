@@ -64,18 +64,21 @@ to_extjson_uuid_04 = functools.partial(json_util.dumps,
                                        json_options=json_options_uuid_04)
 to_extjson_iso8601 = functools.partial(json_util.dumps,
                                        json_options=json_options_iso8601)
-decode_extjson = functools.partial(
-    json_util.loads,
-    json_options=json_util.JSONOptions(canonical_extended_json=True,
-                                       document_class=SON))
 to_bson_uuid_04 = functools.partial(BSON.encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(BSON.encode, codec_options=codec_options)
+decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
 if json_util._HAS_OBJECT_PAIRS_HOOK:
+    decode_extjson = functools.partial(
+        json_util.loads,
+        json_options=json_util.JSONOptions(canonical_extended_json=True,
+                                           document_class=SON))
     loads = functools.partial(json.loads, object_pairs_hook=SON)
 else:
+    decode_extjson = functools.partial(
+        json_util.loads,
+        json_options=json_util.CANONICAL_JSON_OPTIONS)
     loads = json.loads
-decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
 
 
 class TestBSONCorpus(unittest.TestCase):
@@ -197,7 +200,7 @@ def create_test(case_spec):
                     # parsing JSON.
                     if json_util._HAS_OBJECT_PAIRS_HOOK or not (
                             sys.version_info[:2] == (2, 6) and
-                            bson_type == '0x03' and
+                            bson_type in ('0x03', '0x00') and
                             len(decode_extjson(E)) > 1):
                         self.assertEqual(encode_bson(decode_extjson(E)), cB)
 
