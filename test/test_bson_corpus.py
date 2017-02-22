@@ -17,9 +17,16 @@
 import binascii
 import functools
 import glob
-import json
 import os
 import sys
+
+if sys.version_info[:2] == (2, 6):
+    try:
+        import simplejson as json
+    except ImportError:
+        import json
+else:
+    import json
 
 from bson import BSON, EPOCH_AWARE, json_util
 from bson.binary import STANDARD
