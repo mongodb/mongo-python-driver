@@ -15,11 +15,21 @@
 """Run the BSON corpus specification tests."""
 
 import binascii
+import codecs
 import functools
 import glob
-import json
 import os
 import sys
+
+if sys.version_info[:2] == (2, 6):
+    try:
+        import simplejson as json
+    except ImportError:
+        import json
+else:
+    import json
+
+sys.path[0:0] = [""]
 
 from bson import BSON, EPOCH_AWARE, json_util
 from bson.binary import STANDARD
@@ -30,7 +40,6 @@ from bson.py3compat import text_type, b
 from bson.son import SON
 
 from test import unittest
-
 
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'bson_corpus')
@@ -64,18 +73,21 @@ to_extjson_uuid_04 = functools.partial(json_util.dumps,
                                        json_options=json_options_uuid_04)
 to_extjson_iso8601 = functools.partial(json_util.dumps,
                                        json_options=json_options_iso8601)
-decode_extjson = functools.partial(
-    json_util.loads,
-    json_options=json_util.JSONOptions(canonical_extended_json=True,
-                                       document_class=SON))
 to_bson_uuid_04 = functools.partial(BSON.encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(BSON.encode, codec_options=codec_options)
+decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
 if json_util._HAS_OBJECT_PAIRS_HOOK:
+    decode_extjson = functools.partial(
+        json_util.loads,
+        json_options=json_util.JSONOptions(canonical_extended_json=True,
+                                           document_class=SON))
     loads = functools.partial(json.loads, object_pairs_hook=SON)
 else:
+    decode_extjson = functools.partial(
+        json_util.loads,
+        json_options=json_util.CANONICAL_JSON_OPTIONS)
     loads = json.loads
-decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
 
 
 class TestBSONCorpus(unittest.TestCase):
@@ -197,7 +209,7 @@ def create_test(case_spec):
                     # parsing JSON.
                     if json_util._HAS_OBJECT_PAIRS_HOOK or not (
                             sys.version_info[:2] == (2, 6) and
-                            bson_type == '0x03' and
+                            bson_type in ('0x03', '0x00') and
                             len(decode_extjson(E)) > 1):
                         self.assertEqual(encode_bson(decode_extjson(E)), cB)
 
@@ -220,7 +232,7 @@ def create_tests():
         if test_suffix == 'multi-type':
             # Special case in TestBSONCorpus.
             continue
-        with open(filename) as bson_test_file:
+        with codecs.open(filename, encoding='utf-8') as bson_test_file:
             test_method = create_test(json.load(bson_test_file))
         setattr(TestBSONCorpus, 'test_' + test_suffix, test_method)
 
