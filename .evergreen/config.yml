@@ -314,7 +314,7 @@ functions:
       params:
         script: |
           ${PREPARE_SHELL}
-          MONGODB_VERSION=${VERSION} TOPOLOGY=${TOPOLOGY} AUTH=${AUTH} SSL=${SSL} sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
+          MONGODB_VERSION=${VERSION} TOPOLOGY=${TOPOLOGY} AUTH=${AUTH} SSL=${SSL} STORAGE_ENGINE=${STORAGE_ENGINE} sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
@@ -829,6 +829,22 @@ axes:
         display_name: "Without C Extensions"
         variables:
            C_EXTENSIONS: "--no_ext"
+  - id: storage-engine
+    display_name: Storage
+    values:
+      - id: mmapv1
+        display_name: MMAPv1
+        variables:
+           STORAGE_ENGINE: "mmapv1"
+      - id: wiredtiger
+        display_name: WiredTiger
+        variables:
+           STORAGE_ENGINE: "wiredtiger"
+      - id: inmemory
+        display_name: InMemory
+        variables:
+           STORAGE_ENGINE: "inmemory"
+
   #- id: windows-vs2008-python-version
   #  display_name: "Windows Visual Studio 2008 Python"
   #  values:
@@ -1133,6 +1149,27 @@ buildvariants:
      - name: "test-2.4-replica_set"
      - name: "test-2.4-sharded_cluster"
      - name: "test-2.4-standalone"
+
+# Storage engine tests on Ubuntu 16.04 (x86_64) with Python 2.7.
+- matrix_name: "tests-storage-engines"
+  matrix_spec: {storage-engine: "*", python-version: "2.7"}
+  display_name: "Storage ${storage-engine} ${python-version} Ubuntu 16.04 (x86_64)"
+  run_on: ubuntu1604-test
+  rules:
+    - if:
+        storage-engine: ["mmapv1", "inmemory"]
+        python-version: "*"
+      then:
+        add_tasks:
+          - "test-latest-standalone"
+          - "test-3.4-standalone"
+          - "test-3.2-standalone"
+    - if:
+        storage-engine: "wiredtiger"
+        python-version: "*"
+      then:
+        add_tasks:
+          - "test-3.0-standalone"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
