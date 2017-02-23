@@ -29,6 +29,8 @@ if sys.version_info[:2] == (2, 6):
 else:
     import json
 
+sys.path[0:0] = [""]
+
 from bson import BSON, EPOCH_AWARE, json_util
 from bson.binary import STANDARD
 from bson.codec_options import CodecOptions
@@ -38,7 +40,6 @@ from bson.py3compat import text_type, b
 from bson.son import SON
 
 from test import unittest
-
 
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'bson_corpus')
