@@ -15,6 +15,7 @@
 """Run the BSON corpus specification tests."""
 
 import binascii
+import codecs
 import functools
 import glob
 import os
@@ -230,7 +231,7 @@ def create_tests():
         if test_suffix == 'multi-type':
             # Special case in TestBSONCorpus.
             continue
-        with open(filename) as bson_test_file:
+        with codecs.open(filename, encoding='utf-8') as bson_test_file:
             test_method = create_test(json.load(bson_test_file))
         setattr(TestBSONCorpus, 'test_' + test_suffix, test_method)
 
