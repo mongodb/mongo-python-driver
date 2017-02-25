@@ -290,3 +290,8 @@ class ObjectId(object):
     def __hash__(self):
         """Get a hash value for this :class:`ObjectId`."""
         return hash(self.__id)
+        
+    def __json__(self, **kwargs):
+        """Make :class:`ObjectId` json serializable.
+        """
+        return str(self)
