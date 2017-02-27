@@ -361,6 +361,8 @@ functions:
             cat $i | tr -d '\r' > $i.new
             mv $i.new $i
           done
+          # Copy client certificate because symlinks do not work on Windows.
+          cp ${DRIVERS_TOOLS}/.evergreen/x509gen/client.pem ${MONGO_ORCHESTRATION_HOME}/lib/client.pem
 
   "make files executable":
     - command: shell.exec
@@ -1104,12 +1106,10 @@ buildvariants:
             - name: "test-2.4-sharded_cluster"
             - name: "test-2.4-standalone"
 
-# TODO: Figure out SSL on Windows.
-
 # Test CPython 3.3 and 3.4 against all versions on MongoDB >= 2.4
 # on Windows with Visual Studio 2010.
 - matrix_name: "tests-windows-vs2010-python-version-nossl"
-  matrix_spec: {"windows-vs2010-python-version": "*", auth: "*", ssl: "nossl" }
+  matrix_spec: {windows-vs2010-python-version: "*", auth: "*", ssl: "*" }
   display_name: "Windows 64 Visual Studio 2010 ${windows-vs2010-python-version} ${auth} ${ssl}"
   run_on: windows-64-vs2010-test
   tasks:
@@ -1128,14 +1128,22 @@ buildvariants:
      - name: "test-2.6-replica_set"
      - name: "test-2.6-sharded_cluster"
      - name: "test-2.6-standalone"
-     - name: "test-2.4-replica_set"
-     - name: "test-2.4-sharded_cluster"
-     - name: "test-2.4-standalone"
+  rules:
+     # Windows MongoDB 2.4 does not support SSL.
+     - if:
+         windows-vs2010-python-version: "*"
+         auth: "*"
+         ssl: "nossl"
+       then:
+         add_tasks:
+           - name: "test-2.4-replica_set"
+           - name: "test-2.4-sharded_cluster"
+           - name: "test-2.4-standalone"
 
 # Test CPython 2.6, 2.7, 3.5 and 3.6 against all versions on MongoDB >= 2.4
 # on Windows with the Microsoft Visual C++ Compiler for Python 2.7 or Visual Studio 2015.
 - matrix_name: "tests-windows-vs2015-python-version-nossl"
-  matrix_spec: {"windows-vs2015-python-version": "*", auth: "*", ssl: "nossl" }
+  matrix_spec: {windows-vs2015-python-version: "*", auth: "*", ssl: "*" }
   display_name: "Windows 64 Visual Studio 2015 ${windows-vs2015-python-version} ${auth} ${ssl}"
   run_on: windows-64-vs2015-test
   tasks:
@@ -1154,9 +1162,17 @@ buildvariants:
      - name: "test-2.6-replica_set"
      - name: "test-2.6-sharded_cluster"
      - name: "test-2.6-standalone"
-     - name: "test-2.4-replica_set"
-     - name: "test-2.4-sharded_cluster"
-     - name: "test-2.4-standalone"
+  rules:
+     # Windows MongoDB 2.4 does not support SSL.
+     - if:
+         windows-vs2015-python-version: "*"
+         auth: "*"
+         ssl: "nossl"
+       then:
+         add_tasks:
+           - name: "test-2.4-replica_set"
+           - name: "test-2.4-sharded_cluster"
+           - name: "test-2.4-standalone"
 
 # Storage engine tests on Ubuntu 16.04 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
