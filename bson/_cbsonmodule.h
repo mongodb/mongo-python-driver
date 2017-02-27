@@ -26,12 +26,12 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif
 
-#if defined(WIN32) || defined(_MSC_VER)
+#ifdef _MSC_VER
 /*
  * This macro is basically an implementation of asprintf for win32
  * We print to the provided buffer to get the string value as an int.
  */
-#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+#if _MSC_VER >= 1400
 #define INT2STRING(buffer, i)                                       \
     _snprintf_s((buffer),                                           \
                  _scprintf("%d", (i)) + 1,                          \
