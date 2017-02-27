@@ -2666,7 +2666,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
 static PyObject* _elements_to_dict(PyObject* self, const char* string,
                                    unsigned max,
                                    const codec_options_t* options) {
-    int position = 0;
+    unsigned position = 0;
     PyObject* dict = PyObject_CallObject(options->document_class, NULL);
     if (!dict) {
         return NULL;
@@ -2674,12 +2674,15 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
     while (position < max) {
         PyObject* name;
         PyObject* value;
+        int new_position;
 
-        position = _element_to_dict(self, string, position, max,
-                                    options, &name, &value);
-        if (position < 0) {
+        new_position = _element_to_dict(
+            self, string, position, max, options, &name, &value);
+        if (new_position < 0) {
             Py_DECREF(dict);
             return NULL;
+        } else {
+            position = (unsigned)new_position;
         }
 
         PyObject_SetItem(dict, name, value);
