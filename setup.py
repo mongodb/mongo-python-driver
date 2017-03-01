@@ -188,6 +188,18 @@ else:
     build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 
 
+_COMPILER_ATTRS = (
+    'compiler', 'compiler_so', 'compiler_cxx', 'linker_exe', 'linker_so')
+
+
+# From distutils.cygwinccompiler in recent pythons.
+def _is_cygwingcc():
+    out = os.popen('gcc -dumpmachine', 'r')
+    out_string = out.read()
+    out.close()
+    return out_string.strip().endswith('cygwin')
+
+
 class custom_build_ext(build_ext):
     """Allow C extension building to fail.
 
@@ -256,6 +268,31 @@ http://api.mongodb.org/python/current/installation.html#osx
         write_nose_config()
 
     def build_extension(self, ext):
+        # http://bugs.python.org/issue12641
+        # This makes a number of well researched assumptions about distutils
+        # but is written in a defensive style to guard against those
+        # assumptions failing.
+        compiler = getattr(self, "compiler", None)
+        if compiler and getattr(compiler, "compiler_type", None) == "mingw32":
+            try:
+                from distutils import cygwinccompiler
+            except ImportError:
+                pass
+            else:
+                # If cygwinccompiler.is_cygwingcc exists the problem is
+                # already solved for us.
+                if not hasattr(cygwinccompiler, "is_cygwingcc"):
+                    gcc_version = getattr(compiler, "gcc_version", None)
+                    # If gcc_version is None assume we need to strip
+                    # -mno-cygwin.
+                    if (not _is_cygwingcc() and
+                            (not gcc_version or gcc_version >= "4.6")):
+                        for att in [getattr(compiler, attrname)
+                                    for attrname in _COMPILER_ATTRS
+                                    if hasattr(compiler, attrname)]:
+                            if isinstance(att, list) and '-mno-cygwin' in att:
+                                att.remove('-mno-cygwin')
+
         name = ext.name
         if sys.version_info[:3] >= (2, 4, 0):
             try:
