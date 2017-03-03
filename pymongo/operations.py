@@ -225,8 +225,8 @@ class IndexModel(object):
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
             a partial index.
-          - `collation`: An instance of `~pymongo.collation.Collation` that
-            specifies the collation to use in MongoDB >= 3.4.
+          - `collation`: An instance of :class:`~pymongo.collation.Collation`
+            that specifies the collation to use in MongoDB >= 3.4.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
