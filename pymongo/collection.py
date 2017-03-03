@@ -1367,7 +1367,7 @@ class Collection(common.BaseObject):
           - `indexes`: A list of :class:`~pymongo.operations.IndexModel`
             instances.
 
-        .. note:: `create_indexes` uses the ``createIndexes`` command
+        .. note:: `create_indexes` uses the `createIndexes`_ command
            introduced in MongoDB **2.6** and cannot be used with earlier
            versions.
 
@@ -1379,6 +1379,8 @@ class Collection(common.BaseObject):
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4.
         .. versionadded:: 3.0
+
+        .. _createIndexes: https://docs.mongodb.com/manual/reference/command/createIndexes/
         """
         if not isinstance(indexes, list):
             raise TypeError("indexes must be a list")
