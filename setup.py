@@ -130,25 +130,23 @@ class doc(build_py):
             class _StringPrefixFixer(_OutputChecker):
 
                 def check_output(self, want, got, optionflags):
-                    if sys.version_info[0] >= 3:
-                        # The docstrings are written with python 2.x in mind.
-                        # To make the doctests pass in python 3 we have to
-                        # strip the 'u' prefix from the expected results. The
-                        # actual results won't have that prefix.
-                        want = re.sub(_u_literal_re, r'\1\2', want)
-                        # We also have to strip the 'b' prefix from the actual
-                        # results since python 2.x expected results won't have
-                        # that prefix.
-                        got = re.sub(_b_literal_re, r'\1\2', got)
+                    # The docstrings are written with python 2.x in mind.
+                    # To make the doctests pass in python 3 we have to
+                    # strip the 'u' prefix from the expected results. The
+                    # actual results won't have that prefix.
+                    want = re.sub(_u_literal_re, r'\1\2', want)
+                    # We also have to strip the 'b' prefix from the actual
+                    # results since python 2.x expected results won't have
+                    # that prefix.
+                    got = re.sub(_b_literal_re, r'\1\2', got)
                     return super(
                         _StringPrefixFixer, self).check_output(
                             want, got, optionflags)
 
                 def output_difference(self, example, got, optionflags):
-                    if sys.version_info[0] >= 3:
-                        example.want = re.sub(
-                            _u_literal_re, r'\1\2', example.want)
-                        got = re.sub(_b_literal_re, r'\1\2', got)
+                    example.want = re.sub(
+                        _u_literal_re, r'\1\2', example.want)
+                    got = re.sub(_b_literal_re, r'\1\2', got)
                     return super(
                         _StringPrefixFixer, self).output_difference(
                             example, got, optionflags)
@@ -159,10 +157,12 @@ class doc(build_py):
             build_py.run(self)
 
         if self.test:
-            path = "doc/_build/doctest"
+            path = os.path.join(
+                os.path.abspath('.'), "doc", "_build", "doctest")
             mode = "doctest"
         else:
-            path = "doc/_build/%s" % version
+            path = os.path.join(
+                os.path.abspath('.'), "doc", "_build", version)
             mode = "html"
 
             try:
@@ -170,7 +170,15 @@ class doc(build_py):
             except:
                 pass
 
-        status = sphinx.main(["-E", "-b", mode, "doc", path])
+        sphinx_args = ["-E", "-b", mode, "doc", path]
+
+        # sphinx.main calls sys.exit when sphinx.build_main exists.
+        # Call build_main directly so we can check status and print
+        # the full path to the built docs.
+        if hasattr(sphinx, 'build_main'):
+            status = sphinx.build_main(sphinx_args)
+        else:
+            status = sphinx.main(sphinx_args)
 
         if status:
             raise RuntimeError("documentation step '%s' failed" % (mode,))
