@@ -2058,12 +2058,12 @@ class TestCollection(unittest.TestCase):
         if have_uuid:
             doc = {'_id': 2, 'uuid': uuid.uuid4()}
             uuid_sub_args = (name, [doc],
-                             True, True, {'w': 1}, True, 6)
+                             True, True, {'w': 1}, True, 5)
             do_insert(uuid_sub_args)
             coll = self.db.test
             self.assertNotEqual(doc, coll.find_one({'_id': 2}))
             coll = self.db.get_collection('test',
-                                          CodecOptions(uuid_representation=6))
+                                          CodecOptions(uuid_representation=5))
             self.assertEqual(doc, coll.find_one({'_id': 2}))
 
     def test_message_backport_codec_options(self):
