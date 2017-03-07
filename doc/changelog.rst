@@ -9,8 +9,17 @@ Changelog
 Changes in Version 2.9.5
 ------------------------
 
-Version 2.9.5 works around ssl module deprecations in Python 3.6,
-and expected future ssl module deprecations.
+Version 2.9.5 works around ssl module deprecations in Python 3.6, and expected
+future ssl module deprecations. It also fixes bugs found since the release of
+2.9.4.
+
+- Use ssl.SSLContext and ssl.PROTOCOL_TLS_CLIENT when available.
+- Fixed a C extensions build issue when the interpreter was built with -std=c99
+- Fixed various build issues with MinGW32.
+- Fixed a write concern bug in :meth:`~pymongo.database.Database.add_user` and
+  :meth:`~pymongo.database.Database.remove_user` when connected to MongoDB 3.2+
+- Fixed various test failures related to changes in gevent, MongoDB, and our CI
+  test environment.
 
 Issues Resolved
 ...............
