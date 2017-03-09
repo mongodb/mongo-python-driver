@@ -336,6 +336,16 @@ functions:
           ${PREPARE_SHELL}
           PYTHON_BINARY=${PYTHON_BINARY} C_EXTENSIONS=${C_EXTENSIONS} AUTH=${AUTH} SSL=${SSL} MONGODB_URI="${MONGODB_URI}" sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
+  "run enterprise auth tests":
+    - command: shell.exec
+      type: test
+      params:
+        silent: true
+        working_dir: "src"
+        script: |
+          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
+          PYTHON_BINARY=${PYTHON_BINARY} SASL_HOST=${sasl_host} SASL_PORT=${sasl_port} SASL_USER=${sasl_user} SASL_PASS=${sasl_pass} SASL_DB=${sasl_db} PRINCIPAL=${principal} GSSAPI_DB=${gssapi_db} KEYTAB_BASE64=${keytab_base64} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
+
   "cleanup":
     - command: shell.exec
       params:
@@ -602,6 +612,15 @@ tasks:
             VERSION: "latest"
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
+
+    - name: "test-enterprise-auth"
+      tags: ["enterprise-auth"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run enterprise auth tests"
 
 # }}}
 
@@ -1159,6 +1178,13 @@ buildvariants:
       then:
         add_tasks:
           - "test-3.0-standalone"
+
+- matrix_name: "test-linux-enterprise-auth"
+  matrix_spec: {"python-version": "*", auth: "auth"}
+  display_name: "Enterprise Auth Linux ${python-version}"
+  run_on: ubuntu1604-test
+  tasks:
+     - name: "test-enterprise-auth"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
