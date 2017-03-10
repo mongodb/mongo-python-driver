@@ -167,8 +167,7 @@ are executed against. A custom write concern can be passed to the
 errors (e.g. wtimeout) will be reported after all operations are attempted,
 regardless of execution order.
 
-.. doctest::
-  :options: +NORMALIZE_WHITESPACE
+::
 
   >>> bulk = db.test.initialize_ordered_bulk_op()
   >>> bulk.insert({'a': 0})

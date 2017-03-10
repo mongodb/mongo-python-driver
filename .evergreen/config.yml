@@ -345,6 +345,15 @@ functions:
           ${PREPARE_SHELL}
           PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mockupdb-tests.sh
 
+  "run doctests":
+     - command: shell.exec
+       type: test
+       params:
+         working_dir: "src"
+         script: |
+           ${PREPARE_SHELL}
+           PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
+
   "run tests":
     - command: shell.exec
       type: test
@@ -473,6 +482,15 @@ tasks:
       tags: ["mockupdb"]
       commands:
         - func: "run mockupdb tests"
+
+    - name: "doctests"
+      tags: ["doctests"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "replica_set"
+        - func: "run doctests"
 
     - name: "test-2.4-standalone"
       tags: ["2.4", "standalone"]
@@ -1290,6 +1308,13 @@ buildvariants:
   run_on: ubuntu1604-test
   tasks:
      - name: "mockupdb"
+
+- matrix_name: "tests-doctests"
+  matrix_spec: {python-version: ["2.7", "3.4"]}
+  display_name: "Doctests ${python-version}"
+  run_on: ubuntu1604-test
+  tasks:
+     - name: "doctests"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
