@@ -336,6 +336,15 @@ functions:
           ${PREPARE_SHELL}
           PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
 
+  "run mockupdb tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mockupdb-tests.sh
+
   "run tests":
     - command: shell.exec
       type: test
@@ -459,6 +468,11 @@ tasks:
                valgrind --version || true
 
 # Standard test tasks {{{
+
+    - name: "mockupdb"
+      tags: ["mockupdb"]
+      commands:
+        - func: "run mockupdb tests"
 
     - name: "test-2.4-standalone"
       tags: ["2.4", "standalone"]
@@ -1269,6 +1283,13 @@ buildvariants:
   tasks:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
+
+- matrix_name: "mockupdb-tests"
+  matrix_spec: {python-version: "2.7"}
+  display_name: "MockupDB Tests"
+  run_on: ubuntu1604-test
+  tasks:
+     - name: "mockupdb"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
