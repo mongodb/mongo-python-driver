@@ -118,7 +118,7 @@ def main(options, mode, url):
     start_time = time.time()
     errors = 0
     if mode == 'parallel':
-        nrequests_per_thread = options.nrequests / options.nthreads
+        nrequests_per_thread = options.nrequests // options.nthreads
 
         if options.verbose:
             print (
