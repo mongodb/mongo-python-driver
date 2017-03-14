@@ -310,8 +310,12 @@ class TestCollection(IntegrationTest):
         else:
             check_result(reindexed)
 
-        with self.write_concern_collection() as coll:
-            coll.reindex()
+        coll = Collection(
+            self.db,
+            'test',
+            write_concern=WriteConcern(w=100))
+        # No error since writeConcern is not sent.
+        coll.reindex()
 
     def test_list_indexes(self):
         db = self.db

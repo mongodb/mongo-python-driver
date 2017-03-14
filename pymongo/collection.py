@@ -1639,20 +1639,19 @@ class Collection(common.BaseObject):
            are built in the foreground) and will be slow for large
            collections.
 
-        .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
-           this collection is automatically applied to this operation when using
-           MongoDB >= 3.4.
-
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4.
 
+        .. versionchanged:: 3.5
+           We no longer apply this collection's write concern to this operation.
+           MongoDB 3.4 silently ignored the write concern. MongoDB 3.6+ returns
+           an error if we include the write concern.
         """
         cmd = SON([("reIndex", self.__name)])
         with self._socket_for_writes() as sock_info:
             return self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                write_concern=self.write_concern,
                 parse_write_concern_error=True)
 
     def list_indexes(self):
