@@ -187,12 +187,10 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual('getMore', succeeded.command_name)
             self.assertTrue(isinstance(succeeded.request_id, int))
             self.assertEqual(cursor.address, succeeded.connection_id)
-            expected_result = {
-                'cursor': {'id': cursor_id,
-                           'ns': 'pymongo_test.test',
-                           'nextBatch': [{} for _ in range(4)]},
-                'ok': 1}
-            self.assertEqual(expected_result, succeeded.reply)
+            csr = succeeded.reply["cursor"]
+            self.assertEqual(csr["id"], cursor_id)
+            self.assertEqual(csr["ns"], "pymongo_test.test")
+            self.assertEqual(csr["nextBatch"], [{} for _ in range(4)])
         finally:
             # Exhaust the cursor to avoid kill cursors.
             tuple(cursor)
