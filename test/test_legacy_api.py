@@ -351,6 +351,8 @@ class TestLegacy(IntegrationTest):
         db.collection_0.insert(successful_insert, w=1)
         self.assertEqual(4, db.collection_0.count())
 
+        db.collection_0.drop()
+
         # Test that inserts fail after first error.
         insert_second_fails = [{'_id': 'id0', 'x': big_string},
                                {'_id': 'id0', 'x': big_string},
@@ -362,10 +364,14 @@ class TestLegacy(IntegrationTest):
 
         self.assertEqual(1, db.collection_1.count())
 
+        db.collection_1.drop()
+
         # 2 batches, 2nd insert fails, don't continue on error.
         self.assertTrue(db.collection_2.insert(insert_second_fails, w=0))
         wait_until(lambda: 1 == db.collection_2.count(),
                    'insert 1 document', timeout=60)
+
+        db.collection_2.drop()
 
         # 2 batches, ids of docs 0 and 1 are dupes, ids of docs 2 and 3 are
         # dupes. Acknowledged, continue on error.
@@ -383,12 +389,16 @@ class TestLegacy(IntegrationTest):
         # Only the first and third documents should be inserted.
         self.assertEqual(2, db.collection_3.count())
 
+        db.collection_3.drop()
+
         # 2 batches, 2 errors, unacknowledged, continue on error.
         db.collection_4.insert(insert_two_failures, continue_on_error=True, w=0)
 
         # Only the first and third documents are inserted.
         wait_until(lambda: 2 == db.collection_4.count(),
                    'insert 2 documents', timeout=60)
+
+        db.collection_4.drop()
 
     def test_bad_dbref(self):
         # Requires the legacy API to test.
