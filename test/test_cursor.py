@@ -39,7 +39,7 @@ from test import (client_context,
                   unittest,
                   IntegrationTest)
 from test.utils import (rs_or_single_client,
-                        EventListener)
+                        WhiteListEventListener)
 
 if PY3:
     long = int
@@ -194,7 +194,6 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_max_await_time_ms(self):
-        raise SkipTest("PYTHON-1196")
         db = self.db
         db.pymongo_test.drop()
         coll = db.create_collection("pymongo_test", capped=True, size=4096)
@@ -226,8 +225,7 @@ class TestCursor(IntegrationTest):
                 10).max_await_time_ms(90)
         self.assertEqual(90, cursor._Cursor__max_await_time_ms)
 
-        listener = EventListener()
-        listener.add_command_filter('killCursors')
+        listener = WhiteListEventListener('find', 'getMore')
         saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         coll = rs_or_single_client(
@@ -257,11 +255,11 @@ class TestCursor(IntegrationTest):
 
             # Tailable_await with max_time_ms
             list(coll.find(
-                cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(1))
+                cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))
             # find
             self.assertEqual('find', results['started'][0].command_name)
             self.assertTrue('maxTimeMS' in results['started'][0].command)
-            self.assertEqual(1, results['started'][0].command['maxTimeMS'])
+            self.assertEqual(99, results['started'][0].command['maxTimeMS'])
             # getMore
             self.assertEqual('getMore', results['started'][1].command_name)
             self.assertFalse('maxTimeMS' in results['started'][1].command)
@@ -270,11 +268,11 @@ class TestCursor(IntegrationTest):
             # Tailable_await with both max_time_ms and max_await_time_ms
             list(coll.find(
                 cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(
-                    1).max_await_time_ms(99))
+                    99).max_await_time_ms(99))
             # find
             self.assertEqual('find', results['started'][0].command_name)
             self.assertTrue('maxTimeMS' in results['started'][0].command)
-            self.assertEqual(1, results['started'][0].command['maxTimeMS'])
+            self.assertEqual(99, results['started'][0].command['maxTimeMS'])
             # getMore
             self.assertEqual('getMore', results['started'][1].command_name)
             self.assertTrue('maxTimeMS' in results['started'][1].command)

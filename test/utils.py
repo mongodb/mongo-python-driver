@@ -40,29 +40,38 @@ from test.version import Version
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=len(client_context.nodes) + 1)
 
 
+class WhiteListEventListener(monitoring.CommandListener):
+
+    def __init__(self, *commands):
+        self.commands = set(commands)
+        self.results = defaultdict(list)
+
+    def started(self, event):
+        if event.command_name in self.commands:
+            self.results['started'].append(event)
+
+    def succeeded(self, event):
+        if event.command_name in self.commands:
+            self.results['succeeded'].append(event)
+
+    def failed(self, event):
+        if event.command_name in self.commands:
+            self.results['failed'].append(event)
+
+
 class EventListener(monitoring.CommandListener):
 
     def __init__(self):
         self.results = defaultdict(list)
-        self.filters = set()
-
-    def add_command_filter(self, command_name):
-        self.filters.add(command_name)
-
-    def remove_command_filter(self, command_name):
-        self.filters.remove(command_name)
 
     def started(self, event):
-        if event.command_name not in self.filters:
-            self.results['started'].append(event)
+        self.results['started'].append(event)
 
     def succeeded(self, event):
-        if event.command_name not in self.filters:
-            self.results['succeeded'].append(event)
+        self.results['succeeded'].append(event)
 
     def failed(self, event):
-        if event.command_name not in self.filters:
-            self.results['failed'].append(event)
+        self.results['failed'].append(event)
 
 
 class ServerAndTopologyEventListener(monitoring.ServerListener,
