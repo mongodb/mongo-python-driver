@@ -27,8 +27,6 @@ from pymongo.pool import PoolOptions
 from test import unittest, client_knobs
 from test.utils import HeartbeatEventListener, single_client, wait_until
 
-sys.path[0:0] = [""]
-
 
 class MockSocketInfo(object):
     def close(self):
@@ -63,16 +61,16 @@ class MockPool(object):
 
 class TestHeartbeatMonitoring(unittest.TestCase):
     @classmethod
-    def setUp(cls):
-        cls.all_listener = HeartbeatEventListener()
+    def setUpClass(cls):
         cls.saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
 
     @classmethod
-    def tearDown(cls):
+    def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
 
     def create_mock_monitor(self, responses, uri, expected_results):
+        listener = HeartbeatEventListener()
         with client_knobs(heartbeat_frequency=0.1,
                           min_heartbeat_interval=0.1,
                           events_queue_frequency=0.1):
@@ -82,30 +80,33 @@ class TestHeartbeatMonitoring(unittest.TestCase):
                         raise responses[1]
                     return IsMaster(responses[1]), 99
 
-            m = single_client(h=uri,
-                              event_listeners=(self.all_listener,),
-                              _monitor_class=MockMonitor,
-                              _pool_class=MockPool
-                              )
+            m = single_client(
+                h=uri,
+                event_listeners=(listener,),
+                _monitor_class=MockMonitor,
+                _pool_class=MockPool)
 
             expected_len = len(expected_results)
-            wait_until(lambda: len(self.all_listener.results) == expected_len,
-                       "publish all events", timeout=15)
+            # Wait for *at least* expected_len number of results. The
+            # monitor thread may run multiple times during the execution
+            # of this test.
+            wait_until(
+                lambda: len(listener.results) >= expected_len,
+                "publish all events")
 
         try:
-            for i in range(len(expected_results)):
-                result = self.all_listener.results[i] if len(
-                    self.all_listener.results) > i else None
-                self.assertEqual(expected_results[i],
-                                 result.__class__.__name__)
-                self.assertEqual(result.connection_id,
+            # zip gives us len(expected_results) pairs.
+            for expected, actual in zip(expected_results, listener.results):
+                self.assertEqual(expected,
+                                 actual.__class__.__name__)
+                self.assertEqual(actual.connection_id,
                                  responses[0])
-                if expected_results[i] != 'ServerHeartbeatStartedEvent':
-                    if isinstance(result.reply, IsMaster):
-                        self.assertEqual(result.duration, 99)
-                        self.assertEqual(result.reply._doc, responses[1])
+                if expected != 'ServerHeartbeatStartedEvent':
+                    if isinstance(actual.reply, IsMaster):
+                        self.assertEqual(actual.duration, 99)
+                        self.assertEqual(actual.reply._doc, responses[1])
                     else:
-                        self.assertEqual(result.reply, responses[1])
+                        self.assertEqual(actual.reply, responses[1])
 
         finally:
             m.close()
@@ -128,7 +129,10 @@ class TestHeartbeatMonitoring(unittest.TestCase):
         responses = (('a', 27017),
                      ConnectionFailure("SPECIAL MESSAGE"))
         uri = "mongodb://a:27017"
+        # _check_with_socket failing results in a second attempt.
         expected_results = ['ServerHeartbeatStartedEvent',
+                            'ServerHeartbeatFailedEvent',
+                            'ServerHeartbeatStartedEvent',
                             'ServerHeartbeatFailedEvent']
 
         self.create_mock_monitor(responses, uri, expected_results)
