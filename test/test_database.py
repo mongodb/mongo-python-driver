@@ -340,9 +340,18 @@ class TestDatabase(IntegrationTest):
             self.assertEqual(None, db.previous_error())
 
     def test_command(self):
+        self.maxDiff = None
         db = self.client.admin
-
-        self.assertEqual(db.command("buildinfo"), db.command({"buildinfo": 1}))
+        first = db.command("buildinfo")
+        second = db.command({"buildinfo": 1})
+        third = db.command("buildinfo", 1)
+        # The logicalTime and operationTime fields were introduced in MongoDB
+        # 3.5. Their value can change from one command call to the next.
+        for doc in (first, second, third):
+            doc.pop("logicalTime", None)
+            doc.pop("operationTime", None)
+        self.assertEqual(first, second)
+        self.assertEqual(second, third)
 
     # We use 'aggregate' as our example command, since it's an easy way to
     # retrieve a BSON regex from a collection using a command. But until
