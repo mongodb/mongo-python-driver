@@ -24,8 +24,8 @@ _HAS_POLL = True
 _EVENT_MASK = 0
 try:
     from select import poll
-    _EVENT_MASK = (select.POLLIN | select.POLLPRI | select.POLLERR |
-                   select.POLLHUP | select.POLLNVAL)
+    _EVENT_MASK = (
+        select.POLLIN | select.POLLPRI | select.POLLERR | select.POLLHUP)
 except ImportError:
     _HAS_POLL = False
 

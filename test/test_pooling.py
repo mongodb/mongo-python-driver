@@ -191,7 +191,6 @@ class TestPooling(_TestPoolingBase):
     def test_disconnect(self):
         run_cases(self.c, [InsertOneAndFind, Disconnect, Unique])
 
-    @unittest.skipIf(sys.platform.startswith('java'), 'PYTHON-1227')
     def test_pool_reuses_open_socket(self):
         # Test Pool's _check_closed() method doesn't close a healthy socket.
         cx_pool = self.create_pool(max_pool_size=10)
@@ -250,7 +249,6 @@ class TestPooling(_TestPoolingBase):
         with cx_pool.get_socket({}):
             pass
 
-    @unittest.skipIf(sys.platform.startswith('java'), 'PYTHON-1227')
     def test_socket_closed(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((client_context.host, client_context.port))
@@ -330,7 +328,6 @@ class TestPooling(_TestPoolingBase):
 
         sock_info.close()
 
-    @unittest.skipIf(sys.platform.startswith('java'), 'PYTHON-1227')
     def test_no_wait_queue_timeout(self):
         # Verify get_socket() with no wait_queue_timeout blocks forever.
         pool = self.create_pool(max_pool_size=1)
