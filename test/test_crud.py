@@ -24,8 +24,13 @@ sys.path[0:0] = [""]
 from bson.py3compat import iteritems
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
-from pymongo.results import _WriteResult
-from pymongo.operations import UpdateOne, UpdateMany, DeleteOne, DeleteMany, InsertOne, ReplaceOne
+from pymongo.results import _WriteResult, BulkWriteResult
+from pymongo.operations import (InsertOne,
+                                DeleteOne,
+                                DeleteMany,
+                                ReplaceOne,
+                                UpdateOne,
+                                UpdateMany)
 
 from test import unittest, client_context, IntegrationTest
 
@@ -50,8 +55,18 @@ def check_result(expected_result, result):
 
     elif isinstance(result, _WriteResult):
         for res in expected_result:
+            # Only BulkWriteResult has upserted_count.
+            if (res == "upsertedCount"
+                    and not isinstance(result, BulkWriteResult)):
+                # Patch on an upserted_count field.
+                if result.upserted_id is not None:
+                    result.upserted_count = 1
+                else:
+                    result.upserted_count = 0
             prop = camel_to_snake(res)
-            return getattr(result, prop) == expected_result[res]
+            if not getattr(result, prop) == expected_result[res]:
+                return False
+        return True
     else:
         if not expected_result:
             return result is None
@@ -104,7 +119,8 @@ def create_test(scenario_def, test):
                 db_coll = self.db.test
             self.assertEqual(list(db_coll.find()), expected_c['data'])
         else:
-            check_result(test['outcome'].get('result'), result)
+            self.assertTrue(
+                check_result(test['outcome'].get('result'), result))
 
     return run_scenario
 
