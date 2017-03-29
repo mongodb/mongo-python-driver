@@ -248,30 +248,29 @@ class TestLegacy(IntegrationTest):
         self.assertEqual(db.test.find().count(), 10)
 
     def test_insert_manipulate_false(self):
-        # Test three aspects of legacy insert with manipulate=False:
+        # Test two aspects of legacy insert with manipulate=False:
         #   1. The return value is None or [None] as appropriate.
         #   2. _id is not set on the passed-in document object.
-        #   3. _id is not sent to server.
         collection = self.db.test_insert_manipulate_false
         collection.drop()
         oid = ObjectId()
         doc = {'a': oid}
 
-        # The return value is None.
-        self.assertTrue(collection.insert(doc, manipulate=False) is None)
-        # insert() shouldn't set _id on the passed-in document object.
-        self.assertEqual({'a': oid}, doc)
-        server_doc = collection.find_one()
+        try:
+            # The return value is None.
+            self.assertTrue(collection.insert(doc, manipulate=False) is None)
+            # insert() shouldn't set _id on the passed-in document object.
+            self.assertEqual({'a': oid}, doc)
 
-        # _id is not sent to server, so it's generated server-side.
-        self.assertFalse(oid_generated_on_client(server_doc['_id']))
+            # Bulk insert. The return value is a list of None.
+            self.assertEqual([None], collection.insert([{}], manipulate=False))
 
-        # Bulk insert. The return value is a list of None.
-        self.assertEqual([None], collection.insert([{}], manipulate=False))
-
-        ids = collection.insert([{}, {}], manipulate=False)
-        self.assertEqual([None, None], ids)
-        collection.drop()
+            docs = [{}, {}]
+            ids = collection.insert(docs, manipulate=False)
+            self.assertEqual([None, None], ids)
+            self.assertEqual([{}, {}], docs)
+        finally:
+            collection.drop()
 
     def test_continue_on_error(self):
         # Tests legacy insert.
