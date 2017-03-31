@@ -116,7 +116,10 @@ class PeriodicExecutor(object):
                     self._stopped = True
                     break
             except:
-                self._stopped = True
+                with self._lock:
+                    self._stopped = True
+                    self._thread_will_exit = True
+
                 raise
 
             deadline = _time() + self._interval

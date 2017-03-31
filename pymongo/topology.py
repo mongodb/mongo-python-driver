@@ -350,6 +350,8 @@ class Topology(object):
             # Mark all servers Unknown.
             self._description = self._description.reset()
             self._update_servers()
+            self._opened = False
+
         # Publish only after releasing the lock.
         if self._publish_tp:
             self._events.put((self._listeners.publish_topology_closed,
