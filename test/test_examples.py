@@ -600,7 +600,7 @@ class TestSampleShellCommands(unittest.TestCase):
             self.assertEqual(len(doc.keys()), 2)
             self.assertTrue("item" in doc)
             self.assertTrue("instock" in doc)
-            self.assertTrue(len(doc["instock"]), 2)
+            self.assertEqual(len(doc["instock"]), 2)
 
     def test_delete(self):
         db = client_context.client.pymongo_test
