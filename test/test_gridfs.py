@@ -464,12 +464,16 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
     def setUpClass(cls):
         super(TestGridfsReplicaSet, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        client_context.client.drop_database('gfsreplica')
+
     def test_gridfs_replica_set(self):
         rsc = rs_client(
             w=self.w,
             read_preference=ReadPreference.SECONDARY)
 
-        fs = gridfs.GridFS(rsc.pymongo_test)
+        fs = gridfs.GridFS(rsc.gfsreplica, 'gfsreplicatest')
 
         gin = fs.new_file()
         self.assertEqual(gin._coll.read_preference, ReadPreference.PRIMARY)
@@ -487,12 +491,9 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
             secondary_host, secondary_port,
             read_preference=ReadPreference.SECONDARY)
 
-        primary_connection.pymongo_test.drop_collection("fs.files")
-        primary_connection.pymongo_test.drop_collection("fs.chunks")
-
         # Should detect it's connected to secondary and not attempt to
         # create index
-        fs = gridfs.GridFS(secondary_connection.pymongo_test)
+        fs = gridfs.GridFS(secondary_connection.gfsreplica, 'gfssecondarytest')
 
         # This won't detect secondary, raises error
         self.assertRaises(ConnectionFailure, fs.put, b'foo')
@@ -508,15 +509,11 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
             connect=False)
 
         # Still no connection.
-        fs = gridfs.GridFS(client.test_gridfs_secondary_lazy)
+        fs = gridfs.GridFS(client.gfsreplica, 'gfssecondarylazytest')
 
         # Connects, doesn't create index.
         self.assertRaises(NoFile, fs.get_last_version)
         self.assertRaises(ConnectionFailure, fs.put, 'data')
-
-    def tearDown(self):
-        self.client.pymongo_test.drop_collection('fs.files')
-        self.client.pymongo_test.drop_collection('fs.chunks')
 
 
 if __name__ == "__main__":

@@ -449,12 +449,16 @@ class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
     def setUpClass(cls):
         super(TestGridfsBucketReplicaSet, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        client_context.client.drop_database('gfsbucketreplica')
+
     def test_gridfs_replica_set(self):
         rsc = rs_client(
             w=self.w,
             read_preference=ReadPreference.SECONDARY)
 
-        gfs = gridfs.GridFSBucket(rsc.pymongo_test)
+        gfs = gridfs.GridFSBucket(rsc.gfsbucketreplica, 'gfsbucketreplicatest')
         oid = gfs.upload_from_stream("test_filename", b'foo')
         content = gfs.open_download_stream(oid).read()
         self.assertEqual(b'foo', content)
@@ -468,12 +472,10 @@ class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
             secondary_host, secondary_port,
             read_preference=ReadPreference.SECONDARY)
 
-        primary_connection.pymongo_test.drop_collection("fs.files")
-        primary_connection.pymongo_test.drop_collection("fs.chunks")
-
         # Should detect it's connected to secondary and not attempt to
         # create index
-        gfs = gridfs.GridFSBucket(secondary_connection.pymongo_test)
+        gfs = gridfs.GridFSBucket(
+            secondary_connection.gfsbucketreplica, 'gfsbucketsecondarytest')
 
         # This won't detect secondary, raises error
         self.assertRaises(ConnectionFailure, gfs.upload_from_stream,
@@ -490,17 +492,14 @@ class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
             connect=False)
 
         # Still no connection.
-        gfs = gridfs.GridFSBucket(client.test_gridfs_secondary_lazy)
+        gfs = gridfs.GridFSBucket(
+            client.gfsbucketreplica, 'gfsbucketsecondarylazytest')
 
         # Connects, doesn't create index.
         self.assertRaises(NoFile, gfs.open_download_stream_by_name,
                           "test_filename")
         self.assertRaises(ConnectionFailure, gfs.upload_from_stream,
                           "test_filename", b'data')
-
-    def tearDown(self):
-        self.client.pymongo_test.drop_collection('fs.files')
-        self.client.pymongo_test.drop_collection('fs.chunks')
 
 
 if __name__ == "__main__":
