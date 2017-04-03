@@ -22,7 +22,7 @@ from test import (client_context,
                   IntegrationTest,
                   unittest)
 from test.utils import rs_or_single_client_noauth, rs_or_single_client
-from test.utils import frequent_thread_switches, joinall
+from test.utils import joinall
 from pymongo.errors import OperationFailure
 
 
@@ -193,15 +193,14 @@ class TestThreads(IntegrationTest):
         threads = [SaveAndFind(db.test) for _ in range(10)]
         threads.extend(Disconnect(db.client, 10) for _ in range(10))
 
-        with frequent_thread_switches():
-            for t in threads:
-                t.start()
+        for t in threads:
+            t.start()
 
-            for t in threads:
-                t.join(300)
+        for t in threads:
+            t.join(300)
 
-            for t in threads:
-                self.assertTrue(t.passed)
+        for t in threads:
+            self.assertTrue(t.passed)
 
 
 class TestThreadsAuth(IntegrationTest):
