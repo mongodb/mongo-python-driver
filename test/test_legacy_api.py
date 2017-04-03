@@ -296,7 +296,8 @@ class TestLegacy(IntegrationTest):
 
         self.assertEqual(4, collection.count())
 
-        db.drop_collection("test_continue_on_error")
+        collection.remove({}, w=client_context.w)
+
         oid = collection.insert({"_id": oid, "one": 1}, w=0)
         wait_until(lambda: 1 == collection.count(), 'insert 1 document')
 
