@@ -6,8 +6,9 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #       AUTH                    Set to enable authentication. Defaults to "noauth"
 #       SSL                     Set to enable SSL. Defaults to "nossl"
 #       PYTHON_BINARY           The Python version to use. Defaults to whatever is available
-#       GREEN_FRAMEWORK         The green framwork to test with, if any.
+#       GREEN_FRAMEWORK         The green framework to test with, if any.
 #       C_EXTENSIONS            Pass --no_ext to setup.py, or not.
+#       COVERAGE                If non-empty, run the test suite with coverage.
 
 
 AUTH=${AUTH:-noauth}
@@ -15,6 +16,7 @@ SSL=${SSL:-nossl}
 PYTHON_BINARY=${PYTHON_BINARY:-}
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
 C_EXTENSIONS=${C_EXTENSIONS:-}
+COVERAGE=${COVERAGE:-}
 
 export JAVA_HOME=/opt/java/jdk8
 
@@ -54,6 +56,21 @@ $PYTHON -c 'import sys; print(sys.version)'
 # Run the tests, and store the results in Evergreen compatible XUnit XML
 # files in the xunit-results/ directory.
 
+# Run the tests with coverage if requested and coverage is installed.
+# Only cover CPython. Jython and PyPy report suspiciously low coverage.
+COVERAGE_OR_PYTHON="$PYTHON"
+COVERAGE_ARGS=""
+if [ -n "$COVERAGE" -a $PYTHON_IMPL = "CPython" ]; then
+    COVERAGE_BIN="$(dirname "$PYTHON")/coverage"
+    if $COVERAGE_BIN --version; then
+        echo "INFO: coverage is installed, running tests with coverage..."
+        COVERAGE_OR_PYTHON="$COVERAGE_BIN"
+        COVERAGE_ARGS="run --branch"
+    else
+        echo "INFO: coverage is not installed, running tests without coverage..."
+    fi
+fi
+
 $PYTHON setup.py clean
 if [ -z "$GREEN_FRAMEWORK" ]; then
     if [ -z "$C_EXTENSIONS" -a $PYTHON_IMPL = "CPython" ]; then
@@ -66,10 +83,8 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # This will set a non-zero exit status if either import fails,
         # causing this script to exit.
         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
-        $PYTHON setup.py test $OUTPUT
-    else
-        $PYTHON setup.py $C_EXTENSIONS test $OUTPUT
     fi
+    $COVERAGE_OR_PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $OUTPUT
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT

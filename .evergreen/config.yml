@@ -190,23 +190,60 @@ functions:
         display_name: "Rendered docs"
 
   "upload coverage" :
-    - command: shell.exec
-      params:
-        silent: true
-        script: |
-           export AWS_ACCESS_KEY_ID=${aws_key}
-           export AWS_SECRET_ACCESS_KEY=${aws_secret}
-           aws s3 cp ${PROJECT_DIRECTORY}/coverage s3://mciuploads/${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/coverage/ --recursive --acl public-read --region us-east-1
     - command: s3.put
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file:  ${PROJECT_DIRECTORY}/coverage/index.html
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/coverage/index.html
+        local_file:  ${PROJECT_DIRECTORY}/.coverage
+        optional: true
+        # Upload the coverage report for all tasks in a single build to the same directory.
+        remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/coverage/coverage.${build_variant}.${task_name}
         bucket: mciuploads
         permissions: public-read
         content_type: text/html
-        display_name: "Coverage Report"
+        display_name: "Raw Coverage Report"
+
+  "download and merge coverage" :
+    - command: shell.exec
+      params:
+        silent: true
+        working_dir: "src"
+        script: |
+          export AWS_ACCESS_KEY_ID=${aws_key}
+          export AWS_SECRET_ACCESS_KEY=${aws_secret}
+
+          # Download all the task coverage files.
+          aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/coverage/ coverage/
+    - command: shell.exec
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          # Coverage combine merges (and removes) all the coverage files and
+          # generates a new .coverage file in the current directory.
+          ls -la coverage/
+          /opt/python/3.6/bin/python3 -m coverage combine coverage/coverage.*
+          /opt/python/3.6/bin/python3 -m coverage html -d htmlcov
+    # Upload the resulting html coverage report.
+    - command: shell.exec
+      params:
+        silent: true
+        working_dir: "src"
+        script: |
+           export AWS_ACCESS_KEY_ID=${aws_key}
+           export AWS_SECRET_ACCESS_KEY=${aws_secret}
+           aws s3 cp htmlcov/ s3://mciuploads/${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/ --recursive --acl public-read --region us-east-1
+    # Attach the index.html with s3.put so it shows up in the Evergreen UI.
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file:  ${PROJECT_DIRECTORY}/htmlcov/index.html
+        remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/index.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: "Coverage Report HTML"
 
   "upload scan artifacts" :
     - command: shell.exec
@@ -370,7 +407,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} GREEN_FRAMEWORK=${GREEN_FRAMEWORK} C_EXTENSIONS=${C_EXTENSIONS} AUTH=${AUTH} SSL=${SSL} sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} GREEN_FRAMEWORK=${GREEN_FRAMEWORK} C_EXTENSIONS=${C_EXTENSIONS} COVERAGE=${COVERAGE} AUTH=${AUTH} SSL=${SSL} sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -448,6 +485,7 @@ pre:
 post:
   # Disabled, causing timeouts
   # - func: "upload working dir"
+  - func: "upload coverage"
   - func: "upload mo artifacts"
   - func: "upload test results"
   - func: "stop mongo-orchestration"
@@ -707,6 +745,27 @@ tasks:
             PYTHON_BINARY: /opt/python/2.7/bin/python
 
 # }}}
+    - name: "coverage-report"
+      tags: ["coverage"]
+      depends_on:
+        # BUILD-3165: We can't use "*" (all tasks) and specify "variant".
+        # Instead list out all coverage tasks using tags.
+        - name: ".standalone"
+          variant: ".coverage_tag"
+          # Run the coverage task even if some tasks fail.
+          status: "*"
+          # Run the coverage task even if some tasks are not scheduled in a patch build.
+          patch_optional: true
+        - name: ".replica_set"
+          variant: ".coverage_tag"
+          status: "*"
+          patch_optional: true
+        - name: ".sharded_cluster"
+          variant: ".coverage_tag"
+          status: "*"
+          patch_optional: true
+      commands:
+        - func: "download and merge coverage"
 
 
 axes:
@@ -992,6 +1051,14 @@ axes:
         display_name: "Python 3.6"
         variables:
            PYTHON_BINARY: "/cygdrive/c/python/Python36/python.exe"
+  - id: coverage
+    display_name: "Coverage"
+    values:
+      - id: "coverage"
+        display_name: "Coverage"
+        tags: ["coverage_tag"]
+        variables:
+           COVERAGE: "coverage"
 
 
 buildvariants:
@@ -1052,14 +1119,15 @@ buildvariants:
      - ".3.4"
 
 - matrix_name: "tests-python-version-ubuntu1204-test-ssl"
-  matrix_spec: {"python-version": "*", auth: "*", ssl: "*"}
+  matrix_spec: {"python-version": "*", auth: "*", ssl: "*", coverage: "*"}
   exclude_spec:
     # PYTHON-498: disable Jython SSL tests
     python-version: "jython2.7"
     # EVG-1410: exlcude_spec must specifiy values for all axes
     auth: "*"
     ssl: "ssl"
-  display_name: "${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl}"
+    coverage: "*"
+  display_name: "${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl} ${coverage}"
   run_on: ubuntu1204-test
   tasks:
      - ".latest"
@@ -1070,14 +1138,15 @@ buildvariants:
      - ".2.4"
 
 - matrix_name: "tests-python-version-ubuntu1204-without-c-extensions"
-  matrix_spec: {"python-version": "*", "c-extensions": "without-c-extensions", auth: "noauth", ssl: "nossl"}
+  matrix_spec: {"python-version": "*", "c-extensions": "without-c-extensions", auth: "noauth", ssl: "nossl", coverage: "*"}
   exclude_spec:
    # These interpreters are always tested without extensions.
    - python-version: ["pypy", "pypy3", "jython2.7"]
      c-extensions: "*"
      auth: "*"
      ssl: "*"
-  display_name: "${c-extensions} ${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl}"
+     coverage: "*"
+  display_name: "${c-extensions} ${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl} ${coverage}"
   run_on: ubuntu1204-test
   tasks:
      - ".latest"
@@ -1232,6 +1301,11 @@ buildvariants:
   tasks:
     - name: "no-server"
 
+- name: "Coverage Report"
+  display_name: "Coverage Report"
+  run_on: ubuntu1604-test
+  tasks:
+     - name: "coverage-report"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
