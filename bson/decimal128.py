@@ -84,9 +84,12 @@ _CTX_OPTIONS = {
               decimal.Inexact]
 }
 
-if _PY3:
+try:
+    # Python >= 3.3, cdecimal
+    decimal.Context(clamp=1)  # pylint: disable=unexpected-keyword-arg
     _CTX_OPTIONS['clamp'] = 1
-else:
+except TypeError:
+    # Python < 3.3
     _CTX_OPTIONS['_clamp'] = 1
 
 _DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())
@@ -273,7 +276,7 @@ class Decimal128(object):
         elif (high & _NAN) == _NAN:
             return decimal.Decimal((sign, (), 'n'))
         elif (high & _INF) == _INF:
-            return decimal.Decimal((sign, (0,), 'F'))
+            return decimal.Decimal((sign, (), 'F'))
 
         if (high & _EXPONENT_MASK) == _EXPONENT_MASK:
             exponent = ((high & 0x1fffe00000000000) >> 47) - _EXPONENT_BIAS
@@ -296,7 +299,9 @@ class Decimal128(object):
         arr[0] = (high & mask) >> 48
 
         # Have to convert bytearray to bytes for python 2.6.
-        digits = [int(digit) for digit in str(_from_bytes(bytes(arr), 'big'))]
+        # cdecimal only accepts a tuple for digits.
+        digits = tuple(
+            int(digit) for digit in str(_from_bytes(bytes(arr), 'big')))
 
         with decimal.localcontext(_DEC128_CTX) as ctx:
             return ctx.create_decimal((sign, digits, exponent))
