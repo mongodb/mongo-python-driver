@@ -175,6 +175,10 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertRaises(ConfigurationError, MongoReplicaSetClient,
                           maxPoolSize=0)
 
+    def test_repl_max_pool_size_zero(self):
+        self.assertRaises(ConfigurationError, MongoReplicaSetClient,
+                          maxPoolSize=0)
+
     def test_init_disconnected(self):
         c = self._get_client(_connect=False)
 
