@@ -5,7 +5,7 @@ set -o errexit
 
 echo "Running enterprise authentication tests"
 
-PLATFORM="$(${PYTHON_BINARY} -c 'import platform; print(platform.system())')"
+PLATFORM="$(${PYTHON_BINARY} -c 'import platform, sys; sys.stdout.write(platform.system())')"
 
 export DB_USER="bob"
 export DB_PASSWORD="pwd123"

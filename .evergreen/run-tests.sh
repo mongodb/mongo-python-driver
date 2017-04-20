@@ -39,8 +39,10 @@ else
     PYTHON="$PYTHON_BINARY"
 fi
 
+PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
+
 # Don't download unittest-xml-reporting from pypi, which often fails.
-HAVE_XMLRUNNER=$($PYTHON -c "import pkgutil; print(1 if pkgutil.find_loader('xmlrunner') else 0)")
+HAVE_XMLRUNNER=$($PYTHON -c "import pkgutil, sys; sys.stdout.write('1' if pkgutil.find_loader('xmlrunner') else '0')")
 if [ $HAVE_XMLRUNNER = "1" ]; then
     OUTPUT="--xunit-output=xunit-results"
 else
@@ -55,7 +57,20 @@ $PYTHON -c 'import sys; print(sys.version)'
 
 $PYTHON setup.py clean
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    $PYTHON setup.py $C_EXTENSIONS test $OUTPUT
+    if [ -z "$C_EXTENSIONS" -a $PYTHON_IMPL = "CPython" ]; then
+        # Fail if the C extensions fail to build.
+
+        # This always sets 0 for exit status, even if the build fails, due
+        # to our hack to install PyMongo without C extensions when build
+        # deps aren't available.
+        $PYTHON setup.py build_ext -i
+        # This will set a non-zero exit status if either import fails,
+        # causing this script to exit.
+        $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
+        $PYTHON setup.py test $OUTPUT
+    else
+        $PYTHON setup.py $C_EXTENSIONS test $OUTPUT
+    fi
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT

@@ -3,7 +3,7 @@ set -o xtrace
 set -o errexit
 
 # TODO: Rework mod_wsgi directory structure to avoid this mess.
-PYTHON_NAME=$(${PYTHON_BINARY} -c "import sys; print('python%s' % ('.'.join(str(val) for val in sys.version_info[:2])))")
+PYTHON_NAME=$(${PYTHON_BINARY} -c "import sys; sys.stdout.write('python%s' % ('.'.join(str(val) for val in sys.version_info[:2])))")
 export MOD_WSGI_SO=/opt/python/mod_wsgi/4.5.13/${PYTHON_NAME}/mod_wsgi.so
 
 cd ..
