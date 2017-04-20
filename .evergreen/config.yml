@@ -699,6 +699,13 @@ tasks:
             TOPOLOGY: "server"
         - func: "run cdecimal tests"
 
+    - name: "no-server"
+      tags: ["no-server"]
+      commands:
+        - func: "run tests"
+          vars:
+            PYTHON_BINARY: /opt/python/2.7/bin/python
+
 # }}}
 
 
@@ -1342,6 +1349,14 @@ buildvariants:
     - ubuntu1604-test
   tasks:
     - name: "cdecimal"
+
+- name: "no-server"
+  display_name: "No server test"
+  run_on:
+    - ubuntu1604-test
+  tasks:
+    - name: "no-server"
+
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available

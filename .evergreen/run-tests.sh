@@ -5,7 +5,6 @@ set -o errexit  # Exit the script with error if any of the commands fail
 # Supported/used environment variables:
 #       AUTH                    Set to enable authentication. Defaults to "noauth"
 #       SSL                     Set to enable SSL. Defaults to "nossl"
-#       MONGODB_URI             Set the suggested connection MONGODB_URI (including credentials and topology info)
 #       PYTHON_BINARY           The Python version to use. Defaults to whatever is available
 #       GREEN_FRAMEWORK         The green framwork to test with, if any.
 #       C_EXTENSIONS            Pass --no_ext to setup.py, or not.
@@ -13,7 +12,6 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-MONGODB_URI=${MONGODB_URI:-}
 PYTHON_BINARY=${PYTHON_BINARY:-}
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
 C_EXTENSIONS=${C_EXTENSIONS:-}
@@ -49,7 +47,7 @@ else
     OUTPUT=""
 fi
 
-echo "Running $AUTH tests over $SSL with python $PYTHON, connecting to $MONGODB_URI"
+echo "Running $AUTH tests over $SSL with python $PYTHON"
 $PYTHON -c 'import sys; print(sys.version)'
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
