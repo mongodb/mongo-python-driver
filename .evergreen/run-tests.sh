@@ -16,6 +16,7 @@ PYTHON_BINARY=${PYTHON_BINARY:-}
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
 C_EXTENSIONS=${C_EXTENSIONS:-}
 
+export JAVA_HOME=/opt/java/jdk8
 
 if [ "$AUTH" != "noauth" ]; then
     export DB_USER="bob"
@@ -28,7 +29,7 @@ if [ "$SSL" != "nossl" ]; then
 fi
 
 if [ -z "$PYTHON_BINARY" ]; then
-    PYTHON=$(command -v python || command -v python3)
+    PYTHON=$(command -v python || command -v python3) || true
     if [ -z "$PYTHON" ]; then
         echo "Cannot test without python or python3 installed!"
         exit 1

@@ -27,6 +27,8 @@ def run_gevent():
 def run_eventlet():
     """Prepare to run tests with Eventlet. Can raise ImportError."""
     import eventlet
+    # https://github.com/eventlet/eventlet/issues/401
+    eventlet.sleep()
     eventlet.monkey_patch()
 
 

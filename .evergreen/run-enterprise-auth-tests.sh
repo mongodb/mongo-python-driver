@@ -5,6 +5,8 @@ set -o errexit
 
 echo "Running enterprise authentication tests"
 
+export JAVA_HOME=/opt/java/jdk8
+
 PLATFORM="$(${PYTHON_BINARY} -c 'import platform, sys; sys.stdout.write(platform.system())')"
 
 export DB_USER="bob"

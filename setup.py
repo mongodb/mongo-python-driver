@@ -94,8 +94,11 @@ class test(Command):
         if self.distribution.tests_require:
             self.distribution.fetch_build_eggs(self.distribution.tests_require)
         if self.xunit_output:
-            self.distribution.fetch_build_eggs(
-                ["unittest-xml-reporting>=1.14.0,<2.0.0a0"])
+            if sys.version_info[:2] == (2, 6):
+                self.distribution.fetch_build_eggs(
+                    ["unittest-xml-reporting>=1.14.0,<2.0.0a0"])
+            else:
+                self.distribution.fetch_build_eggs(["unittest-xml-reporting"])
         self.run_command('egg_info')
         build_ext_cmd = self.reinitialize_command('build_ext')
         build_ext_cmd.inplace = 1
@@ -330,9 +333,14 @@ extra_opts = {
     "packages": ["bson", "pymongo", "gridfs"]
 }
 if sys.version_info[:2] == (2, 6):
-    # We require unittest at most 0.8.0 because it's maximum version that
-    # can be installed properly on Solaris in Evergreen.
-    extra_opts['tests_require'] = "unittest2<=0.8.0"
+    try:
+        import unittest2
+    except ImportError:
+        # The setuptools version on Solaris 11 is incapable
+        # of recognizing if unittest2 is already installed.
+        # It's also incapable of installing any version of
+        # unittest2 newer than 0.8.0
+        extra_opts['tests_require'] = "unittest2<=0.8.0"
 
 if "--no_ext" in sys.argv:
     sys.argv.remove("--no_ext")
