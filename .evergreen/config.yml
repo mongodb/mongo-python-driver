@@ -334,7 +334,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
     - command: shell.exec
@@ -911,6 +911,21 @@ axes:
         display_name: "Jython 2.7"
         variables:
            PYTHON_BINARY: "/opt/python/jython2.7/bin/jython"
+  - id: mod-wsgi-version
+    display_name: "mod_wsgi version"
+    values:
+      - id: "2.8"
+        display_name: "mod_wsgi 2.8"
+        variables:
+          MOD_WSGI_VERSION: "2.8"
+      - id: "3.5"
+        display_name: "mod_wsgi 3.5"
+        variables:
+          MOD_WSGI_VERSION: "3.5"
+      - id: "4.5.15"
+        display_name: "mod_wsgi 4.5.15"
+        variables:
+          MOD_WSGI_VERSION: "4.5.15"
   - id: green-framework
     display_name: "Green Framework"
     values:
@@ -1252,9 +1267,12 @@ buildvariants:
      - name: "test-enterprise-auth"
 
 - matrix_name: "tests-mod-wsgi"
-  matrix_spec: {"python-version": ["2.6", "3.6"]}
-  display_name: "mod_wsgi ${python-version}"
-  run_on: ubuntu1604-test
+  matrix_spec: {"python-version": ["2.6", "2.7", "3.3", "3.6"], "mod-wsgi-version": "*"}
+  exclude_spec:
+    python-version: ["3.3", "3.6"]
+    mod-wsgi-version: ["2.8"]
+  display_name: "${mod-wsgi-version} ${python-version}"
+  run_on: ubuntu1204-test
   tasks:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
