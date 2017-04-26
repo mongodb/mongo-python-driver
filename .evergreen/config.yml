@@ -334,7 +334,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} C_EXTENSIONS=${C_EXTENSIONS} AUTH=${AUTH} SSL=${SSL} MONGODB_URI="${MONGODB_URI}" sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} C_EXTENSIONS=${C_EXTENSIONS} AUTH=${AUTH} SSL=${SSL} sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -654,15 +654,10 @@ axes:
         variables:
            VERSION: "2.4"
 
-
   # OSes that support versions of MongoDB>=2.4 with SSL.
   - id: os-fully-featured
     display_name: OS
     values:
-      - id: ubuntu1204-test
-        display_name: "Ubuntu 12.04"
-        run_on: ubuntu1204-test
-
       - id: suse11-x86-64-test
         display_name: "SUSE 11 (x86_64)"
         run_on: suse11-test
@@ -707,6 +702,10 @@ axes:
   - id: os-requires-32
     display_name: OS
     values:
+      - id: ubuntu1604-test
+        display_name: "Ubuntu 16.04"
+        run_on: ubuntu1604-test
+
       - id: suse12-x86-64-test
         display_name: "SUSE 12 (x86_64)"
         run_on: suse12-test
@@ -907,211 +906,108 @@ axes:
 buildvariants:
 
 - matrix_name: "tests-all"
-  matrix_spec: {"os-fully-featured": "*", auth: "*", ssl: "*" }
+  matrix_spec: {"os-fully-featured": "*", auth: "*", ssl: "*"}
   display_name: "${os-fully-featured} ${auth} ${ssl}"
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
-     - name: "test-3.0-replica_set"
-     - name: "test-3.0-sharded_cluster"
-     - name: "test-3.0-standalone"
-     - name: "test-2.6-replica_set"
-     - name: "test-2.6-sharded_cluster"
-     - name: "test-2.6-standalone"
-     - name: "test-2.4-replica_set"
-     - name: "test-2.4-sharded_cluster"
-     - name: "test-2.4-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
+     - ".2.4"
 
 - matrix_name: "tests-nossl"
-  matrix_spec: {"os-nossl": "*", auth: "*", ssl: "nossl" }
+  matrix_spec: {"os-nossl": "*", auth: "*", ssl: "nossl"}
   display_name: "${os-nossl} ${auth} ${ssl}"
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
-     - name: "test-3.0-replica_set"
-     - name: "test-3.0-sharded_cluster"
-     - name: "test-3.0-standalone"
-     - name: "test-2.6-replica_set"
-     - name: "test-2.6-sharded_cluster"
-     - name: "test-2.6-standalone"
-     - name: "test-2.4-replica_set"
-     - name: "test-2.4-sharded_cluster"
-     - name: "test-2.4-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
+     - ".2.4"
 
 - matrix_name: "tests-os-requires-26"
-  matrix_spec: {"os-requires-26": "*", auth: "*", ssl: "*" }
+  matrix_spec: {"os-requires-26": "*", auth: "*", ssl: "*"}
   display_name: "${os-requires-26} ${auth} ${ssl}"
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
-     - name: "test-3.0-replica_set"
-     - name: "test-3.0-sharded_cluster"
-     - name: "test-3.0-standalone"
-     - name: "test-2.6-replica_set"
-     - name: "test-2.6-sharded_cluster"
-     - name: "test-2.6-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
 
 - matrix_name: "tests-os-requires-32"
-  matrix_spec: {"os-requires-32": "*", auth: "*", ssl: "*" }
+  matrix_spec: {"os-requires-32": "*", auth: "*", ssl: "*"}
   display_name: "${os-requires-32} ${auth} ${ssl}"
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
 
 - matrix_name: "tests-ssl-requires-32"
-  matrix_spec: {"os-ssl-requires-32": "*", auth: "*", ssl: "ssl" }
+  matrix_spec: {"os-ssl-requires-32": "*", auth: "*", ssl: "ssl"}
   display_name: "${os-ssl-requires-32} ${auth} ${ssl}"
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
 
 - matrix_name: "tests-os-requires-34"
-  matrix_spec: {"os-requires-34": "*", auth: "*", ssl: "*" }
+  matrix_spec: {"os-requires-34": "*", auth: "*", ssl: "*"}
   display_name: "${os-requires-34} ${auth} ${ssl}"
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
+     - ".latest"
+     - ".3.4"
 
-
-# Test all versions of Python against all versions of MongoDB >= 3.2.
-- matrix_name: "tests-python-version-ubuntu1604-test-ssl"
-  matrix_spec: {"python-version": "*", auth: "*", ssl: "ssl" }
+- matrix_name: "tests-python-version-ubuntu1204-test-ssl"
+  matrix_spec: {"python-version": "*", auth: "*", ssl: "*"}
   exclude_spec:
     # PYTHON-498: disable Jython SSL tests
     python-version: ["jython2.5", "jython2.7"]
     # EVG-1410: exlcude_spec must specifiy values for all axes
     auth: "*"
     ssl: "ssl"
-  display_name: "${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
-  run_on: ubuntu1604-test
+  display_name: "${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl}"
+  run_on: ubuntu1204-test
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
+     - ".2.4"
 
-# Test all versions of Python against all versions on MongoDB <= 3.0.
-# MongoDB <=3.0 on Ubuntu 16.04 (x86_64) does not support SSL.
-- matrix_name: "tests-python-version-ubuntu1604-test-nossl"
-  matrix_spec: {"python-version": "*", auth: "*", ssl: "nossl" }
-  display_name: "${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
-  run_on: ubuntu1604-test
-  tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
-     - name: "test-3.0-replica_set"
-     - name: "test-3.0-sharded_cluster"
-     - name: "test-3.0-standalone"
-     - name: "test-2.6-replica_set"
-     - name: "test-2.6-sharded_cluster"
-     - name: "test-2.6-standalone"
-     - name: "test-2.4-replica_set"
-     - name: "test-2.4-sharded_cluster"
-     - name: "test-2.4-standalone"
-
-- matrix_name: "tests-python-version-ubuntu1604-without-c-extensions"
-  matrix_spec: {"python-version": "*", "c-extensions": "without-c-extensions", auth: "noauth", ssl: "nossl" }
+- matrix_name: "tests-python-version-ubuntu1204-without-c-extensions"
+  matrix_spec: {"python-version": "*", "c-extensions": "without-c-extensions", auth: "noauth", ssl: "nossl"}
   exclude_spec:
    # These interpreters are always tested without extensions.
    - python-version: ["pypy", "pypy3", "jython2.5", "jython2.7"]
      c-extensions: "*"
      auth: "*"
      ssl: "*"
-  display_name: "${c-extensions} ${python-version} Ubuntu 16.04 (x86_64) ${auth} ${ssl}"
-  run_on: ubuntu1604-test
+  display_name: "${c-extensions} ${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl}"
+  run_on: ubuntu1204-test
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
-     - name: "test-3.0-replica_set"
-     - name: "test-3.0-sharded_cluster"
-     - name: "test-3.0-standalone"
-     - name: "test-2.6-replica_set"
-     - name: "test-2.6-sharded_cluster"
-     - name: "test-2.6-standalone"
-     - name: "test-2.4-replica_set"
-     - name: "test-2.4-sharded_cluster"
-     - name: "test-2.4-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
+     - ".2.4"
 
 # Test CPython 3.3 and 3.4 against all versions on MongoDB >= 2.4
 # on Windows with Visual Studio 2010.
 - matrix_name: "tests-windows-vs2010-python-version-nossl"
-  matrix_spec: {windows-vs2010-python-version: "*", auth: "*", ssl: "*" }
+  matrix_spec: {windows-vs2010-python-version: "*", auth: "*", ssl: "*"}
   display_name: "Windows 64 Visual Studio 2010 ${windows-vs2010-python-version} ${auth} ${ssl}"
   run_on: windows-64-vs2010-test
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
-     - name: "test-3.0-replica_set"
-     - name: "test-3.0-sharded_cluster"
-     - name: "test-3.0-standalone"
-     - name: "test-2.6-replica_set"
-     - name: "test-2.6-sharded_cluster"
-     - name: "test-2.6-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
   rules:
      # Windows MongoDB 2.4 does not support SSL.
      - if:
@@ -1120,32 +1016,20 @@ buildvariants:
          ssl: "nossl"
        then:
          add_tasks:
-           - name: "test-2.4-replica_set"
-           - name: "test-2.4-sharded_cluster"
-           - name: "test-2.4-standalone"
+           - ".2.4"
 
 # Test CPython 2.6, 2.7, 3.2, 3.5 and 3.6 against all versions on MongoDB >= 2.4
 # on Windows with the Microsoft Visual C++ Compiler for Python 2.7 or Visual Studio 2015.
 - matrix_name: "tests-windows-vs2015-python-version-nossl"
-  matrix_spec: {windows-vs2015-python-version: "*", auth: "*", ssl: "*" }
+  matrix_spec: {windows-vs2015-python-version: "*", auth: "*", ssl: "*"}
   display_name: "Windows 64 Visual Studio 2015 ${windows-vs2015-python-version} ${auth} ${ssl}"
   run_on: windows-64-vs2015-test
   tasks:
-     - name: "test-latest-replica_set"
-     - name: "test-latest-sharded_cluster"
-     - name: "test-latest-standalone"
-     - name: "test-3.4-replica_set"
-     - name: "test-3.4-sharded_cluster"
-     - name: "test-3.4-standalone"
-     - name: "test-3.2-replica_set"
-     - name: "test-3.2-sharded_cluster"
-     - name: "test-3.2-standalone"
-     - name: "test-3.0-replica_set"
-     - name: "test-3.0-sharded_cluster"
-     - name: "test-3.0-standalone"
-     - name: "test-2.6-replica_set"
-     - name: "test-2.6-sharded_cluster"
-     - name: "test-2.6-standalone"
+     - ".latest"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
   rules:
      # Windows MongoDB 2.4 does not support SSL.
      - if:
@@ -1154,15 +1038,13 @@ buildvariants:
          ssl: "nossl"
        then:
          add_tasks:
-           - name: "test-2.4-replica_set"
-           - name: "test-2.4-sharded_cluster"
-           - name: "test-2.4-standalone"
+           - ".2.4"
 
-# Storage engine tests on Ubuntu 16.04 (x86_64) with Python 2.7.
+# Storage engine tests on Ubuntu 12.04 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
   matrix_spec: {storage-engine: "*", python-version: "2.7"}
-  display_name: "Storage ${storage-engine} ${python-version} Ubuntu 16.04 (x86_64)"
-  run_on: ubuntu1604-test
+  display_name: "Storage ${storage-engine} ${python-version} Ubuntu 12.04 (x86_64)"
+  run_on: ubuntu1204-test
   rules:
     - if:
         storage-engine: ["mmapv1", "inmemory"]
@@ -1182,7 +1064,7 @@ buildvariants:
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec: {"python-version": "*", auth: "auth"}
   display_name: "Enterprise Auth Linux ${python-version}"
-  run_on: ubuntu1604-test
+  run_on: ubuntu1204-test
   tasks:
      - name: "test-enterprise-auth"
 

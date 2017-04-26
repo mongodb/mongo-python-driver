@@ -5,16 +5,16 @@ set -o errexit  # Exit the script with error if any of the commands fail
 # Supported/used environment variables:
 #       AUTH                    Set to enable authentication. Defaults to "noauth"
 #       SSL                     Set to enable SSL. Defaults to "nossl"
-#       MONGODB_URI             Set the suggested connection MONGODB_URI (including credentials and topology info)
 #       PYTHON_BINARY           The Python version to use. Defaults to whatever is available
+#       C_EXTENSIONS            Pass --no_ext to setup.py, or not.
 
 
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
-MONGODB_URI=${MONGODB_URI:-}
 PYTHON_BINARY=${PYTHON_BINARY:-}
 C_EXTENSIONS=${C_EXTENSIONS:-}
 
+export JAVA_HOME=/opt/java/jdk8
 
 if [ "$AUTH" != "noauth" ]; then
     export DB_USER="bob"
@@ -22,7 +22,7 @@ if [ "$AUTH" != "noauth" ]; then
 fi
 
 if [ -z "$PYTHON_BINARY" ]; then
-    PYTHON=$(command -v python || command -v python3)
+    PYTHON=$(command -v python || command -v python3) || true
     if [ -z "$PYTHON" ]; then
         echo "Cannot test without python or python3 installed!"
         exit 1
@@ -68,7 +68,7 @@ else
     EXTRA_ARGS=""
 fi
 
-echo "Running $AUTH tests over $SSL with python $PYTHON, connecting to $MONGODB_URI"
+echo "Running $AUTH tests over $SSL with python $PYTHON"
 $PYTHON -c 'import sys; print(sys.version)'
 
 # Run the tests, and store the results in Evergreen compatible XUnit XML
