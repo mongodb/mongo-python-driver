@@ -55,7 +55,7 @@ except:
 def application(environ, start_response):
     results = list(collection.find().batch_size(10))
     assert len(results) == ndocs
-    output = 'python %s, mod_wsgi %s, pymongo %s' % (
+    output = ' python %s, mod_wsgi %s, pymongo %s ' % (
         sys.version, mod_wsgi_version, pymongo.version)
     response_headers = [('Content-Length', str(len(output)))]
     start_response('200 OK', response_headers)

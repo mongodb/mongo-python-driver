@@ -327,6 +327,15 @@ functions:
           ${PREPARE_SHELL}
           sh ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
+  "run mod_wsgi tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
+
   "run tests":
     - command: shell.exec
       type: test
@@ -622,6 +631,24 @@ tasks:
             TOPOLOGY: "server"
         - func: "run enterprise auth tests"
 
+    - name: "mod-wsgi-standalone"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run mod_wsgi tests"
+
+    - name: "mod-wsgi-replica-set"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "replica_set"
+        - func: "run mod_wsgi tests"
+
 # }}}
 
 
@@ -842,6 +869,21 @@ axes:
         display_name: "Jython 2.7"
         variables:
            PYTHON_BINARY: "/opt/python/jython2.7/bin/jython"
+  - id: mod-wsgi-version
+    display_name: "mod_wsgi version"
+    values:
+      - id: "2.8"
+        display_name: "mod_wsgi 2.8"
+        variables:
+           MOD_WSGI_VERSION: "2.8"
+      - id: "3.5"
+        display_name: "mod_wsgi 3.5"
+        variables:
+           MOD_WSGI_VERSION: "3.5"
+      - id: "4.5.15"
+        display_name: "mod_wsgi 4.5.15"
+        variables:
+           MOD_WSGI_VERSION: "4.5.15"
   - id: c-extensions
     display_name: "C Extensions"
     values:
@@ -1067,6 +1109,16 @@ buildvariants:
   run_on: ubuntu1204-test
   tasks:
      - name: "test-enterprise-auth"
+
+- matrix_name: "tests-mod-wsgi"
+  matrix_spec: {"python-version": ["2.4", "2.6", "2.7"], "mod-wsgi-version": "*"}
+  exclude_spec:
+    python-version: ["2.4"]
+    mod-wsgi-version: ["3.5", "4.5.15"]
+  display_name: "${mod-wsgi-version} ${python-version}"
+  run_on: ubuntu1204-test
+  tasks:
+     - ".mod_wsgi"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
