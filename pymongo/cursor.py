@@ -115,6 +115,8 @@ class Cursor(object):
         .. mongodoc:: cursors
         """
         self.__id = None
+        self.__exhaust = False
+        self.__exhaust_mgr = None
 
         spec = filter
         if spec is None:
@@ -163,8 +165,6 @@ class Cursor(object):
         self.__collation = validate_collation_or_none(collation)
 
         # Exhaust cursor support
-        self.__exhaust = False
-        self.__exhaust_mgr = None
         if cursor_type == CursorType.EXHAUST:
             if self.__collection.database.client.is_mongos:
                 raise InvalidOperation('Exhaust cursors are '
@@ -214,8 +214,7 @@ class Cursor(object):
         return self.__retrieved
 
     def __del__(self):
-        if self.__id and not self.__killed:
-            self.__die()
+        self.__die()
 
     def rewind(self):
         """Rewind this cursor to its unevaluated state.
@@ -264,7 +263,7 @@ class Cursor(object):
         """
         return Cursor(self.__collection)
 
-    def __die(self):
+    def __die(self, synchronous=False):
         """Closes this cursor.
         """
         if self.__id and not self.__killed:
@@ -274,10 +273,14 @@ class Cursor(object):
                 # to stop the server from sending more data.
                 self.__exhaust_mgr.sock.close()
             else:
-                self.__collection.database.client.close_cursor(
-                    self.__id,
-                    _CursorAddress(
-                        self.__address, self.__collection.full_name))
+                address = _CursorAddress(
+                    self.__address, self.__collection.full_name)
+                if synchronous:
+                    self.__collection.database.client._close_cursor_now(
+                        self.__id, address)
+                else:
+                    self.__collection.database.client.close_cursor(
+                        self.__id, address)
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
         self.__killed = True
@@ -287,7 +290,7 @@ class Cursor(object):
         other Python implementations that don't use reference counting
         garbage collection.
         """
-        self.__die()
+        self.__die(True)
 
     def __query_spec(self):
         """Get the spec to use for a query.
@@ -1126,7 +1129,7 @@ class Cursor(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.__die()
+        self.close()
 
     def __copy__(self):
         """Support function for `copy.copy()`.

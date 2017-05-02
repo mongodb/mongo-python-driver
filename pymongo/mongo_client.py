@@ -778,6 +778,9 @@ class MongoClient(common.BaseObject):
         If this instance is used again it will be automatically re-opened and
         the threads restarted.
         """
+        # Run _process_periodic_tasks to send pending killCursor requests
+        # before closing the topology.
+        self._process_periodic_tasks()
         self._topology.close()
 
     def set_cursor_manager(self, manager_class):
@@ -1024,6 +1027,21 @@ class MongoClient(common.BaseObject):
         else:
             self.__kill_cursors_queue.append((address, [cursor_id]))
 
+    def _close_cursor_now(self, cursor_id, address=None):
+        """Send a kill cursors message with the given id.
+
+        What closing the cursor actually means depends on this client's
+        cursor manager. If there is none, the cursor is closed synchronously
+        on the current thread.
+        """
+        if not isinstance(cursor_id, integer_types):
+            raise TypeError("cursor_id must be an instance of (int, long)")
+
+        if self.__cursor_manager is not None:
+            self.__cursor_manager.close(cursor_id, address)
+        else:
+            self._kill_cursors([cursor_id], address, self._get_topology())
+
     def kill_cursors(self, cursor_ids, address=None):
         """DEPRECATED - Send a kill cursors message soon with the given ids.
 
@@ -1055,6 +1073,62 @@ class MongoClient(common.BaseObject):
         # "Atomic", needs no lock.
         self.__kill_cursors_queue.append((address, cursor_ids))
 
+    def _kill_cursors(self, cursor_ids, address, topology):
+        """Send a kill cursors message with the given ids."""
+        listeners = self._event_listeners
+        publish = listeners.enabled_for_commands
+        if address:
+            # address could be a tuple or _CursorAddress, but
+            # select_server_by_address needs (host, port).
+            server = topology.select_server_by_address(tuple(address))
+        else:
+            # Application called close_cursor() with no address.
+            server = topology.select_server(writable_server_selector)
+
+        try:
+            namespace = address.namespace
+            db, coll = namespace.split('.', 1)
+        except AttributeError:
+            namespace = None
+            db = coll = "OP_KILL_CURSORS"
+
+        spec = SON([('killCursors', coll), ('cursors', cursor_ids)])
+        with server.get_socket(self.__all_credentials) as sock_info:
+            if sock_info.max_wire_version >= 4 and namespace is not None:
+                sock_info.command(db, spec)
+            else:
+                if publish:
+                    start = datetime.datetime.now()
+                request_id, msg = message.kill_cursors(cursor_ids)
+                if publish:
+                    duration = datetime.datetime.now() - start
+                    # Here and below, address could be a tuple or
+                    # _CursorAddress. We always want to publish a
+                    # tuple to match the rest of the monitoring
+                    # API.
+                    listeners.publish_command_start(
+                        spec, db, request_id, tuple(address))
+                    start = datetime.datetime.now()
+
+                try:
+                    sock_info.send_message(msg, 0)
+                except Exception as exc:
+                    if publish:
+                        dur = ((datetime.datetime.now() - start) + duration)
+                        listeners.publish_command_failure(
+                            dur, message._convert_exception(exc),
+                            'killCursors', request_id,
+                            tuple(address))
+                    raise
+
+                if publish:
+                    duration = ((datetime.datetime.now() - start) + duration)
+                    # OP_KILL_CURSORS returns no reply, fake one.
+                    reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
+                    listeners.publish_command_success(
+                        duration, reply, 'killCursors', request_id,
+                        tuple(address))
+
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self):
         """Process any pending kill cursors requests and
@@ -1072,68 +1146,10 @@ class MongoClient(common.BaseObject):
 
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
-            listeners = self._event_listeners
-            publish = listeners.enabled_for_commands
             topology = self._get_topology()
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
-                    if address:
-                        # address could be a tuple or _CursorAddress, but
-                        # select_server_by_address needs (host, port).
-                        server = topology.select_server_by_address(
-                            tuple(address))
-                    else:
-                        # Application called close_cursor() with no address.
-                        server = topology.select_server(
-                            writable_server_selector)
-
-                    try:
-                        namespace = address.namespace
-                        db, coll = namespace.split('.', 1)
-                    except AttributeError:
-                        namespace = None
-                        db = coll = "OP_KILL_CURSORS"
-
-                    spec = SON([('killCursors', coll),
-                                ('cursors', cursor_ids)])
-                    with server.get_socket(self.__all_credentials) as sock_info:
-                        if (sock_info.max_wire_version >= 4 and
-                                namespace is not None):
-                            sock_info.command(db, spec)
-                        else:
-                            if publish:
-                                start = datetime.datetime.now()
-                            request_id, msg = message.kill_cursors(cursor_ids)
-                            if publish:
-                                duration = datetime.datetime.now() - start
-                                # Here and below, address could be a tuple or
-                                # _CursorAddress. We always want to publish a
-                                # tuple to match the rest of the monitoring
-                                # API.
-                                listeners.publish_command_start(
-                                    spec, db, request_id, tuple(address))
-                                start = datetime.datetime.now()
-
-                            try:
-                                sock_info.send_message(msg, 0)
-                            except Exception as exc:
-                                if publish:
-                                    dur = ((datetime.datetime.now() - start)
-                                           + duration)
-                                    listeners.publish_command_failure(
-                                        dur, message._convert_exception(exc),
-                                        'killCursors', request_id, tuple(address))
-                                raise
-
-                            if publish:
-                                duration = ((datetime.datetime.now() - start)
-                                            + duration)
-                                # OP_KILL_CURSORS returns no reply, fake one.
-                                reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
-                                listeners.publish_command_success(
-                                    duration, reply, 'killCursors', request_id,
-                                    tuple(address))
-
+                    self._kill_cursors(cursor_ids, address, topology)
                 except Exception:
                     helpers._handle_exception()
         try:

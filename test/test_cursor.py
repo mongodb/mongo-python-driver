@@ -14,6 +14,7 @@
 
 """Test the cursor module."""
 import copy
+import gc
 import itertools
 import random
 import re
@@ -1126,7 +1127,6 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(3, db.test.count())
 
-
     def test_distinct(self):
         self.db.drop_collection("test")
 
@@ -1244,6 +1244,35 @@ class TestCursor(IntegrationTest):
                 break
 
             self.assertTrue(cursor.alive)
+
+    def test_close_kills_cursor_synchronously(self):
+        # Kill any cursors possibly queued up by previous tests.
+        gc.collect()
+        self.client._process_periodic_tasks()
+
+        listener = WhiteListEventListener("killCursors")
+        results = listener.results
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        coll = client[self.db.name].test_close_kills_cursors
+
+        # Add some test data.
+        docs_inserted = 1000
+        coll.insert_many([{"i": i} for i in range(docs_inserted)])
+
+        results.clear()
+
+        # Close the cursor while it's still open on the server.
+        cursor = coll.find().batch_size(10)
+        self.assertTrue(bool(next(cursor)))
+        self.assertLess(cursor.retrieved, docs_inserted)
+        cursor.close()
+
+        # Test that the cursor was closed.
+        self.assertEqual(1, len(results["started"]))
+        self.assertEqual("killCursors", results["started"][0].command_name)
+        self.assertEqual(1, len(results["succeeded"]))
+        self.assertEqual("killCursors", results["succeeded"][0].command_name)
 
 
 if __name__ == "__main__":
