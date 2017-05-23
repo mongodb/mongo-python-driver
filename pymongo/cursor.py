@@ -1159,9 +1159,9 @@ class Cursor(object):
         """Advance the cursor."""
         if self.__empty:
             raise StopIteration
-        db = self.__collection.database
         if len(self.__data) or self._refresh():
             if self.__manipulate:
+                db = self.__collection.database
                 return db._fix_outgoing(self.__data.popleft(),
                                         self.__collection)
             else:
