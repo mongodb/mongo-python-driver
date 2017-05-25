@@ -5,9 +5,9 @@ PyMongo
 :Author: Mike Dirolf
 :Maintainer: Bernie Hackett <bernie@mongodb.com>
 
-.. warning:: PyMongo 2.x is in maintenance mode. Support for new MongoDB
-  features ended with the release of MongoDB 3.0 and PyMongo 2.8. Users are
-  strongly encouraged to upgrade to PyMongo 3.x.
+**PyMongo 2.x is in maintenance mode. Support for new MongoDB
+features ended with the release of MongoDB 3.0 and PyMongo 2.8. Users are
+strongly encouraged to upgrade to PyMongo 3.x.**
 
 About
 =====
