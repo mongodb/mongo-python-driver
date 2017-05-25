@@ -20,4 +20,4 @@ install:
     # Work around https://github.com/travis-ci/travis-ci/issues/943
     - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
     # Work around https://github.com/travis-ci/travis-ci/issues/5485
-    - travis_retry pip install "virtualenv<14.0.0"
+    - travis_retry pip install setuptools==29.0.1
