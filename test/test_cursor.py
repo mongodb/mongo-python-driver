@@ -1181,7 +1181,9 @@ class TestCursor(IntegrationTest):
         # MongoDB 3.1.5 changed the ns for commands.
         regex = {'$regex': 'pymongo_test.(\$cmd|test)'}
 
-        if client_context.version.at_least(3, 1, 8, -1):
+        if client_context.version.at_least(3, 5, 8, -1):
+            query_key = "command.comment"
+        elif client_context.version.at_least(3, 1, 8, -1):
             query_key = "query.comment"
         else:
             query_key = "query.$comment"
