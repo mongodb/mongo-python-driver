@@ -1,6 +1,11 @@
 PyMongo |release| Documentation
 ===============================
 
+.. warning:: PyMongo 2.x is in maintenance mode. Support for new MongoDB
+  features ended with the release of MongoDB 3.0 and PyMongo 2.8. Users are
+  strongly encouraged to upgrade to PyMongo 3.x. See the
+  :doc:`/migrate-to-pymongo3` for details.
+
 Overview
 --------
 **PyMongo** is a Python distribution containing tools for working with
