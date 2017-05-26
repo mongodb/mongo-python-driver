@@ -145,6 +145,7 @@ class ClientOptions(object):
         self.__connect = options.get('connect')
         self.__heartbeat_frequency = options.get(
             'heartbeatfrequencyms', common.HEARTBEAT_FREQUENCY)
+        self.__tags = options.get('tags', None)
 
     @property
     def _options(self):
@@ -205,3 +206,8 @@ class ClientOptions(object):
     def read_concern(self):
         """A :class:`~pymongo.read_concern.ReadConcern` instance."""
         return self.__read_concern
+
+    @property
+    def tags(self):
+        """Alternate addresses to use for server discovery"""
+        return self.__tags

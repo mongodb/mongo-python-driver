@@ -493,7 +493,8 @@ URI_VALIDATORS = {
     'connect': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
     'appname': validate_appname_or_none,
-    'unicode_decode_error_handler': validate_unicode_decode_error_handler
+    'unicode_decode_error_handler': validate_unicode_decode_error_handler,
+    'tags': validate_string_or_none
 }
 
 TIMEOUT_VALIDATORS = {

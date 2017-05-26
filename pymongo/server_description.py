@@ -15,6 +15,7 @@
 """Represent one server the driver is connected to."""
 
 from bson import EPOCH_NAIVE
+from pymongo.common import clean_node
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
@@ -45,7 +46,8 @@ class ServerDescription(object):
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
-        '_set_version', '_election_id', '_last_write_date', '_last_update_time')
+        '_set_version', '_election_id', '_last_write_date',
+        '_last_update_time', '_alternate_addresses')
 
     def __init__(
             self,
@@ -75,6 +77,10 @@ class ServerDescription(object):
         self._me = ismaster.me
         self._last_update_time = _time()
         self._error = error
+        self._alternate_addresses = [clean_node(n) for n in ismaster.tags]
+        # When connecting to that server fails, try it's alternate addresses
+        # in order to find one that works. Later on, can set preference to
+        # public or private alternate addresses.
 
         if ismaster.last_write_date:
             # Convert from datetime to seconds.
@@ -87,6 +93,11 @@ class ServerDescription(object):
     def address(self):
         """The address (host, port) of this server."""
         return self._address
+
+    @property
+    def alternate_addresses(self):
+        """Any alternate addresses for this instance, given by tags"""
+        return self._alternate_addresses
 
     @property
     def server_type(self):

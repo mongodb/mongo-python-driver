@@ -422,6 +422,7 @@ class Topology(object):
         """
         for address, sd in self._description.server_descriptions().items():
             if address not in self._servers:
+                # print "creating monitor for ", address
                 monitor = self._settings.monitor_class(
                     server_description=sd,
                     topology=self,
@@ -448,6 +449,8 @@ class Topology(object):
             if not self._description.has_server(address):
                 server.close()
                 self._servers.pop(address)
+        # print "Topology's server list at end of update_servers" + str(
+        #     self._servers.keys())
 
     def _create_pool_for_server(self, address):
         return self._settings.pool_class(address, self._settings.pool_options)

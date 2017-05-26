@@ -1,0 +1,77 @@
+{
+    "description": "Replica set discovery from primary with tags",
+    "phases": [
+        {
+            "outcome": {
+                "servers": {
+                    "a:37017": {
+                        "setName": "rs",
+                        "type": "RSPrimary"
+                    }, 
+                    "b:37017": {
+                        "setName": "rs",
+                        "type": "RSOther"
+                    },
+                    "a:27017": {
+                        "setName": null,
+                        "type": "Unknown"
+                    },
+                    "b:27017": {
+                        "setName": null,
+                        "type": "Unknown"
+                    }
+                },
+                "setName": "rs", 
+                "topologyType": "ReplicaSetWithPrimary"
+            }, 
+            "responses": [
+                [
+                    "a:27017", 
+                    {
+                        "hosts": [
+                            "a:27017", 
+                            "b:27017"
+                        ], 
+                        "ismaster": true, 
+                        "ok": 1, 
+                        "setName": "rs",
+                        "tags": [
+                            "a:37017",
+                            "b:37017"
+                        ]
+                    }
+                ],
+                [
+                    "b:27017",
+                    {
+                    }
+                ],
+                [
+                    "a:37017",
+                    {
+                        "hosts": [
+                            "a:37017",
+                            "b:37017"
+                        ],
+                        "ismaster": true,
+                        "ok": 1,
+                        "setName": "rs"
+                    }
+                ],
+                [
+                    "b:37017",
+                    {
+                        "hosts": [
+                            "a:37017",
+                            "b:37017"
+                        ],
+                        "ismaster": false,
+                        "ok": 1,
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://a/?replicaSet=rs&tags=internal-public"
+}
