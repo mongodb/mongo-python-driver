@@ -620,6 +620,22 @@ class Cursor(object):
         self.__min = SON(spec)
         return self
 
+    def find(self, filters):
+        """Adds additional filters to the dictionary of filters
+        provided when the cursor was initialised.
+
+        Enables chaining, e.g. cursor.find({'x': 0}).find({'y':0}) will
+        filter by {'x': 0, 'y':0)
+
+        Raises :class:`ValueError` if the argument not a dictionary.
+
+        :Parameters:
+          - `filters`: a dictionary of filters and values
+        """
+        self.__check_okay_to_chain()
+        self.__spec.update(filters)
+        return self
+
     def sort(self, key_or_list, direction=None):
         """Sorts this cursor's results.
 

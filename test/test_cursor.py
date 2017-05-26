@@ -349,6 +349,48 @@ class TestCursor(IntegrationTest):
         # "cursor" pre MongoDB 2.7.6, "executionStats" post
         self.assertTrue("cursor" in b or "executionStats" in b)
 
+    def test_find(self):
+        db = self.db
+        db.test.delete_many({})
+        exclude = {'_id': 0}
+        self.assertRaises(ValueError, db.test.find( {}, exclude ).find, 's')
+        db.test.insert_many([{"x": i, "y": 0} for i in range(10)])
+        db.test.insert_many([{"x": i, "y": 1} for i in range(10)])
+        cursor = db.test.find({}, exclude)
+        self.assertEqual(20, cursor.count())
+        self.assertEqual(next(cursor), {"x": 0, "y": 0})
+        self.assertRaises(InvalidOperation, cursor.find, {'y': 0})
+        cursor = cursor.clone()
+        cursor.find({"x": 1})
+        self.assertEqual(2, cursor.count())
+        self.assertEqual(next(cursor), {"x": 1, "y": 0})
+        cursor = cursor.clone()
+        cursor.find({"y": 1})
+        self.assertEqual(1, cursor.count())
+        self.assertEqual(next(cursor), {"x": 1, "y": 1})
+        cursor = cursor.clone()
+        cursor.find({"x": 20})
+        self.assertEqual(0, cursor.count())
+        cursor = db.test.find({"y": 0}, exclude)
+        cursor.find({"x": 2})
+        self.assertEqual(1, cursor.count())
+        self.assertEqual(next(cursor), {"x": 2, "y": 0})
+        cursor = db.test.find({"x": 0}, exclude)
+        cursor.find({"x": 1, "y": 1})
+        self.assertEqual(1, cursor.count())
+        self.assertEqual(next(cursor), {"x": 1, "y": 1})
+        cursor = db.test.find({"x": 0}, exclude).find({"y": 1})
+        self.assertEqual(1, cursor.count())
+        self.assertEqual(next(cursor), {"x": 0, "y": 1})
+        cursor = db.test.find({"x": 0}, exclude).find({"y": 1})
+        self.assertEqual(1, cursor.count())
+        self.assertEqual(next(cursor), {"x": 0, "y": 1})
+        cursor = db.test.find({"x": 0}, exclude).find({"y": 1}).find({"x": 5})
+        self.assertTrue(1, cursor.count())
+        self.assertEqual(next(cursor), {"x": 5, "y": 1})
+        cursor = db.test.find({"x": 0}, exclude).find({"y": 1}).find({"z": 11})
+        self.assertEqual(0, cursor.count())
+
     def test_hint(self):
         db = self.db
         self.assertRaises(TypeError, db.test.find().hint, 5.5)
