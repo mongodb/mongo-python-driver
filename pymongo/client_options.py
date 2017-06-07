@@ -22,7 +22,7 @@ from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListeners
 from pymongo.pool import PoolOptions
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import make_read_preference
+from pymongo.read_preferences import make_read_preference, read_pref_mode_from_name
 from pymongo.ssl_support import get_ssl_context
 from pymongo.write_concern import WriteConcern
 
@@ -42,7 +42,8 @@ def _parse_read_preference(options):
     if 'read_preference' in options:
         return options['read_preference']
 
-    mode = options.get('readpreference', 0)
+    name = options.get('readpreference', 'primary')
+    mode = read_pref_mode_from_name(name)
     tags = options.get('readpreferencetags')
     max_staleness = options.get('maxstalenessseconds', -1)
     return make_read_preference(mode, tags, max_staleness)

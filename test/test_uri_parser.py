@@ -338,7 +338,7 @@ class TestURI(unittest.TestCase):
             res, parse_uri("mongodb://localhost/test.name/with \"delimiters"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'readpreference': ReadPreference.SECONDARY.mode}
+        res['options'] = {'readpreference': ReadPreference.SECONDARY.mongos_mode}
         self.assertEqual(res, parse_uri(
             "mongodb://localhost/?readPreference=secondary"))
 
@@ -395,7 +395,7 @@ class TestURI(unittest.TestCase):
                                    "@localhost/foo?authMechanism=GSSAPI"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'readpreference': ReadPreference.SECONDARY.mode,
+        res['options'] = {'readpreference': ReadPreference.SECONDARY.mongos_mode,
                           'readpreferencetags': [
                               {'dc': 'west', 'use': 'website'},
                               {'dc': 'east', 'use': 'website'}]}
@@ -409,7 +409,7 @@ class TestURI(unittest.TestCase):
                                    "readpreferencetags=dc:east,use:website"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'readpreference': ReadPreference.SECONDARY.mode,
+        res['options'] = {'readpreference': ReadPreference.SECONDARY.mongos_mode,
                           'readpreferencetags': [
                               {'dc': 'west', 'use': 'website'},
                               {'dc': 'east', 'use': 'website'},
