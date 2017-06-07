@@ -102,6 +102,12 @@ class _ServerMode(object):
         return self.__class__.__name__
 
     @property
+    def mongos_mode(self):
+        """The mongos mode of this read preference.
+        """
+        return self.__mongos_mode
+
+    @property
     def document(self):
         """Read preference as a document.
         """
