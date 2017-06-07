@@ -35,13 +35,14 @@ class RawBSONDocument(collections.Mapping):
     __slots__ = ('__raw', '__inflated_doc', '__codec_options')
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
 
-    def __init__(self, bson_bytes, codec_options=DEFAULT_CODEC_OPTIONS):
+    def __init__(self, bson_bytes, codec_options=DEFAULT_CODEC_OPTIONS, element_name=None):
         """Create a new :class:`RawBSONDocument`.
 
         :Parameters:
           - `bson_bytes`: the BSON bytes that compose this document
           - `codec_options` (optional): An instance of
             :class:`~bson.codec_options.CodecOptions`.
+          - `element_name` (optional): the current BSON document field name
         """
         self.__raw = bson_bytes
         self.__inflated_doc = None
