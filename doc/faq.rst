@@ -49,24 +49,32 @@ How does connection pooling work in PyMongo?
 --------------------------------------------
 
 Every :class:`~pymongo.mongo_client.MongoClient` instance has a built-in
-connection pool. The client opens sockets on demand to support the number
-of concurrent MongoDB operations your application requires. There is no
-thread-affinity for sockets.
+connection pool per server in your MongoDB topology. These pools open sockets
+on demand to support the number of concurrent MongoDB operations that your
+multi-threaded application requires. There is no thread-affinity for sockets.
+
+The size of each connection pool is capped at ``maxPoolSize``, which defaults
+to 100. If there are ``maxPoolSize`` connections to a server and all are in
+use, the next request to that server will wait until one of the connections
+becomes available.
 
 The client instance opens one additional socket per server in your MongoDB
 topology for monitoring the server's state.
 
-The size of each connection pool is capped at ``maxPoolSize``, which defaults
-to 100. When a thread in your application begins an operation on MongoDB, if
-all other sockets are in use and the pool has reached its maximum, the
-thread pauses, waiting for a socket to be returned to the pool by another
-thread.
+For example, a client connected to a 3-node replica set opens 3 monitoring
+sockets. It also opens as many sockets as needed to support a multi-threaded
+application's concurrent operations on each server, up to ``maxPoolSize``. With
+a ``maxPoolSize`` of 100, if the application only uses the primary (the
+default), then only the primary connection pool grows and the total connections
+is at most 103. If the application uses a
+:class:`~pymongo.read_preferences.ReadPreference` to query the secondaries,
+their pools also grow and the total connections can reach 303.
 
 It is possible to set the minimum number of concurrent connections to each
 server with ``minPoolSize``, which defaults to 0. The connection pool will be
-initialized with this number of sockets. If sockets are removed from the pool
-and closed, causing the total number of sockets (both in use and idle) to drop
-below the set minimum, more sockets will be added until the minimum is reached.
+initialized with this number of sockets. If sockets are closed due to any
+network errors, causing the total number of sockets (both in use and idle) to
+drop below the minimum, more sockets are opened until the minimum is reached.
 
 The maximum number of milliseconds that a connection can remain idle in the
 pool before being removed and replaced can be set with ``maxIdleTime``, which
@@ -113,8 +121,9 @@ A thread that waits more than 100ms (in this example) for a socket raises
 important to bound the duration of operations during a load spike than it is to
 complete every operation.
 
-When :meth:`~pymongo.mongo_client.MongoClient.close` is called by any
-thread, all sockets are closed.
+When :meth:`~pymongo.mongo_client.MongoClient.close` is called by any thread,
+all idle sockets are closed, and all sockets that are in use will be closed as
+they are returned to the pool.
 
 Does PyMongo support Python 3?
 ------------------------------
