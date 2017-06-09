@@ -1769,8 +1769,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
             if (options->is_raw_bson) {
                 value = PyObject_CallFunction(
-                    options->document_class, BYTES_FORMAT_STRING "O",
-                    buffer + *position, size, options->options_obj);
+                    options->document_class, BYTES_FORMAT_STRING "OO",
+                    buffer + *position, size, options->options_obj, name);
                 if (!value) {
                     goto invalid;
                 }

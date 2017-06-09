@@ -134,7 +134,7 @@ def _get_string(data, position, obj_end, opts, dummy):
                          opts.unicode_decode_error_handler, True)[0], end + 1
 
 
-def _get_object(data, position, obj_end, opts, dummy):
+def _get_object(data, position, obj_end, opts, element_name):
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size = _UNPACK_INT(data[position:position + 4])[0]
     end = position + obj_size - 1
@@ -143,7 +143,7 @@ def _get_object(data, position, obj_end, opts, dummy):
     if end >= obj_end:
         raise InvalidBSON("invalid object length")
     if _raw_document_class(opts.document_class):
-        return (opts.document_class(data[position:end + 1], opts),
+        return (opts.document_class(data[position:end + 1], opts, element_name),
                 position + obj_size)
 
     obj = _elements_to_dict(data, position + 4, end, opts)
