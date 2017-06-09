@@ -69,8 +69,8 @@ class CodecOptions(_options_base):
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
                 unicode_decode_error_handler="strict",
                 tzinfo=None):
-        if not (issubclass(document_class, MutableMapping) or
-                _raw_document_class(document_class)):
+        if not (_raw_document_class(document_class) or
+                issubclass(document_class, MutableMapping)):
             raise TypeError("document_class must be dict, bson.son.SON, "
                             "bson.raw_bson.RawBSONDocument, or a "
                             "sublass of collections.MutableMapping")
