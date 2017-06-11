@@ -195,7 +195,7 @@
         }, 
         {
             "auth": {
-                "db": "admin.sock", 
+                "db": "admin", 
                 "password": null, 
                 "username": null
             }, 
@@ -213,13 +213,13 @@
                 }
             ], 
             "options": null, 
-            "uri": "mongodb://rel%2Fmongodb-27017.sock,rel%2Fmongodb-27018.sock/admin.sock", 
+            "uri": "mongodb://rel%2Fmongodb-27017.sock,rel%2Fmongodb-27018.sock/admin", 
             "valid": true, 
             "warning": false
         }, 
         {
             "auth": {
-                "db": "admin.shoe", 
+                "db": "admin", 
                 "password": null, 
                 "username": null
             }, 
@@ -237,7 +237,7 @@
                 }
             ], 
             "options": null, 
-            "uri": "mongodb://rel%2Fmongodb-27017.sock,rel%2Fmongodb-27018.sock/admin.shoe", 
+            "uri": "mongodb://rel%2Fmongodb-27017.sock,rel%2Fmongodb-27018.sock/admin", 
             "valid": true, 
             "warning": false
         }, 

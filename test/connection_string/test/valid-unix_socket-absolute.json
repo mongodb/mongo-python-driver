@@ -175,11 +175,11 @@
         }, 
         {
             "auth": {
-                "db": "admin.sock", 
+                "db": "admin", 
                 "password": null, 
                 "username": null
             }, 
-            "description": "Multiple Unix domain sockets and auth DB resembling a socket (absolute path)", 
+            "description": "Multiple Unix domain sockets and auth DB (absolute path)", 
             "hosts": [
                 {
                     "host": "/tmp/mongodb-27017.sock", 
@@ -193,17 +193,17 @@
                 }
             ], 
             "options": null, 
-            "uri": "mongodb://%2Ftmp%2Fmongodb-27017.sock,%2Ftmp%2Fmongodb-27018.sock/admin.sock", 
+            "uri": "mongodb://%2Ftmp%2Fmongodb-27017.sock,%2Ftmp%2Fmongodb-27018.sock/admin", 
             "valid": true, 
             "warning": false
         }, 
         {
             "auth": {
-                "db": "admin.shoe", 
+                "db": "admin", 
                 "password": null, 
                 "username": null
             }, 
-            "description": "Multiple Unix domain sockets with auth DB resembling a path (absolute path)", 
+            "description": "Multiple Unix domain sockets with auth DB (absolute path)", 
             "hosts": [
                 {
                     "host": "/tmp/mongodb-27017.sock", 
@@ -217,7 +217,7 @@
                 }
             ], 
             "options": null, 
-            "uri": "mongodb://%2Ftmp%2Fmongodb-27017.sock,%2Ftmp%2Fmongodb-27018.sock/admin.shoe", 
+            "uri": "mongodb://%2Ftmp%2Fmongodb-27017.sock,%2Ftmp%2Fmongodb-27018.sock/admin", 
             "valid": true, 
             "warning": false
         }, 

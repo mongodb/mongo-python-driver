@@ -14,6 +14,7 @@
 
 
 """Tools to parse and validate a MongoDB URI."""
+import re
 import warnings
 
 from bson.py3compat import PY3, iteritems, string_type
@@ -68,7 +69,7 @@ def _rpartition(entity, sep):
 def parse_userinfo(userinfo):
     """Validates the format of user information in a MongoDB URI.
     Reserved characters like ':', '/', '+' and '@' must be escaped
-    following RFC 2396.
+    following RFC 3986.
 
     Returns a 2-tuple containing the unescaped username followed
     by the unescaped password.
@@ -80,16 +81,13 @@ def parse_userinfo(userinfo):
        Now uses `urllib.unquote_plus` so `+` characters must be escaped.
     """
     if '@' in userinfo or userinfo.count(':') > 1:
-        raise InvalidURI("':' or '@' characters in a username or password "
-                         "must be escaped according to RFC 2396.")
+        raise InvalidURI("Username and password must be escaped according to "
+                         "RFC 3986, use urllib.quote_plus().")
     user, _, passwd = _partition(userinfo, ":")
     # No password is expected with GSSAPI authentication.
     if not user:
         raise InvalidURI("The empty string is not valid username.")
-    user = unquote_plus(user)
-    passwd = unquote_plus(passwd)
-
-    return user, passwd
+    return unquote_plus(user), unquote_plus(passwd)
 
 
 def parse_ipv6_literal_host(entity, default_port):
@@ -251,6 +249,11 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
     return nodes
 
 
+# Prohibited characters in database name. DB names also can't have ".", but for
+# backward-compat we allow "db.collection" in URI.
+_BAD_DB_CHARS = re.compile('[' + re.escape(r'/ "$') + ']')
+
+
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
     """Parse and validate a MongoDB URI.
 
@@ -294,19 +297,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
     collection = None
     options = {}
 
-    # Check for unix domain sockets in the uri
-    if '.sock' in scheme_free:
-        host_part, _, path_part = _rpartition(scheme_free, '/')
-        if not host_part:
-            host_part = path_part
-            path_part = ""
-        if '/' in host_part:
-            raise InvalidURI("Any '/' in a unix domain socket must be"
-                             " URL encoded: %s" % host_part)
-        host_part = unquote_plus(host_part)
-        path_part = unquote_plus(path_part)
-    else:
-        host_part, _, path_part = _partition(scheme_free, '/')
+    host_part, _, path_part = _partition(scheme_free, '/')
+    if not host_part:
+        host_part = path_part
+        path_part = ""
 
     if not path_part and '?' in host_part:
         raise InvalidURI("A '/' is required between "
@@ -318,16 +312,23 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
     else:
         hosts = host_part
 
+    if '/' in hosts:
+        raise InvalidURI("Any '/' in a unix domain socket must be"
+                         " URL encoded: %s" % host_part)
+
+    hosts = unquote_plus(hosts)
     nodes = split_hosts(hosts, default_port=default_port)
 
     if path_part:
-
         if path_part[0] == '?':
-            opts = path_part[1:]
+            opts = unquote_plus(path_part[1:])
         else:
-            dbase, _, opts = _partition(path_part, '?')
+            dbase, _, opts = map(unquote_plus, _partition(path_part, '?'))
             if '.' in dbase:
                 dbase, collection = dbase.split('.', 1)
+
+            if _BAD_DB_CHARS.search(dbase):
+                raise InvalidURI('Bad database name "%s"' % dbase)
 
         if opts:
             options = split_options(opts, validate, warn)

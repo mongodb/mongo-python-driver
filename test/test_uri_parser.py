@@ -332,6 +332,12 @@ class TestURI(unittest.TestCase):
                                    "test.yield_historical.in"))
 
         res = copy.deepcopy(orig)
+        res['database'] = 'test'
+        res['collection'] = 'name/with "delimiters'
+        self.assertEqual(
+            res, parse_uri("mongodb://localhost/test.name/with \"delimiters"))
+
+        res = copy.deepcopy(orig)
         res['options'] = {'readpreference': ReadPreference.SECONDARY.mode}
         self.assertEqual(res, parse_uri(
             "mongodb://localhost/?readPreference=secondary"))
@@ -445,6 +451,30 @@ class TestURI(unittest.TestCase):
         res = parse_uri(_unicode("mongodb://localhost/?fsync=true"))
         for key in res['options']:
             self.assertTrue(isinstance(key, str))
+
+    def test_parse_ssl_paths(self):
+        # Turn off "validate" since these paths don't exist on filesystem.
+        self.assertEqual(
+            {'collection': None,
+             'database': None,
+             'nodelist': [('/MongoDB.sock', None)],
+             'options': {'ssl_certfile': '/a/b'},
+             'password': 'foo/bar',
+             'username': 'jesse'},
+            parse_uri(
+                'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?ssl_certfile=/a/b',
+                validate=False))
+
+        self.assertEqual(
+            {'collection': None,
+             'database': None,
+             'nodelist': [('/MongoDB.sock', None)],
+             'options': {'ssl_certfile': 'a/b'},
+             'password': 'foo/bar',
+             'username': 'jesse'},
+            parse_uri(
+                'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?ssl_certfile=a/b',
+                validate=False))
 
 
 if __name__ == "__main__":

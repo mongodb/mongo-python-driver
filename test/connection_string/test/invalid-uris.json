@@ -191,6 +191,15 @@
         }, 
         {
             "auth": null, 
+            "description": "Username with password containing an unescaped colon", 
+            "hosts": null, 
+            "options": null, 
+            "uri": "mongodb://alice:foo:bar@127.0.0.1", 
+            "valid": false, 
+            "warning": null
+        }, 
+        {
+            "auth": null, 
             "description": "Username containing an unescaped at-sign", 
             "hosts": null, 
             "options": null, 
@@ -204,6 +213,33 @@
             "hosts": null, 
             "options": null, 
             "uri": "mongodb://alice@foo:bar@127.0.0.1", 
+            "valid": false, 
+            "warning": null
+        }, 
+        {
+            "auth": null, 
+            "description": "Username containing an unescaped slash", 
+            "hosts": null, 
+            "options": null, 
+            "uri": "mongodb://alice/@localhost/db",
+            "valid": false, 
+            "warning": null
+        }, 
+        {
+            "auth": null, 
+            "description": "Username containing unescaped slash with password", 
+            "hosts": null, 
+            "options": null, 
+            "uri": "mongodb://alice/bob:foo@localhost/db",
+            "valid": false, 
+            "warning": null
+        }, 
+        {
+            "auth": null, 
+            "description": "Username with password containing an unescaped slash", 
+            "hosts": null, 
+            "options": null, 
+            "uri": "mongodb://alice:foo/bar@localhost/db",
             "valid": false, 
             "warning": null
         }, 

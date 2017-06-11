@@ -5,19 +5,22 @@ MongoDB supports several different authentication mechanisms. These examples
 cover all authentication methods currently supported by PyMongo, documenting
 Python module and MongoDB version dependencies.
 
-Support For Special Characters In Usernames And Passwords
----------------------------------------------------------
+Percent-Escaping Username and Password
+--------------------------------------
 
-If your username or password contains special characters (e.g. '/', ' ',
-or '@') you must ``%xx`` escape them for use in the MongoDB URI. PyMongo
-uses :meth:`~urllib.unquote_plus` to decode them. For example::
+Username and password must be percent-escaped with :meth:`~urllib.quote_plus`
+to be used in a MongoDB URI. PyMongo uses :meth:`~urllib.unquote_plus`
+internally to decode them. For example::
 
   >>> from pymongo import MongoClient
   >>> import urllib
+  >>> username = urllib.quote_plus('user')
+  >>> username
+  'user'
   >>> password = urllib.quote_plus('pass/word')
   >>> password
   'pass%2Fword'
-  >>> MongoClient('mongodb://user:' + password + '@127.0.0.1')
+  >>> MongoClient('mongodb://%s:%s@127.0.0.1' % (username, password)
   MongoClient('127.0.0.1', 27017)
 
 SCRAM-SHA-1 (RFC 5802)
