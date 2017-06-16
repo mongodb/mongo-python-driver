@@ -20,7 +20,7 @@ import collections
 from bson import _UNPACK_INT, _iterate_elements
 from bson.py3compat import iteritems
 from bson.codec_options import (
-    CodecOptions, DEFAULT_CODEC_OPTIONS, _RAW_BSON_DOCUMENT_MARKER)
+    CodecOptions, DEFAULT_CODEC_OPTIONS as DEFAULT, _RAW_BSON_DOCUMENT_MARKER)
 from bson.errors import InvalidBSON
 
 
@@ -35,24 +35,29 @@ class RawBSONDocument(collections.Mapping):
     __slots__ = ('__raw', '__inflated_doc', '__codec_options')
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
 
-    def __init__(self, bson_bytes, codec_options=DEFAULT_CODEC_OPTIONS):
+    def __init__(self, bson_bytes, codec_options=None):
         """Create a new :class:`RawBSONDocument`.
 
         :Parameters:
           - `bson_bytes`: the BSON bytes that compose this document
           - `codec_options` (optional): An instance of
             :class:`~bson.codec_options.CodecOptions`.
+
+        .. versionchanged:: 3.5
+          If a :class:`~bson.codec_options.CodecOptions` is passed in, its
+          `document_class` must be :class:`RawBSONDocument`.
         """
         self.__raw = bson_bytes
         self.__inflated_doc = None
-        # Always decode documents to their lazy representations.
-        co = codec_options
-        self.__codec_options = CodecOptions(
-            tz_aware=co.tz_aware,
-            document_class=RawBSONDocument,
-            uuid_representation=co.uuid_representation,
-            unicode_decode_error_handler=co.unicode_decode_error_handler,
-            tzinfo=co.tzinfo)
+        # Can't default codec_options to DEFAULT_RAW_BSON_OPTIONS in signature,
+        # it refers to this class RawBSONDocument.
+        if codec_options is None:
+            codec_options = DEFAULT_RAW_BSON_OPTIONS
+        elif codec_options.document_class is not RawBSONDocument:
+            raise TypeError(
+                "RawBSONDocument cannot use CodecOptions with document "
+                "class %s" % (codec_options.document_class, ))
+        self.__codec_options = codec_options
 
     @property
     def raw(self):
@@ -96,3 +101,6 @@ class RawBSONDocument(collections.Mapping):
     def __repr__(self):
         return ("RawBSONDocument(%r, codec_options=%r)"
                 % (self.raw, self.__codec_options))
+
+
+DEFAULT_RAW_BSON_OPTIONS = DEFAULT.with_options(document_class=RawBSONDocument)

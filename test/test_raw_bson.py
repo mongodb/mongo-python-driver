@@ -58,7 +58,8 @@ class TestRawBSONDocument(unittest.TestCase):
         )
         document = RawBSONDocument(
             bson_string,
-            codec_options=CodecOptions(uuid_representation=JAVA_LEGACY))
+            codec_options=CodecOptions(uuid_representation=JAVA_LEGACY,
+                                       document_class=RawBSONDocument))
 
         self.assertEqual(uuid.UUID('026fab8f-975f-4965-9fbf-85ad874c60ff'),
                          document['_id'])
@@ -103,7 +104,8 @@ class TestRawBSONDocument(unittest.TestCase):
         )
         rbd = RawBSONDocument(
             bson_string,
-            codec_options=CodecOptions(uuid_representation=JAVA_LEGACY))
+            codec_options=CodecOptions(uuid_representation=JAVA_LEGACY,
+                                       document_class=RawBSONDocument))
 
         db.test_raw.drop()
         db.test_raw.insert_one(rbd)

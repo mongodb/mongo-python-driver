@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Changes in Next Version
+-----------------------
+
+If a custom :class:`~bson.codec_options.CodecOptions` is passed to
+:class:`RawBSONDocument`, its `document_class` must be :class:`RawBSONDocument`.
+
 Changes in Version 3.4
 ----------------------
 

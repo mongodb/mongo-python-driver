@@ -111,6 +111,26 @@ class CodecOptions(_options_base):
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
 
+    def with_options(self, **kwargs):
+        """Make a copy of this CodecOptions, overriding some options::
+
+        >>> from bson.codec_options import DEFAULT_CODEC_OPTIONS
+        >>> DEFAULT_CODEC_OPTIONS.tz_aware
+        False
+        >>> options = DEFAULT_CODEC_OPTIONS.with_options(tz_aware=True)
+        >>> options.tz_aware
+        True
+
+        .. versionadded:: 3.5
+        """
+        return CodecOptions(
+            kwargs.get('document_class', self.document_class),
+            kwargs.get('tz_aware', self.tz_aware),
+            kwargs.get('uuid_representation', self.uuid_representation),
+            kwargs.get('unicode_decode_error_handler',
+                       self.unicode_decode_error_handler),
+            kwargs.get('tzinfo', self.tzinfo))
+
 
 DEFAULT_CODEC_OPTIONS = CodecOptions()
 
