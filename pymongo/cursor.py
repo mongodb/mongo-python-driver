@@ -543,14 +543,14 @@ class Cursor(object):
             skip = 0
             if index.start is not None:
                 if index.start < 0:
-                    raise IndexError("Cursor instances do not support"
+                    raise IndexError("Cursor instances do not support "
                                      "negative indices")
                 skip = index.start
 
             if index.stop is not None:
                 limit = index.stop - skip
                 if limit < 0:
-                    raise IndexError("stop index must be greater than start"
+                    raise IndexError("stop index must be greater than start "
                                      "index for slice %r" % index)
                 if limit == 0:
                     self.__empty = True
@@ -563,7 +563,7 @@ class Cursor(object):
 
         if isinstance(index, integer_types):
             if index < 0:
-                raise IndexError("Cursor instances do not support negative"
+                raise IndexError("Cursor instances do not support negative "
                                  "indices")
             clone = self.clone()
             clone.skip(index + self.__skip)
