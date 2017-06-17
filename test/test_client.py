@@ -276,7 +276,7 @@ class TestClient(IntegrationTest):
             self.assertTrue(sock_info in server._pool.sockets)
 
             # Assert reaper removes idle socket and replaces it with a new one
-            client = rs_or_single_client(maxIdleTimeMS=.5,
+            client = rs_or_single_client(maxIdleTimeMS=500,
                                          minPoolSize=1)
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}) as sock_info:
@@ -288,7 +288,7 @@ class TestClient(IntegrationTest):
                        "reaper replaces stale socket with new one")
 
             # Assert reaper has removed idle socket and NOT replaced it
-            client = rs_or_single_client(maxIdleTimeMS=.5)
+            client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}):
                 pass
@@ -318,7 +318,7 @@ class TestClient(IntegrationTest):
     def test_max_idle_time_checkout(self):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
-            client = rs_or_single_client(maxIdleTimeMS=.5)
+            client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass

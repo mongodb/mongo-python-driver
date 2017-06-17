@@ -350,7 +350,7 @@ class SocketInfo(object):
         self.address = address
         self.authset = set()
         self.closed = False
-        self.last_checkout = _time()
+        self.last_checkin = _time()
         self.is_writable = ismaster.is_writable if ismaster else None
         self.max_wire_version = ismaster.max_wire_version if ismaster else None
         self.max_bson_size = ismaster.max_bson_size if ismaster else None
@@ -716,11 +716,11 @@ class Pool:
             sock_info.close()
 
     def remove_stale_sockets(self):
-        with self.lock:
-            if self.opts.max_idle_time_ms is not None:
+        if self.opts.max_idle_time_ms is not None:
+            with self.lock:
                 for sock_info in self.sockets.copy():
-                    age = _time() - sock_info.last_checkout
-                    if age > self.opts.max_idle_time_ms:
+                    idle_time_ms = 1000 * _time() - sock_info.last_checkin
+                    if idle_time_ms > self.opts.max_idle_time_ms:
                         self.sockets.remove(sock_info)
                         sock_info.close()
 
@@ -820,28 +820,20 @@ class Pool:
                 # set.pop() isn't atomic in Jython less than 2.7, see
                 # http://bugs.jython.org/issue1854
                 with self.lock:
-                    sock_info, from_pool = self.sockets.pop(), True
+                    # Can raise ConnectionFailure.
+                    sock_info = self.sockets.pop()
             except KeyError:
                 # Can raise ConnectionFailure or CertificateError.
-                sock_info, from_pool = self.connect(), False
-            # If socket is idle, open a new one.
-            if self.opts.max_idle_time_ms is not None:
-                age = _time() - sock_info.last_checkout
-                if age > self.opts.max_idle_time_ms:
-                    sock_info.close()
-                    sock_info, from_pool = self.connect(), False
-
-            if from_pool:
+                sock_info = self.connect()
+            else:
                 # Can raise ConnectionFailure.
                 sock_info = self._check(sock_info)
-
         except:
             self._socket_semaphore.release()
             with self.lock:
                 self.active_sockets -= 1
             raise
 
-        sock_info.last_checkout = _time()
         return sock_info
 
     def return_socket(self, sock_info):
@@ -852,6 +844,7 @@ class Pool:
             if sock_info.pool_id != self.pool_id:
                 sock_info.close()
             elif not sock_info.closed:
+                sock_info.last_checkin = _time()
                 with self.lock:
                     self.sockets.add(sock_info)
 
@@ -860,34 +853,35 @@ class Pool:
             self.active_sockets -= 1
 
     def _check(self, sock_info):
-        """This side-effecty function checks if this pool has been reset since
-        the last time this socket was used, or if the socket has been closed by
-        some external network error, and if so, attempts to create a new socket.
-        If this connection attempt fails we reset the pool and reraise the
+        """This side-effecty function checks if this socket has been idle for
+        for longer than the max idle time, or if the socket has been closed by
+        some external network error, and if so, attempts to create a new
+        socket. If this connection attempt fails we raise the
         ConnectionFailure.
 
         Checking sockets lets us avoid seeing *some*
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
-        hiccups, etc. We only do this if it's been > 1 second since
-        the last socket checkout, to keep performance reasonable - we
-        can't avoid AutoReconnects completely anyway.
+        hiccups, etc. We only check if the socket was closed by an external
+        error if it has been > 1 second since the socket was checked into the
+        pool, to keep performance reasonable - we can't avoid AutoReconnects
+        completely anyway.
         """
-        error = False
+        # How long since socket was last checked in.
+        idle_time_seconds = _time() - sock_info.last_checkin
+        # If socket is idle, open a new one.
+        if (self.opts.max_idle_time_ms is not None and
+                idle_time_seconds * 1000 > self.opts.max_idle_time_ms):
+            sock_info.close()
+            return self.connect()
 
-        # How long since socket was last checked out.
-        age = _time() - sock_info.last_checkout
-        if (self._check_interval_seconds is not None
-                and (
-                    0 == self._check_interval_seconds
-                    or age > self._check_interval_seconds)):
+        if (self._check_interval_seconds is not None and (
+                0 == self._check_interval_seconds or
+                idle_time_seconds > self._check_interval_seconds)):
             if self.socket_checker.socket_closed(sock_info.sock):
                 sock_info.close()
-                error = True
+                return self.connect()
 
-        if not error:
-            return sock_info
-        else:
-            return self.connect()
+        return sock_info
 
     def _raise_wait_queue_timeout(self):
         raise ConnectionFailure(
