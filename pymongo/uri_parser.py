@@ -81,8 +81,12 @@ def parse_userinfo(userinfo):
        Now uses `urllib.unquote_plus` so `+` characters must be escaped.
     """
     if '@' in userinfo or userinfo.count(':') > 1:
+        if PY3:
+            quote_fn = "urllib.parse.quote_plus"
+        else:
+            quote_fn = "urllib.quote_plus"
         raise InvalidURI("Username and password must be escaped according to "
-                         "RFC 3986, use urllib.quote_plus().")
+                         "RFC 3986, use %s()." % quote_fn)
     user, _, passwd = _partition(userinfo, ":")
     # No password is expected with GSSAPI authentication.
     if not user:
@@ -314,7 +318,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
 
     if '/' in hosts:
         raise InvalidURI("Any '/' in a unix domain socket must be"
-                         " URL encoded: %s" % host_part)
+                         " percent-encoded: %s" % host_part)
 
     hosts = unquote_plus(hosts)
     nodes = split_hosts(hosts, default_port=default_port)

@@ -8,20 +8,20 @@ Python module and MongoDB version dependencies.
 Percent-Escaping Username and Password
 --------------------------------------
 
-Username and password must be percent-escaped with :meth:`~urllib.quote_plus`
-to be used in a MongoDB URI. PyMongo uses :meth:`~urllib.unquote_plus`
-internally to decode them. For example::
+Username and password must be percent-escaped with
+:meth:`urllib.parse.quote_plus` in Python 3, or :meth:`urllib.quote_plus` in
+Python 2, to be used in a MongoDB URI. For example, in Python 3::
 
   >>> from pymongo import MongoClient
-  >>> import urllib
-  >>> username = urllib.quote_plus('user')
+  >>> import urllib.parse
+  >>> username = urllib.parse.quote_plus('user')
   >>> username
   'user'
-  >>> password = urllib.quote_plus('pass/word')
+  >>> password = urllib.parse.quote_plus('pass/word')
   >>> password
   'pass%2Fword'
-  >>> MongoClient('mongodb://%s:%s@127.0.0.1' % (username, password)
-  MongoClient('127.0.0.1', 27017)
+  >>> MongoClient('mongodb://%s:%s@127.0.0.1' % (username, password))
+  ...
 
 SCRAM-SHA-1 (RFC 5802)
 ----------------------
