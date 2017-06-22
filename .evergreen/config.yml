@@ -818,9 +818,9 @@ axes:
         display_name: "Archlinux"
         run_on: archlinux-test
 
-      - id: osx-1010
-        display_name: "macOS 10.10"
-        run_on: osx-1010
+      - id: macos-1012
+        display_name: "macOS 10.12"
+        run_on: macos-1012
 
       - id: solaris
         display_name: "Solaris"
@@ -862,9 +862,9 @@ axes:
   - id: os-ssl-requires-32
     display_name: OS
     values:
-      - id: osx-1010
-        display_name: "macOS 10.10"
-        run_on: osx-1010
+      - id: macos-1012
+        display_name: "macOS 10.12"
+        run_on: macos-1012
 
   # OSes that support versions of MongoDB>=3.4 with SSL.
   - id: os-requires-34
