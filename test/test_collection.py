@@ -1014,6 +1014,8 @@ class TestCollection(unittest.TestCase):
             {'_id': 'explicit_id', 'hello': 'world'})
 
     def test_save_with_invalid_key(self):
+        if version.at_least(self.db.connection, (3, 5, 8)):
+            raise SkipTest("MongoDB >= 3.5.8 allows dotted fields in updates")
         self.db.drop_collection("test")
         self.assertTrue(self.db.test.insert({"hello": "world"}))
         doc = self.db.test.find_one()
@@ -1307,6 +1309,8 @@ class TestCollection(unittest.TestCase):
                                            {"$inc": {"x": 2}})["n"])
 
     def test_update_with_invalid_keys(self):
+        if version.at_least(self.db.connection, (3, 5, 8)):
+            raise SkipTest("MongoDB >= 3.5.8 allows dotted fields in updates")
         self.db.drop_collection("test")
         self.assertTrue(self.db.test.insert({"hello": "world"}))
         doc = self.db.test.find_one()
@@ -1325,6 +1329,14 @@ class TestCollection(unittest.TestCase):
 
         # Check that the last two ops didn't actually modify anything
         self.assertTrue('a.b' not in self.db.test.find_one())
+
+    def test_update_check_keys(self):
+        self.db.drop_collection("test")
+        self.assertTrue(self.db.test.insert({"hello": "world"}))
+
+        expected = InvalidDocument
+        if version.at_least(self.client, (2, 5, 4, -1)):
+            expected = OperationFailure
 
         # Modify shouldn't check keys...
         self.assertTrue(self.db.test.update({"hello": "world"},
@@ -2862,6 +2874,8 @@ class TestCollection(unittest.TestCase):
 
 
     def test_backport_update_with_invalid_keys(self):
+        if version.at_least(self.db.connection, (3, 5, 8)):
+            raise SkipTest("MongoDB >= 3.5.8 allows dotted fields in updates")
         self.db.drop_collection("test")
         self.assertTrue(self.db.test.insert_one({"hello": "world"}))
         doc = self.db.test.find_one()
@@ -2881,6 +2895,13 @@ class TestCollection(unittest.TestCase):
         # Check that the last two ops didn't actually modify anything
         self.assertTrue('a.b' not in self.db.test.find_one())
 
+    def test_backport_update_check_keys(self):
+        self.db.drop_collection("test")
+        self.assertTrue(self.db.test.insert_one({"hello": "world"}))
+
+        expected = InvalidDocument
+        if version.at_least(self.client, (2, 5, 4, -1)):
+            expected = OperationFailure
         # Modify shouldn't check keys...
         self.assertTrue(self.db.test.update_one({"hello": "world"},
                                                 {"$set": {"foo.bar": "baz"}},
