@@ -1401,6 +1401,8 @@ class TestCollection(IntegrationTest):
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
         self.assertFalse(result.acknowledged)
 
+    # MongoDB >= 3.5.8 allows dotted fields in updates
+    @client_context.require_version_max(3, 5, 7)
     def test_update_with_invalid_keys(self):
         self.db.drop_collection("test")
         self.assertTrue(self.db.test.insert_one({"hello": "world"}))
@@ -1420,6 +1422,14 @@ class TestCollection(IntegrationTest):
 
         # Check that the last two ops didn't actually modify anything
         self.assertTrue('a.b' not in self.db.test.find_one())
+
+    def test_update_check_keys(self):
+        self.db.drop_collection("test")
+        self.assertTrue(self.db.test.insert_one({"hello": "world"}))
+
+        expected = InvalidDocument
+        if client_context.version.at_least(2, 5, 4, -1):
+            expected = OperationFailure
 
         # Modify shouldn't check keys...
         self.assertTrue(self.db.test.update_one({"hello": "world"},

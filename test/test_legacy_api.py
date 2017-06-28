@@ -598,6 +598,8 @@ class TestLegacy(IntegrationTest):
         self.db.drop_collection("test")
 
     def test_save_with_invalid_key(self):
+        if client_context.version.at_least(3, 5, 8):
+            raise SkipTest("MongoDB >= 3.5.8 allows dotted fields in updates")
         # Tests legacy save.
         self.db.drop_collection("test")
         self.assertTrue(self.db.test.insert({"hello": "world"}))
