@@ -822,9 +822,9 @@ axes:
         display_name: "macOS 10.12"
         run_on: macos-1012
 
-      - id: solaris
-        display_name: "Solaris"
-        run_on: solaris
+#      - id: solaris
+#        display_name: "Solaris"
+#        run_on: solaris
 
   # OSes that support versions of MongoDB>=2.6 with SSL.
   - id: os-requires-26
