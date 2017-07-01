@@ -16,8 +16,7 @@
 
 from docutils import nodes
 from sphinx import addnodes
-from sphinx.util.compat import (Directive,
-                                make_admonition)
+from sphinx.util.compat import Directive
 
 
 class mongodoc(nodes.Admonition, nodes.Element):
@@ -58,11 +57,11 @@ class MongodocDirective(Directive):
     option_spec = {}
 
     def run(self):
-        return make_admonition(mongodoc, self.name,
-                               ['See general MongoDB documentation'],
-                               self.options, self.content, self.lineno,
-                               self.content_offset, self.block_text,
-                               self.state, self.state_machine)
+        node = mongodoc()
+        title = 'The MongoDB documentation on'
+        node += nodes.title(title, title)
+        self.state.nested_parse(self.content, self.content_offset, node)
+        return [node]
 
 
 def process_mongodoc_nodes(app, doctree, fromdocname):
