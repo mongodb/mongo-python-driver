@@ -5,28 +5,28 @@
     "valid": [
         {
             "description": "Empty code string, empty scope",
-            "bson": "160000000F61000E0000000100000000050000000000",
-            "extjson": "{\"a\" : {\"$code\" : \"\", \"$scope\" : {}}}"
+            "canonical_bson": "160000000F61000E0000000100000000050000000000",
+            "canonical_extjson": "{\"a\" : {\"$code\" : \"\", \"$scope\" : {}}}"
         },
         {
             "description": "Non-empty code string, empty scope",
-            "bson": "1A0000000F610012000000050000006162636400050000000000",
-            "extjson": "{\"a\" : {\"$code\" : \"abcd\", \"$scope\" : {}}}"
+            "canonical_bson": "1A0000000F610012000000050000006162636400050000000000",
+            "canonical_extjson": "{\"a\" : {\"$code\" : \"abcd\", \"$scope\" : {}}}"
         },
         {
             "description": "Empty code string, non-empty scope",
-            "bson": "1D0000000F61001500000001000000000C000000107800010000000000",
-            "extjson": "{\"a\" : {\"$code\" : \"\", \"$scope\" : {\"x\" : {\"$numberInt\": \"1\"}}}}"
+            "canonical_bson": "1D0000000F61001500000001000000000C000000107800010000000000",
+            "canonical_extjson": "{\"a\" : {\"$code\" : \"\", \"$scope\" : {\"x\" : {\"$numberInt\": \"1\"}}}}"
         },
         {
             "description": "Non-empty code string and non-empty scope",
-            "bson": "210000000F6100190000000500000061626364000C000000107800010000000000",
-            "extjson": "{\"a\" : {\"$code\" : \"abcd\", \"$scope\" : {\"x\" : {\"$numberInt\": \"1\"}}}}"
+            "canonical_bson": "210000000F6100190000000500000061626364000C000000107800010000000000",
+            "canonical_extjson": "{\"a\" : {\"$code\" : \"abcd\", \"$scope\" : {\"x\" : {\"$numberInt\": \"1\"}}}}"
         },
         {
             "description": "Unicode and embedded null in code string, empty scope",
-            "bson": "1A0000000F61001200000005000000C3A9006400050000000000",
-            "extjson": "{\"a\" : {\"$code\" : \"\\u00e9\\u0000d\", \"$scope\" : {}}}"
+            "canonical_bson": "1A0000000F61001200000005000000C3A9006400050000000000",
+            "canonical_extjson": "{\"a\" : {\"$code\" : \"\\u00e9\\u0000d\", \"$scope\" : {}}}"
         }
     ],
     "decodeErrors": [

@@ -5,78 +5,78 @@
     "valid": [
        {
           "description": "[basx023] conform to rules and exponent will be in permitted range).",
-          "bson": "1800000013640001000000000000000000000000003EB000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"-0.1\"}}"
+          "canonical_bson": "1800000013640001000000000000000000000000003EB000",
+          "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"-0.1\"}}"
        },
 
        {
           "description": "[basx045] strings without E cannot generate E in result",
-          "bson": "1800000013640003000000000000000000000000003A3000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"+0.003\"}}",
+          "canonical_bson": "1800000013640003000000000000000000000000003A3000",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"+0.003\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.003\"}}"
        },
        {
           "description": "[basx610] Zeros",
-          "bson": "1800000013640000000000000000000000000000003E3000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \".0\"}}",
+          "canonical_bson": "1800000013640000000000000000000000000000003E3000",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \".0\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.0\"}}"
        },
        {
           "description": "[basx612] Zeros",
-          "bson": "1800000013640000000000000000000000000000003EB000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"-.0\"}}",
+          "canonical_bson": "1800000013640000000000000000000000000000003EB000",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"-.0\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"-0.0\"}}"
        },
        {
           "description": "[basx043] strings without E cannot generate E in result",
-          "bson": "18000000136400FC040000000000000000000000003C3000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"+12.76\"}}",
+          "canonical_bson": "18000000136400FC040000000000000000000000003C3000",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"+12.76\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"12.76\"}}"
        },
        {
           "description": "[basx055] strings without E cannot generate E in result",
-          "bson": "180000001364000500000000000000000000000000303000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"0.00000005\"}}",
+          "canonical_bson": "180000001364000500000000000000000000000000303000",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.00000005\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"5E-8\"}}"
        },
        {
           "description": "[basx054] strings without E cannot generate E in result",
-          "bson": "180000001364000500000000000000000000000000323000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"0.0000005\"}}",
+          "canonical_bson": "180000001364000500000000000000000000000000323000",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.0000005\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"5E-7\"}}"
        },
        {
           "description": "[basx052] strings without E cannot generate E in result",
-          "bson": "180000001364000500000000000000000000000000343000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"0.000005\"}}"
+          "canonical_bson": "180000001364000500000000000000000000000000343000",
+          "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.000005\"}}"
        },
        {
           "description": "[basx051] strings without E cannot generate E in result",
-          "bson": "180000001364000500000000000000000000000000363000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"00.00005\"}}",
+          "canonical_bson": "180000001364000500000000000000000000000000363000",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"00.00005\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.00005\"}}"
        },
        {
           "description": "[basx050] strings without E cannot generate E in result",
-          "bson": "180000001364000500000000000000000000000000383000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"0.0005\"}}"
+          "canonical_bson": "180000001364000500000000000000000000000000383000",
+          "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.0005\"}}"
        },
        {
           "description": "[basx047] strings without E cannot generate E in result",
-          "bson": "1800000013640005000000000000000000000000003E3000",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \".5\"}}",
+          "canonical_bson": "1800000013640005000000000000000000000000003E3000",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \".5\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.5\"}}"
        },
        {
           "description": "[dqbsr431] check rounding modes heeded (Rounded)",
-          "bson": "1800000013640099761CC7B548F377DC80A131C836FE2F00",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \"1.1111111111111111111111111111123450\"}}",
+          "canonical_bson": "1800000013640099761CC7B548F377DC80A131C836FE2F00",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \"1.1111111111111111111111111111123450\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"1.111111111111111111111111111112345\"}}"
        },
        {
           "description": "OK2",
-          "bson": "18000000136400000000000A5BC138938D44C64D31FC2F00",
-          "extjson": "{\"d\" : {\"$numberDecimal\" : \".100000000000000000000000000000000000000000000000000000000000\"}}",
+          "canonical_bson": "18000000136400000000000A5BC138938D44C64D31FC2F00",
+          "degenerate_extjson": "{\"d\" : {\"$numberDecimal\" : \".100000000000000000000000000000000000000000000000000000000000\"}}",
           "canonical_extjson": "{\"d\" : {\"$numberDecimal\" : \"0.1000000000000000000000000000000000\"}}"
        }
     ],

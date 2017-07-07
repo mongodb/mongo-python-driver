@@ -5,8 +5,8 @@
     "valid": [
         {
             "description": "Minkey",
-            "bson": "08000000FF610000",
-            "extjson": "{\"a\" : {\"$minKey\" : 1}}"
+            "canonical_bson": "08000000FF610000",
+            "canonical_extjson": "{\"a\" : {\"$minKey\" : 1}}"
         }
     ]
 }

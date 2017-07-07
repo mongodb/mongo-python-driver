@@ -79,53 +79,6 @@ class TestDecimal128(unittest.TestCase):
         self.assertEqual("Infinity", str(ctx.copy().create_decimal("1E6145")))
         self.assertEqual("0E-6176", str(ctx.copy().create_decimal("1E-6177")))
 
-    def test_spec(self):
-        for path in glob.glob(os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                "decimal",
-                "decimal128*")):
-            with codecs.open(path, "r", "utf-8-sig") as fp:
-                suite = json.load(fp)
 
-            for case in suite.get("valid", []):
-                B = unhexlify(b(case["bson"]))
-                E = case["extjson"].replace(" ", "")
-
-                if "canonical_bson" in case:
-                    cB = unhexlify(b(case["canonical_bson"]))
-                else:
-                    cB = B
-
-                if "canonical_extjson" in case:
-                    cE = case["canonical_extjson"].replace(" ", "")
-                else:
-                    cE = E
-
-                self.assertEqual(BSON().encode(BSON(B).decode()), cB)
-
-                if B != cB:
-                    self.assertEqual(BSON().encode(BSON(cB).decode()), cB)
-
-                self.assertEqual(
-                    dumps(BSON(B).decode()).replace(" ", ""), cE)
-                self.assertEqual(
-                    dumps(loads(E)).replace(" ", ""), cE)
-
-                if B != cB:
-                    self.assertEqual(
-                        dumps(BSON(cB).decode()).replace(" ", ""), cE)
-
-                if E != cE:
-                    self.assertEqual(
-                        dumps(loads(cE)).replace(" ", ""), cE)
-
-                if "lossy" not in case:
-                    self.assertEqual(BSON().encode(loads(E)), cB)
-
-                    if E != cE:
-                        self.assertEqual(BSON().encode(loads(cE)), cB)
-
-            for test in suite.get("parseErrors", []):
-                self.assertRaises(
-                    DecimalException, Decimal128, test["string"])
-
+if __name__ == '__main__':
+    unittest.main()

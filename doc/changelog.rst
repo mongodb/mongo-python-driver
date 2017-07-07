@@ -37,6 +37,9 @@ Changes and Deprecations:
   and disabling it is not recommended, see `does TCP keepalive time affect
   MongoDB Deployments?
   <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments>`_
+- Deprecated :const:`~bson.json_util.STRICT_JSON_OPTIONS`. Use
+  :const:`~bson.json_util.RELAXED_JSON_OPTIONS` or
+  :const:`~bson.json_util.CANONICAL_JSON_OPTIONS` instead.
 - If a custom :class:`~bson.codec_options.CodecOptions` is passed to
   :class:`RawBSONDocument`, its `document_class` must be
   :class:`RawBSONDocument`.

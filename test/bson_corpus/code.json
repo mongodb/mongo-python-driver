@@ -5,33 +5,33 @@
     "valid": [
         {
             "description": "Empty string",
-            "bson": "0D0000000D6100010000000000",
-            "extjson": "{\"a\" : {\"$code\" : \"\"}}"
+            "canonical_bson": "0D0000000D6100010000000000",
+            "canonical_extjson": "{\"a\" : {\"$code\" : \"\"}}"
         },
         {
             "description": "Single character",
-            "bson": "0E0000000D610002000000620000",
-            "extjson": "{\"a\" : {\"$code\" : \"b\"}}"
+            "canonical_bson": "0E0000000D610002000000620000",
+            "canonical_extjson": "{\"a\" : {\"$code\" : \"b\"}}"
         },
         {
             "description": "Multi-character",
-            "bson": "190000000D61000D0000006162616261626162616261620000",
-            "extjson": "{\"a\" : {\"$code\" : \"abababababab\"}}"
+            "canonical_bson": "190000000D61000D0000006162616261626162616261620000",
+            "canonical_extjson": "{\"a\" : {\"$code\" : \"abababababab\"}}"
         },
         {
             "description": "two-byte UTF-8 (\u00e9)",
-            "bson": "190000000261000D000000C3A9C3A9C3A9C3A9C3A9C3A90000",
-            "extjson": "{\"a\" : \"\\u00e9\\u00e9\\u00e9\\u00e9\\u00e9\\u00e9\"}"
+            "canonical_bson": "190000000261000D000000C3A9C3A9C3A9C3A9C3A9C3A90000",
+            "canonical_extjson": "{\"a\" : \"\\u00e9\\u00e9\\u00e9\\u00e9\\u00e9\\u00e9\"}"
         },
         {
             "description": "three-byte UTF-8 (\u2606)",
-            "bson": "190000000261000D000000E29886E29886E29886E298860000",
-            "extjson": "{\"a\" : \"\\u2606\\u2606\\u2606\\u2606\"}"
+            "canonical_bson": "190000000261000D000000E29886E29886E29886E298860000",
+            "canonical_extjson": "{\"a\" : \"\\u2606\\u2606\\u2606\\u2606\"}"
         },
         {
             "description": "Embedded nulls",
-            "bson": "190000000261000D0000006162006261620062616261620000",
-            "extjson": "{\"a\" : \"ab\\u0000bab\\u0000babab\"}"
+            "canonical_bson": "190000000261000D0000006162006261620062616261620000",
+            "canonical_extjson": "{\"a\" : \"ab\\u0000bab\\u0000babab\"}"
         }
     ],
     "decodeErrors": [

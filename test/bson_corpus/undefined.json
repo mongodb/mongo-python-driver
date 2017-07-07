@@ -6,8 +6,10 @@
     "valid": [
         {
             "description": "Undefined",
-            "bson": "0800000006610000",
-            "extjson": "{\"a\" : {\"$undefined\" : true}}"
+            "canonical_bson": "0800000006610000",
+            "canonical_extjson": "{\"a\" : {\"$undefined\" : true}}",
+            "converted_bson": "080000000A610000",
+            "converted_extjson": "{\"a\" : null}"
         }
     ]
 }

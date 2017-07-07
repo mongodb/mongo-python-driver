@@ -5,28 +5,33 @@
     "valid": [
         {
             "description": "MinValue",
-            "bson": "10000000126100000000000000008000",
-            "extjson": "{\"a\" : {\"$numberLong\" : \"-9223372036854775808\"}}"
+            "canonical_bson": "10000000126100000000000000008000",
+            "canonical_extjson": "{\"a\" : {\"$numberLong\" : \"-9223372036854775808\"}}",
+            "relaxed_extjson": "{\"a\" : -9223372036854775808}"
         },
         {
             "description": "MaxValue",
-            "bson": "10000000126100FFFFFFFFFFFFFF7F00",
-            "extjson": "{\"a\" : {\"$numberLong\" : \"9223372036854775807\"}}"
+            "canonical_bson": "10000000126100FFFFFFFFFFFFFF7F00",
+            "canonical_extjson": "{\"a\" : {\"$numberLong\" : \"9223372036854775807\"}}",
+            "relaxed_extjson": "{\"a\" : 9223372036854775807}"
         },
         {
             "description": "-1",
-            "bson": "10000000126100FFFFFFFFFFFFFFFF00",
-            "extjson": "{\"a\" : {\"$numberLong\" : \"-1\"}}"
+            "canonical_bson": "10000000126100FFFFFFFFFFFFFFFF00",
+            "canonical_extjson": "{\"a\" : {\"$numberLong\" : \"-1\"}}",
+            "relaxed_extjson": "{\"a\" : -1}"
         },
         {
             "description": "0",
-            "bson": "10000000126100000000000000000000",
-            "extjson": "{\"a\" : {\"$numberLong\" : \"0\"}}"
+            "canonical_bson": "10000000126100000000000000000000",
+            "canonical_extjson": "{\"a\" : {\"$numberLong\" : \"0\"}}",
+            "relaxed_extjson": "{\"a\" : 0}"
         },
         {
             "description": "1",
-            "bson": "10000000126100010000000000000000",
-            "extjson": "{\"a\" : {\"$numberLong\" : \"1\"}}"
+            "canonical_bson": "10000000126100010000000000000000",
+            "canonical_extjson": "{\"a\" : {\"$numberLong\" : \"1\"}}",
+            "relaxed_extjson": "{\"a\" : 1}"
         }
     ],
     "decodeErrors": [

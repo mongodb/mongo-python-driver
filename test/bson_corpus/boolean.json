@@ -5,13 +5,13 @@
     "valid": [
         {
             "description": "True",
-            "bson": "090000000862000100",
-            "extjson": "{\"b\" : true}"
+            "canonical_bson": "090000000862000100",
+            "canonical_extjson": "{\"b\" : true}"
         },
         {
             "description": "False",
-            "bson": "090000000862000000",
-            "extjson": "{\"b\" : false}"
+            "canonical_bson": "090000000862000000",
+            "canonical_extjson": "{\"b\" : false}"
         }
     ],
     "decodeErrors": [

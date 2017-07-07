@@ -5,29 +5,51 @@
     "valid": [
         {
             "description": "empty regex with no options",
-            "bson": "0A0000000B6100000000",
-            "extjson": "{\"a\" : {\"$regex\" : \"\", \"$options\" : \"\"}}"
+            "canonical_bson": "0A0000000B6100000000",
+            "canonical_extjson": "{\"a\" : {\"$regularExpression\" : { \"pattern\": \"\", \"options\" : \"\"}}}"
         },
         {
             "description": "regex without options",
-            "bson": "0D0000000B6100616263000000",
-            "extjson": "{\"a\" : {\"$regex\" : \"abc\", \"$options\" : \"\"}}"
+            "canonical_bson": "0D0000000B6100616263000000",
+            "canonical_extjson": "{\"a\" : {\"$regularExpression\" : { \"pattern\": \"abc\", \"options\" : \"\"}}}"
         },
         {
             "description": "regex with options",
-            "bson": "0F0000000B610061626300696D0000",
-            "extjson": "{\"a\" : {\"$regex\" : \"abc\", \"$options\" : \"im\"}}"
+            "canonical_bson": "0F0000000B610061626300696D0000",
+            "canonical_extjson": "{\"a\" : {\"$regularExpression\" : { \"pattern\": \"abc\", \"options\" : \"im\"}}}"
+        },
+        {
+            "description": "regex with options (keys reversed)",
+            "canonical_bson": "0F0000000B610061626300696D0000",
+            "canonical_extjson": "{\"a\" : {\"$regularExpression\" : { \"pattern\": \"abc\", \"options\" : \"im\"}}}",
+            "degenerate_extjson": "{\"a\" : {\"$regularExpression\" : {\"options\" : \"im\", \"pattern\": \"abc\"}}}"
         },
         {
             "description": "regex with slash",
-            "bson": "110000000B610061622F636400696D0000",
-            "extjson": "{\"a\" : {\"$regex\" : \"ab/cd\", \"$options\" : \"im\"}}"
+            "canonical_bson": "110000000B610061622F636400696D0000",
+            "canonical_extjson": "{\"a\" : {\"$regularExpression\" : { \"pattern\": \"ab/cd\", \"options\" : \"im\"}}}"
         },
         {
             "description": "flags not alphabetized",
-            "bson": "100000000B6100616263006D69780000",
+            "degenerate_bson": "100000000B6100616263006D69780000",
             "canonical_bson": "100000000B610061626300696D780000",
-            "extjson": "{\"a\" : {\"$regex\" : \"abc\", \"$options\" : \"imx\"}}"
+            "canonical_extjson": "{\"a\" : {\"$regularExpression\" : { \"pattern\": \"abc\", \"options\" : \"imx\"}}}",
+            "degenerate_extjson": "{\"a\" : {\"$regularExpression\" : { \"pattern\": \"abc\", \"options\" : \"mix\"}}}"
+        },
+        {
+            "description" : "Required escapes",
+            "canonical_bson" : "100000000B610061625C226162000000",
+            "canonical_extjson": "{\"a\" : {\"$regularExpression\" : { \"pattern\": \"ab\\\\\\\"ab\", \"options\" : \"\"}}}"
+        },
+        {
+            "description" : "Regular expression as value of $regex query operator",
+            "canonical_bson" : "180000000B247265676578007061747465726E0069780000",
+            "canonical_extjson": "{\"$regex\" : {\"$regularExpression\" : { \"pattern\": \"pattern\", \"options\" : \"ix\"}}}"
+        },
+        {
+            "description" : "Regular expression as value of $regex query operator with $options",
+            "canonical_bson" : "270000000B247265676578007061747465726E000002246F7074696F6E73000300000069780000",
+            "canonical_extjson": "{\"$regex\" : {\"$regularExpression\" : { \"pattern\": \"pattern\", \"options\" : \"\"}}, \"$options\" : \"ix\"}"
         }
     ],
     "decodeErrors": [

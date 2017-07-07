@@ -6,33 +6,45 @@
     "valid": [
         {
             "description": "Empty string",
-            "bson": "0D0000000E6100010000000000",
-            "extjson": "{\"a\": {\"$symbol\": \"\"}}"
+            "canonical_bson": "0D0000000E6100010000000000",
+            "canonical_extjson": "{\"a\": {\"$symbol\": \"\"}}",
+            "converted_bson": "0D000000026100010000000000",
+            "converted_extjson": "{\"a\": \"\"}"
         },
         {
             "description": "Single character",
-            "bson": "0E0000000E610002000000620000",
-            "extjson": "{\"a\": {\"$symbol\": \"b\"}}"
+            "canonical_bson": "0E0000000E610002000000620000",
+            "canonical_extjson": "{\"a\": {\"$symbol\": \"b\"}}",
+            "converted_bson": "0E00000002610002000000620000",
+            "converted_extjson": "{\"a\": \"b\"}"
         },
         {
             "description": "Multi-character",
-            "bson": "190000000E61000D0000006162616261626162616261620000",
-            "extjson": "{\"a\": {\"$symbol\": \"abababababab\"}}"
+            "canonical_bson": "190000000E61000D0000006162616261626162616261620000",
+            "canonical_extjson": "{\"a\": {\"$symbol\": \"abababababab\"}}",
+            "converted_bson": "190000000261000D0000006162616261626162616261620000",
+            "converted_extjson": "{\"a\": \"abababababab\"}"
         },
         {
             "description": "two-byte UTF-8 (\u00e9)",
-            "bson": "190000000E61000D000000C3A9C3A9C3A9C3A9C3A9C3A90000",
-            "extjson": "{\"a\": {\"$symbol\": \"éééééé\"}}"
+            "canonical_bson": "190000000E61000D000000C3A9C3A9C3A9C3A9C3A9C3A90000",
+            "canonical_extjson": "{\"a\": {\"$symbol\": \"éééééé\"}}",
+            "converted_bson": "190000000261000D000000C3A9C3A9C3A9C3A9C3A9C3A90000",
+            "converted_extjson": "{\"a\": \"éééééé\"}"
         },
         {
             "description": "three-byte UTF-8 (\u2606)",
-            "bson": "190000000E61000D000000E29886E29886E29886E298860000",
-            "extjson": "{\"a\": {\"$symbol\": \"☆☆☆☆\"}}"
+            "canonical_bson": "190000000E61000D000000E29886E29886E29886E298860000",
+            "canonical_extjson": "{\"a\": {\"$symbol\": \"☆☆☆☆\"}}",
+            "converted_bson": "190000000261000D000000E29886E29886E29886E298860000",
+            "converted_extjson": "{\"a\": \"☆☆☆☆\"}"
         },
         {
             "description": "Embedded nulls",
-            "bson": "190000000E61000D0000006162006261620062616261620000",
-            "extjson": "{\"a\": {\"$symbol\": \"ab\\u0000bab\\u0000babab\"}}"
+            "canonical_bson": "190000000E61000D0000006162006261620062616261620000",
+            "canonical_extjson": "{\"a\": {\"$symbol\": \"ab\\u0000bab\\u0000babab\"}}",
+            "converted_bson": "190000000261000D0000006162006261620062616261620000",
+            "converted_extjson": "{\"a\": \"ab\\u0000bab\\u0000babab\"}"
         }
     ],
     "decodeErrors": [

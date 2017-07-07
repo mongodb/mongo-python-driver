@@ -5,8 +5,8 @@
     "valid": [
         {
             "description": "Null",
-            "bson": "080000000A610000",
-            "extjson": "{\"a\" : null}"
+            "canonical_bson": "080000000A610000",
+            "canonical_extjson": "{\"a\" : null}"
         }
     ]
 }
