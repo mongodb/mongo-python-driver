@@ -1165,8 +1165,9 @@ class MongoClient(common.BaseObject):
     def database_names(self):
         """Get a list of the names of all databases on the connected server."""
         return [db["name"] for db in
-                self._database_default_options('admin').command(
-                    "listDatabases")["databases"]]
+                self._database_default_options("admin").command(
+                    SON([("listDatabases", 1),
+                         ("nameOnly", True)]))["databases"]]
 
     def drop_database(self, name_or_database):
         """Drop a database.
