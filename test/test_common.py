@@ -147,22 +147,6 @@ class TestCommon(IntegrationTest):
         self.db.drop_collection("result")
         coll.drop()
 
-        # Test group
-        coll.insert_one({"_id": uu, "a": 2})
-        coll.insert_one({"_id": uuid.uuid4(), "a": 1})
-
-        reduce = "function (obj, prev) { prev.count++; }"
-        coll = self.db.get_collection(
-            "uuid", CodecOptions(uuid_representation=STANDARD))
-        self.assertEqual([],
-                         coll.group([], {"_id": uu},
-                                    {"count": 0}, reduce))
-        coll = self.db.get_collection(
-            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        self.assertEqual([{"count": 1}],
-                         coll.group([], {"_id": uu},
-                                    {"count": 0}, reduce))
-
     def test_write_concern(self):
         c = rs_or_single_client(connect=False)
         self.assertEqual(WriteConcern(), c.write_concern)

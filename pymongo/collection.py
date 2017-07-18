@@ -1886,41 +1886,25 @@ class Collection(common.BaseObject):
             return CommandCursor(
                 self, cursor, sock_info.address).batch_size(batch_size or 0)
 
-    # key and condition ought to be optional, but deprecation
-    # would be painful as argument order would have to change.
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.
 
-        Returns an array of grouped items.
+        **DEPRECATED** - The group command was deprecated in MongoDB 3.4. The
+        :meth:`~group` method is deprecated and will be removed in PyMongo 4.0.
+        Use :meth:`~aggregate` with the `$group` stage or :meth:`~map_reduce`
+        instead.
 
-        The `key` parameter can be:
-
-          - ``None`` to use the entire document as a key.
-          - A :class:`list` of keys (each a :class:`basestring`
-            (:class:`str` in python 3)) to group by.
-          - A :class:`basestring` (:class:`str` in python 3), or
-            :class:`~bson.code.Code` instance containing a JavaScript
-            function to be applied to each document, returning the key
-            to group by.
-
-        The :meth:`group` method obeys the :attr:`read_preference` of this
-        :class:`Collection`.
-
-        :Parameters:
-          - `key`: fields to group by (see above description)
-          - `condition`: specification of rows to be
-            considered (as a :meth:`find` query specification)
-          - `initial`: initial value of the aggregation counter object
-          - `reduce`: aggregation function as a JavaScript string
-          - `finalize`: function to be called on each object in output list.
-          - `**kwargs` (optional): additional arguments to the group command
-            may be passed as keyword arguments to this helper method
-
+        .. versionchanged:: 3.5
+           Deprecated the group method.
         .. versionchanged:: 3.4
            Added the `collation` option.
         .. versionchanged:: 2.2
            Removed deprecated argument: command
         """
+        warnings.warn("The group method is deprecated and will be removed in "
+                      "PyMongo 4.0. Use the aggregate method with the $group "
+                      "stage or the map_reduce method instead.",
+                      DeprecationWarning, stacklevel=2)
         group = {}
         if isinstance(key, string_type):
             group["$keyf"] = Code(key)

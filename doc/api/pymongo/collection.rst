@@ -61,12 +61,12 @@
       .. automethod:: drop
       .. automethod:: rename
       .. automethod:: options
-      .. automethod:: group
       .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
       .. automethod:: parallel_scan
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
+      .. automethod:: group
       .. automethod:: insert(doc_or_docs, manipulate=True, check_keys=True, continue_on_error=False, **kwargs)
       .. automethod:: save(to_save, manipulate=True, check_keys=True, **kwargs)
       .. automethod:: update(spec, document, upsert=False, manipulate=False, multi=False, check_keys=True, **kwargs)

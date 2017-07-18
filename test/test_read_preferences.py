@@ -16,9 +16,10 @@
 
 import contextlib
 import copy
+import pickle
 import random
 import sys
-import pickle
+import warnings
 
 sys.path[0:0] = [""]
 
@@ -416,8 +417,10 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             lambda: self.c.pymongo_test.some_collection.drop())
 
     def test_group(self):
-        self._test_coll_helper(True, self.c.pymongo_test.test, 'group',
-                               {'a': 1}, {}, {}, 'function() { }')
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self._test_coll_helper(True, self.c.pymongo_test.test, 'group',
+                                   {'a': 1}, {}, {}, 'function() { }')
 
     def test_map_reduce(self):
         self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',

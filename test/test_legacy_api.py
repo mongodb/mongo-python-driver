@@ -18,10 +18,13 @@ import itertools
 import sys
 import threading
 import time
+import uuid
 import warnings
 
 sys.path[0:0] = [""]
 
+from bson.binary import PYTHON_LEGACY, STANDARD
+from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
@@ -44,7 +47,6 @@ from pymongo.write_concern import WriteConcern
 from test import client_context, qcheck, unittest, SkipTest
 from test.test_client import IntegrationTest
 from test.utils import (joinall,
-                        oid_generated_on_client,
                         rs_or_single_client,
                         wait_until)
 
@@ -903,6 +905,121 @@ class TestLegacy(IntegrationTest):
         self.assertEqual({'_id': 1, 'i': 5},
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            new=True))
+
+    def test_group(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertEqual([],
+                         db.test.group([], {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"
+                                      ))
+
+        db.test.insert_many([{"a": 2}, {"b": 5}, {"a": 1}])
+
+        self.assertEqual([{"count": 3}],
+                         db.test.group([], {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"
+                                      ))
+
+        self.assertEqual([{"count": 1}],
+                         db.test.group([], {"a": {"$gt": 1}}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"
+                                      ))
+
+        db.test.insert_one({"a": 2, "b": 3})
+
+        self.assertEqual([{"a": 2, "count": 2},
+                          {"a": None, "count": 1},
+                          {"a": 1, "count": 1}],
+                         db.test.group(["a"], {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"
+                                      ))
+
+        # modifying finalize
+        self.assertEqual([{"a": 2, "count": 3},
+                          {"a": None, "count": 2},
+                          {"a": 1, "count": 2}],
+                         db.test.group(["a"], {}, {"count": 0},
+                                       "function (obj, prev) "
+                                       "{ prev.count++; }",
+                                       "function (obj) { obj.count++; }"))
+
+        # returning finalize
+        self.assertEqual([2, 1, 1],
+                         db.test.group(["a"], {}, {"count": 0},
+                                       "function (obj, prev) "
+                                       "{ prev.count++; }",
+                                       "function (obj) { return obj.count; }"))
+
+        # keyf
+        self.assertEqual([2, 2],
+                         db.test.group("function (obj) { if (obj.a == 2) "
+                                       "{ return {a: true} }; "
+                                       "return {b: true}; }", {}, {"count": 0},
+                                       "function (obj, prev) "
+                                       "{ prev.count++; }",
+                                       "function (obj) { return obj.count; }"))
+
+        # no key
+        self.assertEqual([{"count": 4}],
+                         db.test.group(None, {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"
+                                      ))
+
+        self.assertRaises(OperationFailure, db.test.group,
+                          [], {}, {}, "5 ++ 5")
+
+    def test_group_with_scope(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert_many([{"a": 1}, {"b": 1}])
+
+        reduce_function = "function (obj, prev) { prev.count += inc_value; }"
+
+        self.assertEqual(2, db.test.group([], {}, {"count": 0},
+                                          Code(reduce_function,
+                                               {"inc_value": 1}))[0]['count'])
+        self.assertEqual(4, db.test.group([], {}, {"count": 0},
+                                          Code(reduce_function,
+                                               {"inc_value": 2}))[0]['count'])
+
+        self.assertEqual(1,
+                         db.test.group([], {}, {"count": 0},
+                                       Code(reduce_function,
+                                            {"inc_value": 0.5}))[0]['count'])
+
+        self.assertEqual(2, db.test.group(
+            [], {}, {"count": 0},
+            Code(reduce_function, {"inc_value": 1}))[0]['count'])
+
+        self.assertEqual(4, db.test.group(
+            [], {}, {"count": 0},
+            Code(reduce_function, {"inc_value": 2}))[0]['count'])
+
+        self.assertEqual(1, db.test.group(
+            [], {}, {"count": 0},
+            Code(reduce_function, {"inc_value": 0.5}))[0]['count'])
+
+    def test_group_uuid_representation(self):
+        db = self.db
+        coll = db.uuid
+        coll.drop()
+        uu = uuid.uuid4()
+        coll.insert_one({"_id": uu, "a": 2})
+        coll.insert_one({"_id": uuid.uuid4(), "a": 1})
+
+        reduce = "function (obj, prev) { prev.count++; }"
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=STANDARD))
+        self.assertEqual([],
+                         coll.group([], {"_id": uu},
+                                    {"count": 0}, reduce))
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        self.assertEqual([{"count": 1}],
+                         coll.group([], {"_id": uu},
+                                    {"count": 0}, reduce))
 
     def test_last_status(self):
         # Tests many legacy API elements.

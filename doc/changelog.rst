@@ -1,15 +1,24 @@
 Changelog
 =========
 
-Changes in Next Version
------------------------
+Changes in Version 3.5
+----------------------
 
-If a custom :class:`~bson.codec_options.CodecOptions` is passed to
-:class:`RawBSONDocument`, its `document_class` must be :class:`RawBSONDocument`.
+Highlights:
 
-Increase the performance of
-:meth:`~pymongo.mongo_client.MongoClient.database_names` by using the
-`nameOnly` option for listDatabases.
+- Increase the performance of
+  :meth:`~pymongo.mongo_client.MongoClient.database_names` by using the
+  `nameOnly` option for listDatabases when available.
+
+Changes and Deprecations:
+
+- Deprecated :meth:`~pymongo.collection.Collection.group`. The group command
+  was deprecated in MongoDB 3.4 and is expected to be removed in MongoDB 3.6.
+  Applications should use :meth:`~pymongo.collection.Collection.aggregate`
+  with the `$group` pipeline stage instead.
+- If a custom :class:`~bson.codec_options.CodecOptions` is passed to
+  :class:`RawBSONDocument`, its `document_class` must be
+  :class:`RawBSONDocument`.
 
 Changes in Version 3.4
 ----------------------

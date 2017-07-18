@@ -177,34 +177,3 @@ specify a different database to store the result collection:
    u'timeMillis': ...}
 
 .. seealso:: The full list of options for MongoDB's `map reduce engine <http://www.mongodb.org/display/DOCS/MapReduce>`_
-
-Group
------
-
-The :meth:`~pymongo.collection.Collection.group` method provides some of the
-same functionality as SQL's GROUP BY.  Simpler than a map reduce you need to
-provide a key to group by, an initial value for the aggregation and a
-reduce function.
-
-.. note:: Doesn't work with sharded MongoDB configurations, use aggregation or
-          map/reduce instead of group().
-
-Here we are doing a simple group and count of the occurrences of ``x`` values:
-
-.. doctest::
-
-  >>> from bson.code import Code
-  >>> reducer = Code("""
-  ...                function(obj, prev){
-  ...                  prev.count++;
-  ...                }
-  ...                """)
-  ...
-  >>> results = db.things.group(key={"x":1}, condition={}, initial={"count": 0}, reduce=reducer)
-  >>> for doc in results:
-  ...   pprint.pprint(doc)
-  {u'count': 1.0, u'x': 1.0}
-  {u'count': 2.0, u'x': 2.0}
-  {u'count': 1.0, u'x': 3.0}
-
-.. seealso:: The full list of options for MongoDB's `group method <http://www.mongodb.org/display/DOCS/Aggregation#Aggregation-Group>`_

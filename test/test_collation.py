@@ -15,6 +15,7 @@
 """Test the collation module."""
 
 import functools
+import warnings
 
 from test import unittest, client_context
 from test.utils import EventListener, rs_or_single_client
@@ -177,10 +178,12 @@ class TestCollation(unittest.TestCase):
 
     @raisesConfigurationErrorForOldMongoDB
     def test_group(self):
-        self.db.test.group('foo', {'foo': {'$gt': 42}}, {},
-                           'function(a, b) { return a; }',
-                           collation=self.collation)
-        self.assertCollationInLastCommand()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.db.test.group('foo', {'foo': {'$gt': 42}}, {},
+                               'function(a, b) { return a; }',
+                               collation=self.collation)
+            self.assertCollationInLastCommand()
 
     @raisesConfigurationErrorForOldMongoDB
     def test_map_reduce(self):
