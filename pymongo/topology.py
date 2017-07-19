@@ -463,7 +463,6 @@ class Topology(object):
             socket_timeout=options.connect_timeout,
             ssl_context=options.ssl_context,
             ssl_match_hostname=options.ssl_match_hostname,
-            socket_keepalive=True,
             event_listeners=options.event_listeners,
             appname=options.appname)
 

@@ -23,7 +23,7 @@ import socket
 import struct
 import sys
 import time
-import traceback
+import warnings
 
 sys.path[0:0] = [""]
 
@@ -94,7 +94,6 @@ class ClientUnitTest(unittest.TestCase):
                              connectTimeoutMS=20000,
                              waitQueueTimeoutMS=None,
                              waitQueueMultiple=None,
-                             socketKeepAlive=False,
                              replicaSet=None,
                              read_preference=ReadPreference.PRIMARY,
                              ssl=False,
@@ -112,7 +111,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(20.0, pool_opts.connect_timeout)
         self.assertEqual(None, pool_opts.wait_queue_timeout)
         self.assertEqual(None, pool_opts.wait_queue_multiple)
-        self.assertFalse(pool_opts.socket_keepalive)
+        self.assertTrue(pool_opts.socket_keepalive)
         self.assertEqual(None, pool_opts.ssl_context)
         self.assertEqual(None, options.replica_set_name)
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
@@ -777,8 +776,19 @@ class TestClient(IntegrationTest):
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
     def test_socketKeepAlive(self):
-        client = rs_or_single_client(socketKeepAlive=True)
-        self.assertTrue(get_pool(client).opts.socket_keepalive)
+        for socketKeepAlive in [True, False]:
+            with warnings.catch_warnings(record=True) as ctx:
+                warnings.simplefilter("always")
+                client = rs_or_single_client(socketKeepAlive=socketKeepAlive)
+                self.assertIn("The socketKeepAlive option is deprecated",
+                              str(ctx[0]))
+                pool = get_pool(client)
+                self.assertEqual(socketKeepAlive,
+                                 pool.opts.socket_keepalive)
+                with pool.get_socket({}) as sock_info:
+                    keepalive = sock_info.sock.getsockopt(socket.SOL_SOCKET,
+                                                          socket.SO_KEEPALIVE)
+                    self.assertEqual(socketKeepAlive, bool(keepalive))
 
     def test_tz_aware(self):
         self.assertRaises(ValueError, MongoClient, tz_aware='foo')

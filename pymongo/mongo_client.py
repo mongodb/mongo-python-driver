@@ -196,9 +196,6 @@ class MongoClient(common.BaseObject):
           - `waitQueueMultiple`: (integer or None) Multiplied by maxPoolSize
             to give the number of threads allowed to wait for a socket at one
             time. Defaults to ``None`` (no limit).
-          - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
-            packets on connected sockets. Defaults to ``False`` (do not send
-            keep-alive packets).
           - `heartbeatFrequencyMS`: (optional) The number of milliseconds
             between periodic server checks, or None to accept the default
             frequency of 10 seconds.
@@ -209,6 +206,10 @@ class MongoClient(common.BaseObject):
             profile collections.
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
+          - `socketKeepAlive`: (boolean) **DEPRECATED** Whether to send
+            periodic keep-alive packets on connected sockets. Defaults to
+            ``True``. Disabling it is not recommended, see
+            https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments",
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -340,6 +341,8 @@ class MongoClient(common.BaseObject):
            Add ``username`` and ``password`` options. Document the
            ``authSource``, ``authMechanism``, and ``authMechanismProperties ``
            options.
+           Deprecated the `socketKeepAlive` keyword argument and URI option.
+           `socketKeepAlive` now defaults to ``True``.
 
         .. versionchanged:: 3.0
            :class:`~pymongo.mongo_client.MongoClient` is now the one and only
@@ -453,6 +456,13 @@ class MongoClient(common.BaseObject):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
+        if 'socketkeepalive' in opts:
+            warnings.warn(
+                "The socketKeepAlive option is deprecated. It now"
+                "defaults to true and disabling it is not recommended, see "
+                "https://docs.mongodb.com/manual/faq/diagnostics/"
+                "#does-tcp-keepalive-time-affect-mongodb-deployments",
+                DeprecationWarning, stacklevel=2)
         self.__options = options = ClientOptions(
             username, password, dbase, opts)
 

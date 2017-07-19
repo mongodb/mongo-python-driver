@@ -26,6 +26,10 @@ Changes and Deprecations:
   Applications should use
   :meth:`~pymongo.mongo_client.MongoClient.get_database` without the `name`
   parameter instead.
+- Deprecated the MongoClient option `socketKeepAlive`. It now defaults to true
+  and disabling it is not recommended, see `does TCP keepalive time affect
+  MongoDB Deployments?
+  <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments>`_
 - If a custom :class:`~bson.codec_options.CodecOptions` is passed to
   :class:`RawBSONDocument`, its `document_class` must be
   :class:`RawBSONDocument`.

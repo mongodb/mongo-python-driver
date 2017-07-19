@@ -30,7 +30,7 @@ except ImportError:
 
 
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import imap, itervalues, _unicode
+from bson.py3compat import imap, itervalues, _unicode, integer_types
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
 from pymongo.common import MAX_MESSAGE_SIZE
@@ -111,6 +111,53 @@ except ImportError:
         """Dummy function for platforms that don't provide fcntl."""
         pass
 
+_MAX_TCP_KEEPIDLE = 300
+_MAX_TCP_KEEPINTVL = 10
+_MAX_TCP_KEEPCNT = 9
+
+if sys.platform == 'win32':
+    try:
+        import _winreg as winreg
+    except ImportError:
+        import winreg
+
+    try:
+        with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters") as key:
+            _DEFAULT_TCP_IDLE_MS, _ = winreg.QueryValueEx(key, "KeepAliveTime")
+            _DEFAULT_TCP_INTERVAL_MS, _ = winreg.QueryValueEx(
+                key, "KeepAliveInterval")
+            # Make sure these are integers.
+            if not isinstance(_DEFAULT_TCP_IDLE_MS, integer_types):
+                raise ValueError
+            if not isinstance(_DEFAULT_TCP_INTERVAL_MS, integer_types):
+                raise ValueError
+    except (OSError, ValueError):
+        # We could not check the default values so do not attempt to override.
+        def _set_keepalive_times(dummy):
+            pass
+    else:
+        def _set_keepalive_times(sock):
+            idle_ms = min(_DEFAULT_TCP_IDLE_MS, _MAX_TCP_KEEPIDLE * 1000)
+            interval_ms = min(_DEFAULT_TCP_INTERVAL_MS,
+                              _MAX_TCP_KEEPINTVL * 1000)
+            if (idle_ms < _DEFAULT_TCP_IDLE_MS or
+                    interval_ms < _DEFAULT_TCP_INTERVAL_MS):
+                sock.ioctl(socket.SIO_KEEPALIVE_VALS,
+                           (1, idle_ms, interval_ms))
+else:
+    def _set_tcp_option(sock, tcp_option, max_value):
+        if hasattr(socket, tcp_option):
+            sockopt = getattr(socket, tcp_option)
+            default = sock.getsockopt(socket.SOL_TCP, sockopt)
+            if default > max_value:
+                sock.setsockopt(socket.SOL_TCP, sockopt, max_value)
+
+    def _set_keepalive_times(sock):
+        _set_tcp_option(sock, 'TCP_KEEPIDLE', _MAX_TCP_KEEPIDLE)
+        _set_tcp_option(sock, 'TCP_KEEPINTVL', _MAX_TCP_KEEPINTVL)
+        _set_tcp_option(sock, 'TCP_KEEPCNT', _MAX_TCP_KEEPCNT)
 
 _METADATA = SON([
     ('driver', SON([('name', 'PyMongo'), ('version', __version__)])),
@@ -223,7 +270,7 @@ class PoolOptions(object):
                  max_idle_time_ms=None, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
-                 ssl_match_hostname=True, socket_keepalive=False,
+                 ssl_match_hostname=True, socket_keepalive=True,
                  event_listeners=None, appname=None):
 
         self.__max_pool_size = max_pool_size
@@ -619,6 +666,8 @@ def _create_connection(address, options):
             sock.settimeout(options.connect_timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,
                             options.socket_keepalive)
+            if options.socket_keepalive:
+                _set_keepalive_times(sock)
             sock.connect(sa)
             return sock
         except socket.error as e:

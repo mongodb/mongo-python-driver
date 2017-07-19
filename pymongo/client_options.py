@@ -106,7 +106,7 @@ def _parse_pool_options(options):
     if max_pool_size is not None and min_pool_size > max_pool_size:
         raise ValueError("minPoolSize must be smaller or equal to maxPoolSize")
     connect_timeout = options.get('connecttimeoutms', common.CONNECT_TIMEOUT)
-    socket_keepalive = options.get('socketkeepalive', False)
+    socket_keepalive = options.get('socketkeepalive', True)
     socket_timeout = options.get('sockettimeoutms')
     wait_queue_timeout = options.get('waitqueuetimeoutms')
     wait_queue_multiple = options.get('waitqueuemultiple')
