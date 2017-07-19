@@ -19,6 +19,7 @@ import os
 
 from hashlib import md5
 
+from bson.son import SON
 from bson.binary import Binary
 from bson.objectid import ObjectId
 from bson.py3compat import text_type, StringIO
@@ -48,8 +49,8 @@ NEWLN = b"\n"
 # Slightly under a power of 2, to work well with server's record allocations.
 DEFAULT_CHUNK_SIZE = 255 * 1024
 
-_C_INDEX = [("files_id", ASCENDING), ("n", ASCENDING)]
-_F_INDEX = [("filename", ASCENDING), ("uploadDate", ASCENDING)]
+_C_INDEX = SON([("files_id", ASCENDING), ("n", ASCENDING)])
+_F_INDEX = SON([("filename", ASCENDING), ("uploadDate", ASCENDING)])
 
 
 def _grid_in_property(field_name, docstring, read_only=False,
@@ -172,15 +173,15 @@ class GridIn(object):
         object.__setattr__(self, "_closed", False)
         object.__setattr__(self, "_ensured_index", False)
 
-    def __create_index(self, collection, index, unique):
+    def __create_index(self, collection, index_key, unique):
         doc = collection.find_one(projection={"_id": 1})
         if doc is None:
             try:
-                indexes = list(collection.list_indexes())
+                index_keys =[index_spec['key'] for index_spec in collection.list_indexes()]
             except OperationFailure:
-                indexes = []
-            if index not in indexes:
-                collection.create_index(index, unique=unique)
+                index_keys = []
+            if index_key not in index_keys:
+                collection.create_index(index_key.items(), unique=unique)
 
     def __ensure_indexes(self):
         if not object.__getattribute__(self, "_ensured_index"):
