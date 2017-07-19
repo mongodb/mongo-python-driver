@@ -34,6 +34,9 @@ Changes and Deprecations:
   MongoDB >= 3.0. Instead, it returns an empty
   :class:`~pymongo.command_cursor.CommandCursor` to make the behavior
   consistent across all MongoDB versions.
+- In Python 3, :meth:`~bson.json_util.loads` now automatically decodes JSON
+  binary with a subtype of 0 into :class:`bytes` instead of
+  :class:`~bson.binary.Binary`. See the :doc:`/python3` for more details.
 
 Changes in Version 3.4
 ----------------------

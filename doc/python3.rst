@@ -14,7 +14,7 @@ Are there any PyMongo behavior changes with Python 3?
 Only one intentional change. Instances of :class:`bytes`
 are encoded as BSON type 5 (Binary data) with subtype 0.
 In Python 3 they are decoded back to :class:`bytes`. In
-Python 2 they will be decoded to :class:`~bson.binary.Binary`
+Python 2 they are decoded to :class:`~bson.binary.Binary`
 with subtype 0.
 
 For example, let's insert a :class:`bytes` instance using Python 3 then
@@ -41,6 +41,30 @@ to :class:`~bson.binary.Binary`::
   >>> c.test.bintest.find_one()
   {u'binary': Binary('this is a byte string', 0), u'_id': ObjectId('4f9086b1fba5222021000000')}
 
+
+There is a similar change in behavior in parsing JSON binary with subtype 0.
+In Python 3 they are decoded into :class:`bytes`. In Python 2 they are
+decoded to :class:`~bson.binary.Binary` with subtype 0.
+
+For example, let's decode a JSON binary subtype 0 using Python 3. Notice the
+byte string is decoded to :class:`bytes`::
+
+  Python 3.6.1 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
+  [GCC 4.2.1 (Apple Inc. build 5666) (dot 3)] on darwin
+  Type "help", "copyright", "credits" or "license" for more information.
+  >>> from bson.json_util import loads
+  >>> loads('{"b": {"$binary": "dGhpcyBpcyBhIGJ5dGUgc3RyaW5n", "$type": "00"}}')
+  {'b': b'this is a byte string'}
+
+Now decode the same JSON in Python 2 . Notice the byte string is decoded
+to :class:`~bson.binary.Binary`::
+
+  Python 2.7.10 (default, Feb  7 2017, 00:08:15)
+  [GCC 4.2.1 Compatible Apple LLVM 8.0.0 (clang-800.0.34)] on darwin
+  Type "help", "copyright", "credits" or "license" for more information.
+  >>> from bson.json_util import loads
+  >>> loads('{"b": {"$binary": "dGhpcyBpcyBhIGJ5dGUgc3RyaW5n", "$type": "00"}}')
+  {u'b': Binary('this is a byte string', 0)}
 
 Why can't I share pickled ObjectIds between some versions of Python 2 and 3?
 ----------------------------------------------------------------------------

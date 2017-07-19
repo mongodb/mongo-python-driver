@@ -276,7 +276,10 @@ class TestJsonUtil(unittest.TestCase):
             strict_uuid=True, uuid_representation=CSHARP_LEGACY))
 
     def test_binary(self):
-        bin_type_dict = {"bin": Binary(b"\x00\x01\x02\x03\x04")}
+        if PY3:
+            bin_type_dict = {"bin": b"\x00\x01\x02\x03\x04"}
+        else:
+            bin_type_dict = {"bin": Binary(b"\x00\x01\x02\x03\x04")}
         md5_type_dict = {
             "md5": Binary(b' n7\x18\xaf\t/\xd1\xd1/\x80\xca\xe7q\xcc\xac',
                 MD5_SUBTYPE)}
@@ -285,6 +288,14 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip(bin_type_dict)
         self.round_trip(md5_type_dict)
         self.round_trip(custom_type_dict)
+
+        # Binary with subtype 0 is decoded into bytes in Python 3.
+        bin = json_util.loads(
+            '{"bin": {"$binary": "AAECAwQ=", "$type": "00"}}')['bin']
+        if PY3:
+            self.assertEqual(type(bin), bytes)
+        else:
+            self.assertEqual(type(bin), Binary)
 
         # PYTHON-443 ensure old type formats are supported
         json_bin_dump = json_util.dumps(bin_type_dict)
@@ -370,7 +381,7 @@ class TestJsonUtilRoundtrip(IntegrationTest):
             {'foo': [1, 2]},
             {'bar': {'hello': 'world'}},
             {'code': Code("function x() { return 1; }")},
-            {'bin': Binary(b"\x00\x01\x02\x03\x04")},
+            {'bin': Binary(b"\x00\x01\x02\x03\x04", USER_DEFINED_SUBTYPE)},
             {'dbref': {'_ref': DBRef('simple',
                                ObjectId('509b8db456c02c5ab7e63c34'))}}
         ]

@@ -412,6 +412,8 @@ def _get_binary(doc, json_options):
         return uuid.UUID(bytes=data)
     if subtype == UUID_SUBTYPE:
         return uuid.UUID(bytes=data)
+    if PY3 and subtype == 0:
+        return data
     return Binary(data, subtype)
 
 
