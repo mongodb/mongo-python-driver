@@ -1086,19 +1086,13 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to :meth:`find`.
 
-          - `max_time_ms` (optional): a value for max_time_ms may be
-            specified as part of `**kwargs`, e.g.
-
               >>> collection.find_one(max_time_ms=100)
         """
         if (filter is not None and not
                 isinstance(filter, collections.Mapping)):
             filter = {"_id": filter}
 
-        max_time_ms = kwargs.pop("max_time_ms", None)
-        cursor = self.find(filter,
-                           *args, **kwargs).max_time_ms(max_time_ms)
-
+        cursor = self.find(filter, *args, **kwargs)
         for result in cursor.limit(-1):
             return result
         return None
@@ -1174,11 +1168,6 @@ class Collection(common.BaseObject):
             error.
           - `oplog_replay` (optional): If True, set the oplogReplay query
             flag.
-          - `modifiers` (optional): A dict specifying the MongoDB `query
-            modifiers`_ that should be used for this query. For example::
-
-              >>> db.test.find(modifiers={"$maxTimeMS": 500})
-
           - `batch_size` (optional): Limits the number of documents returned in
             a single batch.
           - `manipulate` (optional): **DEPRECATED** - If True (the default),
@@ -1186,6 +1175,40 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `return_key` (optional): If True, return only the index keys in
+            each document.
+          - `show_record_id` (optional): If True, adds a field ``$recordId`` in
+            each document with the storage engine's internal record identifier.
+          - `snapshot` (optional): If True, prevents the cursor from returning
+            a document more than once because of an intervening write
+            operation.
+          - `hint` (optional): An index, in the same format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.hint` on the cursor to tell Mongo the
+            proper index to use for the query.
+          - `max_time_ms` (optional): Specifies a time limit for a query
+            operation. If the specified time is exceeded, the operation will be
+            aborted and :exc:`~pymongo.errors.ExecutionTimeout` is raised. Pass
+            this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.max_time_ms` on the cursor.
+          - `max_scan` (optional): The maximum number of documents to scan.
+            Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.max_scan` on the cursor.
+          - `min` (optional): A list of field, limit pairs specifying the
+            inclusive lower bound for all keys of a specific index in order.
+            Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.min` on the cursor.
+          - `max` (optional): A list of field, limit pairs specifying the
+            exclusive upper bound for all keys of a specific index in order.
+            Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.max` on the cursor.
+          - `comment` (optional): A string or document. Pass this as an
+            alternative to calling :meth:`~pymongo.cursor.Cursor.comment` on the
+            cursor.
+          - `modifiers` (optional): **DEPRECATED** - A dict specifying
+            additional MongoDB query modifiers. Use the keyword arguments listed
+            above instead.
 
         .. note:: There are a number of caveats to using
           :attr:`~pymongo.cursor.CursorType.EXHAUST` as cursor_type:
@@ -1202,6 +1225,11 @@ class Collection(common.BaseObject):
             completely iterated the underlying :class:`~socket.socket`
             connection will be closed and discarded without being returned to
             the connection pool.
+
+        .. versionchanged:: 3.5 
+           Added the options `return_key`, `show_record_id`, `snapshot`,
+           `hint`, `max_time_ms`, `max_scan`, `min`, `max`, and `comment`.
+           Deprecated the option `modifiers`.
 
         .. versionchanged:: 3.4
            Support the `collation` option.
@@ -1231,10 +1259,9 @@ class Collection(common.BaseObject):
            The `tag_sets` and `secondary_acceptable_latency_ms` parameters.
 
         .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
-        .. _query modifiers:
-          http://docs.mongodb.org/manual/reference/operator/query-modifier/
 
         .. mongodoc:: find
+
         """
         return Cursor(self, *args, **kwargs)
 

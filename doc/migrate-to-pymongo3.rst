@@ -113,27 +113,6 @@ can be changed to this with PyMongo 2.9 or later:
 
   >>> cursor = collection.find({"a": 1}, no_cursor_timeout=True)
 
-"snapshot" and "max_scan" replaced by "modifiers"
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The `snapshot` and `max_scan` options have been removed. They can now be set,
-along with other $ query modifiers, through the `modifiers` option. Code like
-this::
-
-  >>> cursor = collection.find({"a": 1}, snapshot=True)
-
-can be changed to this with PyMongo 2.9 or later:
-
-.. doctest::
-
-  >>> cursor = collection.find({"a": 1}, modifiers={"$snapshot": True})
-
-or with any version of PyMongo:
-
-.. doctest::
-
-  >>> cursor = collection.find({"$query": {"a": 1}, "$snapshot": True})
-
 "network_timeout" is removed
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -151,6 +130,10 @@ can be changed to this with PyMongo 2.9 or later:
 
   # Set a 5 second (5000 millisecond) server side query timeout.
   >>> cursor = collection.find({"a": 1}, modifiers={"$maxTimeMS": 5000})
+
+or with PyMongo 3.5 or later:
+
+  >>> cursor = collection.find({"a": 1}, max_time_ms=5000)
 
 or with any version of PyMongo:
 

@@ -226,33 +226,20 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(self.client.address, succeeded.connection_id)
         self.assertEqual(res, succeeded.reply)
 
-    def test_find_options(self):
-        cmd = SON([('find', 'test'),
-                   ('filter', {}),
-                   ('comment', 'this is a test'),
-                   ('sort', SON([('_id', 1)])),
-                   ('projection', {'x': False}),
-                   ('skip', 1),
-                   ('batchSize', 2),
-                   ('noCursorTimeout', True),
-                   ('allowPartialResults', True)])
-        self.client.pymongo_test.test.drop()
-        self.client.pymongo_test.test.insert_many([{'x': i} for i in range(5)])
-        self.listener.results.clear()
+    def _test_find_options(self, query, expected_cmd):
         coll = self.client.pymongo_test.test
+        coll.drop()
+        coll.create_index('x')
+        coll.insert_many([{'x': i} for i in range(5)])
+
         # Test that we publish the unwrapped command.
+        self.listener.results.clear()
         if self.client.is_mongos and client_context.version.at_least(2, 4, 0):
             coll = coll.with_options(
                 read_preference=ReadPreference.PRIMARY_PREFERRED)
-        cursor = coll.find(
-            filter={},
-            projection={'x': False},
-            skip=1,
-            no_cursor_timeout=True,
-            sort=[('_id', 1)],
-            allow_partial_results=True,
-            modifiers=SON([('$comment', 'this is a test')]),
-            batch_size=2)
+
+        cursor = coll.find(**query)
+
         next(cursor)
         try:
             results = self.listener.results
@@ -261,7 +248,7 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(0, len(results['failed']))
             self.assertTrue(
                 isinstance(started, monitoring.CommandStartedEvent))
-            self.assertEqual(cmd, started.command)
+            self.assertEqual(expected_cmd, started.command)
             self.assertEqual('find', started.command_name)
             self.assertEqual(self.client.address, started.connection_id)
             self.assertEqual('pymongo_test', started.database_name)
@@ -275,6 +262,53 @@ class TestCommandMonitoring(unittest.TestCase):
         finally:
             # Exhaust the cursor to avoid kill cursors.
             tuple(cursor)
+
+    def test_find_options(self):
+        query = dict(filter={},
+                     hint=[('x', 1)],
+                     max_scan=10,
+                     max_time_ms=10000,
+                     max={'x': 10},
+                     min={'x': -10},
+                     return_key=True,
+                     show_record_id=True,
+                     projection={'x': False},
+                     skip=1,
+                     no_cursor_timeout=True,
+                     sort=[('_id', 1)],
+                     allow_partial_results=True,
+                     comment='this is a test',
+                     batch_size=2)
+
+        cmd = dict(find='test',
+                   filter={},
+                   hint=SON([('x', 1)]),
+                   comment='this is a test',
+                   maxScan=10,
+                   maxTimeMS=10000,
+                   max={'x': 10},
+                   min={'x': -10},
+                   returnKey=True,
+                   showRecordId=True,
+                   sort=SON([('_id', 1)]),
+                   projection={'x': False},
+                   skip=1,
+                   batchSize=2,
+                   noCursorTimeout=True,
+                   allowPartialResults=True)
+
+        self._test_find_options(query, cmd)
+
+    def test_find_snapshot(self):
+        # Test "snapshot" parameter separately, can't combine with "sort".
+        query = dict(filter={},
+                     snapshot=True)
+
+        cmd = dict(find='test',
+                   filter={},
+                   snapshot=True)
+
+        self._test_find_options(query, cmd)
 
     @client_context.require_version_min(2, 6, 0)
     def test_command_and_get_more(self):

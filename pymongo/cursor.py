@@ -16,6 +16,7 @@
 
 import copy
 import datetime
+import warnings
 
 from collections import deque
 
@@ -106,7 +107,9 @@ class Cursor(object):
                  cursor_type=CursorType.NON_TAILABLE,
                  sort=None, allow_partial_results=False, oplog_replay=False,
                  modifiers=None, batch_size=0, manipulate=True,
-                 collation=None):
+                 collation=None, hint=None, max_scan=None, max_time_ms=None,
+                 max=None, min=None, return_key=False, show_record_id=False,
+                 snapshot=False, comment=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -134,6 +137,8 @@ class Cursor(object):
         validate_boolean("allow_partial_results", allow_partial_results)
         validate_boolean("oplog_replay", oplog_replay)
         if modifiers is not None:
+            warnings.warn("the 'modifiers' parameter is deprecated",
+                          DeprecationWarning, stacklevel=2)
             validate_is_mapping("modifiers", modifiers)
         if not isinstance(batch_size, integer_types):
             raise TypeError("batch_size must be an integer")
@@ -153,16 +158,19 @@ class Cursor(object):
         self.__batch_size = batch_size
         self.__modifiers = modifiers and modifiers.copy() or {}
         self.__ordering = sort and helpers._index_document(sort) or None
-        self.__max_scan = None
+        self.__max_scan = max_scan
         self.__explain = False
-        self.__hint = None
-        self.__comment = None
-        self.__max_time_ms = None
+        self.__comment = comment
+        self.__max_time_ms = max_time_ms
         self.__max_await_time_ms = None
-        self.__max = None
-        self.__min = None
+        self.__max = max
+        self.__min = min
         self.__manipulate = manipulate
         self.__collation = validate_collation_or_none(collation)
+        self.__return_key = return_key
+        self.__show_record_id = show_record_id
+        self.__snapshot = snapshot
+        self.__set_hint(hint)
 
         # Exhaust cursor support
         if cursor_type == CursorType.EXHAUST:
@@ -312,6 +320,13 @@ class Cursor(object):
             operators["$max"] = self.__max
         if self.__min:
             operators["$min"] = self.__min
+        if self.__return_key:
+            operators["$returnKey"] = self.__return_key
+        if self.__show_record_id:
+            # This is upgraded to showRecordId for MongoDB 3.2+ "find" command.
+            operators["$showDiskLoc"] = self.__show_record_id
+        if self.__snapshot:
+            operators["$snapshot"] = self.__snapshot
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
@@ -755,6 +770,16 @@ class Cursor(object):
             c.__limit = -abs(c.__limit)
         return next(c)
 
+    def __set_hint(self, index):
+        if index is None:
+            self.__hint = None
+            return
+
+        if isinstance(index, string_type):
+            self.__hint = index
+        else:
+            self.__hint = helpers._index_document(index)
+
     def hint(self, index):
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
@@ -780,14 +805,7 @@ class Cursor(object):
            The :meth:`~hint` method accepts the name of the index.
         """
         self.__check_okay_to_chain()
-        if index is None:
-            self.__hint = None
-            return self
-
-        if isinstance(index, string_type):
-            self.__hint = index
-        else:
-            self.__hint = helpers._index_document(index)
+        self.__set_hint(index)
         return self
 
     def comment(self, comment):

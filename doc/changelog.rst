@@ -12,6 +12,9 @@ Highlights:
 
 Changes and Deprecations:
 
+- :meth:`~pymongo.collection.Collection.find` has new options `return_key`,
+  `show_record_id`, `snapshot`, `hint`, `max_time_ms`, `max_scan`, `min`, `max`,
+  and `comment`. Deprecated the option `modifiers`.
 - Deprecated :meth:`~pymongo.collection.Collection.group`. The group command
   was deprecated in MongoDB 3.4 and is expected to be removed in MongoDB 3.6.
   Applications should use :meth:`~pymongo.collection.Collection.aggregate`
