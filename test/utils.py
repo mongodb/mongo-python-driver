@@ -505,3 +505,31 @@ def lazy_client_trial(reset, target, test, get_client):
             lazy_collection = lazy_client.pymongo_test.test
             run_threads(lazy_collection, target)
             test(lazy_collection)
+
+
+def gevent_monkey_patched():
+    """Check if gevent's monkey patching is active."""
+    # In Python 3.6 importing gevent.socket raises an ImportWarning.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", ImportWarning)
+        try:
+            import socket
+            import gevent.socket
+            return socket.socket is gevent.socket.socket
+        except ImportError:
+            return False
+
+
+def eventlet_monkey_patched():
+    """Check if eventlet's monkey patching is active."""
+    try:
+        import threading
+        import eventlet
+        return (threading.current_thread.__module__ ==
+                'eventlet.green.threading')
+    except ImportError:
+        return False
+
+
+def is_greenthread_patched():
+    return gevent_monkey_patched() or eventlet_monkey_patched()

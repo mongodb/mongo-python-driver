@@ -64,19 +64,20 @@ from test import (client_context,
                   HAVE_IPADDRESS)
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
-                        delay,
-                        remove_all_users,
-                        server_is_master_with_slave,
-                        get_pool,
-                        one,
                         connected,
-                        wait_until,
+                        delay,
+                        get_pool,
+                        is_greenthread_patched,
+                        lazy_client_trial,
+                        NTHREADS,
+                        one,
+                        remove_all_users,
                         rs_client,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
+                        server_is_master_with_slave,
                         single_client,
-                        lazy_client_trial,
-                        NTHREADS)
+                        wait_until)
 
 
 class ClientUnitTest(unittest.TestCase):
@@ -843,6 +844,8 @@ class TestClient(IntegrationTest):
             # without simply killing the whole thread in Jython. This suggests
             # PYTHON-294 can't actually occur in Jython.
             raise SkipTest("Can't test interrupts in Jython")
+        if is_greenthread_patched():
+            raise SkipTest("Can't reliably test interrupts with green threads")
 
         # Test fix for PYTHON-294 -- make sure MongoClient closes its
         # socket if it gets an interrupt while waiting to recv() from it.
