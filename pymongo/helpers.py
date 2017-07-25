@@ -92,10 +92,8 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response,
-                     cursor_id=None,
-                     codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
-    """Unpack a response from the database.
+def _raw_response(response, cursor_id=None):
+    """Unpack a response header from the database, without decoding BSON.
 
     Check the response for errors and unpack, returning a dictionary
     containing the response data.
@@ -108,8 +106,6 @@ def _unpack_response(response,
       - `cursor_id` (optional): cursor_id we sent to get this response -
         used for raising an informative exception when we get cursor id not
         valid at server response
-      - `codec_options` (optional): an instance of
-        :class:`~bson.codec_options.CodecOptions`
     """
     response_flag = struct.unpack("<i", response[:4])[0]
     if response_flag & 1:
@@ -136,12 +132,36 @@ def _unpack_response(response,
                                error_object.get("code"),
                                error_object)
 
+    number_returned = struct.unpack("<i", response[16:20])[0]
+    data = [response[20:]]
     result = {"cursor_id": struct.unpack("<q", response[4:12])[0],
               "starting_from": struct.unpack("<i", response[12:16])[0],
-              "number_returned": struct.unpack("<i", response[16:20])[0],
-              "data": bson.decode_all(response[20:], codec_options)}
+              "number_returned": number_returned, "data": data}
 
-    assert len(result["data"]) == result["number_returned"]
+    return result
+
+
+def _unpack_response(response,
+                     cursor_id=None,
+                     codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
+    """Unpack a response from the database and decode the BSON document(s).
+
+    Check the response for errors and unpack, returning a dictionary
+    containing the response data.
+
+    Can raise CursorNotFound, NotMasterError, ExecutionTimeout, or
+    OperationFailure.
+
+    :Parameters:
+      - `response`: byte string as returned from the database
+      - `cursor_id` (optional): cursor_id we sent to get this response -
+        used for raising an informative exception when we get cursor id not
+        valid at server response
+      - `codec_options` (optional): an instance of
+        :class:`~bson.codec_options.CodecOptions`
+    """
+    result = _raw_response(response, cursor_id)
+    result["data"] = bson.decode_all(result["data"][0], codec_options)
     return result
 
 

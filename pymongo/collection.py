@@ -32,7 +32,7 @@ from pymongo import (common,
 from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor
 from pymongo.collation import validate_collation_or_none
-from pymongo.cursor import Cursor
+from pymongo.cursor import Cursor, RawBSONCursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.helpers import _UNICODE_REPLACE_CODEC_OPTIONS
@@ -1173,6 +1173,9 @@ class Collection(common.BaseObject):
               results to the client without waiting for the client to request
               each batch, reducing latency. See notes on compatibility below.
 
+          - `raw_batches` (optional): If True, use the legacy wire protocol to
+            query MongoDB, and use a :class:`~pymongo.cursor.RawBSONCursor`
+            that returns entire batches of documents as raw BSON streams.
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for this query. See
             :meth:`~pymongo.cursor.Cursor.sort` for details.
@@ -1239,10 +1242,10 @@ class Collection(common.BaseObject):
             connection will be closed and discarded without being returned to
             the connection pool.
 
-        .. versionchanged:: 3.5 
+        .. versionchanged:: 3.5
            Added the options `return_key`, `show_record_id`, `snapshot`,
            `hint`, `max_time_ms`, `max_scan`, `min`, `max`, and `comment`.
-           Deprecated the option `modifiers`.
+           Deprecated the option `modifiers`. Support the `raw_batches` option.
 
         .. versionchanged:: 3.4
            Support the `collation` option.
@@ -1276,7 +1279,10 @@ class Collection(common.BaseObject):
         .. mongodoc:: find
 
         """
-        return Cursor(self, *args, **kwargs)
+        if kwargs.pop('raw_batches', False):
+            return RawBSONCursor(self, *args, **kwargs)
+        else:
+            return Cursor(self, *args, **kwargs)
 
     def parallel_scan(self, num_cursors, **kwargs):
         """Scan this entire collection in parallel.

@@ -101,6 +101,8 @@ class _SocketManager:
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
     """
+    _query_class = _Query
+    _getmore_class = _GetMore
 
     def __init__(self, collection, filter=None, projection=None, skip=0,
                  limit=0, no_cursor_timeout=False,
@@ -251,9 +253,11 @@ class Cursor(object):
         """
         return self._clone(True)
 
-    def _clone(self, deepcopy=True):
+    def _clone(self, deepcopy=True, base=None):
         """Internal clone helper."""
-        clone = self._clone_base()
+        if not base:
+            base = self._clone_base()
+
         values_to_clone = ("spec", "projection", "skip", "limit",
                            "max_time_ms", "max_await_time_ms", "comment",
                            "max", "min", "ordering", "explain", "hint",
@@ -263,13 +267,13 @@ class Cursor(object):
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
             data = self._deepcopy(data)
-        clone.__dict__.update(data)
-        return clone
+        base.__dict__.update(data)
+        return base
 
     def _clone_base(self):
         """Creates an empty Cursor object for information to be copied into.
         """
-        return Cursor(self.__collection)
+        return self.__class__(self.__collection)
 
     def __die(self, synchronous=False):
         """Closes this cursor.
@@ -940,9 +944,9 @@ class Cursor(object):
         if publish:
             start = datetime.datetime.now()
         try:
-            doc = helpers._unpack_response(response=data,
-                                           cursor_id=self.__id,
-                                           codec_options=self.__codec_options)
+            doc = self._unpack_response(response=data,
+                                        cursor_id=self.__id,
+                                        codec_options=self.__codec_options)
             if from_command:
                 helpers._check_command_response(doc['data'][0])
         except OperationFailure as exc:
@@ -1030,6 +1034,9 @@ class Cursor(object):
         if self.__exhaust and self.__id == 0:
             self.__exhaust_mgr.close()
 
+    def _unpack_response(self, response, cursor_id, codec_options):
+        return helpers._unpack_response(response, cursor_id, codec_options)
+
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
 
@@ -1041,18 +1048,19 @@ class Cursor(object):
             return len(self.__data)
 
         if self.__id is None:  # Query
-            self.__send_message(_Query(self.__query_flags,
-                                       self.__collection.database.name,
-                                       self.__collection.name,
-                                       self.__skip,
-                                       self.__query_spec(),
-                                       self.__projection,
-                                       self.__codec_options,
-                                       self.__read_preference,
-                                       self.__limit,
-                                       self.__batch_size,
-                                       self.__read_concern,
-                                       self.__collation))
+            q = self._query_class(self.__query_flags,
+                                  self.__collection.database.name,
+                                  self.__collection.name,
+                                  self.__skip,
+                                  self.__query_spec(),
+                                  self.__projection,
+                                  self.__codec_options,
+                                  self.__read_preference,
+                                  self.__limit,
+                                  self.__batch_size,
+                                  self.__read_concern,
+                                  self.__collation)
+            self.__send_message(q)
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More
@@ -1067,12 +1075,13 @@ class Cursor(object):
             if self.__exhaust:
                 self.__send_message(None)
             else:
-                self.__send_message(_GetMore(self.__collection.database.name,
-                                             self.__collection.name,
-                                             limit,
-                                             self.__id,
-                                             self.__codec_options,
-                                             self.__max_await_time_ms))
+                g = self._getmore_class(self.__collection.database.name,
+                                        self.__collection.name,
+                                        limit,
+                                        self.__id,
+                                        self.__codec_options,
+                                        self.__max_await_time_ms)
+                self.__send_message(g)
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
@@ -1192,3 +1201,74 @@ class Cursor(object):
                     key = copy.deepcopy(key, memo)
                 y[key] = value
         return y
+
+
+class _RawQuery(_Query):
+    def use_command(self, socket_info, exhaust):
+        # Compatibility checks.
+        super(_RawQuery, self).use_command(socket_info, exhaust)
+
+        return False
+
+    def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
+        # Always pass False for use_cmd.
+        return super(_RawQuery, self).get_message(set_slave_ok, is_mongos,
+                                                  False)
+
+
+class _RawGetMore(_GetMore):
+    def use_command(self, socket_info, exhaust):
+        return False
+
+    def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
+        # Always pass False for use_cmd.
+        return super(_RawGetMore, self).get_message(set_slave_ok, is_mongos,
+                                                    False)
+
+
+class RawBSONCursor(Cursor):
+    """A cursor / iterator over raw batches of BSON data from a query result."""
+
+    _query_class = _RawQuery
+    _getmore_class = _RawGetMore
+
+    def __init__(self, *args, **kwargs):
+        """Create a new cursor / iterator over raw batches of BSON data.
+
+        Should not be called directly by application developers. Pass
+        ``raw_batches=True`` to :meth:`~pymongo.collection.Collection.find`
+        instead.
+
+        This example demonstrates how to work with raw batches, but in practice
+        raw batches should be passed to an external library that can decode
+        BSON into another data type, rather than used with PyMongo's
+        :mod:`bson` module.
+
+          >>> import bson
+          >>> cursor = db.test.find(raw_batches=True)
+          >>> for batch in cursor:
+          ...     print(bson.decode_all(batch))
+
+        .. mongodoc:: cursors
+
+        """
+        if kwargs.get('manipulate'):
+            raise InvalidOperation(
+                "Cannot use RawBSONCursor with manipulate=True")
+
+        kwargs['manipulate'] = False
+        super(RawBSONCursor, self).__init__(*args, **kwargs)
+
+    def _unpack_response(self, response, cursor_id, codec_options):
+        return helpers._raw_response(response, cursor_id)
+
+    def explain(self):
+        """Returns an explain plan record for this cursor.
+
+        .. mongodoc:: explain
+        """
+        clone = self._clone(deepcopy=True, base=Cursor(self.collection))
+        return clone.explain()
+
+    def __getitem__(self, index):
+        raise InvalidOperation("Cannot call __getitem__ on RawBSONCursor")

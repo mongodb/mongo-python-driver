@@ -33,7 +33,10 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
-from pymongo.errors import DocumentTooLarge, InvalidOperation, OperationFailure
+from pymongo.errors import (ConfigurationError,
+                            DocumentTooLarge,
+                            InvalidOperation,
+                            OperationFailure)
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 
@@ -241,6 +244,25 @@ class _Query(object):
         self.collation = collation
         self.name = 'find'
 
+    def use_command(self, sock_info, exhaust):
+        use_find_cmd = False
+        if sock_info.max_wire_version >= 4:
+            if not exhaust:
+                use_find_cmd = True
+        elif not self.read_concern.ok_for_legacy:
+            raise ConfigurationError(
+                'read concern level of %s is not valid '
+                'with a max wire version of %d.'
+                % (self.read_concern.level,
+                   sock_info.max_wire_version))
+
+        if sock_info.max_wire_version < 5 and self.collation is not None:
+            raise ConfigurationError(
+                'Specifying a collation is unsupported with a max wire '
+                'version of %d.' % (sock_info.max_wire_version,))
+
+        return use_find_cmd
+
     def as_command(self):
         """Return a find command document for this query.
 
@@ -307,6 +329,9 @@ class _GetMore(object):
         self.cursor_id = cursor_id
         self.codec_options = codec_options
         self.max_await_time_ms = max_await_time_ms
+
+    def use_command(self, sock_info, exhaust):
+        return sock_info.max_wire_version >= 4 and not exhaust
 
     def as_command(self):
         """Return a getMore command document for this query."""
