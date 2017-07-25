@@ -174,25 +174,25 @@ class ClientUnitTest(unittest.TestCase):
 
         self.assertRaises(TypeError, iterate)
 
-    def test_get_default_database(self):
+    def test_get_database_default(self):
         c = rs_or_single_client("mongodb://%s:%d/foo" % (client_context.host,
                                                          client_context.port),
                                 connect=False)
-        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+        self.assertEqual(Database(c, 'foo'), c.get_database())
 
-    def test_get_default_database_error(self):
+    def test_get_database_default_error(self):
         # URI with no database.
         c = rs_or_single_client("mongodb://%s:%d/" % (client_context.host,
                                                       client_context.port),
                                 connect=False)
-        self.assertRaises(ConfigurationError, c.get_default_database)
+        self.assertRaises(ConfigurationError, c.get_database)
 
-    def test_get_default_database_with_authsource(self):
+    def test_get_database_default_with_authsource(self):
         # Ensure we distinguish database name from authSource.
         uri = "mongodb://%s:%d/foo?authSource=src" % (
             client_context.host, client_context.port)
         c = rs_or_single_client(uri, connect=False)
-        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+        self.assertEqual(Database(c, 'foo'), c.get_database())
 
     def test_primary_read_pref_with_tags(self):
         # No tags allowed with "primary".

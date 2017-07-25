@@ -26,8 +26,8 @@
       .. autoattribute:: write_concern
       .. automethod:: database_names
       .. automethod:: drop_database
-      .. automethod:: get_default_database
       .. automethod:: get_database
       .. automethod:: close_cursor
       .. automethod:: kill_cursors
       .. automethod:: set_cursor_manager
+      .. automethod:: get_default_database

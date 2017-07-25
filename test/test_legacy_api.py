@@ -30,6 +30,7 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
+from pymongo.database import Database
 from pymongo.errors import (ConfigurationError,
                             CursorNotFound,
                             DocumentTooLarge,
@@ -1397,6 +1398,26 @@ class TestLegacy(IntegrationTest):
                 return True
 
         wait_until(raises_cursor_not_found, 'close cursor')
+
+    def test_get_default_database(self):
+        c = rs_or_single_client("mongodb://%s:%d/foo" % (client_context.host,
+                                                         client_context.port),
+                                connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+
+    def test_get_default_database_error(self):
+        # URI with no database.
+        c = rs_or_single_client("mongodb://%s:%d/" % (client_context.host,
+                                                      client_context.port),
+                                connect=False)
+        self.assertRaises(ConfigurationError, c.get_default_database)
+
+    def test_get_default_database_with_authsource(self):
+        # Ensure we distinguish database name from authSource.
+        uri = "mongodb://%s:%d/foo?authSource=src" % (
+            client_context.host, client_context.port)
+        c = rs_or_single_client(uri, connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
 
 if __name__ == "__main__":

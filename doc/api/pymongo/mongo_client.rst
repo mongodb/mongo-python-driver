@@ -37,7 +37,6 @@
       .. autoattribute:: is_locked
       .. automethod:: database_names
       .. automethod:: drop_database
-      .. automethod:: get_default_database
       .. automethod:: get_database
       .. automethod:: server_info
       .. automethod:: close_cursor
@@ -45,3 +44,4 @@
       .. automethod:: set_cursor_manager
       .. automethod:: fsync
       .. automethod:: unlock
+      .. automethod:: get_default_database

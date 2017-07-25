@@ -19,6 +19,10 @@ Changes and Deprecations:
   was deprecated in MongoDB 3.4 and is expected to be removed in MongoDB 3.6.
   Applications should use :meth:`~pymongo.collection.Collection.aggregate`
   with the `$group` pipeline stage instead.
+- Deprecated :meth:`~pymongo.mongo_client.MongoClient.get_default_database`.
+  Applications should use
+  :meth:`~pymongo.mongo_client.MongoClient.get_database` without the `name`
+  parameter instead.
 - If a custom :class:`~bson.codec_options.CodecOptions` is passed to
   :class:`RawBSONDocument`, its `document_class` must be
   :class:`RawBSONDocument`.

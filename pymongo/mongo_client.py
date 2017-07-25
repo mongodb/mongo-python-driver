@@ -1210,22 +1210,29 @@ class MongoClient(common.BaseObject):
                 parse_write_concern_error=True)
 
     def get_default_database(self):
-        """Get the database named in the MongoDB connection URI.
+        """DEPRECATED - Get the database named in the MongoDB connection URI.
 
         >>> uri = 'mongodb://host/my_database'
         >>> client = MongoClient(uri)
         >>> db = client.get_default_database()
         >>> assert db.name == 'my_database'
+        >>> db = client.get_database()
+        >>> assert db.name == 'my_database'
 
         Useful in scripts where you want to choose which database to use
         based only on the URI in a configuration file.
+
+        .. versionchanged:: 3.5
+           Deprecated, use :meth:`get_database` instead.
         """
+        warnings.warn("get_default_database is deprecated. Use get_database "
+                      "instead.", DeprecationWarning, stacklevel=2)
         if self.__default_database_name is None:
             raise ConfigurationError('No default database defined')
 
         return self[self.__default_database_name]
 
-    def get_database(self, name, codec_options=None, read_preference=None,
+    def get_database(self, name=None, codec_options=None, read_preference=None,
                      write_concern=None, read_concern=None):
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
@@ -1246,7 +1253,9 @@ class MongoClient(common.BaseObject):
           Secondary(tag_sets=None)
 
         :Parameters:
-          - `name`: The name of the database - a string.
+          - `name` (optional): The name of the database - a string. If ``None``
+            (the default) the database named in the MongoDB connection URI is
+            returned.
           - `codec_options` (optional): An instance of
             :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
             default) the :attr:`codec_options` of this :class:`MongoClient` is
@@ -1263,7 +1272,16 @@ class MongoClient(common.BaseObject):
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
             default) the :attr:`read_concern` of this :class:`MongoClient` is
             used.
+
+        .. versionchanged:: 3.5
+           The `name` parameter is now optional, defaulting to the database
+           named in the MongoDB connection URI.
         """
+        if name is None:
+            if self.__default_database_name is None:
+                raise ConfigurationError('No default database defined')
+            name = self.__default_database_name
+
         return database.Database(
             self, name, codec_options, read_preference,
             write_concern, read_concern)
