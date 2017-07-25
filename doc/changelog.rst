@@ -22,6 +22,11 @@ Changes and Deprecations:
 - If a custom :class:`~bson.codec_options.CodecOptions` is passed to
   :class:`RawBSONDocument`, its `document_class` must be
   :class:`RawBSONDocument`.
+- :meth:`~pymongo.collection.Collection.list_indexes` no longer raises
+  OperationFailure when the collection (or database) does not exist on
+  MongoDB >= 3.0. Instead, it returns an empty
+  :class:`~pymongo.command_cursor.CommandCursor` to make the behavior
+  consistent across all MongoDB versions.
 
 Changes in Version 3.4
 ----------------------

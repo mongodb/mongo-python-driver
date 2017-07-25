@@ -1700,9 +1700,16 @@ class Collection(common.BaseObject):
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:
-                cursor = self._command(sock_info, cmd, slave_ok,
-                                       ReadPreference.PRIMARY,
-                                       codec_options)["cursor"]
+                try:
+                    cursor = self._command(sock_info, cmd, slave_ok,
+                                           ReadPreference.PRIMARY,
+                                           codec_options)["cursor"]
+                except OperationFailure as exc:
+                    # Ignore NamespaceNotFound errors to match the behavior
+                    # of reading from *.system.indexes.
+                    if exc.code != 26:
+                        raise
+                    cursor = {'id': 0, 'firstBatch': []}
                 return CommandCursor(coll, cursor, sock_info.address)
             else:
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
@@ -1736,7 +1743,7 @@ class Collection(common.BaseObject):
         ``"name"`` keys, which are cleaned. Example output might look
         like this:
 
-        >>> db.test.ensure_index("x", unique=True)
+        >>> db.test.create_index("x", unique=True)
         u'x_1'
         >>> db.test.index_information()
         {u'_id_': {u'key': [(u'_id', 1)]},

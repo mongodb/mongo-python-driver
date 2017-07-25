@@ -344,6 +344,14 @@ class TestCollection(IntegrationTest):
                          SON([("hello", DESCENDING), ("world", ASCENDING)]))
         self.assertEqual(True, index_map["hello_-1_world_1"]["unique"])
 
+        # List indexes on a collection that does not exist.
+        indexes = list(db.does_not_exist.list_indexes())
+        self.assertEqual(len(indexes), 0)
+
+        # List indexes on a database that does not exist.
+        indexes = list(self.client.db_does_not_exist.coll.list_indexes())
+        self.assertEqual(len(indexes), 0)
+
     def test_index_info(self):
         db = self.db
         db.test.drop()
