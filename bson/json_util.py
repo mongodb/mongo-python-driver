@@ -24,6 +24,14 @@ provided, respectively.
 
 .. _Extended JSON: https://github.com/mongodb/specifications/blob/master/source/extended-json.rst
 
+Example usage (deserialization):
+
+.. doctest::
+
+   >>> from bson.json_util import loads
+   >>> loads('[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "80", "$binary": "AQIDBA=="}}]')
+   [{u'foo': [1, 2]}, {u'bar': {u'hello': u'world'}}, {u'code': Code('function x() { return 1; }', {})}, {u'bin': Binary('...', 128)}]
+
 Example usage (serialization):
 
 .. doctest::
@@ -36,15 +44,7 @@ Example usage (serialization):
    ...        {'bin': Binary(b"\x01\x02\x03\x04")}])
    '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }", "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
 
-Example usage (deserialization):
-
-.. doctest::
-
-   >>> from bson.json_util import loads
-   >>> loads('[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "80", "$binary": "AQIDBA=="}}]')
-   [{u'foo': [1, 2]}, {u'bar': {u'hello': u'world'}}, {u'code': Code('function x() { return 1; }', {})}, {u'bin': Binary('...', 128)}]
-
-Example usage (with a :class:`~bson.json_util.JSONOptions` given):
+Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
 
 .. doctest::
 
@@ -56,6 +56,19 @@ Example usage (with a :class:`~bson.json_util.JSONOptions` given):
    ...        {'bin': Binary(b"\x01\x02\x03\x04")}],
    ...       json_options=CANONICAL_JSON_OPTIONS)
    '[{"foo": [{"$numberInt": "1"}, {"$numberInt": "2"}]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
+
+Example usage (with :const:`RELAXED_JSON_OPTIONS`):
+
+.. doctest::
+
+   >>> from bson import Binary, Code
+   >>> from bson.json_util import dumps, RELAXED_JSON_OPTIONS
+   >>> dumps([{'foo': [1, 2]},
+   ...        {'bar': {'hello': 'world'}},
+   ...        {'code': Code("function x() { return 1; }")},
+   ...        {'bin': Binary(b"\x01\x02\x03\x04")}],
+   ...       json_options=RELAXED_JSON_OPTIONS)
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
 
 Alternatively, you can manually pass the `default` to :func:`json.dumps`.
 It won't handle :class:`~bson.binary.Binary` and :class:`~bson.code.Code`
@@ -185,11 +198,24 @@ class JSONMode:
     LEGACY = 0
     """Legacy Extended JSON representation.
 
+    In this mode, :func:`~bson.json_util.dumps` produces PyMongo's legacy
+    non-standard JSON output. Consider using
+    :const:`~bson.json_util.JSONMode.RELAXED` or
+    :const:`~bson.json_util.JSONMode.CANONICAL` instead.
+
     .. versionadded:: 3.5
     """
 
     RELAXED = 1
     """Relaxed Extended JSON representation.
+
+    In this mode, :func:`~bson.json_util.dumps` produces Relaxed Extended JSON,
+    a mostly JSON-like format. Consider using this for things like a web API,
+    where one is sending a document (or a projection of a document) that only
+    uses ordinary JSON type primitives. In particular, the ``int``,
+    :class:`~bson.int64.Int64`, and ``float`` numeric types are represented in
+    the native JSON number format. This output is also the most human readable
+    and is useful for debugging and documentation.
 
     .. seealso:: The specification for Relaxed `Extended JSON`_.
 
@@ -198,6 +224,12 @@ class JSONMode:
 
     CANONICAL = 2
     """Canonical Extended JSON representation.
+
+    In this mode, :func:`~bson.json_util.dumps` produces Canonical Extended
+    JSON, a type preserving format. Consider using this for things like
+    testing, where one has to precisely specify expected types in JSON. In
+    particular, the ``int``, :class:`~bson.int64.Int64`, and ``float`` numeric
+    types are encoded with type wrappers.
 
     .. seealso:: The specification for Canonical `Extended JSON`_.
 
@@ -223,8 +255,8 @@ class JSONOptions(CodecOptions):
       - `strict_uuid`: If ``True``, :class:`uuid.UUID` object are encoded to
         MongoDB Extended JSON's *Strict mode* type `Binary`. Otherwise it
         will be encoded as ``'{"$uuid": "<hex>" }'``. Defaults to ``False``.
-      - `json_mode`: The JSON representation to use for encoding and
-        decoding Extended JSON`. Defaults to :const:`~JSONMode.LEGACY`.
+      - `json_mode`: The :class:`JSONMode` to use when encoding BSON types to
+        Extended JSON. Defaults to :const:`~JSONMode.LEGACY`.
       - `document_class`: BSON documents returned by :func:`loads` will be
         decoded to an instance of this class. Must be a subclass of
         :class:`collections.MutableMapping`. Defaults to :class:`dict`.
@@ -241,10 +273,7 @@ class JSONOptions(CodecOptions):
       - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
       - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
 
-    .. seealso:: The `Extended JSON`_ specification.
-
-    .. seealso:: The documentation for `MongoDB Extended JSON
-       <http://www.mongodb.org/display/DOCS/Mongo+Extended+JSON>`_.
+    .. seealso:: The specification for Relaxed and Canonical `Extended JSON`_.
 
     .. versionadded:: 3.4
 
@@ -307,6 +336,8 @@ class JSONOptions(CodecOptions):
 LEGACY_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.LEGACY)
 """:class:`JSONOptions` for encoding to PyMongo's legacy JSON format.
 
+.. seealso:: The documentation for :const:`bson.json_util.JSONMode.LEGACY`.
+
 .. versionadded:: 3.5
 """
 
@@ -320,13 +351,17 @@ The same as :const:`LEGACY_JSON_OPTIONS`. This will change to
 """
 
 CANONICAL_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.CANONICAL)
-""":class:`JSONOptions` for Canonical `Extended JSON`_.
+""":class:`JSONOptions` for Canonical Extended JSON.
+
+.. seealso:: The documentation for :const:`bson.json_util.JSONMode.CANONICAL`.
 
 .. versionadded:: 3.5
 """
 
 RELAXED_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.RELAXED)
-""":class:`JSONOptions` for Relaxed `Extended JSON`_.
+""":class:`JSONOptions` for Relaxed Extended JSON.
+
+.. seealso:: The documentation for :const:`bson.json_util.JSONMode.RELAXED`.
 
 .. versionadded:: 3.5
 """
@@ -335,8 +370,8 @@ STRICT_JSON_OPTIONS = JSONOptions(
     strict_number_long=True,
     datetime_representation=DatetimeRepresentation.ISO8601,
     strict_uuid=True)
-"""DEPRECATED :class:`JSONOptions` for MongoDB Extended JSON's *Strict mode*
-encoding.
+"""**DEPRECATED** - :class:`JSONOptions` for MongoDB Extended JSON's *Strict
+mode* encoding.
 
 .. versionadded:: 3.4
 
