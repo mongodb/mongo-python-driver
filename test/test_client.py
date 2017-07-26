@@ -203,6 +203,11 @@ class ClientUnitTest(unittest.TestCase):
             MongoClient('mongodb://host/?'
                         'readpreference=primary&readpreferencetags=dc:east')
 
+    def test_readpreference(self):
+        c = rs_or_single_client("mongodb://host", connect=False,
+                                readpreference=ReadPreference.NEAREST.mongos_mode)
+        self.assertEqual(c.read_preference, ReadPreference.NEAREST)
+
     def test_metadata(self):
         metadata = _METADATA.copy()
         metadata['application'] = {'name': 'foobar'}
