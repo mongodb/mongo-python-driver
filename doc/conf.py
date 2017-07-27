@@ -30,7 +30,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'PyMongo'
-copyright = u'2008-{0}'.format(datetime.date.today().year)
+copyright = u'MongoDB, Inc. 2008-{0}. MongoDB, Mongo, and the leaf logo are registered trademarks of MongoDB, Inc'.format(datetime.date.today().year)
+html_show_sphinx = False
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
