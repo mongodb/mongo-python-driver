@@ -9,6 +9,8 @@ sys.path[0:0] = [os.path.abspath('..')]
 
 import pymongo
 
+import datetime
+
 # -- General configuration -----------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
@@ -28,7 +30,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'PyMongo'
-copyright = u'2008 - 2015, MongoDB, Inc.'
+copyright = u'2008-{0}'.format(datetime.date.today().year)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -82,7 +84,10 @@ db = client.doctest_test
 # Theme gratefully vendored from CPython source.
 html_theme = "pydoctheme"
 html_theme_path = ["."]
-html_theme_options = {'collapsiblesidebar': True}
+html_theme_options = {
+    'collapsiblesidebar': True,
+    'googletag': False
+}
 
 # Additional static files.
 html_static_path = ['static']
