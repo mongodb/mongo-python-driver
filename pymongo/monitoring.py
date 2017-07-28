@@ -515,12 +515,16 @@ class ServerOpeningEvent(_ServerEvent):
     .. versionadded:: 3.3
     """
 
+    __slots__ = ()
+
 
 class ServerClosedEvent(_ServerEvent):
     """Published when server is closed.
 
     .. versionadded:: 3.3
     """
+
+    __slots__ = ()
 
 
 class TopologyEvent(object):
@@ -569,12 +573,16 @@ class TopologyOpenedEvent(TopologyEvent):
     .. versionadded:: 3.3
     """
 
+    __slots__ = ()
+
 
 class TopologyClosedEvent(TopologyEvent):
     """Published when the topology is closed.
 
     .. versionadded:: 3.3
     """
+
+    __slots__ = ()
 
 
 class _ServerHeartbeatEvent(object):
@@ -597,6 +605,8 @@ class ServerHeartbeatStartedEvent(_ServerHeartbeatEvent):
 
     .. versionadded:: 3.3
     """
+
+    __slots__ = ()
 
 
 class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):

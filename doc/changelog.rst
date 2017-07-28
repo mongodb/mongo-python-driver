@@ -12,6 +12,11 @@ Highlights:
 - Username and password can be passed to
   :class:`~pymongo.mongo_client.MongoClient` as keyword arguments. Before, the
   only way to pass them was in the URI.
+- Increase the performance of
+  :meth:`~pymongo.collection.Collection.bulk_write` by reducing the memory
+  overhead of :class:`~pymongo.operations.InsertOne`,
+  :class:`~pymongo.operations.DeleteOne`, and
+  :class:`~pymongo.operations.DeleteMany`.
 
 Changes and Deprecations:
 

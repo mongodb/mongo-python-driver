@@ -20,6 +20,8 @@ from pymongo.errors import InvalidOperation
 class _WriteResult(object):
     """Base class for write result classes."""
 
+    __slots__ = ("__acknowledged",)
+
     def __init__(self, acknowledged):
         self.__acknowledged = acknowledged
 

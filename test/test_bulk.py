@@ -1216,6 +1216,16 @@ class TestBulkNoResults(BulkTestBase):
         self.assertRaises(InvalidOperation, lambda: result.upserted_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_ids)
 
+    def test_bulk_write_invalid_arguments(self):
+        # The requests argument must be a list.
+        generator = (InsertOne({}) for _ in range(10))
+        with self.assertRaises(TypeError):
+            self.coll.bulk_write(generator)
+
+        # Document is not wrapped in a bulk write operation.
+        with self.assertRaises(TypeError):
+            self.coll.bulk_write([{}])
+
 
 class TestBulkAuthorization(BulkTestBase):
 

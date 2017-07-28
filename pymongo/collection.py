@@ -36,7 +36,7 @@ from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.helpers import _UNICODE_REPLACE_CODEC_OPTIONS
-from pymongo.operations import _WriteOp, IndexModel
+from pymongo.operations import IndexModel
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (BulkWriteResult,
@@ -455,9 +455,10 @@ class Collection(common.BaseObject):
 
         blk = _Bulk(self, ordered, bypass_document_validation)
         for request in requests:
-            if not isinstance(request, _WriteOp):
+            try:
+                request._add_to_bulk(blk)
+            except AttributeError:
                 raise TypeError("%r is not a valid request" % (request,))
-            request._add_to_bulk(blk)
 
         bulk_api_result = blk.execute(self.write_concern.document)
         if bulk_api_result is not None:

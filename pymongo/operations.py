@@ -19,32 +19,10 @@ from pymongo.collation import validate_collation_or_none
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
 
 
-class _WriteOp(object):
-    """Private base class for all write operations."""
-
-    __slots__ = ("_filter", "_doc", "_upsert")
-
-    def __init__(self, filter=None, doc=None, upsert=None):
-        if filter is not None:
-            validate_is_mapping("filter", filter)
-        if upsert is not None:
-            validate_boolean("upsert", upsert)
-        self._filter = filter
-        self._doc = doc
-        self._upsert = upsert
-
-    def __eq__(self, other):
-        if type(other) == type(self):
-            return (other._filter, other._doc, other._upsert) == \
-                   (self._filter, self._doc, self._upsert)
-        return NotImplemented
-
-    def __ne__(self, other):
-        return not self == other
-
-
-class InsertOne(_WriteOp):
+class InsertOne(object):
     """Represents an insert_one operation."""
+
+    __slots__ = ("_doc",)
 
     def __init__(self, document):
         """Create an InsertOne instance.
@@ -55,7 +33,7 @@ class InsertOne(_WriteOp):
           - `document`: The document to insert. If the document is missing an
             _id field one will be added.
         """
-        super(InsertOne, self).__init__(doc=document)
+        self._doc = document
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -64,9 +42,19 @@ class InsertOne(_WriteOp):
     def __repr__(self):
         return "InsertOne(%r)" % (self._doc,)
 
+    def __eq__(self, other):
+        if type(other) == type(self):
+            return other._doc == self._doc
+        return NotImplemented
 
-class DeleteOne(_WriteOp):
+    def __ne__(self, other):
+        return not self == other
+
+
+class DeleteOne(object):
     """Represents a delete_one operation."""
+
+    __slots__ = ("_filter",)
 
     def __init__(self, filter):
         """Create a DeleteOne instance.
@@ -76,7 +64,9 @@ class DeleteOne(_WriteOp):
         :Parameters:
           - `filter`: A query that matches the document to delete.
         """
-        super(DeleteOne, self).__init__(filter)
+        if filter is not None:
+            validate_is_mapping("filter", filter)
+        self._filter = filter
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -85,9 +75,19 @@ class DeleteOne(_WriteOp):
     def __repr__(self):
         return "DeleteOne(%r)" % (self._filter,)
 
+    def __eq__(self, other):
+        if type(other) == type(self):
+            return other._filter == self._filter
+        return NotImplemented
 
-class DeleteMany(_WriteOp):
+    def __ne__(self, other):
+        return not self == other
+
+
+class DeleteMany(object):
     """Represents a delete_many operation."""
+
+    __slots__ = ("_filter",)
 
     def __init__(self, filter):
         """Create a DeleteMany instance.
@@ -97,7 +97,9 @@ class DeleteMany(_WriteOp):
         :Parameters:
           - `filter`: A query that matches the documents to delete.
         """
-        super(DeleteMany, self).__init__(filter)
+        if filter is not None:
+            validate_is_mapping("filter", filter)
+        self._filter = filter
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -106,9 +108,47 @@ class DeleteMany(_WriteOp):
     def __repr__(self):
         return "DeleteMany(%r)" % (self._filter,)
 
+    def __eq__(self, other):
+        if type(other) == type(self):
+            return other._filter == self._filter
+        return NotImplemented
 
-class ReplaceOne(_WriteOp):
+    def __ne__(self, other):
+        return not self == other
+
+
+class _UpdateOp(object):
+    """Private base class for update operations."""
+
+    __slots__ = ("_filter", "_doc", "_upsert")
+
+    def __init__(self, filter, doc, upsert):
+        if filter is not None:
+            validate_is_mapping("filter", filter)
+        if upsert is not None:
+            validate_boolean("upsert", upsert)
+        self._filter = filter
+        self._doc = doc
+        self._upsert = upsert
+
+    def __eq__(self, other):
+        if type(other) == type(self):
+            return ((other._filter, other._doc, other._upsert) ==
+                    (self._filter, self._doc, self._upsert))
+        return NotImplemented
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return "%s(%r, %r, %r)" % (
+            self.__class__.__name__, self._filter, self._doc, self._upsert)
+
+
+class ReplaceOne(_UpdateOp):
     """Represents a replace_one operation."""
+
+    __slots__ = ()
 
     def __init__(self, filter, replacement, upsert=False):
         """Create a ReplaceOne instance.
@@ -127,14 +167,11 @@ class ReplaceOne(_WriteOp):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_replace(self._filter, self._doc, self._upsert)
 
-    def __repr__(self):
-        return "ReplaceOne(%r, %r, %r)" % (self._filter,
-                                           self._doc,
-                                           self._upsert)
 
-
-class UpdateOne(_WriteOp):
+class UpdateOne(_UpdateOp):
     """Represents an update_one operation."""
+
+    __slots__ = ()
 
     def __init__(self, filter, update, upsert=False):
         """Represents an update_one operation.
@@ -153,14 +190,11 @@ class UpdateOne(_WriteOp):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_update(self._filter, self._doc, False, self._upsert)
 
-    def __repr__(self):
-        return "UpdateOne(%r, %r, %r)" % (self._filter,
-                                          self._doc,
-                                          self._upsert)
 
-
-class UpdateMany(_WriteOp):
+class UpdateMany(_UpdateOp):
     """Represents an update_many operation."""
+
+    __slots__ = ()
 
     def __init__(self, filter, update, upsert=False):
         """Create an UpdateMany instance.
@@ -178,11 +212,6 @@ class UpdateMany(_WriteOp):
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_update(self._filter, self._doc, True, self._upsert)
-
-    def __repr__(self):
-        return "UpdateMany(%r, %r, %r)" % (self._filter,
-                                           self._doc,
-                                           self._upsert)
 
 
 class IndexModel(object):

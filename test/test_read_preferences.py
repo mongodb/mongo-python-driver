@@ -63,6 +63,7 @@ class TestSelections(unittest.TestCase):
 
 class TestReadPreferenceObjects(unittest.TestCase):
     prefs = [Primary(),
+             PrimaryPreferred(),
              Secondary(),
              Nearest(tag_sets=[{'a': 1}, {'b': 2}]),
              SecondaryPreferred(max_staleness=30)]
@@ -74,6 +75,10 @@ class TestReadPreferenceObjects(unittest.TestCase):
     def test_copy(self):
         for pref in self.prefs:
             self.assertEqual(pref, copy.copy(pref))
+
+    def test_deepcopy(self):
+        for pref in self.prefs:
+            self.assertEqual(pref, copy.deepcopy(pref))
 
 
 class TestReadPreferencesBase(TestReplicaSetClientBase):

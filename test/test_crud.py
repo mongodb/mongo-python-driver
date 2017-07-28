@@ -55,16 +55,17 @@ def check_result(expected_result, result):
 
     elif isinstance(result, _WriteResult):
         for res in expected_result:
-            # Only BulkWriteResult has upserted_count.
-            if (res == "upsertedCount"
-                    and not isinstance(result, BulkWriteResult)):
-                # Patch on an upserted_count field.
-                if result.upserted_id is not None:
-                    result.upserted_count = 1
-                else:
-                    result.upserted_count = 0
             prop = camel_to_snake(res)
-            if not getattr(result, prop) == expected_result[res]:
+            # SPEC-869: Only BulkWriteResult has upserted_count.
+            if (prop == "upserted_count" and
+                    not isinstance(result, BulkWriteResult)):
+                if result.upserted_id is not None:
+                    upserted_count = 1
+                else:
+                    upserted_count = 0
+                if upserted_count != expected_result[res]:
+                    return False
+            elif getattr(result, prop) != expected_result[res]:
                 return False
         return True
     else:

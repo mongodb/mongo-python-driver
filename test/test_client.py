@@ -1065,10 +1065,11 @@ class TestClient(IntegrationTest):
                 pass
 
         old_init = ServerHeartbeatStartedEvent.__init__
+        heartbeat_times = []
 
         def init(self, *args):
             old_init(self, *args)
-            self.time = time.time()
+            heartbeat_times.append(time.time())
 
         try:
             ServerHeartbeatStartedEvent.__init__ = init
@@ -1079,12 +1080,10 @@ class TestClient(IntegrationTest):
             wait_until(lambda: len(listener.results) >= 2,
                        "record two ServerHeartbeatStartedEvents")
 
-            events = listener.results
-
             # Default heartbeatFrequencyMS is 10 sec. Check the interval was
             # closer to 0.5 sec with heartbeatFrequencyMS configured.
             self.assertAlmostEqual(
-                events[1].time - events[0].time, 0.5, delta=2)
+                heartbeat_times[1] - heartbeat_times[0], 0.5, delta=2)
 
             client.close()
         finally:
