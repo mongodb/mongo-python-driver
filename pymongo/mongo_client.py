@@ -259,6 +259,30 @@ class MongoClient(common.BaseObject):
             is set, it must be a positive integer greater than or equal to
             90 seconds.
 
+          | **Authentication:**
+
+          - `username`: A string.
+          - `password`: A string.
+
+            Although username and password must be percent-escaped in a MongoDB
+            URI, they must not be percent-escaped when passed as parameters. In
+            this example, both the space and slash special characters are passed
+            as-is::
+
+              MongoClient(username="user name", password="pass/word")
+
+          - `authSource`: The database to authenticate on. Defaults to the
+            database specified in the URI, if provided, or to "admin".
+          - `authMechanism`: See :data:`~pymongo.auth.MECHANISMS` for options.
+            By default, use SCRAM-SHA-1 with MongoDB 3.0 and later, MONGODB-CR
+            (MongoDB Challenge Response protocol) for older servers.
+          - `authMechanismProperties`: Used to specify authentication mechanism
+            specific options. To specify the service name for GSSAPI
+            authentication pass authMechanismProperties='SERVICE_NAME:<service
+            name>'
+
+          .. seealso:: :doc:`/examples/authentication`
+
           | **SSL configuration:**
 
           - `ssl`: If ``True``, create the connection to the server using SSL.
@@ -311,6 +335,11 @@ class MongoClient(common.BaseObject):
             level is left unspecified, the server default will be used.
 
         .. mongodoc:: connections
+
+        .. versionchanged:: 3.5
+           Add ``username`` and ``password`` options. Document the
+           ``authSource``, ``authMechanism``, and ``authMechanismProperties ``
+           options.
 
         .. versionchanged:: 3.0
            :class:`~pymongo.mongo_client.MongoClient` is now the one and only
@@ -421,6 +450,9 @@ class MongoClient(common.BaseObject):
         keyword_opts = dict(common.validate(k, v)
                             for k, v in keyword_opts.items())
         opts.update(keyword_opts)
+        # Username and password passed as kwargs override user info in URI.
+        username = opts.get("username", username)
+        password = opts.get("password", password)
         self.__options = options = ClientOptions(
             username, password, dbase, opts)
 

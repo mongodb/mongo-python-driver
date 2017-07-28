@@ -9,6 +9,9 @@ Highlights:
 - Increase the performance of
   :meth:`~pymongo.mongo_client.MongoClient.database_names` by using the
   `nameOnly` option for listDatabases when available.
+- Username and password can be passed to
+  :class:`~pymongo.mongo_client.MongoClient` as keyword arguments. Before, the
+  only way to pass them was in the URI.
 
 Changes and Deprecations:
 

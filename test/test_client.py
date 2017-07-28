@@ -593,6 +593,16 @@ class TestClient(IntegrationTest):
                           bad_client.pymongo_test.test.find_one)
 
     @client_context.require_auth
+    def test_username_and_password(self):
+        self.client.admin.add_user("ad min", "pa/ss", roles=["root"])
+        self.addCleanup(self.client.admin.remove_user, "ad min")
+
+        rs_or_single_client(username="ad min", password="pa/ss").server_info()
+
+        with self.assertRaises(OperationFailure):
+            rs_or_single_client(username="ad min", password="foo").server_info()
+
+    @client_context.require_auth
     def test_multiple_logins(self):
         self.client.pymongo_test.add_user('user1', 'pass', roles=['readWrite'])
         self.client.pymongo_test.add_user('user2', 'pass', roles=['readWrite'])
