@@ -998,7 +998,8 @@ class MongoClient(common.BaseObject):
         options.extend(
             option_repr(key, self.__options._options[key])
             for key in self.__options._options
-            if key not in set(self._constructor_args))
+            if key not in set(self._constructor_args)
+            and key != 'username' and key != 'password')
         return ', '.join(options)
 
     def __repr__(self):

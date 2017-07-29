@@ -597,7 +597,16 @@ class TestClient(IntegrationTest):
         self.client.admin.add_user("ad min", "pa/ss", roles=["root"])
         self.addCleanup(self.client.admin.remove_user, "ad min")
 
-        rs_or_single_client(username="ad min", password="pa/ss").server_info()
+        c = rs_or_single_client(username="ad min", password="pa/ss")
+
+        # Username and password aren't in strings that will likely be logged.
+        self.assertNotIn("ad min", repr(c))
+        self.assertNotIn("ad min", str(c))
+        self.assertNotIn("pa/ss", repr(c))
+        self.assertNotIn("pa/ss", str(c))
+
+        # Auth succeeds.
+        c.server_info()
 
         with self.assertRaises(OperationFailure):
             rs_or_single_client(username="ad min", password="foo").server_info()
