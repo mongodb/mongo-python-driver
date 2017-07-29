@@ -160,39 +160,61 @@ class Database(common.BaseObject):
 
     @property
     def incoming_manipulators(self):
-        """All incoming SON manipulators installed on this instance.
+        """**DEPRECATED**: All incoming SON manipulators.
+
+        .. versionchanged:: 3.5
+          Deprecated.
 
         .. versionadded:: 2.0
         """
+        warnings.warn("Database.incoming_manipulators() is deprecated",
+                      DeprecationWarning, stacklevel=2)
+
         return [manipulator.__class__.__name__
                 for manipulator in self.__incoming_manipulators]
 
     @property
     def incoming_copying_manipulators(self):
-        """All incoming SON copying manipulators installed on this instance.
+        """**DEPRECATED**: All incoming SON copying manipulators.
+
+        .. versionchanged:: 3.5
+          Deprecated.
 
         .. versionadded:: 2.0
         """
+        warnings.warn("Database.incoming_copying_manipulators() is deprecated",
+                      DeprecationWarning, stacklevel=2)
+
         return [manipulator.__class__.__name__
                 for manipulator in self.__incoming_copying_manipulators]
 
     @property
     def outgoing_manipulators(self):
-        """List all outgoing SON manipulators
-        installed on this instance.
+        """**DEPRECATED**: All outgoing SON manipulators.
+
+        .. versionchanged:: 3.5
+          Deprecated.
 
         .. versionadded:: 2.0
         """
+        warnings.warn("Database.outgoing_manipulators() is deprecated",
+                      DeprecationWarning, stacklevel=2)
+
         return [manipulator.__class__.__name__
                 for manipulator in self.__outgoing_manipulators]
 
     @property
     def outgoing_copying_manipulators(self):
-        """List all outgoing SON copying manipulators
-        installed on this instance.
+        """**DEPRECATED**: All outgoing SON copying manipulators.
+
+        .. versionchanged:: 3.5
+          Deprecated.
 
         .. versionadded:: 2.0
         """
+        warnings.warn("Database.outgoing_copying_manipulators() is deprecated",
+                      DeprecationWarning, stacklevel=2)
+
         return [manipulator.__class__.__name__
                 for manipulator in self.__outgoing_copying_manipulators]
 

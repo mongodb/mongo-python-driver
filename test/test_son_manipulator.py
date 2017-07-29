@@ -16,6 +16,8 @@
 """
 
 import sys
+import warnings
+
 sys.path[0:0] = [""]
 
 from bson.son import SON
@@ -31,9 +33,18 @@ class TestSONManipulator(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.warn_context = warnings.catch_warnings()
+        cls.warn_context.__enter__()
+        warnings.simplefilter("ignore", DeprecationWarning)
+
         client = MongoClient(
             client_context.host, client_context.port, connect=False)
         cls.db = client.pymongo_test
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.warn_context.__exit__()
+        cls.warn_context = None
 
     def test_basic(self):
         manip = SONManipulator()

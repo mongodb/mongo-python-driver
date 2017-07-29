@@ -12,11 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Manipulators that can edit SON objects as they enter and exit a database.
+"""**DEPRECATED**: Manipulators that can edit SON objects as they enter and exit
+a database.
 
-New manipulators should be defined as subclasses of SONManipulator and can be
-installed on a database by calling
-`pymongo.database.Database.add_son_manipulator`."""
+The :class:`~pymongo.son_manipulator.SONManipulator` API has limitations as a
+technique for transforming your data. Instead, it is more flexible and
+straightforward to transform outgoing documents in your own code before passing
+them to PyMongo, and transform incoming documents after receiving them from
+PyMongo. SON Manipulators will be removed from PyMongo in 4.0.
+
+PyMongo does **not** apply SON manipulators to documents passed to
+the modern methods :meth:`~pymongo.collection.Collection.bulk_write`,
+:meth:`~pymongo.collection.Collection.insert_one`,
+:meth:`~pymongo.collection.Collection.insert_many`,
+:meth:`~pymongo.collection.Collection.update_one`, or
+:meth:`~pymongo.collection.Collection.update_many`. SON manipulators are
+**not** applied to documents returned by the modern methods
+:meth:`~pymongo.collection.Collection.find_one_and_delete`,
+:meth:`~pymongo.collection.Collection.find_one_and_replace`, and
+:meth:`~pymongo.collection.Collection.find_one_and_update`.
+"""
 
 import collections
 
@@ -175,9 +190,3 @@ class AutoReference(SONManipulator):
             return object
 
         return transform_dict(SON(son))
-
-# TODO make a generic translator for custom types. Take encode, decode,
-# should_encode and should_decode functions and just encode and decode where
-# necessary. See examples/custom_type.py for where this would be useful.
-# Alternatively it could take a should_encode, to_binary, from_binary and
-# binary subtype.

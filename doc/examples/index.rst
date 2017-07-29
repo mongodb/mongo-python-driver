@@ -21,7 +21,6 @@ MongoDB, you can start it like so:
    collations
    copydb
    bulk
-   custom_type
    datetimes
    geo
    gevent

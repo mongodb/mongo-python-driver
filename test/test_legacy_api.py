@@ -47,7 +47,8 @@ from pymongo.son_manipulator import (AutoReference,
 from pymongo.write_concern import WriteConcern
 from test import client_context, qcheck, unittest, SkipTest
 from test.test_client import IntegrationTest
-from test.utils import (joinall,
+from test.utils import (ignore_deprecations,
+                        joinall,
                         rs_or_single_client,
                         wait_until)
 
@@ -1196,7 +1197,8 @@ class TestLegacy(IntegrationTest):
         for name in db.incoming_copying_manipulators:
             self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
         self.assertEqual([], db.outgoing_manipulators)
-        self.assertEqual(['AutoReference'], db.outgoing_copying_manipulators)
+        self.assertEqual(['AutoReference'],
+                         db.outgoing_copying_manipulators)
 
     def test_ensure_index(self):
         db = self.db
