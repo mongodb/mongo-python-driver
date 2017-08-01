@@ -239,6 +239,7 @@ class ClientContext(object):
                                        port,
                                        username=db_user,
                                        password=db_pwd,
+                                       replicaSet=self.replica_set_name,
                                        **self.ssl_client_options)
 
                 # May not have this if OperationFailure was raised earlier.
