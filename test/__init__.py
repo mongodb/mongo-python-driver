@@ -146,6 +146,14 @@ class client_knobs(object):
         self.disable()
 
 
+def _all_users(db):
+    if Version.from_client(db.client).at_least(2, 5, 3, -1):
+        return set(u['user']
+                   for u in db.command('usersInfo').get('users', []))
+    else:
+        return set(u['user'] for u in db.system.users.find())
+
+
 class ClientContext(object):
 
     def __init__(self):
@@ -226,7 +234,12 @@ class ClientContext(object):
                     if self.version.at_least(2, 5, 3, -1):
                         roles = {'roles': ['root']}
                     self.client.admin.add_user(db_user, db_pwd, **roles)
-                    self.client.admin.authenticate(db_user, db_pwd)
+
+                self.client = _connect(host,
+                                       port,
+                                       username=db_user,
+                                       password=db_pwd,
+                                       **self.ssl_client_options)
 
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
@@ -270,9 +283,16 @@ class ClientContext(object):
         return bool(len(self.client.secondaries))
 
     def _check_user_provided(self):
+        """Return True if db_user/db_password is already an admin user."""
+        client = pymongo.MongoClient(
+            host, port,
+            username=db_user,
+            password=db_pwd,
+            serverSelectionTimeoutMS=100,
+            **self.ssl_client_options)
+
         try:
-            self.client.admin.authenticate(db_user, db_pwd)
-            return True
+            return db_user in _all_users(client.admin)
         except pymongo.errors.OperationFailure as e:
             msg = e.details.get('errmsg', '')
             if e.code == 18 or 'auth fails' in msg:

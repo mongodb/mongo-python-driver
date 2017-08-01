@@ -28,15 +28,21 @@ SCRAM-SHA-1 (RFC 5802)
 .. versionadded:: 2.8
 
 SCRAM-SHA-1 is the default authentication mechanism supported by a cluster
-configured for authentication with MongoDB 3.0 or later. Authentication is
-per-database and credentials can be specified through the MongoDB URI or
-passed to the :meth:`~pymongo.database.Database.authenticate` method::
+configured for authentication with MongoDB 3.0 or later. Authentication
+requires a username, a password, and a database name. The default database
+name is "admin", this can be overidden with the ``authSource`` option.
+Credentials can be specified as arguments to
+:class:`~pymongo.mongo_client.MongoClient`::
 
   >>> from pymongo import MongoClient
-  >>> client = MongoClient('example.com')
-  >>> client.the_database.authenticate('user', 'password', mechanism='SCRAM-SHA-1')
-  True
-  >>>
+  >>> client = MongoClient('example.com',
+  ...                      user='user',
+  ...                      password='password',
+  ...                      authSource='the_database',
+  ...                      authMechanism='SCRAM-SHA-1')
+
+Or through the MongoDB URI::
+
   >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=SCRAM-SHA-1"
   >>> client = MongoClient(uri)
 
@@ -52,9 +58,10 @@ Before MongoDB 3.0 the default authentication mechanism was MONGODB-CR,
 the "MongoDB Challenge-Response" protocol::
 
   >>> from pymongo import MongoClient
-  >>> client = MongoClient('example.com')
-  >>> client.the_database.authenticate('user', 'password', mechanism='MONGODB-CR')
-  True
+  >>> client = MongoClient('example.com',
+  ...                      user='user',
+  ...                      password='password',
+  ...                      authMechanism='MONGODB-CR')
   >>>
   >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=MONGODB-CR"
   >>> client = MongoClient(uri)
@@ -66,24 +73,22 @@ If no mechanism is specified, PyMongo automatically uses MONGODB-CR when
 connected to a pre-3.0 version of MongoDB, and SCRAM-SHA-1 when connected to
 a recent version.
 
-Delegated Authentication
-------------------------
-.. versionadded: 2.5
+Default Database and "authSource"
+---------------------------------
 
-If your user is defined in one database with a role that gives it
-authorization on a different database use the `source` option to specify
-the database in which the user is defined::
+You can specify both a default database and the authentication database in the
+URI::
 
-  >>> from pymongo import MongoClient
-  >>> client = MongoClient('example.com')
-  >>> db = client.the_database
-  >>> db.authenticate('user', 'password', source='source_database')
-  True
+    >>> uri = "mongodb://user:password@example.com/default_db?authSource=admin"
+    >>> client = MongoClient(uri)
 
-Or the `authSource` URI option::
+PyMongo will authenticate on the "admin" database, but the default database
+will be "default_db"::
 
-  >>> uri = "mongodb://user:password@example.com/?authSource=source_database"
-  >>> db = MongoClient(uri).the_database
+    >>> # get_database with no "name" argument chooses the DB from the URI
+    >>> db = MongoClient(uri).get_database()
+    >>> print(db.name)
+    'default_db'
 
 MONGODB-X509
 ------------
@@ -98,14 +103,12 @@ and newer::
   >>> import ssl
   >>> from pymongo import MongoClient
   >>> client = MongoClient('example.com',
+  ...                      username="<X.509 derived username>"
+  ...                      authMechanism="MONGODB-X509",
   ...                      ssl=True,
   ...                      ssl_certfile='/path/to/client.pem',
   ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
   ...                      ssl_ca_certs='/path/to/ca.pem')
-  >>> client.the_database.authenticate("<X.509 derived username>",
-  ...                                  mechanism='MONGODB-X509')
-  True
-  >>>
 
 MONGODB-X509 authenticates against the $external virtual database, so you
 do not have to specify a database in the URI::
@@ -156,27 +159,12 @@ URI::
   >>> client = MongoClient(uri)
   >>>
 
-or using :meth:`~pymongo.database.Database.authenticate`::
-
-  >>> from pymongo import MongoClient
-  >>> client = MongoClient('example.com')
-  >>> db = client.test
-  >>> db.authenticate('mongodbuser@EXAMPLE.COM', mechanism='GSSAPI')
-  True
-
 The default service name used by MongoDB and PyMongo is `mongodb`. You can
 specify a custom service name with the ``authMechanismProperties`` option::
 
   >>> from pymongo import MongoClient
   >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:myservicename"
   >>> client = MongoClient(uri)
-  >>>
-  >>> client = MongoClient('example.com')
-  >>> db = client.test
-  >>> db.authenticate(
-  ...     'mongodbuser@EXAMPLE.COM', mechanism='GSSAPI',
-  ...     authMechanismProperties='SERVICE_NAME:myservicename')
-  True
 
 Windows (SSPI)
 ~~~~~~~~~~~~~~
@@ -215,13 +203,6 @@ to an LDAP server. Using the PLAIN mechanism is very similar to MONGODB-CR.
 These examples use the $external virtual database for LDAP support::
 
   >>> from pymongo import MongoClient
-  >>> client = MongoClient('example.com')
-  >>> client.the_database.authenticate('user',
-  ...                                  'password',
-  ...                                  source='$external',
-  ...                                  mechanism='PLAIN')
-  True
-  >>>
   >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN&authSource=$external"
   >>> client = MongoClient(uri)
   >>>
@@ -232,17 +213,6 @@ the SASL PLAIN mechanism::
 
   >>> import ssl
   >>> from pymongo import MongoClient
-  >>> client = MongoClient('example.com',
-  ...                      ssl=True,
-  ...                      ssl_certfile='/path/to/client.pem',
-  ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
-  ...                      ssl_ca_certs='/path/to/ca.pem')
-  >>> client.the_database.authenticate('user',
-  ...                                  'password',
-  ...                                  source='$external',
-  ...                                  mechanism='PLAIN')
-  True
-  >>>
   >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN&authSource=$external"
   >>> client = MongoClient(uri,
   ...                      ssl=True,

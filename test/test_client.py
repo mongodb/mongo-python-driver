@@ -67,6 +67,7 @@ from test.utils import (assertRaisesExactly,
                         connected,
                         delay,
                         get_pool,
+                        ignore_deprecations,
                         is_greenthread_patched,
                         lazy_client_trial,
                         NTHREADS,
@@ -611,6 +612,7 @@ class TestClient(IntegrationTest):
             rs_or_single_client(username="ad min", password="foo").server_info()
 
     @client_context.require_auth
+    @ignore_deprecations
     def test_multiple_logins(self):
         self.client.pymongo_test.add_user('user1', 'pass', roles=['readWrite'])
         self.client.pymongo_test.add_user('user2', 'pass', roles=['readWrite'])

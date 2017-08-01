@@ -507,28 +507,28 @@ class TestSSL(IntegrationTest):
             {'role': 'readWriteAnyDatabase', 'db': 'admin'},
             {'role': 'userAdminAnyDatabase', 'db': 'admin'}])
 
-        ssl_client.admin.logout()
+        noauth = MongoClient(
+            client_context.pair,
+            ssl=True,
+            ssl_cert_reqs=ssl.CERT_NONE,
+            ssl_certfile=CLIENT_PEM)
 
-        coll = ssl_client.pymongo_test.test
-        self.assertRaises(OperationFailure, coll.count)
+        self.assertRaises(OperationFailure, noauth.pymongo_test.test.count)
+
+        auth = MongoClient(
+            client_context.pair,
+            authMechanism='MONGODB-X509',
+            ssl=True,
+            ssl_cert_reqs=ssl.CERT_NONE,
+            ssl_certfile=CLIENT_PEM)
 
         if client_context.version.at_least(3, 3, 12):
-            self.assertTrue(
-                ssl_client.admin.authenticate(mechanism='MONGODB-X509'))
             # No error
-            coll.find_one()
-            # MONGODB_X509_USERNAME and None aren't the same user, so we
-            # have to log out before continuing.
-            ssl_client.admin.logout()
+            auth.pymongo_test.test.find_one()
         else:
             # Should require a username
             with self.assertRaises(ConfigurationError):
-                ssl_client.admin.authenticate(mechanism='MONGODB-X509')
-
-        self.assertTrue(ssl_client.admin.authenticate(
-            MONGODB_X509_USERNAME, mechanism='MONGODB-X509'))
-        # No error
-        coll.find_one()
+                auth.pymongo_test.test.find_one()
 
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
@@ -560,12 +560,20 @@ class TestSSL(IntegrationTest):
 
         bad_client = MongoClient(
             uri, ssl=True, ssl_cert_reqs="CERT_NONE", ssl_certfile=CLIENT_PEM)
+
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
 
-        self.assertRaises(OperationFailure, ssl_client.admin.authenticate,
-                          "not the username",
-                          mechanism="MONGODB-X509")
+        bad_client = MongoClient(
+                client_context.pair,
+                username="not the username",
+                authMechanism='MONGODB-X509',
+                ssl=True,
+                ssl_cert_reqs=ssl.CERT_NONE,
+                ssl_certfile=CLIENT_PEM)
+
+        with self.assertRaises(OperationFailure):
+            bad_client.pymongo_test.test.find_one()
 
         # Invalid certificate (using CA certificate as client certificate)
         uri = ('mongodb://%s@%s:%d/?authMechanism='

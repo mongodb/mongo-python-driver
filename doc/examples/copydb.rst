@@ -19,10 +19,11 @@ To copy from a different mongod server that is not password-protected::
                            fromhost='source.example.com')
 
 If the target server is password-protected, authenticate to the "admin"
-database first::
+database::
 
-  >>> client.admin.authenticate('administrator', 'pwd')
-  True
+  >>> client = MongoClient('target.example.com',
+  ...                      username='administrator',
+  ...                      password='pwd')
   >>> client.admin.command('copydb',
                            fromdb='source_db_name',
                            todb='target_db_name',

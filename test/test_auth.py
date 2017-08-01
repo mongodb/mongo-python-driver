@@ -31,7 +31,10 @@ from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
 from test import client_context, SkipTest, unittest, Version
-from test.utils import delay, rs_or_single_client_noauth, single_client_noauth
+from test.utils import (delay,
+                        ignore_deprecations,
+                        rs_or_single_client_noauth,
+                        single_client_noauth)
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -109,9 +112,8 @@ class TestGSSAPI(unittest.TestCase):
         self.assertEqual(1, len(set([creds1, creds2])))
         self.assertEqual(3, len(set([creds0, creds1, creds2, creds3])))
 
+    @ignore_deprecations
     def test_gssapi_simple(self):
-        client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
-        db = client[GSSAPI_DB]
         if GSSAPI_PASS is not None:
             uri = ('mongodb://%s:%s@%s:%d/?authMechanism='
                    'GSSAPI' % (quote_plus(GSSAPI_PRINCIPAL),
@@ -125,25 +127,28 @@ class TestGSSAPI(unittest.TestCase):
                                GSSAPI_PORT))
 
         if not self.service_realm_required:
-            # Call authenticate() without authMechanismProperties.
-            self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
-                                            GSSAPI_PASS,
-                                            mechanism='GSSAPI'))
-            db.collection.find_one()
+            # Without authMechanismProperties.
+            client = MongoClient(GSSAPI_HOST,
+                                 GSSAPI_PORT,
+                                 username=GSSAPI_PRINCIPAL,
+                                 password=GSSAPI_PASS,
+                                 authMechanism='GSSAPI')
+
+            client[GSSAPI_DB].collection.find_one()
 
             # Log in using URI, without authMechanismProperties.
             client = MongoClient(uri)
-            db = client[GSSAPI_DB]
-            db.collection.find_one()
+            client[GSSAPI_DB].collection.find_one()
 
+        # Authenticate with authMechanismProperties.
+        client = MongoClient(GSSAPI_HOST,
+                             GSSAPI_PORT,
+                             username=GSSAPI_PRINCIPAL,
+                             password=GSSAPI_PASS,
+                             authMechanism='GSSAPI',
+                             authMechanismProperties=self.mech_properties)
 
-        # Call authenticate() with authMechanismProperties.
-        self.assertTrue(db.authenticate(
-            GSSAPI_PRINCIPAL,
-            GSSAPI_PASS,
-            mechanism='GSSAPI',
-            authMechanismProperties=self.mech_properties))
-        db.collection.find_one()
+        client[GSSAPI_DB].collection.find_one()
 
         # Log in using URI, with authMechanismProperties.
         mech_uri = uri + '&authMechanismProperties=%s' % (self.mech_properties,)
@@ -152,43 +157,48 @@ class TestGSSAPI(unittest.TestCase):
 
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
-            client = MongoClient(GSSAPI_HOST,
-                                 GSSAPI_PORT,
-                                 replicaSet=set_name)
-            db = client[GSSAPI_DB]
-
             if not self.service_realm_required:
                 # Without authMechanismProperties
-                self.assertTrue(db.authenticate(GSSAPI_PRINCIPAL,
-                                                GSSAPI_PASS,
-                                                mechanism='GSSAPI'))
-                db.collection_names()
+                client = MongoClient(GSSAPI_HOST,
+                                     GSSAPI_PORT,
+                                     username=GSSAPI_PRINCIPAL,
+                                     password=GSSAPI_PASS,
+                                     authMechanism='GSSAPI',
+                                     replicaSet=set_name)
+
+                client[GSSAPI_DB].collection_names()
+
                 uri = uri + '&replicaSet=%s' % (str(set_name),)
                 client = MongoClient(uri)
-                db = client[GSSAPI_DB]
-                db.collection_names()
+                client[GSSAPI_DB].collection_names()
 
             # With authMechanismProperties
-            self.assertTrue(db.authenticate(
-                GSSAPI_PRINCIPAL,
-                GSSAPI_PASS,
-                mechanism='GSSAPI',
-                authMechanismProperties=self.mech_properties))
-            db.collection_names()
+            client = MongoClient(GSSAPI_HOST,
+                                 GSSAPI_PORT,
+                                 username=GSSAPI_PRINCIPAL,
+                                 password=GSSAPI_PASS,
+                                 authMechanism='GSSAPI',
+                                 authMechanismProperties=self.mech_properties,
+                                 replicaSet=set_name)
+
+            client[GSSAPI_DB].collection_names()
+
             mech_uri = mech_uri + '&replicaSet=%s' % (str(set_name),)
             client = MongoClient(mech_uri)
             client[GSSAPI_DB].collection_names()
 
+    @ignore_deprecations
     def test_gssapi_threaded(self):
+        client = MongoClient(GSSAPI_HOST,
+                             GSSAPI_PORT,
+                             username=GSSAPI_PRINCIPAL,
+                             password=GSSAPI_PASS,
+                             authMechanism='GSSAPI',
+                             authMechanismProperties=self.mech_properties)
 
-        client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
+        # Authentication succeeded?
+        client.server_info()
         db = client[GSSAPI_DB]
-        self.assertTrue(
-            db.authenticate(GSSAPI_PRINCIPAL,
-                            GSSAPI_PASS,
-                            mechanism='GSSAPI',
-                            authMechanismProperties=self.mech_properties))
-
 
         # Need one document in the collection. AutoAuthenticateThread does
         # collection.find_one with a 1-second delay, forcing it to check out
@@ -215,14 +225,14 @@ class TestGSSAPI(unittest.TestCase):
         if set_name:
             client = MongoClient(GSSAPI_HOST,
                                  GSSAPI_PORT,
-                                 replicaSet=set_name,
-                                 readPreference='secondary')
-            db = client[GSSAPI_DB]
-            self.assertTrue(
-                db.authenticate(GSSAPI_PRINCIPAL,
-                                GSSAPI_PASS,
-                                mechanism='GSSAPI',
-                                authMechanismProperties=self.mech_properties))
+                                 username=GSSAPI_PRINCIPAL,
+                                 password=GSSAPI_PASS,
+                                 authMechanism='GSSAPI',
+                                 authMechanismProperties=self.mech_properties,
+                                 replicaSet=set_name)
+
+            # Succeeded?
+            client.server_info()
 
             threads = []
             for _ in range(4):
@@ -244,9 +254,12 @@ class TestSASLPlain(unittest.TestCase):
 
     def test_sasl_plain(self):
 
-        client = MongoClient(SASL_HOST, SASL_PORT)
-        self.assertTrue(client.ldap.authenticate(SASL_USER, SASL_PASS,
-                                                 SASL_DB, 'PLAIN'))
+        client = MongoClient(SASL_HOST,
+                             SASL_PORT,
+                             username=SASL_USER,
+                             password=SASL_PASS,
+                             authSource=SASL_DB,
+                             authMechanism='PLAIN')
         client.ldap.test.find_one()
 
         uri = ('mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;'
@@ -259,10 +272,12 @@ class TestSASLPlain(unittest.TestCase):
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
             client = MongoClient(SASL_HOST,
-                                 port=SASL_PORT,
-                                 replicaSet=set_name)
-            self.assertTrue(client.ldap.authenticate(SASL_USER, SASL_PASS,
-                                                     SASL_DB, 'PLAIN'))
+                                 SASL_PORT,
+                                 replicaSet=set_name,
+                                 username=SASL_USER,
+                                 password=SASL_PASS,
+                                 authSource=SASL_DB,
+                                 authMechanism='PLAIN')
             client.ldap.test.find_one()
 
             uri = ('mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;'
@@ -275,21 +290,22 @@ class TestSASLPlain(unittest.TestCase):
 
     def test_sasl_plain_bad_credentials(self):
 
-        client = MongoClient(SASL_HOST, SASL_PORT)
+        with ignore_deprecations():
+            client = MongoClient(SASL_HOST, SASL_PORT)
 
-        # Bad username
-        self.assertRaises(OperationFailure, client.ldap.authenticate,
-                          'not-user', SASL_PASS, SASL_DB, 'PLAIN')
-        self.assertRaises(OperationFailure, client.ldap.test.find_one)
-        self.assertRaises(OperationFailure, client.ldap.test.insert_one,
-                          {"failed": True})
+            # Bad username
+            self.assertRaises(OperationFailure, client.ldap.authenticate,
+                              'not-user', SASL_PASS, SASL_DB, 'PLAIN')
+            self.assertRaises(OperationFailure, client.ldap.test.find_one)
+            self.assertRaises(OperationFailure, client.ldap.test.insert_one,
+                              {"failed": True})
 
-        # Bad password
-        self.assertRaises(OperationFailure, client.ldap.authenticate,
-                          SASL_USER, 'not-pwd', SASL_DB, 'PLAIN')
-        self.assertRaises(OperationFailure, client.ldap.test.find_one)
-        self.assertRaises(OperationFailure, client.ldap.test.insert_one,
-                          {"failed": True})
+            # Bad password
+            self.assertRaises(OperationFailure, client.ldap.authenticate,
+                              SASL_USER, 'not-pwd', SASL_DB, 'PLAIN')
+            self.assertRaises(OperationFailure, client.ldap.test.find_one)
+            self.assertRaises(OperationFailure, client.ldap.test.insert_one,
+                              {"failed": True})
 
         def auth_string(user, password):
             uri = ('mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;'
@@ -326,10 +342,12 @@ class TestSCRAMSHA1(unittest.TestCase):
 
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
-        client = rs_or_single_client_noauth()
-        self.assertTrue(client.pymongo_test.authenticate(
-            'user', 'pass', mechanism='SCRAM-SHA-1'))
-        client.pymongo_test.command('dbstats')
+
+        with ignore_deprecations():
+            client = rs_or_single_client_noauth()
+            self.assertTrue(client.pymongo_test.authenticate(
+                'user', 'pass', mechanism='SCRAM-SHA-1'))
+            client.pymongo_test.command('dbstats')
 
         client = rs_or_single_client_noauth(
             'mongodb://user:pass@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1'
@@ -355,13 +373,12 @@ class TestAuthURIOptions(unittest.TestCase):
 
     @client_context.require_auth
     def setUp(self):
-        client = rs_or_single_client_noauth()
         client_context.client.admin.add_user('admin', 'pass',
                                              roles=['userAdminAnyDatabase',
                                                     'dbAdminAnyDatabase',
                                                     'readWriteAnyDatabase',
                                                     'clusterAdmin'])
-        client.admin.authenticate('admin', 'pass')
+        client = rs_or_single_client_noauth(username='admin', password='pass')
         client.pymongo_test.add_user('user', 'pass',
                                      roles=['userAdmin', 'readWrite'])
 
@@ -372,11 +389,8 @@ class TestAuthURIOptions(unittest.TestCase):
         self.client = client
 
     def tearDown(self):
-        self.client.admin.authenticate('admin', 'pass')
         self.client.pymongo_test.remove_user('user')
         self.client.admin.remove_user('admin')
-        self.client.pymongo_test.logout()
-        self.client.admin.logout()
         self.client = None
 
     def test_uri_options(self):
@@ -431,51 +445,6 @@ class TestAuthURIOptions(unittest.TestCase):
             db = client.get_database(
                 'pymongo_test', read_preference=ReadPreference.SECONDARY)
             self.assertTrue(db.command('dbstats'))
-
-
-class TestDelegatedAuth(unittest.TestCase):
-
-    @client_context.require_auth
-    @client_context.require_version_max(2, 5, 3)
-    @client_context.require_version_min(2, 4, 0)
-    def setUp(self):
-        self.client = client_context.client
-
-    def tearDown(self):
-        self.client.pymongo_test.remove_user('user')
-        self.client.pymongo_test2.remove_user('user')
-        self.client.pymongo_test2.foo.drop()
-
-    def test_delegated_auth(self):
-        self.client.pymongo_test2.foo.drop()
-        self.client.pymongo_test2.foo.insert_one({})
-        # User definition with no roles in pymongo_test.
-        self.client.pymongo_test.add_user('user', 'pass', roles=[])
-        # Delegate auth to pymongo_test.
-        self.client.pymongo_test2.add_user('user',
-                                           userSource='pymongo_test',
-                                           roles=['read'])
-        auth_c = rs_or_single_client_noauth()
-        self.assertRaises(OperationFailure,
-                          auth_c.pymongo_test2.foo.find_one)
-        # Auth must occur on the db where the user is defined.
-        self.assertRaises(OperationFailure,
-                          auth_c.pymongo_test2.authenticate,
-                          'user', 'pass')
-        # Auth directly
-        self.assertTrue(auth_c.pymongo_test.authenticate('user', 'pass'))
-        self.assertTrue(auth_c.pymongo_test2.foo.find_one())
-        auth_c.pymongo_test.logout()
-        self.assertRaises(OperationFailure,
-                          auth_c.pymongo_test2.foo.find_one)
-        # Auth using source
-        self.assertTrue(auth_c.pymongo_test2.authenticate(
-            'user', 'pass', source='pymongo_test'))
-        self.assertTrue(auth_c.pymongo_test2.foo.find_one())
-        # Must logout from the db authenticate was called on.
-        auth_c.pymongo_test2.logout()
-        self.assertRaises(OperationFailure,
-                          auth_c.pymongo_test2.foo.find_one)
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@
 """
 
 import contextlib
+import functools
 import os
 import struct
 import sys
@@ -348,10 +349,24 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
 
 
 @contextlib.contextmanager
-def ignore_deprecations():
+def _ignore_deprecations():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
         yield
+
+
+def ignore_deprecations(wrapped=None):
+    """A context manager or a decorator."""
+    if wrapped:
+        @functools.wraps(wrapped)
+        def wrapper(*args, **kwargs):
+            with _ignore_deprecations():
+                return wrapped(*args, **kwargs)
+
+        return wrapper
+
+    else:
+        return _ignore_deprecations()
 
 
 def read_from_which_host(

@@ -22,6 +22,13 @@ Changes and Deprecations:
   was deprecated in MongoDB 3.4 and is expected to be removed in MongoDB 3.6.
   Applications should use :meth:`~pymongo.collection.Collection.aggregate`
   with the `$group` pipeline stage instead.
+- Deprecated :meth:`~pymongo.database.Database.authenticate`. Authenticating
+  multiple users conflicts with support for logical sessions in MongoDB 3.6.
+  To authenticate as multiple users, create multiple instances of
+  :class:`~pymongo.mongo_client.MongoClient`.
+- Deprecated :meth:`~pymongo.database.Database.eval`. The eval command
+  was deprecated in MongoDB 3.0 and will be removed in a future server version.
+- Deprecated :class:`~pymongo.database.SystemJS`.
 - Deprecated :meth:`~pymongo.mongo_client.MongoClient.get_default_database`.
   Applications should use
   :meth:`~pymongo.mongo_client.MongoClient.get_database` without the `name`

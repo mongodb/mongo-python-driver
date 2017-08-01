@@ -388,7 +388,14 @@ class TestDatabase(IntegrationTest):
     def test_authenticate_add_remove_user(self):
         # "self.client" is logged in as root.
         auth_db = self.client.pymongo_test
-        db = rs_or_single_client_noauth().pymongo_test
+
+        def check_auth(username, password):
+            c = rs_or_single_client_noauth(
+                username=username,
+                password=password,
+                authSource="pymongo_test")
+
+            c.pymongo_test.collection.find_one()
 
         # Configuration errors
         self.assertRaises(ValueError, auth_db.add_user, "user", '')
@@ -411,45 +418,38 @@ class TestDatabase(IntegrationTest):
                                   "user", "password", digestPassword=True)
 
         # Add / authenticate / remove
-        auth_db.add_user("mike", "password", roles=["dbOwner"])
+        auth_db.add_user("mike", "password", roles=["read"])
         self.addCleanup(remove_all_users, auth_db)
-        self.assertRaises(TypeError, db.authenticate, 5, "password")
-        self.assertRaises(TypeError, db.authenticate, "mike", 5)
+        self.assertRaises(TypeError, check_auth, 5, "password")
+        self.assertRaises(TypeError, check_auth, "mike", 5)
         self.assertRaises(OperationFailure,
-                          db.authenticate, "mike", "not a real password")
-        self.assertRaises(OperationFailure,
-                          db.authenticate, "faker", "password")
-        db.authenticate("mike", "password")
-        db.logout()
+                          check_auth, "mike", "not a real password")
+        self.assertRaises(OperationFailure, check_auth, "faker", "password")
+        check_auth("mike", "password")
 
         # Unicode name and password.
-        db.authenticate(u"mike", u"password")
-        db.logout()
+        check_auth(u"mike", u"password")
 
         auth_db.remove_user("mike")
         self.assertRaises(OperationFailure,
-                          db.authenticate, "mike", "password")
+                          check_auth, "mike", "password")
 
         # Add / authenticate / change password
-        self.assertRaises(OperationFailure,
-                          db.authenticate, "Gustave", u"Dor\xe9")
-        auth_db.add_user("Gustave", u"Dor\xe9", roles=["dbOwner"])
-        db.authenticate("Gustave", u"Dor\xe9")
+        self.assertRaises(OperationFailure, check_auth, "Gustave", u"Dor\xe9")
+        auth_db.add_user("Gustave", u"Dor\xe9", roles=["read"])
+        check_auth("Gustave", u"Dor\xe9")
 
         # Change password.
-        auth_db.add_user("Gustave", "password", roles=["dbOwner"])
-        db.logout()
-        self.assertRaises(OperationFailure,
-                          db.authenticate, "Gustave", u"Dor\xe9")
-        self.assertTrue(db.authenticate("Gustave", u"password"))
+        auth_db.add_user("Gustave", "password", roles=["read"])
+        self.assertRaises(OperationFailure, check_auth, "Gustave", u"Dor\xe9")
+        check_auth("Gustave", u"password")
 
         if not client_context.version.at_least(2, 5, 3, -1):
             # Add a readOnly user
             with ignore_deprecations():
                 auth_db.add_user("Ross", "password", read_only=True)
 
-            db.logout()
-            db.authenticate("Ross", u"password")
+            check_auth("Ross", u"password")
             self.assertTrue(
                 auth_db.system.users.find({"readOnly": True}).count())
 
@@ -457,22 +457,28 @@ class TestDatabase(IntegrationTest):
     def test_make_user_readonly(self):
         # "self.client" is logged in as root.
         auth_db = self.client.pymongo_test
-        db = rs_or_single_client_noauth().pymongo_test
 
         # Make a read-write user.
         auth_db.add_user('jesse', 'pw')
         self.addCleanup(remove_all_users, auth_db)
 
         # Check that we're read-write by default.
-        db.authenticate('jesse', 'pw')
-        db.collection.insert_one({})
-        db.logout()
+        c = rs_or_single_client_noauth(username='jesse',
+                                       password='pw',
+                                       authSource='pymongo_test')
+
+        c.pymongo_test.collection.insert_one({})
 
         # Make the user read-only.
         auth_db.add_user('jesse', 'pw', read_only=True)
 
-        db.authenticate('jesse', 'pw')
-        self.assertRaises(OperationFailure, db.collection.insert_one, {})
+        c = rs_or_single_client_noauth(username='jesse',
+                                       password='pw',
+                                       authSource='pymongo_test')
+
+        self.assertRaises(OperationFailure,
+                          c.pymongo_test.collection.insert_one,
+                          {})
 
     @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
@@ -512,8 +518,9 @@ class TestDatabase(IntegrationTest):
         auth_db.add_user("amalia", "password", roles=["userAdmin"])
         self.addCleanup(auth_db.remove_user, "amalia")
 
-        db = rs_or_single_client_noauth().pymongo_test
-        db.authenticate("amalia", "password")
+        db = rs_or_single_client_noauth(username="amalia",
+                                        password="password",
+                                        authSource="pymongo_test").pymongo_test
 
         # This tests the ability to update user attributes.
         db.add_user("amalia", "new_password",
@@ -526,6 +533,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(amalia_user["customData"], {"secret": "koalas"})
 
     @client_context.require_auth
+    @ignore_deprecations
     def test_authenticate_multiple(self):
         # "self.client" is logged in as root.
         self.client.drop_database("pymongo_test")
@@ -636,27 +644,28 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.test.drop()
 
-        self.assertRaises(TypeError, db.eval, None)
-        self.assertRaises(TypeError, db.eval, 5)
-        self.assertRaises(TypeError, db.eval, [])
+        with ignore_deprecations():
+            self.assertRaises(TypeError, db.eval, None)
+            self.assertRaises(TypeError, db.eval, 5)
+            self.assertRaises(TypeError, db.eval, [])
 
-        self.assertEqual(3, db.eval("function (x) {return x;}", 3))
-        self.assertEqual(3, db.eval(u"function (x) {return x;}", 3))
+            self.assertEqual(3, db.eval("function (x) {return x;}", 3))
+            self.assertEqual(3, db.eval(u"function (x) {return x;}", 3))
 
-        self.assertEqual(None,
-                         db.eval("function (x) {db.test.save({y:x});}", 5))
-        self.assertEqual(db.test.find_one()["y"], 5)
+            self.assertEqual(None,
+                             db.eval("function (x) {db.test.save({y:x});}", 5))
+            self.assertEqual(db.test.find_one()["y"], 5)
 
-        self.assertEqual(5, db.eval("function (x, y) {return x + y;}", 2, 3))
-        self.assertEqual(5, db.eval("function () {return 5;}"))
-        self.assertEqual(5, db.eval("2 + 3;"))
+            self.assertEqual(5, db.eval("function (x, y) {return x + y;}", 2, 3))
+            self.assertEqual(5, db.eval("function () {return 5;}"))
+            self.assertEqual(5, db.eval("2 + 3;"))
 
-        self.assertEqual(5, db.eval(Code("2 + 3;")))
-        self.assertRaises(OperationFailure, db.eval, Code("return i;"))
-        self.assertEqual(2, db.eval(Code("return i;", {"i": 2})))
-        self.assertEqual(5, db.eval(Code("i + 3;", {"i": 2})))
+            self.assertEqual(5, db.eval(Code("2 + 3;")))
+            self.assertRaises(OperationFailure, db.eval, Code("return i;"))
+            self.assertEqual(2, db.eval(Code("return i;", {"i": 2})))
+            self.assertEqual(5, db.eval(Code("i + 3;", {"i": 2})))
 
-        self.assertRaises(OperationFailure, db.eval, "5 ++ 5;")
+            self.assertRaises(OperationFailure, db.eval, "5 ++ 5;")
 
     # TODO some of these tests belong in the collection level testing.
     def test_insert_find_one(self):
