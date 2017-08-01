@@ -140,9 +140,6 @@ class Cursor(object):
             warnings.warn("the 'modifiers' parameter is deprecated",
                           DeprecationWarning, stacklevel=2)
             validate_is_mapping("modifiers", modifiers)
-        if manipulate:
-            warnings.warn("the 'manipulate' parameter is deprecated",
-                          DeprecationWarning, stacklevel=2)
         if not isinstance(batch_size, integer_types):
             raise TypeError("batch_size must be an integer")
         if batch_size < 0:
