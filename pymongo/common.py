@@ -509,8 +509,8 @@ KW_VALIDATORS = {
     'read_preference': validate_read_preference,
     'event_listeners': _validate_event_listeners,
     'tzinfo': validate_tzinfo,
-    'username': validate_string,
-    'password': validate_string,
+    'username': validate_string_or_none,
+    'password': validate_string_or_none,
 }
 
 URI_VALIDATORS.update(TIMEOUT_VALIDATORS)
