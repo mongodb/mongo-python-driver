@@ -47,26 +47,24 @@ Ordered Bulk Write Operations
 .............................
 
 Ordered bulk write operations are batched and sent to the server in the
-order provided for serial execution. The return value is a document
-describing the type and count of operations performed.
+order provided for serial execution. The return value is an instance of
+:class:`~pymongo.results.BulkWriteResult` describing the type and count
+of operations performed.
 
 .. doctest::
   :options: +NORMALIZE_WHITESPACE
 
   >>> from pprint import pprint
-  >>>
-  >>> bulk = db.test.initialize_ordered_bulk_op()
-  >>> # Remove all documents from the previous example.
-  ...
-  >>> bulk.find({}).remove()
-  >>> bulk.insert({'_id': 1})
-  >>> bulk.insert({'_id': 2})
-  >>> bulk.insert({'_id': 3})
-  >>> bulk.find({'_id': 1}).update({'$set': {'foo': 'bar'}})
-  >>> bulk.find({'_id': 4}).upsert().update({'$inc': {'j': 1}})
-  >>> bulk.find({'j': 1}).replace_one({'j': 2})
-  >>> result = bulk.execute()
-  >>> pprint(result)
+  >>> from pymongo import InsertOne, DeleteMany, ReplaceOne, UpdateOne
+  >>> result = db.test.bulk_write([
+  ...     DeleteMany({}),  # Remove all documents from the previous example.
+  ...     InsertOne({'_id': 1}),
+  ...     InsertOne({'_id': 2}),
+  ...     InsertOne({'_id': 3}),
+  ...     UpdateOne({'_id': 1}, {'$set': {'foo': 'bar'}}),
+  ...     UpdateOne({'_id': 4}, {'$inc': {'j': 1}}, upsert=True),
+  ...     ReplaceOne({'j': 1}, {'j': 2})])
+  >>> pprint(result.bulk_api_result)
   {'nInserted': 3,
    'nMatched': 2,
    'nModified': 2,
@@ -91,15 +89,14 @@ the failure.
 .. doctest::
   :options: +NORMALIZE_WHITESPACE
 
+  >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
   >>> from pymongo.errors import BulkWriteError
-  >>> bulk = db.test.initialize_ordered_bulk_op()
-  >>> bulk.find({'j': 2}).replace_one({'i': 5})
-  >>> # Violates the unique key constraint on _id.
-  ...
-  >>> bulk.insert({'_id': 4})
-  >>> bulk.find({'i': 5}).remove_one()
+  >>> requests = [
+  ...     ReplaceOne({'j': 2}, {'i': 5}),
+  ...     InsertOne({'_id': 4}),  # Violates the unique key constraint on _id.
+  ...     DeleteOne({'i': 5})]
   >>> try:
-  ...     bulk.execute()
+  ...     db.test.bulk_write(requests)
   ... except BulkWriteError as bwe:
   ...     pprint(bwe.details)
   ... 
@@ -131,13 +128,13 @@ and fourth operations succeed.
 .. doctest::
   :options: +NORMALIZE_WHITESPACE
 
-  >>> bulk = db.test.initialize_unordered_bulk_op()
-  >>> bulk.insert({'_id': 1})
-  >>> bulk.find({'_id': 2}).remove_one()
-  >>> bulk.insert({'_id': 3})
-  >>> bulk.find({'_id': 4}).replace_one({'i': 1})
+  >>> requests = [
+  ...     InsertOne({'_id': 1}),
+  ...     DeleteOne({'_id': 2}),
+  ...     InsertOne({'_id': 3}),
+  ...     ReplaceOne({'_id': 4}, {'i': 1})]
   >>> try:
-  ...     bulk.execute()
+  ...     db.test.bulk_write(requests, ordered=False)
   ... except BulkWriteError as bwe:
   ...     pprint(bwe.details)
   ... 
@@ -160,22 +157,17 @@ and fourth operations succeed.
 Write Concern
 .............
 
-By default bulk operations are executed with the
+Bulk operations are executed with the
 :attr:`~pymongo.collection.Collection.write_concern` of the collection they
-are executed against. A custom write concern can be passed to the
-:meth:`~pymongo.bulk.BulkOperationBuilder.execute` method. Write concern
-errors (e.g. wtimeout) will be reported after all operations are attempted,
-regardless of execution order.
+are executed against. Write concern errors (e.g. wtimeout) will be reported
+after all operations are attempted, regardless of execution order.
 
 ::
-
-  >>> bulk = db.test.initialize_ordered_bulk_op()
-  >>> bulk.insert({'a': 0})
-  >>> bulk.insert({'a': 1})
-  >>> bulk.insert({'a': 2})
-  >>> bulk.insert({'a': 3})
+  >>> from pymongo import WriteConcern
+  >>> coll = db.get_collection(
+  ...     'test', write_concern=WriteConcern(w=3, wtimeout=1))
   >>> try:
-  ...     bulk.execute({'w': 3, 'wtimeout': 1})
+  ...     coll.bulk_write([InsertOne({'a': i}) for i in range(4)])
   ... except BulkWriteError as bwe:
   ...     pprint(bwe.details)
   ... 

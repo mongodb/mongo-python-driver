@@ -101,10 +101,15 @@ class TestCollation(unittest.TestCase):
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
         cls.collation = Collation('en_US')
+        cls.warn_context = warnings.catch_warnings()
+        cls.warn_context.__enter__()
+        warnings.simplefilter("ignore", DeprecationWarning)
 
     @classmethod
     def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
+        cls.warn_context.__exit__()
+        cls.warn_context = None
 
     def tearDown(self):
         self.listener.results.clear()
@@ -179,12 +184,10 @@ class TestCollation(unittest.TestCase):
 
     @raisesConfigurationErrorForOldMongoDB
     def test_group(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            self.db.test.group('foo', {'foo': {'$gt': 42}}, {},
-                               'function(a, b) { return a; }',
-                               collation=self.collation)
-            self.assertCollationInLastCommand()
+        self.db.test.group('foo', {'foo': {'$gt': 42}}, {},
+                           'function(a, b) { return a; }',
+                           collation=self.collation)
+        self.assertCollationInLastCommand()
 
     @raisesConfigurationErrorForOldMongoDB
     def test_map_reduce(self):

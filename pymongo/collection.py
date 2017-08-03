@@ -338,7 +338,7 @@ class Collection(common.BaseObject):
                           read_concern or self.read_concern)
 
     def initialize_unordered_bulk_op(self, bypass_document_validation=False):
-        """Initialize an unordered batch of write operations.
+        """**DEPRECATED** - Initialize an unordered batch of write operations.
 
         Operations will be performed on the server in arbitrary order,
         possibly in parallel. All operations will be attempted.
@@ -355,15 +355,21 @@ class Collection(common.BaseObject):
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
 
+        .. versionchanged:: 3.5
+           Deprecated. Use :meth:`~pymongo.collection.Collection.bulk_write`
+           instead.
+
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+           Added bypass_document_validation support
 
         .. versionadded:: 2.7
         """
+        warnings.warn("initialize_unordered_bulk_op is deprecated",
+                      DeprecationWarning, stacklevel=2)
         return BulkOperationBuilder(self, False, bypass_document_validation)
 
     def initialize_ordered_bulk_op(self, bypass_document_validation=False):
-        """Initialize an ordered batch of write operations.
+        """**DEPRECATED** - Initialize an ordered batch of write operations.
 
         Operations will be performed on the server serially, in the
         order provided. If an error occurs all remaining operations
@@ -381,11 +387,17 @@ class Collection(common.BaseObject):
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
 
+        .. versionchanged:: 3.5
+           Deprecated. Use :meth:`~pymongo.collection.Collection.bulk_write`
+           instead.
+
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+           Added bypass_document_validation support
 
         .. versionadded:: 2.7
         """
+        warnings.warn("initialize_ordered_bulk_op is deprecated",
+                      DeprecationWarning, stacklevel=2)
         return BulkOperationBuilder(self, True, bypass_document_validation)
 
     def bulk_write(self, requests, ordered=True,

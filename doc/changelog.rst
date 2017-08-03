@@ -47,6 +47,10 @@ Changes and Deprecations:
   and disabling it is not recommended, see `does TCP keepalive time affect
   MongoDB Deployments?
   <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments>`_
+- Deprecated :meth:`~pymongo.collection.Collection.initialize_ordered_bulk_op`,
+  :meth:`~pymongo.collection.Collection.initialize_unordered_bulk_op`, and
+  :class:`~pymongo.bulk.BulkOperationBuilder`. Use
+  :meth:`~pymongo.collection.Collection.bulk_write` instead.
 - Deprecated :const:`~bson.json_util.STRICT_JSON_OPTIONS`. Use
   :const:`~bson.json_util.RELAXED_JSON_OPTIONS` or
   :const:`~bson.json_util.CANONICAL_JSON_OPTIONS` instead.
