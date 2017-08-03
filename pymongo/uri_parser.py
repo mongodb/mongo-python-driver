@@ -283,6 +283,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
           validation will error when options are unsupported or values are
           invalid.
 
+    .. versionchanged:: 3.5
+        Return the original value of the ``readPreference`` MongoDB URI option
+        instead of the validated read preference mode.
+
     .. versionchanged:: 3.1
         ``warn`` added so invalid options can be ignored.
     """

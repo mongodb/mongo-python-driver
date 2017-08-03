@@ -6,6 +6,9 @@
 
    .. autoclass:: pymongo.read_preferences.Primary
 
+      .. max_staleness, min_wire_version, mongos_mode, and tag_sets don't
+         make sense for Primary.
+
       .. autoattribute:: document
       .. autoattribute:: mode
       .. autoattribute:: name

@@ -408,10 +408,18 @@ def loads(s, *args, **kwargs):
 
     Automatically passes the object_hook for BSON type conversion.
 
+    Raises ``TypeError``, ``ValueError``, ``KeyError``, or
+    :exc:`~bson.errors.InvalidId` on invalid MongoDB Extended JSON.
+
     :Parameters:
       - `json_options`: A :class:`JSONOptions` instance used to modify the
         decoding of MongoDB Extended JSON types. Defaults to
         :const:`DEFAULT_JSON_OPTIONS`.
+
+    .. versionchanged:: 3.5
+       Parses Relaxed and Canonical Extended JSON as well as PyMongo's legacy
+       format. Now raises ``TypeError`` or ``ValueError`` when parsing JSON
+       type wrappers with values of the wrong type or any extra keys.
 
     .. versionchanged:: 3.4
        Accepts optional parameter `json_options`. See :class:`JSONOptions`.

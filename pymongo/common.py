@@ -303,6 +303,10 @@ def validate_read_preference(dummy, value):
 
 def validate_read_preference_mode(dummy, value):
     """Validate read preference mode for a MongoReplicaSetClient.
+
+    .. versionchanged:: 3.5
+       Returns the original ``value`` instead of the validated read preference
+       mode.
     """
     if value not in _MONGOS_MODES:
         raise ValueError("%s is not a valid read preference" % (value,))

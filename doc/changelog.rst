@@ -4,15 +4,18 @@ Changelog
 Changes in Version 3.5
 ----------------------
 
-Highlights:
+Version 3.5 implements a number of improvements and bug fixes:
 
-- Increase the performance of
-  :meth:`~pymongo.mongo_client.MongoClient.database_names` by using the
-  `nameOnly` option for listDatabases when available.
+Highlights include:
+
 - Username and password can be passed to
   :class:`~pymongo.mongo_client.MongoClient` as keyword arguments. Before, the
   only way to pass them was in the URI.
-- Increase the performance of
+- Increased the performance of using :class:`~bson.raw_bson.RawBSONDocument`.
+- Increased the performance of
+  :meth:`~pymongo.mongo_client.MongoClient.database_names` by using the
+  `nameOnly` option for listDatabases when available.
+- Increased the performance of
   :meth:`~pymongo.collection.Collection.bulk_write` by reducing the memory
   overhead of :class:`~pymongo.operations.InsertOne`,
   :class:`~pymongo.operations.DeleteOne`, and
@@ -22,6 +25,12 @@ Highlights:
   :class:`~pymongo.operations.ReplaceOne`,
   :class:`~pymongo.operations.UpdateOne`, and
   :class:`~pymongo.operations.UpdateMany`.
+- Implemented the `MongoDB Extended JSON
+  <https://github.com/mongodb/specifications/blob/master/source/extended-json.rst>`_
+  specification.
+- :class:`~bson.decimal128.Decimal128` now works when cdecimal is installed.
+- PyMongo is now tested against a wider array of operating systems and CPU
+  architectures (including s390x, ARM64, and POWER8).
 
 Changes and Deprecations:
 
@@ -63,8 +72,25 @@ Changes and Deprecations:
   :class:`~pymongo.command_cursor.CommandCursor` to make the behavior
   consistent across all MongoDB versions.
 - In Python 3, :meth:`~bson.json_util.loads` now automatically decodes JSON
-  binary with a subtype of 0 into :class:`bytes` instead of
+  $binary with a subtype of 0 into :class:`bytes` instead of
   :class:`~bson.binary.Binary`. See the :doc:`/python3` for more details.
+- :meth:`~bson.json_util.loads` now raises ``TypeError`` or ``ValueError``
+  when parsing JSON type wrappers with values of the wrong type or any
+  extra keys.
+- :meth:`pymongo.cursor.Cursor.close` and
+  :meth:`pymongo.mongo_client.MongoClient.close`
+  now kill cursors synchronously instead of deferring to a background thread.
+- :meth:`~pymongo.uri_parser.parse_uri` now returns the original value
+  of the ``readPreference`` MongoDB URI option instead of the validated read
+  preference mode.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.5 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.5 release notes in JIRA: https://jira.mongodb.org/projects/PYTHON/versions/17590
 
 Changes in Version 3.4
 ----------------------

@@ -78,3 +78,4 @@ The following is a list of people who have contributed to
 - Anna Herlihy (aherlihy)
 - Len Buckens (buckensl)
 - ultrabug
+- Shane Harvey (ShaneHarvey)
