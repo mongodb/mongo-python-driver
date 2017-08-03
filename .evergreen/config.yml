@@ -693,7 +693,7 @@ tasks:
         - func: "run tests"
 
     - name: "test-latest-sharded_cluster"
-#      tags: ["latest", "sharded_cluster"]
+      tags: ["latest", "sharded_cluster"]
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
