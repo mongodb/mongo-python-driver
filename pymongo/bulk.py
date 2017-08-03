@@ -635,8 +635,8 @@ class BulkOperationBuilder(object):
           - `selector` (dict): the selection criteria for update
             and remove operations.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`. This option is only
+            supported on MongoDB 3.4 and above.
 
         :Returns:
           - A :class:`BulkWriteOperation` instance, used to add

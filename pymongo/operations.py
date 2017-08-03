@@ -54,30 +54,38 @@ class InsertOne(object):
 class DeleteOne(object):
     """Represents a delete_one operation."""
 
-    __slots__ = ("_filter",)
+    __slots__ = ("_filter", "_collation")
 
-    def __init__(self, filter):
+    def __init__(self, filter, collation=None):
         """Create a DeleteOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
 
         :Parameters:
           - `filter`: A query that matches the document to delete.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only
+            supported on MongoDB 3.4 and above.
+
+        .. versionchanged:: 3.5
+           Added the `collation` option.
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
         self._filter = filter
+        self._collation = collation
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 1)
+        bulkobj.add_delete(self._filter, 1, collation=self._collation)
 
     def __repr__(self):
-        return "DeleteOne(%r)" % (self._filter,)
+        return "DeleteOne(%r, %r)" % (self._filter, self._collation)
 
     def __eq__(self, other):
         if type(other) == type(self):
-            return other._filter == self._filter
+            return ((other._filter, other._collation) ==
+                    (self._filter, self._collation))
         return NotImplemented
 
     def __ne__(self, other):
@@ -87,30 +95,38 @@ class DeleteOne(object):
 class DeleteMany(object):
     """Represents a delete_many operation."""
 
-    __slots__ = ("_filter",)
+    __slots__ = ("_filter", "_collation")
 
-    def __init__(self, filter):
+    def __init__(self, filter, collation=None):
         """Create a DeleteMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
 
         :Parameters:
           - `filter`: A query that matches the documents to delete.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only
+            supported on MongoDB 3.4 and above.
+
+        .. versionchanged:: 3.5
+           Added the `collation` option.
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
         self._filter = filter
+        self._collation = collation
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 0)
+        bulkobj.add_delete(self._filter, 0, collation=self._collation)
 
     def __repr__(self):
-        return "DeleteMany(%r)" % (self._filter,)
+        return "DeleteMany(%r, %r)" % (self._filter, self._collation)
 
     def __eq__(self, other):
         if type(other) == type(self):
-            return other._filter == self._filter
+            return ((other._filter, other._collation) ==
+                    (self._filter, self._collation))
         return NotImplemented
 
     def __ne__(self, other):
@@ -120,9 +136,9 @@ class DeleteMany(object):
 class _UpdateOp(object):
     """Private base class for update operations."""
 
-    __slots__ = ("_filter", "_doc", "_upsert")
+    __slots__ = ("_filter", "_doc", "_upsert", "_collation")
 
-    def __init__(self, filter, doc, upsert):
+    def __init__(self, filter, doc, upsert, collation):
         if filter is not None:
             validate_is_mapping("filter", filter)
         if upsert is not None:
@@ -130,19 +146,22 @@ class _UpdateOp(object):
         self._filter = filter
         self._doc = doc
         self._upsert = upsert
+        self._collation = collation
 
     def __eq__(self, other):
         if type(other) == type(self):
-            return ((other._filter, other._doc, other._upsert) ==
-                    (self._filter, self._doc, self._upsert))
+            return (
+                (other._filter, other._doc, other._upsert, other._collation) ==
+                (self._filter, self._doc, self._upsert, self._collation))
         return NotImplemented
 
     def __ne__(self, other):
         return not self == other
 
     def __repr__(self):
-        return "%s(%r, %r, %r)" % (
-            self.__class__.__name__, self._filter, self._doc, self._upsert)
+        return "%s(%r, %r, %r, %r)" % (
+            self.__class__.__name__, self._filter, self._doc, self._upsert,
+            self._collation)
 
 
 class ReplaceOne(_UpdateOp):
@@ -150,7 +169,7 @@ class ReplaceOne(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, replacement, upsert=False):
+    def __init__(self, filter, replacement, upsert=False, collation=None):
         """Create a ReplaceOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -160,12 +179,20 @@ class ReplaceOne(_UpdateOp):
           - `replacement`: The new document.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only
+            supported on MongoDB 3.4 and above.
+
+        .. versionchanged:: 3.5
+           Added the `collation` option.
         """
-        super(ReplaceOne, self).__init__(filter, replacement, upsert)
+        super(ReplaceOne, self).__init__(filter, replacement, upsert,
+                                         collation)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_replace(self._filter, self._doc, self._upsert)
+        bulkobj.add_replace(self._filter, self._doc, self._upsert,
+                            collation=self._collation)
 
 
 class UpdateOne(_UpdateOp):
@@ -173,7 +200,7 @@ class UpdateOne(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, update, upsert=False):
+    def __init__(self, filter, update, upsert=False, collation=None):
         """Represents an update_one operation.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -183,12 +210,19 @@ class UpdateOne(_UpdateOp):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only
+            supported on MongoDB 3.4 and above.
+
+        .. versionchanged:: 3.5
+           Added the `collation` option.
         """
-        super(UpdateOne, self).__init__(filter, update, upsert)
+        super(UpdateOne, self).__init__(filter, update, upsert, collation)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_update(self._filter, self._doc, False, self._upsert)
+        bulkobj.add_update(self._filter, self._doc, False, self._upsert,
+                           collation=self._collation)
 
 
 class UpdateMany(_UpdateOp):
@@ -196,7 +230,7 @@ class UpdateMany(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, update, upsert=False):
+    def __init__(self, filter, update, upsert=False, collation=None):
         """Create an UpdateMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -206,12 +240,19 @@ class UpdateMany(_UpdateOp):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only
+            supported on MongoDB 3.4 and above.
+
+        .. versionchanged:: 3.5
+           Added the `collation` option.
         """
-        super(UpdateMany, self).__init__(filter, update, upsert)
+        super(UpdateMany, self).__init__(filter, update, upsert, collation)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_update(self._filter, self._doc, True, self._upsert)
+        bulkobj.add_update(self._filter, self._doc, True, self._upsert,
+                           collation=self._collation)
 
 
 class IndexModel(object):

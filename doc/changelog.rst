@@ -17,6 +17,11 @@ Highlights:
   overhead of :class:`~pymongo.operations.InsertOne`,
   :class:`~pymongo.operations.DeleteOne`, and
   :class:`~pymongo.operations.DeleteMany`.
+- Added the `collation` option to :class:`~pymongo.operations.DeleteOne`,
+  :class:`~pymongo.operations.DeleteMany`,
+  :class:`~pymongo.operations.ReplaceOne`,
+  :class:`~pymongo.operations.UpdateOne`, and
+  :class:`~pymongo.operations.UpdateMany`.
 
 Changes and Deprecations:
 

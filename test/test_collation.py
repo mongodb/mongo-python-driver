@@ -27,7 +27,8 @@ from pymongo.collation import (
     CollationMaxVariable)
 from pymongo.errors import ConfigurationError
 from pymongo.write_concern import WriteConcern
-from pymongo.operations import IndexModel
+from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, ReplaceOne,
+                                UpdateMany, UpdateOne)
 
 
 class TestCollationObject(unittest.TestCase):
@@ -274,12 +275,51 @@ class TestCollation(unittest.TestCase):
         self.assertCollationInLastCommand()
 
     @raisesConfigurationErrorForOldMongoDB
+    def test_bulk_write(self):
+        self.db.test.collection.bulk_write([
+            DeleteOne({'noCollation': 42}),
+            DeleteMany({'noCollation': 42}),
+            DeleteOne({'foo': 42}, collation=self.collation),
+            DeleteMany({'foo': 42}, collation=self.collation),
+            ReplaceOne({'noCollation': 24}, {'bar': 42}),
+            UpdateOne({'noCollation': 84}, {'$set': {'bar': 10}}, upsert=True),
+            UpdateMany({'noCollation': 45}, {'$set': {'bar': 42}}),
+            ReplaceOne({'foo': 24}, {'foo': 42}, collation=self.collation),
+            UpdateOne({'foo': 84}, {'$set': {'foo': 10}}, upsert=True,
+                      collation=self.collation),
+            UpdateMany({'foo': 45}, {'$set': {'foo': 42}},
+                       collation=self.collation)
+        ])
+
+        delete_cmd = self.listener.results['started'][0].command
+        update_cmd = self.listener.results['started'][1].command
+
+        def check_ops(ops):
+            for op in ops:
+                if 'noCollation' in op['q']:
+                    self.assertNotIn('collation', op)
+                else:
+                    self.assertEqual(self.collation.document,
+                                     op['collation'])
+
+        check_ops(delete_cmd['deletes'])
+        check_ops(update_cmd['updates'])
+
+    @raisesConfigurationErrorForOldMongoDB
     def test_bulk(self):
         bulk = self.db.test.initialize_ordered_bulk_op()
+        bulk.find({'noCollation': 42}).remove_one()
+        bulk.find({'noCollation': 42}).remove()
         bulk.find({'foo': 42}, collation=self.collation).remove_one()
-        # No collation for this operation.
-        bulk.find({'bar': 24}).replace_one({'bar': 42})
-        bulk.find({'foo': 84}, collation=self.collation).upsert()
+        bulk.find({'foo': 42}, collation=self.collation).remove()
+        bulk.find({'noCollation': 24}).replace_one({'bar': 42})
+        bulk.find({'noCollation': 84}).upsert().update_one(
+            {'$set': {'foo': 10}})
+        bulk.find({'noCollation': 45}).update({'$set': {'bar': 42}})
+        bulk.find({'foo': 24}, collation=self.collation).replace_one(
+            {'foo': 42})
+        bulk.find({'foo': 84}, collation=self.collation).upsert().update_one(
+            {'$set': {'foo': 10}})
         bulk.find({'foo': 45}, collation=self.collation).update({
             '$set': {'foo': 42}})
         bulk.execute()
@@ -287,21 +327,22 @@ class TestCollation(unittest.TestCase):
         delete_cmd = self.listener.results['started'][0].command
         update_cmd = self.listener.results['started'][1].command
 
-        for op in delete_cmd['deletes']:
-            self.assertEqual(self.collation.document,
-                             op['collation'])
+        def check_ops(ops):
+            for op in ops:
+                if 'noCollation' in op['q']:
+                    self.assertNotIn('collation', op)
+                else:
+                    self.assertEqual(self.collation.document,
+                                     op['collation'])
 
-        for op in update_cmd['updates']:
-            if 'foo' in op['q']:
-                self.assertEqual(self.collation.document,
-                                 op['collation'])
-            else:
-                self.assertNotIn('collation', op)
+        check_ops(delete_cmd['deletes'])
+        check_ops(update_cmd['updates'])
 
     @client_context.require_version_max(3, 3, 8)
     def test_mixed_bulk_collation(self):
         bulk = self.db.test.initialize_unordered_bulk_op()
-        bulk.find({'foo': 42}).upsert()
+        bulk.find({'foo': 42}).upsert().update_one(
+            {'$set': {'bar': 10}})
         bulk.find({'foo': 43}, collation=self.collation).remove_one()
         with self.assertRaises(ConfigurationError):
             bulk.execute()
@@ -343,6 +384,10 @@ class TestCollation(unittest.TestCase):
             {'$set': {'hello': 'moon'}})
         with self.assertRaises(ConfigurationError):
             bulk.execute()
+        update_one = UpdateOne({'hello': 'world'}, {'$set': {'hello': 'moon'}},
+                               collation=self.collation)
+        with self.assertRaises(ConfigurationError):
+            collection.bulk_write([update_one])
 
     @raisesConfigurationErrorForOldMongoDB
     def test_cursor_collation(self):
