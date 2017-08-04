@@ -1,27 +1,28 @@
 {
-    "description": "Connect to standalone", 
-    "phases": [
-        {
-            "outcome": {
-                "servers": {
-                    "a:27017": {
-                        "setName": null, 
-                        "type": "Standalone"
-                    }
-                }, 
-                "setName": null, 
-                "topologyType": "Single"
-            }, 
-            "responses": [
-                [
-                    "a:27017", 
-                    {
-                        "ismaster": true, 
-                        "ok": 1
-                    }
-                ]
-            ]
-        }
-    ], 
-    "uri": "mongodb://a"
+  "description": "Connect to standalone",
+  "uri": "mongodb://a",
+  "phases": [
+    {
+      "responses": [
+        [
+          "a:27017",
+          {
+            "ok": 1,
+            "ismaster": true
+          }
+        ]
+      ],
+      "outcome": {
+        "servers": {
+          "a:27017": {
+            "type": "Standalone",
+            "setName": null
+          }
+        },
+        "topologyType": "Single",
+        "logicalSessionTimeoutMinutes": null,
+        "setName": null
+      }
+    }
+  ]
 }

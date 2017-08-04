@@ -1,52 +1,54 @@
 {
-    "description": "Member brought up as standalone", 
-    "phases": [
-        {
-            "outcome": {
-                "servers": {
-                    "a:27017": {
-                        "setName": null, 
-                        "type": "Unknown"
-                    }
-                }, 
-                "setName": null, 
-                "topologyType": "Unknown"
-            }, 
-            "responses": [
-                [
-                    "b:27017", 
-                    {
-                        "ismaster": true, 
-                        "ok": 1
-                    }
-                ]
+  "description": "Member brought up as standalone",
+  "uri": "mongodb://a,b",
+  "phases": [
+    {
+      "responses": [
+        [
+          "b:27017",
+          {
+            "ok": 1,
+            "ismaster": true
+          }
+        ]
+      ],
+      "outcome": {
+        "servers": {
+          "a:27017": {
+            "type": "Unknown",
+            "setName": null
+          }
+        },
+        "topologyType": "Unknown",
+        "logicalSessionTimeoutMinutes": null,
+        "setName": null
+      }
+    },
+    {
+      "responses": [
+        [
+          "a:27017",
+          {
+            "ok": 1,
+            "ismaster": true,
+            "setName": "rs",
+            "hosts": [
+              "a:27017"
             ]
-        }, 
-        {
-            "outcome": {
-                "servers": {
-                    "a:27017": {
-                        "setName": "rs", 
-                        "type": "RSPrimary"
-                    }
-                }, 
-                "setName": "rs", 
-                "topologyType": "ReplicaSetWithPrimary"
-            }, 
-            "responses": [
-                [
-                    "a:27017", 
-                    {
-                        "hosts": [
-                            "a:27017"
-                        ], 
-                        "ismaster": true, 
-                        "ok": 1, 
-                        "setName": "rs"
-                    }
-                ]
-            ]
-        }
-    ], 
-    "uri": "mongodb://a,b"
+          }
+        ]
+      ],
+      "outcome": {
+        "servers": {
+          "a:27017": {
+            "type": "RSPrimary",
+            "setName": "rs"
+          }
+        },
+        "topologyType": "ReplicaSetWithPrimary",
+        "logicalSessionTimeoutMinutes": null,
+        "setName": "rs"
+      }
+    }
+  ]
 }
