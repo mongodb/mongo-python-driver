@@ -872,6 +872,14 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(Timestamp(1, 0) <= Timestamp(1, 0))
         self.assertFalse(Timestamp(1, 0) > Timestamp(1, 0))
 
+    def test_timestamp_highorder_bits(self):
+        doc = {'a': Timestamp(0xFFFFFFFF, 0xFFFFFFFF)}
+        doc_bson = (b'\x10\x00\x00\x00'
+                    b'\x11a\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+                    b'\x00')
+        self.assertEqual(doc_bson, BSON.encode(doc))
+        self.assertEqual(doc, BSON(doc_bson).decode())
+
     def test_bad_id_keys(self):
         self.assertRaises(InvalidDocument, BSON.encode,
                           {"_id": {"$bad": 123}}, True)

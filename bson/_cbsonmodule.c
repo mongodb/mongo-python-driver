@@ -851,19 +851,15 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         {
             /* Timestamp */
             PyObject* obj;
-            long i;
+            unsigned long i;
 
             obj = PyObject_GetAttrString(value, "inc");
             if (!obj) {
                 return 0;
             }
-#if PY_MAJOR_VERSION >= 3
-            i = PyLong_AsLong(obj);
-#else
-            i = PyInt_AsLong(obj);
-#endif
+            i = PyLong_AsUnsignedLong(obj);
             Py_DECREF(obj);
-            if (i == -1 && PyErr_Occurred()) {
+            if (i == (unsigned long)-1 && PyErr_Occurred()) {
                 return 0;
             }
             if (!buffer_write_int32(buffer, (int32_t)i)) {
@@ -874,13 +870,9 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             if (!obj) {
                 return 0;
             }
-#if PY_MAJOR_VERSION >= 3
-            i = PyLong_AsLong(obj);
-#else
-            i = PyInt_AsLong(obj);
-#endif
+            i = PyLong_AsUnsignedLong(obj);
             Py_DECREF(obj);
-            if (i == -1 && PyErr_Occurred()) {
+            if (i == (unsigned long)-1 && PyErr_Occurred()) {
                 return 0;
             }
             if (!buffer_write_int32(buffer, (int32_t)i)) {
