@@ -44,8 +44,9 @@ class ServerDescription(object):
         '_address', '_server_type', '_all_hosts', '_tags', '_replica_set_name',
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
-        '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
-        '_set_version', '_election_id', '_last_write_date', '_last_update_time')
+        '_round_trip_time', '_me', '_is_writable', '_is_readable',
+        '_ls_timeout_minutes', '_error', '_set_version', '_election_id',
+        '_last_write_date', '_last_update_time')
 
     def __init__(
             self,
@@ -71,6 +72,7 @@ class ServerDescription(object):
         self._election_id = ismaster.election_id
         self._is_writable = ismaster.is_writable
         self._is_readable = ismaster.is_readable
+        self._ls_timeout_minutes = ismaster.logical_session_timeout_minutes
         self._round_trip_time = round_trip_time
         self._me = ismaster.me
         self._last_update_time = _time()
@@ -155,6 +157,10 @@ class ServerDescription(object):
     @property
     def me(self):
         return self._me
+
+    @property
+    def logical_session_timeout_minutes(self):
+        return self._ls_timeout_minutes
 
     @property
     def last_write_date(self):

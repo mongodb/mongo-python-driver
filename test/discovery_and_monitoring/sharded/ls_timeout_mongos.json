@@ -1,0 +1,79 @@
+{
+  "description": "Parse localLogicalSessionTimeoutMinutes from mongoses",
+  "uri": "mongodb://a,b",
+  "phases": [
+    {
+      "responses": [
+        [
+          "a:27017",
+          {
+            "ok": 1,
+            "ismaster": true,
+            "msg": "isdbgrid",
+            "localLogicalSessionTimeoutMinutes": 1
+          }
+        ],
+        [
+          "b:27017",
+          {
+            "ok": 1,
+            "ismaster": true,
+            "msg": "isdbgrid",
+            "localLogicalSessionTimeoutMinutes": 2
+          }
+        ]
+      ],
+      "outcome": {
+        "servers": {
+          "a:27017": {
+            "type": "Mongos",
+            "setName": null
+          },
+          "b:27017": {
+            "type": "Mongos",
+            "setName": null
+          }
+        },
+        "topologyType": "Sharded",
+        "logicalSessionTimeoutMinutes": 1,
+        "setName": null
+      }
+    },
+    {
+      "responses": [
+        [
+          "a:27017",
+          {
+            "ok": 1,
+            "ismaster": true,
+            "msg": "isdbgrid",
+            "localLogicalSessionTimeoutMinutes": 1
+          }
+        ],
+        [
+          "b:27017",
+          {
+            "ok": 1,
+            "ismaster": true,
+            "msg": "isdbgrid"
+          }
+        ]
+      ],
+      "outcome": {
+        "servers": {
+          "a:27017": {
+            "type": "Mongos",
+            "setName": null
+          },
+          "b:27017": {
+            "type": "Mongos",
+            "setName": null
+          }
+        },
+        "topologyType": "Sharded",
+        "logicalSessionTimeoutMinutes": null,
+        "setName": null
+      }
+    }
+  ]
+}

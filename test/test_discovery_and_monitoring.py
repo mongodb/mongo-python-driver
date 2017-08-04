@@ -160,6 +160,8 @@ def check_outcome(self, topology, outcome):
             actual_server_description.election_id)
 
     self.assertEqual(outcome['setName'], topology.description.replica_set_name)
+    self.assertEqual(outcome['logicalSessionTimeoutMinutes'],
+                     topology.description.logical_session_timeout_minutes)
     expected_topology_type = getattr(TOPOLOGY_TYPE, outcome['topologyType'])
     self.assertEqual(topology_type_name(expected_topology_type),
                      topology_type_name(topology.description.topology_type))

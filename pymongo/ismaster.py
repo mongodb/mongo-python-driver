@@ -128,6 +128,10 @@ class IsMaster(object):
         return self._doc.get('electionId')
 
     @property
+    def logical_session_timeout_minutes(self):
+        return self._doc.get('localLogicalSessionTimeoutMinutes')
+
+    @property
     def is_writable(self):
         return self._is_writable
 

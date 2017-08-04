@@ -85,6 +85,22 @@ class TopologyDescription(object):
 
                 break
 
+        # Server Discovery And Monitoring Spec: "Whenever a client updates the
+        # TopologyDescription from an ismaster response, it MUST set
+        # TopologyDescription.logicalSessionTimeoutMinutes to the smallest
+        # localLogicalSessionTimeoutMinutes value among all ServerDescriptions
+        # of known ServerType. If any ServerDescription of known ServerType has
+        # a null localLogicalSessionTimeoutMinutes, then
+        # TopologyDescription.logicalSessionTimeoutMinutes MUST be set to null.
+        known = self.known_servers
+        if not known:
+            self._ls_timeout_minutes = None
+        elif any(s.logical_session_timeout_minutes is None for s in known):
+            self._ls_timeout_minutes = None
+        else:
+            self._ls_timeout_minutes = min(s.logical_session_timeout_minutes
+                                           for s in known)
+
     def check_compatible(self):
         """Raise ConfigurationError if any server is incompatible.
 
@@ -152,6 +168,11 @@ class TopologyDescription(object):
     def max_election_id(self):
         """Greatest electionId seen from a primary, or None."""
         return self._max_election_id
+
+    @property
+    def logical_session_timeout_minutes(self):
+        """Minimum logical session timeout, or None."""
+        return self._ls_timeout_minutes
 
     @property
     def known_servers(self):
