@@ -164,11 +164,16 @@ _METADATA = SON([
 ])
 
 if sys.platform.startswith('linux'):
+    # platform.linux_distribution was deprecated in Python 3.5.
+    if sys.version_info[:2] < (3, 5):
+        # Distro name and version (e.g. Ubuntu 16.04 xenial)
+        _name = ' '.join([part for part in
+                          platform.linux_distribution() if part])
+    else:
+        _name = platform.system()
     _METADATA['os'] = SON([
         ('type', platform.system()),
-        # Distro name and version (e.g. Ubuntu 16.04 xenial)
-        ('name', ' '.join([part for part in
-                           platform.linux_distribution() if part])),
+        ('name', _name),
         ('architecture', platform.machine()),
         # Kernel version (e.g. 4.4.0-17-generic).
         ('version', platform.release())
