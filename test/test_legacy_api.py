@@ -2251,7 +2251,6 @@ class TestLegacyBulkNoResults(BulkTestBase):
         self.coll.delete_many({})
 
     def test_no_results_ordered_success(self):
-
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'_id': 1})
         batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
@@ -2260,21 +2259,24 @@ class TestLegacyBulkNoResults(BulkTestBase):
         self.assertTrue(batch.execute({'w': 0}) is None)
         wait_until(lambda: 2 == self.coll.count(),
                    'insert 2 documents')
+        wait_until(lambda: self.coll.find_one({'_id': 1}) is None,
+                   'removed {"_id": 1}')
 
     def test_no_results_ordered_failure(self):
-
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'_id': 1})
         batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
         batch.insert({'_id': 2})
+        # Fails with duplicate key error.
         batch.insert({'_id': 1})
+        # Should not be executed since the batch is ordered.
         batch.find({'_id': 1}).remove_one()
         self.assertTrue(batch.execute({'w': 0}) is None)
         wait_until(lambda: 3 == self.coll.count(),
                    'insert 3 documents')
+        self.assertEqual({'_id': 1}, self.coll.find_one({'_id': 1}))
 
     def test_no_results_unordered_success(self):
-
         batch = self.coll.initialize_unordered_bulk_op()
         batch.insert({'_id': 1})
         batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
@@ -2283,19 +2285,23 @@ class TestLegacyBulkNoResults(BulkTestBase):
         self.assertTrue(batch.execute({'w': 0}) is None)
         wait_until(lambda: 2 == self.coll.count(),
                    'insert 2 documents')
+        wait_until(lambda: self.coll.find_one({'_id': 1}) is None,
+                   'removed {"_id": 1}')
 
     def test_no_results_unordered_failure(self):
-
         batch = self.coll.initialize_unordered_bulk_op()
         batch.insert({'_id': 1})
         batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
         batch.insert({'_id': 2})
+        # Fails with duplicate key error.
         batch.insert({'_id': 1})
+        # Should be executed since the batch is unordered.
         batch.find({'_id': 1}).remove_one()
         self.assertTrue(batch.execute({'w': 0}) is None)
         wait_until(lambda: 2 == self.coll.count(),
                    'insert 2 documents')
-        self.assertEqual(self.coll.find_one({'_id': 1}), None)
+        wait_until(lambda: self.coll.find_one({'_id': 1}) is None,
+                   'removed {"_id": 1}')
 
 
 class TestLegacyBulkWriteConcern(BulkTestBase):
