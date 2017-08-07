@@ -716,7 +716,11 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
         if (json_options.datetime_representation ==
                 DatetimeRepresentation.ISO8601):
             if not obj.tzinfo:
-                obj = obj.replace(tzinfo=utc)
+                if json_options.tzinfo \
+                        and isinstance(json_options.tzinfo, datetime.tzinfo):
+                    obj = obj.replace(tzinfo=json_options.tzinfo)
+                else:
+                    obj = obj.replace(tzinfo=utc)
             if obj >= EPOCH_AWARE:
                 off = obj.tzinfo.utcoffset(obj)
                 if (off.days, off.seconds, off.microseconds) == (0, 0, 0):
