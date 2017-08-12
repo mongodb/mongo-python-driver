@@ -34,9 +34,10 @@ from pymongo import (monitoring,
                      OFF)
 from pymongo.collation import Collation
 from pymongo.cursor import CursorType
-from pymongo.errors import (InvalidOperation,
-                            OperationFailure,
-                            ExecutionTimeout, ConfigurationError)
+from pymongo.errors import (ConfigurationError,
+                            ExecutionTimeout,
+                            InvalidOperation,
+                            OperationFailure)
 from pymongo.read_concern import ReadConcern
 from test import (client_context,
                   SkipTest,
