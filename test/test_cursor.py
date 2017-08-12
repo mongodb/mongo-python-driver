@@ -1338,23 +1338,23 @@ class TestCursor(IntegrationTest):
 
 
 class TestRawBSONCursor(IntegrationTest):
-    def test_raw_batches(self):
+    def test_find_raw(self):
         c = self.db.test
         c.drop()
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
-        batches = list(c.find(raw_batches=True).sort('_id'))
+        batches = list(c.find_raw().sort('_id'))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
     def test_explain(self):
         c = self.db.test
         c.insert_one({})
-        explanation = c.find(raw_batches=True).explain()
+        explanation = c.find_raw().explain()
         self.assertIsInstance(explanation, dict)
 
     def test_clone(self):
-        cursor = self.db.test.find(raw_batches=True)
+        cursor = self.db.test.find_raw()
         # Copy of a RawBSONCursor is also a RawBSONCursor, not a Cursor.
         self.assertIsInstance(next(cursor.clone()), bytes)
         self.assertIsInstance(next(copy.copy(cursor)), bytes)
@@ -1364,42 +1364,39 @@ class TestRawBSONCursor(IntegrationTest):
         c = self.db.test
         c.drop()
         c.insert_many({'_id': i} for i in range(200))
-        result = b''.join(
-            c.find(raw_batches=True, cursor_type=CursorType.EXHAUST))
-
+        result = b''.join(c.find_raw(cursor_type=CursorType.EXHAUST)) 
         self.assertEqual([{'_id': i} for i in range(200)], decode_all(result))
 
     def test_server_error(self):
         with self.assertRaises(OperationFailure) as exc:
-            next(self.db.test.find({'x': {'$bad': 1}}, raw_batches=True))
+            next(self.db.test.find_raw({'x': {'$bad': 1}}))
 
         # The server response was decoded, not left raw.
         self.assertIsInstance(exc.exception.details, dict)
 
     def test_get_item(self):
         with self.assertRaises(InvalidOperation):
-            self.db.test.find(raw_batches=True)[0]
+            self.db.test.find_raw()[0]
 
     @client_context.require_version_min(3, 4)
     def test_collation(self):
-        next(self.db.test.find(collation=Collation('en_US'), raw_batches=True))
+        next(self.db.test.find_raw(collation=Collation('en_US')))
 
     @client_context.require_version_max(3, 2)
     def test_collation_error(self):
         with self.assertRaises(ConfigurationError):
-            next(self.db.test.find(collation=Collation('en_US'),
-                                   raw_batches=True))
+            next(self.db.test.find_raw(collation=Collation('en_US')))
 
     @client_context.require_version_min(3, 2)
     def test_read_concern(self):
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
-        next(c.find(raw_batches=True))
+        next(c.find_raw())
 
     @client_context.require_version_max(3, 1)
     def test_read_concern_error(self):
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
         with self.assertRaises(ConfigurationError):
-            next(c.find(raw_batches=True))
+            next(c.find_raw())
 
     def test_monitoring(self):
         listener = EventListener()
@@ -1409,7 +1406,7 @@ class TestRawBSONCursor(IntegrationTest):
         c.insert_many([{'_id': i} for i in range(10)])
 
         listener.results.clear()
-        cursor = c.find(raw_batches=True, batch_size=4)
+        cursor = c.find_raw(batch_size=4)
 
         # First raw batch of 4 documents.
         next(cursor)

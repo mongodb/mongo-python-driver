@@ -1235,22 +1235,11 @@ class RawBSONCursor(Cursor):
     def __init__(self, *args, **kwargs):
         """Create a new cursor / iterator over raw batches of BSON data.
 
-        Should not be called directly by application developers. Pass
-        ``raw_batches=True`` to :meth:`~pymongo.collection.Collection.find`
+        Should not be called directly by application developers -
+        see :meth:`~pymongo.collection.Collection.find_raw`
         instead.
 
-        This example demonstrates how to work with raw batches, but in practice
-        raw batches should be passed to an external library that can decode
-        BSON into another data type, rather than used with PyMongo's
-        :mod:`bson` module.
-
-          >>> import bson
-          >>> cursor = db.test.find(raw_batches=True)
-          >>> for batch in cursor:
-          ...     print(bson.decode_all(batch))
-
         .. mongodoc:: cursors
-
         """
         if kwargs.get('manipulate'):
             raise InvalidOperation(

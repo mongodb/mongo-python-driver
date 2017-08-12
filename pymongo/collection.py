@@ -1173,9 +1173,6 @@ class Collection(common.BaseObject):
               results to the client without waiting for the client to request
               each batch, reducing latency. See notes on compatibility below.
 
-          - `raw_batches` (optional): If True, use the legacy wire protocol to
-            query MongoDB, and use a :class:`~pymongo.cursor.RawBSONCursor`
-            that returns entire batches of documents as raw BSON streams.
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for this query. See
             :meth:`~pymongo.cursor.Cursor.sort` for details.
@@ -1245,7 +1242,7 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.5
            Added the options `return_key`, `show_record_id`, `snapshot`,
            `hint`, `max_time_ms`, `max_scan`, `min`, `max`, and `comment`.
-           Deprecated the option `modifiers`. Support the `raw_batches` option.
+           Deprecated the option `modifiers`.
 
         .. versionchanged:: 3.4
            Support the `collation` option.
@@ -1279,10 +1276,27 @@ class Collection(common.BaseObject):
         .. mongodoc:: find
 
         """
-        if kwargs.pop('raw_batches', False):
-            return RawBSONCursor(self, *args, **kwargs)
-        else:
-            return Cursor(self, *args, **kwargs)
+        return Cursor(self, *args, **kwargs)
+
+    def find_raw(self, *args, **kwargs):
+        """Query the database and retrieve batches of raw BSON.
+
+        Takes the same parameters as :meth:`find` but returns a
+        :class:`~pymongo.cursor.RawBSONCursor`.
+
+        This example demonstrates how to work with raw batches, but in practice
+        raw batches should be passed to an external library that can decode
+        BSON into another data type, rather than used with PyMongo's
+        :mod:`bson` module.
+
+          >>> import bson
+          >>> cursor = db.test.find_raw()
+          >>> for batch in cursor:
+          ...     print(bson.decode_all(batch))
+
+        .. versionadded:: 3.6
+        """
+        return RawBSONCursor(self, *args, **kwargs)
 
     def parallel_scan(self, num_cursors, **kwargs):
         """Scan this entire collection in parallel.
