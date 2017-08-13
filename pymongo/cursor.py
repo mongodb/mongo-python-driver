@@ -34,7 +34,12 @@ from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
-from pymongo.message import _CursorAddress, _GetMore, _Query, _convert_exception
+from pymongo.message import (_convert_exception,
+                             _CursorAddress,
+                             _GetMore,
+                             _RawBatchGetMore,
+                             _Query,
+                             _RawBatchQuery)
 from pymongo.read_preferences import ReadPreference
 
 _QUERY_OPTIONS = {
@@ -1203,50 +1208,29 @@ class Cursor(object):
         return y
 
 
-class _RawQuery(_Query):
-    def use_command(self, socket_info, exhaust):
-        # Compatibility checks.
-        super(_RawQuery, self).use_command(socket_info, exhaust)
-
-        return False
-
-    def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
-        # Always pass False for use_cmd.
-        return super(_RawQuery, self).get_message(set_slave_ok, is_mongos,
-                                                  False)
-
-
-class _RawGetMore(_GetMore):
-    def use_command(self, socket_info, exhaust):
-        return False
-
-    def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
-        # Always pass False for use_cmd.
-        return super(_RawGetMore, self).get_message(set_slave_ok, is_mongos,
-                                                    False)
-
-
-class RawBSONCursor(Cursor):
+class RawBatchCursor(Cursor):
     """A cursor / iterator over raw batches of BSON data from a query result."""
 
-    _query_class = _RawQuery
-    _getmore_class = _RawGetMore
+    _query_class = _RawBatchQuery
+    _getmore_class = _RawBatchGetMore
 
     def __init__(self, *args, **kwargs):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
-        see :meth:`~pymongo.collection.Collection.find_raw`
+        see :meth:`~pymongo.collection.Collection.find_raw_batches`
         instead.
 
         .. mongodoc:: cursors
         """
-        if kwargs.get('manipulate'):
-            raise InvalidOperation(
-                "Cannot use RawBSONCursor with manipulate=True")
-
+        manipulate = kwargs.get('manipulate')
         kwargs['manipulate'] = False
-        super(RawBSONCursor, self).__init__(*args, **kwargs)
+        super(RawBatchCursor, self).__init__(*args, **kwargs)
+
+        # Throw only after cursor's initialized, to prevent errors in __del__.
+        if manipulate:
+            raise InvalidOperation(
+                "Cannot use RawBatchCursor with manipulate=True")
 
     def _unpack_response(self, response, cursor_id, codec_options):
         return helpers._raw_response(response, cursor_id)
@@ -1260,4 +1244,4 @@ class RawBSONCursor(Cursor):
         return clone.explain()
 
     def __getitem__(self, index):
-        raise InvalidOperation("Cannot call __getitem__ on RawBSONCursor")
+        raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")

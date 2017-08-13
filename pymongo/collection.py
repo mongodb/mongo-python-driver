@@ -30,9 +30,9 @@ from pymongo import (common,
                      helpers,
                      message)
 from pymongo.bulk import BulkOperationBuilder, _Bulk
-from pymongo.command_cursor import CommandCursor
+from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.collation import validate_collation_or_none
-from pymongo.cursor import Cursor, RawBSONCursor
+from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.helpers import _UNICODE_REPLACE_CODEC_OPTIONS
@@ -1278,11 +1278,11 @@ class Collection(common.BaseObject):
         """
         return Cursor(self, *args, **kwargs)
 
-    def find_raw(self, *args, **kwargs):
+    def find_raw_batches(self, *args, **kwargs):
         """Query the database and retrieve batches of raw BSON.
 
         Takes the same parameters as :meth:`find` but returns a
-        :class:`~pymongo.cursor.RawBSONCursor`.
+        :class:`~pymongo.cursor.RawBatchCursor`.
 
         This example demonstrates how to work with raw batches, but in practice
         raw batches should be passed to an external library that can decode
@@ -1290,13 +1290,13 @@ class Collection(common.BaseObject):
         :mod:`bson` module.
 
           >>> import bson
-          >>> cursor = db.test.find_raw()
+          >>> cursor = db.test.find_raw_batches()
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
         .. versionadded:: 3.6
         """
-        return RawBSONCursor(self, *args, **kwargs)
+        return RawBatchCursor(self, *args, **kwargs)
 
     def parallel_scan(self, num_cursors, **kwargs):
         """Scan this entire collection in parallel.
@@ -1821,6 +1821,69 @@ class Collection(common.BaseObject):
 
         return options
 
+    def _aggregate(self, pipeline, cursor_class, first_batch_size, **kwargs):
+        if not isinstance(pipeline, list):
+            raise TypeError("pipeline must be a list")
+
+        if "explain" in kwargs:
+            raise ConfigurationError("The explain option is not supported. "
+                                     "Use Database.command instead.")
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
+
+        cmd = SON([("aggregate", self.__name),
+                   ("pipeline", pipeline)])
+
+        # Remove things that are not command options.
+        batch_size = common.validate_non_negative_integer_or_none(
+            "batchSize", kwargs.pop("batchSize", None))
+        use_cursor = common.validate_boolean(
+            "useCursor", kwargs.pop("useCursor", True))
+        # If the server does not support the "cursor" option we
+        # ignore useCursor and batchSize.
+        with self._socket_for_reads() as (sock_info, slave_ok):
+            if sock_info.max_wire_version > 0:
+                if use_cursor:
+                    if "cursor" not in kwargs:
+                        kwargs["cursor"] = {}
+                    if first_batch_size is not None:
+                        kwargs["cursor"]["batchSize"] = first_batch_size
+
+            dollar_out = pipeline and '$out' in pipeline[-1]
+            if (sock_info.max_wire_version >= 5 and dollar_out and
+                    self.write_concern):
+                cmd['writeConcern'] = self.write_concern.document
+
+            cmd.update(kwargs)
+
+            # Apply this Collection's read concern if $out is not in the
+            # pipeline.
+            if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
+                if dollar_out:
+                    result = self._command(sock_info, cmd, slave_ok,
+                                           parse_write_concern_error=True,
+                                           collation=collation)
+                else:
+                    result = self._command(sock_info, cmd, slave_ok,
+                                           read_concern=self.read_concern,
+                                           collation=collation)
+            else:
+                result = self._command(sock_info, cmd, slave_ok,
+                                       parse_write_concern_error=dollar_out,
+                                       collation=collation)
+
+            if "cursor" in result:
+                cursor = result["cursor"]
+            else:
+                # Pre-MongoDB 2.6. Fake a cursor.
+                cursor = {
+                    "id": 0,
+                    "firstBatch": result["result"],
+                    "ns": self.full_name,
+                }
+
+            return cursor_class(
+                self, cursor, sock_info.address).batch_size(batch_size or 0)
+
     def aggregate(self, pipeline, **kwargs):
         """Perform an aggregation using the aggregation framework on this
         collection.
@@ -1892,66 +1955,34 @@ class Collection(common.BaseObject):
         .. _aggregate command:
             http://docs.mongodb.org/manual/applications/aggregation
         """
-        if not isinstance(pipeline, list):
-            raise TypeError("pipeline must be a list")
+        return self._aggregate(pipeline,
+                               CommandCursor,
+                               kwargs.get('batchSize'),
+                               **kwargs)
 
-        if "explain" in kwargs:
-            raise ConfigurationError("The explain option is not supported. "
-                                     "Use Database.command instead.")
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+    def aggregate_raw_batches(self, pipeline, **kwargs):
+        """Perform an aggregation and retrieve batches of raw BSON.
 
-        cmd = SON([("aggregate", self.__name),
-                   ("pipeline", pipeline)])
+        Takes the same parameters as :meth:`aggregate` but returns a
+        :class:`~pymongo.cursor.RawBatchCursor`.
 
-        # Remove things that are not command options.
-        batch_size = common.validate_positive_integer_or_none(
-            "batchSize", kwargs.pop("batchSize", None))
-        use_cursor = common.validate_boolean(
-            "useCursor", kwargs.pop("useCursor", True))
-        # If the server does not support the "cursor" option we
-        # ignore useCursor and batchSize.
-        with self._socket_for_reads() as (sock_info, slave_ok):
-            if sock_info.max_wire_version > 0:
-                if use_cursor:
-                    if "cursor" not in kwargs:
-                        kwargs["cursor"] = {}
-                    if batch_size is not None:
-                        kwargs["cursor"]["batchSize"] = batch_size
+        This example demonstrates how to work with raw batches, but in practice
+        raw batches should be passed to an external library that can decode
+        BSON into another data type, rather than used with PyMongo's
+        :mod:`bson` module.
 
-            dollar_out = pipeline and '$out' in pipeline[-1]
-            if (sock_info.max_wire_version >= 5 and dollar_out and
-                    self.write_concern):
-                cmd['writeConcern'] = self.write_concern.document
+          >>> import bson
+          >>> cursor = db.test.aggregate_raw_batches([
+          ...     {'$project': {'x': {'$multiply': [2, '$x']}}}])
+          >>> for batch in cursor:
+          ...     print(bson.decode_all(batch))
 
-            cmd.update(kwargs)
-
-            # Apply this Collection's read concern if $out is not in the
-            # pipeline.
-            if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
-                if dollar_out:
-                    result = self._command(sock_info, cmd, slave_ok,
-                                           parse_write_concern_error=True,
-                                           collation=collation)
-                else:
-                    result = self._command(sock_info, cmd, slave_ok,
-                                           read_concern=self.read_concern,
-                                           collation=collation)
-            else:
-                result = self._command(sock_info, cmd, slave_ok,
-                                       parse_write_concern_error=dollar_out,
-                                       collation=collation)
-
-            if "cursor" in result:
-                cursor = result["cursor"]
-            else:
-                # Pre-MongoDB 2.6. Fake a cursor.
-                cursor = {
-                    "id": 0,
-                    "firstBatch": result["result"],
-                    "ns": self.full_name,
-                }
-            return CommandCursor(
-                self, cursor, sock_info.address).batch_size(batch_size or 0)
+        .. versionadded:: 3.6
+        """
+        return self._aggregate(pipeline,
+                               RawBatchCommandCursor,
+                               0,
+                               **kwargs)
 
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.

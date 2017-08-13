@@ -42,7 +42,7 @@ from pymongo.read_concern import ReadConcern
 from test import (client_context,
                   SkipTest,
                   unittest,
-                  IntegrationTest)
+                  IntegrationTest, Version)
 from test.utils import (EventListener,
                         ignore_deprecations,
                         rs_or_single_client,
@@ -1337,25 +1337,30 @@ class TestCursor(IntegrationTest):
             self.assertEqual(0, len(results["started"]))
 
 
-class TestRawBSONCursor(IntegrationTest):
+class TestRawBatchCursor(IntegrationTest):
     def test_find_raw(self):
         c = self.db.test
         c.drop()
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
-        batches = list(c.find_raw().sort('_id'))
+        batches = list(c.find_raw_batches().sort('_id'))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
+
+    def test_manipulate(self):
+        c = self.db.test
+        with self.assertRaises(InvalidOperation):
+            c.find_raw_batches(manipulate=True)
 
     def test_explain(self):
         c = self.db.test
         c.insert_one({})
-        explanation = c.find_raw().explain()
+        explanation = c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
     def test_clone(self):
-        cursor = self.db.test.find_raw()
-        # Copy of a RawBSONCursor is also a RawBSONCursor, not a Cursor.
+        cursor = self.db.test.find_raw_batches()
+        # Copy of a RawBatchCursor is also a RawBatchCursor, not a Cursor.
         self.assertIsInstance(next(cursor.clone()), bytes)
         self.assertIsInstance(next(copy.copy(cursor)), bytes)
 
@@ -1364,39 +1369,39 @@ class TestRawBSONCursor(IntegrationTest):
         c = self.db.test
         c.drop()
         c.insert_many({'_id': i} for i in range(200))
-        result = b''.join(c.find_raw(cursor_type=CursorType.EXHAUST)) 
+        result = b''.join(c.find_raw_batches(cursor_type=CursorType.EXHAUST))
         self.assertEqual([{'_id': i} for i in range(200)], decode_all(result))
 
     def test_server_error(self):
         with self.assertRaises(OperationFailure) as exc:
-            next(self.db.test.find_raw({'x': {'$bad': 1}}))
+            next(self.db.test.find_raw_batches({'x': {'$bad': 1}}))
 
         # The server response was decoded, not left raw.
         self.assertIsInstance(exc.exception.details, dict)
 
     def test_get_item(self):
         with self.assertRaises(InvalidOperation):
-            self.db.test.find_raw()[0]
+            self.db.test.find_raw_batches()[0]
 
     @client_context.require_version_min(3, 4)
     def test_collation(self):
-        next(self.db.test.find_raw(collation=Collation('en_US')))
+        next(self.db.test.find_raw_batches(collation=Collation('en_US')))
 
     @client_context.require_version_max(3, 2)
     def test_collation_error(self):
         with self.assertRaises(ConfigurationError):
-            next(self.db.test.find_raw(collation=Collation('en_US')))
+            next(self.db.test.find_raw_batches(collation=Collation('en_US')))
 
     @client_context.require_version_min(3, 2)
     def test_read_concern(self):
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
-        next(c.find_raw())
+        next(c.find_raw_batches())
 
     @client_context.require_version_max(3, 1)
     def test_read_concern_error(self):
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
         with self.assertRaises(ConfigurationError):
-            next(c.find_raw())
+            next(c.find_raw_batches())
 
     def test_monitoring(self):
         listener = EventListener()
@@ -1406,7 +1411,7 @@ class TestRawBSONCursor(IntegrationTest):
         c.insert_many([{'_id': i} for i in range(10)])
 
         listener.results.clear()
-        cursor = c.find_raw(batch_size=4)
+        cursor = c.find_raw_batches(batch_size=4)
 
         # First raw batch of 4 documents.
         next(cursor)
@@ -1445,6 +1450,97 @@ class TestRawBSONCursor(IntegrationTest):
         finally:
             # Finish the cursor.
             tuple(cursor)
+
+
+class TestRawBatchCommandCursor(IntegrationTest):
+    @classmethod
+    def setUpClass(cls):
+        super(TestRawBatchCommandCursor, cls).setUpClass()
+        if not client_context.version >= Version(2, 6):
+            raise SkipTest("Requires MongoDB 2.6 aggregation cursors")
+
+    def test_aggregate_raw(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+        batches = list(c.aggregate_raw_batches([{'$sort': {'_id': 1}}]))
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+
+    def test_server_error(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+        c.insert_one({'_id': 10, 'x': 'not a number'})
+
+        with self.assertRaises(OperationFailure) as exc:
+            list(self.db.test.aggregate_raw_batches([{
+                '$sort': {'_id': 1},
+            }, {
+                '$project': {'x': {'$multiply': [2, '$x']}}
+            }], batchSize=4))
+
+        # The server response was decoded, not left raw.
+        self.assertIsInstance(exc.exception.details, dict)
+
+    def test_get_item(self):
+        with self.assertRaises(InvalidOperation):
+            self.db.test.aggregate_raw_batches([])[0]
+
+    @client_context.require_version_min(3, 4)
+    def test_collation(self):
+        next(self.db.test.aggregate_raw_batches([], collation=Collation('en_US')))
+
+    @client_context.require_version_max(3, 2)
+    def test_collation_error(self):
+        with self.assertRaises(ConfigurationError):
+            next(self.db.test.aggregate_raw_batches([], collation=Collation('en_US')))
+
+    def test_monitoring(self):
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        c = client.pymongo_test.test
+        c.drop()
+        c.insert_many([{'_id': i} for i in range(10)])
+
+        listener.results.clear()
+        cursor = c.aggregate_raw_batches([{'$sort': {'_id': 1}}], batchSize=4)
+
+        # Start cursor, no initial batch.
+        started = listener.results['started'][0]
+        succeeded = listener.results['succeeded'][0]
+        self.assertEqual(0, len(listener.results['failed']))
+        self.assertEqual('aggregate', started.command_name)
+        self.assertEqual('pymongo_test', started.database_name)
+        self.assertEqual('aggregate', succeeded.command_name)
+        csr = succeeded.reply["cursor"]
+        self.assertEqual(csr["ns"], "pymongo_test.test")
+
+        # First batch is empty.
+        self.assertEqual(len(csr["firstBatch"]), 0)
+        listener.results.clear()
+
+        # Batches of 4 documents.
+        n = 0
+        for batch in cursor:
+            results = listener.results
+            started = results['started'][0]
+            succeeded = results['succeeded'][0]
+            self.assertEqual(0, len(results['failed']))
+            self.assertEqual('getMore', started.command_name)
+            self.assertEqual('pymongo_test', started.database_name)
+            self.assertEqual('getMore', succeeded.command_name)
+            csr = succeeded.reply["cursor"]
+            self.assertEqual(csr["ns"], "pymongo_test.test")
+            self.assertEqual(len(csr["nextBatch"]), 1)
+            self.assertEqual(csr["nextBatch"][0], batch)
+            self.assertEqual(decode_all(batch),
+                             [{'_id': i} for i in range(n, min(n + 4, 10))])
+
+            n += 4
+            listener.results.clear()
 
 
 if __name__ == "__main__":

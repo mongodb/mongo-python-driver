@@ -353,6 +353,29 @@ class _GetMore(object):
         return get_more(ns, self.ntoreturn, self.cursor_id)
 
 
+class _RawBatchQuery(_Query):
+    def use_command(self, socket_info, exhaust):
+        # Compatibility checks.
+        super(_RawBatchQuery, self).use_command(socket_info, exhaust)
+
+        return False
+
+    def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
+        # Always pass False for use_cmd.
+        return super(_RawBatchQuery, self).get_message(set_slave_ok, is_mongos,
+                                                       False)
+
+
+class _RawBatchGetMore(_GetMore):
+    def use_command(self, socket_info, exhaust):
+        return False
+
+    def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
+        # Always pass False for use_cmd.
+        return super(_RawBatchGetMore, self).get_message(set_slave_ok, is_mongos,
+                                                         False)
+
+
 class _CursorAddress(tuple):
     """The server address (host, port) of a cursor, with namespace property."""
 

@@ -1581,9 +1581,6 @@ class TestCollection(IntegrationTest):
         # Force a getMore
         cursor._CommandCursor__data.clear()
         next(cursor)
-        # startingFrom for a command cursor doesn't include the initial batch
-        # returned by the command.
-        self.assertEqual(5, cursor._CommandCursor__retrieved)
         # batchSize - 1
         self.assertEqual(4, len(cursor._CommandCursor__data))
         # Exhaust the cursor. There shouldn't be any errors.

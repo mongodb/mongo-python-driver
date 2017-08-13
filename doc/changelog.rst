@@ -8,6 +8,12 @@ This version drops support for MongoDB versions older than 2.6. If connecting to
 a MongoDB 2.4 server or older, PyMongo now throws a
 :exc:`~pymongo.errors.ConfigurationError`.
 
+Highlights include:
+
+- New methods :meth:`~pymongo.collection.Collection.find_raw_batches` and
+  :meth:`~pymongo.collection.Collection.aggregate_raw_batches` for use with
+  external libraries that can parse raw batches of BSON data.
+
 Changes in Version 3.5.1
 ------------------------
 

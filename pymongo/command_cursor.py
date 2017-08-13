@@ -20,22 +20,29 @@ from collections import deque
 
 from bson.py3compat import integer_types
 from pymongo import helpers
-from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
-from pymongo.message import _CursorAddress, _GetMore, _convert_exception
+from pymongo.errors import (AutoReconnect,
+                            InvalidOperation,
+                            NotMasterError,
+                            OperationFailure)
+from pymongo.message import (_convert_exception,
+                             _CursorAddress,
+                             _GetMore,
+                             _RawBatchGetMore)
 
 
 class CommandCursor(object):
-    """A cursor / iterator over command cursors.
-    """
+    """A cursor / iterator over command cursors."""
+    _getmore_class = _GetMore
 
     def __init__(self, collection, cursor_info, address, retrieved=0):
         """Create a new command cursor.
+
+        The parameter 'retrieved' is unused.
         """
         self.__collection = collection
         self.__id = cursor_info['id']
         self.__address = address
         self.__data = deque(cursor_info['firstBatch'])
-        self.__retrieved = retrieved
         self.__batch_size = 0
         self.__killed = (self.__id == 0)
 
@@ -115,9 +122,9 @@ class CommandCursor(object):
         if publish:
             start = datetime.datetime.now()
         try:
-            doc = helpers._unpack_response(response.data,
-                                           self.__id,
-                                           self.__collection.codec_options)
+            doc = self._unpack_response(response.data,
+                                        self.__id,
+                                        self.__collection.codec_options)
             if from_command:
                 helpers._check_command_response(doc['data'][0])
 
@@ -154,11 +161,9 @@ class CommandCursor(object):
             cursor = doc['data'][0]['cursor']
             documents = cursor['nextBatch']
             self.__id = cursor['id']
-            self.__retrieved += len(documents)
         else:
             documents = doc["data"]
             self.__id = doc["cursor_id"]
-            self.__retrieved += doc["number_returned"]
 
         if publish:
             duration = (datetime.datetime.now() - start) + cmd_duration
@@ -174,6 +179,8 @@ class CommandCursor(object):
             self.__killed = True
         self.__data = deque(documents)
 
+    def _unpack_response(self, response, cursor_id, codec_options):
+        return helpers._unpack_response(response, cursor_id, codec_options)
 
     def _refresh(self):
         """Refreshes the cursor with more data from the server.
@@ -188,16 +195,20 @@ class CommandCursor(object):
         if self.__id:  # Get More
             dbname, collname = self.__ns.split('.', 1)
             self.__send_message(
-                _GetMore(dbname,
-                         collname,
-                         self.__batch_size,
-                         self.__id,
-                         self.__collection.codec_options))
+                self._getmore_class(dbname,
+                                    collname,
+                                    self.__batch_size,
+                                    self.__id,
+                                    self.__collection.codec_options))
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
 
         return len(self.__data)
+
+    @property
+    def _collection(self):
+        return self.__collection
 
     @property
     def alive(self):
@@ -247,3 +258,31 @@ class CommandCursor(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+
+class RawBatchCommandCursor(CommandCursor):
+    _getmore_class = _RawBatchGetMore
+
+    def __init__(self, collection, cursor_info, address, retrieved=0):
+        """Create a new cursor / iterator over raw batches of BSON data.
+
+        Should not be called directly by application developers -
+        see :meth:`~pymongo.collection.Collection.aggregate_raw_batches`
+        instead.
+
+        .. mongodoc:: cursors
+        """
+        assert not cursor_info.get('firstBatch')
+        super(RawBatchCommandCursor, self).__init__(
+            collection, cursor_info, address, retrieved)
+
+        db = self._collection.database
+        if db.outgoing_manipulators or db.outgoing_copying_manipulators:
+            raise InvalidOperation("Raw batches are not compatible with"
+                                   " SON manipulators.")
+
+    def _unpack_response(self, response, cursor_id, codec_options):
+        return helpers._raw_response(response, cursor_id)
+
+    def __getitem__(self, index):
+        raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
