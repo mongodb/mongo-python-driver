@@ -150,9 +150,15 @@ else:
     def _set_tcp_option(sock, tcp_option, max_value):
         if hasattr(socket, tcp_option):
             sockopt = getattr(socket, tcp_option)
-            default = sock.getsockopt(socket.SOL_TCP, sockopt)
-            if default > max_value:
-                sock.setsockopt(socket.SOL_TCP, sockopt, max_value)
+            try:
+                # PYTHON-1350 - NetBSD doesn't implement getsockopt for
+                # TCP_KEEPIDLE and friends. Don't attempt to set the
+                # values there.
+                default = sock.getsockopt(socket.IPPROTO_TCP, sockopt)
+                if default > max_value:
+                    sock.setsockopt(socket.IPPROTO_TCP, sockopt, max_value)
+            except socket.error:
+                pass
 
     def _set_keepalive_times(sock):
         _set_tcp_option(sock, 'TCP_KEEPIDLE', _MAX_TCP_KEEPIDLE)

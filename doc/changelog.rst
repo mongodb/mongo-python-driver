@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.5.1
+------------------------
+
+Version 3.5.1 fixes bugs reported since the release of 3.5.0:
+
+- Work around socket.getsockopt issue with NetBSD.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.5.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.5.1 release notes in JIRA: https://jira.mongodb.org/projects/PYTHON/versions/18721
+
 Changes in Version 3.5
 ----------------------
 
