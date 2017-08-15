@@ -294,9 +294,7 @@ class Cursor(object):
         self.__killed = True
 
     def close(self):
-        """Explicitly close / kill this cursor. Required for PyPy, Jython and
-        other Python implementations that don't use reference counting
-        garbage collection.
+        """Explicitly close / kill this cursor.
         """
         self.__die(True)
 

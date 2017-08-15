@@ -534,6 +534,10 @@ class TestClient(IntegrationTest):
         cursor = coll.find().batch_size(10)
         self.assertTrue(bool(next(cursor)))
         self.assertLess(cursor.retrieved, docs_inserted)
+
+        # Open a command cursor and leave it open on the server.
+        cursor = coll.aggregate([], batchSize=10)
+        self.assertTrue(bool(next(cursor)))
         del cursor
         # Required for PyPy, Jython and other Python implementations that
         # don't use reference counting garbage collection.

@@ -48,20 +48,24 @@ class CommandCursor(object):
         if self.__id and not self.__killed:
             self.__die()
 
-    def __die(self):
+    def __die(self, synchronous=False):
         """Closes this cursor.
         """
         if self.__id and not self.__killed:
-            self.__collection.database.client.close_cursor(
-                self.__id, _CursorAddress(self.__address, self.__ns))
+            address = _CursorAddress(
+                self.__address, self.__collection.full_name)
+            if synchronous:
+                self.__collection.database.client._close_cursor_now(
+                    self.__id, address)
+            else:
+                self.__collection.database.client.close_cursor(
+                    self.__id, address)
         self.__killed = True
 
     def close(self):
-        """Explicitly close / kill this cursor. Required for PyPy, Jython and
-        other Python implementations that don't use reference counting
-        garbage collection.
+        """Explicitly close / kill this cursor.
         """
-        self.__die()
+        self.__die(True)
 
     def batch_size(self, batch_size):
         """Limits the number of documents returned in one batch. Each batch
@@ -242,4 +246,4 @@ class CommandCursor(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.__die()
+        self.close()

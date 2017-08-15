@@ -1302,17 +1302,24 @@ class TestCursor(IntegrationTest):
 
         results.clear()
 
-        # Close the cursor while it's still open on the server.
+        # Close a cursor while it's still open on the server.
         cursor = coll.find().batch_size(10)
         self.assertTrue(bool(next(cursor)))
         self.assertLess(cursor.retrieved, docs_inserted)
         cursor.close()
 
-        # Test that the cursor was closed.
-        self.assertEqual(1, len(results["started"]))
+        # Close a command cursor while it's still open on the server.
+        cursor = coll.aggregate([], batchSize=10)
+        self.assertTrue(bool(next(cursor)))
+        cursor.close()
+
+        # Test that both cursors were closed.
+        self.assertEqual(2, len(results["started"]))
         self.assertEqual("killCursors", results["started"][0].command_name)
-        self.assertEqual(1, len(results["succeeded"]))
+        self.assertEqual("killCursors", results["started"][1].command_name)
+        self.assertEqual(2, len(results["succeeded"]))
         self.assertEqual("killCursors", results["succeeded"][0].command_name)
+        self.assertEqual("killCursors", results["succeeded"][1].command_name)
 
 
 if __name__ == "__main__":
