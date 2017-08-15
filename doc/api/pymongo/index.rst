@@ -32,6 +32,7 @@ Sub-modules:
    :maxdepth: 2
 
    database
+   change_stream
    client_session
    collation
    collection

@@ -1,4 +1,4 @@
-# Copyright 2009-2015 MongoDB, Inc.
+# Copyright 2009-2017 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ from pymongo import (common,
 from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.collation import validate_collation_or_none
+from pymongo.change_stream import ChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
@@ -1757,11 +1758,9 @@ class Collection(common.BaseObject):
                     "firstBatch": data,
                     "ns": namespace,
                 }
-                # Note that a collection can only have 64 indexes, so we don't
-                # technically have to pass len(data) here. There will never be
-                # an OP_GET_MORE call.
-                return CommandCursor(
-                    coll, cursor, sock_info.address, len(data))
+                # Note that a collection can only have 64 indexes, so there
+                # will never be a getMore call.
+                return CommandCursor(coll, cursor, sock_info.address)
 
     def index_information(self):
         """Get information on this collection's indexes.
@@ -1829,6 +1828,7 @@ class Collection(common.BaseObject):
             raise ConfigurationError("The explain option is not supported. "
                                      "Use Database.command instead.")
         collation = validate_collation_or_none(kwargs.pop('collation', None))
+        max_await_time_ms = kwargs.pop('maxAwaitTimeMS', None)
 
         cmd = SON([("aggregate", self.__name),
                    ("pipeline", pipeline)])
@@ -1882,14 +1882,17 @@ class Collection(common.BaseObject):
                 }
 
             return cursor_class(
-                self, cursor, sock_info.address).batch_size(batch_size or 0)
+                self, cursor, sock_info.address,
+                batch_size=batch_size or 0,
+                max_await_time_ms=max_await_time_ms)
 
     def aggregate(self, pipeline, **kwargs):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
-        All optional aggregate parameters should be passed as keyword arguments
-        to this method. Valid options include, but are not limited to:
+        All optional `aggregate command`_ parameters should be passed as
+        keyword arguments to this method. Valid options include, but are not
+        limited to:
 
           - `allowDiskUse` (bool): Enables writing to temporary files. When set
             to True, aggregation stages can write data to the _tmp subdirectory
@@ -1936,6 +1939,8 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
+        .. versionchanged:: 3.6
+           Added the `maxAwaitTimeMS` option.
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4. Support the `collation` option.
@@ -1953,7 +1958,7 @@ class Collection(common.BaseObject):
         .. seealso:: :doc:`/examples/aggregation`
 
         .. _aggregate command:
-            http://docs.mongodb.org/manual/applications/aggregation
+            https://docs.mongodb.com/manual/reference/command/aggregate
         """
         return self._aggregate(pipeline,
                                CommandCursor,
@@ -1983,6 +1988,94 @@ class Collection(common.BaseObject):
                                RawBatchCommandCursor,
                                0,
                                **kwargs)
+
+    def watch(self, pipeline=None, full_document='default', resume_after=None,
+              max_await_time_ms=None, batch_size=None, collation=None):
+        """Watch changes on this collection.
+
+        Performs an aggregation with an implicit initial
+        `$changeStream aggregation stage`_ and returns a
+        :class:`~pymongo.change_stream.ChangeStream` cursor that iterates over
+        changes on this collection. Introduced in MongoDB 3.6.
+
+        .. code-block:: python
+
+           for change in db.collection.watch():
+               print(change)
+
+        The ChangeStream returned automatically resumes when it
+        encounters a potentially recoverable error during iteration. The resume
+        process is transparent to the application and ensures no change stream
+        documents are lost; the call to
+        :meth:`~pymongo.change_stream.ChangeStream.next` blocks until the next
+        change document is returned or an unrecoverable error is raised.
+
+        .. code-block:: python
+
+            try:
+                for insert_change in db.collection.watch(
+                        [{'$match': {'operationType': 'insert'}}]):
+                    print(insert_change)
+            except pymongo.errors.PyMongoError:
+                # We know for sure it's unrecoverable:
+                log.error('...')
+
+        For a precise description of the resume process see the
+        `Change Streams specification`_.
+
+        .. note:: Using this helper method is preferred to directly calling
+            :meth:`~pymongo.collection.Collection.aggregate` with a
+            ``$changeStream`` aggregation stage, for the purpose of supporting
+            resumability.
+
+        .. warning:: This Collection's :attr:`read_concern` must be
+            ``ReadConcern("majority")`` in order to use the ``$changeStream``
+            aggregation stage.
+
+        :Parameters:
+          - `pipeline` (optional): A list of aggregation pipeline stages to
+            append to an initial `$changeStream` aggregation stage. Not all
+            pipeline stages are valid after a `$changeStream` stage, see the
+            `$changeStream aggregation stage`_ documentation for the supported
+            stages.
+          - `full_document` (optional): The fullDocument to pass as an option
+            to the $changeStream pipeline stage. Allowed values: 'default',
+            'updateLookup'.  Defaults to 'default'.
+            When set to 'updateLookup', the change notification for partial
+            updates will include both a delta describing the changes to the
+            document, as well as a copy of the entire document that was
+            changed from some time after the change occurred.
+          - `resume_after` (optional): The logical starting point for this
+            change stream.
+          - `max_await_time_ms` (optional): The maximum time in milliseconds
+            for the server to wait for changes before responding to a getMore
+            operation.
+          - `batch_size` (optional): The maximum number of documents to return
+            per batch.
+          - `collation` (optional): The :class:`~pymongo.collation.Collation`
+            to use for the aggregation.
+
+        :Returns:
+          A :class:`~pymongo.change_stream.ChangeStream` cursor.
+
+        .. versionadded:: 3.6
+
+        .. _$changeStream aggregation stage:
+            https://docs.mongodb.com/manual/reference/operator/aggregation/changeStream/
+
+        .. _Change Streams specification:
+            https://github.com/mongodb/specifications/blob/master/source/change-streams.rst
+        """
+        if pipeline is None:
+            pipeline = []
+        else:
+            if not isinstance(pipeline, list):
+                raise TypeError("pipeline must be a list")
+
+        common.validate_string_or_none('full_document', full_document)
+
+        return ChangeStream(self, pipeline, full_document, resume_after,
+                            max_await_time_ms, batch_size, collation)
 
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.

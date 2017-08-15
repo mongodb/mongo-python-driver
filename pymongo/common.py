@@ -633,7 +633,8 @@ class BaseObject(object):
 
     @property
     def read_concern(self):
-        """Read only access to the read concern of this instance.
+        """Read only access to the :class:`~pymongo.read_concern.ReadConcern`
+        of this instance.
 
         .. versionadded:: 3.2
         """

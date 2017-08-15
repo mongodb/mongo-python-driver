@@ -538,8 +538,7 @@ class Database(common.BaseObject):
                 "firstBatch": data,
                 "ns": coll.full_name,
             }
-            # Need to tell the cursor how many docs were in the first batch.
-            return CommandCursor(coll, cursor, sock_info.address, len(data))
+            return CommandCursor(coll, cursor, sock_info.address)
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.

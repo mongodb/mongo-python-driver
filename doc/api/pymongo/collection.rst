@@ -34,6 +34,7 @@
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
+      .. autoattribute:: read_concern
       .. automethod:: with_options
       .. automethod:: bulk_write
       .. automethod:: insert_one
@@ -44,6 +45,7 @@
       .. automethod:: delete_one
       .. automethod:: delete_many
       .. automethod:: aggregate
+      .. automethod:: watch
       .. automethod:: find(filter=None, projection=None, skip=0, limit=0, no_cursor_timeout=False, cursor_type=CursorType.NON_TAILABLE, sort=None, allow_partial_results=False, oplog_replay=False, modifiers=None, manipulate=True)
       .. automethod:: find_one(filter=None, *args, **kwargs)
       .. automethod:: find_one_and_delete

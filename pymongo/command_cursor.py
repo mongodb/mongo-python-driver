@@ -34,7 +34,8 @@ class CommandCursor(object):
     """A cursor / iterator over command cursors."""
     _getmore_class = _GetMore
 
-    def __init__(self, collection, cursor_info, address, retrieved=0):
+    def __init__(self, collection, cursor_info, address, retrieved=0,
+                 batch_size=0, max_await_time_ms=None):
         """Create a new command cursor.
 
         The parameter 'retrieved' is unused.
@@ -43,13 +44,19 @@ class CommandCursor(object):
         self.__id = cursor_info['id']
         self.__address = address
         self.__data = deque(cursor_info['firstBatch'])
-        self.__batch_size = 0
+        self.__batch_size = batch_size
+        if (not isinstance(max_await_time_ms, integer_types)
+                and max_await_time_ms is not None):
+            raise TypeError("max_await_time_ms must be an integer or None")
+        self.__max_await_time_ms = max_await_time_ms
         self.__killed = (self.__id == 0)
 
         if "ns" in cursor_info:
             self.__ns = cursor_info["ns"]
         else:
             self.__ns = collection.full_name
+
+        self.batch_size(batch_size)
 
     def __del__(self):
         if self.__id and not self.__killed:
@@ -199,8 +206,8 @@ class CommandCursor(object):
                                     collname,
                                     self.__batch_size,
                                     self.__id,
-                                    self.__collection.codec_options))
-
+                                    self.__collection.codec_options,
+                                    self.__max_await_time_ms))
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
 
@@ -241,7 +248,10 @@ class CommandCursor(object):
 
     def next(self):
         """Advance the cursor."""
-        if len(self.__data) or self._refresh():
+        # Block until a document is returnable.
+        while not len(self.__data) and not self.__killed:
+            self._refresh()
+        if len(self.__data):
             coll = self.__collection
             return coll.database._fix_outgoing(self.__data.popleft(), coll)
         else:
@@ -259,7 +269,8 @@ class CommandCursor(object):
 class RawBatchCommandCursor(CommandCursor):
     _getmore_class = _RawBatchGetMore
 
-    def __init__(self, collection, cursor_info, address, retrieved=0):
+    def __init__(self, collection, cursor_info, address, retrieved=0,
+                 batch_size=0, max_await_time_ms=None):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
@@ -270,7 +281,8 @@ class RawBatchCommandCursor(CommandCursor):
         """
         assert not cursor_info.get('firstBatch')
         super(RawBatchCommandCursor, self).__init__(
-            collection, cursor_info, address, retrieved)
+            collection, cursor_info, address, retrieved, batch_size,
+            max_await_time_ms)
 
     def _unpack_response(self, response, cursor_id, codec_options):
         return helpers._raw_response(response, cursor_id)
