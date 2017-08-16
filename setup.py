@@ -321,7 +321,7 @@ vi = sys.version_info
 if vi[0] == 2:
     extras_require['tls'].append("ipaddress")
 if sys.platform == 'win32':
-    extras_require['gssapi'] = ["winkerberos>=0.3.0"]
+    extras_require['gssapi'] = ["winkerberos>=0.5.0"]
     if vi[0] == 2 and vi < (2, 7, 9) or vi[0] == 3 and vi < (3, 4):
         extras_require['tls'].append("wincertstore>=0.2")
 else:

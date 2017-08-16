@@ -17,9 +17,17 @@
 import hmac
 import socket
 
+try:
+    from urllib import quote
+except ImportError:
+    from urllib.parse import quote
+
 HAVE_KERBEROS = True
+_USE_PRINCIPAL = False
 try:
     import winkerberos as kerberos
+    if tuple(map(int, kerberos.__version__.split('.')[:2])) >= (0, 5):
+        _USE_PRINCIPAL = True
 except ImportError:
     try:
         import kerberos
@@ -292,13 +300,21 @@ def _authenticate_gssapi(credentials, sock_info):
             service = service + '@' + props.service_realm
 
         if password is not None:
-            if '@' in username:
-                user, domain = username.split('@', 1)
+            if _USE_PRINCIPAL:
+                # Note that, though we use unquote_plus for unquoting URI
+                # options, we use quote here. Microsoft's UrlUnescape (used
+                # by WinKerberos) doesn't support +.
+                principal = ":".join((quote(username), quote(password)))
+                result, ctx = kerberos.authGSSClientInit(
+                    service, principal, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
             else:
-                user, domain = username, None
-            result, ctx = kerberos.authGSSClientInit(
-                service, gssflags=kerberos.GSS_C_MUTUAL_FLAG,
-                user=user, domain=domain, password=password)
+                if '@' in username:
+                    user, domain = username.split('@', 1)
+                else:
+                    user, domain = username, None
+                result, ctx = kerberos.authGSSClientInit(
+                    service, gssflags=kerberos.GSS_C_MUTUAL_FLAG,
+                    user=user, domain=domain, password=password)
         else:
             result, ctx = kerberos.authGSSClientInit(
                 service, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
