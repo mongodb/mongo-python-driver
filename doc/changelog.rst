@@ -7,6 +7,9 @@ Changes in Version 3.5.1
 Version 3.5.1 fixes bugs reported since the release of 3.5.0:
 
 - Work around socket.getsockopt issue with NetBSD.
+- :meth:`pymongo.command_cursor.CommandCursor.close` now closes
+  the cursor synchronously instead of deferring to a background
+  thread.
 
 Issues Resolved
 ...............
