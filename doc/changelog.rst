@@ -10,6 +10,7 @@ Version 3.5.1 fixes bugs reported since the release of 3.5.0:
 - :meth:`pymongo.command_cursor.CommandCursor.close` now closes
   the cursor synchronously instead of deferring to a background
   thread.
+- Fix documentation build warnings with Sphinx 1.6.x.
 
 Issues Resolved
 ...............

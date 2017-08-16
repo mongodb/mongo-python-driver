@@ -15,8 +15,8 @@
 """MongoDB specific extensions to Sphinx."""
 
 from docutils import nodes
+from docutils.parsers import rst
 from sphinx import addnodes
-from sphinx.util.compat import Directive
 
 
 class mongodoc(nodes.Admonition, nodes.Element):
@@ -48,7 +48,7 @@ def depart_mongoref_node(self, node):
         self.body.append('\n')
 
 
-class MongodocDirective(Directive):
+class MongodocDirective(rst.Directive):
 
     has_content = True
     required_arguments = 0
