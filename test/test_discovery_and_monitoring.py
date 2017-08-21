@@ -22,6 +22,7 @@ sys.path[0:0] = [""]
 
 from bson import json_util
 from pymongo import common
+from pymongo.errors import ConfigurationError
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.ismaster import IsMaster
@@ -125,6 +126,13 @@ def check_outcome(self, topology, outcome):
     self.assertEqual(
         len(topology.description.server_descriptions()),
         len(expected_servers))
+
+    if outcome.get('compatible') is False:
+        with self.assertRaises(ConfigurationError):
+            topology.description.check_compatible()
+    else:
+        # No error.
+        topology.description.check_compatible()
 
     # Since lengths are equal, every actual server must have a corresponding
     # expected server.

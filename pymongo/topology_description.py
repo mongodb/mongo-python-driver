@@ -61,6 +61,9 @@ class TopologyDescription(object):
         self._incompatible_err = None
 
         for s in self._server_descriptions.values():
+            if not s.is_server_type_known:
+                continue
+
             # s.min/max_wire_version is the server's wire protocol.
             # MIN/MAX_SUPPORTED_WIRE_VERSION is what PyMongo supports.
             server_too_new = (

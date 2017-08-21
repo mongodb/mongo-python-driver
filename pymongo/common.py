@@ -40,7 +40,7 @@ MAX_WIRE_VERSION = 0
 MAX_WRITE_BATCH_SIZE = 1000
 
 # What this version of PyMongo supports.
-MIN_SUPPORTED_WIRE_VERSION = 0
+MIN_SUPPORTED_WIRE_VERSION = 2
 MAX_SUPPORTED_WIRE_VERSION = 5
 
 # Frequency to call ismaster on servers, in seconds.
