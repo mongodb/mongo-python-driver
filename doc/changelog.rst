@@ -18,7 +18,7 @@ Issues Resolved
 See the `PyMongo 3.5.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.5.1 release notes in JIRA: https://jira.mongodb.org/projects/PYTHON/versions/18721
+.. _PyMongo 3.5.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18721
 
 Changes in Version 3.5
 ----------------------
@@ -109,7 +109,7 @@ Issues Resolved
 See the `PyMongo 3.5 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.5 release notes in JIRA: https://jira.mongodb.org/projects/PYTHON/versions/17590
+.. _PyMongo 3.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=17590
 
 Changes in Version 3.4
 ----------------------
@@ -181,7 +181,21 @@ Issues Resolved
 See the `PyMongo 3.4 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.4 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16594
+.. _PyMongo 3.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16594
+
+Changes in Version 3.3.1
+------------------------
+
+Version 3.3.1 fixes a memory leak when decoding elements inside of a
+:class:`~bson.raw_bson.RawBSONDocument`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.3.1 release notes in Jira`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.3.1 release notes in Jira: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=17636
 
 Changes in Version 3.3
 ----------------------
@@ -208,7 +222,7 @@ Issues Resolved
 See the `PyMongo 3.3 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16005
+.. _PyMongo 3.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16005
 
 Changes in Version 3.2.2
 ------------------------
@@ -223,7 +237,7 @@ Issues Resolved
 See the `PyMongo 3.2.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.2.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16538
+.. _PyMongo 3.2.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16538
 
 
 Changes in Version 3.2.1
@@ -242,7 +256,7 @@ Issues Resolved
 See the `PyMongo 3.2.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.2.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16312
+.. _PyMongo 3.2.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16312
 
 Changes in Version 3.2
 ----------------------
@@ -269,6 +283,14 @@ Highlights include:
   :exc:`~pymongo.errors.ServerSelectionTimeoutError` if no server is available.
   See :class:`~pymongo.mongo_client.MongoClient` for details.
 
+Issues Resolved
+...............
+
+See the `PyMongo 3.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15612
+
 Changes in Version 3.1.1
 ------------------------
 
@@ -282,7 +304,7 @@ Issues Resolved
 See the `PyMongo 3.1.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.1.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16211
+.. _PyMongo 3.1.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16211
 
 Changes in Version 3.1
 ----------------------
@@ -314,7 +336,7 @@ Issues Resolved
 See the `PyMongo 3.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14796
+.. _PyMongo 3.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=14796
 
 Changes in Version 3.0.3
 ------------------------
@@ -328,7 +350,7 @@ Issues Resolved
 See the `PyMongo 3.0.3 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.0.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/15528
+.. _PyMongo 3.0.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15528
 
 Changes in Version 3.0.2
 ------------------------
@@ -346,7 +368,7 @@ Issues Resolved
 See the `PyMongo 3.0.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.0.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/15430
+.. _PyMongo 3.0.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15430
 
 Changes in Version 3.0.1
 ------------------------
@@ -361,7 +383,7 @@ Issues Resolved
 See the `PyMongo 3.0.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.0.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/15322
+.. _PyMongo 3.0.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15322
 
 Changes in Version 3.0
 ----------------------
@@ -807,7 +829,30 @@ Issues Resolved
 See the `PyMongo 3.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12501
+.. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12501
+
+Changes in Version 2.9.5
+------------------------
+
+Version 2.9.5 works around ssl module deprecations in Python 3.6, and expected
+future ssl module deprecations. It also fixes bugs found since the release of
+2.9.4.
+
+- Use ssl.SSLContext and ssl.PROTOCOL_TLS_CLIENT when available.
+- Fixed a C extensions build issue when the interpreter was built with -std=c99
+- Fixed various build issues with MinGW32.
+- Fixed a write concern bug in :meth:`~pymongo.database.Database.add_user` and
+  :meth:`~pymongo.database.Database.remove_user` when connected to MongoDB 3.2+
+- Fixed various test failures related to changes in gevent, MongoDB, and our CI
+  test environment.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.9.5 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.9.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=17605
 
 Changes in Version 2.9.4
 ------------------------
@@ -826,7 +871,7 @@ Issues Resolved
 See the `PyMongo 2.9.4 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.9.4 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16885
+.. _PyMongo 2.9.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16885
 
 Changes in Version 2.9.3
 ------------------------
@@ -842,7 +887,7 @@ Issues Resolved
 See the `PyMongo 2.9.3 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.9.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16539
+.. _PyMongo 2.9.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16539
 
 Changes in Version 2.9.2
 ------------------------
@@ -860,7 +905,7 @@ Issues Resolved
 See the `PyMongo 2.9.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.9.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16303
+.. _PyMongo 2.9.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16303
 
 Changes in Version 2.9.1
 ------------------------
@@ -874,7 +919,7 @@ Issues Resolved
 See the `PyMongo 2.9.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.9.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/16208
+.. _PyMongo 2.9.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=16208
 
 Changes in Version 2.9
 ----------------------
@@ -950,7 +995,7 @@ Issues Resolved
 See the `PyMongo 2.9 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.9 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14795
+.. _PyMongo 2.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=14795
 
 Changes in Version 2.8.1
 ------------------------
@@ -964,7 +1009,7 @@ Issues Resolved
 See the `PyMongo 2.8.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.8.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/15324
+.. _PyMongo 2.8.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=15324
 
 Changes in Version 2.8
 ----------------------
@@ -1014,7 +1059,7 @@ Issues Resolved
 See the `PyMongo 2.8 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.8 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14223
+.. _PyMongo 2.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=14223
 
 Changes in Version 2.7.2
 ------------------------
@@ -1031,7 +1076,7 @@ Issues Resolved
 See the `PyMongo 2.7.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.7.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14005
+.. _PyMongo 2.7.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=14005
 
 Changes in Version 2.7.1
 ------------------------
@@ -1046,7 +1091,7 @@ Issues Resolved
 See the `PyMongo 2.7.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.7.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/13823
+.. _PyMongo 2.7.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=13823
 
 Changes in Version 2.7
 ----------------------
@@ -1083,7 +1128,7 @@ Issues Resolved
 See the `PyMongo 2.7 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.7 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12892
+.. _PyMongo 2.7 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12892
 
 Changes in Version 2.6.3
 ------------------------
@@ -1097,7 +1142,7 @@ Issues Resolved
 See the `PyMongo 2.6.3 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.6.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/13098
+.. _PyMongo 2.6.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=13098
 
 Changes in Version 2.6.2
 ------------------------
@@ -1111,7 +1156,7 @@ Issues Resolved
 See the `PyMongo 2.6.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.6.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12910
+.. _PyMongo 2.6.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12910
 
 Changes in Version 2.6.1
 ------------------------
@@ -1125,7 +1170,7 @@ Issues Resolved
 See the `PyMongo 2.6.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.6.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12905
+.. _PyMongo 2.6.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12905
 
 Changes in Version 2.6
 ----------------------
@@ -1174,7 +1219,7 @@ Issues Resolved
 See the `PyMongo 2.6 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.6 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12380
+.. _PyMongo 2.6 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12380
 
 Changes in Version 2.5.2
 ------------------------
@@ -1188,7 +1233,7 @@ Issues Resolved
 See the `PyMongo 2.5.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.5.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12581
+.. _PyMongo 2.5.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12581
 
 Changes in Version 2.5.1
 ------------------------
@@ -1203,7 +1248,7 @@ Issues Resolved
 See the `PyMongo 2.5.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.5.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12484
+.. _PyMongo 2.5.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12484
 
 Changes in Version 2.5
 ----------------------
@@ -1227,7 +1272,7 @@ Issues Resolved
 See the `PyMongo 2.5 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.5 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11981
+.. _PyMongo 2.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=11981
 
 Changes in Version 2.4.2
 ------------------------
@@ -1242,7 +1287,7 @@ Issues Resolved
 See the `PyMongo 2.4.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.4.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12299
+.. _PyMongo 2.4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12299
 
 Changes in Version 2.4.1
 ------------------------
@@ -1258,7 +1303,7 @@ Issues Resolved
 See the `PyMongo 2.4.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.4.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12286
+.. _PyMongo 2.4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=12286
 
 Changes in Version 2.4
 ----------------------
@@ -1308,7 +1353,7 @@ Issues Resolved
 See the `PyMongo 2.4 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.4 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11485
+.. _PyMongo 2.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=11485
 
 Changes in Version 2.3
 ----------------------
@@ -1342,7 +1387,7 @@ Issues Resolved
 See the `PyMongo 2.3 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11146
+.. _PyMongo 2.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=11146
 
 Changes in Version 2.2.1
 ------------------------
@@ -1358,7 +1403,7 @@ Issues Resolved
 See the `PyMongo 2.2.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.2.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11185
+.. _PyMongo 2.2.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=11185
 
 Changes in Version 2.2
 ----------------------
@@ -1403,7 +1448,7 @@ Issues Resolved
 See the `PyMongo 2.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/10584
+.. _PyMongo 2.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=10584
 
 Changes in Version 2.1.1
 ------------------------
@@ -1423,7 +1468,7 @@ Issues Resolved
 See the `PyMongo 2.1.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 2.1.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11081
+.. _PyMongo 2.1.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?version=11081&styleName=Html&projectId=10004
 
 Changes in Version 2.1
 ----------------------
