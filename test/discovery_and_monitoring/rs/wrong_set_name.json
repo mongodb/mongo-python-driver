@@ -14,7 +14,9 @@
               "b:27017",
               "c:27017"
             ],
-            "setName": "wrong"
+            "setName": "wrong",
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

@@ -15,7 +15,9 @@
             "arbiters": [
               "b:27017"
             ],
-            "setName": "rs"
+            "setName": "rs",
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

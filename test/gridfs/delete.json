@@ -13,11 +13,8 @@
         "md5": "d41d8cd98f00b204e9800998ecf8427e",
         "filename": "length-0",
         "contentType": "application/octet-stream",
-        "aliases": [
-
-        ],
-        "metadata": {
-        }
+        "aliases": [],
+        "metadata": {}
       },
       {
         "_id": {
@@ -31,11 +28,8 @@
         "md5": "d41d8cd98f00b204e9800998ecf8427e",
         "filename": "length-0-with-empty-chunk",
         "contentType": "application/octet-stream",
-        "aliases": [
-
-        ],
-        "metadata": {
-        }
+        "aliases": [],
+        "metadata": {}
       },
       {
         "_id": {
@@ -49,11 +43,8 @@
         "md5": "c700ed4fdb1d27055aa3faa2c2432283",
         "filename": "length-2",
         "contentType": "application/octet-stream",
-        "aliases": [
-
-        ],
-        "metadata": {
-        }
+        "aliases": [],
+        "metadata": {}
       },
       {
         "_id": {
@@ -67,29 +58,8 @@
         "md5": "dd254cdc958e53abaa67da9f797125f5",
         "filename": "length-8",
         "contentType": "application/octet-stream",
-        "aliases": [
-
-        ],
-        "metadata": {
-        }
-      },
-      {
-        "_id": {
-          "$oid": "000000000000000000000005"
-        },
-        "length": 8,
-        "chunkSize": 4,
-        "uploadDate": {
-          "$date": "1970-01-01T00:00:00.000Z"
-        },
-        "md5": "dd254cdc958e53abaa67da9f797125f5",
-        "filename": "length-8-with-empty-chunk",
-        "contentType": "application/octet-stream",
-        "aliases": [
-
-        ],
-        "metadata": {
-        }
+        "aliases": [],
+        "metadata": {}
       }
     ],
     "chunks": [
@@ -139,42 +109,6 @@
         "n": 1,
         "data": {
           "$hex": "55667788"
-        }
-      },
-      {
-        "_id": {
-          "$oid": "000000000000000000000005"
-        },
-        "files_id": {
-          "$oid": "000000000000000000000005"
-        },
-        "n": 0,
-        "data": {
-          "$hex": "11223344"
-        }
-      },
-      {
-        "_id": {
-          "$oid": "000000000000000000000006"
-        },
-        "files_id": {
-          "$oid": "000000000000000000000005"
-        },
-        "n": 1,
-        "data": {
-          "$hex": "55667788"
-        }
-      },
-      {
-        "_id": {
-          "$oid": "000000000000000000000007"
-        },
-        "files_id": {
-          "$oid": "000000000000000000000005"
-        },
-        "n": 2,
-        "data": {
-          "$hex": ""
         }
       }
     ]
@@ -294,48 +228,6 @@
       }
     },
     {
-      "description": "Delete when length is 8 and there is one extra empty chunk",
-      "act": {
-        "operation": "delete",
-        "arguments": {
-          "id": {
-            "$oid": "000000000000000000000005"
-          }
-        }
-      },
-      "assert": {
-        "result": "void",
-        "data": [
-          {
-            "delete": "expected.files",
-            "deletes": [
-              {
-                "q": {
-                  "_id": {
-                    "$oid": "000000000000000000000005"
-                  }
-                },
-                "limit": 1
-              }
-            ]
-          },
-          {
-            "delete": "expected.chunks",
-            "deletes": [
-              {
-                "q": {
-                  "files_id": {
-                    "$oid": "000000000000000000000005"
-                  }
-                },
-                "limit": 0
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
       "description": "Delete when files entry does not exist",
       "act": {
         "operation": "delete",
@@ -359,7 +251,7 @@
               {
                 "q": {
                   "_id": {
-                    "$oid": "000000000000000000000005"
+                    "$oid": "000000000000000000000004"
                   }
                 },
                 "limit": 1
@@ -372,7 +264,7 @@
         "operation": "delete",
         "arguments": {
           "id": {
-            "$oid": "000000000000000000000005"
+            "$oid": "000000000000000000000004"
           }
         }
       },
@@ -385,7 +277,7 @@
               {
                 "q": {
                   "_id": {
-                    "$oid": "000000000000000000000005"
+                    "$oid": "000000000000000000000004"
                   }
                 },
                 "limit": 1
@@ -398,7 +290,7 @@
               {
                 "q": {
                   "files_id": {
-                    "$oid": "000000000000000000000005"
+                    "$oid": "000000000000000000000004"
                   }
                 },
                 "limit": 0

@@ -12,7 +12,9 @@
             "hosts": [
               "a:27017"
             ],
-            "setName": "rs"
+            "setName": "rs",
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],
@@ -33,7 +35,9 @@
         [
           "a:27017",
           {
-            "ok": 1
+            "ok": 1,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

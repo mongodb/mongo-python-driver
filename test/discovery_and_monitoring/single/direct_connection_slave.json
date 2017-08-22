@@ -8,7 +8,9 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": false
+            "ismaster": false,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

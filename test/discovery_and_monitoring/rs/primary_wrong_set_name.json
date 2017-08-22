@@ -12,7 +12,9 @@
             "hosts": [
               "a:27017"
             ],
-            "setName": "wrong"
+            "setName": "wrong",
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

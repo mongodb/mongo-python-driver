@@ -65,7 +65,7 @@
         {
           "command_succeeded_event": {
             "reply": {
-              "ok": 1.0,
+              "ok": 1,
               "n": 1
             },
             "command_name": "insert"
@@ -98,7 +98,7 @@
         {
           "command_succeeded_event": {
             "reply": {
-              "ok": 1.0,
+              "ok": 1,
               "n": 1
             },
             "command_name": "update"
@@ -108,6 +108,7 @@
     },
     {
       "description": "A successful unordered bulk write with an unacknowledged write concern",
+      "comment": "On a 2.4 server, no GLE is sent and requires a client-side manufactured reply",
       "operation": {
         "name": "bulkWrite",
         "arguments": {
@@ -150,7 +151,7 @@
         {
           "command_succeeded_event": {
             "reply": {
-              "ok": 1.0
+              "ok": 1
             },
             "command_name": "insert"
           }

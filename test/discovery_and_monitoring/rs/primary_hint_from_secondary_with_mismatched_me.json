@@ -15,7 +15,9 @@
               "b:27017"
             ],
             "setName": "rs",
-            "primary": "b:27017"
+            "primary": "b:27017",
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],
@@ -42,7 +44,9 @@
             "hosts": [
               "b:27017"
             ],
-            "setName": "rs"
+            "setName": "rs",
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

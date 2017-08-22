@@ -9,7 +9,9 @@
           {
             "ok": 1,
             "ismaster": true,
-            "localLogicalSessionTimeoutMinutes": 7
+            "localLogicalSessionTimeoutMinutes": 7,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

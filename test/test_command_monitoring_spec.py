@@ -14,7 +14,6 @@
 
 """Run the command monitoring spec tests."""
 
-import json
 import os
 import re
 import sys
@@ -23,7 +22,7 @@ sys.path[0:0] = [""]
 
 import pymongo
 
-from bson.json_util import object_hook
+from bson import json_util
 from pymongo import monitoring
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import (make_read_preference,
@@ -113,6 +112,9 @@ def create_test(scenario_def, test):
         elif name == 'find':
             if 'sort' in args:
                 args['sort'] = list(args['sort'].items())
+            for arg in 'skip', 'limit':
+                if arg in args:
+                    args[arg] = int(args[arg])
             try:
                 # Iterate the cursor.
                 tuple(coll.find(**args))
@@ -202,8 +204,7 @@ def create_tests():
         dirname = os.path.split(dirpath)[-1]
         for filename in filenames:
             with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = json.load(
-                    scenario_stream, object_hook=object_hook)
+                scenario_def = json_util.loads(scenario_stream.read())
             assert bool(scenario_def.get('tests')), "tests cannot be empty"
             # Construct test from scenario.
             for test in scenario_def['tests']:

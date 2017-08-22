@@ -8,7 +8,9 @@
           "b:27017",
           {
             "ok": 1,
-            "ismaster": true
+            "ismaster": true,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],
@@ -34,7 +36,9 @@
             "setName": "rs",
             "hosts": [
               "a:27017"
-            ]
+            ],
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

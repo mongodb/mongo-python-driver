@@ -10,7 +10,9 @@
             "ok": 1,
             "ismaster": true,
             "msg": "isdbgrid",
-            "localLogicalSessionTimeoutMinutes": 1
+            "localLogicalSessionTimeoutMinutes": 1,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ],
         [
@@ -19,7 +21,9 @@
             "ok": 1,
             "ismaster": true,
             "msg": "isdbgrid",
-            "localLogicalSessionTimeoutMinutes": 2
+            "localLogicalSessionTimeoutMinutes": 2,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],
@@ -47,7 +51,9 @@
             "ok": 1,
             "ismaster": true,
             "msg": "isdbgrid",
-            "localLogicalSessionTimeoutMinutes": 1
+            "localLogicalSessionTimeoutMinutes": 1,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ],
         [
@@ -55,7 +61,9 @@
           {
             "ok": 1,
             "ismaster": true,
-            "msg": "isdbgrid"
+            "msg": "isdbgrid",
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],

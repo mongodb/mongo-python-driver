@@ -14,7 +14,9 @@
               "b:27017"
             ],
             "setName": "rs",
-            "localLogicalSessionTimeoutMinutes": 1
+            "localLogicalSessionTimeoutMinutes": 1,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ],
         [
@@ -28,7 +30,9 @@
               "b:27017"
             ],
             "setName": "rs",
-            "localLogicalSessionTimeoutMinutes": 2
+            "localLogicalSessionTimeoutMinutes": 2,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],
@@ -60,7 +64,9 @@
               "b:27017"
             ],
             "setName": "rs",
-            "localLogicalSessionTimeoutMinutes": 1
+            "localLogicalSessionTimeoutMinutes": 1,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ],
         [
@@ -74,7 +80,9 @@
               "b:27017"
             ],
             "setName": "rs",
-            "localLogicalSessionTimeoutMinutes": null
+            "localLogicalSessionTimeoutMinutes": null,
+            "minWireVersion": 0,
+            "maxWireVersion": 6
           }
         ]
       ],
