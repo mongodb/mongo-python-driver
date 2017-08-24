@@ -131,7 +131,7 @@ GSSAPI (Kerberos)
 .. versionadded:: 2.5
 
 GSSAPI (Kerberos) authentication is available in the Enterprise Edition of
-MongoDB, version 2.4 and newer.
+MongoDB.
 
 Unix
 ~~~~

@@ -922,9 +922,6 @@ class Database(common.BaseObject):
             `<http://docs.mongodb.org/manual/reference/privilege-documents>`_
             for more information.
 
-        .. note:: The use of optional keyword arguments like ``userSource``,
-           ``otherDBRoles``, or ``roles`` requires MongoDB >= 2.4.0
-
         .. versionchanged:: 2.5
            Added kwargs support for optional fields introduced in MongoDB 2.4
 

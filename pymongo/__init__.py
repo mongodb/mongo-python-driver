@@ -38,8 +38,6 @@ GEOSPHERE = "2dsphere"
 
 .. versionadded:: 2.5
 
-.. note:: 2dsphere indexing requires server version **>= 2.4.0**.
-
 .. _spherical geospatial index: http://docs.mongodb.org/manual/core/2dsphere/
 """
 
@@ -48,8 +46,6 @@ HASHED = "hashed"
 
 .. versionadded:: 2.5
 
-.. note:: hashed indexing requires server version **>= 2.4.0**.
-
 .. _hashed index: http://docs.mongodb.org/manual/core/index-hashed/
 """
 
@@ -57,8 +53,6 @@ TEXT = "text"
 """Index specifier for a `text index`_.
 
 .. versionadded:: 2.7.1
-
-.. note:: text search requires server version **>= 2.4.0**.
 
 .. _text index: http://docs.mongodb.org/manual/core/index-text/
 """

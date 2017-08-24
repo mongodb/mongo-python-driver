@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Changes in Next Version
+-----------------------
+
+This version drops support for MongoDB versions older than 2.6. If connecting to
+a MongoDB 2.4 server or older, PyMongo now throws a
+:exc:`~pymongo.errors.ConfigurationError`.
+
 Changes in Version 3.5.1
 ------------------------
 
