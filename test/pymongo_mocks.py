@@ -144,9 +144,11 @@ class MockClient(MongoClient):
 
     def mock_is_master(self, host):
         """Return mock ismaster response (a dict) and round trip time."""
-        min_wire_version, max_wire_version = self.mock_wire_versions.get(
-            host,
-            (common.MIN_WIRE_VERSION, common.MAX_WIRE_VERSION))
+        if host in self.mock_wire_versions:
+            min_wire_version, max_wire_version = self.mock_wire_versions[host]
+        else:
+            min_wire_version = common.MIN_SUPPORTED_WIRE_VERSION
+            max_wire_version = common.MAX_SUPPORTED_WIRE_VERSION
 
         max_write_batch_size = self.mock_max_write_batch_sizes.get(
             host, common.MAX_WRITE_BATCH_SIZE)

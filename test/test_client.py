@@ -1364,8 +1364,8 @@ class TestMongoClientFailover(MockClientTest):
                 connect=False)
 
             # Set host-specific information so we can test whether it is reset.
-            c.set_wire_version_range('a:1', 0, 1)
-            c.set_wire_version_range('b:2', 0, 2)
+            c.set_wire_version_range('a:1', 2, 6)
+            c.set_wire_version_range('b:2', 2, 7)
             c._get_topology().select_servers(writable_server_selector)
             wait_until(lambda: len(c.nodes) == 2, 'connect')
 
@@ -1385,8 +1385,8 @@ class TestMongoClientFailover(MockClientTest):
             server_b = c._get_topology().get_server_by_address(('b', 2))
             sd_b = server_b.description
             self.assertEqual(SERVER_TYPE.RSSecondary, sd_b.server_type)
-            self.assertEqual(0, sd_b.min_wire_version)
-            self.assertEqual(2, sd_b.max_wire_version)
+            self.assertEqual(2, sd_b.min_wire_version)
+            self.assertEqual(7, sd_b.max_wire_version)
 
     def test_network_error_on_query(self):
         callback = lambda client: client.db.collection.find_one()

@@ -174,35 +174,41 @@ class TestSingleServerTopology(TopologyTest):
                 'ok': 1,
                 'ismaster': True,
                 'hosts': ['a'],
-                'setName': 'rs'}),
+                'setName': 'rs',
+                'maxWireVersion': 6}),
 
             (SERVER_TYPE.RSSecondary, {
                 'ok': 1,
                 'ismaster': False,
                 'secondary': True,
                 'hosts': ['a'],
-                'setName': 'rs'}),
+                'setName': 'rs',
+                'maxWireVersion': 6}),
 
             (SERVER_TYPE.Mongos, {
                 'ok': 1,
                 'ismaster': True,
-                'msg': 'isdbgrid'}),
+                'msg': 'isdbgrid',
+                'maxWireVersion': 6}),
 
             (SERVER_TYPE.RSArbiter, {
                 'ok': 1,
                 'ismaster': False,
                 'arbiterOnly': True,
                 'hosts': ['a'],
-                'setName': 'rs'}),
+                'setName': 'rs',
+                'maxWireVersion': 6}),
 
             (SERVER_TYPE.Standalone, {
                 'ok': 1,
-                'ismaster': True}),
+                'ismaster': True,
+                'maxWireVersion': 6}),
 
             # Slave.
             (SERVER_TYPE.Standalone, {
                 'ok': 1,
-                'ismaster': False}),
+                'ismaster': False,
+                'maxWireVersion': 6}),
         ]:
             t = create_mock_topology()
 
@@ -250,7 +256,8 @@ class TestSingleServerTopology(TopologyTest):
         class TestMonitor(Monitor):
             def _check_with_socket(self, sock_info, metadata=None):
                 if available:
-                    return IsMaster({'ok': 1}), round_trip_time
+                    return (IsMaster({'ok': 1, 'maxWireVersion': 6}),
+                            round_trip_time)
                 else:
                     raise AutoReconnect('mock monitor error')
 
@@ -577,6 +584,7 @@ class TestMultiServerTopology(TopologyTest):
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a', 'b'],
+            'maxWireVersion': 6,
             'maxWriteBatchSize': 1})
 
         got_ismaster(t, ('b', 27017), {
@@ -585,6 +593,7 @@ class TestMultiServerTopology(TopologyTest):
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b'],
+            'maxWireVersion': 6,
             'maxWriteBatchSize': 2})
 
         # Uses primary's max batch size.
@@ -596,6 +605,7 @@ class TestMultiServerTopology(TopologyTest):
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a', 'b'],
+            'maxWireVersion': 6,
             'maxWriteBatchSize': 2})
 
         self.assertEqual(2, write_batch_size())
@@ -629,7 +639,7 @@ class TestTopologyErrors(TopologyTest):
             def _check_with_socket(self, sock_info, metadata=None):
                 ismaster_count[0] += 1
                 if ismaster_count[0] == 1:
-                    return IsMaster({'ok': 1}), 0
+                    return IsMaster({'ok': 1, 'maxWireVersion': 6}), 0
                 else:
                     raise AutoReconnect('mock monitor error')
 
@@ -650,7 +660,7 @@ class TestTopologyErrors(TopologyTest):
             def _check_with_socket(self, sock_info, metadata=None):
                 ismaster_count[0] += 1
                 if ismaster_count[0] in (1, 3):
-                    return IsMaster({'ok': 1}), 0
+                    return IsMaster({'ok': 1, 'maxWireVersion': 6}), 0
                 else:
                     raise AutoReconnect('mock monitor error')
 

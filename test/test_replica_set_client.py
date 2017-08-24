@@ -331,12 +331,10 @@ class TestReplicaSetWireVersion(MockClientTest):
             replicaSet='rs',
             connect=False)
 
-        c.set_wire_version_range('a:1', 1, 5)
-        c.set_wire_version_range('b:2', 0, 1)
-        c.set_wire_version_range('c:3', 1, 2)
+        c.set_wire_version_range('a:1', 3, 7)
+        c.set_wire_version_range('b:2', 2, 3)
+        c.set_wire_version_range('c:3', 3, 4)
         c.db.command('ismaster')  # Connect.
-
-        c.set_wire_version_range('a:1', 2, 2)
 
         # A secondary doesn't overlap with us.
         c.set_wire_version_range('b:2',

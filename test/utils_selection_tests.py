@@ -116,6 +116,8 @@ def make_server_description(server, hosts):
         if field in server:
             ismaster_response[field] = server[field]
 
+    ismaster_response.setdefault('maxWireVersion', 6)
+
     # Sets _last_update_time to now.
     sd = ServerDescription(clean_node(server['address']),
                            IsMaster(ismaster_response),
