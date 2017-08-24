@@ -539,33 +539,6 @@ tasks:
             TOPOLOGY: "replica_set"
         - func: "run doctests"
 
-    - name: "test-2.4-standalone"
-      tags: ["2.4", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "2.4"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-2.4-replica_set"
-      tags: ["2.4", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "2.4"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-2.4-sharded_cluster"
-      tags: ["2.4", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "2.4"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
     - name: "test-2.6-standalone"
       tags: ["2.6", "standalone"]
       commands:
@@ -792,13 +765,8 @@ axes:
         display_name: "2.6"
         variables:
            VERSION: "2.6"
-      - id: "2.4"
-        display_name: "2.4"
-        variables:
-           VERSION: "2.4"
 
-
-  # OSes that support versions of MongoDB>=2.4 with SSL.
+  # OSes that support versions of MongoDB>=2.6 with SSL.
   - id: os-fully-featured
     display_name: OS
     values:
@@ -1078,7 +1046,6 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
-     - ".2.4"
 
 - matrix_name: "tests-nossl"
   matrix_spec: {"os-nossl": "*", auth: "*", ssl: "nossl"}
@@ -1089,7 +1056,6 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
-     - ".2.4"
 
 - matrix_name: "tests-os-requires-26"
   matrix_spec: {"os-requires-26": "*", auth: "*", ssl: "*"}
@@ -1141,7 +1107,6 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
-     - ".2.4"
 
 - matrix_name: "tests-python-version-ubuntu1204-without-c-extensions"
   matrix_spec: {"python-version": "*", "c-extensions": "without-c-extensions", auth: "noauth", ssl: "nossl", coverage: "*"}
@@ -1160,7 +1125,6 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
-     - ".2.4"
 
 - matrix_name: "tests-python-version-green-framework-ubuntu1204"
   matrix_spec: {"python-version": "*", "green-framework": "*", auth: "*", ssl: "*"}
@@ -1178,9 +1142,8 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
-     - ".2.4"
 
-# Test CPython 3.3 and 3.4 against all versions on MongoDB >= 2.4
+# Test CPython 3.3 and 3.4 against all versions on MongoDB >= 2.6
 # on Windows with Visual Studio 2010.
 - matrix_name: "tests-windows-vs2010-python-version-nossl"
   matrix_spec: {windows-vs2010-python-version: "*", auth: "*", ssl: "*"}
@@ -1192,17 +1155,8 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
-  rules:
-     # Windows MongoDB 2.4 does not support SSL.
-     - if:
-         windows-vs2010-python-version: "*"
-         auth: "*"
-         ssl: "nossl"
-       then:
-         add_tasks:
-           - ".2.4"
 
-# Test CPython 2.6, 2.7, 3.5 and 3.6 against all versions on MongoDB >= 2.4
+# Test CPython 2.6, 2.7, 3.5 and 3.6 against all versions on MongoDB >= 2.6
 # on Windows with the Microsoft Visual C++ Compiler for Python 2.7 or Visual Studio 2015.
 - matrix_name: "tests-windows-vs2015-python-version-nossl"
   matrix_spec: {windows-vs2015-python-version: "*", auth: "*", ssl: "*"}
@@ -1214,15 +1168,6 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
-  rules:
-     # Windows MongoDB 2.4 does not support SSL.
-     - if:
-         windows-vs2015-python-version: "*"
-         auth: "*"
-         ssl: "nossl"
-       then:
-         add_tasks:
-           - ".2.4"
 
 # Storage engine tests on Ubuntu 12.04 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
@@ -1327,9 +1272,7 @@ buildvariants:
       # RHEL 7.1 ppc64le is only supported by MongoDB 3.2+
       # RHEL 7.2 s390x is only supported by MongoDB 3.4+
       # Solaris MongoDB SSL builds are not available
-      # Darwin MongoDB SSL builds are not available for 2.4 and 2.6
-      # Windows does not support MongoDB 2.4 with SSL
-      # Debian 7.1 does not support MongoDB 2.4
+      # Darwin MongoDB SSL builds are not available for 2.6
       # SUSE12 x86_64 is only supported by MongoDB 3.2+
       # vim: set et sw=2 ts=2 :
 
