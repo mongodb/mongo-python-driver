@@ -814,7 +814,7 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(MinKey() != 1)
         self.assertFalse(MinKey() == 1)
         self.assertTrue(MinKey() == MinKey())
-        
+
         # MinKey compared to MaxKey.
         self.assertTrue(MinKey() < MaxKey())
         self.assertTrue(MinKey() <= MaxKey())
@@ -822,7 +822,7 @@ class TestBSON(unittest.TestCase):
         self.assertFalse(MinKey() >= MaxKey())
         self.assertTrue(MinKey() != MaxKey())
         self.assertFalse(MinKey() == MaxKey())
-        
+
         # MaxKey's <, <=, >, >=, !=, and ==.
         self.assertFalse(MaxKey() < None)
         self.assertFalse(MaxKey() < 1)

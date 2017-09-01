@@ -53,10 +53,10 @@ def partition_nodes(nodes):
 
 class HATestCase(unittest.TestCase):
     """A test case for connections to replica sets or mongos."""
-    
+
     # Override default 10-second interval for faster testing...
     heartbeat_frequency = 0.5
-    
+
     # ... or disable it by setting "enable_heartbeat" to False.
     enable_heartbeat = True
 
@@ -180,7 +180,7 @@ class TestDirectConnection(HATestCase):
 
             self.assertEqual(arbiter_port, client.port)
             self.assertFalse(client.is_primary)
-            
+
             # See explanation above
             try:
                 client.get_database(
@@ -192,7 +192,7 @@ class TestDirectConnection(HATestCase):
                 self.fail(
                     'Unacknowledged insert into arbiter client %s should'
                     'have raised exception' % (client,))
-        
+
 
 class TestPassiveAndHidden(HATestCase):
 
@@ -262,7 +262,7 @@ class TestMonitorRemovesRecoveringMember(HATestCase):
 class TestTriggeredRefresh(HATestCase):
     # Verify that if a secondary goes into RECOVERING mode or if the primary
     # changes, the next exception triggers an immediate refresh.
-    
+
     enable_heartbeat = False
 
     def setUp(self):

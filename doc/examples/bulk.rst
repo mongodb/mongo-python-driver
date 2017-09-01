@@ -99,7 +99,7 @@ the failure.
   ...     db.test.bulk_write(requests)
   ... except BulkWriteError as bwe:
   ...     pprint(bwe.details)
-  ... 
+  ...
   {'nInserted': 0,
    'nMatched': 1,
    'nModified': 1,
@@ -137,7 +137,7 @@ and fourth operations succeed.
   ...     db.test.bulk_write(requests, ordered=False)
   ... except BulkWriteError as bwe:
   ...     pprint(bwe.details)
-  ... 
+  ...
   {'nInserted': 0,
    'nMatched': 1,
    'nModified': 1,
@@ -170,7 +170,7 @@ after all operations are attempted, regardless of execution order.
   ...     coll.bulk_write([InsertOne({'a': i}) for i in range(4)])
   ... except BulkWriteError as bwe:
   ...     pprint(bwe.details)
-  ... 
+  ...
   {'nInserted': 4,
    'nMatched': 0,
    'nModified': 0,

@@ -178,7 +178,7 @@ def check_outcome(self, topology, outcome):
 def create_test(scenario_def):
     def run_scenario(self):
         c = create_mock_topology(scenario_def['uri'])
-        
+
         for phase in scenario_def['phases']:
             for response in phase['responses']:
                 got_ismaster(c,
