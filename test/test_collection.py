@@ -42,7 +42,8 @@ from pymongo.bulk import BulkWriteError
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import CursorType
-from pymongo.errors import (DocumentTooLarge,
+from pymongo.errors import (ConfigurationError,
+                            DocumentTooLarge,
                             DuplicateKeyError,
                             ExecutionTimeout,
                             InvalidDocument,
@@ -2011,6 +2012,41 @@ class TestCollection(IntegrationTest):
         bad = BadGetAttr([('foo', 'bar')])
         c.insert_one({'bad': bad})
         self.assertEqual('bar', c.find_one()['bad']['foo'])
+
+    @client_context.require_version_max(3, 5, 5)
+    def test_array_filters_unsupported(self):
+        c = self.db.test
+        with self.assertRaises(ConfigurationError):
+            c.update_one(
+                {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}])
+        with self.assertRaises(ConfigurationError):
+            c.update_many(
+                {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}])
+        with self.assertRaises(ConfigurationError):
+            c.find_one_and_update(
+                {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}])
+
+    def test_array_filters_validation(self):
+        # array_filters must be a list.
+        c = self.db.test
+        with self.assertRaises(TypeError):
+            c.update_one({}, {'$set': {'a': 1}}, array_filters={})
+        with self.assertRaises(TypeError):
+            c.update_many({}, {'$set': {'a': 1}}, array_filters={})
+        with self.assertRaises(TypeError):
+            c.find_one_and_update({}, {'$set': {'a': 1}}, array_filters={})
+
+    def test_array_filters_unacknowledged(self):
+        c_w0 = self.db.test.with_options(write_concern=WriteConcern(w=0))
+        with self.assertRaises(ConfigurationError):
+            c_w0.update_one({}, {'$set': {'y.$[i].b': 5}},
+                            array_filters=[{'i.b': 1}])
+        with self.assertRaises(ConfigurationError):
+            c_w0.update_many({}, {'$set': {'y.$[i].b': 5}},
+                             array_filters=[{'i.b': 1}])
+        with self.assertRaises(ConfigurationError):
+            c_w0.find_one_and_update({}, {'$set': {'y.$[i].b': 5}},
+                                     array_filters=[{'i.b': 1}])
 
     def test_find_one_and(self):
         c = self.db.test

@@ -215,6 +215,7 @@ class _Bulk(object):
         self.executed = False
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
+        self.uses_array_filters = False
 
     def add_insert(self, document):
         """Add an insert document to the list of ops.
@@ -226,7 +227,7 @@ class _Bulk(object):
         self.ops.append((_INSERT, document))
 
     def add_update(self, selector, update, multi=False, upsert=False,
-                   collation=None):
+                   collation=None, array_filters=None):
         """Create an update document and add it to the list of ops.
         """
         validate_ok_for_update(update)
@@ -236,6 +237,9 @@ class _Bulk(object):
         if collation is not None:
             self.uses_collation = True
             cmd['collation'] = collation
+        if array_filters is not None:
+            self.uses_array_filters = True
+            cmd['arrayFilters'] = array_filters
         self.ops.append((_UPDATE, cmd))
 
     def add_replace(self, selector, replacement, upsert=False,
@@ -484,10 +488,17 @@ class _Bulk(object):
             if sock_info.max_wire_version < 5 and self.uses_collation:
                 raise ConfigurationError(
                     'Must be connected to MongoDB 3.4+ to use a collation.')
+            if sock_info.max_wire_version < 6 and self.uses_array_filters:
+                raise ConfigurationError(
+                    'Must be connected to MongoDB 3.6+ to use arrayFilters.')
             if not write_concern.acknowledged:
                 if self.uses_collation:
                     raise ConfigurationError(
                         'Collation is unsupported for unacknowledged writes.')
+                if self.uses_array_filters:
+                    raise ConfigurationError(
+                        'arrayFilters is unsupported for unacknowledged '
+                        'writes.')
                 self.execute_no_results(sock_info, generator)
             elif sock_info.max_wire_version > 1:
                 return self.execute_command(sock_info, generator, write_concern)

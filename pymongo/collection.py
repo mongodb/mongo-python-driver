@@ -463,8 +463,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        if not isinstance(requests, list):
-            raise TypeError("requests must be a list")
+        common.validate_list("requests", requests)
 
         blk = _Bulk(self, ordered, bypass_document_validation)
         for request in requests:
@@ -728,7 +727,7 @@ class Collection(common.BaseObject):
     def _update(self, sock_info, criteria, document, upsert=False,
                 check_keys=True, multi=False, manipulate=False,
                 write_concern=None, op_id=None, ordered=True,
-                bypass_doc_val=False, collation=None):
+                bypass_doc_val=False, collation=None, array_filters=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         if manipulate:
@@ -749,6 +748,15 @@ class Collection(common.BaseObject):
                     'Collation is unsupported for unacknowledged writes.')
             else:
                 update_doc['collation'] = collation
+        if array_filters is not None:
+            if sock_info.max_wire_version < 6:
+                raise ConfigurationError(
+                    'Must be connected to MongoDB 3.6+ to use array_filters.')
+            elif not acknowledged:
+                raise ConfigurationError(
+                    'arrayFilters is unsupported for unacknowledged writes.')
+            else:
+                update_doc['arrayFilters'] = array_filters
         command = SON([('update', self.name),
                        ('ordered', ordered),
                        ('updates', [update_doc])])
@@ -852,7 +860,7 @@ class Collection(common.BaseObject):
 
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
-                   collation=None):
+                   collation=None, array_filters=None):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -884,12 +892,17 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `array_filters` (optional): A list of filters specifying which
+            array elements an update should apply. Requires MongoDB 3.6+.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.6
+          Adding the `array_filters` option.
 
         .. versionchanged:: 3.4
           Added the `collation` option.
@@ -901,15 +914,18 @@ class Collection(common.BaseObject):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_update(update)
+        common.validate_list_or_none('array_filters', array_filters)
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
                                   check_keys=False,
                                   bypass_doc_val=bypass_document_validation,
-                                  collation=collation)
+                                  collation=collation,
+                                  array_filters=array_filters)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False,
-                    bypass_document_validation=False, collation=None):
+                    bypass_document_validation=False, collation=None,
+                    array_filters=None):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -941,12 +957,17 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `array_filters` (optional): A list of filters specifying which
+            array elements an update should apply. Requires MongoDB 3.6+.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.6
+          Adding the `array_filters` option.
 
         .. versionchanged:: 3.4
           Added the `collation` option.
@@ -958,11 +979,13 @@ class Collection(common.BaseObject):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_update(update)
+        common.validate_list_or_none('array_filters', array_filters)
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
                                   check_keys=False, multi=True,
                                   bypass_doc_val=bypass_document_validation,
-                                  collation=collation)
+                                  collation=collation,
+                                  array_filters=array_filters)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def drop(self):
@@ -1443,8 +1466,7 @@ class Collection(common.BaseObject):
 
         .. _createIndexes: https://docs.mongodb.com/manual/reference/command/createIndexes/
         """
-        if not isinstance(indexes, list):
-            raise TypeError("indexes must be a list")
+        common.validate_list('indexes', indexes)
         names = []
         def gen_indexes():
             for index in indexes:
@@ -1821,8 +1843,7 @@ class Collection(common.BaseObject):
         return options
 
     def _aggregate(self, pipeline, cursor_class, first_batch_size, **kwargs):
-        if not isinstance(pipeline, list):
-            raise TypeError("pipeline must be a list")
+        common.validate_list('pipeline', pipeline)
 
         if "explain" in kwargs:
             raise ConfigurationError("The explain option is not supported. "
@@ -2344,7 +2365,8 @@ class Collection(common.BaseObject):
             return res.get("results")
 
     def __find_and_modify(self, filter, projection, sort, upsert=None,
-                          return_document=ReturnDocument.BEFORE, **kwargs):
+                          return_document=ReturnDocument.BEFORE,
+                          array_filters=None, **kwargs):
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
@@ -2364,6 +2386,16 @@ class Collection(common.BaseObject):
             common.validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
         with self._socket_for_writes() as sock_info:
+            if array_filters is not None:
+                if sock_info.max_wire_version < 6:
+                    raise ConfigurationError(
+                        'Must be connected to MongoDB 3.6+ to use '
+                        'arrayFilters.')
+                if not self.write_concern.acknowledged:
+                    raise ConfigurationError(
+                        'arrayFilters is unsupported for unacknowledged '
+                        'writes.')
+                cmd["arrayFilters"] = array_filters
             if sock_info.max_wire_version >= 4 and 'writeConcern' not in cmd:
                 wc_doc = self.write_concern.document
                 if wc_doc:
@@ -2502,7 +2534,8 @@ class Collection(common.BaseObject):
 
     def find_one_and_update(self, filter, update,
                             projection=None, sort=None, upsert=False,
-                            return_document=ReturnDocument.BEFORE, **kwargs):
+                            return_document=ReturnDocument.BEFORE,
+                            array_filters=None, **kwargs):
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -2575,10 +2608,14 @@ class Collection(common.BaseObject):
             if no document matches. If
             :attr:`ReturnDocument.AFTER`, returns the updated
             or inserted document.
+          - `array_filters` (optional): A list of filters specifying which
+            array elements an update should apply. Requires MongoDB 3.6+.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.6
+           Added the `array_filters` option.
         .. versionchanged:: 3.4
            Added the `collation` option.
         .. versionchanged:: 3.2
@@ -2593,9 +2630,11 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
+        common.validate_list_or_none('array_filters', array_filters)
         kwargs['update'] = update
         return self.__find_and_modify(filter, projection,
-                                      sort, upsert, return_document, **kwargs)
+                                      sort, upsert, return_document,
+                                      array_filters, **kwargs)
 
     def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
         """Save a document in this collection.

@@ -18,25 +18,17 @@ import sys
 
 sys.path[0:0] = [""]
 
-from bson import InvalidDocument, SON
 from bson.objectid import ObjectId
-from bson.py3compat import string_type
 from pymongo.operations import *
-from pymongo.common import partition_node
-from pymongo.errors import (BulkWriteError,
-                            ConfigurationError,
+from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   unittest,
-                  IntegrationTest,
-                  SkipTest)
-from test.utils import (oid_generated_on_client,
-                        remove_all_users,
-                        rs_or_single_client_noauth,
-                        single_client,
-                        wait_until)
+                  IntegrationTest)
+from test.utils import (remove_all_users,
+                        rs_or_single_client_noauth)
 
 
 class BulkTestBase(IntegrationTest):
@@ -147,7 +139,7 @@ class TestBulk(BulkTestBase):
         self.assertEqual(1, result.inserted_count)
         self.assertEqual(1, self.coll.count())
 
-    def test_update(self):
+    def test_update_many(self):
 
         expected = {
             'nMatched': 2,
@@ -166,6 +158,31 @@ class TestBulk(BulkTestBase):
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(2, result.matched_count)
         self.assertTrue(result.modified_count in (2, None))
+
+    @client_context.require_version_max(3, 5, 5)
+    def test_array_filters_unsupported(self):
+        requests = [
+            UpdateMany(
+                {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}]),
+            UpdateOne(
+                {}, {'$set': {"y.$[i].b": 2}}, array_filters=[{'i.b': 3}])
+        ]
+        for bulk_op in requests:
+            self.assertRaises(
+                ConfigurationError, self.coll.bulk_write, [bulk_op])
+
+    def test_array_filters_validation(self):
+        self.assertRaises(TypeError, UpdateMany, {}, {}, array_filters={})
+        self.assertRaises(TypeError, UpdateOne, {}, {}, array_filters={})
+
+    def test_array_filters_unacknowledged(self):
+        coll = self.coll.with_options(write_concern=WriteConcern(w=0))
+        update_one = UpdateOne(
+            {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}])
+        update_many = UpdateMany(
+            {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}])
+        self.assertRaises(ConfigurationError, coll.bulk_write, [update_one])
+        self.assertRaises(ConfigurationError, coll.bulk_write, [update_many])
 
     def test_update_one(self):
 

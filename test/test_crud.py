@@ -22,6 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.py3compat import iteritems
+from pymongo import operations
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.results import _WriteResult, BulkWriteResult
@@ -49,6 +50,9 @@ def camel_to_snake(camel):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
 
 
+def camel_to_upper_camel(camel):
+    return camel[0].upper() + camel[1:]
+
 def check_result(expected_result, result):
     if isinstance(result, Cursor) or isinstance(result, CommandCursor):
         return list(result) == expected_result
@@ -75,19 +79,36 @@ def check_result(expected_result, result):
             return result == expected_result
 
 
-def create_test(scenario_def, test):
-    def run_scenario(self):
-        # Load data.
-        assert scenario_def['data'], "tests must have non-empty data"
-        self.db.test.drop()
-        self.db.test.insert_many(scenario_def['data'])
+def camel_to_snake_args(arguments):
+    for arg_name in list(arguments):
+        c2s = camel_to_snake(arg_name)
+        arguments[c2s] = arguments.pop(arg_name)
+    return arguments
 
-        # Convert command from CamelCase to pymongo.collection method.
-        operation = camel_to_snake(test['operation']['name'])
-        cmd = getattr(self.db.test, operation)
 
-        # Convert arguments to snake_case and handle special cases.
-        arguments = test['operation']['arguments']
+def run_operation(collection, test):
+    # Convert command from CamelCase to pymongo.collection method.
+    operation = camel_to_snake(test['operation']['name'])
+    cmd = getattr(collection, operation)
+
+    # Convert arguments to snake_case and handle special cases.
+    arguments = test['operation']['arguments']
+    if operation == "bulk_write":
+        unknown_args = set(arguments) - set(["options", "requests"])
+        assert not unknown_args, (
+                "unknown argument(s) to bulk_write test: %s" % (unknown_args,))
+        # Parse each request into a bulk write model.
+        requests = []
+        for request in arguments["requests"]:
+            bulk_model = camel_to_upper_camel(request["name"])
+            bulk_class = getattr(operations, bulk_model)
+            bulk_arguments = camel_to_snake_args(request["arguments"])
+            requests.append(bulk_class(**bulk_arguments))
+        arguments["requests"] = requests
+        options = arguments.pop("options", {})
+        for option_name in options:
+            arguments[camel_to_snake(option_name)] = options[option_name]
+    else:
         for arg_name in list(arguments):
             c2s = camel_to_snake(arg_name)
             # PyMongo accepts sort as list of tuples. Asserting len=1
@@ -108,7 +129,17 @@ def create_test(scenario_def, test):
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
-        result = cmd(**arguments)
+    return cmd(**arguments)
+
+
+def create_test(scenario_def, test):
+    def run_scenario(self):
+        # Load data.
+        assert scenario_def['data'], "tests must have non-empty data"
+        self.db.test.drop()
+        self.db.test.insert_many(scenario_def['data'])
+
+        result = run_operation(self.db.test, test)
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')

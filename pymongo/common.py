@@ -392,6 +392,20 @@ def validate_document_class(option, value):
     return value
 
 
+def validate_list(option, value):
+    """Validates that 'value' is a list."""
+    if not isinstance(value, list):
+        raise TypeError("%s must be a list" % (option,))
+    return value
+
+
+def validate_list_or_none(option, value):
+    """Validates that 'value' is a list or None."""
+    if value is None:
+        return value
+    return validate_list(option, value)
+
+
 def validate_is_mapping(option, value):
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, collections.Mapping):
