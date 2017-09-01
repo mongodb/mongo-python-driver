@@ -1,5 +1,5 @@
 {
-  "description": "Parse localLogicalSessionTimeoutMinutes from replica set",
+  "description": "Parse logicalSessionTimeoutMinutes from replica set",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -14,7 +14,7 @@
               "b:27017"
             ],
             "setName": "rs",
-            "localLogicalSessionTimeoutMinutes": 1,
+            "logicalSessionTimeoutMinutes": 1,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -30,7 +30,7 @@
               "b:27017"
             ],
             "setName": "rs",
-            "localLogicalSessionTimeoutMinutes": 2,
+            "logicalSessionTimeoutMinutes": 2,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -64,7 +64,7 @@
               "b:27017"
             ],
             "setName": "rs",
-            "localLogicalSessionTimeoutMinutes": 1,
+            "logicalSessionTimeoutMinutes": 1,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -80,7 +80,7 @@
               "b:27017"
             ],
             "setName": "rs",
-            "localLogicalSessionTimeoutMinutes": null,
+            "logicalSessionTimeoutMinutes": null,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }

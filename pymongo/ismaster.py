@@ -129,7 +129,7 @@ class IsMaster(object):
 
     @property
     def logical_session_timeout_minutes(self):
-        return self._doc.get('localLogicalSessionTimeoutMinutes')
+        return self._doc.get('logicalSessionTimeoutMinutes')
 
     @property
     def is_writable(self):

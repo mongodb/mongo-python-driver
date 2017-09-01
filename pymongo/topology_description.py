@@ -91,9 +91,9 @@ class TopologyDescription(object):
         # Server Discovery And Monitoring Spec: "Whenever a client updates the
         # TopologyDescription from an ismaster response, it MUST set
         # TopologyDescription.logicalSessionTimeoutMinutes to the smallest
-        # localLogicalSessionTimeoutMinutes value among all ServerDescriptions
+        # logicalSessionTimeoutMinutes value among all ServerDescriptions
         # of known ServerType. If any ServerDescription of known ServerType has
-        # a null localLogicalSessionTimeoutMinutes, then
+        # a null logicalSessionTimeoutMinutes, then
         # TopologyDescription.logicalSessionTimeoutMinutes MUST be set to null.
         known = self.known_servers
         if not known:
