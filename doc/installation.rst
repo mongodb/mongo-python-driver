@@ -240,4 +240,3 @@ They can be installed by passing the full URL for the tag to pip::
 or easy_install::
 
   $ python -m easy_install https://github.com/mongodb/mongo-python-driver/archive/3.4rc0.tar.gz
-

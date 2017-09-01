@@ -220,4 +220,3 @@ the SASL PLAIN mechanism::
   ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
   ...                      ssl_ca_certs='/path/to/ca.pem')
   >>>
-
