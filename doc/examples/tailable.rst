@@ -38,4 +38,3 @@ of a replica set member::
           # tailable cursor timed out (no new documents were added to the
           # collection for more than 1 second).
           time.sleep(1)
-

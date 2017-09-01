@@ -94,4 +94,3 @@ class SSLContext(object):
                                ca_certs=self._cafile,
                                do_handshake_on_connect=do_handshake_on_connect,
                                suppress_ragged_eofs=suppress_ragged_eofs)
-

@@ -29,4 +29,3 @@
       .. autoattribute:: SECONDARY
       .. autoattribute:: SECONDARY_PREFERRED
       .. autoattribute:: NEAREST
-

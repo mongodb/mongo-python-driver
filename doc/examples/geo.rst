@@ -96,4 +96,3 @@ geoNear queries are also supported using :class:`~bson.son.SON`::
   >>> from bson.son import SON
   >>> db.command(SON([('geoNear', 'places'), ('near', [1, 2])]))
   {u'ok': 1.0, u'stats': ...}
-

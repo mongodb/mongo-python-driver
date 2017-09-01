@@ -114,4 +114,3 @@ you must use ``protocol <= 2``::
   >>> import pickle
   >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c_codecs\nencode\...')
   ObjectId('4f96f20c430ee6bd06000000')
-
