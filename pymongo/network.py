@@ -51,7 +51,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             check_keys=False, listeners=None, max_bson_size=None,
             read_concern=DEFAULT_READ_CONCERN,
             parse_write_concern_error=False,
-            collation=None):
+            collation=None, session=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -72,12 +72,15 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
         field in the command response.
       - `collation`: The collation for this command.
-
+      - `session`: optional ClientSession instance.
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
-    # Publish the original command document.
+    if session is not None:
+        spec['lsid'] = session.session_id
+
+    # Publish the original command document, perhaps with session id.
     orig = spec
     if is_mongos:
         spec = message._maybe_add_read_preference(spec, read_preference)

@@ -16,7 +16,7 @@
 
 from pymongo.errors import InvalidOperation, ConfigurationError
 from test import IntegrationTest, client_context
-from test.utils import ignore_deprecations, rs_or_single_client
+from test.utils import ignore_deprecations, rs_or_single_client, EventListener
 
 
 class TestSession(IntegrationTest):
@@ -56,3 +56,12 @@ class TestSession(IntegrationTest):
         with self.assertRaisesRegex(
                 ConfigurationError, "Sessions are not supported"):
             self.client.start_session()
+
+    @client_context.require_version_min(3, 5, 12)
+    def test_command_with_session(self):
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        with client.start_session() as s:
+            client.admin.command('ping', session=s)
+            self.assertEqual(s.session_id,
+                             listener.results['started'][0].command['lsid'])

@@ -407,7 +407,7 @@ class Database(common.BaseObject):
                  allowable_errors=None, read_preference=ReadPreference.PRIMARY,
                  codec_options=DEFAULT_CODEC_OPTIONS,
                  write_concern=None,
-                 parse_write_concern_error=False, **kwargs):
+                 parse_write_concern_error=False, session=None, **kwargs):
         """Internal command helper."""
         if isinstance(command, string_type):
             command = SON([(command, value)])
@@ -425,11 +425,12 @@ class Database(common.BaseObject):
             codec_options,
             check,
             allowable_errors,
-            parse_write_concern_error=parse_write_concern_error)
+            parse_write_concern_error=parse_write_concern_error,
+            session=session)
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
-                codec_options=DEFAULT_CODEC_OPTIONS, **kwargs):
+                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -476,12 +477,17 @@ class Database(common.BaseObject):
             See :mod:`~pymongo.read_preferences` for options.
           - `codec_options`: A :class:`~bson.codec_options.CodecOptions`
             instance.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
         .. note:: :meth:`command` does **not** obey :attr:`read_preference`
            or :attr:`codec_options`. You must use the `read_preference` and
            `codec_options` parameters instead.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.0
            Removed the `as_class`, `fields`, `uuid_subtype`, `tag_sets`,
@@ -513,7 +519,7 @@ class Database(common.BaseObject):
         with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
             return self._command(sock_info, command, slave_ok, value,
                                  check, allowable_errors, read_preference,
-                                 codec_options, **kwargs)
+                                 codec_options, session=session, **kwargs)
 
     def _list_collections(self, sock_info, slave_okay, criteria=None):
         """Internal listCollections helper."""

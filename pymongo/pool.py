@@ -435,7 +435,8 @@ class SocketInfo(object):
                 read_concern=DEFAULT_READ_CONCERN,
                 write_concern=None,
                 parse_write_concern_error=False,
-                collation=None):
+                collation=None,
+                session=None):
         """Execute a command or raise ConnectionFailure or OperationFailure.
 
         :Parameters:
@@ -452,6 +453,7 @@ class SocketInfo(object):
           - `parse_write_concern_error`: Whether to parse the
             ``writeConcernError`` field in the command response.
           - `collation`: The collation for this command.
+          - `session`: optional ClientSession instance.
         """
         if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
             raise ConfigurationError(
@@ -474,7 +476,7 @@ class SocketInfo(object):
                            check_keys, self.listeners, self.max_bson_size,
                            read_concern,
                            parse_write_concern_error=parse_write_concern_error,
-                           collation=collation)
+                           collation=collation, session=session)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
