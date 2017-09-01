@@ -41,6 +41,7 @@ Classes
 =======
 """
 
+import collections
 import uuid
 
 from bson.binary import Binary
@@ -79,7 +80,8 @@ class ClientSession(object):
         else:
             self._options = SessionOptions()
 
-        self._server_session = _ServerSession()
+        # Raises ConfigurationError if sessions are not supported.
+        self._server_session = client._get_server_session()
 
     def end_session(self):
         """Finish this session.
@@ -89,7 +91,10 @@ class ClientSession(object):
         :class:`~pymongo.collection.Collection`, or
         :class:`~pymongo.cursor.Cursor` after the session has ended.
         """
-        self._has_ended = True
+        if not self._has_ended:
+            self._has_ended = True
+            self.client._return_server_session(self._server_session)
+            self._server_session = None
 
     def __enter__(self):
         return self
@@ -112,7 +117,10 @@ class ClientSession(object):
     @property
     def session_id(self):
         """A BSON document, the opaque server session identifier."""
-        return self._server_session.session_id
+        if self._server_session:
+            return self._server_session.session_id
+
+        return None
 
     @property
     def has_ended(self):
@@ -125,3 +133,36 @@ class _ServerSession(object):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
         self.session_id = {'id': Binary(uuid.uuid4().bytes, 4)}
         self.last_use = monotonic.time()
+
+    def timed_out(self, session_timeout_minutes):
+        idle_seconds = monotonic.time() - self.last_use
+
+        # Timed out if we have less than a minute to live.
+        return idle_seconds > (session_timeout_minutes - 1) * 60
+
+
+class _ServerSessionPool(collections.deque):
+    """Pool of _ServerSession objects.
+
+    This class is not thread-safe, access it while holding the Topology lock.
+    """
+    def get_server_session(self, session_timeout_minutes):
+        # The most recently used sessions are on the left.
+        while self:
+            s = self.popleft()
+            if not s.timed_out(session_timeout_minutes):
+                return s
+
+        return _ServerSession()
+
+    def return_server_session(self, server_session, session_timeout_minutes):
+        # Clear stale sessions. The least recently used are on the right.
+        while self:
+            if self[-1].timed_out(session_timeout_minutes):
+                self.pop()
+            else:
+                # The remaining sessions also haven't timed out.
+                break
+
+        if not server_session.timed_out(session_timeout_minutes):
+            self.appendleft(server_session)

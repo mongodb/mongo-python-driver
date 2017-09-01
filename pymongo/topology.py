@@ -32,7 +32,7 @@ from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
 from pymongo.server_selectors import (any_server_selector,
@@ -40,6 +40,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       secondary_server_selector,
                                       writable_server_selector,
                                       Selection)
+from pymongo.client_session import _ServerSessionPool
 
 
 def process_events_queue(queue_ref):
@@ -107,6 +108,7 @@ class Topology(object):
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
         self._pid = None
+        self._session_pool = _ServerSessionPool()
 
         if self._publish_server or self._publish_tp:
             def target():
@@ -175,34 +177,40 @@ class Topology(object):
             server_timeout = server_selection_timeout
 
         with self._lock:
-            now = _time()
-            end_time = now + server_timeout
-            server_descriptions = self._description.apply_selector(
-                selector, address)
-
-            while not server_descriptions:
-                # No suitable servers.
-                if server_timeout == 0 or now > end_time:
-                    raise ServerSelectionTimeoutError(
-                        self._error_message(selector))
-
-                self._ensure_opened()
-                self._request_check_all()
-
-                # Release the lock and wait for the topology description to
-                # change, or for a timeout. We won't miss any changes that
-                # came after our most recent apply_selector call, since we've
-                # held the lock until now.
-                self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
-                self._description.check_compatible()
-                now = _time()
-                server_descriptions = self._description.apply_selector(
-                    selector, address)
-
-            self._description.check_compatible()
+            server_descriptions = self._select_servers_loop(
+                selector, server_timeout, address)
 
             return [self.get_server_by_address(sd.address)
                     for sd in server_descriptions]
+
+    def _select_servers_loop(self, selector, timeout, address):
+        """select_servers() guts. Hold the lock when calling this."""
+        now = _time()
+        end_time = now + timeout
+        server_descriptions = self._description.apply_selector(
+            selector, address)
+
+        while not server_descriptions:
+            # No suitable servers.
+            if timeout == 0 or now > end_time:
+                raise ServerSelectionTimeoutError(
+                    self._error_message(selector))
+
+            self._ensure_opened()
+            self._request_check_all()
+
+            # Release the lock and wait for the topology description to
+            # change, or for a timeout. We won't miss any changes that
+            # came after our most recent apply_selector call, since we've
+            # held the lock until now.
+            self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
+            self._description.check_compatible()
+            now = _time()
+            server_descriptions = self._description.apply_selector(
+                selector, address)
+
+        self._description.check_compatible()
+        return server_descriptions
 
     def select_server(self,
                       selector,
@@ -362,6 +370,32 @@ class Topology(object):
     @property
     def description(self):
         return self._description
+
+    def get_server_session(self):
+        """Start or resume a server session, or raise ConfigurationError."""
+        with self._lock:
+            session_timeout = self._description.logical_session_timeout_minutes
+            if session_timeout is None:
+                # Maybe we need an initial scan? Can raise ServerSelectionError.
+                if not self.description.has_known_servers:
+                    self._select_servers_loop(
+                        any_server_selector,
+                        self._settings.server_selection_timeout,
+                        None)
+
+            session_timeout = self._description.logical_session_timeout_minutes
+            if session_timeout is None:
+                raise ConfigurationError(
+                    "Sessions are not supported by this MongoDB deployment")
+
+            return self._session_pool.get_server_session(session_timeout)
+
+    def return_server_session(self, server_session):
+        with self._lock:
+            session_timeout = self._description.logical_session_timeout_minutes
+            if session_timeout is not None:
+                self._session_pool.return_server_session(server_session, 
+                                                         session_timeout)
 
     def _new_selection(self):
         """A Selection object, initially including all known servers.

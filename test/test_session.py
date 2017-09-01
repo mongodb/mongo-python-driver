@@ -14,7 +14,7 @@
 
 """Test the client_session module."""
 
-from pymongo.errors import InvalidOperation
+from pymongo.errors import InvalidOperation, ConfigurationError
 from test import IntegrationTest, client_context
 from test.utils import ignore_deprecations, rs_or_single_client
 
@@ -32,3 +32,27 @@ class TestSession(IntegrationTest):
 
         with self.assertRaises(InvalidOperation):
             client.start_session()
+
+    @client_context.require_version_min(3, 5, 12)
+    def test_pool_lifo(self):
+        # "Pool is LIFO" test from Driver Sessions Spec.
+        a = self.client.start_session()
+        b = self.client.start_session()
+        a_id = a.session_id
+        b_id = b.session_id
+        a.end_session()
+        b.end_session()
+
+        s = self.client.start_session()
+        self.assertEqual(b_id, s.session_id)
+        self.assertNotEqual(a_id, s.session_id)
+
+        s = self.client.start_session()
+        self.assertEqual(a_id, s.session_id)
+        self.assertNotEqual(b_id, s.session_id)
+
+    @client_context.require_version_max(3, 5, 10)
+    def test_sessions_not_supported(self):
+        with self.assertRaisesRegex(
+                ConfigurationError, "Sessions are not supported"):
+            self.client.start_session()

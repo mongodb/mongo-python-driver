@@ -184,6 +184,12 @@ class TopologyDescription(object):
                 if s.is_server_type_known]
 
     @property
+    def has_known_servers(self):
+        """Whether there are any Servers of types besides Unknown."""
+        return any(s for s in self._server_descriptions.values()
+                   if s.is_server_type_known)
+
+    @property
     def common_wire_version(self):
         """Minimum of all servers' max wire versions, or None."""
         servers = self.known_servers

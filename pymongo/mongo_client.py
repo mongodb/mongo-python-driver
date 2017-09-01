@@ -1224,6 +1224,14 @@ class MongoClient(common.BaseObject):
         opts = client_session.SessionOptions(**kwargs)
         return client_session.ClientSession(self, opts)
 
+    def _get_server_session(self):
+        """Internal: start or resume a _ServerSession."""
+        return self._topology.get_server_session()
+
+    def _return_server_session(self, server_session):
+        """Internal: return a _ServerSession to the pool."""
+        return self._topology.return_server_session(server_session)
+
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""
         return self.admin.command("buildinfo",

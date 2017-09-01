@@ -493,6 +493,12 @@ class IntegrationTest(unittest.TestCase):
         cls.db = cls.client.pymongo_test
 
 
+# Use assertRaisesRegex if available, otherwise use Python 2.7's
+# deprecated assertRaisesRegexp, with a 'p'.
+if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
+    IntegrationTest.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+
+
 class MockClientTest(unittest.TestCase):
     """Base class for TestCases that use MockClient.
 
