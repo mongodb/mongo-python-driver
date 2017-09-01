@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2007-2010  Michael G Schwern
 
@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 Programmers who have available to them 64-bit time values as a 'long
 long' type can use localtime64_r() and gmtime64_r() which correctly
-converts the time even on 32-bit systems. Whether you have 64-bit time 
+converts the time even on 32-bit systems. Whether you have 64-bit time
 values will depend on the operating system.
 
 localtime64_r() is a 64-bit equivalent of localtime_r().
@@ -278,7 +278,7 @@ static int check_tm(struct TM *tm)
 
     assert(tm->tm_wday >= 0);
     assert(tm->tm_wday <= 6);
-    
+
     assert(tm->tm_yday >= 0);
     assert(tm->tm_yday <= length_of_year[IS_LEAP(tm->tm_year)]);
 
@@ -354,7 +354,7 @@ static int safe_year(const Year year)
         year_cycle += 17;
 
     year_cycle %= SOLAR_CYCLE_LENGTH;
-    if( year_cycle < 0 ) 
+    if( year_cycle < 0 )
         year_cycle = SOLAR_CYCLE_LENGTH + year_cycle;
 
     assert( year_cycle >= 0 );
@@ -651,7 +651,7 @@ struct TM *gmtime64_r (const Time64_T *in_time, struct TM *p)
     p->tm_hour = v_tm_hour;
     p->tm_mon  = v_tm_mon;
     p->tm_wday = v_tm_wday;
-    
+
     assert(check_tm(p));
 
     return p;
@@ -735,7 +735,7 @@ struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
         local_tm->tm_year++;
     }
 
-    /* GMT is Jan 1st, xx01 year, but localtime is still Dec 31st 
+    /* GMT is Jan 1st, xx01 year, but localtime is still Dec 31st
        in a non-leap xx00.  There is one point in the cycle
        we can't account for which the safe xx00 year is a leap
        year.  So we need to correct for Dec 31st comming out as
@@ -745,7 +745,7 @@ struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
         local_tm->tm_yday--;
 
     assert(check_tm(local_tm));
-    
+
     return local_tm;
 }
 

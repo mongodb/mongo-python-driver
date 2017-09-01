@@ -49,7 +49,7 @@ class TestCursorManager(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         cls.warn_context.__exit__()
-        cls.warn_context = None 
+        cls.warn_context = None
         cls.collection.drop()
 
     def test_cursor_manager_validation(self):

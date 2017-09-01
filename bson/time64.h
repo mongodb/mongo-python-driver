@@ -37,7 +37,7 @@ struct TM64 {
 #define TM      TM64
 #else
 #define TM      tm
-#endif   
+#endif
 
 
 /* Declare public functions */

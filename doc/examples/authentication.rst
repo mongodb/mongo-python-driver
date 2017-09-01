@@ -141,7 +141,7 @@ To authenticate using GSSAPI you must first install the python `kerberos`_ or
 using the following authentication methods::
 
   $ kinit mongodbuser@EXAMPLE.COM
-  mongodbuser@EXAMPLE.COM's Password: 
+  mongodbuser@EXAMPLE.COM's Password:
   $ klist
   Credentials cache: FILE:/tmp/krb5cc_1000
           Principal: mongodbuser@EXAMPLE.COM

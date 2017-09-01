@@ -2,7 +2,7 @@ Contributing to PyMongo
 =======================
 
 PyMongo has a large `community
-<http://api.mongodb.org/python/current/contributors.html>`_ and 
+<http://api.mongodb.org/python/current/contributors.html>`_ and
 contributions are always encouraged. Contributions can be as simple as
 minor tweaks to the documentation. Please read these guidelines before
 sending a pull request.

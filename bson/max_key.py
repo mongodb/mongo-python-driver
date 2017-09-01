@@ -36,13 +36,13 @@ class MaxKey(object):
 
     def __le__(self, other):
         return isinstance(other, MaxKey)
-    
+
     def __lt__(self, dummy):
         return False
 
     def __ge__(self, dummy):
         return True
-    
+
     def __gt__(self, other):
         return not isinstance(other, MaxKey)
 

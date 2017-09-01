@@ -1189,8 +1189,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     } else if (PyObject_TypeCheck(value, state->REType)) {
         return _write_regex_to_buffer(buffer, type_byte, value);
     }
-    
-    /* 
+
+    /*
      * Try Mapping and UUID last since we have to import
      * them if we're in a sub-interpreter.
      */
@@ -1982,7 +1982,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     }
                     if ((PyDict_SetItemString(kwargs, "bytes", data)) == -1)
                         goto uuiderror;
-                
+
                 }
                 if ((type_to_create = _get_object(state->UUID, "uuid", "UUID"))) {
                     value = PyObject_Call(type_to_create, args, kwargs);
