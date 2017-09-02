@@ -14,6 +14,7 @@
 
 """Test the client_session module."""
 
+from pymongo import OFF
 from pymongo.errors import InvalidOperation, ConfigurationError
 from test import IntegrationTest, client_context
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
@@ -65,3 +66,42 @@ class TestSession(IntegrationTest):
             client.admin.command('ping', session=s)
             self.assertEqual(s.session_id,
                              listener.results['started'][0].command['lsid'])
+
+    @client_context.require_version_min(3, 5, 12)
+    def test_database_commands(self):
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.drop_database, 'pymongo_test')
+
+        db = client.pymongo_test
+
+        # Test most database methods. Some, like add_user, we can't test with
+        # command monitoring. See monitoring._SENSITIVE_COMMANDS.
+        ops = [
+            (db.create_collection, ['collection'], {}),
+            (db.collection_names, [], {}),
+            (db.validate_collection, ['collection'], {}),
+            (db.drop_collection, ['collection'], {}),
+            (db.current_op, [], {}),
+        ]
+
+        if not client_context.is_mongos:
+            ops.append((db.set_profiling_level, [OFF], {}))
+            ops.append((db.profiling_level, [], {}))
+
+        with client.start_session() as s:
+            for f, args, kwargs in ops:
+                listener.results.clear()
+                kwargs['session'] = s
+                f(*args, **kwargs)
+                for event in listener.results['started']:
+                    self.assertTrue(
+                        'lsid' in event.command,
+                        "%s sent no lsid with %s" % (
+                            f.__name__, event.command_name))
+
+                    self.assertEqual(
+                        s.session_id,
+                        event.command['lsid'],
+                        "%s sent wrong lsid with %s" % (
+                            f.__name__, event.command_name))

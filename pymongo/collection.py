@@ -76,7 +76,7 @@ class Collection(common.BaseObject):
 
     def __init__(self, database, name, create=False, codec_options=None,
                  read_preference=None, write_concern=None, read_concern=None,
-                 **kwargs):
+                 session=None, **kwargs):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -89,8 +89,10 @@ class Collection(common.BaseObject):
 
         If `create` is ``True``, `collation` is specified, or any additional
         keyword arguments are present, a ``create`` command will be
-        sent. Otherwise, a ``create`` command will not be sent and the
-        collection will be created implicitly on first use.
+        sent, using ``session`` if specified. Otherwise, a ``create`` command
+        will not be sent and the collection will be created implicitly on first
+        use. The optional ``session`` argument is *only* used for the ``create``
+        command, it is not associated with the collection afterward.
 
         :Parameters:
           - `database`: the database to get a collection from
@@ -112,8 +114,14 @@ class Collection(common.BaseObject):
             :class:`~pymongo.collation.Collation`. If a collation is provided,
             it will be passed to the create collection command. This option is
             only supported on MongoDB 3.4 and above.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession` that is used with
+            the create collection command
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Support the `collation` option.
@@ -171,7 +179,7 @@ class Collection(common.BaseObject):
         self.__name = _unicode(name)
         self.__full_name = _UJOIN % (self.__database.name, self.__name)
         if create or kwargs or collation:
-            self.__create(kwargs, collation)
+            self.__create(kwargs, collation, session)
 
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler='replace',
@@ -192,7 +200,8 @@ class Collection(common.BaseObject):
                  read_concern=DEFAULT_READ_CONCERN,
                  write_concern=None,
                  parse_write_concern_error=False,
-                 collation=None):
+                 collation=None,
+                 session=None):
         """Internal command helper.
 
         :Parameters:
@@ -212,6 +221,8 @@ class Collection(common.BaseObject):
             ``writeConcernError`` field in the command response.
           - `collation` (optional) - An instance of
             :class:`~pymongo.collation.Collation`.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
 
@@ -230,9 +241,10 @@ class Collection(common.BaseObject):
             read_concern=read_concern,
             write_concern=write_concern,
             parse_write_concern_error=parse_write_concern_error,
-            collation=collation)
+            collation=collation,
+            session=session)
 
-    def __create(self, options, collation):
+    def __create(self, options, collation, session):
         """Sends a create command with the given options.
         """
         cmd = SON([("create", self.__name)])
@@ -245,7 +257,7 @@ class Collection(common.BaseObject):
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 write_concern=self.write_concern,
                 parse_write_concern_error=True,
-                collation=collation)
+                collation=collation, session=session)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
