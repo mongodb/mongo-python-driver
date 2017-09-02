@@ -50,7 +50,6 @@ from pymongo import (common,
                      periodic_executor,
                      uri_parser)
 from pymongo.client_options import ClientOptions
-from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -468,7 +467,6 @@ class MongoClient(common.BaseObject):
 
         self.__default_database_name = dbase
         self.__lock = threading.Lock()
-        self.__cursor_manager = None
         self.__kill_cursors_queue = []
 
         self._event_listeners = options.pool_options.event_listeners
@@ -825,35 +823,6 @@ class MongoClient(common.BaseObject):
         self._process_periodic_tasks()
         self._topology.close()
 
-    def set_cursor_manager(self, manager_class):
-        """DEPRECATED - Set this client's cursor manager.
-
-        Raises :class:`TypeError` if `manager_class` is not a subclass of
-        :class:`~pymongo.cursor_manager.CursorManager`. A cursor manager
-        handles closing cursors. Different managers can implement different
-        policies in terms of when to actually kill a cursor that has
-        been closed.
-
-        :Parameters:
-          - `manager_class`: cursor manager to use
-
-        .. versionchanged:: 3.3
-           Deprecated, for real this time.
-
-        .. versionchanged:: 3.0
-           Undeprecated.
-        """
-        warnings.warn(
-            "set_cursor_manager is Deprecated",
-            DeprecationWarning,
-            stacklevel=2)
-        manager = manager_class(self)
-        if not isinstance(manager, CursorManager):
-            raise TypeError("manager_class must be a subclass of "
-                            "CursorManager")
-
-        self.__cursor_manager = manager
-
     def _get_topology(self):
         """Get the internal :class:`~pymongo.topology.Topology` object.
 
@@ -1045,8 +1014,7 @@ class MongoClient(common.BaseObject):
         """Send a kill cursors message soon with the given id.
 
         Raises :class:`TypeError` if `cursor_id` is not an instance of
-        ``(int, long)``. What closing the cursor actually means
-        depends on this client's cursor manager.
+        ``(int, long)``.
 
         This method may be called from a :class:`~pymongo.cursor.Cursor`
         destructor during garbage collection, so it isn't safe to take a
@@ -1065,25 +1033,17 @@ class MongoClient(common.BaseObject):
         if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
-        if self.__cursor_manager is not None:
-            self.__cursor_manager.close(cursor_id, address)
-        else:
-            self.__kill_cursors_queue.append((address, [cursor_id]))
+        self.__kill_cursors_queue.append((address, [cursor_id]))
 
     def _close_cursor_now(self, cursor_id, address=None):
         """Send a kill cursors message with the given id.
 
-        What closing the cursor actually means depends on this client's
-        cursor manager. If there is none, the cursor is closed synchronously
-        on the current thread.
+        The cursor is closed synchronously on the current thread.
         """
         if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
-        if self.__cursor_manager is not None:
-            self.__cursor_manager.close(cursor_id, address)
-        else:
-            self._kill_cursors([cursor_id], address, self._get_topology())
+        self._kill_cursors([cursor_id], address, self._get_topology())
 
     def kill_cursors(self, cursor_ids, address=None):
         """DEPRECATED - Send a kill cursors message soon with the given ids.

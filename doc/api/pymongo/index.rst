@@ -48,6 +48,5 @@ Sub-modules:
    read_preferences
    results
    son_manipulator
-   cursor_manager
    uri_parser
    write_concern
