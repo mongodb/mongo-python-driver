@@ -207,10 +207,6 @@ class CommandCursor(object):
         return len(self.__data)
 
     @property
-    def _collection(self):
-        return self.__collection
-
-    @property
     def alive(self):
         """Does this cursor have the potential to return more data?
 
@@ -275,11 +271,6 @@ class RawBatchCommandCursor(CommandCursor):
         assert not cursor_info.get('firstBatch')
         super(RawBatchCommandCursor, self).__init__(
             collection, cursor_info, address, retrieved)
-
-        db = self._collection.database
-        if db.outgoing_manipulators or db.outgoing_copying_manipulators:
-            raise InvalidOperation("Raw batches are not compatible with"
-                                   " SON manipulators.")
 
     def _unpack_response(self, response, cursor_id, codec_options):
         return helpers._raw_response(response, cursor_id)

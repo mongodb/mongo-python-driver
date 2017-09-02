@@ -91,9 +91,9 @@ class TopologyDescription(object):
         # Server Discovery And Monitoring Spec: "Whenever a client updates the
         # TopologyDescription from an ismaster response, it MUST set
         # TopologyDescription.logicalSessionTimeoutMinutes to the smallest
-        # localLogicalSessionTimeoutMinutes value among all ServerDescriptions
+        # logicalSessionTimeoutMinutes value among all ServerDescriptions
         # of known ServerType. If any ServerDescription of known ServerType has
-        # a null localLogicalSessionTimeoutMinutes, then
+        # a null logicalSessionTimeoutMinutes, then
         # TopologyDescription.logicalSessionTimeoutMinutes MUST be set to null.
         known = self.known_servers
         if not known:
@@ -182,6 +182,12 @@ class TopologyDescription(object):
         """List of Servers of types besides Unknown."""
         return [s for s in self._server_descriptions.values()
                 if s.is_server_type_known]
+
+    @property
+    def has_known_servers(self):
+        """Whether there are any Servers of types besides Unknown."""
+        return any(s for s in self._server_descriptions.values()
+                   if s.is_server_type_known)
 
     @property
     def common_wire_version(self):

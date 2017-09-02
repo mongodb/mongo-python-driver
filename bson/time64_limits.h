@@ -1,4 +1,4 @@
-/* 
+/*
    Maximum and minimum inputs your system's respective time functions
    can correctly handle.  time64.h will use your system functions if
    the input falls inside these ranges and corresponding USE_SYSTEM_*

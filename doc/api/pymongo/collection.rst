@@ -73,4 +73,3 @@
       .. automethod:: remove(spec_or_id=None, multi=True, **kwargs)
       .. automethod:: find_and_modify
       .. automethod:: ensure_index
-

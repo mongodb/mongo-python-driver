@@ -48,4 +48,3 @@ Applications using uWSGI prior to 1.9.16 are affected by this issue,
 or newer uWSGI versions with the ``-gevent-wait-for-hub`` option.
 See `the uWSGI changelog for details
 <https://uwsgi-docs.readthedocs.io/en/latest/Changelog-1.9.16.html#important-change-in-the-gevent-plugin-shutdown-reload-procedure>`_.
-

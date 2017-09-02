@@ -89,7 +89,7 @@ Manga
   layer on top of PyMongo. The syntax for defining schema is inspired by the
   Django ORM, but Pymongo's query language is maintained. The source `is on
   github <http://github.com/wladston/manga>`_.
-  
+
 MotorEngine
   `MotorEngine <https://motorengine.readthedocs.io/>`_ is a port of
   MongoEngine to Motor, for asynchronous access with Tornado.

@@ -1275,4 +1275,3 @@ buildvariants:
       # Darwin MongoDB SSL builds are not available for 2.6
       # SUSE12 x86_64 is only supported by MongoDB 3.2+
       # vim: set et sw=2 ts=2 :
-

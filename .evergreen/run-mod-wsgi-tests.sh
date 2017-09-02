@@ -44,4 +44,3 @@ fi
 ${PYTHON_BINARY} ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 -t 100 parallel http://localhost:8080${PROJECT_DIRECTORY}
 
 ${PYTHON_BINARY} ${PROJECT_DIRECTORY}/test/mod_wsgi_test/test_client.py -n 25000 serial http://localhost:8080${PROJECT_DIRECTORY}
-

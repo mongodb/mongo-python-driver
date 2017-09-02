@@ -48,7 +48,8 @@ from pymongo import (common,
                      helpers,
                      message,
                      periodic_executor,
-                     uri_parser)
+                     uri_parser,
+                     client_session)
 from pymongo.client_options import ClientOptions
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -1159,6 +1160,37 @@ class MongoClient(common.BaseObject):
             self._topology.update_pool()
         except Exception:
             helpers._handle_exception()
+
+    def start_session(self, **kwargs):
+        """Start a logical session.
+
+        This method takes the same parameters as
+        :class:`~pymongo.client_session.SessionOptions`. See the
+        :mod:`~pymongo.client_session` module for details and examples.
+
+        Requires MongoDB 3.6. It is an error to call :meth:`start_session`
+        if this client has been authenticated to multiple databases using the
+        deprecated method :meth:`~pymongo.database.Database.authenticate`.
+
+        .. versionadded:: 3.6
+        """
+        # Driver Sessions Spec: "If startSession is called when multiple users
+        # are authenticated drivers MUST raise an error with the error message
+        # 'Cannot call startSession when multiple users are authenticated.'"
+        if len(self.__all_credentials) > 1:
+            raise InvalidOperation("Cannot call start_session when"
+                                   " multiple users are authenticated")
+
+        opts = client_session.SessionOptions(**kwargs)
+        return client_session.ClientSession(self, opts)
+
+    def _get_server_session(self):
+        """Internal: start or resume a _ServerSession."""
+        return self._topology.get_server_session()
+
+    def _return_server_session(self, server_session):
+        """Internal: return a _ServerSession to the pool."""
+        return self._topology.return_server_session(server_session)
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""

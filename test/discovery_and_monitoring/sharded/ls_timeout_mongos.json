@@ -1,5 +1,5 @@
 {
-  "description": "Parse localLogicalSessionTimeoutMinutes from mongoses",
+  "description": "Parse logicalSessionTimeoutMinutes from mongoses",
   "uri": "mongodb://a,b",
   "phases": [
     {
@@ -10,7 +10,7 @@
             "ok": 1,
             "ismaster": true,
             "msg": "isdbgrid",
-            "localLogicalSessionTimeoutMinutes": 1,
+            "logicalSessionTimeoutMinutes": 1,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -21,7 +21,7 @@
             "ok": 1,
             "ismaster": true,
             "msg": "isdbgrid",
-            "localLogicalSessionTimeoutMinutes": 2,
+            "logicalSessionTimeoutMinutes": 2,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -51,7 +51,7 @@
             "ok": 1,
             "ismaster": true,
             "msg": "isdbgrid",
-            "localLogicalSessionTimeoutMinutes": 1,
+            "logicalSessionTimeoutMinutes": 1,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }

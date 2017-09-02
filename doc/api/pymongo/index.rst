@@ -32,6 +32,7 @@ Sub-modules:
    :maxdepth: 2
 
    database
+   client_session
    collation
    collection
    command_cursor

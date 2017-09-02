@@ -35,6 +35,7 @@
       .. autoattribute:: write_concern
       .. autoattribute:: read_concern
       .. autoattribute:: is_locked
+      .. automethod:: start_session
       .. automethod:: database_names
       .. automethod:: drop_database
       .. automethod:: get_database

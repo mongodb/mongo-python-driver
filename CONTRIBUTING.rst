@@ -2,7 +2,7 @@ Contributing to PyMongo
 =======================
 
 PyMongo has a large `community
-<http://api.mongodb.org/python/current/contributors.html>`_ and 
+<http://api.mongodb.org/python/current/contributors.html>`_ and
 contributions are always encouraged. Contributions can be as simple as
 minor tweaks to the documentation. Please read these guidelines before
 sending a pull request.
@@ -48,4 +48,3 @@ just make your changes to the inline documentation of the appropriate
 branch and submit a `pull request <https://help.github.com/articles/using-pull-requests>`_.
 You might also use the github `Edit <https://github.com/blog/844-forking-with-the-edit-button>`_
 button.
-
