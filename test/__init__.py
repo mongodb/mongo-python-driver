@@ -175,6 +175,7 @@ class ClientContext(object):
         self.ssl_certfile = False
         self.server_is_resolvable = is_server_resolvable()
         self.ssl_client_options = {}
+        self.sessions_enabled = False
         self.client = _connect(host, port)
 
         if HAVE_SSL and not self.client:
@@ -190,6 +191,8 @@ class ClientContext(object):
         if self.client:
             self.connected = True
             ismaster = self.client.admin.command('ismaster')
+            self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
+
             if 'setName' in ismaster:
                 self.replica_set_name = ismaster['setName']
                 self.is_rs = True
@@ -477,6 +480,12 @@ class ClientContext(object):
         return self._require(self.server_is_resolvable,
                              "No hosts entry for 'server'. Cannot validate "
                              "hostname in the certificate",
+                             func=func)
+
+    def require_sessions(self, func):
+        """Run a test only if the deployment supports sessions."""
+        return self._require(self.sessions_enabled,
+                             "Sessions not supported",
                              func=func)
 
 # Reusable client context

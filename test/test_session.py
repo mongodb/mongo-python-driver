@@ -16,8 +16,24 @@
 
 from pymongo import OFF
 from pymongo.errors import InvalidOperation, ConfigurationError
+from pymongo.monitoring import _SENSITIVE_COMMANDS
 from test import IntegrationTest, client_context
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
+
+
+# Ignore redacted commands like saslStart, so we can assert lsid is in all cmds.
+class SessionTestListener(EventListener):
+    def started(self, event):
+        if event.command_name not in _SENSITIVE_COMMANDS:
+            super(SessionTestListener, self).started(event)
+
+    def succeeded(self, event):
+        if event.command_name not in _SENSITIVE_COMMANDS:
+            super(SessionTestListener, self).succeeded(event)
+
+    def failed(self, event):
+        if event.command_name not in _SENSITIVE_COMMANDS:
+            super(SessionTestListener, self).failed(event)
 
 
 class TestSession(IntegrationTest):
@@ -34,7 +50,7 @@ class TestSession(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             client.start_session()
 
-    @client_context.require_version_min(3, 5, 12)
+    @client_context.require_sessions
     def test_pool_lifo(self):
         # "Pool is LIFO" test from Driver Sessions Spec.
         a = self.client.start_session()
@@ -58,19 +74,11 @@ class TestSession(IntegrationTest):
                 ConfigurationError, "Sessions are not supported"):
             self.client.start_session()
 
-    @client_context.require_version_min(3, 5, 12)
-    def test_command_with_session(self):
-        listener = EventListener()
+    @client_context.require_sessions
+    def test_database(self):
+        listener = SessionTestListener()
         client = rs_or_single_client(event_listeners=[listener])
-        with client.start_session() as s:
-            client.admin.command('ping', session=s)
-            self.assertEqual(s.session_id,
-                             listener.results['started'][0].command['lsid'])
-
-    @client_context.require_version_min(3, 5, 12)
-    def test_database_commands(self):
-        listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client.drop_database('pymongo_test')
         self.addCleanup(client.drop_database, 'pymongo_test')
 
         db = client.pymongo_test
@@ -78,6 +86,7 @@ class TestSession(IntegrationTest):
         # Test most database methods. Some, like add_user, we can't test with
         # command monitoring. See monitoring._SENSITIVE_COMMANDS.
         ops = [
+            (db.command, ['ping'], {}),
             (db.create_collection, ['collection'], {}),
             (db.collection_names, [], {}),
             (db.validate_collection, ['collection'], {}),
