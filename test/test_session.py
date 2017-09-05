@@ -15,7 +15,9 @@
 """Test the client_session module."""
 from bson import DBRef
 from pymongo import OFF, InsertOne, IndexModel
-from pymongo.errors import InvalidOperation, ConfigurationError
+from pymongo.errors import (ConfigurationError,
+                            InvalidOperation,
+                            OperationFailure)
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 from test import IntegrationTest, client_context
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
@@ -73,6 +75,46 @@ class TestSession(IntegrationTest):
         with self.assertRaisesRegex(
                 ConfigurationError, "Sessions are not supported"):
             self.client.start_session()
+
+    @client_context.require_sessions
+    def test_client(self):
+        listener = SessionTestListener()
+        client = rs_or_single_client(event_listeners=[listener])
+
+        # Make sure if the test fails we unlock the server.
+        def unlock():
+            try:
+                client.unlock()
+            except OperationFailure:
+                pass
+
+        self.addCleanup(unlock)
+
+        ops = [
+            (client.server_info, [], {}),
+            (client.database_names, [], {}),
+            (client.drop_database, ['pymongo_test'], {}),
+            (client.fsync, [], {'lock': True}),
+            (client.unlock, [], {}),
+        ]
+
+        with client.start_session() as s:
+            for f, args, kwargs in ops:
+                listener.results.clear()
+                kwargs['session'] = s
+                f(*args, **kwargs)
+                self.assertGreaterEqual(len(listener.results['started']), 1)
+                for event in listener.results['started']:
+                    self.assertTrue(
+                        'lsid' in event.command,
+                        "%s sent no lsid with %s" % (
+                            f.__name__, event.command_name))
+
+                    self.assertEqual(
+                        s.session_id,
+                        event.command['lsid'],
+                        "%s sent wrong lsid with %s" % (
+                            f.__name__, event.command_name))
 
     @client_context.require_sessions
     def test_database(self):

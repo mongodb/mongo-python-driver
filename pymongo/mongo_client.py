@@ -1234,19 +1234,37 @@ class MongoClient(common.BaseObject):
         """Internal: return a _ServerSession to the pool."""
         return self._topology.return_server_session(server_session)
 
-    def server_info(self):
-        """Get information about the MongoDB server we're connected to."""
-        return self.admin.command("buildinfo",
-                                  read_preference=ReadPreference.PRIMARY)
+    def server_info(self, session=None):
+        """Get information about the MongoDB server we're connected to.
 
-    def database_names(self):
-        """Get a list of the names of all databases on the connected server."""
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+        """
+        return self.admin.command("buildinfo",
+                                  read_preference=ReadPreference.PRIMARY,
+                                  session=session)
+
+    def database_names(self, session=None):
+        """Get a list of the names of all databases on the connected server.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+        """
         return [db["name"] for db in
                 self._database_default_options("admin").command(
                     SON([("listDatabases", 1),
-                         ("nameOnly", True)]))["databases"]]
+                         ("nameOnly", True)]),
+                    session=session)["databases"]]
 
-    def drop_database(self, name_or_database):
+    def drop_database(self, name_or_database, session=None):
         """Drop a database.
 
         Raises :class:`TypeError` if `name_or_database` is not an instance of
@@ -1257,6 +1275,11 @@ class MongoClient(common.BaseObject):
           - `name_or_database`: the name of a database to drop, or a
             :class:`~pymongo.database.Database` instance representing the
             database to drop
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. note:: The :attr:`~pymongo.mongo_client.MongoClient.write_concern` of
            this client is automatically applied to this operation when using
@@ -1284,7 +1307,8 @@ class MongoClient(common.BaseObject):
                 slave_ok=slave_ok,
                 read_preference=ReadPreference.PRIMARY,
                 write_concern=self.write_concern,
-                parse_write_concern_error=True)
+                parse_write_concern_error=True,
+                session=session)
 
     def get_default_database(self):
         """DEPRECATED - Get the database named in the MongoDB connection URI.
@@ -1382,30 +1406,39 @@ class MongoClient(common.BaseObject):
     def fsync(self, **kwargs):
         """Flush all pending writes to datafiles.
 
-        :Parameters:
+        Optional parameters can be passed as keyword arguments:
+          - `lock`: If True lock the server to disallow writes.
+          - `async`: If True don't block while synchronizing.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
-            Optional parameters can be passed as keyword arguments:
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
-            - `lock`: If True lock the server to disallow writes.
-            - `async`: If True don't block while synchronizing.
+        .. warning:: `async` and `lock` can not be used together.
 
-            .. warning:: `async` and `lock` can not be used together.
-
-            .. warning:: MongoDB does not support the `async` option
-                         on Windows and will raise an exception on that
-                         platform.
+        .. warning:: MongoDB does not support the `async` option
+                     on Windows and will raise an exception on that
+                     platform.
         """
         self.admin.command("fsync",
                            read_preference=ReadPreference.PRIMARY, **kwargs)
 
-    def unlock(self):
+    def unlock(self, session=None):
         """Unlock a previously locked server.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         """
         cmd = {"fsyncUnlock": 1}
         with self._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
                 try:
-                    sock_info.command("admin", cmd)
+                    sock_info.command("admin", cmd, session=session)
                 except OperationFailure as exc:
                     # Ignore "DB not locked" to replicate old behavior
                     if exc.code != 125:
