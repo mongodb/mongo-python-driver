@@ -793,10 +793,6 @@ axes:
         display_name: "macOS 10.12"
         run_on: macos-1012
 
-#      - id: solaris
-#        display_name: "Solaris"
-#        run_on: solaris
-
   # OSes that support versions of MongoDB>=2.6 with SSL.
   - id: os-requires-26
     display_name: OS
@@ -935,6 +931,7 @@ axes:
            PYTHON_BINARY: "/opt/python/3.4/bin/python3"
       - id: "3.5"
         display_name: "Python 3.5"
+        batchtime: 10080  # 7 days
         variables:
            PYTHON_BINARY: "/opt/python/3.5/bin/python3"
       - id: "3.6"
@@ -1028,6 +1025,7 @@ axes:
            PYTHON_BINARY: "/cygdrive/c/python/Python27/python.exe"
       - id: "3.5"
         display_name: "Python 3.5"
+        batchtime: 10080  # 7 days
         variables:
            PYTHON_BINARY: "/cygdrive/c/python/Python35/python.exe"
       - id: "3.6"
