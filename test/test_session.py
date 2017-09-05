@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Test the client_session module."""
-
+from bson import DBRef
 from pymongo import OFF, InsertOne, IndexModel
 from pymongo.errors import InvalidOperation, ConfigurationError
 from pymongo.monitoring import _SENSITIVE_COMMANDS
@@ -92,6 +92,8 @@ class TestSession(IntegrationTest):
             (db.validate_collection, ['collection'], {}),
             (db.drop_collection, ['collection'], {}),
             (db.current_op, [], {}),
+            (db.profiling_info, [], {}),
+            (db.dereference, [DBRef('collection', 1)], {}),
         ]
 
         if not client_context.is_mongos:

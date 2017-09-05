@@ -787,7 +787,7 @@ class Database(common.BaseObject):
 
         .. mongodoc:: profiling
         """
-        return list(self["system.profile"].find())
+        return list(self["system.profile"].find(session=session))
 
     def error(self):
         """**DEPRECATED**: Get the error if one occurred on the last operation.
@@ -1175,7 +1175,8 @@ class Database(common.BaseObject):
             raise ValueError("trying to dereference a DBRef that points to "
                              "another database (%r not %r)" % (dbref.database,
                                                                self.__name))
-        return self[dbref.collection].find_one({"_id": dbref.id}, **kwargs)
+        return self[dbref.collection].find_one(
+            {"_id": dbref.id}, session=session, **kwargs)
 
     def eval(self, code, *args):
         """**DEPRECATED**: Evaluate a JavaScript expression in MongoDB.
