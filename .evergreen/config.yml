@@ -773,10 +773,12 @@ axes:
       - id: suse11-x86-64-test
         display_name: "SUSE 11 (x86_64)"
         run_on: suse11-test
+        batchtime: 10080  # 7 days
 
       - id: linux-64-amzn-test
         display_name: "Amazon Linux (Enterprise)"
         run_on: linux-64-amzn-test
+        batchtime: 10080  # 7 days
 
   # OSes that support versions of MongoDB without SSL.
   - id: os-nossl
@@ -785,6 +787,7 @@ axes:
       - id: archlinux-test
         display_name: "Archlinux"
         run_on: archlinux-test
+        batchtime: 10080  # 7 days
 
       - id: macos-1012
         display_name: "macOS 10.12"
@@ -801,14 +804,17 @@ axes:
       - id: ubuntu-14.04
         display_name: "Ubuntu 14.04"
         run_on: ubuntu1404-test
+        batchtime: 10080  # 7 days
 
       - id: rhel70
         display_name: "RHEL 7.0"
         run_on: rhel70-small
+        batchtime: 10080  # 7 days
 
       - id: debian71-test
         display_name: "Debian 7.1"
         run_on: debian71-test
+        batchtime: 10080  # 7 days
 
   # OSes that support versions of MongoDB>=3.2 with SSL.
   - id: os-requires-32
@@ -817,10 +823,12 @@ axes:
       - id: ubuntu-16.04
         display_name: "Ubuntu 16.04"
         run_on: ubuntu1604-test
+        batchtime: 10080  # 7 days
 
       - id: suse12-x86-64-test
         display_name: "SUSE 12 (x86_64)"
         run_on: suse12-test
+        batchtime: 10080  # 7 days
 
       - id: rhel71-power8-test
         display_name: "RHEL 7.1 (POWER8)"
@@ -842,6 +850,7 @@ axes:
       - id: debian81-test
         display_name: "Debian 8.1"
         run_on: debian81-test
+        batchtime: 10080  # 7 days
 
       - id: rhel72-zseries-test
         display_name: "RHEL 7.2 (zSeries)"
