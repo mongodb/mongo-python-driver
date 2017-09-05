@@ -6,7 +6,7 @@ Python 3 FAQ
 What Python 3 versions are supported?
 -------------------------------------
 
-PyMongo supports CPython 3.3+ and PyPy3.
+PyMongo supports CPython 3.4+ and PyPy3.
 
 Are there any PyMongo behavior changes with Python 3?
 -----------------------------------------------------
@@ -20,7 +20,7 @@ with subtype 0.
 For example, let's insert a :class:`bytes` instance using Python 3 then
 read it back. Notice the byte string is decoded back to :class:`bytes`::
 
-  Python 3.3.5 (default, Apr 29 2016, 11:04:32)
+  Python 3.6.1 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
   [GCC 4.9.3] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
@@ -86,7 +86,7 @@ Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
   >>> pickle.dumps(oid)
   'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\...'
 
-  Python 3.3.5 (default, Apr 29 2016, 11:04:32)
+  Python 3.6.1 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
   [GCC 4.9.3] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle
@@ -97,7 +97,7 @@ Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
 If you need to pickle ObjectIds using Python 3 and unpickle them using Python 2
 you must use ``protocol <= 2``::
 
-  Python 3.3.5 (default, Apr 29 2016, 11:04:32)
+  Python 3.6.1 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
   [GCC 4.9.3] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle

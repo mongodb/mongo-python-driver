@@ -8,6 +8,9 @@ This version drops support for MongoDB versions older than 2.6. If connecting to
 a MongoDB 2.4 server or older, PyMongo now throws a
 :exc:`~pymongo.errors.ConfigurationError`.
 
+.. warning:: This version drops support for CPython 3.3 (pypy3 continues to
+  be supported).
+
 Highlights include:
 
 - New Session API, see :meth:`~pymongo.mongo_client.MongoClient.start_session`.

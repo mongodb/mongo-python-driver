@@ -45,7 +45,7 @@ To upgrade do::
 Dependencies
 ------------
 
-PyMongo supports CPython 2.6, 2.7, 3.3+, PyPy, and PyPy3.
+PyMongo supports CPython 2.6, 2.7, 3.4+, PyPy, and PyPy3.
 
 Optional dependencies for GSSAPI and TLS:
 
@@ -133,7 +133,7 @@ See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
 for a more detailed explanation.
 
 **Lion (10.7) and newer** - PyMongo's C extensions can be built against
-versions of Python 2.7 >= 2.7.4 or Python 3.3+ downloaded from
+versions of Python 2.7 >= 2.7.4 or Python 3.4+ downloaded from
 python.org. In all cases Xcode must be installed with 'UNIX Development
 Support'.
 
@@ -167,7 +167,7 @@ requirements apply to both CPython and ActiveState's ActivePython:
 64-bit Windows
 ~~~~~~~~~~~~~~
 
-For Python 3.5 and newer install Visual Studio 2015. For Python 3.3 and 3.4
+For Python 3.5 and newer install Visual Studio 2015. For Python 3.4
 install Visual Studio 2010. For Python 2.6 and 2.7 install Visual Studio
 2008, or the Microsoft Visual C++ Compiler for Python 2.7. You must use the
 full version of Visual Studio 2010 or 2008 as Visual C++ Express does not
@@ -179,7 +179,7 @@ Tools" option under Visual C++.
 
 For Python 3.5 and newer install Visual Studio 2015.
 
-For Python 3.3 and 3.4 install Visual C++ 2010 Express.
+For Python 3.4 install Visual C++ 2010 Express.
 
 For Python 2.6 and 2.7 install Visual C++ 2008 Express SP1.
 

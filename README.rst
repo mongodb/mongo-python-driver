@@ -88,7 +88,7 @@ with PyMongo.
 Dependencies
 ============
 
-PyMongo supports CPython 2.6, 2.7, 3.3+, PyPy, and PyPy3.
+PyMongo supports CPython 2.6, 2.7, 3.4+, PyPy, and PyPy3.
 
 Optional dependencies for GSSAPI and TLS:
 
