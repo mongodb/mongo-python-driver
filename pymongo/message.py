@@ -163,18 +163,24 @@ _MODIFIERS = SON([
 
 def _gen_explain_command(
         coll, spec, projection, skip, limit, batch_size,
-        options, read_concern):
+        options, read_concern, session):
     """Generate an explain command document."""
     cmd = _gen_find_command(
         coll, spec, projection, skip, limit, batch_size, options)
     if read_concern.level:
-        return SON([('explain', cmd), ('readConcern', read_concern.document)])
-    return SON([('explain', cmd)])
+        explain = SON([('explain', cmd), ('readConcern', read_concern.document)])
+    else:
+        explain = SON([('explain', cmd)])
+
+    if session:
+        explain['lsid'] = session.session_id
+
+    return explain
 
 
 def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
                       options, read_concern=DEFAULT_READ_CONCERN,
-                      collation=None):
+                      collation=None, session=None):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
@@ -201,15 +207,17 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
         cmd['readConcern'] = read_concern.document
     if collation:
         cmd['collation'] = collation
-
     if options:
         cmd.update([(opt, True)
                     for opt, val in _OPTIONS.items()
                     if options & val])
+    if session:
+        cmd['lsid'] = session.session_id
     return cmd
 
 
-def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms):
+def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms,
+                          session):
     """Generate a getMore command document."""
     cmd = SON([('getMore', cursor_id),
                ('collection', coll)])
@@ -217,6 +225,8 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms):
         cmd['batchSize'] = batch_size
     if max_await_time_ms is not None:
         cmd['maxTimeMS'] = max_await_time_ms
+    if session:
+        cmd['lsid'] = session.session_id
     return cmd
 
 
@@ -225,11 +235,12 @@ class _Query(object):
 
     __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
-                 'batch_size', 'name', 'read_concern', 'collation')
+                 'batch_size', 'name', 'read_concern', 'collation',
+                 'session')
 
     def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
-                 batch_size, read_concern, collation):
+                 batch_size, read_concern, collation, session):
         self.flags = flags
         self.db = db
         self.coll = coll
@@ -242,6 +253,7 @@ class _Query(object):
         self.limit = limit
         self.batch_size = batch_size
         self.collation = collation
+        self.session = session
         self.name = 'find'
 
     def use_command(self, sock_info, exhaust):
@@ -273,11 +285,11 @@ class _Query(object):
             return _gen_explain_command(
                 self.coll, self.spec, self.fields, self.ntoskip,
                 self.limit, self.batch_size, self.flags,
-                self.read_concern), self.db
+                self.read_concern, self.session), self.db
         return _gen_find_command(
             self.coll, self.spec, self.fields, self.ntoskip, self.limit,
             self.batch_size, self.flags, self.read_concern,
-            self.collation), self.db
+            self.collation, self.session), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""
@@ -317,18 +329,19 @@ class _GetMore(object):
     """A getmore operation."""
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_await_time_ms',
-                 'codec_options')
+                 'codec_options', 'session')
 
     name = 'getMore'
 
     def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
-                 max_await_time_ms=None):
+                 max_await_time_ms=None, session=None):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
         self.codec_options = codec_options
         self.max_await_time_ms = max_await_time_ms
+        self.session = session
 
     def use_command(self, sock_info, exhaust):
         return sock_info.max_wire_version >= 4 and not exhaust
@@ -337,7 +350,8 @@ class _GetMore(object):
         """Return a getMore command document for this query."""
         return _gen_get_more_command(self.cursor_id, self.coll,
                                      self.ntoreturn,
-                                     self.max_await_time_ms), self.db
+                                     self.max_await_time_ms,
+                                     self.session), self.db
 
     def get_message(self, dummy0, dummy1, use_cmd=False):
         """Get a getmore message."""

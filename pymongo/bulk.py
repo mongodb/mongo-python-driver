@@ -291,7 +291,7 @@ class _Bulk(object):
             if run.ops:
                 yield run
 
-    def execute_command(self, sock_info, generator, write_concern):
+    def execute_command(self, sock_info, generator, write_concern, session):
         """Execute using write commands.
         """
         # nModified is only reported for write commands, not legacy ops.
@@ -316,6 +316,8 @@ class _Bulk(object):
                 cmd['writeConcern'] = write_concern.document
             if self.bypass_doc_val and sock_info.max_wire_version >= 4:
                 cmd['bypassDocumentValidation'] = True
+            if session:
+                cmd['lsid'] = session.session_id
 
             bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id, listeners)
             results = _do_batched_write_command(
@@ -466,7 +468,7 @@ class _Bulk(object):
             raise BulkWriteError(full_result)
         return full_result
 
-    def execute(self, write_concern):
+    def execute(self, write_concern, session):
         """Execute operations.
         """
         if not self.ops:
@@ -501,7 +503,8 @@ class _Bulk(object):
                         'writes.')
                 self.execute_no_results(sock_info, generator)
             elif sock_info.max_wire_version > 1:
-                return self.execute_command(sock_info, generator, write_concern)
+                return self.execute_command(
+                    sock_info, generator, write_concern, session)
             else:
                 return self.execute_legacy(sock_info, generator, write_concern)
 
@@ -683,4 +686,4 @@ class BulkOperationBuilder(object):
         """
         if write_concern is not None:
             validate_is_mapping("write_concern", write_concern)
-        return self.__bulk.execute(write_concern)
+        return self.__bulk.execute(write_concern, session=None)

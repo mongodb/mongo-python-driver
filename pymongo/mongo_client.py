@@ -1071,7 +1071,7 @@ class MongoClient(common.BaseObject):
         else:
             self.__kill_cursors_queue.append((address, [cursor_id]))
 
-    def _close_cursor_now(self, cursor_id, address=None):
+    def _close_cursor_now(self, cursor_id, address=None, session=None):
         """Send a kill cursors message with the given id.
 
         What closing the cursor actually means depends on this client's
@@ -1084,7 +1084,8 @@ class MongoClient(common.BaseObject):
         if self.__cursor_manager is not None:
             self.__cursor_manager.close(cursor_id, address)
         else:
-            self._kill_cursors([cursor_id], address, self._get_topology())
+            self._kill_cursors(
+                [cursor_id], address, self._get_topology(), session)
 
     def kill_cursors(self, cursor_ids, address=None):
         """DEPRECATED - Send a kill cursors message soon with the given ids.
@@ -1117,7 +1118,7 @@ class MongoClient(common.BaseObject):
         # "Atomic", needs no lock.
         self.__kill_cursors_queue.append((address, cursor_ids))
 
-    def _kill_cursors(self, cursor_ids, address, topology):
+    def _kill_cursors(self, cursor_ids, address, topology, session):
         """Send a kill cursors message with the given ids."""
         listeners = self._event_listeners
         publish = listeners.enabled_for_commands
@@ -1139,7 +1140,7 @@ class MongoClient(common.BaseObject):
         spec = SON([('killCursors', coll), ('cursors', cursor_ids)])
         with server.get_socket(self.__all_credentials) as sock_info:
             if sock_info.max_wire_version >= 4 and namespace is not None:
-                sock_info.command(db, spec)
+                sock_info.command(db, spec, session=session)
             else:
                 if publish:
                     start = datetime.datetime.now()
@@ -1193,7 +1194,8 @@ class MongoClient(common.BaseObject):
             topology = self._get_topology()
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
-                    self._kill_cursors(cursor_ids, address, topology)
+                    self._kill_cursors(
+                        cursor_ids, address, topology, session=None)
                 except Exception:
                     helpers._handle_exception()
         try:
@@ -1410,8 +1412,10 @@ class MongoClient(common.BaseObject):
                         raise
             else:
                 helpers._first_batch(sock_info, "admin", "$cmd.sys.unlock",
-                    {}, -1, True, self.codec_options,
-                    ReadPreference.PRIMARY, cmd, self._event_listeners)
+                                     {}, -1, True, self.codec_options,
+                                     ReadPreference.PRIMARY, cmd,
+                                     self._event_listeners,
+                                     session=None)
 
     def __enter__(self):
         return self

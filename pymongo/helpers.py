@@ -271,14 +271,14 @@ def _check_gle_response(response):
 
 
 def _first_batch(sock_info, db, coll, query, ntoreturn,
-                 slave_ok, codec_options, read_preference, cmd, listeners):
+                 slave_ok, codec_options, read_preference, cmd, listeners,
+                 session):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, db, coll, 0, query, None, codec_options,
-        read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None)
+        read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, session)
 
     name = next(iter(cmd))
-    duration = None
     publish = listeners.enabled_for_commands
     if publish:
         start = datetime.datetime.now()

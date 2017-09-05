@@ -414,7 +414,7 @@ class Collection(common.BaseObject):
         return BulkOperationBuilder(self, True, bypass_document_validation)
 
     def bulk_write(self, requests, ordered=True,
-                   bypass_document_validation=False):
+                   bypass_document_validation=False, session=None):
         """Send a batch of write operations to the server.
 
         Requests are passed as a list of write operation instances (
@@ -461,6 +461,8 @@ class Collection(common.BaseObject):
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
             ``False``.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           An instance of :class:`~pymongo.results.BulkWriteResult`.
@@ -469,6 +471,9 @@ class Collection(common.BaseObject):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.2
           Added bypass_document_validation support
@@ -484,7 +489,7 @@ class Collection(common.BaseObject):
             except AttributeError:
                 raise TypeError("%r is not a valid request" % (request,))
 
-        bulk_api_result = blk.execute(self.write_concern.document)
+        bulk_api_result = blk.execute(self.write_concern.document, session)
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
@@ -541,7 +546,8 @@ class Collection(common.BaseObject):
 
     def _insert_one(
             self, sock_info, doc, ordered,
-            check_keys, manipulate, write_concern, op_id, bypass_doc_val):
+            check_keys, manipulate, write_concern, op_id, bypass_doc_val,
+            session):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
@@ -556,6 +562,8 @@ class Collection(common.BaseObject):
                        ('documents', [doc])])
         if concern:
             command['writeConcern'] = concern
+        if session:
+            command['lsid'] = session.session_id
 
         if sock_info.max_wire_version > 1 and acknowledged:
             if bypass_doc_val and sock_info.max_wire_version >= 4:
@@ -579,12 +587,13 @@ class Collection(common.BaseObject):
 
     def _insert(self, sock_info, docs, ordered=True, check_keys=True,
                 manipulate=False, write_concern=None, op_id=None,
-                bypass_doc_val=False):
+                bypass_doc_val=False, session=None):
         """Internal insert helper."""
         if isinstance(docs, collections.Mapping):
             return self._insert_one(
                 sock_info, docs, ordered,
-                check_keys, manipulate, write_concern, op_id, bypass_doc_val)
+                check_keys, manipulate, write_concern, op_id, bypass_doc_val,
+                session)
 
         ids = []
 
@@ -621,6 +630,8 @@ class Collection(common.BaseObject):
                        ('ordered', ordered)])
         if concern:
             command['writeConcern'] = concern
+        if session:
+            command['lsid'] = session.session_id
         if op_id is None:
             op_id = message._randint()
         if bypass_doc_val and sock_info.max_wire_version >= 4:
@@ -641,7 +652,8 @@ class Collection(common.BaseObject):
                                        self.__write_response_codec_options, bwc)
         return ids
 
-    def insert_one(self, document, bypass_document_validation=False):
+    def insert_one(self, document, bypass_document_validation=False,
+                   session=None):
         """Insert a single document.
 
           >>> db.test.count({'x': 1})
@@ -659,6 +671,8 @@ class Collection(common.BaseObject):
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
             ``False``.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
@@ -667,6 +681,9 @@ class Collection(common.BaseObject):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.2
           Added bypass_document_validation support
@@ -679,11 +696,12 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             return InsertOneResult(
                 self._insert(sock_info, document,
-                             bypass_doc_val=bypass_document_validation),
+                             bypass_doc_val=bypass_document_validation,
+                             session=session),
                 self.write_concern.acknowledged)
 
     def insert_many(self, documents, ordered=True,
-                    bypass_document_validation=False):
+                    bypass_document_validation=False, session=None):
         """Insert an iterable of documents.
 
           >>> db.test.count()
@@ -704,6 +722,8 @@ class Collection(common.BaseObject):
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
             ``False``.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           An instance of :class:`~pymongo.results.InsertManyResult`.
@@ -712,6 +732,9 @@ class Collection(common.BaseObject):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.2
           Added bypass_document_validation support
@@ -733,13 +756,14 @@ class Collection(common.BaseObject):
 
         blk = _Bulk(self, ordered, bypass_document_validation)
         blk.ops = [doc for doc in gen()]
-        blk.execute(self.write_concern.document)
+        blk.execute(self.write_concern.document, session=session)
         return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
 
     def _update(self, sock_info, criteria, document, upsert=False,
                 check_keys=True, multi=False, manipulate=False,
                 write_concern=None, op_id=None, ordered=True,
-                bypass_doc_val=False, collation=None, array_filters=None):
+                bypass_doc_val=False, collation=None, array_filters=None,
+                session=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         if manipulate:
@@ -784,7 +808,8 @@ class Collection(common.BaseObject):
             result = sock_info.command(
                 self.__database.name,
                 command,
-                codec_options=self.__write_response_codec_options).copy()
+                codec_options=self.__write_response_codec_options,
+                session=session).copy()
             _check_write_command_response([(0, result)])
             # Add the updatedExisting field for compatibility.
             if result.get('n') and 'upserted' not in result:
@@ -806,7 +831,8 @@ class Collection(common.BaseObject):
                 self.__write_response_codec_options)
 
     def replace_one(self, filter, replacement, upsert=False,
-                    bypass_document_validation=False, collation=None):
+                    bypass_document_validation=False, collation=None,
+                    session=None):
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -847,12 +873,17 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
           Added the `collation` option.
@@ -867,12 +898,12 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, replacement, upsert,
                                   bypass_doc_val=bypass_document_validation,
-                                  collation=collation)
+                                  collation=collation, session=session)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
-                   collation=None, array_filters=None):
+                   collation=None, array_filters=None, session=None):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -906,6 +937,8 @@ class Collection(common.BaseObject):
             on MongoDB 3.4 and above.
           - `array_filters` (optional): A list of filters specifying which
             array elements an update should apply. Requires MongoDB 3.6+.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -914,7 +947,7 @@ class Collection(common.BaseObject):
           **>= 3.2**
 
         .. versionchanged:: 3.6
-          Adding the `array_filters` option.
+           Added the `array_filters` and ``session`` parameters.
 
         .. versionchanged:: 3.4
           Added the `collation` option.
@@ -932,12 +965,13 @@ class Collection(common.BaseObject):
                                   check_keys=False,
                                   bypass_doc_val=bypass_document_validation,
                                   collation=collation,
-                                  array_filters=array_filters)
+                                  array_filters=array_filters,
+                                  session=session)
         return UpdateResult(result, self.write_concern.acknowledged)
 
-    def update_many(self, filter, update, upsert=False,
+    def update_many(self, filter, update, upsert=False, array_filters=None,
                     bypass_document_validation=False, collation=None,
-                    array_filters=None):
+                    session=None):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -971,6 +1005,8 @@ class Collection(common.BaseObject):
             on MongoDB 3.4 and above.
           - `array_filters` (optional): A list of filters specifying which
             array elements an update should apply. Requires MongoDB 3.6+.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -979,7 +1015,7 @@ class Collection(common.BaseObject):
           **>= 3.2**
 
         .. versionchanged:: 3.6
-          Adding the `array_filters` option.
+           Added ``array_filters`` and ``session`` parameters.
 
         .. versionchanged:: 3.4
           Added the `collation` option.
@@ -997,23 +1033,31 @@ class Collection(common.BaseObject):
                                   check_keys=False, multi=True,
                                   bypass_doc_val=bypass_document_validation,
                                   collation=collation,
-                                  array_filters=array_filters)
+                                  array_filters=array_filters,
+                                  session=session)
         return UpdateResult(result, self.write_concern.acknowledged)
 
-    def drop(self):
+    def drop(self, session=None):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         The following two calls are equivalent:
 
           >>> db.foo.drop()
           >>> db.drop_collection("foo")
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         """
-        self.__database.drop_collection(self.__name)
+        self.__database.drop_collection(self.__name, session=session)
 
     def _delete(
             self, sock_info, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
-            collation=None):
+            collation=None, session=None):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         concern = (write_concern or self.write_concern).document
@@ -1041,7 +1085,8 @@ class Collection(common.BaseObject):
             result = sock_info.command(
                 self.__database.name,
                 command,
-                codec_options=self.__write_response_codec_options)
+                codec_options=self.__write_response_codec_options,
+                session=session)
             _check_write_command_response([(0, result)])
             return result
         else:
@@ -1052,7 +1097,7 @@ class Collection(common.BaseObject):
                 acknowledged, concern, self.__write_response_codec_options,
                 int(not multi))
 
-    def delete_one(self, filter, collation=None):
+    def delete_one(self, filter, collation=None, session=None):
         """Delete a single document matching the filter.
 
           >>> db.test.count({'x': 1})
@@ -1068,9 +1113,14 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
           Added the `collation` option.
@@ -1079,10 +1129,11 @@ class Collection(common.BaseObject):
         """
         with self._socket_for_writes() as sock_info:
             return DeleteResult(self._delete(sock_info, filter, False,
-                                             collation=collation),
+                                             collation=collation,
+                                             session=session),
                                 self.write_concern.acknowledged)
 
-    def delete_many(self, filter, collation=None):
+    def delete_many(self, filter, collation=None, session=None):
         """Delete one or more documents matching the filter.
 
           >>> db.test.count({'x': 1})
@@ -1098,9 +1149,14 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
           Added the `collation` option.
@@ -1109,7 +1165,8 @@ class Collection(common.BaseObject):
         """
         with self._socket_for_writes() as sock_info:
             return DeleteResult(self._delete(sock_info, filter, True,
-                                             collation=collation),
+                                             collation=collation,
+                                             session=session),
                                 self.write_concern.acknowledged)
 
     def find_one(self, filter=None, *args, **kwargs):
@@ -1177,6 +1234,8 @@ class Collection(common.BaseObject):
             to include or exclude. If `projection` is a list "_id" will
             always be returned. Use a dict to exclude fields from
             the result (e.g. projection={'_id': False}).
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `skip` (optional): the number of documents to omit (from
             the start of the result set) when returning the results
           - `limit` (optional): the maximum number of results to
@@ -1275,6 +1334,9 @@ class Collection(common.BaseObject):
             connection will be closed and discarded without being returned to
             the connection pool.
 
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
+
         .. versionchanged:: 3.5
            Added the options `return_key`, `show_record_id`, `snapshot`,
            `hint`, `max_time_ms`, `max_scan`, `min`, `max`, and `comment`.
@@ -1334,7 +1396,7 @@ class Collection(common.BaseObject):
         """
         return RawBatchCursor(self, *args, **kwargs)
 
-    def parallel_scan(self, num_cursors, **kwargs):
+    def parallel_scan(self, num_cursors, session=None, **kwargs):
         """Scan this entire collection in parallel.
 
         Returns a list of up to ``num_cursors`` cursors that can be iterated
@@ -1370,10 +1432,15 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `num_cursors`: the number of cursors to return
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs`: additional options for the parallelCollectionScan
             command can be passed as keyword arguments.
 
         .. note:: Requires server version **>= 2.5.5**.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Added back support for arbitrary keyword arguments. MongoDB 3.4
@@ -1390,12 +1457,14 @@ class Collection(common.BaseObject):
 
         with self._socket_for_reads() as (sock_info, slave_ok):
             result = self._command(sock_info, cmd, slave_ok,
-                                   read_concern=self.read_concern)
+                                   read_concern=self.read_concern,
+                                   session=session)
 
-        return [CommandCursor(self, cursor['cursor'], sock_info.address)
+        return [CommandCursor(self, cursor['cursor'], sock_info.address,
+                              session=session)
                 for cursor in result['cursors']]
 
-    def _count(self, cmd, collation=None):
+    def _count(self, cmd, collation=None, session=None):
         """Internal count helper."""
         with self._socket_for_reads() as (sock_info, slave_ok):
             res = self._command(
@@ -1403,12 +1472,13 @@ class Collection(common.BaseObject):
                 allowable_errors=["ns missing"],
                 codec_options=self.__write_response_codec_options,
                 read_concern=self.read_concern,
-                collation=collation)
+                collation=collation,
+                session=session)
         if res.get("errmsg", "") == "ns missing":
             return 0
         return int(res["n"])
 
-    def count(self, filter=None, **kwargs):
+    def count(self, filter=None, session=None, **kwargs):
         """Get the number of documents in this collection.
 
         All optional count parameters should be passed as keyword arguments
@@ -1432,7 +1502,12 @@ class Collection(common.BaseObject):
         :Parameters:
           - `filter` (optional): A query document that selects which documents
             to count in the collection.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): See list of options above.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Support the `collation` option.
@@ -1447,9 +1522,9 @@ class Collection(common.BaseObject):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        return self._count(cmd, collation)
+        return self._count(cmd, collation, session)
 
-    def create_indexes(self, indexes):
+    def create_indexes(self, indexes, session=None):
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
@@ -1462,6 +1537,8 @@ class Collection(common.BaseObject):
         :Parameters:
           - `indexes`: A list of :class:`~pymongo.operations.IndexModel`
             instances.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         .. note:: `create_indexes` uses the `createIndexes`_ command
            introduced in MongoDB **2.6** and cannot be used with earlier
@@ -1470,6 +1547,9 @@ class Collection(common.BaseObject):
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation when using
            MongoDB >= 3.4.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -1495,15 +1575,18 @@ class Collection(common.BaseObject):
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                 write_concern=self.write_concern,
-                parse_write_concern_error=True)
+                parse_write_concern_error=True,
+                session=session)
         return names
 
-    def __create_index(self, keys, index_options):
+    def __create_index(self, keys, index_options, session):
         """Internal create index helper.
 
         :Parameters:
           - `keys`: a list of tuples [(key, type), (key, type), ...]
           - `index_options`: a dict of index options.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
         """
         index_doc = helpers._index_document(keys)
         index = {"key": index_doc}
@@ -1524,7 +1607,8 @@ class Collection(common.BaseObject):
                     sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                     codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                     write_concern=self.write_concern,
-                    parse_write_concern_error=True)
+                    parse_write_concern_error=True,
+                    session=session)
             except OperationFailure as exc:
                 if exc.code in common.COMMAND_NOT_FOUND_CODES:
                     index["ns"] = self.__full_name
@@ -1535,7 +1619,7 @@ class Collection(common.BaseObject):
                 else:
                     raise
 
-    def create_index(self, keys, **kwargs):
+    def create_index(self, keys, session=None, **kwargs):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -1605,10 +1689,14 @@ class Collection(common.BaseObject):
         :Parameters:
           - `keys`: a single key or a list of (key, direction)
             pairs specifying the index to create
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
 
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4. Support the `collation` option.
@@ -1623,7 +1711,7 @@ class Collection(common.BaseObject):
         """
         keys = helpers._index_list(keys)
         name = kwargs.setdefault("name", helpers._gen_index_name(keys))
-        self.__create_index(keys, kwargs)
+        self.__create_index(keys, kwargs, session)
         return name
 
     def ensure_index(self, key_or_list, cache_for=300, **kwargs):
@@ -1656,21 +1744,28 @@ class Collection(common.BaseObject):
         # other than wasted round trips.
         if not self.__database.client._cached(self.__database.name,
                                               self.__name, name):
-            self.__create_index(keys, kwargs)
+            self.__create_index(keys, kwargs, session=None)
             self.__database.client._cache_index(self.__database.name,
                                                 self.__name, name, cache_for)
             return name
         return None
 
-    def drop_indexes(self):
+    def drop_indexes(self, session=None):
         """Drops all indexes on this collection.
 
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error.
 
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation when using
            MongoDB >= 3.4.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -1678,9 +1773,9 @@ class Collection(common.BaseObject):
 
         """
         self.__database.client._purge_index(self.__database.name, self.__name)
-        self.drop_index("*")
+        self.drop_index("*", session=session)
 
-    def drop_index(self, index_or_name):
+    def drop_index(self, index_or_name, session=None):
         """Drops the specified index on this collection.
 
         Can be used on non-existant collections or collections with no
@@ -1699,10 +1794,15 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `index_or_name`: index (or name of index) to drop
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation when using
            MongoDB >= 3.4.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -1725,14 +1825,22 @@ class Collection(common.BaseObject):
                           read_preference=ReadPreference.PRIMARY,
                           allowable_errors=["ns not found"],
                           write_concern=self.write_concern,
-                          parse_write_concern_error=True)
+                          parse_write_concern_error=True,
+                          session=session)
 
-    def reindex(self):
+    def reindex(self, session=None):
         """Rebuilds all indexes on this collection.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         .. warning:: reindex blocks all other operations (indexes
            are built in the foreground) and will be slow for large
            collections.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -1747,9 +1855,9 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             return self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                parse_write_concern_error=True)
+                parse_write_concern_error=True, session=session)
 
-    def list_indexes(self):
+    def list_indexes(self, session=None):
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -1758,8 +1866,15 @@ class Collection(common.BaseObject):
           SON([(u'v', 1), (u'key', SON([(u'_id', 1)])),
                (u'name', u'_id_'), (u'ns', u'test.test')])
 
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
         :Returns:
           An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionadded:: 3.0
         """
@@ -1771,7 +1886,8 @@ class Collection(common.BaseObject):
                 try:
                     cursor = self._command(sock_info, cmd, slave_ok,
                                            ReadPreference.PRIMARY,
-                                           codec_options)["cursor"]
+                                           codec_options,
+                                           session=session)["cursor"]
                 except OperationFailure as exc:
                     # Ignore NamespaceNotFound errors to match the behavior
                     # of reading from *.system.indexes.
@@ -1785,7 +1901,7 @@ class Collection(common.BaseObject):
                     sock_info, self.__database.name, "system.indexes",
                     {"ns": self.__full_name}, 0, slave_ok, codec_options,
                     ReadPreference.PRIMARY, cmd,
-                    self.database.client._event_listeners)
+                    self.database.client._event_listeners, session=None)
                 data = res["data"]
                 cursor = {
                     "id": res["cursor_id"],
@@ -1796,7 +1912,7 @@ class Collection(common.BaseObject):
                 # will never be a getMore call.
                 return CommandCursor(coll, cursor, sock_info.address)
 
-    def index_information(self):
+    def index_information(self, session=None):
         """Get information on this collection's indexes.
 
         Returns a dictionary where the keys are index names (as
@@ -1814,8 +1930,15 @@ class Collection(common.BaseObject):
         >>> db.test.index_information()
         {u'_id_': {u'key': [(u'_id', 1)]},
          u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         """
-        cursor = self.list_indexes()
+        cursor = self.list_indexes(session=session)
         info = {}
         for index in cursor:
             index["key"] = index["key"].items()
@@ -1823,13 +1946,20 @@ class Collection(common.BaseObject):
             info[index.pop("name")] = index
         return info
 
-    def options(self):
+    def options(self, session=None):
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
         :meth:`~pymongo.database.Database.create_collection` for more
         information on the possible options. Returns an empty
         dictionary if the collection has not been created yet.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         """
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
             if sock_info.max_wire_version > 2:
@@ -1838,7 +1968,8 @@ class Collection(common.BaseObject):
                 criteria = {"name": self.__full_name}
             cursor = self.__database._list_collections(sock_info,
                                                        slave_ok,
-                                                       criteria)
+                                                       criteria,
+                                                       session=session)
 
         result = None
         for doc in cursor:
@@ -1854,7 +1985,8 @@ class Collection(common.BaseObject):
 
         return options
 
-    def _aggregate(self, pipeline, cursor_class, first_batch_size, **kwargs):
+    def _aggregate(self, pipeline, cursor_class, first_batch_size, session,
+                   **kwargs):
         common.validate_list('pipeline', pipeline)
 
         if "explain" in kwargs:
@@ -1894,15 +2026,18 @@ class Collection(common.BaseObject):
                 if dollar_out:
                     result = self._command(sock_info, cmd, slave_ok,
                                            parse_write_concern_error=True,
-                                           collation=collation)
+                                           collation=collation,
+                                           session=session)
                 else:
                     result = self._command(sock_info, cmd, slave_ok,
                                            read_concern=self.read_concern,
-                                           collation=collation)
+                                           collation=collation,
+                                           session=session)
             else:
                 result = self._command(sock_info, cmd, slave_ok,
                                        parse_write_concern_error=dollar_out,
-                                       collation=collation)
+                                       collation=collation,
+                                       session=session)
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -1917,9 +2052,10 @@ class Collection(common.BaseObject):
             return cursor_class(
                 self, cursor, sock_info.address,
                 batch_size=batch_size or 0,
-                max_await_time_ms=max_await_time_ms)
+                max_await_time_ms=max_await_time_ms,
+                session=session)
 
-    def aggregate(self, pipeline, **kwargs):
+    def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -1966,6 +2102,8 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `pipeline`: a list of aggregation pipeline stages
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): See list of options above.
 
         :Returns:
@@ -1974,6 +2112,8 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.6
            Added the `maxAwaitTimeMS` option.
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4. Support the `collation` option.
@@ -1996,9 +2136,10 @@ class Collection(common.BaseObject):
         return self._aggregate(pipeline,
                                CommandCursor,
                                kwargs.get('batchSize'),
+                               session=session,
                                **kwargs)
 
-    def aggregate_raw_batches(self, pipeline, **kwargs):
+    def aggregate_raw_batches(self, pipeline, session=None, **kwargs):
         """Perform an aggregation and retrieve batches of raw BSON.
 
         Takes the same parameters as :meth:`aggregate` but returns a
@@ -2020,6 +2161,7 @@ class Collection(common.BaseObject):
         return self._aggregate(pipeline,
                                RawBatchCommandCursor,
                                0,
+                               session=session,
                                **kwargs)
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,
@@ -2149,7 +2291,7 @@ class Collection(common.BaseObject):
             return self._command(sock_info, cmd, slave_ok,
                                  collation=collation)["retval"]
 
-    def rename(self, new_name, **kwargs):
+    def rename(self, new_name, session=None, **kwargs):
         """Rename this collection.
 
         If operating in auth mode, client must be authorized as an
@@ -2160,6 +2302,8 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `new_name`: new name for this collection
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional arguments to the rename command
             may be passed as keyword arguments to this helper method
             (i.e. ``dropTarget=True``)
@@ -2167,6 +2311,9 @@ class Collection(common.BaseObject):
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation when using
            MongoDB >= 3.4.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -2190,9 +2337,10 @@ class Collection(common.BaseObject):
             if sock_info.max_wire_version >= 5 and self.write_concern:
                 cmd['writeConcern'] = self.write_concern.document
             cmd.update(kwargs)
-            sock_info.command('admin', cmd, parse_write_concern_error=True)
+            sock_info.command('admin', cmd, parse_write_concern_error=True,
+                              session=session)
 
-    def distinct(self, key, filter=None, **kwargs):
+    def distinct(self, key, filter=None, session=None, **kwargs):
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
@@ -2216,7 +2364,12 @@ class Collection(common.BaseObject):
             values
           - `filter` (optional): A query document that specifies the documents
             from which to retrieve the distinct values.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): See list of options above.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Support the `collation` option.
@@ -2236,9 +2389,10 @@ class Collection(common.BaseObject):
         with self._socket_for_reads() as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
                                  read_concern=self.read_concern,
-                                 collation=collation)["values"]
+                                 collation=collation, session=session)["values"]
 
-    def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
+    def map_reduce(self, map, reduce, out, full_response=False, session=None,
+                   **kwargs):
         """Perform a map/reduce operation on this collection.
 
         If `full_response` is ``False`` (default) returns a
@@ -2256,6 +2410,8 @@ class Collection(common.BaseObject):
             e.g. SON([('replace', <collection name>), ('db', <database name>)])
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional arguments to the
             `map reduce command`_ may be passed as keyword arguments to this
             helper method, e.g.::
@@ -2270,6 +2426,9 @@ class Collection(common.BaseObject):
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation (if the
            output is not inline) when using MongoDB >= 3.4.
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -2311,12 +2470,12 @@ class Collection(common.BaseObject):
                 response = self._command(
                     sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
                     read_concern=self.read_concern,
-                    collation=collation)
+                    collation=collation, session=session)
             else:
                 response = self._command(
                     sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
                     parse_write_concern_error=not inline,
-                    collation=collation)
+                    collation=collation, session=session)
 
         if full_response or not response.get('result'):
             return response
@@ -2327,7 +2486,8 @@ class Collection(common.BaseObject):
         else:
             return self.__database[response["result"]]
 
-    def inline_map_reduce(self, map, reduce, full_response=False, **kwargs):
+    def inline_map_reduce(self, map, reduce, full_response=False, session=None,
+                          **kwargs):
         """Perform an inline map/reduce operation on this collection.
 
         Perform the map/reduce operation on the server in RAM. A result
@@ -2346,11 +2506,16 @@ class Collection(common.BaseObject):
           - `reduce`: reduce function (as a JavaScript string)
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional arguments to the
             `map reduce command`_ may be passed as keyword arguments to this
             helper method, e.g.::
 
             >>> db.test.inline_map_reduce(map, reduce, limit=2)
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.4
            Added the `collation` option.
@@ -2366,10 +2531,10 @@ class Collection(common.BaseObject):
             if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
                 res = self._command(sock_info, cmd, slave_ok,
                                     read_concern=self.read_concern,
-                                    collation=collation)
+                                    collation=collation, session=session)
             else:
                 res = self._command(sock_info, cmd, slave_ok,
-                                    collation=collation)
+                                    collation=collation, session=session)
 
         if full_response:
             return res
@@ -2378,7 +2543,7 @@ class Collection(common.BaseObject):
 
     def __find_and_modify(self, filter, projection, sort, upsert=None,
                           return_document=ReturnDocument.BEFORE,
-                          array_filters=None, **kwargs):
+                          array_filters=None, session=None, **kwargs):
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
@@ -2415,12 +2580,12 @@ class Collection(common.BaseObject):
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
                                 allowable_errors=[_NO_OBJ_ERROR],
-                                collation=collation)
+                                collation=collation, session=session)
             _check_write_command_response([(0, out)])
         return out.get("value")
 
     def find_one_and_delete(self, filter,
-                            projection=None, sort=None, **kwargs):
+                            projection=None, sort=None, session=None, **kwargs):
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count({'x': 1})
@@ -2457,9 +2622,14 @@ class Collection(common.BaseObject):
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for the query. If multiple documents
             match the query, they are sorted and the first is deleted.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
 
         .. versionchanged:: 3.2
            Respects write concern.
@@ -2476,11 +2646,13 @@ class Collection(common.BaseObject):
 
         """
         kwargs['remove'] = True
-        return self.__find_and_modify(filter, projection, sort, **kwargs)
+        return self.__find_and_modify(filter, projection, sort,
+                                      session=session, **kwargs)
 
     def find_one_and_replace(self, filter, replacement,
                              projection=None, sort=None, upsert=False,
-                             return_document=ReturnDocument.BEFORE, **kwargs):
+                             return_document=ReturnDocument.BEFORE,
+                             session=None, **kwargs):
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -2522,10 +2694,14 @@ class Collection(common.BaseObject):
             if no document matches. If
             :attr:`ReturnDocument.AFTER`, returns the replaced
             or inserted document.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.6
+           Added ``session`` parameter.
         .. versionchanged:: 3.4
            Added the `collation` option.
         .. versionchanged:: 3.2
@@ -2542,12 +2718,13 @@ class Collection(common.BaseObject):
         common.validate_ok_for_replace(replacement)
         kwargs['update'] = replacement
         return self.__find_and_modify(filter, projection,
-                                      sort, upsert, return_document, **kwargs)
+                                      sort, upsert, return_document,
+                                      session=session, **kwargs)
 
     def find_one_and_update(self, filter, update,
                             projection=None, sort=None, upsert=False,
                             return_document=ReturnDocument.BEFORE,
-                            array_filters=None, **kwargs):
+                            array_filters=None, session=None, **kwargs):
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -2622,12 +2799,14 @@ class Collection(common.BaseObject):
             or inserted document.
           - `array_filters` (optional): A list of filters specifying which
             array elements an update should apply. Requires MongoDB 3.6+.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
         .. versionchanged:: 3.6
-           Added the `array_filters` option.
+           Added the `array_filters` and `session` options.
         .. versionchanged:: 3.4
            Added the `collation` option.
         .. versionchanged:: 3.2
@@ -2646,7 +2825,7 @@ class Collection(common.BaseObject):
         kwargs['update'] = update
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document,
-                                      array_filters, **kwargs)
+                                      array_filters, session=session, **kwargs)
 
     def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
         """Save a document in this collection.

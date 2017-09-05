@@ -35,7 +35,7 @@ class CommandCursor(object):
     _getmore_class = _GetMore
 
     def __init__(self, collection, cursor_info, address, retrieved=0,
-                 batch_size=0, max_await_time_ms=None):
+                 batch_size=0, max_await_time_ms=None, session=None):
         """Create a new command cursor.
 
         The parameter 'retrieved' is unused.
@@ -44,6 +44,7 @@ class CommandCursor(object):
         self.__id = cursor_info['id']
         self.__address = address
         self.__data = deque(cursor_info['firstBatch'])
+        self.__session = session
         self.__batch_size = batch_size
         if (not isinstance(max_await_time_ms, integer_types)
                 and max_await_time_ms is not None):
@@ -70,8 +71,9 @@ class CommandCursor(object):
                 self.__address, self.__collection.full_name)
             if synchronous:
                 self.__collection.database.client._close_cursor_now(
-                    self.__id, address)
+                    self.__id, address, session=self.__session)
             else:
+                # The cursor will be closed later in a different session.
                 self.__collection.database.client.close_cursor(
                     self.__id, address)
         self.__killed = True
@@ -207,7 +209,8 @@ class CommandCursor(object):
                                     self.__batch_size,
                                     self.__id,
                                     self.__collection.codec_options,
-                                    self.__max_await_time_ms))
+                                    self.__max_await_time_ms,
+                                    session=self.__session))
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
 
@@ -270,7 +273,7 @@ class RawBatchCommandCursor(CommandCursor):
     _getmore_class = _RawBatchGetMore
 
     def __init__(self, collection, cursor_info, address, retrieved=0,
-                 batch_size=0, max_await_time_ms=None):
+                 batch_size=0, max_await_time_ms=None, session=None):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
@@ -282,7 +285,7 @@ class RawBatchCommandCursor(CommandCursor):
         assert not cursor_info.get('firstBatch')
         super(RawBatchCommandCursor, self).__init__(
             collection, cursor_info, address, retrieved, batch_size,
-            max_await_time_ms)
+            max_await_time_ms, session)
 
     def _unpack_response(self, response, cursor_id, codec_options):
         return helpers._raw_response(response, cursor_id)

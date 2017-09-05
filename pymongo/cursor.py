@@ -116,7 +116,7 @@ class Cursor(object):
                  modifiers=None, batch_size=0, manipulate=True,
                  collation=None, hint=None, max_scan=None, max_time_ms=None,
                  max=None, min=None, return_key=False, show_record_id=False,
-                 snapshot=False, comment=None):
+                 snapshot=False, comment=None, session=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -177,6 +177,7 @@ class Cursor(object):
         self.__return_key = return_key
         self.__show_record_id = show_record_id
         self.__snapshot = snapshot
+        self.__session = session
         self.__set_hint(hint)
 
         # Exhaust cursor support
@@ -273,6 +274,7 @@ class Cursor(object):
         if deepcopy:
             data = self._deepcopy(data)
         base.__dict__.update(data)
+        base.__session = self.session
         return base
 
     def _clone_base(self):
@@ -294,8 +296,9 @@ class Cursor(object):
                     self.__address, self.__collection.full_name)
                 if synchronous:
                     self.__collection.database.client._close_cursor_now(
-                        self.__id, address)
+                        self.__id, address, session=self.__session)
                 else:
+                    # The cursor will be closed later in a different session.
                     self.__collection.database.client.close_cursor(
                         self.__id, address)
         if self.__exhaust and self.__exhaust_mgr:
@@ -734,7 +737,8 @@ class Cursor(object):
             if self.__skip:
                 cmd["skip"] = self.__skip
 
-        return self.__collection._count(cmd, self.__collation)
+        return self.__collection._count(
+            cmd, self.__collation, session=self.__session)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -763,7 +767,8 @@ class Cursor(object):
         if self.__collation is not None:
             options['collation'] = self.__collation
 
-        return self.__collection.distinct(key, **options)
+        return self.__collection.distinct(
+            key, session=self.__session, **options)
 
     def explain(self):
         """Returns an explain plan record for this cursor.
@@ -1065,7 +1070,8 @@ class Cursor(object):
                                   self.__limit,
                                   self.__batch_size,
                                   self.__read_concern,
-                                  self.__collation)
+                                  self.__collation,
+                                  self.__session)
             self.__send_message(q)
             if not self.__id:
                 self.__killed = True
@@ -1086,7 +1092,8 @@ class Cursor(object):
                                         limit,
                                         self.__id,
                                         self.__codec_options,
-                                        self.__max_await_time_ms)
+                                        self.__max_await_time_ms,
+                                        self.__session)
                 self.__send_message(g)
 
         else:  # Cursor id is zero nothing else to return
@@ -1136,6 +1143,14 @@ class Cursor(object):
            Renamed from "conn_id".
         """
         return self.__address
+
+    @property
+    def session(self):
+        """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
+
+        .. versionadded:: 3.6
+        """
+        return self.__session
 
     def __iter__(self):
         return self
