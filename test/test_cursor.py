@@ -1135,9 +1135,42 @@ class TestCursor(IntegrationTest):
 
         # __getitem__(index)
         cursor2 = db.test.find(cursor_type=CursorType.TAILABLE)
+
         self.assertEqual(4, cursor2[0]["x"])
         self.assertEqual(5, cursor2[1]["x"])
         self.assertEqual(6, cursor2[2]["x"])
+        
+        cursor2.rewind()
+        self.assertEqual([4], [doc["x"] for doc in cursor2[0:1]])
+        cursor2.rewind()
+        self.assertEqual([5], [doc["x"] for doc in cursor2[1:2]])
+        cursor2.rewind()
+        self.assertEqual([6], [doc["x"] for doc in cursor2[2:3]])
+        cursor2.rewind()
+        self.assertEqual([4, 5], [doc["x"] for doc in cursor2[0:2]])
+        cursor2.rewind()
+        self.assertEqual([5, 6], [doc["x"] for doc in cursor2[1:3]])
+        cursor2.rewind()
+        self.assertEqual([4, 5, 6], [doc["x"] for doc in cursor2[0:3]])
+
+        cursor3 = db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
+
+        self.assertEqual(4, cursor3[0]["x"])
+        self.assertEqual(5, cursor3[1]["x"])
+        self.assertEqual(6, cursor3[2]["x"])
+
+        cursor3.rewind()
+        self.assertEqual([4], [doc["x"] for doc in cursor3[0:1]])
+        cursor3.rewind()
+        self.assertEqual([5], [doc["x"] for doc in cursor3[1:2]])
+        cursor3.rewind()
+        self.assertEqual([6], [doc["x"] for doc in cursor3[2:3]])
+        cursor3.rewind()
+        self.assertEqual([4, 5], [doc["x"] for doc in cursor3[0:2]])
+        cursor3.rewind()
+        self.assertEqual([5, 6], [doc["x"] for doc in cursor3[1:3]])
+        cursor3.rewind()
+        self.assertEqual([4, 5, 6], [doc["x"] for doc in cursor3[0:3]])
 
     def test_distinct(self):
         self.db.drop_collection("test")
