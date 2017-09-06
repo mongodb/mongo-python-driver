@@ -1133,6 +1133,12 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(3, db.test.count())
 
+        # __getitem__(index)
+        cursor2 = db.test.find(cursor_type=CursorType.TAILABLE)
+        self.assertEqual(4, cursor2[0]["x"])
+        self.assertEqual(5, cursor2[1]["x"])
+        self.assertEqual(6, cursor2[2]["x"])
+
     def test_distinct(self):
         self.db.drop_collection("test")
 
