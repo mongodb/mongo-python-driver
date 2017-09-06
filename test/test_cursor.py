@@ -1133,6 +1133,26 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(3, db.test.count())
 
+        # __getitem__(index)
+        for cursor in (db.test.find(cursor_type=CursorType.TAILABLE),
+                       db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)):
+            self.assertEqual(4, cursor[0]["x"])
+            self.assertEqual(5, cursor[1]["x"])
+            self.assertEqual(6, cursor[2]["x"])
+
+            cursor.rewind()
+            self.assertEqual([4], [doc["x"] for doc in cursor[0:1]])
+            cursor.rewind()
+            self.assertEqual([5], [doc["x"] for doc in cursor[1:2]])
+            cursor.rewind()
+            self.assertEqual([6], [doc["x"] for doc in cursor[2:3]])
+            cursor.rewind()
+            self.assertEqual([4, 5], [doc["x"] for doc in cursor[0:2]])
+            cursor.rewind()
+            self.assertEqual([5, 6], [doc["x"] for doc in cursor[1:3]])
+            cursor.rewind()
+            self.assertEqual([4, 5, 6], [doc["x"] for doc in cursor[0:3]])
+
     def test_distinct(self):
         self.db.drop_collection("test")
 

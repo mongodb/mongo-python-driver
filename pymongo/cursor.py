@@ -590,6 +590,7 @@ class Cursor(object):
             clone = self.clone()
             clone.skip(index + self.__skip)
             clone.limit(-1)  # use a hard limit
+            clone.__query_flags &= ~CursorType.TAILABLE_AWAIT  # PYTHON-1371
             for doc in clone:
                 return doc
             raise IndexError("no such item for Cursor instance")
