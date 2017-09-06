@@ -13,8 +13,11 @@
 # limitations under the License.
 
 """Test the client_session module."""
+
 from bson import DBRef
-from pymongo import InsertOne, IndexModel, monitoring, OFF
+from bson.py3compat import StringIO
+from gridfs import GridFS, GridFSBucket
+from pymongo import InsertOne, IndexModel, OFF, monitoring
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
@@ -48,6 +51,27 @@ class TestSession(IntegrationTest):
     def tearDown(self):
         monitoring._SENSITIVE_COMMANDS.update(self.sensitive_commands)
         super(TestSession, self).tearDown()
+
+    def _test_ops(self, client, *ops):
+        listener = client.event_listeners()[0][0]
+
+        with client.start_session() as s:
+            for f, args, kwargs in ops:
+                listener.results.clear()
+                kwargs['session'] = s
+                f(*args, **kwargs)
+                self.assertGreaterEqual(len(listener.results['started']), 1)
+                for event in listener.results['started']:
+                    self.assertTrue(
+                        'lsid' in event.command,
+                        "%s sent no lsid with %s" % (
+                            f.__name__, event.command_name))
+
+                    self.assertEqual(
+                        s.session_id,
+                        event.command['lsid'],
+                        "%s sent wrong lsid with %s" % (
+                            f.__name__, event.command_name))
 
     @client_context.require_auth
     @ignore_deprecations
@@ -112,23 +136,7 @@ class TestSession(IntegrationTest):
                 (client.unlock, [], {}),
             ])
 
-        with client.start_session() as s:
-            for f, args, kwargs in ops:
-                listener.results.clear()
-                kwargs['session'] = s
-                f(*args, **kwargs)
-                self.assertGreaterEqual(len(listener.results['started']), 1)
-                for event in listener.results['started']:
-                    self.assertTrue(
-                        'lsid' in event.command,
-                        "%s sent no lsid with %s" % (
-                            f.__name__, event.command_name))
-
-                    self.assertEqual(
-                        s.session_id,
-                        event.command['lsid'],
-                        "%s sent wrong lsid with %s" % (
-                            f.__name__, event.command_name))
+        self._test_ops(client, *ops)
 
     @client_context.require_sessions
     def test_database(self):
@@ -161,23 +169,7 @@ class TestSession(IntegrationTest):
             ops.append((db.set_profiling_level, [OFF], {}))
             ops.append((db.profiling_level, [], {}))
 
-        with client.start_session() as s:
-            for f, args, kwargs in ops:
-                listener.results.clear()
-                kwargs['session'] = s
-                f(*args, **kwargs)
-                self.assertGreaterEqual(len(listener.results['started']), 1)
-                for event in listener.results['started']:
-                    self.assertTrue(
-                        'lsid' in event.command,
-                        "%s sent no lsid with %s" % (
-                            f.__name__, event.command_name))
-
-                    self.assertEqual(
-                        s.session_id,
-                        event.command['lsid'],
-                        "%s sent wrong lsid with %s" % (
-                            f.__name__, event.command_name))
+        self._test_ops(client, *ops)
 
     @client_context.require_sessions
     def test_collection(self):
@@ -290,3 +282,78 @@ class TestSession(IntegrationTest):
                         event.command['lsid'],
                         "%s sent wrong lsid with %s" % (
                             name, event.command_name))
+
+    @client_context.require_sessions
+    def test_gridfs(self):
+        listener = SessionTestListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        client.drop_database('pymongo_test')
+        self.addCleanup(client.drop_database, 'pymongo_test')
+
+        fs = GridFS(client.pymongo_test)
+
+        def new_file(session):
+            grid_file = fs.new_file(_id=1, filename='f', session=session)
+            grid_file.write(b'a')
+            grid_file.close()
+
+        self._test_ops(
+            client,
+            (new_file, [], {}),
+            (fs.put, [b'data'], {}),
+            (lambda session: fs.get(1, session=session).read(), [], {}),
+            (lambda session: fs.get_version('f', session=session).read(),
+             [], {}),
+            (lambda session: fs.get_last_version('f', session=session).read(),
+             [], {}),
+            (fs.list, [], {}),
+            (fs.find_one, [1], {}),
+            (lambda session: list(fs.find(session=session)), [], {}),
+            (fs.exists, [1], {}),
+            (fs.delete, [1], {}))
+
+    @client_context.require_sessions
+    def test_gridfs_bucket(self):
+        listener = SessionTestListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        client.drop_database('pymongo_test')
+        self.addCleanup(client.drop_database, 'pymongo_test')
+
+        bucket = GridFSBucket(client.pymongo_test)
+
+        def upload(session):
+            stream = bucket.open_upload_stream('f', session=session)
+            stream.write(b'a')
+            stream.close()
+
+        def upload_with_id(session):
+            stream = bucket.open_upload_stream_with_id(1, 'f1', session=session)
+            stream.write(b'a')
+            stream.close()
+
+        def open_download_stream(session):
+            stream = bucket.open_download_stream(1, session=session)
+            stream.read()
+
+        def open_download_stream_by_name(session):
+            stream = bucket.open_download_stream_by_name('f', session=session)
+            stream.read()
+
+        def find(session):
+            stream = bucket.find({'_id': 1}, session=session).next()
+            stream.read()
+
+        sio = StringIO()
+
+        self._test_ops(
+            client,
+            (upload, [], {}),
+            (upload_with_id, [], {}),
+            (bucket.upload_from_stream, ['f', 'data'], {}),
+            (bucket.upload_from_stream_with_id, [2, 'f', 'data'], {}),
+            (open_download_stream, [], {}),
+            (open_download_stream_by_name, [], {}),
+            (bucket.download_to_stream, [1, sio], {}),
+            (bucket.download_to_stream_by_name, ['f', sio], {}),
+            (find, [], {}),
+            (bucket.rename, [1, 'f2'], {}))
