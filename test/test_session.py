@@ -14,31 +14,41 @@
 
 """Test the client_session module."""
 from bson import DBRef
-from pymongo import OFF, InsertOne, IndexModel
+from pymongo import InsertOne, IndexModel, monitoring, OFF
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
-from pymongo.monitoring import _SENSITIVE_COMMANDS
 from test import IntegrationTest, client_context
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
 
 
-# Ignore redacted commands like saslStart, so we can assert lsid is in all cmds.
+# Ignore auth commands like saslStart, so we can assert lsid is in all commands.
 class SessionTestListener(EventListener):
     def started(self, event):
-        if event.command_name not in _SENSITIVE_COMMANDS:
+        if not event.command_name.startswith('sasl'):
             super(SessionTestListener, self).started(event)
 
     def succeeded(self, event):
-        if event.command_name not in _SENSITIVE_COMMANDS:
+        if not event.command_name.startswith('sasl'):
             super(SessionTestListener, self).succeeded(event)
 
     def failed(self, event):
-        if event.command_name not in _SENSITIVE_COMMANDS:
+        if not event.command_name.startswith('sasl'):
             super(SessionTestListener, self).failed(event)
 
 
 class TestSession(IntegrationTest):
+    def setUp(self):
+        super(TestSession, self).setUp()
+
+        # Redact no commands, so we can test user-admin commands have "lsid".
+        self.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
+        monitoring._SENSITIVE_COMMANDS.clear()
+
+    def tearDown(self):
+        monitoring._SENSITIVE_COMMANDS.update(self.sensitive_commands)
+        super(TestSession, self).tearDown()
+
     @client_context.require_auth
     @ignore_deprecations
     def test_session_authenticate_multiple(self):
@@ -124,9 +134,6 @@ class TestSession(IntegrationTest):
         self.addCleanup(client.drop_database, 'pymongo_test')
 
         db = client.pymongo_test
-
-        # Test most database methods. Some, like add_user, we can't test with
-        # command monitoring. See monitoring._SENSITIVE_COMMANDS.
         ops = [
             (db.command, ['ping'], {}),
             (db.create_collection, ['collection'], {}),
@@ -137,6 +144,14 @@ class TestSession(IntegrationTest):
             (db.profiling_info, [], {}),
             (db.dereference, [DBRef('collection', 1)], {}),
         ]
+
+        if client_context.auth_enabled:
+            ops.extend([
+                (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
+                # Do it again to test updateUser command.
+                (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
+                (db.remove_user, ['session-test'], {}),
+            ])
 
         if not client_context.is_mongos:
             ops.append((db.set_profiling_level, [OFF], {}))
