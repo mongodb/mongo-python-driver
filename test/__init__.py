@@ -231,8 +231,7 @@ class ClientContext(object):
 
             if self.auth_enabled:
                 # See if db_user already exists.
-                self.user_provided = self._check_user_provided()
-                if not self.user_provided:
+                if not self._check_user_provided():
                     roles = {}
                     if self.version.at_least(2, 5, 3, -1):
                         roles = {'roles': ['root']}
@@ -544,8 +543,6 @@ def teardown():
     c.drop_database("pymongo_test2")
     c.drop_database("pymongo_test_mike")
     c.drop_database("pymongo_test_bernie")
-    if client_context.auth_enabled and not client_context.user_provided:
-        c.admin.remove_user(db_user)
 
 
 class PymongoTestRunner(unittest.TextTestRunner):
