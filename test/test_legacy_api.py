@@ -354,8 +354,6 @@ class TestLegacy(IntegrationTest):
             self.assertTrue("_id" in doc)
 
     def test_insert_large_batch(self):
-        if client_context.is_mongos and client_context.version.at_least(3, 5):
-            raise SkipTest('PYTHON-1342')
         # Tests legacy insert.
         db = self.client.test_insert_large_batch
         self.addCleanup(self.client.drop_database, 'test_insert_large_batch')
