@@ -219,23 +219,7 @@ class TestSession(IntegrationTest):
 
             ops.append((scan, [], {}))
 
-        with client.start_session() as s:
-            for f, args, kwargs in ops:
-                listener.results.clear()
-                kwargs['session'] = s
-                f(*args, **kwargs)
-                self.assertGreaterEqual(len(listener.results['started']), 1)
-                for event in listener.results['started']:
-                    self.assertTrue(
-                        'lsid' in event.command,
-                        "%s sent no lsid with %s" % (
-                            f.__name__, event.command_name))
-
-                    self.assertEqual(
-                        s.session_id,
-                        event.command['lsid'],
-                        "%s sent wrong lsid with %s" % (
-                            f.__name__, event.command_name))
+        self._test_ops(client, *ops)
 
     @client_context.require_sessions
     def test_cursor_clone(self):
