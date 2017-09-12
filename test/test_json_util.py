@@ -33,8 +33,9 @@ from pymongo.errors import ConfigurationError
 from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
 from bson.json_util import (DatetimeRepresentation,
                             STRICT_JSON_OPTIONS)
-from bson.binary import (Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE,
-                         JAVA_LEGACY, CSHARP_LEGACY, STANDARD)
+from bson.binary import (ALL_UUID_REPRESENTATIONS, Binary, MD5_SUBTYPE,
+                         USER_DEFINED_SUBTYPE, JAVA_LEGACY, CSHARP_LEGACY,
+                         STANDARD)
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.int64 import Int64
@@ -268,12 +269,14 @@ class TestJsonUtil(unittest.TestCase):
                 strict_uuid=True, uuid_representation=STANDARD)))
         self.assertEqual(doc, json_util.loads(
             '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}'))
-        self.assertEqual(doc, json_util.loads(
-            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}'))
-        self.round_trip(doc, json_options=json_util.JSONOptions(
-            strict_uuid=True, uuid_representation=JAVA_LEGACY))
-        self.round_trip(doc, json_options=json_util.JSONOptions(
-            strict_uuid=True, uuid_representation=CSHARP_LEGACY))
+        for uuid_representation in ALL_UUID_REPRESENTATIONS:
+            options = json_util.JSONOptions(
+                strict_uuid=True, uuid_representation=uuid_representation)
+            self.round_trip(doc, json_options=options)
+            # Ignore UUID representation when decoding BSON binary subtype 4.
+            self.assertEqual(doc, json_util.loads(
+                '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": '
+                '"04"}}', json_options=options))
 
     def test_binary(self):
         if PY3:

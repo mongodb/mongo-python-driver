@@ -24,9 +24,8 @@ import uuid
 sys.path[0:0] = ['']
 
 from bson import BSON, ObjectId, SON
-from bson.binary import (Binary,
-                         CSHARP_LEGACY,
-                         JAVA_LEGACY,
+from bson.binary import (ALL_UUID_REPRESENTATIONS,
+                         Binary,
                          STANDARD,
                          PYTHON_LEGACY)
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
@@ -314,8 +313,7 @@ class TestChangeStream(IntegrationTest):
 
     def test_uuid_representations(self):
         """Test with uuid document _ids and different uuid_representation."""
-        for uuid_representation in (STANDARD, PYTHON_LEGACY, CSHARP_LEGACY,
-                                    JAVA_LEGACY):
+        for uuid_representation in ALL_UUID_REPRESENTATIONS:
             for id_subtype in (STANDARD, PYTHON_LEGACY):
                 resume_token = None
                 options = self.coll.codec_options.with_options(

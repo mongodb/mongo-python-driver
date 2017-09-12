@@ -80,9 +80,11 @@ JAVA_LEGACY = 5
 """The Java legacy UUID representation.
 
 :class:`uuid.UUID` instances will automatically be encoded to
-and decoded from BSON binary, using the Java driver's legacy
-byte order with binary subtype :data:`OLD_UUID_SUBTYPE`.
+and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
+using the Java driver's legacy byte order.
 
+.. versionchanged:: 3.6
+  BSON binary subtype 4 is decoded using RFC-4122 byte order.
 .. versionadded:: 2.3
 """
 
@@ -90,9 +92,11 @@ CSHARP_LEGACY = 6
 """The C#/.net legacy UUID representation.
 
 :class:`uuid.UUID` instances will automatically be encoded to
-and decoded from BSON binary, using the C# driver's legacy
-byte order and binary subtype :data:`OLD_UUID_SUBTYPE`.
+and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
+using the C# driver's legacy byte order.
 
+.. versionchanged:: 3.6
+  BSON binary subtype 4 is decoded using RFC-4122 byte order.
 .. versionadded:: 2.3
 """
 

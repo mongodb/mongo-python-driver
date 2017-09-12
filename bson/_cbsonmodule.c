@@ -1960,13 +1960,13 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                  * From this point, we hold refs to args, kwargs, and data.
                  * If anything fails, goto uuiderror to clean them up.
                  */
-                if (options->uuid_rep == CSHARP_LEGACY) {
+                if (subtype == 3 && options->uuid_rep == CSHARP_LEGACY) {
                     /* Legacy C# byte order */
                     if ((PyDict_SetItemString(kwargs, "bytes_le", data)) == -1)
                         goto uuiderror;
                 }
                 else {
-                    if (options->uuid_rep == JAVA_LEGACY) {
+                    if (subtype == 3 && options->uuid_rep == JAVA_LEGACY) {
                         /* Convert from legacy java byte order */
                         char big_endian[16];
                         _fix_java(buffer + *position, big_endian);

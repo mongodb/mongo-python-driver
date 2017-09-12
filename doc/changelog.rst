@@ -18,6 +18,16 @@ Highlights include:
   :meth:`~pymongo.collection.Collection.aggregate_raw_batches` for use with
   external libraries that can parse raw batches of BSON data.
 
+Breaking changes include:
+
+- BSON binary subtype 4 is decoded using RFC-4122 byte order regardless
+  of the UUID representation. This is a change in behavior for applications
+  that use UUID representation :data:`bson.binary.JAVA_LEGACY` or
+  :data:`bson.binary.CSHARP_LEGACY` to decode BSON binary subtype 4. Other
+  UUID representations, :data:`bson.binary.PYTHON_LEGACY` (the default) and
+  :data:`bson.binary.STANDARD`, and the decoding of BSON binary subtype 3
+  are unchanged.
+
 Changes in Version 3.5.1
 ------------------------
 

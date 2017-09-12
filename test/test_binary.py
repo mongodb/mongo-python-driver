@@ -135,6 +135,15 @@ class TestBinary(unittest.TestCase):
         self.assertNotEqual(hash(one), hash(two))
         self.assertEqual(hash(Binary(b"hello world", 42)), hash(two))
 
+    def test_uuid_subtype_4(self):
+        """uuid_representation should be ignored when decoding subtype 4."""
+        expected_uuid = uuid.uuid4()
+        doc = {"uuid": Binary(expected_uuid.bytes, 4)}
+        encoded = bson.BSON.encode(doc)
+        for uuid_representation in ALL_UUID_REPRESENTATIONS:
+            options = CodecOptions(uuid_representation=uuid_representation)
+            self.assertEqual(expected_uuid, encoded.decode(options)["uuid"])
+
     def test_legacy_java_uuid(self):
         # Test decoding
         data = self.java_data

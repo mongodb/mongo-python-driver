@@ -200,7 +200,7 @@ def _get_binary(data, position, obj_end, opts, dummy1):
     end = position + length
     if length < 0 or end > obj_end:
         raise InvalidBSON('bad binary object length')
-    if subtype in (3, 4):
+    if subtype == 3:
         # Java Legacy
         uuid_representation = opts.uuid_representation
         if uuid_representation == JAVA_LEGACY:
@@ -213,6 +213,8 @@ def _get_binary(data, position, obj_end, opts, dummy1):
         else:
             value = uuid.UUID(bytes=data[position:end])
         return value, end
+    if subtype == 4:
+        return uuid.UUID(bytes=data[position:end]), end
     # Python3 special case. Decode subtype 0 to 'bytes'.
     if PY3 and subtype == 0:
         value = data[position:end]
