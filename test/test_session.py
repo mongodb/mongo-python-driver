@@ -104,9 +104,13 @@ class TestSession(IntegrationTest):
             (client.server_info, [], {}),
             (client.database_names, [], {}),
             (client.drop_database, ['pymongo_test'], {}),
-            (client.fsync, [], {'lock': True}),
-            (client.unlock, [], {}),
         ]
+
+        if not client_context.is_mongos:
+            ops.extend([
+                (client.fsync, [], {'lock': True}),
+                (client.unlock, [], {}),
+            ])
 
         with client.start_session() as s:
             for f, args, kwargs in ops:
