@@ -780,23 +780,6 @@ axes:
         run_on: linux-64-amzn-test
         batchtime: 10080  # 7 days
 
-  # OSes that support versions of MongoDB without SSL.
-  - id: os-nossl
-    display_name: OS
-    values:
-      - id: archlinux-test
-        display_name: "Archlinux"
-        run_on: archlinux-test
-        batchtime: 10080  # 7 days
-
-      - id: macos-1012
-        display_name: "macOS 10.12"
-        run_on: macos-1012
-
-  # OSes that support versions of MongoDB>=2.6 with SSL.
-  - id: os-requires-26
-    display_name: OS
-    values:
       - id: ubuntu-14.04
         display_name: "Ubuntu 14.04"
         run_on: ubuntu1404-test
@@ -811,6 +794,19 @@ axes:
         display_name: "Debian 7.1"
         run_on: debian71-test
         batchtime: 10080  # 7 days
+
+  # OSes that support versions of MongoDB without SSL.
+  - id: os-nossl
+    display_name: OS
+    values:
+      - id: archlinux-test
+        display_name: "Archlinux"
+        run_on: archlinux-test
+        batchtime: 10080  # 7 days
+
+      - id: macos-1012
+        display_name: "macOS 10.12"
+        run_on: macos-1012
 
   # OSes that support versions of MongoDB>=3.2 with SSL.
   - id: os-requires-32
@@ -909,6 +905,19 @@ axes:
       - id: nossl
         display_name: NoSSL
         variables:
+           SSL: "nossl"
+  - id: auth-ssl
+    display_name: Auth SSL
+    values:
+      - id: auth-ssl
+        display_name: Auth SSL
+        variables:
+           AUTH: "auth"
+           SSL: "ssl"
+      - id: noauth-nossl
+        display_name: NoAuth NoSSL
+        variables:
+           AUTH: "noauth"
            SSL: "nossl"
   - id: python-version
     display_name: "Python"
@@ -1038,8 +1047,8 @@ axes:
 buildvariants:
 
 - matrix_name: "tests-all"
-  matrix_spec: {"os-fully-featured": "*", auth: "*", ssl: "*"}
-  display_name: "${os-fully-featured} ${auth} ${ssl}"
+  matrix_spec: {"os-fully-featured": "*", auth-ssl: "*"}
+  display_name: "${os-fully-featured} ${auth-ssl}"
   tasks:
      - ".latest"
      - ".3.4"
@@ -1057,26 +1066,16 @@ buildvariants:
      - ".3.0"
      - ".2.6"
 
-- matrix_name: "tests-os-requires-26"
-  matrix_spec: {"os-requires-26": "*", auth: "*", ssl: "*"}
-  display_name: "${os-requires-26} ${auth} ${ssl}"
-  tasks:
-     - ".latest"
-     - ".3.4"
-     - ".3.2"
-     - ".3.0"
-     - ".2.6"
-
 - matrix_name: "tests-os-requires-32"
-  matrix_spec: {"os-requires-32": "*", auth: "*", ssl: "*"}
-  display_name: "${os-requires-32} ${auth} ${ssl}"
+  matrix_spec: {"os-requires-32": "*", auth-ssl: "*"}
+  display_name: "${os-requires-32} ${auth-ssl}"
   tasks:
      - ".latest"
      - ".3.4"
      - ".3.2"
 
 - matrix_name: "tests-ssl-requires-32"
-  matrix_spec: {"os-ssl-requires-32": "*", auth: "*", ssl: "ssl"}
+  matrix_spec: {"os-ssl-requires-32": "*", auth: "auth", ssl: "ssl"}
   display_name: "${os-ssl-requires-32} ${auth} ${ssl}"
   tasks:
      - ".latest"
@@ -1084,8 +1083,8 @@ buildvariants:
      - ".3.2"
 
 - matrix_name: "tests-os-requires-34"
-  matrix_spec: {"os-requires-34": "*", auth: "*", ssl: "*"}
-  display_name: "${os-requires-34} ${auth} ${ssl}"
+  matrix_spec: {"os-requires-34": "*", auth-ssl: "*"}
+  display_name: "${os-requires-34} ${auth-ssl}"
   tasks:
      - ".latest"
      - ".3.4"
@@ -1093,12 +1092,20 @@ buildvariants:
 - matrix_name: "tests-python-version-ubuntu1204-test-ssl"
   matrix_spec: {"python-version": "*", auth: "*", ssl: "*", coverage: "*"}
   exclude_spec:
-    # PYTHON-498: disable Jython SSL tests
-    python-version: "jython2.7"
-    # EVG-1410: exlcude_spec must specifiy values for all axes
-    auth: "*"
-    ssl: "ssl"
-    coverage: "*"
+   - python-version: "*"
+     auth: "noauth"
+     ssl: "ssl"
+     coverage: "*"
+   - python-version: "!jython2.7" # Test Jython with Auth/NoSSL
+     auth: "auth"
+     ssl: "nossl"
+     coverage: "*"
+   - # PYTHON-498: disable Jython SSL tests
+     python-version: "jython2.7"
+     # EVG-1410: exlcude_spec must specifiy values for all axes
+     auth: "*"
+     ssl: "ssl"
+     coverage: "*"
   display_name: "${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl} ${coverage}"
   run_on: ubuntu1204-test
   tasks:
@@ -1127,14 +1134,13 @@ buildvariants:
      - ".2.6"
 
 - matrix_name: "tests-python-version-green-framework-ubuntu1204"
-  matrix_spec: {"python-version": "*", "green-framework": "*", auth: "*", ssl: "*"}
+  matrix_spec: {"python-version": "*", "green-framework": "*", auth-ssl: "*"}
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - python-version: ["pypy", "pypy3", "jython2.7"]
      green-framework: "*"
-     auth: "*"
-     ssl: "*"
-  display_name: "${green-framework} ${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl}"
+     auth-ssl: "*"
+  display_name: "${green-framework} ${python-version} Ubuntu 12.04 (x86_64) ${auth-ssl}"
   run_on: ubuntu1204-test
   tasks:
      - ".latest"
@@ -1145,9 +1151,9 @@ buildvariants:
 
 # Test CPython 3.4 against all versions on MongoDB >= 2.6
 # on Windows with Visual Studio 2010.
-- matrix_name: "tests-windows-vs2010-python-version-nossl"
-  matrix_spec: {windows-vs2010-python-version: "*", auth: "*", ssl: "*"}
-  display_name: "Windows 64 Visual Studio 2010 ${windows-vs2010-python-version} ${auth} ${ssl}"
+- matrix_name: "tests-windows-vs2010-python-version"
+  matrix_spec: {windows-vs2010-python-version: "*", auth-ssl: "*"}
+  display_name: "Windows 64 Visual Studio 2010 ${windows-vs2010-python-version} ${auth-ssl}"
   run_on: windows-64-vs2010-test
   tasks:
      - ".latest"
@@ -1158,9 +1164,9 @@ buildvariants:
 
 # Test CPython 2.6, 2.7, 3.5 and 3.6 against all versions on MongoDB >= 2.6
 # on Windows with the Microsoft Visual C++ Compiler for Python 2.7 or Visual Studio 2015.
-- matrix_name: "tests-windows-vs2015-python-version-nossl"
-  matrix_spec: {windows-vs2015-python-version: "*", auth: "*", ssl: "*"}
-  display_name: "Windows 64 Visual Studio 2015 ${windows-vs2015-python-version} ${auth} ${ssl}"
+- matrix_name: "tests-windows-vs2015-python-version"
+  matrix_spec: {windows-vs2015-python-version: "*", auth-ssl: "*"}
+  display_name: "Windows 64 Visual Studio 2015 ${windows-vs2015-python-version} ${auth-ssl}"
   run_on: windows-64-vs2015-test
   tasks:
      - ".latest"
