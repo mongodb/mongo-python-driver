@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import datetime
 import sys
 import time
@@ -1326,7 +1327,8 @@ class TestGlobalListener(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
-        cls.saved_listeners = monitoring._LISTENERS
+        # We plan to call register(), which internally modifies _LISTENERS.
+        cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
         monitoring.register(cls.listener)
         cls.client = single_client()
         # Get one (authenticated) socket in the pool.
