@@ -1434,7 +1434,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cmd = {"fsyncUnlock": 1}
+        cmd = SON([("fsyncUnlock", 1)])
         with self._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
                 try:
