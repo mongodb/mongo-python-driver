@@ -28,6 +28,7 @@ import bson
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import b, StringIO
 from bson.son import SON
+
 try:
     from pymongo import _cmessage
     _use_c = True

@@ -55,8 +55,8 @@ class TestSession(IntegrationTest):
     def _test_ops(self, client, *ops):
         listener = client.event_listeners()[0][0]
 
-        with client.start_session() as s:
-            for f, args, kwargs in ops:
+        for f, args, kwargs in ops:
+            with client.start_session() as s:
                 listener.results.clear()
                 kwargs['session'] = s
                 f(*args, **kwargs)
@@ -72,6 +72,9 @@ class TestSession(IntegrationTest):
                         event.command['lsid'],
                         "%s sent wrong lsid with %s" % (
                             f.__name__, event.command_name))
+
+            with self.assertRaisesRegex(InvalidOperation, "ended session"):
+                f(*args, **kwargs)
 
     @client_context.require_auth
     @ignore_deprecations
@@ -109,6 +112,20 @@ class TestSession(IntegrationTest):
         with self.assertRaisesRegex(
                 ConfigurationError, "Sessions are not supported"):
             self.client.start_session()
+
+    @client_context.require_sessions
+    def test_end_session(self):
+        # We test elsewhere that using an ended session throws InvalidOperation.
+        client = self.client
+        s = client.start_session()
+        self.assertFalse(s.has_ended)
+        self.assertIsNotNone(s.session_id)
+
+        s.end_session()
+        self.assertTrue(s.has_ended)
+
+        with self.assertRaisesRegex(InvalidOperation, "ended session"):
+            s.session_id
 
     @client_context.require_sessions
     def test_client(self):
@@ -250,8 +267,8 @@ class TestSession(IntegrationTest):
             ('explain', lambda session: coll.find(session=session).explain()),
         ]
 
-        with client.start_session() as s:
-            for name, f in ops:
+        for name, f in ops:
+            with client.start_session() as s:
                 listener.results.clear()
                 f(session=s)
                 self.assertGreaterEqual(len(listener.results['started']), 1)
@@ -266,6 +283,9 @@ class TestSession(IntegrationTest):
                         event.command['lsid'],
                         "%s sent wrong lsid with %s" % (
                             name, event.command_name))
+
+            with self.assertRaisesRegex(InvalidOperation, "ended session"):
+                f(session=s)
 
     @client_context.require_sessions
     def test_gridfs(self):

@@ -46,6 +46,7 @@ import uuid
 
 from bson.binary import Binary
 from pymongo import monotonic
+from pymongo.errors import InvalidOperation
 
 
 class SessionOptions(object):
@@ -73,7 +74,6 @@ class ClientSession(object):
     """
     def __init__(self, client, options=None):
         self._client = client
-        self._has_ended = False
 
         if options is not None:
             self._options = options
@@ -91,8 +91,7 @@ class ClientSession(object):
         :class:`~pymongo.collection.Collection`, or
         :class:`~pymongo.cursor.Cursor` after the session has ended.
         """
-        if not self._has_ended:
-            self._has_ended = True
+        if self._server_session is not None:
             self.client._return_server_session(self._server_session)
             self._server_session = None
 
@@ -117,15 +116,15 @@ class ClientSession(object):
     @property
     def session_id(self):
         """A BSON document, the opaque server session identifier."""
-        if self._server_session:
-            return self._server_session.session_id
+        if self._server_session is None:
+            raise InvalidOperation("Cannot use ended session")
 
-        return None
+        return self._server_session.session_id
 
     @property
     def has_ended(self):
         """True if this session is finished."""
-        return self._has_ended
+        return self._server_session is None
 
 
 class _ServerSession(object):
