@@ -38,7 +38,7 @@ from test import (client_context,
 from test.version import Version
 
 
-IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=len(client_context.nodes) + 1)
+IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=1000)
 
 
 class WhiteListEventListener(monitoring.CommandListener):
