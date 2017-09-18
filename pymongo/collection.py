@@ -230,19 +230,20 @@ class Collection(common.BaseObject):
 
           (result document, address of server the command was run on)
         """
-        return sock_info.command(
-            self.__database.name,
-            command,
-            slave_ok,
-            read_preference or self.read_preference,
-            codec_options or self.codec_options,
-            check,
-            allowable_errors,
-            read_concern=read_concern,
-            write_concern=write_concern,
-            parse_write_concern_error=parse_write_concern_error,
-            collation=collation,
-            session=session)
+        with self.__database.client._tmp_session(session) as s:
+            return sock_info.command(
+                self.__database.name,
+                command,
+                slave_ok,
+                read_preference or self.read_preference,
+                codec_options or self.codec_options,
+                check,
+                allowable_errors,
+                read_concern=read_concern,
+                write_concern=write_concern,
+                parse_write_concern_error=parse_write_concern_error,
+                collation=collation,
+                session=s)
 
     def __create(self, options, collation, session):
         """Sends a create command with the given options.
@@ -562,19 +563,20 @@ class Collection(common.BaseObject):
                        ('documents', [doc])])
         if concern:
             command['writeConcern'] = concern
-        if session:
-            command['lsid'] = session.session_id
 
         if sock_info.max_wire_version > 1 and acknowledged:
             if bypass_doc_val and sock_info.max_wire_version >= 4:
                 command['bypassDocumentValidation'] = True
+
             # Insert command.
-            result = sock_info.command(
-                self.__database.name,
-                command,
-                codec_options=self.__write_response_codec_options,
-                check_keys=check_keys)
-            _check_write_command_response([(0, result)])
+            with self.__database.client._tmp_session(session) as s:
+                result = sock_info.command(
+                    self.__database.name,
+                    command,
+                    codec_options=self.__write_response_codec_options,
+                    check_keys=check_keys,
+                    session=s)
+                _check_write_command_response([(0, result)])
         else:
             # Legacy OP_INSERT.
             self._legacy_write(
@@ -630,8 +632,6 @@ class Collection(common.BaseObject):
                        ('ordered', ordered)])
         if concern:
             command['writeConcern'] = concern
-        if session:
-            command['lsid'] = session.session_id
         if op_id is None:
             op_id = message._randint()
         if bypass_doc_val and sock_info.max_wire_version >= 4:
@@ -641,10 +641,13 @@ class Collection(common.BaseObject):
             self.database.client._event_listeners)
         if sock_info.max_wire_version > 1 and acknowledged:
             # Batched insert command.
-            results = message._do_batched_write_command(
-                self.database.name + ".$cmd", message._INSERT, command,
-                gen(), check_keys, self.__write_response_codec_options, bwc)
-            _check_write_command_response(results)
+            with self.__database.client._tmp_session(session) as s:
+                if s:
+                    command['lsid'] = s.session_id
+                results = message._do_batched_write_command(
+                    self.database.name + ".$cmd", message._INSERT, command,
+                    gen(), check_keys, self.__write_response_codec_options, bwc)
+                _check_write_command_response(results)
         else:
             # Legacy batched OP_INSERT.
             message._do_batched_insert(self.__full_name, gen(), check_keys,
@@ -756,7 +759,8 @@ class Collection(common.BaseObject):
 
         blk = _Bulk(self, ordered, bypass_document_validation)
         blk.ops = [doc for doc in gen()]
-        blk.execute(self.write_concern.document, session=session)
+        with self.__database.client._tmp_session(session) as s:
+            blk.execute(self.write_concern.document, session=s)
         return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
 
     def _update(self, sock_info, criteria, document, upsert=False,
@@ -803,13 +807,14 @@ class Collection(common.BaseObject):
             if bypass_doc_val and sock_info.max_wire_version >= 4:
                 command['bypassDocumentValidation'] = True
 
-            # The command result has to be published for APM unmodified
-            # so we make a shallow copy here before adding updatedExisting.
-            result = sock_info.command(
-                self.__database.name,
-                command,
-                codec_options=self.__write_response_codec_options,
-                session=session).copy()
+            with self.__database.client._tmp_session(session) as s:
+                # The command result has to be published for APM unmodified
+                # so we make a shallow copy here before adding updatedExisting.
+                result = sock_info.command(
+                    self.__database.name,
+                    command,
+                    codec_options=self.__write_response_codec_options,
+                    session=s).copy()
             _check_write_command_response([(0, result)])
             # Add the updatedExisting field for compatibility.
             if result.get('n') and 'upserted' not in result:
@@ -1081,12 +1086,13 @@ class Collection(common.BaseObject):
             command['writeConcern'] = concern
 
         if sock_info.max_wire_version > 1 and acknowledged:
-            # Delete command.
-            result = sock_info.command(
-                self.__database.name,
-                command,
-                codec_options=self.__write_response_codec_options,
-                session=session)
+            with self.__database.client._tmp_session(session) as s:
+                # Delete command.
+                result = sock_info.command(
+                    self.__database.name,
+                    command,
+                    codec_options=self.__write_response_codec_options,
+                    session=s)
             _check_write_command_response([(0, result)])
             return result
         else:
@@ -1455,13 +1461,14 @@ class Collection(common.BaseObject):
                    ('numCursors', num_cursors)])
         cmd.update(kwargs)
 
+        s = self.__database.client._ensure_session(session)
         with self._socket_for_reads() as (sock_info, slave_ok):
             result = self._command(sock_info, cmd, slave_ok,
                                    read_concern=self.read_concern,
-                                   session=session)
+                                   session=s)
 
         return [CommandCursor(self, cursor['cursor'], sock_info.address,
-                              session=session)
+                              session=s, session_owned=session is None)
                 for cursor in result['cursors']]
 
     def _count(self, cmd, collation=None, session=None):
@@ -1883,18 +1890,20 @@ class Collection(common.BaseObject):
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:
+                s = self.__database.client._ensure_session(session)
                 try:
                     cursor = self._command(sock_info, cmd, slave_ok,
                                            ReadPreference.PRIMARY,
                                            codec_options,
-                                           session=session)["cursor"]
+                                           session=s)["cursor"]
                 except OperationFailure as exc:
                     # Ignore NamespaceNotFound errors to match the behavior
                     # of reading from *.system.indexes.
                     if exc.code != 26:
                         raise
                     cursor = {'id': 0, 'firstBatch': []}
-                return CommandCursor(coll, cursor, sock_info.address)
+                return CommandCursor(coll, cursor, sock_info.address,
+                                     session=s, session_owned=session is None)
             else:
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
@@ -2019,41 +2028,47 @@ class Collection(common.BaseObject):
                 cmd['writeConcern'] = self.write_concern.document
 
             cmd.update(kwargs)
-
-            # Apply this Collection's read concern if $out is not in the
-            # pipeline.
-            if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
-                if dollar_out:
-                    result = self._command(sock_info, cmd, slave_ok,
-                                           parse_write_concern_error=True,
-                                           collation=collation,
-                                           session=session)
+            session_owned = session is None
+            s = self.__database.client._ensure_session(session)
+            try:
+                # Apply this Collection's read concern if $out is not in the
+                # pipeline.
+                if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
+                    if dollar_out:
+                        result = self._command(sock_info, cmd, slave_ok,
+                                               parse_write_concern_error=True,
+                                               collation=collation,
+                                               session=s)
+                    else:
+                        result = self._command(sock_info, cmd, slave_ok,
+                                               read_concern=self.read_concern,
+                                               collation=collation,
+                                               session=s)
                 else:
                     result = self._command(sock_info, cmd, slave_ok,
-                                           read_concern=self.read_concern,
+                                           parse_write_concern_error=dollar_out,
                                            collation=collation,
-                                           session=session)
-            else:
-                result = self._command(sock_info, cmd, slave_ok,
-                                       parse_write_concern_error=dollar_out,
-                                       collation=collation,
-                                       session=session)
+                                           session=s)
 
-            if "cursor" in result:
-                cursor = result["cursor"]
-            else:
-                # Pre-MongoDB 2.6. Fake a cursor.
-                cursor = {
-                    "id": 0,
-                    "firstBatch": result["result"],
-                    "ns": self.full_name,
-                }
+                if "cursor" in result:
+                    cursor = result["cursor"]
+                else:
+                    # Pre-MongoDB 2.6. Fake a cursor.
+                    cursor = {
+                        "id": 0,
+                        "firstBatch": result["result"],
+                        "ns": self.full_name,
+                    }
 
-            return cursor_class(
-                self, cursor, sock_info.address,
-                batch_size=batch_size or 0,
-                max_await_time_ms=max_await_time_ms,
-                session=session)
+                return cursor_class(
+                    self, cursor, sock_info.address,
+                    batch_size=batch_size or 0,
+                    max_await_time_ms=max_await_time_ms,
+                    session=s, session_owned=session_owned)
+            except Exception:
+                if session_owned:
+                    s.end_session()
+                raise
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
@@ -2334,11 +2349,12 @@ class Collection(common.BaseObject):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         with self._socket_for_writes() as sock_info:
-            if sock_info.max_wire_version >= 5 and self.write_concern:
-                cmd['writeConcern'] = self.write_concern.document
-            cmd.update(kwargs)
-            sock_info.command('admin', cmd, parse_write_concern_error=True,
-                              session=session)
+            with self.__database.client._tmp_session(session) as s:
+                if sock_info.max_wire_version >= 5 and self.write_concern:
+                    cmd['writeConcern'] = self.write_concern.document
+                cmd.update(kwargs)
+                sock_info.command('admin', cmd, parse_write_concern_error=True,
+                                  session=s)
 
     def distinct(self, key, filter=None, session=None, **kwargs):
         """Get a list of distinct values for `key` among all documents

@@ -35,16 +35,17 @@ class CommandCursor(object):
     _getmore_class = _GetMore
 
     def __init__(self, collection, cursor_info, address, retrieved=0,
-                 batch_size=0, max_await_time_ms=None, session=None):
+                 batch_size=0, max_await_time_ms=None, session=None,
+                 session_owned=False):
         """Create a new command cursor.
 
         The parameter 'retrieved' is unused.
         """
         self.__collection = collection
+        self.__session = None
         self.__id = cursor_info['id']
         self.__address = address
         self.__data = deque(cursor_info['firstBatch'])
-        self.__session = session
         self.__batch_size = batch_size
         if (not isinstance(max_await_time_ms, integer_types)
                 and max_await_time_ms is not None):
@@ -57,6 +58,8 @@ class CommandCursor(object):
         else:
             self.__ns = collection.full_name
 
+        self.__session = session
+        self.__session_owned = session_owned
         self.batch_size(batch_size)
 
     def __del__(self):
@@ -77,6 +80,9 @@ class CommandCursor(object):
                 self.__collection.database.client.close_cursor(
                     self.__id, address)
         self.__killed = True
+        if self.__session and self.__session_owned:
+            self.__session._end_session(lock=synchronous)
+            self.__session = None
 
     def close(self):
         """Explicitly close / kill this cursor.
@@ -209,8 +215,8 @@ class CommandCursor(object):
                                     self.__batch_size,
                                     self.__id,
                                     self.__collection.codec_options,
-                                    self.__max_await_time_ms,
-                                    session=self.__session))
+                                    self.__session,
+                                    self.__max_await_time_ms))
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
 
@@ -245,6 +251,15 @@ class CommandCursor(object):
         .. versionadded:: 3.0
         """
         return self.__address
+
+    @property
+    def session(self):
+        """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
+
+        .. versionadded:: 3.6
+        """
+        if not self.__session_owned:
+            return self.__session
 
     def __iter__(self):
         return self

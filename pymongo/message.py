@@ -166,8 +166,8 @@ def _gen_explain_command(
         coll, spec, projection, skip, limit, batch_size,
         options, read_concern, session):
     """Generate an explain command document."""
-    cmd = _gen_find_command(
-        coll, spec, projection, skip, limit, batch_size, options)
+    cmd = _gen_find_command(coll, spec, projection, skip, limit, batch_size,
+                            options, session=None)
     if read_concern.level:
         explain = SON([('explain', cmd), ('readConcern', read_concern.document)])
     else:
@@ -179,9 +179,9 @@ def _gen_explain_command(
     return explain
 
 
-def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
-                      options, read_concern=DEFAULT_READ_CONCERN,
-                      collation=None, session=None):
+def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
+                      session, read_concern=DEFAULT_READ_CONCERN,
+                      collation=None):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
@@ -287,10 +287,10 @@ class _Query(object):
                 self.coll, self.spec, self.fields, self.ntoskip,
                 self.limit, self.batch_size, self.flags,
                 self.read_concern, self.session), self.db
-        return _gen_find_command(
-            self.coll, self.spec, self.fields, self.ntoskip, self.limit,
-            self.batch_size, self.flags, self.read_concern,
-            self.collation, self.session), self.db
+        return _gen_find_command(self.coll, self.spec, self.fields,
+                                 self.ntoskip, self.limit, self.batch_size,
+                                 self.flags, self.session, self.read_concern,
+                                 self.collation), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""
@@ -334,8 +334,8 @@ class _GetMore(object):
 
     name = 'getMore'
 
-    def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
-                 max_await_time_ms=None, session=None):
+    def __init__(self, db, coll, ntoreturn, cursor_id, codec_options, session,
+                 max_await_time_ms=None):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn

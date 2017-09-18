@@ -309,26 +309,28 @@ class _Bulk(object):
         db_name = self.collection.database.name
         listeners = self.collection.database.client._event_listeners
 
-        for run in generator:
-            cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
-                       ('ordered', self.ordered)])
-            if write_concern.document:
-                cmd['writeConcern'] = write_concern.document
-            if self.bypass_doc_val and sock_info.max_wire_version >= 4:
-                cmd['bypassDocumentValidation'] = True
-            if session:
-                cmd['lsid'] = session.session_id
+        with self.collection.database.client._tmp_session(session) as s:
+            for run in generator:
+                cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
+                           ('ordered', self.ordered)])
+                if write_concern.document:
+                    cmd['writeConcern'] = write_concern.document
+                if self.bypass_doc_val and sock_info.max_wire_version >= 4:
+                    cmd['bypassDocumentValidation'] = True
+                if s:
+                    cmd['lsid'] = s.session_id
+                bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
+                                        listeners)
 
-            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id, listeners)
-            results = _do_batched_write_command(
-                self.namespace, run.op_type, cmd,
-                run.ops, True, self.collection.codec_options, bwc)
+                results = _do_batched_write_command(
+                    self.namespace, run.op_type, cmd,
+                    run.ops, True, self.collection.codec_options, bwc)
 
-            _merge_command(run, full_result, results)
-            # We're supposed to continue if errors are
-            # at the write concern level (e.g. wtimeout)
-            if self.ordered and full_result['writeErrors']:
-                break
+                _merge_command(run, full_result, results)
+                # We're supposed to continue if errors are
+                # at the write concern level (e.g. wtimeout)
+                if self.ordered and full_result['writeErrors']:
+                    break
 
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
             if full_result['writeErrors']:

@@ -34,6 +34,7 @@ try:
 except ImportError:
     _SELECT_ERROR = OSError
 
+from bson import SON
 from pymongo import helpers, message
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import (AutoReconnect,
@@ -46,12 +47,12 @@ _UNPACK_INT = struct.Struct("<i").unpack
 
 
 def command(sock, dbname, spec, slave_ok, is_mongos,
-            read_preference, codec_options, check=True,
+            read_preference, codec_options, session, check=True,
             allowable_errors=None, address=None,
             check_keys=False, listeners=None, max_bson_size=None,
             read_concern=DEFAULT_READ_CONCERN,
             parse_write_concern_error=False,
-            collation=None, session=None):
+            collation=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -62,6 +63,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `is_mongos`: are we connected to a mongos?
       - `read_preference`: a read preference
       - `codec_options`: a CodecOptions instance
+      - `session`: optional ClientSession instance.
       - `check`: raise OperationFailure if there are errors
       - `allowable_errors`: errors to ignore if `check` is True
       - `address`: the (host, port) of `sock`
@@ -72,12 +74,14 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
         field in the command response.
       - `collation`: The collation for this command.
-      - `session`: optional ClientSession instance.
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
     if session is not None:
+        if spec.__class__ is dict:
+            # Ensure command name remains in first place.
+            spec = SON(spec)
         spec['lsid'] = session.session_id
 
     # Publish the original command document, perhaps with session id.

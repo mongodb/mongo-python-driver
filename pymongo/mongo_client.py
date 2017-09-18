@@ -1230,9 +1230,36 @@ class MongoClient(common.BaseObject):
         """Internal: start or resume a _ServerSession."""
         return self._topology.get_server_session()
 
-    def _return_server_session(self, server_session):
+    def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
-        return self._topology.return_server_session(server_session)
+        return self._topology.return_server_session(server_session, lock)
+
+    def _ensure_session(self, session=None):
+        """If provided session is None, lend a temporary session."""
+        if session:
+            return session
+
+        try:
+            return self.start_session()
+        except (ConfigurationError, InvalidOperation):
+            # Sessions not supported, or multiple users authenticated.
+            return None
+
+    @contextlib.contextmanager
+    def _tmp_session(self, session):
+        """If provided session is None, lend a temporary session."""
+        if session:
+            # Don't call end_session.
+            yield session
+            return
+
+        s = self._ensure_session(session)
+        if s:
+            with s:
+                # Call end_session when we exit this scope.
+                yield s
+        else:
+            yield None
 
     def server_info(self, session=None):
         """Get information about the MongoDB server we're connected to.
@@ -1438,7 +1465,8 @@ class MongoClient(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
                 try:
-                    sock_info.command("admin", cmd, session=session)
+                    with self._tmp_session(session) as s:
+                        sock_info.command("admin", cmd, session=s)
                 except OperationFailure as exc:
                     # Ignore "DB not locked" to replicate old behavior
                     if exc.code != 125:

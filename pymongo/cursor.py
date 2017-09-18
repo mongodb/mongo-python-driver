@@ -127,6 +127,7 @@ class Cursor(object):
         self.__id = None
         self.__exhaust = False
         self.__exhaust_mgr = None
+        self.__session = None
 
         spec = filter
         if spec is None:
@@ -177,7 +178,12 @@ class Cursor(object):
         self.__return_key = return_key
         self.__show_record_id = show_record_id
         self.__snapshot = snapshot
-        self.__session = session
+        if session:
+            self.__session = session
+            self.__session_owned = False
+        else:
+            self.__session = collection.database.client._ensure_session(session)
+            self.__session_owned = True
         self.__set_hint(hint)
 
         # Exhaust cursor support
@@ -262,7 +268,10 @@ class Cursor(object):
     def _clone(self, deepcopy=True, base=None):
         """Internal clone helper."""
         if not base:
-            base = self._clone_base()
+            if self.__session_owned:
+                base = self._clone_base(None)
+            else:
+                base = self._clone_base(self.__session)
 
         values_to_clone = ("spec", "projection", "skip", "limit",
                            "max_time_ms", "max_await_time_ms", "comment",
@@ -274,13 +283,12 @@ class Cursor(object):
         if deepcopy:
             data = self._deepcopy(data)
         base.__dict__.update(data)
-        base.__session = self.session
         return base
 
-    def _clone_base(self):
+    def _clone_base(self, session):
         """Creates an empty Cursor object for information to be copied into.
         """
-        return self.__class__(self.__collection)
+        return self.__class__(self.__collection, session=session)
 
     def __die(self, synchronous=False):
         """Closes this cursor.
@@ -304,6 +312,9 @@ class Cursor(object):
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
         self.__killed = True
+        if self.__session and self.__session_owned:
+            self.__session._end_session(lock=synchronous)
+            self.__session = None
 
     def close(self):
         """Explicitly close / kill this cursor.
@@ -1058,6 +1069,11 @@ class Cursor(object):
         if len(self.__data) or self.__killed:
             return len(self.__data)
 
+        # If a previous call to __die() has cleared the session.
+        if not self.__session:
+            self.__session = self.__collection.database.client._ensure_session()
+            self.__session_owned = True
+
         if self.__id is None:  # Query
             q = self._query_class(self.__query_flags,
                                   self.__collection.database.name,
@@ -1092,8 +1108,8 @@ class Cursor(object):
                                         limit,
                                         self.__id,
                                         self.__codec_options,
-                                        self.__max_await_time_ms,
-                                        self.__session)
+                                        self.__session,
+                                        self.__max_await_time_ms)
                 self.__send_message(g)
 
         else:  # Cursor id is zero nothing else to return
@@ -1150,7 +1166,8 @@ class Cursor(object):
 
         .. versionadded:: 3.6
         """
-        return self.__session
+        if not self.__session_owned:
+            return self.__session
 
     def __iter__(self):
         return self

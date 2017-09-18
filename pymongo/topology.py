@@ -390,12 +390,17 @@ class Topology(object):
 
             return self._session_pool.get_server_session(session_timeout)
 
-    def return_server_session(self, server_session):
-        with self._lock:
-            session_timeout = self._description.logical_session_timeout_minutes
-            if session_timeout is not None:
-                self._session_pool.return_server_session(server_session, 
-                                                         session_timeout)
+    def return_server_session(self, server_session, lock):
+        if lock:
+            with self._lock:
+                session_timeout = \
+                    self._description.logical_session_timeout_minutes
+                if session_timeout is not None:
+                    self._session_pool.return_server_session(server_session,
+                                                             session_timeout)
+        else:
+            # Called from a __del__ method, can't use a lock.
+            self._session_pool.append(server_session)
 
     def _new_selection(self):
         """A Selection object, initially including all known servers.
