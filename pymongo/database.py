@@ -526,7 +526,7 @@ class Database(common.BaseObject):
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
-    def _list_collections(self, sock_info, slave_okay, criteria=None,
+    def list_collections(self, sock_info, slave_okay, criteria=None,
                           session=None):
         """Internal listCollections helper."""
         criteria = criteria or {}
@@ -569,7 +569,7 @@ class Database(common.BaseObject):
                 ReadPreference.PRIMARY) as (sock_info, slave_okay):
 
             wire_version = sock_info.max_wire_version
-            results = self._list_collections(
+            results = self.list_collections(
                 sock_info, slave_okay, session=session)
 
         # Iterating the cursor to completion may require a socket for getmore.

@@ -1966,7 +1966,7 @@ class Collection(common.BaseObject):
                 criteria = {"name": self.__name}
             else:
                 criteria = {"name": self.__full_name}
-            cursor = self.__database._list_collections(sock_info,
+            cursor = self.__database.list_collections(sock_info,
                                                        slave_ok,
                                                        criteria,
                                                        session=session)
