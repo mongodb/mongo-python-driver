@@ -1246,7 +1246,7 @@ class MongoClient(common.BaseObject):
             return None
 
     @contextlib.contextmanager
-    def _tmp_session(self, session):
+    def _tmp_session(self, session, close=True):
         """If provided session is None, lend a temporary session."""
         if session:
             # Don't call end_session.
@@ -1254,10 +1254,17 @@ class MongoClient(common.BaseObject):
             return
 
         s = self._ensure_session(session)
-        if s:
+        if s and close:
             with s:
                 # Call end_session when we exit this scope.
                 yield s
+        elif s:
+            try:
+                # Only call end_session on error.
+                yield s
+            except Exception:
+                s.end_session()
+                raise
         else:
             yield None
 

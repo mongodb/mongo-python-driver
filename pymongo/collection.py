@@ -1398,6 +1398,9 @@ class Collection(common.BaseObject):
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
+        Unlike most PyMongo methods, this method sends no session id to the
+        server.
+
         .. versionadded:: 3.6
         """
         return RawBatchCursor(self, *args, **kwargs)
@@ -1443,6 +1446,9 @@ class Collection(common.BaseObject):
           - `**kwargs`: additional options for the parallelCollectionScan
             command can be passed as keyword arguments.
 
+        Unlike most PyMongo methods, this method sends no session id to the
+        server unless an explicit ``session`` parameter is passed.
+
         .. note:: Requires server version **>= 2.5.5**.
 
         .. versionchanged:: 3.6
@@ -1461,14 +1467,19 @@ class Collection(common.BaseObject):
                    ('numCursors', num_cursors)])
         cmd.update(kwargs)
 
-        s = self.__database.client._ensure_session(session)
         with self._socket_for_reads() as (sock_info, slave_ok):
-            result = self._command(sock_info, cmd, slave_ok,
-                                   read_concern=self.read_concern,
-                                   session=s)
+            # Avoid auto-injecting a session.
+            result = sock_info.command(
+                self.__database.name,
+                cmd,
+                slave_ok,
+                self.read_preference,
+                self.codec_options,
+                read_concern=self.read_concern,
+                session=session)
 
         return [CommandCursor(self, cursor['cursor'], sock_info.address,
-                              session=s, session_owned=session is None)
+                              session=session, explicit_session=True)
                 for cursor in result['cursors']]
 
     def _count(self, cmd, collation=None, session=None):
@@ -1890,20 +1901,20 @@ class Collection(common.BaseObject):
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:
-                s = self.__database.client._ensure_session(session)
-                try:
-                    cursor = self._command(sock_info, cmd, slave_ok,
-                                           ReadPreference.PRIMARY,
-                                           codec_options,
-                                           session=s)["cursor"]
-                except OperationFailure as exc:
-                    # Ignore NamespaceNotFound errors to match the behavior
-                    # of reading from *.system.indexes.
-                    if exc.code != 26:
-                        raise
-                    cursor = {'id': 0, 'firstBatch': []}
-                return CommandCursor(coll, cursor, sock_info.address,
-                                     session=s, session_owned=session is None)
+                with self.__database.client._tmp_session(session, False) as s:
+                    try:
+                        cursor = self._command(sock_info, cmd, slave_ok,
+                                               ReadPreference.PRIMARY,
+                                               codec_options,
+                                               session=s)["cursor"]
+                    except OperationFailure as exc:
+                        # Ignore NamespaceNotFound errors to match the behavior
+                        # of reading from *.system.indexes.
+                        if exc.code != 26:
+                            raise
+                        cursor = {'id': 0, 'firstBatch': []}
+                return CommandCursor(coll, cursor, sock_info.address, session=s,
+                                     explicit_session=session is not None)
             else:
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
@@ -1995,7 +2006,7 @@ class Collection(common.BaseObject):
         return options
 
     def _aggregate(self, pipeline, cursor_class, first_batch_size, session,
-                   **kwargs):
+                   explicit_session, **kwargs):
         common.validate_list('pipeline', pipeline)
 
         if "explain" in kwargs:
@@ -2028,47 +2039,56 @@ class Collection(common.BaseObject):
                 cmd['writeConcern'] = self.write_concern.document
 
             cmd.update(kwargs)
-            session_owned = session is None
-            s = self.__database.client._ensure_session(session)
-            try:
-                # Apply this Collection's read concern if $out is not in the
-                # pipeline.
-                if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
-                    if dollar_out:
-                        result = self._command(sock_info, cmd, slave_ok,
-                                               parse_write_concern_error=True,
-                                               collation=collation,
-                                               session=s)
-                    else:
-                        result = self._command(sock_info, cmd, slave_ok,
-                                               read_concern=self.read_concern,
-                                               collation=collation,
-                                               session=s)
+            # Apply this Collection's read concern if $out is not in the
+            # pipeline.
+            if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
+                if dollar_out:
+                    # Avoid auto-injecting a session.
+                    result = sock_info.command(
+                        self.__database.name,
+                        cmd,
+                        slave_ok,
+                        self.read_preference,
+                        self.codec_options,
+                        parse_write_concern_error=True,
+                        collation=collation,
+                        session=session)
                 else:
-                    result = self._command(sock_info, cmd, slave_ok,
-                                           parse_write_concern_error=dollar_out,
-                                           collation=collation,
-                                           session=s)
+                    result = sock_info.command(
+                        self.__database.name,
+                        cmd,
+                        slave_ok,
+                        ReadPreference.PRIMARY,
+                        self.codec_options,
+                        read_concern=self.read_concern,
+                        collation=collation,
+                        session=session)
+            else:
+                result = sock_info.command(
+                    self.__database.name,
+                    cmd,
+                    slave_ok,
+                    self.read_preference,
+                    self.codec_options,
+                    parse_write_concern_error=dollar_out,
+                    collation=collation,
+                    session=session)
 
-                if "cursor" in result:
-                    cursor = result["cursor"]
-                else:
-                    # Pre-MongoDB 2.6. Fake a cursor.
-                    cursor = {
-                        "id": 0,
-                        "firstBatch": result["result"],
-                        "ns": self.full_name,
-                    }
+            if "cursor" in result:
+                cursor = result["cursor"]
+            else:
+                # Pre-MongoDB 2.6. Fake a cursor.
+                cursor = {
+                    "id": 0,
+                    "firstBatch": result["result"],
+                    "ns": self.full_name,
+                }
 
-                return cursor_class(
-                    self, cursor, sock_info.address,
-                    batch_size=batch_size or 0,
-                    max_await_time_ms=max_await_time_ms,
-                    session=s, session_owned=session_owned)
-            except Exception:
-                if session_owned:
-                    s.end_session()
-                raise
+            return cursor_class(
+                self, cursor, sock_info.address,
+                batch_size=batch_size or 0,
+                max_await_time_ms=max_await_time_ms,
+                session=session, explicit_session=explicit_session)
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
@@ -2148,13 +2168,15 @@ class Collection(common.BaseObject):
         .. _aggregate command:
             https://docs.mongodb.com/manual/reference/command/aggregate
         """
-        return self._aggregate(pipeline,
-                               CommandCursor,
-                               kwargs.get('batchSize'),
-                               session=session,
-                               **kwargs)
+        with self.__database.client._tmp_session(session, close=False) as s:
+            return self._aggregate(pipeline,
+                                   CommandCursor,
+                                   kwargs.get('batchSize'),
+                                   session=s,
+                                   explicit_session=session is not None,
+                                   **kwargs)
 
-    def aggregate_raw_batches(self, pipeline, session=None, **kwargs):
+    def aggregate_raw_batches(self, pipeline, **kwargs):
         """Perform an aggregation and retrieve batches of raw BSON.
 
         Takes the same parameters as :meth:`aggregate` but returns a
@@ -2171,13 +2193,13 @@ class Collection(common.BaseObject):
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
+        Unlike most PyMongo methods, this method sends no session id to the
+        server.
+
         .. versionadded:: 3.6
         """
-        return self._aggregate(pipeline,
-                               RawBatchCommandCursor,
-                               0,
-                               session=session,
-                               **kwargs)
+        return self._aggregate(pipeline, RawBatchCommandCursor, 0,
+                               None, False, **kwargs)
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None):

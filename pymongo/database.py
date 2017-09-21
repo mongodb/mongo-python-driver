@@ -551,11 +551,11 @@ class Database(common.BaseObject):
 
         if sock_info.max_wire_version > 2:
             coll = self["$cmd"]
-            s = self.__client._ensure_session(session)
-            cursor = self._command(
-                sock_info, cmd, slave_okay, session=s,
-                session_owned=session is None)["cursor"]
-            return CommandCursor(coll, cursor, sock_info.address)
+            with self.__client._tmp_session(session, close=False) as s:
+                cursor = self._command(
+                    sock_info, cmd, slave_okay, session=s)["cursor"]
+                return CommandCursor(coll, cursor, sock_info.address, session=s,
+                                     explicit_session=session is not None)
         else:
             coll = self["system.namespaces"]
             res = _first_batch(sock_info, coll.database.name, coll.name,

@@ -127,7 +127,13 @@ class Cursor(object):
         self.__id = None
         self.__exhaust = False
         self.__exhaust_mgr = None
-        self.__session = None
+
+        if session:
+            self.__session = session
+            self.__explicit_session = True
+        else:
+            self.__session = None
+            self.__explicit_session = False
 
         spec = filter
         if spec is None:
@@ -178,12 +184,6 @@ class Cursor(object):
         self.__return_key = return_key
         self.__show_record_id = show_record_id
         self.__snapshot = snapshot
-        if session:
-            self.__session = session
-            self.__session_owned = False
-        else:
-            self.__session = collection.database.client._ensure_session(session)
-            self.__session_owned = True
         self.__set_hint(hint)
 
         # Exhaust cursor support
@@ -268,10 +268,10 @@ class Cursor(object):
     def _clone(self, deepcopy=True, base=None):
         """Internal clone helper."""
         if not base:
-            if self.__session_owned:
-                base = self._clone_base(None)
-            else:
+            if self.__explicit_session:
                 base = self._clone_base(self.__session)
+            else:
+                base = self._clone_base(None)
 
         values_to_clone = ("spec", "projection", "skip", "limit",
                            "max_time_ms", "max_await_time_ms", "comment",
@@ -312,7 +312,7 @@ class Cursor(object):
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
         self.__killed = True
-        if self.__session and self.__session_owned:
+        if self.__session and not self.__explicit_session:
             self.__session._end_session(lock=synchronous)
             self.__session = None
 
@@ -1069,10 +1069,8 @@ class Cursor(object):
         if len(self.__data) or self.__killed:
             return len(self.__data)
 
-        # If a previous call to __die() has cleared the session.
         if not self.__session:
             self.__session = self.__collection.database.client._ensure_session()
-            self.__session_owned = True
 
         if self.__id is None:  # Query
             q = self._query_class(self.__query_flags,
@@ -1166,7 +1164,7 @@ class Cursor(object):
 
         .. versionadded:: 3.6
         """
-        if not self.__session_owned:
+        if self.__explicit_session:
             return self.__session
 
     def __iter__(self):
