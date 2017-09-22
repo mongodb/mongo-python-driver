@@ -169,6 +169,9 @@ class _ServerSessionPool(collections.deque):
         if not server_session.timed_out(session_timeout_minutes):
             self.appendleft(server_session)
 
+    def return_server_session_no_lock(self, server_session):
+        self.appendleft(server_session)
+
     def _clear_stale(self, session_timeout_minutes):
         # Clear stale sessions. The least recently used are on the right.
         while self:

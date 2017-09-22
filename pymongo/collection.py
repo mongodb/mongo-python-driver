@@ -1468,19 +1468,18 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         with self._socket_for_reads() as (sock_info, slave_ok):
-            # Avoid auto-injecting a session.
-            result = sock_info.command(
-                self.__database.name,
-                cmd,
-                slave_ok,
-                self.read_preference,
-                self.codec_options,
-                read_concern=self.read_concern,
-                session=session)
+            result = self._command(sock_info, cmd, slave_ok,
+                                   read_concern=self.read_concern,
+                                   session=session)
 
-        return [CommandCursor(self, cursor['cursor'], sock_info.address,
-                              session=session, explicit_session=True)
-                for cursor in result['cursors']]
+        cursors = []
+        for cursor in result['cursors']:
+            s = self.__database.client._ensure_session(session)
+            cursors.append(CommandCursor(
+                self, cursor['cursor'], sock_info.address,
+                session=s, explicit_session=session is not None))
+
+        return cursors
 
     def _count(self, cmd, collation=None, session=None):
         """Internal count helper."""
@@ -2041,38 +2040,25 @@ class Collection(common.BaseObject):
             cmd.update(kwargs)
             # Apply this Collection's read concern if $out is not in the
             # pipeline.
-            if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
-                if dollar_out:
-                    # Avoid auto-injecting a session.
-                    result = sock_info.command(
-                        self.__database.name,
-                        cmd,
-                        slave_ok,
-                        self.read_preference,
-                        self.codec_options,
-                        parse_write_concern_error=True,
-                        collation=collation,
-                        session=session)
-                else:
-                    result = sock_info.command(
-                        self.__database.name,
-                        cmd,
-                        slave_ok,
-                        ReadPreference.PRIMARY,
-                        self.codec_options,
-                        read_concern=self.read_concern,
-                        collation=collation,
-                        session=session)
+            if (sock_info.max_wire_version >= 4
+                    and 'readConcern' not in cmd
+                    and not dollar_out):
+                read_concern = self.read_concern
             else:
-                result = sock_info.command(
-                    self.__database.name,
-                    cmd,
-                    slave_ok,
-                    self.read_preference,
-                    self.codec_options,
-                    parse_write_concern_error=dollar_out,
-                    collation=collation,
-                    session=session)
+                read_concern = DEFAULT_READ_CONCERN
+
+            # Avoid auto-injecting a session: aggregate() passes a session,
+            # aggregate_raw_batches() passes none.
+            result = sock_info.command(
+                self.__database.name,
+                cmd,
+                slave_ok,
+                self.read_preference,
+                self.codec_options,
+                parse_write_concern_error=dollar_out,
+                read_concern=read_concern,
+                collation=collation,
+                session=session)
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -2202,7 +2188,8 @@ class Collection(common.BaseObject):
                                None, False, **kwargs)
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None):
+              max_await_time_ms=None, batch_size=None, collation=None,
+              session=None):
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial
@@ -2266,6 +2253,8 @@ class Collection(common.BaseObject):
             per batch.
           - `collation` (optional): The :class:`~pymongo.collation.Collation`
             to use for the aggregation.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           A :class:`~pymongo.change_stream.ChangeStream` cursor.
@@ -2287,7 +2276,7 @@ class Collection(common.BaseObject):
         common.validate_string_or_none('full_document', full_document)
 
         return ChangeStream(self, pipeline, full_document, resume_after,
-                            max_await_time_ms, batch_size, collation)
+                            max_await_time_ms, batch_size, collation, session)
 
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.

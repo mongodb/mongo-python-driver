@@ -400,7 +400,7 @@ class Topology(object):
                                                              session_timeout)
         else:
             # Called from a __del__ method, can't use a lock.
-            self._session_pool.append(server_session)
+            self._session_pool.return_server_session_no_lock(server_session)
 
     def _new_selection(self):
         """A Selection object, initially including all known servers.
