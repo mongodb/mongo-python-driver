@@ -41,9 +41,11 @@ from pymongo.errors import (AutoReconnect,
                             NotMasterError,
                             OperationFailure,
                             ProtocolError)
+from pymongo.message import _OpReply
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 
-_UNPACK_INT = struct.Struct("<i").unpack
+
+_UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
 def command(sock, dbname, spec, slave_ok, is_mongos,
@@ -112,11 +114,10 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
     try:
         sock.sendall(msg)
-        response = receive_message(sock, 1, request_id)
-        unpacked = helpers._unpack_response(
-            response, codec_options=codec_options)
+        reply = receive_message(sock, request_id)
+        unpacked_docs = reply.unpack_response(codec_options=codec_options)
 
-        response_doc = unpacked['data'][0]
+        response_doc = unpacked_docs[0]
         if check:
             helpers._check_command_response(
                 response_doc, None, allowable_errors,
@@ -138,22 +139,19 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     return response_doc
 
 
-def receive_message(
-        sock, operation, request_id, max_message_size=MAX_MESSAGE_SIZE):
+def receive_message(sock, request_id, max_message_size=MAX_MESSAGE_SIZE):
     """Receive a raw BSON message or raise socket.error."""
-    header = _receive_data_on_socket(sock, 16)
-    length = _UNPACK_INT(header[:4])[0]
-
-    actual_op = _UNPACK_INT(header[12:])[0]
-    if operation != actual_op:
+    # Ignore the response's request id.
+    length, _, response_to, op_code = _UNPACK_HEADER(
+        _receive_data_on_socket(sock, 16))
+    if op_code != _OpReply.OP_CODE:
         raise ProtocolError("Got opcode %r but expected "
-                            "%r" % (actual_op, operation))
+                            "%r" % (op_code, _OpReply.OP_CODE))
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
-        response_id = _UNPACK_INT(header[8:12])[0]
-        if request_id != response_id:
+        if request_id != response_to:
             raise ProtocolError("Got response id %r but expected "
-                                "%r" % (response_id, request_id))
+                                "%r" % (response_to, request_id))
     if length <= 16:
         raise ProtocolError("Message length (%r) not longer than standard "
                             "message header size (16)" % (length,))
@@ -161,7 +159,7 @@ def receive_message(
         raise ProtocolError("Message length (%r) is larger than server max "
                             "message size (%r)" % (length, max_message_size))
 
-    return _receive_data_on_socket(sock, length - 16)
+    return _OpReply.unpack(_receive_data_on_socket(sock, length - 16))
 
 
 def _receive_data_on_socket(sock, length):

@@ -502,14 +502,14 @@ class SocketInfo(object):
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def receive_message(self, operation, request_id):
+    def receive_message(self, request_id):
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
         """
         try:
-            return receive_message(
-                self.sock, operation, request_id, self.max_message_size)
+            return receive_message(self.sock, request_id,
+                                   self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -531,8 +531,8 @@ class SocketInfo(object):
 
         self.send_message(msg, max_doc_size)
         if with_last_error:
-            response = self.receive_message(1, request_id)
-            return helpers._check_gle_response(response)
+            reply = self.receive_message(request_id)
+            return helpers._check_gle_response(reply.command_response())
 
     def write_command(self, request_id, msg):
         """Send "insert" etc. command, returning response as a dict.
@@ -544,9 +544,8 @@ class SocketInfo(object):
           - `msg`: bytes, the command message.
         """
         self.send_message(msg, 0)
-        response = helpers._unpack_response(self.receive_message(1, request_id))
-        assert response['number_returned'] == 1
-        result = response['data'][0]
+        reply = self.receive_message(request_id)
+        result = reply.command_response()
 
         # Raises NotMasterError or OperationFailure.
         helpers._check_command_response(result)

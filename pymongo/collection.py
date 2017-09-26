@@ -36,7 +36,7 @@ from pymongo.change_stream import ChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
-from pymongo.helpers import _UNICODE_REPLACE_CODEC_OPTIONS
+from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import IndexModel
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
@@ -1902,7 +1902,7 @@ class Collection(common.BaseObject):
                                      explicit_session=session is not None)
             else:
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
-                res = helpers._first_batch(
+                res = message._first_batch(
                     sock_info, self.__database.name, "system.indexes",
                     {"ns": self.__full_name}, 0, slave_ok, codec_options,
                     ReadPreference.PRIMARY, cmd,

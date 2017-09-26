@@ -22,14 +22,14 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
-from pymongo import auth, common, helpers
+from pymongo import auth, common
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
-from pymongo.helpers import _first_batch
+from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
@@ -722,11 +722,11 @@ class Database(common.BaseObject):
                     return sock_info.command("admin", cmd, session=s)
             else:
                 spec = {"$all": True} if include_all else {}
-                x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
-                                         spec, -1, True, self.codec_options,
-                                         ReadPreference.PRIMARY, cmd,
-                                         self.client._event_listeners,
-                                         session=None)
+                x = _first_batch(sock_info, "admin", "$cmd.sys.inprog",
+                                 spec, -1, True, self.codec_options,
+                                 ReadPreference.PRIMARY, cmd,
+                                 self.client._event_listeners,
+                                 session=None)
                 return x.get('data', [None])[0]
 
     def profiling_level(self, session=None):

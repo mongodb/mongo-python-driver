@@ -23,7 +23,7 @@ class Response(object):
         """Represent a response from the server.
 
         :Parameters:
-          - `data`: Raw BSON bytes.
+          - `data`: A network response message.
           - `address`: (host, port) of the source server.
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
@@ -69,7 +69,7 @@ class ExhaustResponse(Response):
         """Represent a response to an exhaust cursor's initial query.
 
         :Parameters:
-          - `data`: Raw BSON bytes.
+          - `data`:  A network response message.
           - `address`: (host, port) of the source server.
           - `socket_info`: The SocketInfo used for the initial query.
           - `pool`: The Pool from which the SocketInfo came.

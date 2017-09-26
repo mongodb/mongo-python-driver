@@ -143,15 +143,16 @@ class CommandCursor(object):
         cmd_duration = response.duration
         rqst_id = response.request_id
         from_command = response.from_command
+        reply = response.data
 
         if publish:
             start = datetime.datetime.now()
         try:
-            doc = self._unpack_response(response.data,
-                                        self.__id,
-                                        self.__collection.codec_options)
+            docs = self._unpack_response(reply,
+                                         self.__id,
+                                         self.__collection.codec_options)
             if from_command:
-                helpers._check_command_response(doc['data'][0])
+                helpers._check_command_response(docs[0])
 
         except OperationFailure as exc:
             kill()
@@ -183,12 +184,12 @@ class CommandCursor(object):
             raise
 
         if from_command:
-            cursor = doc['data'][0]['cursor']
+            cursor = docs[0]['cursor']
             documents = cursor['nextBatch']
             self.__id = cursor['id']
         else:
-            documents = doc["data"]
-            self.__id = doc["cursor_id"]
+            documents = docs
+            self.__id = reply.cursor_id
 
         if publish:
             duration = (datetime.datetime.now() - start) + cmd_duration
@@ -205,7 +206,7 @@ class CommandCursor(object):
         self.__data = deque(documents)
 
     def _unpack_response(self, response, cursor_id, codec_options):
-        return helpers._unpack_response(response, cursor_id, codec_options)
+        return response.unpack_response(cursor_id, codec_options)
 
     def _refresh(self):
         """Refreshes the cursor with more data from the server.
@@ -315,7 +316,7 @@ class RawBatchCommandCursor(CommandCursor):
             max_await_time_ms, session, explicit_session)
 
     def _unpack_response(self, response, cursor_id, codec_options):
-        return helpers._raw_response(response, cursor_id)
+        return response.raw_response(cursor_id)
 
     def __getitem__(self, index):
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
