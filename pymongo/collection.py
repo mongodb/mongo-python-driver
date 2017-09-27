@@ -2023,12 +2023,11 @@ class Collection(common.BaseObject):
         # If the server does not support the "cursor" option we
         # ignore useCursor and batchSize.
         with self._socket_for_reads() as (sock_info, slave_ok):
-            if sock_info.max_wire_version > 0:
-                if use_cursor:
-                    if "cursor" not in kwargs:
-                        kwargs["cursor"] = {}
-                    if first_batch_size is not None:
-                        kwargs["cursor"]["batchSize"] = first_batch_size
+            if use_cursor:
+                if "cursor" not in kwargs:
+                    kwargs["cursor"] = {}
+                if first_batch_size is not None:
+                    kwargs["cursor"]["batchSize"] = first_batch_size
 
             dollar_out = pipeline and '$out' in pipeline[-1]
             if (sock_info.max_wire_version >= 5 and dollar_out and
