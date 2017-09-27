@@ -495,12 +495,11 @@ class Collection(common.BaseObject):
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
 
-    def _legacy_write(self, sock_info, name, cmd, acknowledged, op_id,
+    def _legacy_write(self, sock_info, name, cmd, op_id,
                       bypass_doc_val, func, *args):
-        """Internal legacy write helper."""
+        """Internal legacy unacknowledged write helper."""
         # Cannot have both unacknowledged write and bypass document validation.
-        if (bypass_doc_val and not acknowledged and
-                    sock_info.max_wire_version >= 4):
+        if bypass_doc_val and sock_info.max_wire_version >= 4:
             raise OperationFailure("Cannot set bypass_document_validation with"
                                    " unacknowledged write concern")
         listeners = self.database.client._event_listeners
@@ -515,8 +514,7 @@ class Collection(common.BaseObject):
                 cmd, self.__database.name, rqst_id, sock_info.address, op_id)
             start = datetime.datetime.now()
         try:
-            result = sock_info.legacy_write(
-                rqst_id, msg, max_size, acknowledged)
+            result = sock_info.legacy_write(rqst_id, msg, max_size, False)
         except Exception as exc:
             if publish:
                 dur = (datetime.datetime.now() - start) + duration
@@ -564,7 +562,7 @@ class Collection(common.BaseObject):
         if concern:
             command['writeConcern'] = concern
 
-        if sock_info.max_wire_version > 1 and acknowledged:
+        if acknowledged:
             if bypass_doc_val and sock_info.max_wire_version >= 4:
                 command['bypassDocumentValidation'] = True
 
@@ -580,9 +578,9 @@ class Collection(common.BaseObject):
         else:
             # Legacy OP_INSERT.
             self._legacy_write(
-                sock_info, 'insert', command, acknowledged, op_id,
+                sock_info, 'insert', command, op_id,
                 bypass_doc_val, message.insert, self.__full_name, [doc],
-                check_keys, acknowledged, concern, False,
+                check_keys, False, concern, False,
                 self.__write_response_codec_options)
         if not isinstance(doc, RawBSONDocument):
             return doc.get('_id')
@@ -639,7 +637,7 @@ class Collection(common.BaseObject):
         bwc = message._BulkWriteContext(
             self.database.name, command, sock_info, op_id,
             self.database.client._event_listeners)
-        if sock_info.max_wire_version > 1 and acknowledged:
+        if acknowledged:
             # Batched insert command.
             with self.__database.client._tmp_session(session) as s:
                 if s:
@@ -651,7 +649,7 @@ class Collection(common.BaseObject):
         else:
             # Legacy batched OP_INSERT.
             message._do_batched_insert(self.__full_name, gen(), check_keys,
-                                       acknowledged, concern, not ordered,
+                                       False, concern, not ordered,
                                        self.__write_response_codec_options, bwc)
         return ids
 
@@ -802,7 +800,7 @@ class Collection(common.BaseObject):
                        ('updates', [update_doc])])
         if concern:
             command['writeConcern'] = concern
-        if sock_info.max_wire_version > 1 and acknowledged:
+        if acknowledged:
             # Update command.
             if bypass_doc_val and sock_info.max_wire_version >= 4:
                 command['bypassDocumentValidation'] = True
@@ -830,9 +828,9 @@ class Collection(common.BaseObject):
         else:
             # Legacy OP_UPDATE.
             return self._legacy_write(
-                sock_info, 'update', command, acknowledged, op_id,
+                sock_info, 'update', command, op_id,
                 bypass_doc_val, message.update, self.__full_name, upsert,
-                multi, criteria, document, acknowledged, concern, check_keys,
+                multi, criteria, document, False, concern, check_keys,
                 self.__write_response_codec_options)
 
     def replace_one(self, filter, replacement, upsert=False,
@@ -1085,7 +1083,7 @@ class Collection(common.BaseObject):
         if concern:
             command['writeConcern'] = concern
 
-        if sock_info.max_wire_version > 1 and acknowledged:
+        if acknowledged:
             with self.__database.client._tmp_session(session) as s:
                 # Delete command.
                 result = sock_info.command(
@@ -1098,9 +1096,9 @@ class Collection(common.BaseObject):
         else:
             # Legacy OP_DELETE.
             return self._legacy_write(
-                sock_info, 'delete', command, acknowledged, op_id,
+                sock_info, 'delete', command, op_id,
                 False, message.delete, self.__full_name, criteria,
-                acknowledged, concern, self.__write_response_codec_options,
+                False, concern, self.__write_response_codec_options,
                 int(not multi))
 
     def delete_one(self, filter, collation=None, session=None):

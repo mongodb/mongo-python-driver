@@ -391,85 +391,6 @@ class _Bulk(object):
                 if self.ordered:
                     break
 
-    def execute_legacy(self, sock_info, generator, write_concern):
-        """Execute using legacy wire protocol ops.
-        """
-        coll = self.collection
-        full_result = {
-            "writeErrors": [],
-            "writeConcernErrors": [],
-            "nInserted": 0,
-            "nUpserted": 0,
-            "nMatched": 0,
-            "nRemoved": 0,
-            "upserted": [],
-        }
-        op_id = _randint()
-        stop = False
-        for run in generator:
-            for idx, operation in enumerate(run.ops):
-                try:
-                    # To do per-operation reporting we have to do ops one
-                    # at a time. That means the performance of bulk insert
-                    # will be slower here than calling Collection.insert()
-                    if run.op_type == _INSERT:
-                        coll._insert(sock_info,
-                                     operation,
-                                     self.ordered,
-                                     write_concern=write_concern,
-                                     op_id=op_id)
-                        result = {}
-                    elif run.op_type == _UPDATE:
-                        doc = operation['u']
-                        check_keys = True
-                        if doc and next(iter(doc)).startswith('$'):
-                            check_keys = False
-                        result = coll._update(sock_info,
-                                              operation['q'],
-                                              doc,
-                                              operation['upsert'],
-                                              check_keys,
-                                              operation['multi'],
-                                              write_concern=write_concern,
-                                              op_id=op_id,
-                                              ordered=self.ordered)
-                    else:
-                        result = coll._delete(sock_info,
-                                              operation['q'],
-                                              not operation['limit'],
-                                              write_concern,
-                                              op_id,
-                                              self.ordered)
-                    _merge_legacy(run, full_result, result, idx)
-                except DocumentTooLarge as exc:
-                    # MongoDB 2.6 uses error code 2 for "too large".
-                    error = _make_error(
-                        run.index(idx), _BAD_VALUE, str(exc), operation)
-                    full_result['writeErrors'].append(error)
-                    if self.ordered:
-                        stop = True
-                        break
-                except OperationFailure as exc:
-                    if not exc.details:
-                        # Some error not related to the write operation
-                        # (e.g. kerberos failure). Re-raise immediately.
-                        raise
-                    _merge_legacy(run, full_result, exc.details, idx)
-                    # We're supposed to continue if errors are
-                    # at the write concern level (e.g. wtimeout)
-                    if self.ordered and full_result["writeErrors"]:
-                        stop = True
-                        break
-            if stop:
-                break
-
-        if full_result["writeErrors"] or full_result['writeConcernErrors']:
-            if full_result['writeErrors']:
-                full_result['writeErrors'].sort(
-                    key=lambda error: error['index'])
-            raise BulkWriteError(full_result)
-        return full_result
-
     def execute(self, write_concern, session):
         """Execute operations.
         """
@@ -504,11 +425,9 @@ class _Bulk(object):
                         'arrayFilters is unsupported for unacknowledged '
                         'writes.')
                 self.execute_no_results(sock_info, generator)
-            elif sock_info.max_wire_version > 1:
+            else:
                 return self.execute_command(
                     sock_info, generator, write_concern, session)
-            else:
-                return self.execute_legacy(sock_info, generator, write_concern)
 
 
 class BulkUpsertOperation(object):
