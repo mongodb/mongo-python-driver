@@ -844,8 +844,7 @@ class TestClient(IntegrationTest):
 
     @client_context.require_no_mongos
     def test_fsync_lock_unlock(self):
-        if (server_is_master_with_slave(client_context.client) and
-                client_context.version.at_least(2, 3, 0)):
+        if server_is_master_with_slave(client_context.client):
             raise SkipTest('SERVER-7714')
 
         self.assertFalse(self.client.is_locked)
@@ -1114,10 +1113,6 @@ class TestExhaustCursor(IntegrationTest):
         if client_context.is_mongos:
             raise SkipTest("mongos doesn't support exhaust, SERVER-2627")
 
-    # mongod < 2.2.0 closes exhaust socket on error, so it behaves like
-    # test_exhaust_query_network_error. Here we test that on query error
-    # the client correctly keeps the socket *open* and checks it in.
-    @client_context.require_version_min(2, 2, 0)
     def test_exhaust_query_server_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.

@@ -61,7 +61,7 @@ from pymongo.results import (InsertOneResult,
                              DeleteResult)
 from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
-from test.utils import (is_mongos, enable_text_search, get_pool,
+from test.utils import (is_mongos, get_pool,
                         rs_or_single_client, single_client,
                         wait_until, EventListener,
                         IMPOSSIBLE_WRITE_CONCERN)
@@ -160,7 +160,6 @@ class TestCollection(IntegrationTest):
         # No exception
         self.db.drop_collection('test')
 
-    @client_context.require_version_min(2, 6)
     def test_create_indexes(self):
         db = self.db
 
@@ -417,36 +416,31 @@ class TestCollection(IntegrationTest):
             "type": "restaurant"
         }, results[0])
 
-    @client_context.require_version_min(2, 3, 2)
     @client_context.require_no_mongos
     def test_index_text(self):
-        enable_text_search(self.client)
-
         db = self.db
         db.test.drop_indexes()
         self.assertEqual("t_text", db.test.create_index([("t", TEXT)]))
         index_info = db.test.index_information()["t_text"]
         self.assertTrue("weights" in index_info)
 
-        if client_context.version.at_least(2, 5, 5):
-            db.test.insert_many([
-                {'t': 'spam eggs and spam'},
-                {'t': 'spam'},
-                {'t': 'egg sausage and bacon'}])
+        db.test.insert_many([
+            {'t': 'spam eggs and spam'},
+            {'t': 'spam'},
+            {'t': 'egg sausage and bacon'}])
 
-            # MongoDB 2.6 text search. Create 'score' field in projection.
-            cursor = db.test.find(
-                {'$text': {'$search': 'spam'}},
-                {'score': {'$meta': 'textScore'}})
+        # MongoDB 2.6 text search. Create 'score' field in projection.
+        cursor = db.test.find(
+            {'$text': {'$search': 'spam'}},
+            {'score': {'$meta': 'textScore'}})
 
-            # Sort by 'score' field.
-            cursor.sort([('score', {'$meta': 'textScore'})])
-            results = list(cursor)
-            self.assertTrue(results[0]['score'] >= results[1]['score'])
+        # Sort by 'score' field.
+        cursor.sort([('score', {'$meta': 'textScore'})])
+        results = list(cursor)
+        self.assertTrue(results[0]['score'] >= results[1]['score'])
 
         db.test.drop_indexes()
 
-    @client_context.require_version_min(2, 3, 2)
     def test_index_2dsphere(self):
         db = self.db
         db.test.drop_indexes()
@@ -468,7 +462,6 @@ class TestCollection(IntegrationTest):
         db.test.find(query)
         db.test.drop_indexes()
 
-    @client_context.require_version_min(2, 3, 2)
     def test_index_hashed(self):
         db = self.db
         db.test.drop_indexes()
@@ -1418,15 +1411,11 @@ class TestCollection(IntegrationTest):
         doc = self.db.test.find_one()
         doc['a.b'] = 'c'
 
-        expected = InvalidDocument
-        if client_context.version.at_least(2, 5, 4, -1):
-            expected = OperationFailure
-
         # Replace
-        self.assertRaises(expected, self.db.test.replace_one,
+        self.assertRaises(OperationFailure, self.db.test.replace_one,
                           {"hello": "world"}, doc)
         # Upsert
-        self.assertRaises(expected, self.db.test.replace_one,
+        self.assertRaises(OperationFailure, self.db.test.replace_one,
                           {"foo": "bar"}, doc, upsert=True)
 
         # Check that the last two ops didn't actually modify anything
@@ -1435,10 +1424,6 @@ class TestCollection(IntegrationTest):
     def test_update_check_keys(self):
         self.db.drop_collection("test")
         self.assertTrue(self.db.test.insert_one({"hello": "world"}))
-
-        expected = InvalidDocument
-        if client_context.version.at_least(2, 5, 4, -1):
-            expected = OperationFailure
 
         # Modify shouldn't check keys...
         self.assertTrue(self.db.test.update_one({"hello": "world"},
@@ -1456,7 +1441,7 @@ class TestCollection(IntegrationTest):
         # doesn't change. If the behavior changes checking the first key for
         # '$' in update won't be good enough anymore.
         doc = SON([("hello", "world"), ("$set", {"foo.bar": "bim"})])
-        self.assertRaises(expected, self.db.test.replace_one,
+        self.assertRaises(OperationFailure, self.db.test.replace_one,
                           {"hello": "world"}, doc, upsert=True)
 
         # Replace with empty document
@@ -1517,10 +1502,9 @@ class TestCollection(IntegrationTest):
         self.assertEqual([{'foo': [1, 2]}], list(result))
 
         # Test write concern.
-        if client_context.version.at_least(2, 6):
-            out_pipeline = [pipeline, {'$out': 'output-collection'}]
-            with self.write_concern_collection() as coll:
-                coll.aggregate(out_pipeline)
+        out_pipeline = [pipeline, {'$out': 'output-collection'}]
+        with self.write_concern_collection() as coll:
+            coll.aggregate(out_pipeline)
 
     def test_aggregate_raw_bson(self):
         db = self.db
@@ -1543,7 +1527,6 @@ class TestCollection(IntegrationTest):
         self.assertIsInstance(first_result, RawBSONDocument)
         self.assertEqual([1, 2], list(first_result['foo']))
 
-    @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor_validation(self):
         db = self.db
         projection = {'$project': {'_id': '$_id'}}
@@ -1553,7 +1536,6 @@ class TestCollection(IntegrationTest):
         cursor = db.test.aggregate([projection], useCursor=True)
         self.assertTrue(isinstance(cursor, CommandCursor))
 
-    @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor(self):
         db = self.db
         if client_context.has_secondaries:
@@ -1588,7 +1570,6 @@ class TestCollection(IntegrationTest):
         for doc in cursor:
             pass
 
-    @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor_alive(self):
         self.db.test.delete_many({})
         self.db.test.insert_many([{} for _ in range(3)])
@@ -1604,7 +1585,6 @@ class TestCollection(IntegrationTest):
 
             self.assertTrue(cursor.alive)
 
-    @client_context.require_version_min(2, 5, 5)
     @client_context.require_no_mongos
     def test_parallel_scan(self):
         db = self.db

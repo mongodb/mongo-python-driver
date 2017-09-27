@@ -502,7 +502,6 @@ class TestSSL(IntegrationTest):
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 
-    @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
     @client_context.require_ssl_certfile
     def test_mongodb_x509_auth(self):

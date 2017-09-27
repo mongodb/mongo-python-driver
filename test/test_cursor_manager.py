@@ -56,12 +56,6 @@ class TestCursorManager(IntegrationTest):
             client_context.client.set_cursor_manager(1)
 
     def test_cursor_manager(self):
-        if (client_context.is_mongos
-                and not client_context.version.at_least(2, 4, 7)):
-            # Old mongos sends incorrectly formatted error response when
-            # cursor isn't found, see SERVER-9738.
-            raise SkipTest("Can't test kill_cursors against old mongos")
-
         self.close_was_called = False
 
         test_case = self
