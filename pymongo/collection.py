@@ -1617,22 +1617,12 @@ class Collection(common.BaseObject):
                 else:
                     index['collation'] = collation
             cmd = SON([('createIndexes', self.name), ('indexes', [index])])
-            try:
-                self._command(
-                    sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                    codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
-                    write_concern=self.write_concern,
-                    parse_write_concern_error=True,
-                    session=session)
-            except OperationFailure as exc:
-                if exc.code in common.COMMAND_NOT_FOUND_CODES:
-                    index["ns"] = self.__full_name
-                    wcn = (self.write_concern if
-                           self.write_concern.acknowledged else WriteConcern())
-                    self.__database.system.indexes._insert(
-                        sock_info, index, True, False, False, wcn)
-                else:
-                    raise
+            self._command(
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                write_concern=self.write_concern,
+                parse_write_concern_error=True,
+                session=session)
 
     def create_index(self, keys, session=None, **kwargs):
         """Creates an index on this collection.
