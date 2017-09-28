@@ -164,7 +164,7 @@ static int init_insert_buffer(buffer_t buffer, int request_id, int options,
 }
 
 static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
-    /* Used by the Bulk API to insert into pre-2.6 servers. Collection.insert
+    /* Used for unacknowledged insert_one. Collection.insert_many
      * uses _cbson_do_batched_insert. */
     struct module_state *state = GETSTATE(self);
 
@@ -178,20 +178,17 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     int before, cur_size, max_size = 0;
     int flags = 0;
     unsigned char check_keys;
-    unsigned char safe;
     unsigned char continue_on_error;
     codec_options_t options;
-    PyObject* last_error_args;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#ObbObO&",
+    if (!PyArg_ParseTuple(args, "et#ObbO&",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &docs, &check_keys, &safe,
-                          &last_error_args,
+                          &docs, &check_keys,
                           &continue_on_error,
                           convert_codec_options, &options)) {
         return NULL;
@@ -271,16 +268,6 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
 
-    if (safe) {
-        if (!add_last_error(self, buffer, request_id, collection_name,
-                            collection_name_length, &options, last_error_args)) {
-            destroy_codec_options(&options);
-            buffer_free(buffer);
-            PyMem_Free(collection_name);
-            return NULL;
-        }
-    }
-
     PyMem_Free(collection_name);
 
     /* objectify buffer */
@@ -305,21 +292,18 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     PyObject* spec;
     unsigned char multi;
     unsigned char upsert;
-    unsigned char safe;
     unsigned char check_keys;
     codec_options_t options;
-    PyObject* last_error_args;
     int flags;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#bbOObObO&",
+    if (!PyArg_ParseTuple(args, "et#bbOObO&",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &upsert, &multi, &spec, &doc, &safe,
-                          &last_error_args, &check_keys,
+                          &upsert, &multi, &spec, &doc, &check_keys,
                           convert_codec_options, &options)) {
         return NULL;
     }
@@ -386,16 +370,6 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     message_length = buffer_get_position(buffer) - length_location;
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
-
-    if (safe) {
-        if (!add_last_error(self, buffer, request_id, collection_name,
-                            collection_name_length, &options, last_error_args)) {
-            destroy_codec_options(&options);
-            buffer_free(buffer);
-            PyMem_Free(collection_name);
-            return NULL;
-        }
-    }
 
     PyMem_Free(collection_name);
 
@@ -1284,9 +1258,9 @@ cmdfail:
 
 static PyMethodDef _CMessageMethods[] = {
     {"_insert_message", _cbson_insert_message, METH_VARARGS,
-     "Create an insert message to be sent to MongoDB"},
+     "Create an unacknowledged insert message to be sent to MongoDB"},
     {"_update_message", _cbson_update_message, METH_VARARGS,
-     "create an update message to be sent to MongoDB"},
+     "create an unacknowledged update message to be sent to MongoDB"},
     {"_query_message", _cbson_query_message, METH_VARARGS,
      "create a query message to be sent to MongoDB"},
     {"_get_more_message", _cbson_get_more_message, METH_VARARGS,
