@@ -788,6 +788,11 @@ class TestBSON(unittest.TestCase):
     def test_regex_hash(self):
         self.assertRaises(TypeError, hash, Regex('hello'))
 
+    def test_regex_comparison(self):
+        re1 = Regex('a')
+        re2 = Regex('b')
+        self.assertNotEqual(re1, re2)
+
     def test_exception_wrapping(self):
         # No matter what exception is raised while trying to decode BSON,
         # the final exception always matches InvalidBSON.
