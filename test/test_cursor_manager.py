@@ -19,7 +19,6 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from pymongo.command_cursor import CommandCursor
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import CursorNotFound
 from pymongo.message import _CursorAddress
@@ -96,37 +95,6 @@ class TestCursorManager(IntegrationTest):
 
             wait_until(raises_cursor_not_found, 'close cursor')
             self.assertTrue(self.close_was_called)
-
-    def test_cursor_transfer(self):
-
-        # This is just a test, don't try this at home...
-
-        client = rs_or_single_client()
-        db = client.pymongo_test
-
-        db.test.delete_many({})
-        db.test.insert_many([{'_id': i} for i in range(200)])
-
-        class CManager(CursorManager):
-            def __init__(self, client):
-                super(CManager, self).__init__(client)
-
-            def close(self, dummy, dummy2):
-                # Do absolutely nothing...
-                pass
-
-        client.set_cursor_manager(CManager)
-        docs = []
-        cursor = db.test.find().batch_size(10)
-        docs.append(next(cursor))
-        cursor.close()
-        docs.extend(cursor)
-        self.assertEqual(len(docs), 10)
-        cmd_cursor = {'id': cursor.cursor_id, 'firstBatch': []}
-        ccursor = CommandCursor(cursor.collection, cmd_cursor,
-                                cursor.address, retrieved=cursor.retrieved)
-        docs.extend(ccursor)
-        self.assertEqual(len(docs), 200)
 
 
 if __name__ == "__main__":

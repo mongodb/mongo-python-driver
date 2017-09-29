@@ -2252,8 +2252,8 @@ class TestCollection(IntegrationTest):
             self.assertTrue(isinstance(doc['r'], Regex))
 
     def test_find_command_generation(self):
-        cmd = _gen_find_command(
-            'coll', {'$query': {'foo': 1}, '$dumb': 2}, None, 0, 0, 0, None)
+        cmd = _gen_find_command('coll', {'$query': {'foo': 1}, '$dumb': 2},
+                                None, 0, 0, 0, None, None)
         self.assertEqual(
             cmd.to_dict(),
             SON([('find', 'coll'),

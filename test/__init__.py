@@ -18,6 +18,7 @@
 import os
 import socket
 import sys
+import time
 import warnings
 
 try:
@@ -88,14 +89,14 @@ def is_server_resolvable():
 
 
 def _connect(host, port, **kwargs):
-    try:
-        client = pymongo.MongoClient(
-            host, port, serverSelectionTimeoutMS=100, **kwargs)
-        client.admin.command('ismaster')  # Can we connect?
-        # If connected, then return client with default timeout
-        return pymongo.MongoClient(host, port, **kwargs)
-    except pymongo.errors.ConnectionFailure:
-        return None
+    client = pymongo.MongoClient(host, port, **kwargs)
+    start = time.time()
+    while not client.nodes:
+        time.sleep(0.05)
+        if time.time() - start > 0.1:
+            return None
+
+    return client
 
 
 class client_knobs(object):
@@ -147,11 +148,7 @@ class client_knobs(object):
 
 
 def _all_users(db):
-    if Version.from_client(db.client).at_least(2, 5, 3, -1):
-        return set(u['user']
-                   for u in db.command('usersInfo').get('users', []))
-    else:
-        return set(u['user'] for u in db.system.users.find())
+    return set(u['user'] for u in db.command('usersInfo').get('users', []))
 
 
 class ClientContext(object):
@@ -190,32 +187,6 @@ class ClientContext(object):
 
         if self.client:
             self.connected = True
-            ismaster = self.client.admin.command('ismaster')
-            self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
-
-            if 'setName' in ismaster:
-                self.replica_set_name = ismaster['setName']
-                self.is_rs = True
-                # It doesn't matter which member we use as the seed here.
-                self.client = pymongo.MongoClient(
-                    host,
-                    port,
-                    replicaSet=self.replica_set_name,
-                    **self.ssl_client_options)
-                # Get the authoritative ismaster result from the primary.
-                self.ismaster = self.client.admin.command('ismaster')
-                nodes = [partition_node(node.lower())
-                         for node in self.ismaster.get('hosts', [])]
-                nodes.extend([partition_node(node.lower())
-                              for node in self.ismaster.get('passives', [])])
-                nodes.extend([partition_node(node.lower())
-                              for node in self.ismaster.get('arbiters', [])])
-                self.nodes = set(nodes)
-            else:
-                self.ismaster = ismaster
-                self.nodes = set([(host, port)])
-            self.w = len(self.ismaster.get("hosts", [])) or 1
-            self.version = Version.from_client(self.client)
 
             try:
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
@@ -232,10 +203,7 @@ class ClientContext(object):
             if self.auth_enabled:
                 # See if db_user already exists.
                 if not self._check_user_provided():
-                    roles = {}
-                    if self.version.at_least(2, 5, 3, -1):
-                        roles = {'roles': ['root']}
-                    self.client.admin.add_user(db_user, db_pwd, **roles)
+                    self.client.admin.add_user(db_user, db_pwd, roles=['root'])
 
                 self.client = _connect(host,
                                        port,
@@ -246,6 +214,43 @@ class ClientContext(object):
 
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
+
+            self.ismaster = ismaster = self.client.admin.command('isMaster')
+            self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
+
+            if 'setName' in ismaster:
+                self.replica_set_name = ismaster['setName']
+                self.is_rs = True
+                if self.auth_enabled:
+                    # It doesn't matter which member we use as the seed here.
+                    self.client = pymongo.MongoClient(
+                        host,
+                        port,
+                        username=db_user,
+                        password=db_pwd,
+                        replicaSet=self.replica_set_name,
+                        **self.ssl_client_options)
+                else:
+                    self.client = pymongo.MongoClient(
+                        host,
+                        port,
+                        replicaSet=self.replica_set_name,
+                        **self.ssl_client_options)
+
+                # Get the authoritative ismaster result from the primary.
+                self.ismaster = self.client.admin.command('ismaster')
+                nodes = [partition_node(node.lower())
+                         for node in self.ismaster.get('hosts', [])]
+                nodes.extend([partition_node(node.lower())
+                              for node in self.ismaster.get('passives', [])])
+                nodes.extend([partition_node(node.lower())
+                              for node in self.ismaster.get('arbiters', [])])
+                self.nodes = set(nodes)
+            else:
+                self.ismaster = ismaster
+                self.nodes = set([(host, port)])
+            self.w = len(self.ismaster.get("hosts", [])) or 1
+            self.version = Version.from_client(self.client)
 
             if 'enableTestCommands=1' in self.cmd_line['argv']:
                 self.test_commands_enabled = True
@@ -487,6 +492,7 @@ class ClientContext(object):
                              "Sessions not supported",
                              func=func)
 
+
 # Reusable client context
 client_context = ClientContext()
 
@@ -499,6 +505,10 @@ class IntegrationTest(unittest.TestCase):
     def setUpClass(cls):
         cls.client = client_context.client
         cls.db = cls.client.pymongo_test
+        if client_context.auth_enabled:
+            cls.credentials = {'username': db_user, 'password': db_pwd}
+        else:
+            cls.credentials = {}
 
 
 # Use assertRaisesRegex if available, otherwise use Python 2.7's

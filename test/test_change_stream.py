@@ -33,6 +33,7 @@ from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (InvalidOperation, OperationFailure,
                             ServerSelectionTimeoutError)
+from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 
 from test import client_context, unittest, IntegrationTest
@@ -189,7 +190,8 @@ class TestChangeStream(IntegrationTest):
             self.insert_and_check(change_stream, {'_id': 1})
             # Cause a cursor not found error on the next getMore.
             cursor = change_stream._cursor
-            self.client._close_cursor_now(cursor.cursor_id, cursor.address)
+            address = _CursorAddress(cursor.address, self.coll.full_name)
+            self.client._close_cursor_now(cursor.cursor_id, address)
             self.insert_and_check(change_stream, {'_id': 2})
 
     def test_does_not_resume_on_server_error(self):
@@ -235,7 +237,8 @@ class TestChangeStream(IntegrationTest):
             self.insert_and_check(change_stream, {'_id': 1})
             # Cause a cursor not found error on the next getMore.
             cursor = change_stream._cursor
-            self.client._close_cursor_now(cursor.cursor_id, cursor.address)
+            address = _CursorAddress(cursor.address, self.coll.full_name)
+            self.client._close_cursor_now(cursor.cursor_id, address)
             cursor.close = raise_error
             self.insert_and_check(change_stream, {'_id': 2})
 

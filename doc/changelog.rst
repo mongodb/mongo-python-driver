@@ -20,6 +20,13 @@ Highlights include:
 
 Breaking changes include:
 
+- Certain commands, such as ``ismaster`` and ``ping``, that could be used
+  to check whether a server is available without requiring authentication, now
+  raise :exc:`~pymongo.errors.OperationFailure` if executed without
+  authenticating on a MongoDB 3.6+ server started with ``--auth``. (This is
+  because all commands are now sent with a session id, whether a
+  :class:`~pymongo.client_session.ClientSession` is used or not, and all
+  commands with a session id require auth.)
 - BSON binary subtype 4 is decoded using RFC-4122 byte order regardless
   of the UUID representation. This is a change in behavior for applications
   that use UUID representation :data:`bson.binary.JAVA_LEGACY` or

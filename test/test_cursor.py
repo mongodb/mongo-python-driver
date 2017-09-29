@@ -27,7 +27,6 @@ from bson.code import Code
 from bson.py3compat import PY3
 from bson.son import SON
 from pymongo import (monitoring,
-                     MongoClient,
                      ASCENDING,
                      DESCENDING,
                      ALL,
@@ -52,12 +51,7 @@ if PY3:
     long = int
 
 
-class TestCursorNoConnect(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.db = MongoClient(connect=False).test
-
+class TestCursor(IntegrationTest):
     def test_deepcopy_cursor_littered_with_regexes(self):
         cursor = self.db.test.find({
             "x": re.compile("^hmmm.*"),
@@ -133,9 +127,6 @@ class TestCursorNoConnect(unittest.TestCase):
                          cursor2._Cursor__query_flags)
         cursor.remove_option(128)
         self.assertEqual(0, cursor._Cursor__query_flags)
-
-
-class TestCursor(IntegrationTest):
 
     def test_add_remove_option_exhaust(self):
         # Exhaust - which mongos doesn't support

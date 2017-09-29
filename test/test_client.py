@@ -354,23 +354,27 @@ class TestClient(IntegrationTest):
         port are not overloaded.
         """
         host, port = client_context.host, client_context.port
+        kwargs = client_context.ssl_client_options.copy()
+        if client_context.auth_enabled:
+            kwargs['username'] = db_user
+            kwargs['password'] = db_pwd
+
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"
         MongoClient.PORT = 123456789
         with self.assertRaises(AutoReconnect):
             connected(MongoClient(serverSelectionTimeoutMS=10,
-                                  **client_context.ssl_client_options))
+                                  **kwargs))
 
         # Override the defaults. No error.
-        connected(MongoClient(host, port,
-                              **client_context.ssl_client_options))
+        connected(MongoClient(host, port, **kwargs))
 
         # Set good defaults.
         MongoClient.HOST = host
         MongoClient.PORT = port
 
         # No error.
-        connected(MongoClient(**client_context.ssl_client_options))
+        connected(MongoClient(**kwargs))
 
     def test_init_disconnected(self):
         host, port = client_context.host, client_context.port
@@ -1051,7 +1055,8 @@ class TestClient(IntegrationTest):
                                serverSelectionTimeoutMS=100)
             client._send_message_with_response(
                 operation=message._GetMore('pymongo_test', 'collection',
-                                           101, 1234, client.codec_options),
+                                           101, 1234, client.codec_options,
+                                           None),
                 address=('not-a-member', 27017))
 
     def test_heartbeat_frequency_ms(self):
