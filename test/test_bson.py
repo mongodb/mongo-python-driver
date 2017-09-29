@@ -792,6 +792,12 @@ class TestBSON(unittest.TestCase):
         re1 = Regex('a')
         re2 = Regex('b')
         self.assertNotEqual(re1, re2)
+        re1 = Regex('a', re.I)
+        re2 = Regex('a', re.M)
+        self.assertNotEqual(re1, re2)
+        re1 = Regex('a', re.I)
+        re2 = Regex('a', re.I)
+        self.assertEqual(re1, re2)
 
     def test_exception_wrapping(self):
         # No matter what exception is raised while trying to decode BSON,
