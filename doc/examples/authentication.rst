@@ -36,7 +36,7 @@ Credentials can be specified as arguments to
 
   >>> from pymongo import MongoClient
   >>> client = MongoClient('example.com',
-  ...                      user='user',
+  ...                      username='user',
   ...                      password='password',
   ...                      authSource='the_database',
   ...                      authMechanism='SCRAM-SHA-1')
@@ -59,7 +59,7 @@ the "MongoDB Challenge-Response" protocol::
 
   >>> from pymongo import MongoClient
   >>> client = MongoClient('example.com',
-  ...                      user='user',
+  ...                      username='user',
   ...                      password='password',
   ...                      authMechanism='MONGODB-CR')
   >>>
