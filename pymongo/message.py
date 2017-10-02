@@ -274,6 +274,8 @@ class _Query(object):
                 'Specifying a collation is unsupported with a max wire '
                 'version of %d.' % (sock_info.max_wire_version,))
 
+        sock_info.check_session_auth_matches(self.session)
+
         return use_find_cmd
 
     def as_command(self):
@@ -345,6 +347,7 @@ class _GetMore(object):
         self.session = session
 
     def use_command(self, sock_info, exhaust):
+        sock_info.check_session_auth_matches(self.session)
         return sock_info.max_wire_version >= 4 and not exhaust
 
     def as_command(self):

@@ -37,6 +37,7 @@ from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             ConfigurationError,
+                            InvalidOperation,
                             DocumentTooLarge,
                             NetworkTimeout,
                             NotMasterError,
@@ -437,7 +438,7 @@ class SocketInfo(object):
                 parse_write_concern_error=False,
                 collation=None,
                 session=None):
-        """Execute a command or raise ConnectionFailure or OperationFailure.
+        """Execute a command or raise an error.
 
         :Parameters:
           - `dbname`: name of the database on which to run the command
@@ -455,6 +456,7 @@ class SocketInfo(object):
           - `collation`: The collation for this command.
           - `session`: optional ClientSession instance.
         """
+        self.check_session_auth_matches(session)
         if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
             raise ConfigurationError(
                 'read concern level of %s is not valid '
@@ -582,6 +584,12 @@ class SocketInfo(object):
         """
         auth.authenticate(credentials, self)
         self.authset.add(credentials)
+
+    def check_session_auth_matches(self, session):
+        """Raise error if a ClientSession is logged in as a different user."""
+        if session and session._authset != self.authset:
+            raise InvalidOperation('start_session was called while'
+                                   ' authenticated with different credentials')
 
     def close(self):
         self.closed = True

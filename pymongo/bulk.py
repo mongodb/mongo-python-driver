@@ -310,6 +310,8 @@ class _Bulk(object):
         listeners = self.collection.database.client._event_listeners
 
         with self.collection.database.client._tmp_session(session) as s:
+            # sock_info.command checks auth, but we use sock_info.write_command.
+            sock_info.check_session_auth_matches(s)
             for run in generator:
                 cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
                            ('ordered', self.ordered)])

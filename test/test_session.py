@@ -45,6 +45,12 @@ class SessionTestListener(EventListener):
         if not event.command_name.startswith('sasl'):
             super(SessionTestListener, self).failed(event)
 
+    def first_command_started(self):
+        assert len(self.results['started']) >= 1, (
+            "No command-started events")
+
+        return self.results['started'][0]
+
 
 def session_ids(client):
     return [s.session_id for s in client._topology._session_pool]
@@ -122,15 +128,62 @@ class TestSession(IntegrationTest):
     @client_context.require_auth
     @ignore_deprecations
     def test_session_authenticate_multiple(self):
+        listener = SessionTestListener()
         # Logged in as root.
-        client = rs_or_single_client()
-        client.pymongo_test.add_user('second-user', 'pass')
-        self.addCleanup(client.pymongo_test.remove_user, 'second-user')
-
-        client.pymongo_test.authenticate('second-user', 'pass')
+        client = rs_or_single_client(event_listeners=[listener])
+        db = client.pymongo_test
+        db.add_user('second-user', 'pass')
+        self.addCleanup(db.remove_user, 'second-user')
+        db.authenticate('second-user', 'pass')
 
         with self.assertRaises(InvalidOperation):
             client.start_session()
+
+        # No implicit sessions.
+        listener.results.clear()
+        db.collection.find_one()
+        event = listener.first_command_started()
+        self.assertNotIn(
+            'lsid', event.command,
+            "find_one with multi-auth shouldn't have sent lsid with %s" % (
+                event.command_name))
+
+        # Changing auth invalidates the session. Start as root.
+        client = rs_or_single_client(event_listeners=[listener])
+        db = client.pymongo_test
+        db.collection.insert_many([{} for _ in range(10)])
+        self.addCleanup(db.collection.drop)
+        with client.start_session() as s:
+            listener.results.clear()
+            cursor = db.collection.find(session=s).batch_size(2)
+            next(cursor)
+            event = listener.first_command_started()
+            self.assertEqual(event.command_name, 'find')
+            self.assertEqual(
+                s.session_id, event.command.get('lsid'),
+                "find sent wrong lsid with %s" % (event.command_name,))
+
+            client.admin.logout()
+            db.authenticate('second-user', 'pass')
+
+            err = 'start_session was called while authenticated with' \
+                  ' different credentials'
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                # Auth has changed between find and getMore.
+                list(cursor)
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                db.collection.bulk_write([InsertOne({})], session=s)
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                db.collection_names(session=s)
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                db.collection.find_one(session=s)
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                list(db.collection.aggregate([], session=s))
 
     def test_pool_lifo(self):
         # "Pool is LIFO" test from Driver Sessions Spec.
@@ -380,8 +433,7 @@ class TestSession(IntegrationTest):
         for name, f in ops:
             listener.results.clear()
             f(session=None)
-            self.assertGreaterEqual(len(listener.results['started']), 1)
-            event0 = listener.results['started'][0]
+            event0 = listener.first_command_started()
             self.assertTrue(
                 'lsid' in event0.command,
                 "%s sent no lsid with %s" % (
@@ -573,8 +625,7 @@ class TestSession(IntegrationTest):
         with self.assertRaises(OperationFailure):
             coll.aggregate([{'$badOperation': {'bar': 1}}])
 
-        self.assertEqual(len(listener.results['started']), 1)
-        event = listener.results['started'][0]
+        event = listener.first_command_started()
         self.assertEqual(event.command_name, 'aggregate')
         lsid = event.command['lsid']
         # Session was returned to pool despite error.

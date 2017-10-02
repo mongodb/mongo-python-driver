@@ -66,22 +66,13 @@ class SessionOptions(object):
 
 
 class ClientSession(object):
-    """A session for ordering sequential operations.
-
-    :Parameters:
-      - `client`: A :class:`~pymongo.mongo_client.MongoClient`.
-      - `options` (optional): A :class:`SessionOptions` instance.
-    """
-    def __init__(self, client, options=None):
+    """A session for ordering sequential operations."""
+    def __init__(self, client, server_session, options, authset):
+        # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client = client
-
-        if options is not None:
-            self._options = options
-        else:
-            self._options = SessionOptions()
-
-        # Raises ConfigurationError if sessions are not supported.
-        self._server_session = client._get_server_session()
+        self._server_session = server_session
+        self._options = options
+        self._authset = authset
 
     def end_session(self):
         """Finish this session.
