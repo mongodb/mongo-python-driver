@@ -24,7 +24,7 @@ from pymongo import InsertOne, IndexModel, OFF, monitoring
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
-from test import IntegrationTest, client_context
+from test import IntegrationTest, client_context, db_user, db_pwd
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
 
 
@@ -124,66 +124,6 @@ class TestSession(IntegrationTest):
                         lsid, session_ids(client),
                         "%s did not return implicit session to pool" % (
                             f.__name__,))
-
-    @client_context.require_auth
-    @ignore_deprecations
-    def test_session_authenticate_multiple(self):
-        listener = SessionTestListener()
-        # Logged in as root.
-        client = rs_or_single_client(event_listeners=[listener])
-        db = client.pymongo_test
-        db.add_user('second-user', 'pass')
-        self.addCleanup(db.remove_user, 'second-user')
-        db.authenticate('second-user', 'pass')
-
-        with self.assertRaises(InvalidOperation):
-            client.start_session()
-
-        # No implicit sessions.
-        listener.results.clear()
-        db.collection.find_one()
-        event = listener.first_command_started()
-        self.assertNotIn(
-            'lsid', event.command,
-            "find_one with multi-auth shouldn't have sent lsid with %s" % (
-                event.command_name))
-
-        # Changing auth invalidates the session. Start as root.
-        client = rs_or_single_client(event_listeners=[listener])
-        db = client.pymongo_test
-        db.collection.insert_many([{} for _ in range(10)])
-        self.addCleanup(db.collection.drop)
-        with client.start_session() as s:
-            listener.results.clear()
-            cursor = db.collection.find(session=s).batch_size(2)
-            next(cursor)
-            event = listener.first_command_started()
-            self.assertEqual(event.command_name, 'find')
-            self.assertEqual(
-                s.session_id, event.command.get('lsid'),
-                "find sent wrong lsid with %s" % (event.command_name,))
-
-            client.admin.logout()
-            db.authenticate('second-user', 'pass')
-
-            err = 'start_session was called while authenticated with' \
-                  ' different credentials'
-
-            with self.assertRaisesRegex(InvalidOperation, err):
-                # Auth has changed between find and getMore.
-                list(cursor)
-
-            with self.assertRaisesRegex(InvalidOperation, err):
-                db.collection.bulk_write([InsertOne({})], session=s)
-
-            with self.assertRaisesRegex(InvalidOperation, err):
-                db.collection_names(session=s)
-
-            with self.assertRaisesRegex(InvalidOperation, err):
-                db.collection.find_one(session=s)
-
-            with self.assertRaisesRegex(InvalidOperation, err):
-                list(db.collection.aggregate([], session=s))
 
     def test_pool_lifo(self):
         # "Pool is LIFO" test from Driver Sessions Spec.
@@ -679,6 +619,113 @@ class TestSession(IntegrationTest):
         self._test_cursor_helper(
             lambda coll, session: coll.aggregate([], session=session),
             lambda cursor: cursor.__del__())
+
+
+class TestSessionsMultiAuth(IntegrationTest):
+    @client_context.require_auth
+    @client_context.require_sessions
+    def setUp(self):
+        super(TestSessionsMultiAuth, self).setUp()
+
+        client = rs_or_single_client()  # Logged in as root.
+        db = client.pymongo_test
+        db.add_user('second-user', 'pass', roles=['readWrite'])
+        self.addCleanup(db.remove_user, 'second-user')
+
+    @ignore_deprecations
+    def test_session_authenticate_multiple(self):
+        listener = SessionTestListener()
+        # Logged in as root.
+        client = rs_or_single_client(event_listeners=[listener])
+        db = client.pymongo_test
+        db.authenticate('second-user', 'pass')
+
+        with self.assertRaises(InvalidOperation):
+            client.start_session()
+
+        # No implicit sessions.
+        listener.results.clear()
+        db.collection.find_one()
+        event = listener.first_command_started()
+        self.assertNotIn(
+            'lsid', event.command,
+            "find_one with multi-auth shouldn't have sent lsid with %s" % (
+                event.command_name))
+
+    @ignore_deprecations
+    def test_explicit_session_logout(self):
+        listener = SessionTestListener()
+
+        # Changing auth invalidates the session. Start as root.
+        client = rs_or_single_client(event_listeners=[listener])
+        db = client.pymongo_test
+        db.collection.insert_many([{} for _ in range(10)])
+        self.addCleanup(db.collection.drop)
+
+        with client.start_session() as s:
+            listener.results.clear()
+            cursor = db.collection.find(session=s).batch_size(2)
+            next(cursor)
+            event = listener.first_command_started()
+            self.assertEqual(event.command_name, 'find')
+            self.assertEqual(
+                s.session_id, event.command.get('lsid'),
+                "find() sent wrong lsid with %s cmd" % (event.command_name,))
+
+            client.admin.logout()
+            db.authenticate('second-user', 'pass')
+
+            err = 'session was used after authenticating with different' \
+                  ' credentials'
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                # Auth has changed between find and getMore.
+                list(cursor)
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                db.collection.bulk_write([InsertOne({})], session=s)
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                db.collection_names(session=s)
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                db.collection.find_one(session=s)
+
+            with self.assertRaisesRegex(InvalidOperation, err):
+                list(db.collection.aggregate([], session=s))
+
+    @ignore_deprecations
+    def test_implicit_session_logout(self):
+        listener = SessionTestListener()
+
+        # Changing auth doesn't invalidate the session. Start as root.
+        client = rs_or_single_client(event_listeners=[listener])
+        db = client.pymongo_test
+
+        for name, f in [
+            ('bulk_write', lambda: db.collection.bulk_write([InsertOne({})])),
+            ('collection_names', db.collection_names),
+            ('find_one', db.collection.find_one),
+            ('aggregate', lambda: list(db.collection.aggregate([])))
+        ]:
+            def sub_test():
+                listener.results.clear()
+                f()
+                for event in listener.results['started']:
+                    self.assertIn(
+                        'lsid', event.command,
+                        "%s sent no lsid with %s" % (
+                            name, event.command_name))
+
+            # We switch auth without clearing the pool of session ids. The
+            # server considers these to be new sessions since it's a new user.
+            # The old sessions time out on the server after 30 minutes.
+            client.admin.logout()
+            db.authenticate('second-user', 'pass')
+            sub_test()
+            db.logout()
+            client.admin.authenticate(db_user, db_pwd)
+            sub_test()
 
 
 class TestSessionsNotSupported(IntegrationTest):

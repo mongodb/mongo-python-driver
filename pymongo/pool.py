@@ -588,8 +588,8 @@ class SocketInfo(object):
     def check_session_auth_matches(self, session):
         """Raise error if a ClientSession is logged in as a different user."""
         if session and session._authset != self.authset:
-            raise InvalidOperation('start_session was called while'
-                                   ' authenticated with different credentials')
+            raise InvalidOperation('session was used after authenticating'
+                                   ' with different credentials')
 
     def close(self):
         self.closed = True

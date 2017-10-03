@@ -1031,6 +1031,10 @@ class Database(common.BaseObject):
                      source=None, mechanism='DEFAULT', **kwargs):
         """**DEPRECATED**: Authenticate to use this database.
 
+        .. warning:: Starting in MongoDB 3.6, calling :meth:`authenticate`
+          invalidates all existing cursors. It may also leave logical sessions
+          open on the server for up to 30 minutes until they time out.
+
         Authentication lasts for the life of the underlying client
         instance, or until :meth:`logout` is called.
 
@@ -1116,7 +1120,12 @@ class Database(common.BaseObject):
         return True
 
     def logout(self):
-        """**DEPRECATED**: Deauthorize use of this database."""
+        """**DEPRECATED**: Deauthorize use of this database.
+
+        .. warning:: Starting in MongoDB 3.6, calling :meth:`logout`
+          invalidates all existing cursors. It may also leave logical sessions
+          open on the server for up to 30 minutes until they time out.
+        """
         warnings.warn("Database.logout() is deprecated",
                       DeprecationWarning, stacklevel=2)
 
