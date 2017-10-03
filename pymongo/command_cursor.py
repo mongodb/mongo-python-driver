@@ -252,7 +252,7 @@ class CommandCursor(object):
     def next(self):
         """Advance the cursor."""
         # Block until a document is returnable.
-        while not len(self.__data) and not self.__killed:
+        while not len(self.__data) and not self.__killed and not self.__batch_size:
             self._refresh()
         if len(self.__data):
             coll = self.__collection

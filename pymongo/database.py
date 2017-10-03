@@ -526,34 +526,37 @@ class Database(common.BaseObject):
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
-    def list_collections(self, sock_info, slave_okay, criteria=None,
-                          session=None):
+    def list_collections(self, sock_info, slave_okay, filter=None,
+                         session=None, batch_size=0):
         """Internal listCollections helper."""
-        criteria = criteria or {}
-        cmd = SON([("listCollections", 1), ("cursor", {})])
-        if criteria:
-            cmd["filter"] = criteria
+        filter = filter or {}
+        cmd = SON([("listCollections", 1),
+                   ("cursor", {"batchSize": batch_size}),
+                   ("filter",filter)])
 
         if sock_info.max_wire_version > 2:
             coll = self["$cmd"]
             cursor = self._command(
                 sock_info, cmd, slave_okay, session=session)["cursor"]
-            return CommandCursor(coll, cursor, sock_info.address)
+            return CommandCursor(coll, cursor, sock_info.address, batch_size=batch_size)
         else:
             coll = self["system.namespaces"]
+            if "name" in filter:
+                filter["name"] = coll.database.name + "." + filter["name"]
             res = _first_batch(sock_info, coll.database.name, coll.name,
-                               criteria, 0, slave_okay,
+                               filter, 0, slave_okay,
                                CodecOptions(), ReadPreference.PRIMARY, cmd,
-                               self.client._event_listeners, session=None)
+                               self.client._event_listeners, session=None, batch_size=batch_size)
             data = res["data"]
             cursor = {
                 "id": res["cursor_id"],
                 "firstBatch": data,
                 "ns": coll.full_name,
             }
-            return CommandCursor(coll, cursor, sock_info.address)
+            return CommandCursor(coll, cursor, sock_info.address, batch_size=batch_size)
 
-    def collection_names(self, include_system_collections=True, session=None):
+    def collection_names(self, include_system_collections=True,
+                         session=None, batch_size=0, filter=None):
         """Get a list of all the collection names in this database.
 
         :Parameters:
@@ -569,8 +572,14 @@ class Database(common.BaseObject):
                 ReadPreference.PRIMARY) as (sock_info, slave_okay):
 
             wire_version = sock_info.max_wire_version
+            if batch_size and include_system_collections and wire_version <= 2:
+                batch_size = 2*batch_size - 1
+            elif batch_size and wire_version <= 2:
+                batch_size = 2*batch_size + 1
+
             results = self.list_collections(
-                sock_info, slave_okay, session=session)
+                sock_info, slave_okay, session=session,
+                batch_size=batch_size, filter=filter)
 
         # Iterating the cursor to completion may require a socket for getmore.
         # Ensure we do that outside the "with" block so we don't require more
