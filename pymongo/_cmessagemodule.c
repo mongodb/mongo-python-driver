@@ -646,6 +646,119 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     return result;
 }
 
+/*
+ * NOTE this method handles multiple documents in a type one payload but
+ * it does not perform batch splitting and the total message size is
+ * only checked *after* generating the entire message.
+ */
+static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
+    struct module_state *state = GETSTATE(self);
+
+    /* NOTE just using a random number as the request_id */
+    int request_id = rand();
+    unsigned int flags;
+    PyObject* command;
+    char* identifier = NULL;
+    int identifier_length = 0;
+    PyObject* docs;
+    PyObject* doc;
+    unsigned char check_keys = 0;
+    codec_options_t options;
+    buffer_t buffer;
+    int length_location, message_length, total_size;
+    PyObject* result = NULL;
+    PyObject* iterator = NULL;
+
+    /*flags, command, identifier, docs, check_keys, opts*/
+    if (!PyArg_ParseTuple(args, "IOet#ObO&",
+                          &flags,
+                          &command,
+                          "utf-8",
+                          &identifier,
+                          &identifier_length,
+                          &docs,
+                          &check_keys,
+                          convert_codec_options, &options)) {
+        return NULL;
+    }
+    buffer = buffer_new();
+    if (!buffer) {
+        PyErr_NoMemory();
+        goto bufferfail;
+    }
+
+    // save space for message length
+    length_location = buffer_save_space(buffer, 4);
+    if (length_location == -1) {
+        PyErr_NoMemory();
+        goto bufferfail;
+    }
+    if (!buffer_write_int32(buffer, (int32_t)request_id) ||
+        !buffer_write_bytes(buffer,
+                            "\x00\x00\x00\x00" /* responseTo */
+                            "\xdd\x07\x00\x00" /* 2013 */, 8)) {
+        goto encodefail;
+    }
+
+    if (!buffer_write_int32(buffer, (int32_t)flags) ||
+        !buffer_write_bytes(buffer, "\x00", 1) /* Payload type 0 */) {
+        goto encodefail;
+    }
+    total_size = write_dict(state->_cbson, buffer, command, 0,
+                          &options, 1);
+    if (!total_size) {
+        goto encodefail;
+    }
+
+    if (identifier_length) {
+        int payload_one_length_location, payload_length;
+        /* Payload type 1 */
+        if (!buffer_write_bytes(buffer, "\x01", 1)) {
+            goto encodefail;
+        }
+        /* save space for payload 0 length */
+        payload_one_length_location = buffer_save_space(buffer, 4);
+        /* C string identifier */
+        if (!buffer_write_bytes(buffer, identifier, identifier_length + 1)) {
+            goto encodefail;
+        }
+        iterator = PyObject_GetIter(docs);
+        if (iterator == NULL) {
+            goto encodefail;
+        }
+        while ((doc = PyIter_Next(iterator)) != NULL) {
+            if (!write_dict(state->_cbson, buffer, doc, check_keys,
+                            &options, 1)) {
+                Py_CLEAR(doc);
+                goto encodefail;
+            }
+            Py_CLEAR(doc);
+        }
+
+        payload_length = buffer_get_position(buffer) - payload_one_length_location;
+        buffer_write_int32_at_position(
+            buffer, payload_one_length_location, (int32_t)payload_length);
+        total_size += payload_length;
+    }
+
+    message_length = buffer_get_position(buffer) - length_location;
+    buffer_write_int32_at_position(
+        buffer, length_location, (int32_t)message_length);
+
+    /* objectify buffer */
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer),
+                           total_size);
+encodefail:
+    Py_XDECREF(iterator);
+    buffer_free(buffer);
+bufferfail:
+    destroy_codec_options(&options);
+    return result;
+}
+
+
 static void
 _set_document_too_large(int size, long max) {
     PyObject* DocumentTooLarge = _error("DocumentTooLarge");
@@ -1346,6 +1459,8 @@ static PyMethodDef _CMessageMethods[] = {
      "create a query message to be sent to MongoDB"},
     {"_get_more_message", _cbson_get_more_message, METH_VARARGS,
      "create a get more message to be sent to MongoDB"},
+    {"_op_msg", _cbson_op_msg, METH_VARARGS,
+     "create an OP_MSG message to be sent to MongoDB"},
     {"_do_batched_insert", _cbson_do_batched_insert, METH_VARARGS,
      "insert a batch of documents, splitting the batch as needed"},
     {"_do_batched_write_command", _cbson_do_batched_write_command, METH_VARARGS,

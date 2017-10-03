@@ -1023,7 +1023,7 @@ class Cursor(object):
             if from_command:
                 res = docs[0]
             elif cmd_name == "explain":
-                res = docs[0] if reply.number_returned else {}
+                res = docs[0] if docs else {}
             else:
                 res = {"cursor": {"id": reply.cursor_id,
                                   "ns": self.__collection.full_name},
@@ -1035,15 +1035,20 @@ class Cursor(object):
             listeners.publish_command_success(
                 duration(), res, cmd_name, rqst_id, self.__address)
 
-        if from_command and cmd_name != "explain":
-            cursor = docs[0]['cursor']
-            self.__id = cursor['id']
-            if cmd_name == 'find':
-                documents = cursor['firstBatch']
+        if from_command:
+            if cmd_name != "explain":
+                cursor = docs[0]['cursor']
+                self.__id = cursor['id']
+                if cmd_name == 'find':
+                    documents = cursor['firstBatch']
+                else:
+                    documents = cursor['nextBatch']
+                self.__data = deque(documents)
+                self.__retrieved += len(documents)
             else:
-                documents = cursor['nextBatch']
-            self.__data = deque(documents)
-            self.__retrieved += len(documents)
+                self.__id = 0
+                self.__data = deque(docs)
+                self.__retrieved += len(docs)
         else:
             self.__id = reply.cursor_id
             self.__data = deque(docs)

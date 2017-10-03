@@ -43,7 +43,7 @@ from pymongo.errors import (AutoReconnect,
                             NotMasterError,
                             OperationFailure,
                             ProtocolError)
-from pymongo.message import _OpReply
+from pymongo.message import _UNPACK_REPLY
 
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -56,13 +56,14 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             read_concern=None,
             parse_write_concern_error=False,
             collation=None,
-            compression_ctx=None):
+            compression_ctx=None,
+            use_op_msg=False):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
       - `sock`: a raw socket instance
       - `dbname`: name of the database on which to run the command
-      - `spec`: a command document as a dict, SON, or mapping object
+      - `spec`: a command document as an ordered dict type, eg SON.
       - `slave_ok`: whether to set the SlaveOkay wire protocol bit
       - `is_mongos`: are we connected to a mongos?
       - `read_preference`: a read preference
@@ -86,7 +87,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
-    if is_mongos:
+    if is_mongos and not use_op_msg:
         spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern:
         if read_concern.level:
@@ -103,12 +104,17 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     if publish:
         start = datetime.datetime.now()
 
-    if name.lower() not in _NO_COMPRESSION and compression_ctx:
-        request_id, msg, size = message.query(
-            flags, ns, 0, -1, spec, None, codec_options, check_keys, compression_ctx)
+    if compression_ctx and name.lower() in _NO_COMPRESSION:
+        compression_ctx = None
+
+    if use_op_msg:
+        request_id, msg, size = message._op_msg(
+            0, spec, dbname, read_preference, slave_ok, check_keys,
+            codec_options)
     else:
         request_id, msg, size = message.query(
-            flags, ns, 0, -1, spec, None, codec_options, check_keys)
+            flags, ns, 0, -1, spec, None, codec_options, check_keys,
+            compression_ctx)
 
     if (max_bson_size is not None
             and size > max_bson_size + message._COMMAND_OVERHEAD):
@@ -173,11 +179,13 @@ def receive_message(sock, request_id, max_message_size=MAX_MESSAGE_SIZE):
             _receive_data_on_socket(sock, length - 25), compressor_id)
     else:
         data = _receive_data_on_socket(sock, length - 16)
-    if op_code != _OpReply.OP_CODE:
-        raise ProtocolError("Got opcode %r but expected "
-                            "%r" % (op_code, _OpReply.OP_CODE))
 
-    return _OpReply.unpack(data)
+    try:
+        unpack_reply = _UNPACK_REPLY[op_code]
+    except KeyError:
+        raise ProtocolError("Got opcode %r but expected "
+                            "%r" % (op_code, _UNPACK_REPLY.keys()))
+    return unpack_reply(data)
 
 
 # memoryview was introduced in Python 2.7 but we only use it on Python 3

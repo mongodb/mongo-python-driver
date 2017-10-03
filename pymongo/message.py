@@ -69,6 +69,11 @@ _OP_MAP = {
     _UPDATE: b'\x04updates\x00\x00\x00\x00\x00',
     _DELETE: b'\x04deletes\x00\x00\x00\x00\x00',
 }
+_FIELD_MAP = {
+    'insert': 'documents',
+    'update': 'updates',
+    'delete': 'deletes'
+}
 
 _UJOIN = u"%s.%s"
 
@@ -306,8 +311,11 @@ class _Query(object):
         spec = self.spec
 
         if use_cmd:
-            ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command(sock_info)[0]
+            if sock_info.op_msg_enabled:
+                return _op_msg(0, spec, self.db, self.read_preference,
+                               set_slave_ok, False, self.codec_options)
+            ns = _UJOIN % (self.db, "$cmd")
             ntoreturn = -1  # All DB commands return 1 document
         else:
             # OP_QUERY treats ntoreturn of -1 and 1 the same, return
@@ -378,14 +386,17 @@ class _GetMore(object):
         ctx = sock_info.compression_context
 
         if use_cmd:
-            ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command(sock_info)[0]
-
+            if sock_info.op_msg_enabled:
+                return _op_msg(0, spec, self.db, ReadPreference.PRIMARY,
+                               False, False, self.codec_options)
+            ns = _UJOIN % (self.db, "$cmd")
             return query(0, ns, 0, -1, spec, None, self.codec_options, ctx=ctx)
 
         return get_more(ns, self.ntoreturn, self.cursor_id, ctx)
 
 
+# TODO: Use OP_MSG once the server is able to respond with document streams.
 class _RawBatchQuery(_Query):
     def use_command(self, socket_info, exhaust):
         # Compatibility checks.
@@ -584,24 +595,93 @@ def update(collection_name, upsert, multi, spec,
                                 doc, safe, last_error_args, check_keys, opts)
 
 
+_pack_op_msg_flags_type = struct.Struct("<IB").pack
+_pack_byte = struct.Struct("<B").pack
+
+
+def _op_msg_no_header(flags, command, identifier, docs, check_keys, opts):
+    """Get a OP_MSG message.
+
+    Note: this method handles multiple documents in a type one payload but
+    it does not perform batch splitting and the total message size is
+    only checked *after* generating the entire message.
+    """
+    # Encode the command document in payload 0 without checking keys.
+    encoded = _dict_to_bson(command, False, opts)
+    flags_type = _pack_op_msg_flags_type(flags, 0)
+    total_size = len(encoded)
+    if identifier:
+        type_one = _pack_byte(1)
+        cstring = _make_c_string(identifier)
+        encoded_docs = [_dict_to_bson(doc, check_keys, opts) for doc in docs]
+        size = len(cstring) + sum(len(doc) for doc in encoded_docs) + 4
+        encoded_size = _pack_int(size)
+        total_size += size
+        data = ([flags_type, encoded, type_one, encoded_size, cstring] +
+                encoded_docs)
+    else:
+        data = [flags_type, encoded]
+    return b''.join(data), total_size
+
+
+def _op_msg_compressed(flags, command, identifier, docs, check_keys, opts,
+                       ctx):
+    """Internal OP_MSG message helper."""
+    msg, max_bson_size = _op_msg_no_header(
+        flags, command, identifier, docs, check_keys, opts)
+    rid, msg = _compress(2013, msg, ctx)
+    return rid, msg, max_bson_size
+
+
+def _op_msg_uncompressed(flags, command, identifier, docs, check_keys, opts):
+    """Internal compressed OP_MSG message helper."""
+    data, max_bson_size = _op_msg_no_header(
+        flags, command, identifier, docs, check_keys, opts)
+    request_id, query_message = __pack_message(2013, data)
+    return request_id, query_message, max_bson_size
+if _use_c:
+    _op_msg_uncompressed = _cmessage._op_msg
+
+
+def _op_msg(flags, command, dbname, read_preference, slave_ok, check_keys,
+            opts, ctx=None):
+    """Get a OP_MSG message."""
+    command['$db'] = dbname
+    if "$readPreference" not in command:
+        if slave_ok and not read_preference.mode:
+            command["$readPreference"] = (
+                ReadPreference.PRIMARY_PREFERRED.document)
+        else:
+            command["$readPreference"] = read_preference.document
+    if check_keys:
+        name = next(iter(command))
+        try:
+            identifier = _FIELD_MAP.get(name)
+            docs = command.pop(identifier)
+        except KeyError:
+            identifier = ""
+            docs = None
+    else:
+        identifier = ""
+        docs = None
+    try:
+        if ctx:
+            return _op_msg_compressed(
+                flags, command, identifier, docs, check_keys, opts, ctx)
+        return _op_msg_uncompressed(
+            flags, command, identifier, docs, check_keys, opts)
+    finally:
+        # Add the field back to the command.
+        if identifier:
+            command[identifier] = docs
+
+
 def _query(options, collection_name, num_to_skip,
            num_to_return, query, field_selector, opts, check_keys):
     """Get an OP_QUERY message."""
-    encode = _dict_to_bson  # Make local. Uses extensions.
-    if check_keys and "$clusterTime" in query:
-        # Temporarily remove $clusterTime to avoid an error from the $-prefix.
-        cluster_time = query.pop('$clusterTime')
-        encoded = encode(query, True, opts)
-        extra = bson._name_value_to_bson(
-            b"$clusterTime\x00", cluster_time, False, opts)
-        encoded = (
-            _pack_int(len(encoded) + len(extra))
-            + encoded[4:-1] + extra + b'\x00')
-        query['$clusterTime'] = cluster_time
-    else:
-        encoded = encode(query, check_keys, opts)
+    encoded = _dict_to_bson(query, check_keys, opts)
     if field_selector:
-        efs = encode(field_selector, False, opts)
+        efs = _dict_to_bson(field_selector, False, opts)
     else:
         efs = b""
     max_bson_size = max(len(encoded), len(efs))
@@ -745,13 +825,6 @@ def kill_cursors(cursor_ids):
     pack = struct.Struct("<ii" + ("q" * num_cursors)).pack
     op_kill_cursors = pack(0, num_cursors, *cursor_ids)
     return __pack_message(2007, op_kill_cursors)
-
-
-_FIELD_MAP = {
-    'insert': 'documents',
-    'update': 'updates',
-    'delete': 'deletes'
-}
 
 
 class _BulkWriteContext(object):
@@ -1102,7 +1175,7 @@ class _OpReply(object):
 
     __slots__ = ("flags", "cursor_id", "number_returned", "documents")
 
-    UNPACK = struct.Struct("<iqii").unpack
+    UNPACK_FROM = struct.Struct("<iqii").unpack_from
     OP_CODE = 1
 
     def __init__(self, flags, cursor_id, number_returned, documents):
@@ -1180,13 +1253,67 @@ class _OpReply(object):
     def unpack(cls, msg):
         """Construct an _OpReply from raw bytes."""
         # PYTHON-945: ignore starting_from field.
-        flags, cursor_id, _, number_returned = cls.UNPACK(msg[:20])
+        flags, cursor_id, _, number_returned = cls.UNPACK_FROM(msg)
 
-        documents = msg[20:]
-        if not isinstance(msg, bytes):
-            # msg is a memoryview in Python 3.
-            documents = documents.tobytes()
+        # Convert Python 3 memoryview to bytes. Note we should call
+        # memoryview.tobytes() if we start using memoryview in Python 2.7.
+        documents = bytes(msg[20:])
         return cls(flags, cursor_id, number_returned, documents)
+
+
+class _OpMsg(object):
+    """A MongoDB OP_MSG response message."""
+
+    __slots__ = ("flags", "cursor_id", "number_returned", "payload_document")
+
+    UNPACK_FROM = struct.Struct("<IBi").unpack_from
+    OP_CODE = 2013
+
+    def __init__(self, flags, payload_document):
+        self.flags = flags
+        self.payload_document = payload_document
+
+    def raw_response(self, cursor_id=None):
+        raise NotImplemented
+
+    def unpack_response(self, cursor_id=None,
+                        codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
+        """Unpack a OP_MSG command response.
+
+        :Parameters:
+          - `cursor_id` (optional): Ignored, for compatibility with _OpReply.
+          - `codec_options` (optional): an instance of
+            :class:`~bson.codec_options.CodecOptions`
+        """
+        return bson.decode_all(self.payload_document, codec_options)
+
+    def command_response(self):
+        """Unpack a command response."""
+        return self.unpack_response()[0]
+
+    @classmethod
+    def unpack(cls, msg):
+        """Construct an _OpMsg from raw bytes."""
+        flags, first_payload_type, first_payload_size = cls.UNPACK_FROM(msg)
+        if flags != 0:
+            raise ProtocolError("Unsupported OP_MSG flags (%r)" % (flags,))
+        if first_payload_type != 0:
+            raise ProtocolError(
+                "Unsupported OP_MSG payload type (%r)" % (first_payload_type,))
+
+        if len(msg) != first_payload_size + 5:
+            raise ProtocolError("Unsupported OP_MSG reply: >1 section")
+
+        # Convert Python 3 memoryview to bytes. Note we should call
+        # memoryview.tobytes() if we start using memoryview in Python 2.7.
+        payload_document = bytes(msg[5:])
+        return cls(flags, payload_document)
+
+
+_UNPACK_REPLY = {
+    _OpReply.OP_CODE: _OpReply.unpack,
+    _OpMsg.OP_CODE: _OpMsg.unpack,
+}
 
 
 def _first_batch(sock_info, db, coll, query, ntoreturn,

@@ -42,7 +42,7 @@ import pymongo.errors
 
 from bson.son import SON
 from bson.py3compat import _unicode
-from pymongo import common
+from pymongo import common, message
 from pymongo.common import partition_node
 from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
 from test.version import Version
@@ -586,7 +586,18 @@ client_context = ClientContext()
 def sanitize_cmd(cmd):
     cp = cmd.copy()
     cp.pop('$clusterTime', None)
+    cp.pop('$db', None)
+    cp.pop('$readPreference', None)
     cp.pop('lsid', None)
+    # OP_MSG encoding may move the payload type one field to the
+    # end of the command. Do the same here.
+    name = next(iter(cp))
+    try:
+        identifier = message._FIELD_MAP[name]
+        docs = cp.pop(identifier)
+        cp[identifier] = docs
+    except KeyError:
+        pass
     return cp
 
 

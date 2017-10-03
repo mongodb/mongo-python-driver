@@ -463,7 +463,7 @@ class SocketInfo(object):
         self.max_write_batch_size = MAX_WRITE_BATCH_SIZE
         self.supports_sessions = False
         self.is_mongos = False
-
+        self.op_msg_enabled = False
         self.listeners = pool.opts.event_listeners
         self.compression_settings = pool.opts.compression_settings
         self.compression_context = None
@@ -497,6 +497,7 @@ class SocketInfo(object):
             self.compression_context = ctx
 
         self.performed_handshake = True
+        self.op_msg_enabled = ismaster.max_wire_version >= 6
         return ismaster
 
     def command(self, dbname, spec, slave_ok=False,
@@ -533,6 +534,11 @@ class SocketInfo(object):
           - `publish_events`: Should we publish events for this command?
         """
         self.validate_session(client, session)
+
+        # Ensure command name remains in first place.
+        if not isinstance(spec, ORDERED_TYPES):
+            spec = SON(spec)
+
         if (read_concern and self.max_wire_version < 4
                 and not read_concern.ok_for_legacy):
             raise ConfigurationError(
@@ -551,9 +557,6 @@ class SocketInfo(object):
             raise ConfigurationError(
                 'Must be connected to MongoDB 3.4+ to use a collation.')
 
-        if (client or session) and not isinstance(spec, ORDERED_TYPES):
-            # Ensure command name remains in first place.
-            spec = SON(spec)
         if session:
             session._apply_to(spec, retryable_write, read_preference)
         self.send_cluster_time(spec, session, client)
@@ -566,7 +569,8 @@ class SocketInfo(object):
                            self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation,
-                           compression_ctx=self.compression_context)
+                           compression_ctx=self.compression_context,
+                           use_op_msg=self.op_msg_enabled)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

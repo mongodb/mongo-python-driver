@@ -1495,7 +1495,7 @@ int decode_and_write_pair(PyObject* self, buffer_t buffer,
     return 1;
 }
 
-/* returns 0 on failure */
+/* returns the number of bytes written or 0 on failure */
 int write_dict(PyObject* self, buffer_t buffer,
                PyObject* dict, unsigned char check_keys,
                const codec_options_t* options, unsigned char top_level) {
@@ -1629,7 +1629,7 @@ int write_dict(PyObject* self, buffer_t buffer,
     length = buffer_get_position(buffer) - length_location;
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)length);
-    return 1;
+    return length;
 }
 
 static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
