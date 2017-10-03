@@ -24,6 +24,7 @@ from pymongo import InsertOne, IndexModel, OFF, monitoring
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
+from pymongo.monotonic import time as _time
 from test import IntegrationTest, client_context, db_user, db_pwd
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
 
@@ -74,12 +75,16 @@ class TestSession(IntegrationTest):
 
         for f, args, kw in ops:
             with client.start_session() as s:
+                last_use = s._server_session.last_use
+                start = _time()
+                self.assertLessEqual(last_use, start)
                 listener.results.clear()
                 # In case "f" modifies its inputs.
                 args = copy.copy(args)
                 kw = copy.copy(kw)
                 kw['session'] = s
                 f(*args, **kw)
+                self.assertGreaterEqual(s._server_session.last_use, start)
                 self.assertGreaterEqual(len(listener.results['started']), 1)
                 for event in listener.results['started']:
                     self.assertTrue(

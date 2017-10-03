@@ -635,12 +635,12 @@ class Collection(common.BaseObject):
             command['bypassDocumentValidation'] = True
         bwc = message._BulkWriteContext(
             self.database.name, command, sock_info, op_id,
-            self.database.client._event_listeners)
+            self.database.client._event_listeners, session=None)
         if acknowledged:
             # Batched insert command.
             with self.__database.client._tmp_session(session) as s:
                 if s:
-                    command['lsid'] = s.session_id
+                    command['lsid'] = s._use_lsid()
                 results = message._do_batched_write_command(
                     self.database.name + ".$cmd", message._INSERT, command,
                     gen(), check_keys, self.__write_response_codec_options, bwc)

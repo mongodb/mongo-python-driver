@@ -320,9 +320,9 @@ class _Bulk(object):
                 if self.bypass_doc_val and sock_info.max_wire_version >= 4:
                     cmd['bypassDocumentValidation'] = True
                 if s:
-                    cmd['lsid'] = s.session_id
+                    cmd['lsid'] = s._use_lsid()
                 bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
-                                        listeners)
+                                        listeners, s)
 
                 results = _do_batched_write_command(
                     self.namespace, run.op_type, cmd,

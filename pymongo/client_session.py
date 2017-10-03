@@ -120,6 +120,13 @@ class ClientSession(object):
         """True if this session is finished."""
         return self._server_session is None
 
+    def _use_lsid(self):
+        # Internal function.
+        if self._server_session is None:
+            raise InvalidOperation("Cannot use ended session")
+
+        return self._server_session.use_lsid()
+
 
 class _ServerSession(object):
     def __init__(self):
@@ -132,6 +139,10 @@ class _ServerSession(object):
 
         # Timed out if we have less than a minute to live.
         return idle_seconds > (session_timeout_minutes - 1) * 60
+
+    def use_lsid(self):
+        self.last_use = monotonic.time()
+        return self.session_id
 
 
 class _ServerSessionPool(collections.deque):

@@ -174,7 +174,7 @@ def _gen_explain_command(
         explain = SON([('explain', cmd)])
 
     if session:
-        explain['lsid'] = session.session_id
+        explain['lsid'] = session._use_lsid()
 
     return explain
 
@@ -213,7 +213,7 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
                     for opt, val in _OPTIONS.items()
                     if options & val])
     if session:
-        cmd['lsid'] = session.session_id
+        cmd['lsid'] = session._use_lsid()
     return cmd
 
 
@@ -227,7 +227,7 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms,
     if max_await_time_ms is not None:
         cmd['maxTimeMS'] = max_await_time_ms
     if session:
-        cmd['lsid'] = session.session_id
+        cmd['lsid'] = session._use_lsid()
     return cmd
 
 
@@ -565,10 +565,11 @@ class _BulkWriteContext(object):
     """A wrapper around SocketInfo for use with write splitting functions."""
 
     __slots__ = ('db_name', 'command', 'sock_info', 'op_id',
-                 'name', 'field', 'publish', 'start_time', 'listeners')
+                 'name', 'field', 'publish', 'start_time', 'listeners',
+                 'session')
 
-    def __init__(
-            self, database_name, command, sock_info, operation_id, listeners):
+    def __init__(self, database_name, command, sock_info, operation_id,
+                 listeners, session):
         self.db_name = database_name
         self.command = command
         self.sock_info = sock_info
@@ -578,6 +579,7 @@ class _BulkWriteContext(object):
         self.name = next(iter(command))
         self.field = _FIELD_MAP[self.name]
         self.start_time = datetime.datetime.now() if self.publish else None
+        self.session = session
 
     @property
     def max_bson_size(self):
@@ -628,6 +630,9 @@ class _BulkWriteContext(object):
     def write_command(self, request_id, msg, docs):
         """A proxy for SocketInfo.write_command that handles event publishing.
         """
+        if self.session:
+            # Update last_use time.
+            self.session._use_lsid()
         if self.publish:
             duration = datetime.datetime.now() - self.start_time
             self._start(request_id, docs)

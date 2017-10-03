@@ -82,7 +82,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         if spec.__class__ is dict:
             # Ensure command name remains in first place.
             spec = SON(spec)
-        spec['lsid'] = session.session_id
+        spec['lsid'] = session._use_lsid()
 
     # Publish the original command document, perhaps with session id.
     orig = spec
