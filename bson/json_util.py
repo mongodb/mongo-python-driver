@@ -112,7 +112,6 @@ import re
 import sys
 import uuid
 
-_HAS_OBJECT_PAIRS_HOOK = True
 if sys.version_info[:2] == (2, 6):
     # In Python 2.6, json does not include object_pairs_hook. Use simplejson
     # instead.
@@ -120,7 +119,6 @@ if sys.version_info[:2] == (2, 6):
         import simplejson as json
     except ImportError:
         import json
-        _HAS_OBJECT_PAIRS_HOOK = False
 else:
     import json
 
@@ -143,6 +141,13 @@ from bson.py3compat import (PY3, iteritems, integer_types, string_type,
 from bson.regex import Regex
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
+
+
+try:
+    json.loads("{}", object_pairs_hook=dict)
+    _HAS_OBJECT_PAIRS_HOOK = True
+except TypeError:
+    _HAS_OBJECT_PAIRS_HOOK = False
 
 
 _RE_OPT_TABLE = {
@@ -241,8 +246,8 @@ class JSONOptions(CodecOptions):
     """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
     Raises :exc:`~pymongo.errors.ConfigurationError` on Python 2.6 if
-    `simplejson <https://pypi.python.org/pypi/simplejson>`_ is not installed
-    and document_class is not the default (:class:`dict`).
+    `simplejson >= 2.1.0 <https://pypi.python.org/pypi/simplejson>`_ is not
+    installed and document_class is not the default (:class:`dict`).
 
     :Parameters:
       - `strict_number_long`: If ``True``, :class:`~bson.int64.Int64` objects
@@ -299,7 +304,7 @@ class JSONOptions(CodecOptions):
         if not _HAS_OBJECT_PAIRS_HOOK and self.document_class != dict:
             raise ConfigurationError(
                 "Support for JSONOptions.document_class on Python 2.6 "
-                "requires simplejson "
+                "requires simplejson >= 2.1.0"
                 "(https://pypi.python.org/pypi/simplejson) to be installed.")
         if json_mode not in (JSONMode.LEGACY,
                              JSONMode.RELAXED,

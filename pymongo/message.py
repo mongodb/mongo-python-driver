@@ -16,7 +16,7 @@
 <http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol>`_ to be sent to
 MongoDB.
 
-.. note:: This module is for internal use and is generally not needed by
+.. note:: This module is for internal use and should not be used by
    application developers.
 """
 
@@ -166,8 +166,8 @@ def _gen_explain_command(
         coll, spec, projection, skip, limit, batch_size,
         options, read_concern, session):
     """Generate an explain command document."""
-    cmd = _gen_find_command(
-        coll, spec, projection, skip, limit, batch_size, options)
+    cmd = _gen_find_command(coll, spec, projection, skip, limit, batch_size,
+                            options, session=None)
     if read_concern.level:
         explain = SON([('explain', cmd), ('readConcern', read_concern.document)])
     else:
@@ -179,9 +179,9 @@ def _gen_explain_command(
     return explain
 
 
-def _gen_find_command(coll, spec, projection, skip, limit, batch_size,
-                      options, read_concern=DEFAULT_READ_CONCERN,
-                      collation=None, session=None):
+def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
+                      session, read_concern=DEFAULT_READ_CONCERN,
+                      collation=None):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
@@ -287,10 +287,10 @@ class _Query(object):
                 self.coll, self.spec, self.fields, self.ntoskip,
                 self.limit, self.batch_size, self.flags,
                 self.read_concern, self.session), self.db
-        return _gen_find_command(
-            self.coll, self.spec, self.fields, self.ntoskip, self.limit,
-            self.batch_size, self.flags, self.read_concern,
-            self.collation, self.session), self.db
+        return _gen_find_command(self.coll, self.spec, self.fields,
+                                 self.ntoskip, self.limit, self.batch_size,
+                                 self.flags, self.session, self.read_concern,
+                                 self.collation), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""
@@ -334,8 +334,8 @@ class _GetMore(object):
 
     name = 'getMore'
 
-    def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
-                 max_await_time_ms=None, session=None):
+    def __init__(self, db, coll, ntoreturn, cursor_id, codec_options, session,
+                 max_await_time_ms=None):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
@@ -442,9 +442,12 @@ def __pack_message(operation, data):
     return (request_id, message + data)
 
 
-def insert(collection_name, docs, check_keys,
-           safe, last_error_args, continue_on_error, opts):
-    """Get an **insert** message."""
+def insert(collection_name, docs, check_keys, continue_on_error, opts):
+    """Get an unacknowledged **insert** message.
+
+    .. versionchanged:: 3.6
+       Removed 'safe' and 'last_error_args' arguments.
+    """
     options = 0
     if continue_on_error:
         options += 1
@@ -455,21 +458,17 @@ def insert(collection_name, docs, check_keys,
         raise InvalidOperation("cannot do an empty bulk insert")
     max_bson_size = max(map(len, encoded))
     data += _EMPTY.join(encoded)
-    if safe:
-        (_, insert_message) = __pack_message(2002, data)
-        (request_id, error_message, _) = __last_error(collection_name,
-                                                      last_error_args)
-        return (request_id, insert_message + error_message, max_bson_size)
-    else:
-        (request_id, insert_message) = __pack_message(2002, data)
-        return (request_id, insert_message, max_bson_size)
+    request_id, insert_message = __pack_message(2002, data)
+    return request_id, insert_message, max_bson_size
 if _use_c:
     insert = _cmessage._insert_message
 
 
-def update(collection_name, upsert, multi,
-           spec, doc, safe, last_error_args, check_keys, opts):
-    """Get an **update** message.
+def update(collection_name, upsert, multi, spec, doc, check_keys, opts):
+    """Get an unacknowledged **update** message.
+
+    .. versionchanged:: 3.6
+       Removed 'safe' and 'last_error_args' arguments.
     """
     options = 0
     if upsert:
@@ -483,14 +482,8 @@ def update(collection_name, upsert, multi,
     data += bson.BSON.encode(spec, False, opts)
     encoded = bson.BSON.encode(doc, check_keys, opts)
     data += encoded
-    if safe:
-        (_, update_message) = __pack_message(2001, data)
-        (request_id, error_message, _) = __last_error(collection_name,
-                                                      last_error_args)
-        return (request_id, update_message + error_message, len(encoded))
-    else:
-        (request_id, update_message) = __pack_message(2001, data)
-        return (request_id, update_message, len(encoded))
+    request_id, update_message = __pack_message(2001, data)
+    return request_id, update_message, len(encoded)
 if _use_c:
     update = _cmessage._update_message
 
@@ -528,28 +521,24 @@ if _use_c:
     get_more = _cmessage._get_more_message
 
 
-def delete(collection_name, spec, safe,
-           last_error_args, opts, flags=0):
-    """Get a **delete** message.
+def delete(collection_name, spec, opts, flags=0):
+    """Get an unacknowledged **delete** message.
 
     `opts` is a CodecOptions. `flags` is a bit vector that may contain
     the SingleRemove flag or not:
 
     http://docs.mongodb.org/meta-driver/latest/legacy/mongodb-wire-protocol/#op-delete
+
+    .. versionchanged:: 3.6
+       Removed 'safe' and 'last_error_args' arguments.
     """
     data = _ZERO_32
     data += bson._make_c_string(collection_name)
     data += struct.pack("<I", flags)
     encoded = bson.BSON.encode(spec, False, opts)
     data += encoded
-    if safe:
-        (_, remove_message) = __pack_message(2006, data)
-        (request_id, error_message, _) = __last_error(collection_name,
-                                                      last_error_args)
-        return (request_id, remove_message + error_message, len(encoded))
-    else:
-        (request_id, remove_message) = __pack_message(2006, data)
-        return (request_id, remove_message, len(encoded))
+    request_id, remove_message = __pack_message(2006, data)
+    return request_id, remove_message, len(encoded)
 
 
 def kill_cursors(cursor_ids):

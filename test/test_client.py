@@ -354,23 +354,27 @@ class TestClient(IntegrationTest):
         port are not overloaded.
         """
         host, port = client_context.host, client_context.port
+        kwargs = client_context.ssl_client_options.copy()
+        if client_context.auth_enabled:
+            kwargs['username'] = db_user
+            kwargs['password'] = db_pwd
+
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"
         MongoClient.PORT = 123456789
         with self.assertRaises(AutoReconnect):
             connected(MongoClient(serverSelectionTimeoutMS=10,
-                                  **client_context.ssl_client_options))
+                                  **kwargs))
 
         # Override the defaults. No error.
-        connected(MongoClient(host, port,
-                              **client_context.ssl_client_options))
+        connected(MongoClient(host, port, **kwargs))
 
         # Set good defaults.
         MongoClient.HOST = host
         MongoClient.PORT = port
 
         # No error.
-        connected(MongoClient(**client_context.ssl_client_options))
+        connected(MongoClient(**kwargs))
 
     def test_init_disconnected(self):
         host, port = client_context.host, client_context.port
@@ -840,8 +844,7 @@ class TestClient(IntegrationTest):
 
     @client_context.require_no_mongos
     def test_fsync_lock_unlock(self):
-        if (server_is_master_with_slave(client_context.client) and
-                client_context.version.at_least(2, 3, 0)):
+        if server_is_master_with_slave(client_context.client):
             raise SkipTest('SERVER-7714')
 
         self.assertFalse(self.client.is_locked)
@@ -1051,7 +1054,8 @@ class TestClient(IntegrationTest):
                                serverSelectionTimeoutMS=100)
             client._send_message_with_response(
                 operation=message._GetMore('pymongo_test', 'collection',
-                                           101, 1234, client.codec_options),
+                                           101, 1234, client.codec_options,
+                                           None),
                 address=('not-a-member', 27017))
 
     def test_heartbeat_frequency_ms(self):
@@ -1109,10 +1113,6 @@ class TestExhaustCursor(IntegrationTest):
         if client_context.is_mongos:
             raise SkipTest("mongos doesn't support exhaust, SERVER-2627")
 
-    # mongod < 2.2.0 closes exhaust socket on error, so it behaves like
-    # test_exhaust_query_network_error. Here we test that on query error
-    # the client correctly keeps the socket *open* and checks it in.
-    @client_context.require_version_min(2, 2, 0)
     def test_exhaust_query_server_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.

@@ -194,12 +194,14 @@ class TestSSL(IntegrationTest):
                                   ssl_certfile=CLIENT_ENCRYPTED_PEM,
                                   ssl_pem_passphrase="clientpassword",
                                   ssl_ca_certs=CA_PEM,
-                                  serverSelectionTimeoutMS=100))
+                                  serverSelectionTimeoutMS=100,
+                                  **self.credentials))
 
             uri_fmt = ("mongodb://localhost/?ssl=true"
                        "&ssl_certfile=%s&ssl_pem_passphrase=clientpassword"
                        "&ssl_ca_certs=%s&serverSelectionTimeoutMS=100")
-            connected(MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM)))
+            connected(MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM),
+                                  **self.credentials))
 
     @client_context.require_ssl_certfile
     @client_context.require_no_auth
@@ -322,7 +324,8 @@ class TestSSL(IntegrationTest):
                                   ssl_certfile=CLIENT_PEM,
                                   ssl_cert_reqs=ssl.CERT_REQUIRED,
                                   ssl_ca_certs=CA_PEM,
-                                  serverSelectionTimeoutMS=100))
+                                  serverSelectionTimeoutMS=100,
+                                  **self.credentials))
 
         connected(MongoClient('server',
                               ssl=True,
@@ -330,7 +333,8 @@ class TestSSL(IntegrationTest):
                               ssl_cert_reqs=ssl.CERT_REQUIRED,
                               ssl_ca_certs=CA_PEM,
                               ssl_match_hostname=False,
-                              serverSelectionTimeoutMS=100))
+                              serverSelectionTimeoutMS=100,
+                              **self.credentials))
 
         if 'setName' in response:
             with self.assertRaises(ConnectionFailure):
@@ -340,7 +344,8 @@ class TestSSL(IntegrationTest):
                                       ssl_certfile=CLIENT_PEM,
                                       ssl_cert_reqs=ssl.CERT_REQUIRED,
                                       ssl_ca_certs=CA_PEM,
-                                      serverSelectionTimeoutMS=100))
+                                      serverSelectionTimeoutMS=100,
+                                      **self.credentials))
 
             connected(MongoClient('server',
                                   replicaSet=response['setName'],
@@ -349,7 +354,8 @@ class TestSSL(IntegrationTest):
                                   ssl_cert_reqs=ssl.CERT_REQUIRED,
                                   ssl_ca_certs=CA_PEM,
                                   ssl_match_hostname=False,
-                                  serverSelectionTimeoutMS=100))
+                                  serverSelectionTimeoutMS=100,
+                                  **self.credentials))
 
     @client_context.require_ssl_certfile
     def test_ssl_crlfile_support(self):
@@ -366,23 +372,27 @@ class TestSSL(IntegrationTest):
             connected(MongoClient('localhost',
                                   ssl=True,
                                   ssl_ca_certs=CA_PEM,
-                                  serverSelectionTimeoutMS=100))
+                                  serverSelectionTimeoutMS=100,
+                                  **self.credentials))
 
             with self.assertRaises(ConnectionFailure):
                 connected(MongoClient('localhost',
                                       ssl=True,
                                       ssl_ca_certs=CA_PEM,
                                       ssl_crlfile=CRL_PEM,
-                                      serverSelectionTimeoutMS=100))
+                                      serverSelectionTimeoutMS=100,
+                                      **self.credentials))
 
             uri_fmt = ("mongodb://localhost/?ssl=true&"
                        "ssl_ca_certs=%s&serverSelectionTimeoutMS=100")
-            connected(MongoClient(uri_fmt % (CA_PEM,)))
+            connected(MongoClient(uri_fmt % (CA_PEM,),
+                                  **self.credentials))
 
             uri_fmt = ("mongodb://localhost/?ssl=true&ssl_crlfile=%s"
                        "&ssl_ca_certs=%s&serverSelectionTimeoutMS=100")
             with self.assertRaises(ConnectionFailure):
-                connected(MongoClient(uri_fmt % (CRL_PEM, CA_PEM)))
+                connected(MongoClient(uri_fmt % (CRL_PEM, CA_PEM),
+                                      **self.credentials))
 
     @client_context.require_ssl_certfile
     @client_context.require_server_resolvable
@@ -406,23 +416,27 @@ class TestSSL(IntegrationTest):
                 # Server cert is verified but hostname matching fails
                 connected(MongoClient('server',
                                       ssl=True,
-                                      serverSelectionTimeoutMS=100))
+                                      serverSelectionTimeoutMS=100,
+                                      **self.credentials))
 
             # Server cert is verified. Disable hostname matching.
             connected(MongoClient('server',
                                   ssl=True,
                                   ssl_match_hostname=False,
-                                  serverSelectionTimeoutMS=100))
+                                  serverSelectionTimeoutMS=100,
+                                  **self.credentials))
 
             # Server cert and hostname are verified.
             connected(MongoClient('localhost',
                                   ssl=True,
-                                  serverSelectionTimeoutMS=100))
+                                  serverSelectionTimeoutMS=100,
+                                  **self.credentials))
 
             # Server cert and hostname are verified.
             connected(
                 MongoClient(
-                    'mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100'))
+                    'mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100',
+                    **self.credentials))
         finally:
             os.environ.pop('SSL_CERT_FILE')
 
@@ -488,7 +502,6 @@ class TestSSL(IntegrationTest):
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 
-    @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
     @client_context.require_ssl_certfile
     def test_mongodb_x509_auth(self):

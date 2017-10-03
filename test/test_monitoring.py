@@ -204,7 +204,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.listener.results.clear()
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
-        if self.client.is_mongos and client_context.version.at_least(2, 4, 0):
+        if self.client.is_mongos:
             coll = coll.with_options(
                 read_preference=ReadPreference.PRIMARY_PREFERRED)
         res = coll.find().explain()
@@ -235,7 +235,7 @@ class TestCommandMonitoring(unittest.TestCase):
 
         # Test that we publish the unwrapped command.
         self.listener.results.clear()
-        if self.client.is_mongos and client_context.version.at_least(2, 4, 0):
+        if self.client.is_mongos:
             coll = coll.with_options(
                 read_preference=ReadPreference.PRIMARY_PREFERRED)
 
@@ -311,7 +311,6 @@ class TestCommandMonitoring(unittest.TestCase):
 
         self._test_find_options(query, cmd)
 
-    @client_context.require_version_min(2, 6, 0)
     def test_command_and_get_more(self):
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many(
@@ -319,7 +318,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.listener.results.clear()
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
-        if self.client.is_mongos and client_context.version.at_least(2, 4, 0):
+        if self.client.is_mongos:
             coll = coll.with_options(
                 read_preference=ReadPreference.PRIMARY_PREFERRED)
         cursor = coll.aggregate(

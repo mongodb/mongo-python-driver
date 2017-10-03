@@ -29,6 +29,7 @@ from functools import partial
 
 from pymongo import MongoClient, monitoring
 from pymongo.errors import AutoReconnect, OperationFailure
+from pymongo.monitoring import CommandStartedEvent
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.write_concern import WriteConcern
@@ -62,10 +63,17 @@ class WhiteListEventListener(monitoring.CommandListener):
 
 class EventListener(monitoring.CommandListener):
 
-    def __init__(self):
+    def __init__(self, ignore_lsid=True):
+        self.ignore_lsid = ignore_lsid
         self.results = defaultdict(list)
 
     def started(self, event):
+        if self.ignore_lsid and 'lsid' in event.command:
+            cmd = event.command.copy()
+            cmd.pop('lsid', None)
+            event = CommandStartedEvent(cmd, event.database_name,
+                                        event.request_id, event.connection_id,
+                                        event.operation_id)
         self.results['started'].append(event)
 
     def succeeded(self, event):
@@ -265,13 +273,8 @@ def drop_collections(db):
 
 
 def remove_all_users(db):
-    if Version.from_client(db.client).at_least(2, 5, 3, -1):
-        db.command("dropAllUsersFromDatabase", 1,
-                   writeConcern={"w": client_context.w})
-    else:
-        db = db.client.get_database(
-            db.name, write_concern=WriteConcern(w=client_context.w))
-        db.system.users.delete_many({})
+    db.command("dropAllUsersFromDatabase", 1,
+               writeConcern={"w": client_context.w})
 
 
 def joinall(threads):
@@ -320,17 +323,6 @@ def wait_until(predicate, success_description, timeout=10):
 def is_mongos(client):
     res = client.admin.command('ismaster')
     return res.get('msg', '') == 'isdbgrid'
-
-
-def enable_text_search(client):
-    sinfo = client.server_info()
-    if 'versionArray' in sinfo and sinfo['versionArray'][:2] == [2, 4]:
-        client.admin.command(
-            'setParameter', textSearchEnabled=True)
-
-        for host, port in client.secondaries:
-            client = single_client(host, port)
-            client.admin.command('setParameter', textSearchEnabled=True)
 
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):

@@ -365,12 +365,13 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.2
            Removed deprecated argument: options
         """
-        if name in self.collection_names(session=session):
-            raise CollectionInvalid("collection %s already exists" % name)
+        with self.__client._tmp_session(session) as s:
+            if name in self.collection_names(session=s):
+                raise CollectionInvalid("collection %s already exists" % name)
 
-        return Collection(self, name, True, codec_options,
-                          read_preference, write_concern,
-                          read_concern, session=session, **kwargs)
+            return Collection(self, name, True, codec_options,
+                              read_preference, write_concern,
+                              read_concern, session=s, **kwargs)
 
     def _apply_incoming_manipulators(self, son, collection):
         """Apply incoming manipulators to `son`."""
@@ -422,16 +423,30 @@ class Database(common.BaseObject):
 
         command.update(kwargs)
 
-        return sock_info.command(
-            self.__name,
-            command,
-            slave_ok,
-            read_preference,
-            codec_options,
-            check,
-            allowable_errors,
-            parse_write_concern_error=parse_write_concern_error,
-            session=session)
+        if not sock_info.authset and next(iter(command)) == 'createUser':
+            # Don't automatically include lsid, see SERVER-31116.
+            return sock_info.command(
+                self.__name,
+                command,
+                slave_ok,
+                read_preference,
+                codec_options,
+                check,
+                allowable_errors,
+                parse_write_concern_error=parse_write_concern_error,
+                session=session)
+
+        with self.__client._tmp_session(session) as s:
+            return sock_info.command(
+                    self.__name,
+                    command,
+                    slave_ok,
+                    read_preference,
+                    codec_options,
+                    check,
+                    allowable_errors,
+                    parse_write_concern_error=parse_write_concern_error,
+                    session=s)
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
@@ -536,9 +551,11 @@ class Database(common.BaseObject):
 
         if sock_info.max_wire_version > 2:
             coll = self["$cmd"]
-            cursor = self._command(
-                sock_info, cmd, slave_okay, session=session)["cursor"]
-            return CommandCursor(coll, cursor, sock_info.address, batch_size=batch_size)
+            with self.__client._tmp_session(session, close=False) as s:
+                cursor = self._command(
+                    sock_info, cmd, slave_okay, session=s)["cursor"]
+                return CommandCursor(coll, cursor, sock_info.address, session=s,
+                                     explicit_session=session is not None, batch_size=batch_size)
         else:
             coll = self["system.namespaces"]
             if "name" in filter:
@@ -586,7 +603,7 @@ class Database(common.BaseObject):
         # than one socket at a time.
         names = [result["name"] for result in results]
         if wire_version <= 2:
-            # MongoDB 2.4 and older return index namespaces and collection
+            # MongoDB 2.6 and older return index namespaces and collection
             # namespaces prefixed with the database name.
             names = [n[len(self.__name) + 1:] for n in names
                      if n.startswith(self.__name + ".") and "$" not in n]
@@ -710,7 +727,8 @@ class Database(common.BaseObject):
         cmd = SON([("currentOp", 1), ("$all", include_all)])
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
-                return sock_info.command("admin", cmd, session=session)
+                with self.__client._tmp_session(session) as s:
+                    return sock_info.command("admin", cmd, session=s)
             else:
                 spec = {"$all": True} if include_all else {}
                 x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
@@ -939,36 +957,6 @@ class Database(common.BaseObject):
 
         self.command(command_name, name, session=session, **opts)
 
-    def _legacy_add_user(self, name, password, read_only, **kwargs):
-        """Uses v1 system to add users, i.e. saving to system.users.
-        """
-        # Use a Collection with the default codec_options.
-        system_users = self._collection_default_options('system.users')
-        user = system_users.find_one({"user": name}) or {"user": name}
-        if password is not None:
-            user["pwd"] = auth._password_digest(name, password)
-        if read_only is not None:
-            user["readOnly"] = read_only
-        user.update(kwargs)
-
-        # We don't care what the _id is, only that it has one
-        # for the replace_one call below.
-        user.setdefault("_id", ObjectId())
-        try:
-            system_users.replace_one({"_id": user["_id"]}, user, True)
-        except OperationFailure as exc:
-            # First admin user add fails gle in MongoDB >= 2.1.2
-            # See SERVER-4225 for more information.
-            if 'login' in str(exc):
-                pass
-            # First admin user add fails gle from mongos 2.0.x
-            # and 2.2.x.
-            elif (exc.details and
-                  'getlasterror' in exc.details.get('note', '')):
-                pass
-            else:
-                raise
-
     def add_user(self, name, password=None, read_only=None, session=None,
                  **kwargs):
         """Create user `name` with password `password`.
@@ -1020,14 +1008,9 @@ class Database(common.BaseObject):
                 (not uinfo["users"]), name, password, read_only,
                 session=session, **kwargs)
         except OperationFailure as exc:
-            # MongoDB >= 2.5.3 requires the use of commands to manage
-            # users.
-            if exc.code in common.COMMAND_NOT_FOUND_CODES:
-                self._legacy_add_user(name, password, read_only, **kwargs)
-                return
             # Unauthorized. Attempt to create the user in case of
             # localhost exception.
-            elif exc.code == 13:
+            if exc.code == 13:
                 self._create_or_update_user(
                     True, name, password, read_only, session=session, **kwargs)
             else:
@@ -1047,19 +1030,11 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        try:
-            cmd = SON([("dropUser", name)])
-            # Don't send {} as writeConcern.
-            if self.write_concern.acknowledged and self.write_concern.document:
-                cmd["writeConcern"] = self.write_concern.document
-            self.command(cmd, session=session)
-        except OperationFailure as exc:
-            # See comment in add_user try / except above.
-            if exc.code in common.COMMAND_NOT_FOUND_CODES:
-                coll = self._collection_default_options('system.users')
-                coll.delete_one({"user": name})
-                return
-            raise
+        cmd = SON([("dropUser", name)])
+        # Don't send {} as writeConcern.
+        if self.write_concern.acknowledged and self.write_concern.document:
+            cmd["writeConcern"] = self.write_concern.document
+        self.command(cmd, session=session)
 
     def authenticate(self, name=None, password=None,
                      source=None, mechanism='DEFAULT', **kwargs):

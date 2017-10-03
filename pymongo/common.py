@@ -76,13 +76,8 @@ MAX_IDLE_TIME_MS = None
 # Default value for localThresholdMS.
 LOCAL_THRESHOLD_MS = 15
 
-# mongod/s 2.6 and above return code 59 when a
-# command doesn't exist. mongod versions previous
-# to 2.6 and mongos 2.4.x return no error code
-# when a command does exist. mongos versions previous
-# to 2.4.0 return code 13390 when a command does not
-# exist.
-COMMAND_NOT_FOUND_CODES = (59, 13390, None)
+# mongod/s 2.6 and above return code 59 when a command doesn't exist.
+COMMAND_NOT_FOUND_CODES = (59,)
 
 # Error codes to ignore if GridFS calls createIndex on a secondary
 UNAUTHORIZED_CODES = (13, 16547, 16548)
