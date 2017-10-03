@@ -514,8 +514,6 @@ class TestSampleShellCommands(unittest.TestCase):
             self.assertTrue("instock" in doc)
             self.assertEqual(len(doc["instock"]), 1)
 
-    # The $currentDate operator was new in MongoDB 2.6.
-    @client_context.require_version_min(2, 6)
     def test_update_and_replace(self):
         db = client_context.client.pymongo_test
 

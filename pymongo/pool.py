@@ -472,11 +472,11 @@ class SocketInfo(object):
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
-                           check, allowable_errors, self.address,
+                           session, check, allowable_errors, self.address,
                            check_keys, self.listeners, self.max_bson_size,
                            read_concern,
                            parse_write_concern_error=parse_write_concern_error,
-                           collation=collation, session=session)
+                           collation=collation)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
@@ -815,7 +815,8 @@ class Pool:
                             False,
                             False,
                             ReadPreference.PRIMARY,
-                            DEFAULT_CODEC_OPTIONS))
+                            DEFAULT_CODEC_OPTIONS,
+                            None))
             else:
                 ismaster = None
             return SocketInfo(sock, self, ismaster, self.address)

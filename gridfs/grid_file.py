@@ -693,7 +693,7 @@ class GridOutCursor(Cursor):
     def remove_option(self, *args, **kwargs):
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
-    def _clone_base(self):
+    def _clone_base(self, session):
         """Creates an empty GridOutCursor for information to be copied into.
         """
-        return GridOutCursor(self.__root_collection)
+        return GridOutCursor(self.__root_collection, session=session)

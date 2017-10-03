@@ -337,7 +337,6 @@ class BulkAuthorizationTestBase(BulkTestBase):
 
     @classmethod
     @client_context.require_auth
-    @client_context.require_version_min(2, 5, 3)
     def setUpClass(cls):
         super(BulkAuthorizationTestBase, cls).setUpClass()
 

@@ -358,7 +358,6 @@ class TestDatabase(IntegrationTest):
     # MongoDB 2.3.2, aggregation turned regexes into strings: SERVER-6470.
     # Note: MongoDB 3.5.2 requires the 'cursor' or 'explain' option for
     # aggregate.
-    @client_context.require_version_min(2, 3, 2)
     @client_context.require_version_max(3, 5, 0)
     def test_command_with_regex(self):
         db = self.client.pymongo_test
@@ -405,17 +404,16 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(ConfigurationError, auth_db.add_user,
                           "user", 'password', True, roles=['read'])
 
-        if client_context.version.at_least(2, 5, 3, -1):
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", DeprecationWarning)
-                self.assertRaises(DeprecationWarning, auth_db.add_user,
-                                  "user", "password")
-                self.assertRaises(DeprecationWarning, auth_db.add_user,
-                                  "user", "password", True)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            self.assertRaises(DeprecationWarning, auth_db.add_user,
+                              "user", "password")
+            self.assertRaises(DeprecationWarning, auth_db.add_user,
+                              "user", "password", True)
 
-            with ignore_deprecations():
-                self.assertRaises(ConfigurationError, auth_db.add_user,
-                                  "user", "password", digestPassword=True)
+        with ignore_deprecations():
+            self.assertRaises(ConfigurationError, auth_db.add_user,
+                              "user", "password", digestPassword=True)
 
         # Add / authenticate / remove
         auth_db.add_user("mike", "password", roles=["read"])
@@ -444,15 +442,6 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(OperationFailure, check_auth, "Gustave", u"Dor\xe9")
         check_auth("Gustave", u"password")
 
-        if not client_context.version.at_least(2, 5, 3, -1):
-            # Add a readOnly user
-            with ignore_deprecations():
-                auth_db.add_user("Ross", "password", read_only=True)
-
-            check_auth("Ross", u"password")
-            self.assertTrue(
-                auth_db.system.users.find({"readOnly": True}).count())
-
     @client_context.require_auth
     def test_make_user_readonly(self):
         # "self.client" is logged in as root.
@@ -480,7 +469,6 @@ class TestDatabase(IntegrationTest):
                           c.pymongo_test.collection.insert_one,
                           {})
 
-    @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
     def test_default_roles(self):
         # "self.client" is logged in as root.
@@ -510,7 +498,6 @@ class TestDatabase(IntegrationTest):
         info = auth_db.command('usersInfo', 'ro-user')['users'][0]
         self.assertEqual("read", info['roles'][0]['role'])
 
-    @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
     def test_new_user_cmds(self):
         # "self.client" is logged in as root.
@@ -549,11 +536,8 @@ class TestDatabase(IntegrationTest):
 
         self.assertRaises(OperationFailure, users_db.test.find_one)
 
-        if client_context.version.at_least(2, 5, 3, -1):
-            admin_db_auth.add_user('ro-admin', 'pass',
-                                   roles=["userAdmin", "readAnyDatabase"])
-        else:
-            admin_db_auth.add_user('ro-admin', 'pass', read_only=True)
+        admin_db_auth.add_user('ro-admin', 'pass',
+                               roles=["userAdmin", "readAnyDatabase"])
 
         self.addCleanup(admin_db_auth.remove_user, 'ro-admin')
         users_db_auth.add_user('user', 'pass',
@@ -769,11 +753,6 @@ class TestDatabase(IntegrationTest):
 
         self.assertRaises(OperationFailure, db.system_js.non_existant)
 
-        # XXX: Broken in V8, works in SpiderMonkey
-        if not client_context.version.at_least(2, 3, 0):
-            db.system_js.no_param = Code("return 5;")
-            self.assertEqual(5, db.system_js.no_param())
-
     def test_system_js_list(self):
         db = self.client.pymongo_test
         db.system.js.delete_many({})
@@ -837,7 +816,6 @@ class TestDatabase(IntegrationTest):
 
         self.assertEqual('outer', str(context.exception))
 
-    @client_context.require_version_min(2, 6, 0)
     @client_context.require_test_commands
     @client_context.require_no_mongos
     def test_command_max_time_ms(self):

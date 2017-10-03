@@ -35,22 +35,24 @@ class CommandCursor(object):
     _getmore_class = _GetMore
 
     def __init__(self, collection, cursor_info, address, retrieved=0,
-                 batch_size=0, max_await_time_ms=None, session=None):
+                 batch_size=0, max_await_time_ms=None, session=None,
+                 explicit_session=False):
         """Create a new command cursor.
 
         The parameter 'retrieved' is unused.
         """
         self.__collection = collection
+        self.__session = None
         self.__id = cursor_info['id']
         self.__address = address
         self.__data = deque(cursor_info['firstBatch'])
-        self.__session = session
         self.__batch_size = batch_size
-        if (not isinstance(max_await_time_ms, integer_types)
-                and max_await_time_ms is not None):
-            raise TypeError("max_await_time_ms must be an integer or None")
         self.__max_await_time_ms = max_await_time_ms
+        self.__session = session
+        self.__explicit_session = explicit_session
         self.__killed = (self.__id == 0)
+        if self.__killed:
+            self.__end_session(True)
 
         if "ns" in cursor_info:
             self.__ns = cursor_info["ns"]
@@ -58,6 +60,10 @@ class CommandCursor(object):
             self.__ns = collection.full_name
 
         self.batch_size(batch_size)
+
+        if (not isinstance(max_await_time_ms, integer_types)
+                and max_await_time_ms is not None):
+            raise TypeError("max_await_time_ms must be an integer or None")
 
     def __del__(self):
         if self.__id and not self.__killed:
@@ -77,6 +83,12 @@ class CommandCursor(object):
                 self.__collection.database.client.close_cursor(
                     self.__id, address)
         self.__killed = True
+        self.__end_session(synchronous)
+
+    def __end_session(self, synchronous):
+        if self.__session and not self.__explicit_session:
+            self.__session._end_session(lock=synchronous)
+            self.__session = None
 
     def close(self):
         """Explicitly close / kill this cursor.
@@ -110,6 +122,10 @@ class CommandCursor(object):
     def __send_message(self, operation):
         """Send a getmore message and handle the response.
         """
+        def kill():
+            self.__killed = True
+            self.__end_session(True)
+
         client = self.__collection.database.client
         listeners = client._event_listeners
         publish = listeners.enabled_for_commands
@@ -121,7 +137,7 @@ class CommandCursor(object):
             # or to another server. It can cause a _pinValue
             # assertion on some server releases if we get here
             # due to a socket timeout.
-            self.__killed = True
+            kill()
             raise
 
         cmd_duration = response.duration
@@ -138,7 +154,7 @@ class CommandCursor(object):
                 helpers._check_command_response(doc['data'][0])
 
         except OperationFailure as exc:
-            self.__killed = True
+            kill()
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
@@ -149,7 +165,7 @@ class CommandCursor(object):
         except NotMasterError as exc:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
-            self.__killed = True
+            kill()
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
@@ -185,7 +201,7 @@ class CommandCursor(object):
                 duration, res, "getMore", rqst_id, self.__address)
 
         if self.__id == 0:
-            self.__killed = True
+            kill()
         self.__data = deque(documents)
 
     def _unpack_response(self, response, cursor_id, codec_options):
@@ -209,10 +225,11 @@ class CommandCursor(object):
                                     self.__batch_size,
                                     self.__id,
                                     self.__collection.codec_options,
-                                    self.__max_await_time_ms,
-                                    session=self.__session))
+                                    self.__session,
+                                    self.__max_await_time_ms))
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
+            self.__end_session(True)
 
         return len(self.__data)
 
@@ -246,6 +263,15 @@ class CommandCursor(object):
         """
         return self.__address
 
+    @property
+    def session(self):
+        """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
+
+        .. versionadded:: 3.6
+        """
+        if self.__explicit_session:
+            return self.__session
+
     def __iter__(self):
         return self
 
@@ -273,7 +299,8 @@ class RawBatchCommandCursor(CommandCursor):
     _getmore_class = _RawBatchGetMore
 
     def __init__(self, collection, cursor_info, address, retrieved=0,
-                 batch_size=0, max_await_time_ms=None, session=None):
+                 batch_size=0, max_await_time_ms=None, session=None,
+                 explicit_session=False):
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
@@ -285,7 +312,7 @@ class RawBatchCommandCursor(CommandCursor):
         assert not cursor_info.get('firstBatch')
         super(RawBatchCommandCursor, self).__init__(
             collection, cursor_info, address, retrieved, batch_size,
-            max_await_time_ms, session)
+            max_await_time_ms, session, explicit_session)
 
     def _unpack_response(self, response, cursor_id, codec_options):
         return helpers._raw_response(response, cursor_id)

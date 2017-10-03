@@ -358,11 +358,8 @@ class TestLegacy(IntegrationTest):
         db = self.client.test_insert_large_batch
         self.addCleanup(self.client.drop_database, 'test_insert_large_batch')
         max_bson_size = self.client.max_bson_size
-        if client_context.version.at_least(2, 5, 4, -1):
-            # Write commands are limited to 16MB + 16k per batch
-            big_string = 'x' * int(max_bson_size / 2)
-        else:
-            big_string = 'x' * (max_bson_size - 100)
+        # Write commands are limited to 16MB + 16k per batch
+        big_string = 'x' * int(max_bson_size / 2)
 
         # Batch insert that requires 2 batches.
         successful_insert = [{'x': big_string}, {'x': big_string},
@@ -436,19 +433,6 @@ class TestLegacy(IntegrationTest):
         ref_only = {'ref': {'$ref': 'collection'}}
         id_only = {'ref': {'$id': ObjectId()}}
 
-        # Starting with MongoDB 2.5.2 this is no longer possible
-        # from insert, update, or findAndModify.
-        if not client_context.version.at_least(2, 5, 2):
-            # Force insert of ref without $id.
-            c.insert(ref_only, check_keys=False)
-            self.assertEqual(DBRef('collection', id=None),
-                             c.find_one()['ref'])
-
-            c.drop()
-
-            # DBRef without $ref is decoded as normal subdocument.
-            c.insert(id_only, check_keys=False)
-            self.assertEqual(id_only, c.find_one())
 
     def test_update(self):
         # Tests legacy update.
@@ -624,10 +608,7 @@ class TestLegacy(IntegrationTest):
         self.assertTrue(self.db.test.insert({"hello": "world"}))
         doc = self.db.test.find_one()
         doc['a.b'] = 'c'
-        expected = InvalidDocument
-        if client_context.version.at_least(2, 5, 4, -1):
-            expected = OperationFailure
-        self.assertRaises(expected, self.db.test.save, doc)
+        self.assertRaises(OperationFailure, self.db.test.save, doc)
 
     def test_acknowledged_save(self):
         # Tests legacy save.
@@ -702,15 +683,11 @@ class TestLegacy(IntegrationTest):
         half_size = int(max_size / 2)
         self.assertEqual(max_size, 16777216)
 
-        expected = DocumentTooLarge
-        if client_context.version.at_least(2, 5, 4, -1):
-            # Document too large handled by the server
-            expected = OperationFailure
-        self.assertRaises(expected, self.db.test.insert,
+        self.assertRaises(OperationFailure, self.db.test.insert,
                           {"foo": "x" * max_size})
-        self.assertRaises(expected, self.db.test.save,
+        self.assertRaises(OperationFailure, self.db.test.save,
                           {"foo": "x" * max_size})
-        self.assertRaises(expected, self.db.test.insert,
+        self.assertRaises(OperationFailure, self.db.test.insert,
                           [{"x": 1}, {"foo": "x" * max_size}])
         self.db.test.insert([{"foo": "x" * half_size},
                              {"foo": "x" * half_size}])
@@ -765,14 +742,11 @@ class TestLegacy(IntegrationTest):
         c.insert({'_id': 1, 'i': 1})
 
         # Test that we raise DuplicateKeyError when appropriate.
-        # MongoDB doesn't have a code field for DuplicateKeyError
-        # from commands before 2.2.
-        if client_context.version.at_least(2, 2):
-            c.ensure_index('i', unique=True)
-            self.assertRaises(DuplicateKeyError,
-                              c.find_and_modify, query={'i': 1, 'j': 1},
-                              update={'$set': {'k': 1}}, upsert=True)
-            c.drop_indexes()
+        c.ensure_index('i', unique=True)
+        self.assertRaises(DuplicateKeyError,
+                          c.find_and_modify, query={'i': 1, 'j': 1},
+                          update={'$set': {'k': 1}}, upsert=True)
+        c.drop_indexes()
 
         # Test correct findAndModify
         self.assertEqual({'_id': 1, 'i': 1},
@@ -788,15 +762,9 @@ class TestLegacy(IntegrationTest):
 
         self.assertEqual(None,
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
-        # The return value changed in 2.1.2. See SERVER-6226.
-        if client_context.version.at_least(2, 1, 2):
-            self.assertEqual(None, c.find_and_modify({'_id': 1},
-                                                     {'$inc': {'i': 1}},
-                                                     upsert=True))
-        else:
-            self.assertEqual({}, c.find_and_modify({'_id': 1},
-                                                   {'$inc': {'i': 1}},
-                                                   upsert=True))
+        self.assertEqual(None, c.find_and_modify({'_id': 1},
+                                                 {'$inc': {'i': 1}},
+                                                 upsert=True))
         self.assertEqual({'_id': 1, 'i': 2},
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            upsert=True, new=True))
@@ -1147,10 +1115,9 @@ class TestLegacy(IntegrationTest):
         self.assertTrue(isinstance(out, Thing))
         self.assertEqual('value', out.value)
 
-        if client_context.version.at_least(2, 6):
-            out = next(db.test.aggregate([], cursor={}))
-            self.assertTrue(isinstance(out, Thing))
-            self.assertEqual('value', out.value)
+        out = next(db.test.aggregate([], cursor={}))
+        self.assertTrue(isinstance(out, Thing))
+        self.assertEqual('value', out.value)
 
     def test_son_manipulator_inheritance(self):
         # Tests legacy API elements.
@@ -1355,12 +1322,6 @@ class TestLegacy(IntegrationTest):
         coll.drop()
 
     def test_kill_cursors_with_cursoraddress(self):
-        if (client_context.is_mongos
-                and not client_context.version.at_least(2, 4, 7)):
-            # Old mongos sends incorrectly formatted error response when
-            # cursor isn't found, see SERVER-9738.
-            raise SkipTest("Can't test kill_cursors against old mongos")
-
         coll = self.client.pymongo_test.test
         coll.drop()
 
@@ -1386,12 +1347,6 @@ class TestLegacy(IntegrationTest):
         wait_until(raises_cursor_not_found, 'close cursor')
 
     def test_kill_cursors_with_tuple(self):
-        if (client_context.is_mongos
-                and not client_context.version.at_least(2, 4, 7)):
-            # Old mongos sends incorrectly formatted error response when
-            # cursor isn't found, see SERVER-9738.
-            raise SkipTest("Can't test kill_cursors against old mongos")
-
         coll = self.client.pymongo_test.test
         coll.drop()
 
@@ -1928,12 +1883,8 @@ class TestLegacyBulk(BulkTestBase):
         batch = self.coll.initialize_ordered_bulk_op()
         batch.find({'_id': 0}).upsert().update_one({'$set': {'a': 0}})
         batch.find({'a': 1}).upsert().replace_one({'_id': 1})
-        if not client_context.version.at_least(2, 6, 0):
-            # This case is only possible in MongoDB versions before 2.6.
-            batch.find({'_id': 3}).upsert().replace_one({'_id': 2})
-        else:
-            # This is just here to make the counts right in all cases.
-            batch.find({'_id': 2}).upsert().replace_one({'_id': 2})
+        # This is just here to make the counts right in all cases.
+        batch.find({'_id': 2}).upsert().replace_one({'_id': 2})
         result = batch.execute()
         self.assertEqualResponse(
             {'nMatched': 0,

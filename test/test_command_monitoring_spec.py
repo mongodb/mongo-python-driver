@@ -81,9 +81,7 @@ def create_test(scenario_def, test):
         coll.insert_many(scenario_def['data'])
         self.listener.results.clear()
         name = camel_to_snake(test['operation']['name'])
-        # Don't send $readPreference to mongos before 2.4.
-        if (client_context.version.at_least(2, 4, 0)
-                and 'read_preference' in test['operation']):
+        if 'read_preference' in test['operation']:
             mode = read_pref_mode_from_name(
                 test['operation']['read_preference']['mode'])
             coll = coll.with_options(

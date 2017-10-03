@@ -100,7 +100,7 @@ class Regex(object):
 
     def __eq__(self, other):
         if isinstance(other, Regex):
-            return self.pattern == self.pattern and self.flags == other.flags
+            return self.pattern == other.pattern and self.flags == other.flags
         else:
             return NotImplemented
 

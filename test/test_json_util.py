@@ -20,19 +20,14 @@ import re
 import sys
 import uuid
 
-try:
-    import simplejson
-    HAS_SIMPLE_JSON = True
-except ImportError:
-    HAS_SIMPLE_JSON = False
-
 sys.path[0:0] = [""]
 
 from pymongo.errors import ConfigurationError
 
 from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
 from bson.json_util import (DatetimeRepresentation,
-                            STRICT_JSON_OPTIONS)
+                            STRICT_JSON_OPTIONS,
+                            _HAS_OBJECT_PAIRS_HOOK)
 from bson.binary import (ALL_UUID_REPRESENTATIONS, Binary, MD5_SUBTYPE,
                          USER_DEFINED_SUBTYPE, JAVA_LEGACY, CSHARP_LEGACY,
                          STANDARD)
@@ -49,7 +44,6 @@ from bson.tz_util import FixedOffset, utc
 from test import unittest, IntegrationTest
 
 PY3 = sys.version_info[0] == 3
-PY26 = sys.version_info[:2] == (2, 6)
 
 
 class TestJsonUtil(unittest.TestCase):
@@ -70,10 +64,11 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"ref": DBRef("foo", 5, "db")})
         self.round_trip({"ref": DBRef("foo", ObjectId())})
 
-        # Check order.
-        self.assertEqual(
-            '{"$ref": "collection", "$id": 1, "$db": "db"}',
-            json_util.dumps(DBRef('collection', 1, 'db')))
+        if _HAS_OBJECT_PAIRS_HOOK:
+            # Check order.
+            self.assertEqual(
+                '{"$ref": "collection", "$id": 1, "$db": "db"}',
+                json_util.dumps(DBRef('collection', 1, 'db')))
 
     def test_datetime(self):
         # only millis, not micros
@@ -231,14 +226,15 @@ class TestJsonUtil(unittest.TestCase):
             json_util.loads(
                 '{"r": {"$regex": ".*", "$options": "ilm"}}')['r'])
 
-        # Check order.
-        self.assertEqual(
-            '{"$regex": ".*", "$options": "mx"}',
-            json_util.dumps(Regex('.*', re.M | re.X)))
+        if _HAS_OBJECT_PAIRS_HOOK:
+            # Check order.
+            self.assertEqual(
+                '{"$regex": ".*", "$options": "mx"}',
+                json_util.dumps(Regex('.*', re.M | re.X)))
 
-        self.assertEqual(
-            '{"$regex": ".*", "$options": "mx"}',
-            json_util.dumps(re.compile(b'.*', re.M | re.X)))
+            self.assertEqual(
+                '{"$regex": ".*", "$options": "mx"}',
+                json_util.dumps(re.compile(b'.*', re.M | re.X)))
 
     def test_minkey(self):
         self.round_trip({"m": MinKey()})
@@ -249,10 +245,11 @@ class TestJsonUtil(unittest.TestCase):
     def test_timestamp(self):
         dct = {"ts": Timestamp(4, 13)}
         res = json_util.dumps(dct, default=json_util.default)
-        self.assertEqual('{"ts": {"$timestamp": {"t": 4, "i": 13}}}', res)
-
         rtdct = json_util.loads(res)
         self.assertEqual(dct, rtdct)
+
+        if _HAS_OBJECT_PAIRS_HOOK:
+            self.assertEqual('{"ts": {"$timestamp": {"t": 4, "i": 13}}}', res)
 
     def test_uuid(self):
         doc = {'uuid': uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')}
@@ -260,23 +257,33 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(
             '{"uuid": {"$uuid": "f47ac10b58cc4372a5670e02b2c3d479"}}',
             json_util.dumps(doc))
-        self.assertEqual(
-            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
-            json_util.dumps(doc, json_options=json_util.STRICT_JSON_OPTIONS))
-        self.assertEqual(
-            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
-            json_util.dumps(doc, json_options=json_util.JSONOptions(
-                strict_uuid=True, uuid_representation=STANDARD)))
-        self.assertEqual(doc, json_util.loads(
-            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}'))
+
+        if _HAS_OBJECT_PAIRS_HOOK:
+            self.assertEqual(
+                '{"uuid": '
+                '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
+                json_util.dumps(
+                    doc, json_options=json_util.STRICT_JSON_OPTIONS))
+            self.assertEqual(
+                '{"uuid": '
+                '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
+                json_util.dumps(
+                    doc, json_options=json_util.JSONOptions(
+                        strict_uuid=True, uuid_representation=STANDARD)))
+            self.assertEqual(
+                doc, json_util.loads(
+                    '{"uuid": '
+                    '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}'))
         for uuid_representation in ALL_UUID_REPRESENTATIONS:
             options = json_util.JSONOptions(
                 strict_uuid=True, uuid_representation=uuid_representation)
             self.round_trip(doc, json_options=options)
             # Ignore UUID representation when decoding BSON binary subtype 4.
-            self.assertEqual(doc, json_util.loads(
-                '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": '
-                '"04"}}', json_options=options))
+            if _HAS_OBJECT_PAIRS_HOOK:
+                self.assertEqual(doc, json_util.loads(
+                    '{"uuid": '
+                    '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
+                    json_options=options))
 
     def test_binary(self):
         if PY3:
@@ -306,22 +313,23 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(bin_type_dict,
             json_util.loads('{"bin": {"$type": 0, "$binary": "AAECAwQ="}}'))
 
-        json_bin_dump = json_util.dumps(md5_type_dict)
-        # Check order.
-        self.assertEqual(
-            '{"md5": {"$binary": "IG43GK8JL9HRL4DK53HMrA==",'
-            + ' "$type": "05"}}',
-            json_bin_dump)
+        if _HAS_OBJECT_PAIRS_HOOK:
+            json_bin_dump = json_util.dumps(md5_type_dict)
+            # Check order.
+            self.assertEqual(
+                '{"md5": {"$binary": "IG43GK8JL9HRL4DK53HMrA==",'
+                + ' "$type": "05"}}',
+                json_bin_dump)
 
-        self.assertEqual(md5_type_dict,
-            json_util.loads('{"md5": {"$type": 5, "$binary":'
-                            ' "IG43GK8JL9HRL4DK53HMrA=="}}'))
+            self.assertEqual(md5_type_dict,
+                json_util.loads('{"md5": {"$type": 5, "$binary":'
+                                ' "IG43GK8JL9HRL4DK53HMrA=="}}'))
 
-        json_bin_dump = json_util.dumps(custom_type_dict)
-        self.assertTrue('"$type": "80"' in json_bin_dump)
-        self.assertEqual(custom_type_dict,
-            json_util.loads('{"custom": {"$type": 128, "$binary":'
-                            ' "aGVsbG8="}}'))
+            json_bin_dump = json_util.dumps(custom_type_dict)
+            self.assertTrue('"$type": "80"' in json_bin_dump)
+            self.assertEqual(custom_type_dict,
+                json_util.loads('{"custom": {"$type": 128, "$binary":'
+                                ' "aGVsbG8="}}'))
 
         # Handle mongoexport where subtype >= 128
         self.assertEqual(128,
@@ -339,12 +347,13 @@ class TestJsonUtil(unittest.TestCase):
         res = json_util.dumps(code)
         self.assertEqual(code, json_util.loads(res))
 
-        # Check order.
-        self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
+        if _HAS_OBJECT_PAIRS_HOOK:
+            # Check order.
+            self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
 
-        no_scope = Code('function() {}')
-        self.assertEqual(
-            '{"$code": "function() {}"}', json_util.dumps(no_scope))
+            no_scope = Code('function() {}')
+            self.assertEqual(
+                '{"$code": "function() {}"}', json_util.dumps(no_scope))
 
     def test_undefined(self):
         jsn = '{"name": {"$undefined": true}}'
@@ -366,7 +375,7 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual({"foo": "bar"}, json_util.loads(
             '{"foo": "bar"}',
             json_options=json_util.JSONOptions(document_class=dict)))
-        if PY26 and not HAS_SIMPLE_JSON:
+        if not _HAS_OBJECT_PAIRS_HOOK:
             self.assertRaises(
                 ConfigurationError, json_util.JSONOptions, document_class=SON)
         else:

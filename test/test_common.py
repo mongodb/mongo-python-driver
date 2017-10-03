@@ -25,7 +25,7 @@ from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
-from test import client_context, unittest, IntegrationTest
+from test import client_context, IntegrationTest
 from test.utils import connected, rs_or_single_client, single_client
 
 
@@ -195,7 +195,8 @@ class TestCommon(IntegrationTest):
 
         # Equality tests
         direct = connected(single_client(w=0))
-        direct2 = connected(single_client("mongodb://%s/?w=0" % (pair,)))
+        direct2 = connected(single_client("mongodb://%s/?w=0" % (pair,),
+                                          **self.credentials))
         self.assertEqual(direct, direct2)
         self.assertFalse(direct != direct2)
 

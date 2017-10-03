@@ -27,7 +27,6 @@ from bson.code import Code
 from bson.py3compat import PY3
 from bson.son import SON
 from pymongo import (monitoring,
-                     MongoClient,
                      ASCENDING,
                      DESCENDING,
                      ALL,
@@ -52,12 +51,7 @@ if PY3:
     long = int
 
 
-class TestCursorNoConnect(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.db = MongoClient(connect=False).test
-
+class TestCursor(IntegrationTest):
     def test_deepcopy_cursor_littered_with_regexes(self):
         cursor = self.db.test.find({
             "x": re.compile("^hmmm.*"),
@@ -134,9 +128,6 @@ class TestCursorNoConnect(unittest.TestCase):
         cursor.remove_option(128)
         self.assertEqual(0, cursor._Cursor__query_flags)
 
-
-class TestCursor(IntegrationTest):
-
     def test_add_remove_option_exhaust(self):
         # Exhaust - which mongos doesn't support
         if client_context.is_mongos:
@@ -153,7 +144,6 @@ class TestCursor(IntegrationTest):
             self.assertEqual(0, cursor._Cursor__query_flags)
             self.assertFalse(cursor._Cursor__exhaust)
 
-    @client_context.require_version_min(2, 5, 3, -1)
     def test_max_time_ms(self):
         db = self.db
         db.pymongo_test.drop()
@@ -319,7 +309,6 @@ class TestCursor(IntegrationTest):
         finally:
             monitoring._LISTENERS = saved_listeners
 
-    @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_test_commands
     @client_context.require_no_mongos
     def test_max_time_ms_getmore(self):
@@ -764,28 +753,15 @@ class TestCursor(IntegrationTest):
         self.assertEqual(1, collection.find({'i': 1}).hint("_id_").count())
         self.assertEqual(2, collection.find().hint("_id_").count())
 
-        if client_context.version.at_least(2, 6, 0):
-            # Count supports hint
-            self.assertRaises(OperationFailure,
-                              collection.find({'i': 1}).hint("BAD HINT").count)
-        else:
-            # Hint is ignored
-            self.assertEqual(
-                1, collection.find({'i': 1}).hint("BAD HINT").count())
+        self.assertRaises(OperationFailure,
+                          collection.find({'i': 1}).hint("BAD HINT").count)
 
         # Create a sparse index which should have no entries.
         collection.create_index([('x', 1)], sparse=True)
 
-        if client_context.version.at_least(2, 6, 0):
-            # Count supports hint
-            self.assertEqual(0, collection.find({'i': 1}).hint("x_1").count())
-            self.assertEqual(
-                0, collection.find({'i': 1}).hint([("x", 1)]).count())
-        else:
-            # Hint is ignored
-            self.assertEqual(1, collection.find({'i': 1}).hint("x_1").count())
-            self.assertEqual(
-                1, collection.find({'i': 1}).hint([("x", 1)]).count())
+        self.assertEqual(0, collection.find({'i': 1}).hint("x_1").count())
+        self.assertEqual(
+            0, collection.find({'i': 1}).hint([("x", 1)]).count())
 
         if client_context.version.at_least(3, 3, 2):
             self.assertEqual(0, collection.find().hint("x_1").count())

@@ -91,8 +91,11 @@ class ClientSession(object):
         :class:`~pymongo.collection.Collection`, or
         :class:`~pymongo.cursor.Cursor` after the session has ended.
         """
+        self._end_session(True)
+
+    def _end_session(self, lock):
         if self._server_session is not None:
-            self.client._return_server_session(self._server_session)
+            self.client._return_server_session(self._server_session, lock)
             self._server_session = None
 
     def __enter__(self):
@@ -146,6 +149,13 @@ class _ServerSessionPool(collections.deque):
     This class is not thread-safe, access it while holding the Topology lock.
     """
     def get_server_session(self, session_timeout_minutes):
+        # Although the Driver Sessions Spec says we only clear stale sessions
+        # in return_server_session, PyMongo can't take a lock when returning
+        # sessions from a __del__ method (like in Cursor.__die), so it can't
+        # clear stale sessions there. In case many sessions were returned via
+        # __del__, check for stale sessions here too.
+        self._clear_stale(session_timeout_minutes)
+
         # The most recently used sessions are on the left.
         while self:
             s = self.popleft()
@@ -155,6 +165,14 @@ class _ServerSessionPool(collections.deque):
         return _ServerSession()
 
     def return_server_session(self, server_session, session_timeout_minutes):
+        self._clear_stale(session_timeout_minutes)
+        if not server_session.timed_out(session_timeout_minutes):
+            self.appendleft(server_session)
+
+    def return_server_session_no_lock(self, server_session):
+        self.appendleft(server_session)
+
+    def _clear_stale(self, session_timeout_minutes):
         # Clear stale sessions. The least recently used are on the right.
         while self:
             if self[-1].timed_out(session_timeout_minutes):
@@ -162,6 +180,3 @@ class _ServerSessionPool(collections.deque):
             else:
                 # The remaining sessions also haven't timed out.
                 break
-
-        if not server_session.timed_out(session_timeout_minutes):
-            self.appendleft(server_session)

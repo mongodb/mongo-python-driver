@@ -48,12 +48,14 @@ class ChangeStream(object):
         per batch.
       - `collation` (optional): The :class:`~pymongo.collation.Collation`
         to use for the aggregation.
+      - `session` (optional): a
+        :class:`~pymongo.client_session.ClientSession`.
 
     .. versionadded: 3.6
     """
     def __init__(self, collection, pipeline, full_document,
                  resume_after=None, max_await_time_ms=None, batch_size=None,
-                 collation=None):
+                 collation=None, session=None):
         self._codec_options = collection.codec_options
         self._collection = collection.with_options(
             codec_options=DEFAULT_RAW_BSON_OPTIONS)
@@ -63,6 +65,7 @@ class ChangeStream(object):
         self._max_await_time_ms = max_await_time_ms
         self._batch_size = batch_size
         self._collation = collation
+        self._session = session
         self._cursor = self._create_cursor()
 
     def _full_pipeline(self):
@@ -79,7 +82,7 @@ class ChangeStream(object):
     def _create_cursor(self):
         """Initialize the cursor or raise a fatal error"""
         return self._collection.aggregate(
-            self._full_pipeline(), batchSize=self._batch_size,
+            self._full_pipeline(), self._session, batchSize=self._batch_size,
             collation=self._collation, maxAwaitTimeMS=self._max_await_time_ms)
 
     def close(self):

@@ -14,7 +14,6 @@
 
 """Test the mongo_replica_set_client module."""
 
-import socket
 import sys
 import warnings
 import time
@@ -160,32 +159,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         self.assertEqual(nearest, cursor._Cursor__read_preference)
         self.assertEqual(c.max_bson_size, 16777216)
         c.close()
-
-    @client_context.require_secondaries_count(1)
-    def test_auto_reconnect_exception_when_read_preference_is_secondary(self):
-        c = MongoClient(
-            client_context.pair,
-            replicaSet=self.name,
-            serverSelectionTimeoutMS=100)
-        db = c.pymongo_test
-
-        def raise_socket_error(*args, **kwargs):
-            raise socket.error
-
-        # In Jython socket.socket is a function, not a class.
-        sock = socket.socket()
-        klass = sock.__class__
-        old_sendall = klass.sendall
-        klass.sendall = raise_socket_error
-
-        try:
-            cursor = db.get_collection(
-                "test", read_preference=ReadPreference.SECONDARY).find()
-            self.assertRaises(AutoReconnect, cursor.next)
-        finally:
-            klass.sendall = old_sendall
-            # Silence resource warnings.
-            sock.close()
 
     @client_context.require_secondaries_count(1)
     def test_timeout_does_not_mark_member_down(self):
