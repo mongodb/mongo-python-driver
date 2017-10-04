@@ -417,6 +417,8 @@ class SocketInfo(object):
             ismaster.max_message_size if ismaster else MAX_MESSAGE_SIZE)
         self.max_write_batch_size = (
             ismaster.max_write_batch_size if ismaster else None)
+        self.supports_sessions = (
+            ismaster and ismaster.logical_session_timeout_minutes is not None)
 
         self.listeners = pool.opts.event_listeners
 
@@ -438,7 +440,8 @@ class SocketInfo(object):
                 parse_write_concern_error=False,
                 collation=None,
                 session=None,
-                client=None):
+                client=None,
+                retryable_write=False):
         """Execute a command or raise an error.
 
         :Parameters:
@@ -457,6 +460,7 @@ class SocketInfo(object):
           - `collation`: The collation for this command.
           - `session`: optional ClientSession instance.
           - `client`: optional MongoClient for gossipping $clusterTime.
+          - `retryable_write`: True if this command is a retryable write.
         """
         self.check_session_auth_matches(session)
         if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
@@ -480,7 +484,8 @@ class SocketInfo(object):
                            self.address, check_keys, self.listeners,
                            self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
-                           collation=collation)
+                           collation=collation,
+                           retryable_write=retryable_write)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

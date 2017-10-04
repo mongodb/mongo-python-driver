@@ -51,27 +51,14 @@ from pymongo.write_concern import WriteConcern
 from test import client_context, qcheck, unittest, SkipTest
 from test.test_client import IntegrationTest
 from test.test_bulk import BulkTestBase, BulkAuthorizationTestBase
-from test.utils import (joinall,
+from test.utils import (DeprecationFilter,
+                        joinall,
                         oid_generated_on_client,
                         remove_all_users,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
                         single_client,
                         wait_until)
-
-
-class DeprecationFilter(object):
-
-    def __init__(self, action="ignore"):
-        """Start filtering deprecations."""
-        self.warn_context = warnings.catch_warnings()
-        self.warn_context.__enter__()
-        warnings.simplefilter(action, DeprecationWarning)
-
-    def stop(self):
-        """Stop filtering deprecations."""
-        self.warn_context.__exit__()
-        self.warn_context = None
 
 
 class TestDeprecations(IntegrationTest):

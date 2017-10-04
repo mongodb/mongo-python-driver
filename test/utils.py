@@ -352,6 +352,20 @@ def ignore_deprecations(wrapped=None):
         return _ignore_deprecations()
 
 
+class DeprecationFilter(object):
+
+    def __init__(self, action="ignore"):
+        """Start filtering deprecations."""
+        self.warn_context = warnings.catch_warnings()
+        self.warn_context.__enter__()
+        warnings.simplefilter(action, DeprecationWarning)
+
+    def stop(self):
+        """Stop filtering deprecations."""
+        self.warn_context.__exit__()
+        self.warn_context = None
+
+
 def read_from_which_host(
         client,
         pref,

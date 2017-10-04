@@ -441,6 +441,18 @@ class ClientContext(object):
                              "Must be connected to a mongos",
                              func=func)
 
+    def require_standalone(self, func):
+        """Run a test only if the client is connected to a standalone."""
+        return self._require(not (self.is_mongos or self.is_rs),
+                             "Must be connected to a standalone",
+                             func=func)
+
+    def require_no_standalone(self, func):
+        """Run a test only if the client is not connected to a standalone."""
+        return self._require(self.is_mongos or self.is_rs,
+                             "Must be connected to a replica set or mongos",
+                             func=func)
+
     def check_auth_with_sharding(self, func):
         """Skip a test when connected to mongos < 2.0 and running with auth."""
         condition = not (self.auth_enabled and

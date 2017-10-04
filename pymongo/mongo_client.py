@@ -60,7 +60,8 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             NetworkTimeout,
                             NotMasterError,
-                            OperationFailure)
+                            OperationFailure,
+                            ServerSelectionTimeoutError)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (writable_preferred_server_selector,
                                       writable_server_selector)
@@ -223,6 +224,10 @@ class MongoClient(common.BaseObject):
             profile collections.
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
+          - `retryWrites`: (boolean) Whether supported write operations
+            executed within this MongoClient will be retried after a network
+            error, requires MongoDB 3.6+. See
+            https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst
           - `socketKeepAlive`: (boolean) **DEPRECATED** Whether to send
             periodic keep-alive packets on connected sockets. Defaults to
             ``True``. Disabling it is not recommended, see
@@ -356,6 +361,7 @@ class MongoClient(common.BaseObject):
 
         .. versionchanged:: 3.6
            Added support for mongodb+srv:// URIs.
+           Added the ``retryWrites`` keyword argument and URI option.
 
         .. versionchanged:: 3.5
            Add ``username`` and ``password`` options. Document the
@@ -814,6 +820,11 @@ class MongoClient(common.BaseObject):
         """The server selection timeout for this instance in seconds."""
         return self.__options.server_selection_timeout
 
+    @property
+    def retry_writes(self):
+        """If this instance should retry supported write operations."""
+        return self.__options.retry_writes
+
     def _is_writable(self):
         """Attempt to connect to a writable server, or return False.
         """
@@ -980,6 +991,47 @@ class MongoClient(common.BaseObject):
         except ConnectionFailure:
             self.__reset_server(server.description.address)
             raise
+
+    def _retryable_write(self, retryable_operation, func, session):
+        """Execute an operation possibly with one retry.
+
+        Returns func()'s return value on success. On error retries once.
+
+        Re-raises any exception thrown by func().
+        """
+        retryable = retryable_operation and self.retry_writes
+        with self._tmp_session(session) as s:
+            try:
+                with self._socket_for_writes() as sock_info:
+                    if retryable and (
+                            s is None or not sock_info.supports_sessions):
+                        raise ConfigurationError(
+                            'Retryable writes are not supported by this '
+                            'MongoDB deployment')
+                    return func(s, sock_info, retryable)
+            except ServerSelectionTimeoutError:
+                # A ServerSelectionTimeoutError error indicates that there may
+                # be a persistent outage. Attempting to retry in this case will
+                # most likely be a waste of time.
+                raise
+            except ConnectionFailure as exc:
+                if not retryable:
+                    raise
+                try:
+                    with self._socket_for_writes() as sock_info:
+                        if sock_info.supports_sessions:
+                            # Reset the transaction id and retry the operation.
+                            s._retry_transaction_id()
+                            return func(s, sock_info, retryable)
+
+                    # A retry was not possible because the new server does
+                    # not support sessions raise the original error.
+                    raise
+                except ServerSelectionTimeoutError:
+                    # The application may think the write was never attempted
+                    # if we raise ServerSelectionTimeoutError on the retry
+                    # attempt. Raise the original exception instead.
+                    raise exc
 
     def __reset_server(self, address):
         """Clear our connection pool for a server and mark it Unknown."""

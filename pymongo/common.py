@@ -84,6 +84,9 @@ MAX_IDLE_TIME_MS = None
 # Default value for localThresholdMS.
 LOCAL_THRESHOLD_MS = 15
 
+# Default value for retryWrites.
+RETRY_WRITES = False
+
 # mongod/s 2.6 and above return code 59 when a command doesn't exist.
 COMMAND_NOT_FOUND_CODES = (59,)
 
@@ -512,7 +515,8 @@ URI_VALIDATORS = {
     'connect': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
     'appname': validate_appname_or_none,
-    'unicode_decode_error_handler': validate_unicode_decode_error_handler
+    'unicode_decode_error_handler': validate_unicode_decode_error_handler,
+    'retrywrites': validate_boolean_or_string,
 }
 
 TIMEOUT_VALIDATORS = {

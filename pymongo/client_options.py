@@ -147,6 +147,7 @@ class ClientOptions(object):
         self.__connect = options.get('connect')
         self.__heartbeat_frequency = options.get(
             'heartbeatfrequencyms', common.HEARTBEAT_FREQUENCY)
+        self.__retry_writes = options.get('retrywrites', common.RETRY_WRITES)
 
     @property
     def _options(self):
@@ -207,3 +208,8 @@ class ClientOptions(object):
     def read_concern(self):
         """A :class:`~pymongo.read_concern.ReadConcern` instance."""
         return self.__read_concern
+
+    @property
+    def retry_writes(self):
+        """If this instance should retry supported write operations."""
+        return self.__retry_writes
