@@ -1967,10 +1967,7 @@ class Collection(common.BaseObject):
            Added ``session`` parameter.
         """
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
-            if sock_info.max_wire_version > 2:
-                criteria = {"name": self.__name}
-            else:
-                criteria = {"name": self.__full_name}
+            criteria = {"name": self.__name}
             cursor = self.__database._list_collections(sock_info,
                                                        slave_ok,
                                                        filter=criteria,

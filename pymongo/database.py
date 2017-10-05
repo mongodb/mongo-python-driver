@@ -583,8 +583,21 @@ class Database(common.BaseObject):
         """Get info about the collections in this database."""
         with self.__client._socket_for_reads(
                 ReadPreference.PRIMARY) as (sock_info, slave_okay):
-             return self._list_collections(sock_info, slave_okay, filter=filter,
+
+             wire_version = sock_info.max_wire_version
+             results = self._list_collections(sock_info, slave_okay, filter=filter,
                                            batch_size=batch_size, session=session)
+        # Iterating the cursor to completion may require a socket for getmore.
+        # Ensure we do that outside the "with" block so we don't require more
+        # than one socket at a time.
+        names = [result["name"] for result in results]
+        if wire_version <= 2:
+            # MongoDB 2.6 and older return index namespaces and collection
+            # namespaces prefixed with the database name.
+            names = [n[len(self.__name) + 1:] for n in names
+                     if n.startswith(self.__name + ".") and "$" not in n]
+        return names
+
 
     def collection_names(self, include_system_collections=True,
                          session=None):
