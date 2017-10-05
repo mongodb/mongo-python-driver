@@ -25,15 +25,12 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.monotonic import time as _time
-from test import IntegrationTest, client_context, db_user, db_pwd
+from test import IntegrationTest, client_context, db_user, db_pwd, SkipTest
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
 
 
 # Ignore auth commands like saslStart, so we can assert lsid is in all commands.
 class SessionTestListener(EventListener):
-    def __init__(self):
-        super(SessionTestListener, self).__init__(ignore_lsid=False)
-
     def started(self, event):
         if not event.command_name.startswith('sasl'):
             super(SessionTestListener, self).started(event)
@@ -739,3 +736,104 @@ class TestSessionsNotSupported(IntegrationTest):
         with self.assertRaisesRegex(
                 ConfigurationError, "Sessions are not supported"):
             self.client.start_session()
+
+
+class TestClusterTime(IntegrationTest):
+    def setUp(self):
+        super(TestClusterTime, self).setUp()
+        if '$clusterTime' not in client_context.ismaster:
+            raise SkipTest('$clusterTime not supported')
+
+    @ignore_deprecations
+    def test_cluster_time(self):
+        listener = SessionTestListener()
+        # Prevent heartbeats from updating $clusterTime between operations.
+        client = rs_or_single_client(event_listeners=[listener],
+                                     heartbeatFrequencyMS=999999)
+        collection = client.pymongo_test.collection
+        # Prepare for tests of find() and aggregate().
+        collection.insert_many([{} for _ in range(10)])
+        self.addCleanup(collection.drop)
+        self.addCleanup(client.pymongo_test.collection2.drop)
+
+        def bulk_insert(ordered):
+            if ordered:
+                bulk = collection.initialize_ordered_bulk_op()
+            else:
+                bulk = collection.initialize_unordered_bulk_op()
+            bulk.insert({})
+            bulk.execute()
+
+        def rename_and_drop():
+            # Ensure collection exists.
+            collection.insert_one({})
+            collection.rename('collection2')
+            client.pymongo_test.collection2.drop()
+
+        def insert_and_find():
+            cursor = collection.find().batch_size(1)
+            for _ in range(10):
+                # Advance the cluster time.
+                collection.insert_one({})
+                next(cursor)
+
+            cursor.close()
+
+        def insert_and_aggregate():
+            cursor = collection.aggregate([], batchSize=1).batch_size(1)
+            for _ in range(5):
+                # Advance the cluster time.
+                collection.insert_one({})
+                next(cursor)
+
+            cursor.close()
+
+        ops = [
+            # Tests from Driver Sessions Spec.
+            ('ping', lambda: client.admin.command('ping')),
+            ('aggregate', lambda: list(collection.aggregate([]))),
+            ('find', lambda: list(collection.find())),
+            ('insert_one', lambda: collection.insert_one({})),
+
+            # Additional PyMongo tests.
+            ('insert_and_find', insert_and_find),
+            ('insert_and_aggregate', insert_and_aggregate),
+            ('update_one',
+             lambda: collection.update_one({}, {'$set': {'x': 1}})),
+            ('update_many',
+             lambda: collection.update_many({}, {'$set': {'x': 1}})),
+            ('delete_one', lambda: collection.delete_one({})),
+            ('delete_many', lambda: collection.delete_many({})),
+            ('bulk_write', lambda: collection.bulk_write([InsertOne({})])),
+            ('ordered bulk', lambda: bulk_insert(True)),
+            ('unordered bulk', lambda: bulk_insert(False)),
+            ('rename_and_drop', rename_and_drop),
+        ]
+
+        for name, f in ops:
+            listener.results.clear()
+            # Call f() twice, insert to advance clusterTime, call f() again.
+            f()
+            f()
+            collection.insert_one({})
+            f()
+
+            self.assertGreaterEqual(len(listener.results['started']), 1)
+            for i, event in enumerate(listener.results['started']):
+                self.assertTrue(
+                    '$clusterTime' in event.command,
+                    "%s sent no $clusterTime with %s" % (
+                        f.__name__, event.command_name))
+
+                if i > 0:
+                    succeeded = listener.results['succeeded'][i - 1]
+                    self.assertTrue(
+                        '$clusterTime' in succeeded.reply,
+                        "%s received no $clusterTime with %s" % (
+                            f.__name__, succeeded.command_name))
+
+                    self.assertTrue(
+                        event.command['$clusterTime']['clusterTime'] >=
+                        succeeded.reply['$clusterTime']['clusterTime'],
+                        "%s sent wrong $clusterTime with %s" % (
+                            f.__name__, event.command_name))

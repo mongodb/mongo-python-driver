@@ -904,6 +904,9 @@ class Cursor(object):
         listeners = client._event_listeners
         publish = listeners.enabled_for_commands
         from_command = False
+        start = datetime.datetime.now()
+
+        def duration(): return datetime.datetime.now() - start
 
         if operation:
             kwargs = {
@@ -924,7 +927,6 @@ class Cursor(object):
 
                 cmd_name = operation.name
                 reply = response.data
-                cmd_duration = response.duration
                 rqst_id = response.request_id
                 from_command = response.from_command
             except AutoReconnect:
@@ -948,28 +950,23 @@ class Cursor(object):
                     cmd['maxTimeMS'] = self.__max_time_ms
                 listeners.publish_command_start(
                     cmd, self.__collection.database.name, 0, self.__address)
-                start = datetime.datetime.now()
             try:
                 reply = self.__exhaust_mgr.sock.receive_message(None)
             except Exception as exc:
                 if publish:
-                    duration = datetime.datetime.now() - start
                     listeners.publish_command_failure(
-                        duration, _convert_exception(exc), cmd_name, rqst_id,
+                        duration(), _convert_exception(exc), cmd_name, rqst_id,
                         self.__address)
                 if isinstance(exc, ConnectionFailure):
                     self.__die()
                 raise
-            if publish:
-                cmd_duration = datetime.datetime.now() - start
 
-        if publish:
-            start = datetime.datetime.now()
         try:
             docs = self._unpack_response(response=reply,
                                          cursor_id=self.__id,
                                          codec_options=self.__codec_options)
             if from_command:
+                client._receive_cluster_time(docs[0])
                 helpers._check_command_response(docs[0])
         except OperationFailure as exc:
             self.__killed = True
@@ -978,9 +975,8 @@ class Cursor(object):
             self.__die()
 
             if publish:
-                duration = (datetime.datetime.now() - start) + cmd_duration
                 listeners.publish_command_failure(
-                    duration, exc.details, cmd_name, rqst_id, self.__address)
+                    duration(), exc.details, cmd_name, rqst_id, self.__address)
 
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
@@ -998,22 +994,19 @@ class Cursor(object):
             self.__die()
 
             if publish:
-                duration = (datetime.datetime.now() - start) + cmd_duration
                 listeners.publish_command_failure(
-                    duration, exc.details, cmd_name, rqst_id, self.__address)
+                    duration(), exc.details, cmd_name, rqst_id, self.__address)
 
             client._reset_server_and_request_check(self.__address)
             raise
         except Exception as exc:
             if publish:
-                duration = (datetime.datetime.now() - start) + cmd_duration
                 listeners.publish_command_failure(
-                    duration, _convert_exception(exc), cmd_name, rqst_id,
+                    duration(), _convert_exception(exc), cmd_name, rqst_id,
                     self.__address)
             raise
 
         if publish:
-            duration = (datetime.datetime.now() - start) + cmd_duration
             # Must publish in find / getMore / explain command response format.
             if from_command:
                 res = docs[0]
@@ -1028,7 +1021,7 @@ class Cursor(object):
                 else:
                     res["cursor"]["nextBatch"] = docs
             listeners.publish_command_success(
-                duration, res, cmd_name, rqst_id, self.__address)
+                duration(), res, cmd_name, rqst_id, self.__address)
 
         if from_command and cmd_name != "explain":
             cursor = docs[0]['cursor']
@@ -1085,7 +1078,8 @@ class Cursor(object):
                                   self.__batch_size,
                                   self.__read_concern,
                                   self.__collation,
-                                  self.__session)
+                                  self.__session,
+                                  self.__collection.database.client)
             self.__send_message(q)
             if not self.__id:
                 self.__killed = True
@@ -1107,6 +1101,7 @@ class Cursor(object):
                                         self.__id,
                                         self.__codec_options,
                                         self.__session,
+                                        self.__collection.database.client,
                                         self.__max_await_time_ms)
                 self.__send_message(g)
 

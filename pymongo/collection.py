@@ -31,6 +31,7 @@ from pymongo import (common,
                      message)
 from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
+from pymongo.common import ORDERED_TYPES
 from pymongo.collation import validate_collation_or_none
 from pymongo.change_stream import ChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
@@ -46,12 +47,6 @@ from pymongo.results import (BulkWriteResult,
                              InsertManyResult,
                              UpdateResult)
 from pymongo.write_concern import WriteConcern
-
-try:
-    from collections import OrderedDict
-    _ORDERED_TYPES = (SON, OrderedDict)
-except ImportError:
-    _ORDERED_TYPES = (SON,)
 
 _NO_OBJ_ERROR = "No matching object found"
 _UJOIN = u"%s.%s"
@@ -243,7 +238,8 @@ class Collection(common.BaseObject):
                 write_concern=write_concern,
                 parse_write_concern_error=parse_write_concern_error,
                 collation=collation,
-                session=s)
+                session=s,
+                client=self.__database.client)
 
     def __create(self, options, collation, session):
         """Sends a create command with the given options.
@@ -573,7 +569,8 @@ class Collection(common.BaseObject):
                     command,
                     codec_options=self.__write_response_codec_options,
                     check_keys=check_keys,
-                    session=s)
+                    session=s,
+                    client=self.__database.client)
                 _check_write_command_response([(0, result)])
         else:
             # Legacy OP_INSERT.
@@ -811,7 +808,9 @@ class Collection(common.BaseObject):
                     self.__database.name,
                     command,
                     codec_options=self.__write_response_codec_options,
-                    session=s).copy()
+                    session=s,
+                    client=self.__database.client).copy()
+
             _check_write_command_response([(0, result)])
             # Add the updatedExisting field for compatibility.
             if result.get('n') and 'upserted' not in result:
@@ -1089,7 +1088,8 @@ class Collection(common.BaseObject):
                     self.__database.name,
                     command,
                     codec_options=self.__write_response_codec_options,
-                    session=s)
+                    session=s,
+                    client=self.__database.client)
             _check_write_command_response([(0, result)])
             return result
         else:
@@ -2043,7 +2043,8 @@ class Collection(common.BaseObject):
                 parse_write_concern_error=dollar_out,
                 read_concern=read_concern,
                 collation=collation,
-                session=session)
+                session=session,
+                client=self.__database.client)
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -2349,8 +2350,9 @@ class Collection(common.BaseObject):
                 if sock_info.max_wire_version >= 5 and self.write_concern:
                     cmd['writeConcern'] = self.write_concern.document
                 cmd.update(kwargs)
-                sock_info.command('admin', cmd, parse_write_concern_error=True,
-                                  session=s)
+                return sock_info.command(
+                    'admin', cmd, parse_write_concern_error=True,
+                    session=s, client=self.__database.client)
 
     def distinct(self, key, filter=None, session=None, **kwargs):
         """Get a list of distinct values for `key` among all documents
@@ -2974,7 +2976,7 @@ class Collection(common.BaseObject):
                 kwargs['sort'] = helpers._index_document(sort)
             # Accept OrderedDict, SON, and dict with len == 1 so we
             # don't break existing code already using find_and_modify.
-            elif (isinstance(sort, _ORDERED_TYPES) or
+            elif (isinstance(sort, ORDERED_TYPES) or
                   isinstance(sort, dict) and len(sort) == 1):
                 warnings.warn("Passing mapping types for `sort` is deprecated,"
                               " use a list of (key, direction) pairs instead",

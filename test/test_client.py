@@ -1055,7 +1055,7 @@ class TestClient(IntegrationTest):
             client._send_message_with_response(
                 operation=message._GetMore('pymongo_test', 'collection',
                                            101, 1234, client.codec_options,
-                                           None),
+                                           None, client),
                 address=('not-a-member', 27017))
 
     def test_heartbeat_frequency_ms(self):

@@ -172,10 +172,10 @@ _MODIFIERS = SON([
 
 def _gen_explain_command(
         coll, spec, projection, skip, limit, batch_size,
-        options, read_concern, session):
+        options, read_concern, session, client):
     """Generate an explain command document."""
     cmd = _gen_find_command(coll, spec, projection, skip, limit, batch_size,
-                            options, session=None)
+                            options, session=None, client=None)
     if read_concern.level:
         explain = SON([('explain', cmd), ('readConcern', read_concern.document)])
     else:
@@ -184,11 +184,12 @@ def _gen_explain_command(
     if session:
         explain['lsid'] = session._use_lsid()
 
+    client._send_cluster_time(explain)
     return explain
 
 
 def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
-                      session, read_concern=DEFAULT_READ_CONCERN,
+                      session, client, read_concern=DEFAULT_READ_CONCERN,
                       collation=None):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
@@ -222,11 +223,13 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
                     if options & val])
     if session:
         cmd['lsid'] = session._use_lsid()
+    if client:
+        client._send_cluster_time(cmd)
     return cmd
 
 
 def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms,
-                          session):
+                          session, client):
     """Generate a getMore command document."""
     cmd = SON([('getMore', cursor_id),
                ('collection', coll)])
@@ -236,6 +239,7 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms,
         cmd['maxTimeMS'] = max_await_time_ms
     if session:
         cmd['lsid'] = session._use_lsid()
+    client._send_cluster_time(cmd)
     return cmd
 
 
@@ -245,11 +249,11 @@ class _Query(object):
     __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
                  'batch_size', 'name', 'read_concern', 'collation',
-                 'session')
+                 'session', 'client')
 
     def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
-                 batch_size, read_concern, collation, session):
+                 batch_size, read_concern, collation, session, client):
         self.flags = flags
         self.db = db
         self.coll = coll
@@ -263,6 +267,7 @@ class _Query(object):
         self.batch_size = batch_size
         self.collation = collation
         self.session = session
+        self.client = client
         self.name = 'find'
 
     def use_command(self, sock_info, exhaust):
@@ -296,11 +301,11 @@ class _Query(object):
             return _gen_explain_command(
                 self.coll, self.spec, self.fields, self.ntoskip,
                 self.limit, self.batch_size, self.flags,
-                self.read_concern, self.session), self.db
+                self.read_concern, self.session, self.client), self.db
         return _gen_find_command(self.coll, self.spec, self.fields,
                                  self.ntoskip, self.limit, self.batch_size,
-                                 self.flags, self.session, self.read_concern,
-                                 self.collation), self.db
+                                 self.flags, self.session, self.client,
+                                 self.read_concern, self.collation), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""
@@ -340,19 +345,20 @@ class _GetMore(object):
     """A getmore operation."""
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_await_time_ms',
-                 'codec_options', 'session')
+                 'codec_options', 'session', 'client')
 
     name = 'getMore'
 
     def __init__(self, db, coll, ntoreturn, cursor_id, codec_options, session,
-                 max_await_time_ms=None):
+                 client, max_await_time_ms=None):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
         self.codec_options = codec_options
-        self.max_await_time_ms = max_await_time_ms
         self.session = session
+        self.client = client
+        self.max_await_time_ms = max_await_time_ms
 
     def use_command(self, sock_info, exhaust):
         sock_info.check_session_auth_matches(self.session)
@@ -363,7 +369,8 @@ class _GetMore(object):
         return _gen_get_more_command(self.cursor_id, self.coll,
                                      self.ntoreturn,
                                      self.max_await_time_ms,
-                                     self.session), self.db
+                                     self.session,
+                                     self.client), self.db
 
     def get_message(self, dummy0, dummy1, use_cmd=False):
         """Get a getmore message."""
@@ -507,7 +514,19 @@ def query(options, collection_name, num_to_skip,
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
-    encoded = bson.BSON.encode(query, check_keys, opts)
+    if check_keys:
+        # Temporarily remove $clusterTime to avoid an error from the $-prefix.
+        cluster_time = query.pop('$clusterTime', None)
+        encoded = bson.BSON.encode(query, True, opts)
+        if cluster_time is not None:
+            extra = bson._name_value_to_bson(
+                b"$clusterTime\x00", cluster_time, False, opts)
+            encoded = (
+                bson._PACK_INT(len(encoded) + len(extra))
+                + encoded[4:-1] + extra + b'\x00')
+            query['$clusterTime'] = cluster_time
+    else:
+        encoded = bson.BSON.encode(query, False, opts)
     data += encoded
     max_bson_size = len(encoded)
     if field_selector is not None:
@@ -977,7 +996,8 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, db, coll, 0, query, None, codec_options,
-        read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, session)
+        read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, session,
+        None)
 
     name = next(iter(cmd))
     publish = listeners.enabled_for_commands

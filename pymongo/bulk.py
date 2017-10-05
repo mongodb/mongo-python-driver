@@ -307,7 +307,8 @@ class _Bulk(object):
         }
         op_id = _randint()
         db_name = self.collection.database.name
-        listeners = self.collection.database.client._event_listeners
+        client = self.collection.database.client
+        listeners = client._event_listeners
 
         with self.collection.database.client._tmp_session(session) as s:
             # sock_info.command checks auth, but we use sock_info.write_command.
@@ -321,6 +322,7 @@ class _Bulk(object):
                     cmd['bypassDocumentValidation'] = True
                 if s:
                     cmd['lsid'] = s._use_lsid()
+                client._send_cluster_time(cmd)
                 bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
                                         listeners, s)
 
@@ -329,6 +331,9 @@ class _Bulk(object):
                     run.ops, True, self.collection.codec_options, bwc)
 
                 _merge_command(run, full_result, results)
+                last_result = results[-1][1]
+                client._receive_cluster_time(last_result)
+
                 # We're supposed to continue if errors are
                 # at the write concern level (e.g. wtimeout)
                 if self.ordered and full_result['writeErrors']:

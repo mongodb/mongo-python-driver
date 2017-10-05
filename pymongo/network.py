@@ -36,7 +36,7 @@ except ImportError:
 
 from bson import SON
 from pymongo import helpers, message
-from pymongo.common import MAX_MESSAGE_SIZE
+from pymongo.common import MAX_MESSAGE_SIZE, ORDERED_TYPES
 from pymongo.errors import (AutoReconnect,
                             NotMasterError,
                             OperationFailure,
@@ -49,7 +49,7 @@ _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
 def command(sock, dbname, spec, slave_ok, is_mongos,
-            read_preference, codec_options, session, check=True,
+            read_preference, codec_options, session, client, check=True,
             allowable_errors=None, address=None,
             check_keys=False, listeners=None, max_bson_size=None,
             read_concern=DEFAULT_READ_CONCERN,
@@ -66,6 +66,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `read_preference`: a read preference
       - `codec_options`: a CodecOptions instance
       - `session`: optional ClientSession instance.
+      - `client`: optional MongoClient instance for updating $clusterTime.
       - `check`: raise OperationFailure if there are errors
       - `allowable_errors`: errors to ignore if `check` is True
       - `address`: the (host, port) of `sock`
@@ -80,13 +81,15 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     name = next(iter(spec))
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
-    if session is not None:
-        if spec.__class__ is dict:
-            # Ensure command name remains in first place.
-            spec = SON(spec)
+    if (client or session) and not isinstance(spec, ORDERED_TYPES):
+        # Ensure command name remains in first place.
+        spec = SON(spec)
+    if session:
         spec['lsid'] = session._use_lsid()
+    if client:
+        client._send_cluster_time(spec)
 
-    # Publish the original command document, perhaps with session id.
+    # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
     if is_mongos:
         spec = message._maybe_add_read_preference(spec, read_preference)
@@ -118,6 +121,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         unpacked_docs = reply.unpack_response(codec_options=codec_options)
 
         response_doc = unpacked_docs[0]
+        if client:
+            client._receive_cluster_time(response_doc)
         if check:
             helpers._check_command_response(
                 response_doc, None, allowable_errors,

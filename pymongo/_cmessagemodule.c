@@ -388,6 +388,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     struct module_state *state = GETSTATE(self);
 
     int request_id = rand();
+    PyObject* cluster_time = NULL;
     unsigned int flags;
     char* collection_name = NULL;
     int collection_name_length;
@@ -429,6 +430,34 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         PyErr_NoMemory();
         return NULL;
     }
+
+    /* Pop $clusterTime from dict and write it at the end, avoiding an error
+     * from the $-prefix and check_keys.
+     *
+     * If "dict" is a defaultdict we don't want to call PyMapping_GetItemString
+     * on it. That would **create** an _id where one didn't previously exist
+     * (PYTHON-871).
+     */
+    if (PyDict_Check(query)) {
+        cluster_time = PyDict_GetItemString(query, "$clusterTime");
+        if (cluster_time) {
+            /* PyDict_GetItemString returns a borrowed reference. */
+            Py_INCREF(cluster_time);
+            if (-1 == PyMapping_DelItemString(query, "$clusterTime")) {
+                destroy_codec_options(&options);
+                PyMem_Free(collection_name);
+                return NULL;
+            }
+        }
+    } else if (PyMapping_HasKeyString(query, "$clusterTime")) {
+        cluster_time = PyMapping_GetItemString(query, "$clusterTime");
+        if (!cluster_time
+                || -1 == PyMapping_DelItemString(query, "$clusterTime")) {
+            destroy_codec_options(&options);
+            PyMem_Free(collection_name);
+            return NULL;
+        }
+    }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer, "\x00\x00\x00\x00\xd4\x07\x00\x00", 8) ||
         !buffer_write_int32(buffer, (int32_t)flags) ||
@@ -439,6 +468,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         destroy_codec_options(&options);
         buffer_free(buffer);
         PyMem_Free(collection_name);
+        Py_XDECREF(cluster_time);
         return NULL;
     }
 
@@ -447,8 +477,49 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         destroy_codec_options(&options);
         buffer_free(buffer);
         PyMem_Free(collection_name);
+        Py_XDECREF(cluster_time);
         return NULL;
     }
+
+    /* back up a byte and write $clusterTime */
+    if (cluster_time) {
+        int length;
+        char zero = 0;
+
+        buffer_update_position(buffer, buffer_get_position(buffer) - 1);
+        if (!write_pair(state->_cbson, buffer, "$clusterTime", 12, cluster_time,
+                        0, &options, 1)) {
+            destroy_codec_options(&options);
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            Py_DECREF(cluster_time);
+            return NULL;
+        }
+
+        if (!buffer_write_bytes(buffer, &zero, 1)) {
+            destroy_codec_options(&options);
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            Py_DECREF(cluster_time);
+            return NULL;
+        }
+
+        length = buffer_get_position(buffer) - begin;
+        buffer_write_int32_at_position(buffer, begin, (int32_t)length);
+
+        /* undo popping $clusterTime */
+        if (-1 == PyMapping_SetItemString(
+                query, "$clusterTime", cluster_time)) {
+            destroy_codec_options(&options);
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            Py_DECREF(cluster_time);
+            return NULL;
+        }
+
+        Py_DECREF(cluster_time);
+    }
+
     max_size = buffer_get_position(buffer) - begin;
 
     if (field_selector != Py_None) {
