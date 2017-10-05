@@ -541,13 +541,17 @@ class Database(common.BaseObject):
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
-    def list_collections(self, sock_info, slave_okay, filter=None,
+    def _list_collections(self, sock_info, slave_okay, filter=None,
                          session=None, batch_size=0):
         """Internal listCollections helper."""
         filter = filter or {}
-        cmd = SON([("listCollections", 1),
-                   ("cursor", {"batchSize": batch_size}),
-                   ("filter",filter)])
+        cmd = SON([("listCollections", 1), ("cursor", {})])
+
+        if batch_size:
+            cmd["cursor"]["batchSize"] = batch_size
+
+        if filter:
+            cmd["filter"] = filter
 
         if sock_info.max_wire_version > 2:
             coll = self["$cmd"]
@@ -555,10 +559,13 @@ class Database(common.BaseObject):
                 cursor = self._command(
                     sock_info, cmd, slave_okay, session=s)["cursor"]
                 return CommandCursor(coll, cursor, sock_info.address, session=s,
-                                     explicit_session=session is not None, batch_size=batch_size)
+                                     explicit_session=session is not None,
+                                     batch_size=batch_size)
         else:
             coll = self["system.namespaces"]
             if "name" in filter:
+                if not isinstance(filter["name"], string_type):
+                    raise TypeError("filter['name'] must be a string on MongoDB 2.6")
                 filter["name"] = coll.database.name + "." + filter["name"]
             res = _first_batch(sock_info, coll.database.name, coll.name,
                                filter, 0, slave_okay,
@@ -570,10 +577,17 @@ class Database(common.BaseObject):
                 "firstBatch": data,
                 "ns": coll.full_name,
             }
-            return CommandCursor(coll, cursor, sock_info.address, batch_size=batch_size)
+            return CommandCursor(coll, cursor, sock_info.address,
+                                 batch_size=batch_size)
+    def list_collections(self, filter=None, session=None, batch_size=0):
+        """Get info about the collections in this database."""
+        with self.__client._socket_for_reads(
+                ReadPreference.PRIMARY) as (sock_info, slave_okay):
+             return self._list_collections(sock_info, slave_okay, filter=filter,
+                                           batch_size=batch_size, session=session)
 
     def collection_names(self, include_system_collections=True,
-                         session=None, batch_size=0, filter=None):
+                         session=None):
         """Get a list of all the collection names in this database.
 
         :Parameters:
@@ -589,14 +603,10 @@ class Database(common.BaseObject):
                 ReadPreference.PRIMARY) as (sock_info, slave_okay):
 
             wire_version = sock_info.max_wire_version
-            if batch_size and include_system_collections and wire_version <= 2:
-                batch_size = 2*batch_size - 1
-            elif batch_size and wire_version <= 2:
-                batch_size = 2*batch_size + 1
 
-            results = self.list_collections(
-                sock_info, slave_okay, session=session,
-                batch_size=batch_size, filter=filter)
+            results = self._list_collections(sock_info,
+                                             slave_okay,
+                                             session=session)
 
         # Iterating the cursor to completion may require a socket for getmore.
         # Ensure we do that outside the "with" block so we don't require more
