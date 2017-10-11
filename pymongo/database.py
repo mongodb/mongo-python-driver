@@ -587,16 +587,13 @@ class Database(common.BaseObject):
              wire_version = sock_info.max_wire_version
              results = self._list_collections(sock_info, slave_okay, filter=filter,
                                            batch_size=batch_size, session=session)
-        # Iterating the cursor to completion may require a socket for getmore.
-        # Ensure we do that outside the "with" block so we don't require more
-        # than one socket at a time.
-        names = [result["name"] for result in results]
-        if wire_version <= 2:
-            # MongoDB 2.6 and older return index namespaces and collection
-            # namespaces prefixed with the database name.
-            names = [n[len(self.__name) + 1:] for n in names
-                     if n.startswith(self.__name + ".") and "$" not in n]
-        return names
+        for result in results:
+            if wire_version <= 2:
+                name = result["name"]
+                if "$" in name:
+                    continue
+                result["name"] = name.split(".", 1)[1]
+            yield result
 
 
     def collection_names(self, include_system_collections=True,
@@ -612,24 +609,13 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.__client._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_okay):
 
-            wire_version = sock_info.max_wire_version
-
-            results = self._list_collections(sock_info,
-                                             slave_okay,
-                                             session=session)
+        results = self.list_collections(session=session)
 
         # Iterating the cursor to completion may require a socket for getmore.
         # Ensure we do that outside the "with" block so we don't require more
         # than one socket at a time.
         names = [result["name"] for result in results]
-        if wire_version <= 2:
-            # MongoDB 2.6 and older return index namespaces and collection
-            # namespaces prefixed with the database name.
-            names = [n[len(self.__name) + 1:] for n in names
-                     if n.startswith(self.__name + ".") and "$" not in n]
 
         if not include_system_collections:
             names = [name for name in names if not name.startswith("system.")]
