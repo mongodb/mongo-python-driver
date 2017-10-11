@@ -66,22 +66,13 @@ class SessionOptions(object):
 
 
 class ClientSession(object):
-    """A session for ordering sequential operations.
-
-    :Parameters:
-      - `client`: A :class:`~pymongo.mongo_client.MongoClient`.
-      - `options` (optional): A :class:`SessionOptions` instance.
-    """
-    def __init__(self, client, options=None):
+    """A session for ordering sequential operations."""
+    def __init__(self, client, server_session, options, authset):
+        # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client = client
-
-        if options is not None:
-            self._options = options
-        else:
-            self._options = SessionOptions()
-
-        # Raises ConfigurationError if sessions are not supported.
-        self._server_session = client._get_server_session()
+        self._server_session = server_session
+        self._options = options
+        self._authset = authset
 
     def end_session(self):
         """Finish this session.
@@ -129,6 +120,13 @@ class ClientSession(object):
         """True if this session is finished."""
         return self._server_session is None
 
+    def _use_lsid(self):
+        # Internal function.
+        if self._server_session is None:
+            raise InvalidOperation("Cannot use ended session")
+
+        return self._server_session.use_lsid()
+
 
 class _ServerSession(object):
     def __init__(self):
@@ -141,6 +139,10 @@ class _ServerSession(object):
 
         # Timed out if we have less than a minute to live.
         return idle_seconds > (session_timeout_minutes - 1) * 60
+
+    def use_lsid(self):
+        self.last_use = monotonic.time()
+        return self.session_id
 
 
 class _ServerSessionPool(collections.deque):

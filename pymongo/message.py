@@ -25,6 +25,7 @@ import random
 import struct
 
 import bson
+from bson import CodecOptions
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import b, StringIO
 from bson.son import SON
@@ -35,9 +36,13 @@ try:
 except ImportError:
     _use_c = False
 from pymongo.errors import (ConfigurationError,
+                            CursorNotFound,
                             DocumentTooLarge,
+                            ExecutionTimeout,
                             InvalidOperation,
-                            OperationFailure)
+                            NotMasterError,
+                            OperationFailure,
+                            ProtocolError)
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 
@@ -66,6 +71,9 @@ _OP_MAP = {
 }
 
 _UJOIN = u"%s.%s"
+
+_UNICODE_REPLACE_CODEC_OPTIONS = CodecOptions(
+    unicode_decode_error_handler='replace')
 
 
 def _randint():
@@ -174,7 +182,7 @@ def _gen_explain_command(
         explain = SON([('explain', cmd)])
 
     if session:
-        explain['lsid'] = session.session_id
+        explain['lsid'] = session._use_lsid()
 
     return explain
 
@@ -213,7 +221,7 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
                     for opt, val in _OPTIONS.items()
                     if options & val])
     if session:
-        cmd['lsid'] = session.session_id
+        cmd['lsid'] = session._use_lsid()
     return cmd
 
 
@@ -227,7 +235,7 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms,
     if max_await_time_ms is not None:
         cmd['maxTimeMS'] = max_await_time_ms
     if session:
-        cmd['lsid'] = session.session_id
+        cmd['lsid'] = session._use_lsid()
     return cmd
 
 
@@ -273,6 +281,8 @@ class _Query(object):
             raise ConfigurationError(
                 'Specifying a collation is unsupported with a max wire '
                 'version of %d.' % (sock_info.max_wire_version,))
+
+        sock_info.check_session_auth_matches(self.session)
 
         return use_find_cmd
 
@@ -345,6 +355,7 @@ class _GetMore(object):
         self.session = session
 
     def use_command(self, sock_info, exhaust):
+        sock_info.check_session_auth_matches(self.session)
         return sock_info.max_wire_version >= 4 and not exhaust
 
     def as_command(self):
@@ -562,10 +573,11 @@ class _BulkWriteContext(object):
     """A wrapper around SocketInfo for use with write splitting functions."""
 
     __slots__ = ('db_name', 'command', 'sock_info', 'op_id',
-                 'name', 'field', 'publish', 'start_time', 'listeners')
+                 'name', 'field', 'publish', 'start_time', 'listeners',
+                 'session')
 
-    def __init__(
-            self, database_name, command, sock_info, operation_id, listeners):
+    def __init__(self, database_name, command, sock_info, operation_id,
+                 listeners, session):
         self.db_name = database_name
         self.command = command
         self.sock_info = sock_info
@@ -575,6 +587,7 @@ class _BulkWriteContext(object):
         self.name = next(iter(command))
         self.field = _FIELD_MAP[self.name]
         self.start_time = datetime.datetime.now() if self.publish else None
+        self.session = session
 
     @property
     def max_bson_size(self):
@@ -625,6 +638,9 @@ class _BulkWriteContext(object):
     def write_command(self, request_id, msg, docs):
         """A proxy for SocketInfo.write_command that handles event publishing.
         """
+        if self.session:
+            # Update last_use time.
+            self.session._use_lsid()
         if self.publish:
             duration = datetime.datetime.now() - self.start_time
             self._start(request_id, docs)
@@ -866,3 +882,141 @@ def _do_batched_write_command(namespace, operation, command,
     return results
 if _use_c:
     _do_batched_write_command = _cmessage._do_batched_write_command
+
+
+class _OpReply(object):
+    """A MongoDB OP_REPLY response message."""
+
+    __slots__ = ("flags", "cursor_id", "number_returned", "documents")
+
+    UNPACK = struct.Struct("<iqii").unpack
+    OP_CODE = 1
+
+    def __init__(self, flags, cursor_id, number_returned, documents):
+        self.flags = flags
+        self.cursor_id = cursor_id
+        self.number_returned = number_returned
+        self.documents = documents
+
+    def raw_response(self, cursor_id=None):
+        """Check the response header from the database, without decoding BSON.
+
+        Check the response for errors and unpack.
+
+        Can raise CursorNotFound, NotMasterError, ExecutionTimeout, or
+        OperationFailure.
+
+        :Parameters:
+          - `cursor_id` (optional): cursor_id we sent to get this response -
+            used for raising an informative exception when we get cursor id not
+            valid at server response.
+        """
+        if self.flags & 1:
+            # Shouldn't get this response if we aren't doing a getMore
+            if cursor_id is None:
+                raise ProtocolError("No cursor id for getMore operation")
+
+            # Fake a getMore command response. OP_GET_MORE provides no
+            # document.
+            msg = "Cursor not found, cursor id: %d" % (cursor_id,)
+            errobj = {"ok": 0, "errmsg": msg, "code": 43}
+            raise CursorNotFound(msg, 43, errobj)
+        elif self.flags & 2:
+            error_object = bson.BSON(self.documents).decode()
+            # Fake the ok field if it doesn't exist.
+            error_object.setdefault("ok", 0)
+            if error_object["$err"].startswith("not master"):
+                raise NotMasterError(error_object["$err"], error_object)
+            elif error_object.get("code") == 50:
+                raise ExecutionTimeout(error_object.get("$err"),
+                                       error_object.get("code"),
+                                       error_object)
+            raise OperationFailure("database error: %s" %
+                                   error_object.get("$err"),
+                                   error_object.get("code"),
+                                   error_object)
+        return [self.documents]
+
+    def unpack_response(self, cursor_id=None,
+                        codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
+        """Unpack a response from the database and decode the BSON document(s).
+
+        Check the response for errors and unpack, returning a dictionary
+        containing the response data.
+
+        Can raise CursorNotFound, NotMasterError, ExecutionTimeout, or
+        OperationFailure.
+
+        :Parameters:
+          - `cursor_id` (optional): cursor_id we sent to get this response -
+            used for raising an informative exception when we get cursor id not
+            valid at server response
+          - `codec_options` (optional): an instance of
+            :class:`~bson.codec_options.CodecOptions`
+        """
+        self.raw_response(cursor_id)
+        return bson.decode_all(self.documents, codec_options)
+
+    def command_response(self):
+        """Unpack a command response."""
+        docs = self.unpack_response()
+        assert self.number_returned == 1
+        return docs[0]
+
+    @classmethod
+    def unpack(cls, msg):
+        """Construct an _OpReply from raw bytes."""
+        # PYTHON-945: ignore starting_from field.
+        flags, cursor_id, _, number_returned = cls.UNPACK(msg[:20])
+        return cls(flags, cursor_id, number_returned, msg[20:])
+
+
+def _first_batch(sock_info, db, coll, query, ntoreturn,
+                 slave_ok, codec_options, read_preference, cmd, listeners,
+                 session):
+    """Simple query helper for retrieving a first (and possibly only) batch."""
+    query = _Query(
+        0, db, coll, 0, query, None, codec_options,
+        read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, session)
+
+    name = next(iter(cmd))
+    publish = listeners.enabled_for_commands
+    if publish:
+        start = datetime.datetime.now()
+
+    request_id, msg, max_doc_size = query.get_message(slave_ok,
+                                                      sock_info.is_mongos)
+
+    if publish:
+        encoding_duration = datetime.datetime.now() - start
+        listeners.publish_command_start(
+            cmd, db, request_id, sock_info.address)
+        start = datetime.datetime.now()
+
+    sock_info.send_message(msg, max_doc_size)
+    reply = sock_info.receive_message(request_id)
+    try:
+        docs = reply.unpack_response(None, codec_options)
+    except Exception as exc:
+        if publish:
+            duration = (datetime.datetime.now() - start) + encoding_duration
+            if isinstance(exc, (NotMasterError, OperationFailure)):
+                failure = exc.details
+            else:
+                failure = _convert_exception(exc)
+            listeners.publish_command_failure(
+                duration, failure, name, request_id, sock_info.address)
+        raise
+    # TODO: PYTHON-1385 convert OP_REPLY to the equivalent command response.
+    result = {
+        'cursor_id': reply.cursor_id,
+        'starting_from': 0,
+        'number_returned': reply.number_returned,
+        'data': docs,
+    }
+    if publish:
+        duration = (datetime.datetime.now() - start) + encoding_duration
+        listeners.publish_command_success(
+            duration, result, name, request_id, sock_info.address)
+
+    return result

@@ -140,7 +140,7 @@ response to the map/reduce command, rather than just the result collection:
 
   >>> pprint.pprint(
   ...     db.things.map_reduce(mapper, reducer, "myresults", full_response=True))
-  {u'counts': {u'emit': 6, u'input': 4, u'output': 3, u'reduce': 2},
+  {...u'counts': {u'emit': 6, u'input': 4, u'output': 3, u'reduce': 2},
    u'ok': ...,
    u'result': u'...',
    u'timeMillis': ...}
@@ -171,7 +171,7 @@ specify a different database to store the result collection:
   ...         reducer,
   ...         out=SON([("replace", "results"), ("db", "outdb")]),
   ...         full_response=True))
-  {u'counts': {u'emit': 6, u'input': 4, u'output': 3, u'reduce': 2},
+  {...u'counts': {u'emit': 6, u'input': 4, u'output': 3, u'reduce': 2},
    u'ok': ...,
    u'result': {u'collection': ..., u'db': ...},
    u'timeMillis': ...}

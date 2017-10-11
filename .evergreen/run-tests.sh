@@ -41,6 +41,11 @@ else
 fi
 
 PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
+if [ $PYTHON_IMPL = "Jython" ]; then
+    EXTRA_ARGS="-J-XX:-UseGCOverheadLimit -J-Xmx4096m"
+else
+    EXTRA_ARGS=""
+fi
 
 # Don't download unittest-xml-reporting from pypi, which often fails.
 HAVE_XMLRUNNER=$($PYTHON -c "import pkgutil, sys; sys.stdout.write('1' if pkgutil.find_loader('xmlrunner') else '0')")
@@ -84,7 +89,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-    $COVERAGE_OR_PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $OUTPUT
+    $COVERAGE_OR_PYTHON $EXTRA_ARGS $COVERAGE_ARGS setup.py $C_EXTENSIONS test $OUTPUT
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT

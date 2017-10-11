@@ -22,14 +22,14 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
-from pymongo import auth, common, helpers
+from pymongo import auth, common
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
-from pymongo.helpers import _first_batch
+from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
@@ -722,11 +722,11 @@ class Database(common.BaseObject):
                     return sock_info.command("admin", cmd, session=s)
             else:
                 spec = {"$all": True} if include_all else {}
-                x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
-                                         spec, -1, True, self.codec_options,
-                                         ReadPreference.PRIMARY, cmd,
-                                         self.client._event_listeners,
-                                         session=None)
+                x = _first_batch(sock_info, "admin", "$cmd.sys.inprog",
+                                 spec, -1, True, self.codec_options,
+                                 ReadPreference.PRIMARY, cmd,
+                                 self.client._event_listeners,
+                                 session=None)
                 return x.get('data', [None])[0]
 
     def profiling_level(self, session=None):
@@ -1031,6 +1031,10 @@ class Database(common.BaseObject):
                      source=None, mechanism='DEFAULT', **kwargs):
         """**DEPRECATED**: Authenticate to use this database.
 
+        .. warning:: Starting in MongoDB 3.6, calling :meth:`authenticate`
+          invalidates all existing cursors. It may also leave logical sessions
+          open on the server for up to 30 minutes until they time out.
+
         Authentication lasts for the life of the underlying client
         instance, or until :meth:`logout` is called.
 
@@ -1116,7 +1120,12 @@ class Database(common.BaseObject):
         return True
 
     def logout(self):
-        """**DEPRECATED**: Deauthorize use of this database."""
+        """**DEPRECATED**: Deauthorize use of this database.
+
+        .. warning:: Starting in MongoDB 3.6, calling :meth:`logout`
+          invalidates all existing cursors. It may also leave logical sessions
+          open on the server for up to 30 minutes until they time out.
+        """
         warnings.warn("Database.logout() is deprecated",
                       DeprecationWarning, stacklevel=2)
 

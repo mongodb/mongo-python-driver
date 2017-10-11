@@ -923,7 +923,7 @@ class Cursor(object):
                                                         response.pool)
 
                 cmd_name = operation.name
-                data = response.data
+                reply = response.data
                 cmd_duration = response.duration
                 rqst_id = response.request_id
                 from_command = response.from_command
@@ -950,7 +950,7 @@ class Cursor(object):
                     cmd, self.__collection.database.name, 0, self.__address)
                 start = datetime.datetime.now()
             try:
-                data = self.__exhaust_mgr.sock.receive_message(1, None)
+                reply = self.__exhaust_mgr.sock.receive_message(None)
             except Exception as exc:
                 if publish:
                     duration = datetime.datetime.now() - start
@@ -966,11 +966,11 @@ class Cursor(object):
         if publish:
             start = datetime.datetime.now()
         try:
-            doc = self._unpack_response(response=data,
-                                        cursor_id=self.__id,
-                                        codec_options=self.__codec_options)
+            docs = self._unpack_response(response=reply,
+                                         cursor_id=self.__id,
+                                         codec_options=self.__codec_options)
             if from_command:
-                helpers._check_command_response(doc['data'][0])
+                helpers._check_command_response(docs[0])
         except OperationFailure as exc:
             self.__killed = True
 
@@ -1016,22 +1016,22 @@ class Cursor(object):
             duration = (datetime.datetime.now() - start) + cmd_duration
             # Must publish in find / getMore / explain command response format.
             if from_command:
-                res = doc['data'][0]
+                res = docs[0]
             elif cmd_name == "explain":
-                res = doc["data"][0] if doc["number_returned"] else {}
+                res = docs[0] if reply.number_returned else {}
             else:
-                res = {"cursor": {"id": doc["cursor_id"],
+                res = {"cursor": {"id": reply.cursor_id,
                                   "ns": self.__collection.full_name},
                        "ok": 1}
                 if cmd_name == "find":
-                    res["cursor"]["firstBatch"] = doc["data"]
+                    res["cursor"]["firstBatch"] = docs
                 else:
-                    res["cursor"]["nextBatch"] = doc["data"]
+                    res["cursor"]["nextBatch"] = docs
             listeners.publish_command_success(
                 duration, res, cmd_name, rqst_id, self.__address)
 
         if from_command and cmd_name != "explain":
-            cursor = doc['data'][0]['cursor']
+            cursor = docs[0]['cursor']
             self.__id = cursor['id']
             if cmd_name == 'find':
                 documents = cursor['firstBatch']
@@ -1040,9 +1040,9 @@ class Cursor(object):
             self.__data = deque(documents)
             self.__retrieved += len(documents)
         else:
-            self.__id = doc["cursor_id"]
-            self.__data = deque(doc["data"])
-            self.__retrieved += doc["number_returned"]
+            self.__id = reply.cursor_id
+            self.__data = deque(docs)
+            self.__retrieved += reply.number_returned
 
         if self.__id == 0:
             self.__killed = True
@@ -1057,7 +1057,7 @@ class Cursor(object):
             self.__exhaust_mgr.close()
 
     def _unpack_response(self, response, cursor_id, codec_options):
-        return helpers._unpack_response(response, cursor_id, codec_options)
+        return response.unpack_response(cursor_id, codec_options)
 
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
@@ -1264,7 +1264,7 @@ class RawBatchCursor(Cursor):
                 "Cannot use RawBatchCursor with manipulate=True")
 
     def _unpack_response(self, response, cursor_id, codec_options):
-        return helpers._raw_response(response, cursor_id)
+        return response.raw_response(cursor_id)
 
     def explain(self):
         """Returns an explain plan record for this cursor.

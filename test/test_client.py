@@ -1155,14 +1155,14 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a server error on getmore.
-        def receive_message(operation, request_id):
+        def receive_message(request_id):
             # Discard the actual server response.
-            SocketInfo.receive_message(sock_info, operation, request_id)
+            SocketInfo.receive_message(sock_info, request_id)
 
             # responseFlags bit 1 is QueryFailure.
             msg = struct.pack('<iiiii', 1 << 1, 0, 0, 0, 0)
             msg += BSON.encode({'$err': 'mock err', 'code': 0})
-            return msg
+            return message._OpReply.unpack(msg)
 
         saved = sock_info.receive_message
         sock_info.receive_message = receive_message
