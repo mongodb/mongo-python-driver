@@ -1966,12 +1966,9 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self._socket_for_primary_reads() as (sock_info, slave_ok):
-            criteria = {"name": self.__name}
-            cursor = self.__database._list_collections(sock_info,
-                                                       slave_ok,
-                                                       filter=criteria,
-                                                       session=session)
+        criteria = {"name": self.__name}
+        cursor = self.__database.list_collections(filter=criteria,
+                                                      session=session)
 
         result = None
         for doc in cursor:

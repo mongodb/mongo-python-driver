@@ -270,50 +270,6 @@ def _check_gle_response(response):
     raise OperationFailure(details["err"], code, result)
 
 
-def _first_batch(sock_info, db, coll, query, ntoreturn,
-                 slave_ok, codec_options, read_preference, cmd, listeners,
-                 session, batch_size=0):
-    """Simple query helper for retrieving a first (and possibly only) batch."""
-    query = _Query(
-        0, db, coll, 0, query, None, codec_options,
-        read_preference, ntoreturn, batch_size, DEFAULT_READ_CONCERN, None, session)
-
-    name = next(iter(cmd))
-    publish = listeners.enabled_for_commands
-    if publish:
-        start = datetime.datetime.now()
-
-    request_id, msg, max_doc_size = query.get_message(slave_ok,
-                                                      sock_info.is_mongos)
-
-    if publish:
-        encoding_duration = datetime.datetime.now() - start
-        listeners.publish_command_start(
-            cmd, db, request_id, sock_info.address)
-        start = datetime.datetime.now()
-
-    sock_info.send_message(msg, max_doc_size)
-    response = sock_info.receive_message(1, request_id)
-    try:
-        result = _unpack_response(response, None, codec_options)
-    except Exception as exc:
-        if publish:
-            duration = (datetime.datetime.now() - start) + encoding_duration
-            if isinstance(exc, (NotMasterError, OperationFailure)):
-                failure = exc.details
-            else:
-                failure = _convert_exception(exc)
-            listeners.publish_command_failure(
-                duration, failure, name, request_id, sock_info.address)
-        raise
-    if publish:
-        duration = (datetime.datetime.now() - start) + encoding_duration
-        listeners.publish_command_success(
-            duration, result, name, request_id, sock_info.address)
-
-    return result
-
-
 def _check_write_command_response(results):
     """Backward compatibility helper for write command error handling.
     """
