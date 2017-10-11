@@ -310,6 +310,8 @@ class _Bulk(object):
         listeners = self.collection.database.client._event_listeners
 
         with self.collection.database.client._tmp_session(session) as s:
+            # sock_info.command checks auth, but we use sock_info.write_command.
+            sock_info.check_session_auth_matches(s)
             for run in generator:
                 cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
                            ('ordered', self.ordered)])
@@ -318,9 +320,9 @@ class _Bulk(object):
                 if self.bypass_doc_val and sock_info.max_wire_version >= 4:
                     cmd['bypassDocumentValidation'] = True
                 if s:
-                    cmd['lsid'] = s.session_id
+                    cmd['lsid'] = s._use_lsid()
                 bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
-                                        listeners)
+                                        listeners, s)
 
                 results = _do_batched_write_command(
                     self.namespace, run.op_type, cmd,

@@ -18,8 +18,7 @@ import contextlib
 
 from datetime import datetime
 
-from pymongo.errors import ConfigurationError
-from pymongo.message import _Query, _convert_exception
+from pymongo.message import _convert_exception
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
 
@@ -64,19 +63,6 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def send_message(self, message, all_credentials):
-        """Send an unacknowledged message to MongoDB.
-
-        Can raise ConnectionFailure.
-
-        :Parameters:
-          - `message`: (request_id, data).
-          - `all_credentials`: dict, maps auth source to MongoCredential.
-        """
-        _, data, max_doc_size = self._split_message(message)
-        with self.get_socket(all_credentials) as sock_info:
-            sock_info.send_message(data, max_doc_size)
-
     def send_message_with_response(
             self,
             operation,
@@ -117,7 +103,7 @@ class Server(object):
 
             try:
                 sock_info.send_message(data, max_doc_size)
-                response_data = sock_info.receive_message(1, request_id)
+                reply = sock_info.receive_message(request_id)
             except Exception as exc:
                 if publish:
                     duration = (datetime.now() - start) + encoding_duration
@@ -132,7 +118,7 @@ class Server(object):
 
             if exhaust:
                 return ExhaustResponse(
-                    data=response_data,
+                    data=reply,
                     address=self._description.address,
                     socket_info=sock_info,
                     pool=self._pool,
@@ -141,7 +127,7 @@ class Server(object):
                     from_command=use_find_cmd)
             else:
                 return Response(
-                    data=response_data,
+                    data=reply,
                     address=self._description.address,
                     duration=duration,
                     request_id=request_id,

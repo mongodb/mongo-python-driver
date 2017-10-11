@@ -36,7 +36,7 @@ from pymongo.change_stream import ChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
-from pymongo.helpers import _UNICODE_REPLACE_CODEC_OPTIONS
+from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import IndexModel
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
@@ -635,12 +635,12 @@ class Collection(common.BaseObject):
             command['bypassDocumentValidation'] = True
         bwc = message._BulkWriteContext(
             self.database.name, command, sock_info, op_id,
-            self.database.client._event_listeners)
+            self.database.client._event_listeners, session=None)
         if acknowledged:
             # Batched insert command.
             with self.__database.client._tmp_session(session) as s:
                 if s:
-                    command['lsid'] = s.session_id
+                    command['lsid'] = s._use_lsid()
                 results = message._do_batched_write_command(
                     self.database.name + ".$cmd", message._INSERT, command,
                     gen(), check_keys, self.__write_response_codec_options, bwc)
@@ -1902,7 +1902,7 @@ class Collection(common.BaseObject):
                                      explicit_session=session is not None)
             else:
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
-                res = helpers._first_batch(
+                res = message._first_batch(
                     sock_info, self.__database.name, "system.indexes",
                     {"ns": self.__full_name}, 0, slave_ok, codec_options,
                     ReadPreference.PRIMARY, cmd,

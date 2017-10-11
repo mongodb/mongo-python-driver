@@ -1089,7 +1089,7 @@ buildvariants:
      - ".latest"
      - ".3.4"
 
-- matrix_name: "tests-python-version-ubuntu1204-test-ssl"
+- matrix_name: "tests-python-version-rhel62-test-ssl"
   matrix_spec: {"python-version": "*", auth: "*", ssl: "*", coverage: "*"}
   exclude_spec:
    - python-version: "*"
@@ -1106,8 +1106,8 @@ buildvariants:
      auth: "*"
      ssl: "ssl"
      coverage: "*"
-  display_name: "${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl} ${coverage}"
-  run_on: ubuntu1204-test
+  display_name: "${python-version} RHEL 6.2 (x86_64) ${auth} ${ssl} ${coverage}"
+  run_on: rhel62-test
   tasks:
      - ".latest"
      - ".3.4"
@@ -1115,7 +1115,7 @@ buildvariants:
      - ".3.0"
      - ".2.6"
 
-- matrix_name: "tests-python-version-ubuntu1204-without-c-extensions"
+- matrix_name: "tests-python-version-rhel62-without-c-extensions"
   matrix_spec: {"python-version": "*", "c-extensions": "without-c-extensions", auth: "noauth", ssl: "nossl", coverage: "*"}
   exclude_spec:
    # These interpreters are always tested without extensions.
@@ -1124,8 +1124,8 @@ buildvariants:
      auth: "*"
      ssl: "*"
      coverage: "*"
-  display_name: "${c-extensions} ${python-version} Ubuntu 12.04 (x86_64) ${auth} ${ssl} ${coverage}"
-  run_on: ubuntu1204-test
+  display_name: "${c-extensions} ${python-version} RHEL 6.2 (x86_64) ${auth} ${ssl} ${coverage}"
+  run_on: rhel62-test
   tasks:
      - ".latest"
      - ".3.4"
@@ -1133,15 +1133,15 @@ buildvariants:
      - ".3.0"
      - ".2.6"
 
-- matrix_name: "tests-python-version-green-framework-ubuntu1204"
+- matrix_name: "tests-python-version-green-framework-rhel62"
   matrix_spec: {"python-version": "*", "green-framework": "*", auth-ssl: "*"}
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - python-version: ["pypy", "pypy3", "jython2.7"]
      green-framework: "*"
      auth-ssl: "*"
-  display_name: "${green-framework} ${python-version} Ubuntu 12.04 (x86_64) ${auth-ssl}"
-  run_on: ubuntu1204-test
+  display_name: "${green-framework} ${python-version} RHEL 6.2 (x86_64) ${auth-ssl}"
+  run_on: rhel62-test
   tasks:
      - ".latest"
      - ".3.4"
@@ -1175,11 +1175,11 @@ buildvariants:
      - ".3.0"
      - ".2.6"
 
-# Storage engine tests on Ubuntu 12.04 (x86_64) with Python 2.7.
+# Storage engine tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
   matrix_spec: {storage-engine: "*", python-version: "2.7"}
-  display_name: "Storage ${storage-engine} ${python-version} Ubuntu 12.04 (x86_64)"
-  run_on: ubuntu1204-test
+  display_name: "Storage ${storage-engine} ${python-version} RHEL 6.2 (x86_64)"
+  run_on: rhel62-test
   rules:
     - if:
         storage-engine: ["mmapv1", "inmemory"]
@@ -1220,10 +1220,11 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec: {"python-version": ["2.6", "2.7", "3.4", "3.6"], "mod-wsgi-version": "*"}
   exclude_spec:
-    python-version: ["3.4", "3.6"]
+    # mod_wsgi 2.8 segfaults with the toolchain python 2.7, regardless of distro
+    python-version: ["2.7", "3.4", "3.6"]
     mod-wsgi-version: ["2.8"]
   display_name: "${mod-wsgi-version} ${python-version}"
-  run_on: ubuntu1204-test
+  run_on: rhel62-test
   tasks:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
@@ -1231,14 +1232,14 @@ buildvariants:
 - matrix_name: "mockupdb-tests"
   matrix_spec: {python-version: "2.7"}
   display_name: "MockupDB Tests"
-  run_on: ubuntu1204-test
+  run_on: rhel62-test
   tasks:
      - name: "mockupdb"
 
 - matrix_name: "tests-doctests"
   matrix_spec: {python-version: ["2.7", "3.4"]}
   display_name: "Doctests ${python-version}"
-  run_on: ubuntu1204-test
+  run_on: rhel62-test
   tasks:
      - name: "doctests"
 
@@ -1247,14 +1248,14 @@ buildvariants:
   display_name: "cdecimal ${python-version}"
   batchtime: 10080  # 7 days
   run_on:
-    - ubuntu1204-test
+    - rhel62-test
   tasks:
     - name: "cdecimal"
 
 - name: "no-server"
   display_name: "No server test"
   run_on:
-    - ubuntu1204-test
+    - rhel62-test
   tasks:
     - name: "no-server"
 

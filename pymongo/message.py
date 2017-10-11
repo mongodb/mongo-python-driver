@@ -978,7 +978,6 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     query = _Query(
         0, db, coll, 0, query, None, codec_options,
         read_preference, ntoreturn, batch_size, DEFAULT_READ_CONCERN, None, session)
-
     name = next(iter(cmd))
     publish = listeners.enabled_for_commands
     if publish:

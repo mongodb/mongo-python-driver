@@ -15,14 +15,10 @@
 """Bits and pieces used by the driver that don't really fit elsewhere."""
 
 import collections
-import datetime
-import struct
 import sys
 import traceback
 
-import bson
-from bson.codec_options import CodecOptions
-from bson.py3compat import itervalues, string_type, iteritems
+from bson.py3compat import string_type, iteritems, itervalues
 from bson.son import SON
 from pymongo import ASCENDING
 from pymongo.errors import (CursorNotFound,
@@ -30,18 +26,11 @@ from pymongo.errors import (CursorNotFound,
                             ExecutionTimeout,
                             NotMasterError,
                             OperationFailure,
-                            ProtocolError,
                             WriteError,
                             WriteConcernError,
                             WTimeoutError)
-from pymongo.message import _Query, _convert_exception
-from pymongo.read_concern import DEFAULT_READ_CONCERN
-
 
 _UUNDER = u"_"
-
-_UNICODE_REPLACE_CODEC_OPTIONS = CodecOptions(
-    unicode_decode_error_handler='replace')
 
 
 def _gen_index_name(keys):
@@ -90,79 +79,6 @@ def _index_document(index_list):
                             "index specifier.")
         index[key] = value
     return index
-
-
-def _raw_response(response, cursor_id=None):
-    """Unpack a response header from the database, without decoding BSON.
-
-    Check the response for errors and unpack, returning a dictionary
-    containing the response data.
-
-    Can raise CursorNotFound, NotMasterError, ExecutionTimeout, or
-    OperationFailure.
-
-    :Parameters:
-      - `response`: byte string as returned from the database
-      - `cursor_id` (optional): cursor_id we sent to get this response -
-        used for raising an informative exception when we get cursor id not
-        valid at server response
-    """
-    response_flag = struct.unpack("<i", response[:4])[0]
-    if response_flag & 1:
-        # Shouldn't get this response if we aren't doing a getMore
-        if cursor_id is None:
-            raise ProtocolError("No cursor id for getMore operation")
-
-        # Fake a getMore command response. OP_GET_MORE provides no document.
-        msg = "Cursor not found, cursor id: %d" % (cursor_id,)
-        errobj = {"ok": 0, "errmsg": msg, "code": 43}
-        raise CursorNotFound(msg, 43, errobj)
-    elif response_flag & 2:
-        error_object = bson.BSON(response[20:]).decode()
-        # Fake the ok field if it doesn't exist.
-        error_object.setdefault("ok", 0)
-        if error_object["$err"].startswith("not master"):
-            raise NotMasterError(error_object["$err"], error_object)
-        elif error_object.get("code") == 50:
-            raise ExecutionTimeout(error_object.get("$err"),
-                                   error_object.get("code"),
-                                   error_object)
-        raise OperationFailure("database error: %s" %
-                               error_object.get("$err"),
-                               error_object.get("code"),
-                               error_object)
-
-    number_returned = struct.unpack("<i", response[16:20])[0]
-    data = [response[20:]]
-    result = {"cursor_id": struct.unpack("<q", response[4:12])[0],
-              "starting_from": struct.unpack("<i", response[12:16])[0],
-              "number_returned": number_returned, "data": data}
-
-    return result
-
-
-def _unpack_response(response,
-                     cursor_id=None,
-                     codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
-    """Unpack a response from the database and decode the BSON document(s).
-
-    Check the response for errors and unpack, returning a dictionary
-    containing the response data.
-
-    Can raise CursorNotFound, NotMasterError, ExecutionTimeout, or
-    OperationFailure.
-
-    :Parameters:
-      - `response`: byte string as returned from the database
-      - `cursor_id` (optional): cursor_id we sent to get this response -
-        used for raising an informative exception when we get cursor id not
-        valid at server response
-      - `codec_options` (optional): an instance of
-        :class:`~bson.codec_options.CodecOptions`
-    """
-    result = _raw_response(response, cursor_id)
-    result["data"] = bson.decode_all(result["data"][0], codec_options)
-    return result
 
 
 def _check_command_response(response, msg=None, allowable_errors=None,
@@ -230,13 +146,8 @@ def _check_command_response(response, msg=None, allowable_errors=None,
             raise OperationFailure(msg % errmsg, code, response)
 
 
-def _check_gle_response(response):
+def _check_gle_response(result):
     """Return getlasterror response as a dict, or raise OperationFailure."""
-    response = _unpack_response(response)
-
-    assert response["number_returned"] == 1
-    result = response["data"][0]
-
     # Did getlasterror itself fail?
     _check_command_response(result)
 

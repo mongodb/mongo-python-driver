@@ -1219,12 +1219,15 @@ class MongoClient(common.BaseObject):
         # Driver Sessions Spec: "If startSession is called when multiple users
         # are authenticated drivers MUST raise an error with the error message
         # 'Cannot call startSession when multiple users are authenticated.'"
-        if len(self.__all_credentials) > 1:
+        authset = set(self.__all_credentials.values())
+        if len(authset) > 1:
             raise InvalidOperation("Cannot call start_session when"
                                    " multiple users are authenticated")
 
+        # Raises ConfigurationError if sessions are not supported.
+        server_session = self._get_server_session()
         opts = client_session.SessionOptions(**kwargs)
-        return client_session.ClientSession(self, opts)
+        return client_session.ClientSession(self, server_session, opts, authset)
 
     def _get_server_session(self):
         """Internal: start or resume a _ServerSession."""
@@ -1479,7 +1482,7 @@ class MongoClient(common.BaseObject):
                     if exc.code != 125:
                         raise
             else:
-                helpers._first_batch(sock_info, "admin", "$cmd.sys.unlock",
+                message._first_batch(sock_info, "admin", "$cmd.sys.unlock",
                                      {}, -1, True, self.codec_options,
                                      ReadPreference.PRIMARY, cmd,
                                      self._event_listeners,
