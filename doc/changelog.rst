@@ -4,8 +4,8 @@ Changelog
 Changes in Next Version
 -----------------------
 
-This version drops support for MongoDB versions older than 2.6. If connecting
-to a MongoDB 2.4 server or older, PyMongo now throws a
+This version drops support for MongoDB versions older than 2.6. If connecting to
+a MongoDB 2.4 server or older, PyMongo now throws a
 :exc:`~pymongo.errors.ConfigurationError`.
 
 .. warning:: This version drops support for CPython 3.3 (pypy3 continues to
@@ -40,10 +40,6 @@ Breaking changes include:
   UUID representations, :data:`bson.binary.PYTHON_LEGACY` (the default) and
   :data:`bson.binary.STANDARD`, and the decoding of BSON binary subtype 3
   are unchanged.
-- Removed `safe` and `last_error_args` arguments from
-  :meth:`pymongo.message.insert`, :meth:`pymongo.message.update`, and
-  :meth:`pymongo.message.delete`. These methods now only generate
-  unacknowledged legacy write messages.
 
 Changes in Version 3.5.1
 ------------------------

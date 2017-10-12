@@ -577,7 +577,8 @@ class Collection(common.BaseObject):
             self._legacy_write(
                 sock_info, 'insert', command, op_id,
                 bypass_doc_val, message.insert, self.__full_name, [doc],
-                check_keys, False, self.__write_response_codec_options)
+                check_keys, False, concern, False,
+                self.__write_response_codec_options)
         if not isinstance(doc, RawBSONDocument):
             return doc.get('_id')
 
@@ -828,7 +829,7 @@ class Collection(common.BaseObject):
             return self._legacy_write(
                 sock_info, 'update', command, op_id,
                 bypass_doc_val, message.update, self.__full_name, upsert,
-                multi, criteria, document, check_keys,
+                multi, criteria, document, False, concern, check_keys,
                 self.__write_response_codec_options)
 
     def replace_one(self, filter, replacement, upsert=False,
@@ -1097,7 +1098,8 @@ class Collection(common.BaseObject):
             return self._legacy_write(
                 sock_info, 'delete', command, op_id,
                 False, message.delete, self.__full_name, criteria,
-                self.__write_response_codec_options, int(not multi))
+                False, concern, self.__write_response_codec_options,
+                int(not multi))
 
     def delete_one(self, filter, collation=None, session=None):
         """Delete a single document matching the filter.
