@@ -41,6 +41,7 @@ from pymongo.errors import (BulkWriteError,
                             InvalidDocument,
                             InvalidOperation,
                             OperationFailure,
+                            WriteConcernError,
                             WTimeoutError)
 from pymongo.message import _CursorAddress
 from pymongo.son_manipulator import (AutoReference,
@@ -233,6 +234,42 @@ class TestLegacy(IntegrationTest):
             lambda: collection.insert([{'i': 2}] * 2, w=1))
 
         db.drop_collection("test_insert_multiple_with_duplicate")
+
+    @client_context.require_replica_set
+    def test_insert_prefers_write_errors(self):
+        # Tests legacy insert.
+        collection = self.db.test_insert_prefers_write_errors
+        self.db.drop_collection(collection.name)
+        collection.insert_one({'_id': 1})
+        large = 's' * 1024 * 1024 * 15
+        with self.assertRaises(DuplicateKeyError):
+            collection.insert(
+                [{'_id': 1, 's': large}, {'_id': 2, 's': large}])
+        self.assertEqual(1, collection.count())
+
+        with self.assertRaises(DuplicateKeyError):
+            collection.insert(
+                [{'_id': 1, 's': large}, {'_id': 2, 's': large}],
+                continue_on_error=True)
+        self.assertEqual(2, collection.count())
+        collection.delete_one({'_id': 2})
+
+        # A writeError followed by a writeConcernError should prefer to raise
+        # the writeError.
+        with self.assertRaises(DuplicateKeyError):
+            collection.insert(
+                [{'_id': 1, 's': large}, {'_id': 2, 's': large}],
+                continue_on_error=True,
+                w=len(client_context.nodes) + 10, wtimeout=1)
+        self.assertEqual(2, collection.count())
+        collection.delete_many({})
+
+        with self.assertRaises(WriteConcernError):
+            collection.insert(
+                [{'_id': 1, 's': large}, {'_id': 2, 's': large}],
+                continue_on_error=True,
+                w=len(client_context.nodes) + 10, wtimeout=1)
+        self.assertEqual(2, collection.count())
 
     def test_insert_iterables(self):
         # Tests legacy insert.

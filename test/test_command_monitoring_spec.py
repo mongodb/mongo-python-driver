@@ -223,7 +223,7 @@ def create_tests():
                         new_test = client_context.require_no_mongos(None)(
                             new_test)
 
-                test_name = 'test_%s.%s.%s' % (
+                test_name = 'test_%s_%s_%s' % (
                     dirname,
                     os.path.splitext(filename)[0],
                     str(test['description'].replace(" ", "_")))

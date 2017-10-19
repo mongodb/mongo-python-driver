@@ -16,6 +16,7 @@
 
 .. versionadded:: 2.7
 """
+from itertools import islice
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -31,6 +32,7 @@ from pymongo.errors import (BulkWriteError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
+                             _do_batched_insert,
                              _do_batched_write_command,
                              _randint,
                              _BulkWriteContext)
@@ -322,17 +324,29 @@ class _Bulk(object):
                     cmd['bypassDocumentValidation'] = True
                 if s:
                     cmd['lsid'] = s._use_lsid()
-                client._send_cluster_time(cmd)
                 bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
                                         listeners, s)
 
-                results = _do_batched_write_command(
-                    self.namespace, run.op_type, cmd,
-                    run.ops, True, self.collection.codec_options, bwc)
+                results = []
+                idx_offset = 0
+                while idx_offset < len(run.ops):
+                    check_keys = run.op_type == _INSERT
+                    ops = islice(run.ops, idx_offset, None)
+                    # Run as many ops as possible.
+                    client._send_cluster_time(cmd)
+                    request_id, msg, to_send = _do_batched_write_command(
+                        self.namespace, run.op_type, cmd, ops, check_keys,
+                        self.collection.codec_options, bwc)
+                    if not to_send:
+                        raise InvalidOperation("cannot do an empty bulk write")
+                    result = bwc.write_command(request_id, msg, to_send)
+                    client._receive_cluster_time(result)
+                    results.append((idx_offset, result))
+                    if self.ordered and "writeErrors" in result:
+                        break
+                    idx_offset += len(to_send)
 
                 _merge_command(run, full_result, results)
-                last_result = results[-1][1]
-                client._receive_cluster_time(last_result)
 
                 # We're supposed to continue if errors are
                 # at the write concern level (e.g. wtimeout)
@@ -345,6 +359,24 @@ class _Bulk(object):
                     key=lambda error: error['index'])
             raise BulkWriteError(full_result)
         return full_result
+
+    def execute_insert_no_results(self, sock_info, run, op_id, acknowledged):
+        """Execute insert, returning no results.
+        """
+        command = SON([('insert', self.collection.name),
+                       ('ordered', self.ordered)])
+        concern = {'w': int(self.ordered)}
+        command['writeConcern'] = concern
+        if self.bypass_doc_val and sock_info.max_wire_version >= 4:
+            command['bypassDocumentValidation'] = True
+        db = self.collection.database
+        bwc = _BulkWriteContext(
+            db.name, command, sock_info, op_id, db.client._event_listeners,
+            session=None)
+        # Legacy batched OP_INSERT.
+        _do_batched_insert(
+            self.collection.full_name, run.ops, True, acknowledged, concern,
+            not self.ordered, self.collection.codec_options, bwc)
 
     def execute_no_results(self, sock_info, generator):
         """Execute all operations, returning no results (w=0).
@@ -359,16 +391,18 @@ class _Bulk(object):
         write_concern = WriteConcern(w=int(self.ordered))
         op_id = _randint()
 
-        for run in generator:
+        next_run = next(generator)
+        while next_run:
+            # An ordered bulk write needs to send acknowledged writes to short
+            # circuit the next run. However, the final message on the final
+            # run can be unacknowledged.
+            run = next_run
+            next_run = next(generator, None)
+            needs_ack = self.ordered and next_run is not None
             try:
                 if run.op_type == _INSERT:
-                    coll._insert(
-                        sock_info,
-                        run.ops,
-                        self.ordered,
-                        write_concern=write_concern,
-                        op_id=op_id,
-                        bypass_doc_val=self.bypass_doc_val)
+                    self.execute_insert_no_results(
+                        sock_info, run, op_id, needs_ack)
                 elif run.op_type == _UPDATE:
                     for operation in run.ops:
                         doc = operation['u']

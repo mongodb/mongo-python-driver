@@ -181,33 +181,46 @@ def _check_gle_response(result):
     raise OperationFailure(details["err"], code, result)
 
 
-def _check_write_command_response(results):
+def _raise_last_write_error(write_errors):
+    # If the last batch had multiple errors only report
+    # the last error to emulate continue_on_error.
+    error = write_errors[-1]
+    if error.get("code") == 11000:
+        raise DuplicateKeyError(error.get("errmsg"), 11000, error)
+    raise WriteError(error.get("errmsg"), error.get("code"), error)
+
+
+def _raise_write_concern_error(error):
+    if "errInfo" in error and error["errInfo"].get('wtimeout'):
+        # Make sure we raise WTimeoutError
+        raise WTimeoutError(
+            error.get("errmsg"), error.get("code"), error)
+    raise WriteConcernError(
+        error.get("errmsg"), error.get("code"), error)
+
+
+def _check_write_command_response(result):
     """Backward compatibility helper for write command error handling.
     """
-    errors = [res for res in results
-              if "writeErrors" in res[1] or "writeConcernError" in res[1]]
-    if errors:
-        # If multiple batches had errors
-        # raise from the last batch.
-        offset, result = errors[-1]
-        # Prefer write errors over write concern errors
-        write_errors = result.get("writeErrors")
-        if write_errors:
-            # If the last batch had multiple errors only report
-            # the last error to emulate continue_on_error.
-            error = write_errors[-1]
-            error["index"] += offset
-            if error.get("code") == 11000:
-                raise DuplicateKeyError(error.get("errmsg"), 11000, error)
-            raise WriteError(error.get("errmsg"), error.get("code"), error)
-        else:
-            error = result["writeConcernError"]
-            if "errInfo" in error and error["errInfo"].get('wtimeout'):
-                # Make sure we raise WTimeoutError
-                raise WTimeoutError(
-                    error.get("errmsg"), error.get("code"), error)
-            raise WriteConcernError(
-                error.get("errmsg"), error.get("code"), error)
+    # Prefer write errors over write concern errors
+    write_errors = result.get("writeErrors")
+    if write_errors:
+        _raise_last_write_error(write_errors)
+
+    error = result.get("writeConcernError")
+    if error:
+        _raise_write_concern_error(error)
+
+
+def _raise_last_error(bulk_write_result):
+    """Backward compatibility helper for insert error handling.
+    """
+    # Prefer write errors over write concern errors
+    write_errors = bulk_write_result.get("writeErrors")
+    if write_errors:
+        _raise_last_write_error(write_errors)
+
+    _raise_write_concern_error(bulk_write_result["writeConcernErrors"][-1])
 
 
 def _fields_list_to_dict(fields, option_name):

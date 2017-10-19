@@ -971,34 +971,6 @@ insertfail:
     return NULL;
 }
 
-static PyObject*
-_send_write_command(PyObject* ctx, buffer_t buffer, int lst_len_loc,
-                    int cmd_len_loc, unsigned char* errors,
-                    PyObject* to_publish) {
-
-    PyObject* result;
-
-    int request_id = rand();
-    int position = buffer_get_position(buffer);
-    int length = position - lst_len_loc - 1;
-    buffer_write_int32_at_position(buffer, lst_len_loc, (int32_t)length);
-    length = position - cmd_len_loc;
-    buffer_write_int32_at_position(buffer, cmd_len_loc, (int32_t)length);
-    buffer_write_int32_at_position(buffer, 0, (int32_t)position);
-    buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
-
-    /* Send the current batch */
-    result = PyObject_CallMethod(ctx, "write_command",
-                                 "i" BYTES_FORMAT_STRING "O",
-                                 request_id,
-                                 buffer_get_buffer(buffer),
-                                 buffer_get_position(buffer),
-                                 to_publish);
-    if (result && PyDict_GetItemString(result, "writeErrors"))
-        *errors = 1;
-    return result;
-}
-
 static buffer_t
 _command_buffer_new(char* ns, int ns_len) {
     buffer_t buffer;
@@ -1040,12 +1012,13 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     long max_bson_size;
     long max_cmd_size;
     long max_write_batch_size;
-    long idx_offset = 0;
     int idx = 0;
     int cmd_len_loc;
     int lst_len_loc;
     int ns_len;
-    int ordered;
+    int request_id;
+    int position;
+    int length;
     char *ns = NULL;
     PyObject* max_bson_size_obj;
     PyObject* max_write_batch_size_obj;
@@ -1055,13 +1028,10 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     PyObject* ctx;
     PyObject* iterator;
     PyObject* result;
-    PyObject* results;
     PyObject* to_publish = NULL;
     unsigned char op;
     unsigned char check_keys;
     codec_options_t options;
-    unsigned char empty = 1;
-    unsigned char errors = 0;
     buffer_t buffer;
 
     if (!PyArg_ParseTuple(args, "et#bOObO&O", "utf-8",
@@ -1102,26 +1072,15 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    /* Default to True */
-    ordered = !((PyDict_GetItemString(command, "ordered")) == Py_False);
-
-    if (!(results = PyList_New(0))) {
-        destroy_codec_options(&options);
-        PyMem_Free(ns);
-        return NULL;
-    }
-
     if (!(to_publish = PyList_New(0))) {
         destroy_codec_options(&options);
         PyMem_Free(ns);
-        Py_DECREF(results);
         return NULL;
     }
 
     if (!(buffer = _command_buffer_new(ns, ns_len))) {
         destroy_codec_options(&options);
         PyMem_Free(ns);
-        Py_DECREF(results);
         Py_DECREF(to_publish);
         return NULL;
     }
@@ -1195,7 +1154,6 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
         int enough_data = 0;
         int enough_documents = 0;
         char key[16];
-        empty = 0;
         INT2STRING(key, idx);
         if (!buffer_write_bytes(buffer, "\x03", 1) ||
             !buffer_write_bytes(buffer, key, (int)strlen(key) + 1)) {
@@ -1207,11 +1165,12 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
             goto cmditerfail;
         }
 
-        /* We have enough data, maybe send this batch. */
+        /* We have enough data, return this batch.
+         * max_cmd_size accounts for the two trailing null bytes.
+         */
         enough_data = (buffer_get_position(buffer) > max_cmd_size);
         enough_documents = (idx >= max_write_batch_size);
         if (enough_data || enough_documents) {
-            buffer_t new_buffer;
             cur_size = buffer_get_position(buffer) - cur_doc_begin;
 
             /* This single document is too large for the command. */
@@ -1232,68 +1191,12 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
                 }
                 goto cmditerfail;
             }
-
-            if (!(new_buffer = buffer_new())) {
-                PyErr_NoMemory();
-                goto cmditerfail;
-            }
-            /* New buffer including the current overflow document */
-            if (!buffer_write_bytes(new_buffer,
-                (const char*)buffer_get_buffer(buffer), lst_len_loc + 5) ||
-                !buffer_write_bytes(new_buffer, "0\x00", 2) ||
-                !buffer_write_bytes(new_buffer,
-                (const char*)buffer_get_buffer(buffer) + cur_doc_begin, cur_size)) {
-                buffer_free(new_buffer);
-                goto cmditerfail;
-            }
             /*
              * Roll the existing buffer back to the beginning
              * of the last document encoded.
              */
             buffer_update_position(buffer, sub_doc_begin);
-
-            if (!buffer_write_bytes(buffer, "\x00\x00", 2)) {
-                buffer_free(new_buffer);
-                goto cmditerfail;
-            }
-
-            result = _send_write_command(ctx, buffer, lst_len_loc,
-                                         cmd_len_loc, &errors, to_publish);
-
-            buffer_free(buffer);
-            buffer = new_buffer;
-
-            if (!result)
-                goto cmditerfail;
-
-#if PY_MAJOR_VERSION >= 3
-            result = Py_BuildValue("NN",
-                                   PyLong_FromLong(idx_offset), result);
-#else
-            result = Py_BuildValue("NN",
-                                   PyInt_FromLong(idx_offset), result);
-#endif
-            if (!result)
-                goto cmditerfail;
-
-            if (PyList_Append(results, result) < 0) {
-                Py_DECREF(result);
-                goto cmditerfail;
-            }
-            Py_DECREF(result);
-
-            if (errors && ordered) {
-                destroy_codec_options(&options);
-                Py_DECREF(iterator);
-                buffer_free(buffer);
-                return results;
-            }
-            idx_offset += idx;
-            idx = 0;
-            Py_DECREF(to_publish);
-            if (!(to_publish = PyList_New(0))) {
-                goto cmditerfail;
-            }
+            break;
         }
         if (PyList_Append(to_publish, doc) < 0) {
             goto cmditerfail;
@@ -1307,47 +1210,33 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
         goto cmdfail;
     }
 
-    if (empty) {
-        PyObject* InvalidOperation = _error("InvalidOperation");
-        if (InvalidOperation) {
-            PyErr_SetString(InvalidOperation, "cannot do an empty bulk write");
-            Py_DECREF(InvalidOperation);
-        }
-        goto cmdfail;
-    }
-
     if (!buffer_write_bytes(buffer, "\x00\x00", 2))
         goto cmdfail;
 
-    result = _send_write_command(ctx, buffer, lst_len_loc,
-                                 cmd_len_loc, &errors, to_publish);
-    if (!result)
-        goto cmdfail;
 
-#if PY_MAJOR_VERSION >= 3
-    result = Py_BuildValue("NN", PyLong_FromLong(idx_offset), result);
-#else
-    result = Py_BuildValue("NN", PyInt_FromLong(idx_offset), result);
-#endif
-    if (!result)
-        goto cmdfail;
+    request_id = rand();
+    position = buffer_get_position(buffer);
+    length = position - lst_len_loc - 1;
+    buffer_write_int32_at_position(buffer, lst_len_loc, (int32_t)length);
+    length = position - cmd_len_loc;
+    buffer_write_int32_at_position(buffer, cmd_len_loc, (int32_t)length);
+    buffer_write_int32_at_position(buffer, 0, (int32_t)position);
+    buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING "O", request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer),
+                           to_publish);
 
-    if (PyList_Append(results, result) < 0) {
-        Py_DECREF(result);
-        goto cmdfail;
-    }
-    Py_DECREF(result);
     Py_DECREF(to_publish);
     buffer_free(buffer);
     destroy_codec_options(&options);
-    return results;
+    return result;
 
 cmditerfail:
     Py_XDECREF(doc);
     Py_DECREF(iterator);
 cmdfail:
     destroy_codec_options(&options);
-    Py_DECREF(results);
     Py_XDECREF(to_publish);
     buffer_free(buffer);
     return NULL;
@@ -1365,7 +1254,7 @@ static PyMethodDef _CMessageMethods[] = {
     {"_do_batched_insert", _cbson_do_batched_insert, METH_VARARGS,
      "insert a batch of documents, splitting the batch as needed"},
     {"_do_batched_write_command", _cbson_do_batched_write_command, METH_VARARGS,
-     "execute a batch of insert, update, or delete commands"},
+     "Create the next batched insert, update, or delete command"},
     {NULL, NULL, 0, NULL}
 };
 

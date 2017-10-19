@@ -803,15 +803,13 @@ if _use_c:
 
 def _do_batched_write_command(namespace, operation, command,
                               docs, check_keys, opts, ctx):
-    """Execute a batch of insert, update, or delete commands.
+    """Create the next batched insert, update, or delete command.
     """
     max_bson_size = ctx.max_bson_size
     max_write_batch_size = ctx.max_write_batch_size
     # Max BSON object size + 16k - 2 bytes for ending NUL bytes.
     # Server guarantees there is enough room: SERVER-10643.
     max_cmd_size = max_bson_size + _COMMAND_OVERHEAD
-
-    ordered = command.get('ordered', True)
 
     buf = StringIO()
     # Save space for message length and request id
@@ -844,60 +842,22 @@ def _do_batched_write_command(namespace, operation, command,
 
     # Where to write list document length
     list_start = buf.tell() - 4
-
     to_send = []
-
-    def send_message():
-        """Finalize and send the current OP_QUERY message.
-        """
-        # Close list and command documents
-        buf.write(_ZERO_16)
-
-        # Write document lengths and request id
-        length = buf.tell()
-        buf.seek(list_start)
-        buf.write(struct.pack('<i', length - list_start - 1))
-        buf.seek(command_start)
-        buf.write(struct.pack('<i', length - command_start))
-        buf.seek(4)
-        request_id = _randint()
-        buf.write(struct.pack('<i', request_id))
-        buf.seek(0)
-        buf.write(struct.pack('<i', length))
-        return ctx.write_command(request_id, buf.getvalue(), to_send)
-
-    # If there are multiple batches we'll
-    # merge results in the caller.
-    results = []
-
     idx = 0
-    idx_offset = 0
-    has_docs = False
     for doc in docs:
-        has_docs = True
         # Encode the current operation
         key = b(str(idx))
         value = bson.BSON.encode(doc, check_keys, opts)
-        # Send a batch?
-        enough_data = (buf.tell() + len(key) + len(value) + 2) >= max_cmd_size
+        # Is there enough room to add this document? max_cmd_size accounts for
+        # the two trailing null bytes.
+        enough_data = (buf.tell() + len(key) + len(value)) >= max_cmd_size
         enough_documents = (idx >= max_write_batch_size)
         if enough_data or enough_documents:
             if not idx:
                 write_op = "insert" if operation == _INSERT else None
                 _raise_document_too_large(
                     write_op, len(value), max_bson_size)
-            result = send_message()
-            results.append((idx_offset, result))
-            if ordered and "writeErrors" in result:
-                return results
-
-            # Truncate back to the start of list elements
-            buf.seek(list_start + 4)
-            buf.truncate()
-            idx_offset += idx
-            idx = 0
-            key = b'0'
-            to_send = []
+            break
         buf.write(_BSONOBJ)
         buf.write(key)
         buf.write(_ZERO_8)
@@ -905,11 +865,23 @@ def _do_batched_write_command(namespace, operation, command,
         to_send.append(doc)
         idx += 1
 
-    if not has_docs:
-        raise InvalidOperation("cannot do an empty bulk write")
+    # Finalize the current OP_QUERY message.
+    # Close list and command documents
+    buf.write(_ZERO_16)
 
-    results.append((idx_offset, send_message()))
-    return results
+    # Write document lengths and request id
+    length = buf.tell()
+    buf.seek(list_start)
+    buf.write(struct.pack('<i', length - list_start - 1))
+    buf.seek(command_start)
+    buf.write(struct.pack('<i', length - command_start))
+    buf.seek(4)
+    request_id = _randint()
+    buf.write(struct.pack('<i', request_id))
+    buf.seek(0)
+    buf.write(struct.pack('<i', length))
+
+    return request_id, buf.getvalue(), to_send
 if _use_c:
     _do_batched_write_command = _cmessage._do_batched_write_command
 
