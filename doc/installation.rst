@@ -47,7 +47,7 @@ Dependencies
 
 PyMongo supports CPython 2.6, 2.7, 3.4+, PyPy, and PyPy3.
 
-Optional dependencies for GSSAPI and TLS:
+Optional dependencies:
 
 GSSAPI authentication requires `pykerberos
 <https://pypi.python.org/pypi/pykerberos>`_ on Unix or `WinKerberos
@@ -55,6 +55,11 @@ GSSAPI authentication requires `pykerberos
 dependency can be installed automatically along with PyMongo::
 
   $ python -m pip install pymongo[gssapi]
+
+Support for mongodb+srv:// URIs requires `dnspython
+<https://pypi.python.org/pypi/dnspython>`_::
+
+  $ python -m pip install pymongo[srv]
 
 TLS / SSL support may require `ipaddress
 <https://pypi.python.org/pypi/ipaddress>`_ and `certifi
@@ -65,10 +70,10 @@ PyMongo::
 
   $ python -m pip install pymongo[tls]
 
-You can install both dependencies automatically with the following
+You can install all dependencies automatically with the following
 command::
 
-  $ python -m pip install pymongo[gssapi,tls]
+  $ python -m pip install pymongo[gssapi,srv,tls]
 
 Other optional packages:
 
