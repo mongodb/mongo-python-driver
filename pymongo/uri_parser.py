@@ -18,8 +18,11 @@ import re
 import warnings
 
 try:
+    # Eventlet monkey patches dnspython with a copy it bundles.
+    # We have to import dns.exception to ensure we can catch the
+    # patched DNSException.
+    import dns.exception
     from dns import rdata, resolver
-    from dns.exception import DNSException
     _HAVE_DNSPYTHON = True
 except ImportError:
     _HAVE_DNSPYTHON = False
@@ -267,12 +270,24 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
 _BAD_DB_CHARS = re.compile('[' + re.escape(r'/ "$') + ']')
 
 
+if PY3:
+    def maybe_decode(text):
+        if isinstance(text, bytes):
+            return text.decode()
+        return text
+else:
+    def maybe_decode(text):
+        return text
+
+
 def _get_dns_srv_hosts(hostname):
     try:
         results = resolver.query('_mongodb._tcp.' + hostname, 'SRV')
-        return [(res.target.to_text(omit_final_dot=True), res.port)
+        # Some older versions of dnspython return bytes for target.to_text.
+        return [(maybe_decode(
+                    res.target.to_text(omit_final_dot=True)), res.port)
                 for res in results]
-    except DNSException as exc:
+    except dns.exception.DNSException as exc:
         raise ConfigurationError(str(exc))
 
 
