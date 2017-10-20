@@ -17,6 +17,8 @@ Highlights include:
 - New methods :meth:`~pymongo.collection.Collection.find_raw_batches` and
   :meth:`~pymongo.collection.Collection.aggregate_raw_batches` for use with
   external libraries that can parse raw batches of BSON data.
+- New methods :meth:`~pymongo.mongo_client.MongoClient.list_databases` and
+  :meth:`~pymongo.mongo_client.MongoClient.list_database_names`.
 - Support for mongodb+srv:// URIs. See
   :class:`~pymongo.mongo_client.MongoClient` for details.
 

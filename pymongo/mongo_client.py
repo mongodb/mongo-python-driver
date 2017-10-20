@@ -51,6 +51,7 @@ from pymongo import (common,
                      uri_parser,
                      client_session)
 from pymongo.client_options import ClientOptions
+from pymongo.command_cursor import CommandCursor
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -1306,7 +1307,36 @@ class MongoClient(common.BaseObject):
                                   read_preference=ReadPreference.PRIMARY,
                                   session=session)
 
-    def database_names(self, session=None):
+    def list_databases(self, session=None, **kwargs):
+        """Get a cursor over the databases of the connected server.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): Optional parameters of the
+            `listDatabases command
+            <https://docs.mongodb.com/manual/reference/command/listDatabases/>`_
+            can be passed as keyword arguments to this method. The supported
+            options differ by server version.
+
+        :Returns:
+          An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+
+        .. versionadded:: 3.6
+        """
+        cmd = SON([("listDatabases", 1)])
+        cmd.update(kwargs)
+        res = self._database_default_options(
+            "admin").command(cmd, session=session)
+        # listDatabases doesn't return a cursor (yet). Fake one.
+        cursor = {
+            "id": 0,
+            "firstBatch": res["databases"],
+            "ns": "admin.$cmd",
+        }
+        return CommandCursor(self.admin["$cmd"], cursor, None)
+
+    def list_database_names(self, session=None):
         """Get a list of the names of all databases on the connected server.
 
         :Parameters:
@@ -1316,11 +1346,10 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        return [db["name"] for db in
-                self._database_default_options("admin").command(
-                    SON([("listDatabases", 1),
-                         ("nameOnly", True)]),
-                    session=session)["databases"]]
+        return [doc["name"]
+                for doc in self.list_databases(session, nameOnly=True)]
+
+    database_names = list_database_names
 
     def drop_database(self, name_or_database, session=None):
         """Drop a database.
