@@ -16,7 +16,7 @@
 <http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol>`_ to be sent to
 MongoDB.
 
-.. note:: This module is for internal use and should not be used by
+.. note:: This module is for internal use and is generally not needed by
    application developers.
 """
 
@@ -172,10 +172,10 @@ _MODIFIERS = SON([
 
 def _gen_explain_command(
         coll, spec, projection, skip, limit, batch_size,
-        options, read_concern, session):
+        options, read_concern, session, client):
     """Generate an explain command document."""
     cmd = _gen_find_command(coll, spec, projection, skip, limit, batch_size,
-                            options, session=None)
+                            options, session=None, client=None)
     if read_concern.level:
         explain = SON([('explain', cmd), ('readConcern', read_concern.document)])
     else:
@@ -184,11 +184,12 @@ def _gen_explain_command(
     if session:
         explain['lsid'] = session._use_lsid()
 
+    client._send_cluster_time(explain)
     return explain
 
 
 def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
-                      session, read_concern=DEFAULT_READ_CONCERN,
+                      session, client, read_concern=DEFAULT_READ_CONCERN,
                       collation=None):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
@@ -222,11 +223,13 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
                     if options & val])
     if session:
         cmd['lsid'] = session._use_lsid()
+    if client:
+        client._send_cluster_time(cmd)
     return cmd
 
 
 def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms,
-                          session):
+                          session, client):
     """Generate a getMore command document."""
     cmd = SON([('getMore', cursor_id),
                ('collection', coll)])
@@ -236,6 +239,7 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms,
         cmd['maxTimeMS'] = max_await_time_ms
     if session:
         cmd['lsid'] = session._use_lsid()
+    client._send_cluster_time(cmd)
     return cmd
 
 
@@ -245,11 +249,11 @@ class _Query(object):
     __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
                  'batch_size', 'name', 'read_concern', 'collation',
-                 'session')
+                 'session', 'client')
 
     def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
-                 batch_size, read_concern, collation, session):
+                 batch_size, read_concern, collation, session, client):
         self.flags = flags
         self.db = db
         self.coll = coll
@@ -263,6 +267,7 @@ class _Query(object):
         self.batch_size = batch_size
         self.collation = collation
         self.session = session
+        self.client = client
         self.name = 'find'
 
     def use_command(self, sock_info, exhaust):
@@ -296,11 +301,11 @@ class _Query(object):
             return _gen_explain_command(
                 self.coll, self.spec, self.fields, self.ntoskip,
                 self.limit, self.batch_size, self.flags,
-                self.read_concern, self.session), self.db
+                self.read_concern, self.session, self.client), self.db
         return _gen_find_command(self.coll, self.spec, self.fields,
                                  self.ntoskip, self.limit, self.batch_size,
-                                 self.flags, self.session, self.read_concern,
-                                 self.collation), self.db
+                                 self.flags, self.session, self.client,
+                                 self.read_concern, self.collation), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""
@@ -340,19 +345,20 @@ class _GetMore(object):
     """A getmore operation."""
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_await_time_ms',
-                 'codec_options', 'session')
+                 'codec_options', 'session', 'client')
 
     name = 'getMore'
 
     def __init__(self, db, coll, ntoreturn, cursor_id, codec_options, session,
-                 max_await_time_ms=None):
+                 client, max_await_time_ms=None):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
         self.codec_options = codec_options
-        self.max_await_time_ms = max_await_time_ms
         self.session = session
+        self.client = client
+        self.max_await_time_ms = max_await_time_ms
 
     def use_command(self, sock_info, exhaust):
         sock_info.check_session_auth_matches(self.session)
@@ -363,7 +369,8 @@ class _GetMore(object):
         return _gen_get_more_command(self.cursor_id, self.coll,
                                      self.ntoreturn,
                                      self.max_await_time_ms,
-                                     self.session), self.db
+                                     self.session,
+                                     self.client), self.db
 
     def get_message(self, dummy0, dummy1, use_cmd=False):
         """Get a getmore message."""
@@ -453,12 +460,9 @@ def __pack_message(operation, data):
     return (request_id, message + data)
 
 
-def insert(collection_name, docs, check_keys, continue_on_error, opts):
-    """Get an unacknowledged **insert** message.
-
-    .. versionchanged:: 3.6
-       Removed 'safe' and 'last_error_args' arguments.
-    """
+def insert(collection_name, docs, check_keys,
+           safe, last_error_args, continue_on_error, opts):
+    """Get an **insert** message."""
     options = 0
     if continue_on_error:
         options += 1
@@ -469,17 +473,21 @@ def insert(collection_name, docs, check_keys, continue_on_error, opts):
         raise InvalidOperation("cannot do an empty bulk insert")
     max_bson_size = max(map(len, encoded))
     data += _EMPTY.join(encoded)
-    request_id, insert_message = __pack_message(2002, data)
-    return request_id, insert_message, max_bson_size
+    if safe:
+        (_, insert_message) = __pack_message(2002, data)
+        (request_id, error_message, _) = __last_error(collection_name,
+                                                      last_error_args)
+        return (request_id, insert_message + error_message, max_bson_size)
+    else:
+        (request_id, insert_message) = __pack_message(2002, data)
+        return (request_id, insert_message, max_bson_size)
 if _use_c:
     insert = _cmessage._insert_message
 
 
-def update(collection_name, upsert, multi, spec, doc, check_keys, opts):
-    """Get an unacknowledged **update** message.
-
-    .. versionchanged:: 3.6
-       Removed 'safe' and 'last_error_args' arguments.
+def update(collection_name, upsert, multi,
+           spec, doc, safe, last_error_args, check_keys, opts):
+    """Get an **update** message.
     """
     options = 0
     if upsert:
@@ -493,8 +501,14 @@ def update(collection_name, upsert, multi, spec, doc, check_keys, opts):
     data += bson.BSON.encode(spec, False, opts)
     encoded = bson.BSON.encode(doc, check_keys, opts)
     data += encoded
-    request_id, update_message = __pack_message(2001, data)
-    return request_id, update_message, len(encoded)
+    if safe:
+        (_, update_message) = __pack_message(2001, data)
+        (request_id, error_message, _) = __last_error(collection_name,
+                                                      last_error_args)
+        return (request_id, update_message + error_message, len(encoded))
+    else:
+        (request_id, update_message) = __pack_message(2001, data)
+        return (request_id, update_message, len(encoded))
 if _use_c:
     update = _cmessage._update_message
 
@@ -507,7 +521,19 @@ def query(options, collection_name, num_to_skip,
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
-    encoded = bson.BSON.encode(query, check_keys, opts)
+    if check_keys:
+        # Temporarily remove $clusterTime to avoid an error from the $-prefix.
+        cluster_time = query.pop('$clusterTime', None)
+        encoded = bson.BSON.encode(query, True, opts)
+        if cluster_time is not None:
+            extra = bson._name_value_to_bson(
+                b"$clusterTime\x00", cluster_time, False, opts)
+            encoded = (
+                bson._PACK_INT(len(encoded) + len(extra))
+                + encoded[4:-1] + extra + b'\x00')
+            query['$clusterTime'] = cluster_time
+    else:
+        encoded = bson.BSON.encode(query, False, opts)
     data += encoded
     max_bson_size = len(encoded)
     if field_selector is not None:
@@ -532,24 +558,28 @@ if _use_c:
     get_more = _cmessage._get_more_message
 
 
-def delete(collection_name, spec, opts, flags=0):
-    """Get an unacknowledged **delete** message.
+def delete(collection_name, spec, safe,
+           last_error_args, opts, flags=0):
+    """Get a **delete** message.
 
     `opts` is a CodecOptions. `flags` is a bit vector that may contain
     the SingleRemove flag or not:
 
     http://docs.mongodb.org/meta-driver/latest/legacy/mongodb-wire-protocol/#op-delete
-
-    .. versionchanged:: 3.6
-       Removed 'safe' and 'last_error_args' arguments.
     """
     data = _ZERO_32
     data += bson._make_c_string(collection_name)
     data += struct.pack("<I", flags)
     encoded = bson.BSON.encode(spec, False, opts)
     data += encoded
-    request_id, remove_message = __pack_message(2006, data)
-    return request_id, remove_message, len(encoded)
+    if safe:
+        (_, remove_message) = __pack_message(2006, data)
+        (request_id, error_message, _) = __last_error(collection_name,
+                                                      last_error_args)
+        return (request_id, remove_message + error_message, len(encoded))
+    else:
+        (request_id, remove_message) = __pack_message(2006, data)
+        return (request_id, remove_message, len(encoded))
 
 
 def kill_cursors(cursor_ids):
@@ -973,11 +1003,13 @@ class _OpReply(object):
 
 def _first_batch(sock_info, db, coll, query, ntoreturn,
                  slave_ok, codec_options, read_preference, cmd, listeners,
-                 session, batch_size=0):
+                 session):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, db, coll, 0, query, None, codec_options,
-        read_preference, ntoreturn, batch_size, DEFAULT_READ_CONCERN, None, session)
+        read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, session,
+        None)
+
     name = next(iter(cmd))
     publish = listeners.enabled_for_commands
     if publish:

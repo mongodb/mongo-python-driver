@@ -967,10 +967,10 @@ axes:
         display_name: "mod_wsgi 3.5"
         variables:
           MOD_WSGI_VERSION: "3.5"
-      - id: "4.5.15"
-        display_name: "mod_wsgi 4.5.15"
+      - id: "4.5.20"
+        display_name: "mod_wsgi 4.5.20"
         variables:
-          MOD_WSGI_VERSION: "4.5.15"
+          MOD_WSGI_VERSION: "4.5.20"
   - id: green-framework
     display_name: "Green Framework"
     values:

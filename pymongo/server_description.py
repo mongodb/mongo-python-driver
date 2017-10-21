@@ -46,7 +46,7 @@ class ServerDescription(object):
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable',
         '_ls_timeout_minutes', '_error', '_set_version', '_election_id',
-        '_last_write_date', '_last_update_time')
+        '_cluster_time', '_last_write_date', '_last_update_time')
 
     def __init__(
             self,
@@ -70,6 +70,7 @@ class ServerDescription(object):
         self._max_wire_version = ismaster.max_wire_version
         self._set_version = ismaster.set_version
         self._election_id = ismaster.election_id
+        self._cluster_time = ismaster.cluster_time
         self._is_writable = ismaster.is_writable
         self._is_readable = ismaster.is_readable
         self._ls_timeout_minutes = ismaster.logical_session_timeout_minutes
@@ -149,6 +150,10 @@ class ServerDescription(object):
     @property
     def election_id(self):
         return self._election_id
+
+    @property
+    def cluster_time(self):
+        return self._cluster_time
 
     @property
     def election_tuple(self):

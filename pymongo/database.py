@@ -434,19 +434,21 @@ class Database(common.BaseObject):
                 check,
                 allowable_errors,
                 parse_write_concern_error=parse_write_concern_error,
-                session=session)
+                session=session,
+                client=self.__client)
 
         with self.__client._tmp_session(session) as s:
             return sock_info.command(
-                    self.__name,
-                    command,
-                    slave_ok,
-                    read_preference,
-                    codec_options,
-                    check,
-                    allowable_errors,
-                    parse_write_concern_error=parse_write_concern_error,
-                    session=s)
+                self.__name,
+                command,
+                slave_ok,
+                read_preference,
+                codec_options,
+                check,
+                allowable_errors,
+                parse_write_concern_error=parse_write_concern_error,
+                session=s,
+                client=self.__client)
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
@@ -542,13 +544,10 @@ class Database(common.BaseObject):
                                  codec_options, session=session, **kwargs)
 
     def _list_collections(self, sock_info, slave_okay, filter=None,
-                         session=None, batch_size=0):
+                         session=None):
         """Internal listCollections helper."""
         filter = filter or {}
         cmd = SON([("listCollections", 1), ("cursor", {})])
-
-        if batch_size:
-            cmd["cursor"]["batchSize"] = batch_size
 
         if filter:
             cmd["filter"] = filter
@@ -559,8 +558,7 @@ class Database(common.BaseObject):
                 cursor = self._command(
                     sock_info, cmd, slave_okay, session=s)["cursor"]
                 return CommandCursor(coll, cursor, sock_info.address, session=s,
-                                     explicit_session=session is not None,
-                                     batch_size=batch_size)
+                                     explicit_session=session is not None)
         else:
             coll = self["system.namespaces"]
             if "name" in filter:
@@ -570,23 +568,23 @@ class Database(common.BaseObject):
             res = _first_batch(sock_info, coll.database.name, coll.name,
                                filter, 0, slave_okay,
                                CodecOptions(), ReadPreference.PRIMARY, cmd,
-                               self.client._event_listeners, session=None, batch_size=batch_size)
+                               self.client._event_listeners, session=None)
             data = res["data"]
             cursor = {
                 "id": res["cursor_id"],
                 "firstBatch": data,
                 "ns": coll.full_name,
             }
-            return CommandCursor(coll, cursor, sock_info.address,
-                                 batch_size=batch_size)
-    def list_collections(self, filter=None, session=None, batch_size=0):
+            return CommandCursor(coll, cursor, sock_info.address)
+
+    def list_collections(self, filter=None, session=None):
         """Get info about the collections in this database."""
         with self.__client._socket_for_reads(
                 ReadPreference.PRIMARY) as (sock_info, slave_okay):
 
              wire_version = sock_info.max_wire_version
              results = self._list_collections(sock_info, slave_okay, filter=filter,
-                                           batch_size=batch_size, session=session)
+                                              session=session)
         for result in results:
             if wire_version <= 2:
                 name = result["name"]
@@ -737,7 +735,8 @@ class Database(common.BaseObject):
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
                 with self.__client._tmp_session(session) as s:
-                    return sock_info.command("admin", cmd, session=s)
+                    return sock_info.command("admin", cmd, session=s,
+                                             client=self.__client)
             else:
                 spec = {"$all": True} if include_all else {}
                 x = _first_batch(sock_info, "admin", "$cmd.sys.inprog",

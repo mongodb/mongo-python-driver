@@ -497,7 +497,29 @@ class ClientContext(object):
 client_context = ClientContext()
 
 
-class IntegrationTest(unittest.TestCase):
+def sanitize_cmd(cmd):
+    cp = cmd.copy()
+    cp.pop('$clusterTime', None)
+    cp.pop('lsid', None)
+    return cp
+
+
+def sanitize_reply(reply):
+    cp = reply.copy()
+    cp.pop('$clusterTime', None)
+    cp.pop('operationTime', None)
+    return cp
+
+
+class PyMongoTestCase(unittest.TestCase):
+    def assertEqualCommand(self, expected, actual, msg=None):
+        self.assertEqual(expected, sanitize_cmd(actual), msg)
+
+    def assertEqualReply(self, expected, actual, msg=None):
+        self.assertEqual(expected, sanitize_reply(actual), msg)
+
+
+class IntegrationTest(PyMongoTestCase):
     """Base class for TestCases that need a connection to MongoDB to pass."""
 
     @classmethod
