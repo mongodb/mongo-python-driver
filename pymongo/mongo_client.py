@@ -126,6 +126,21 @@ class MongoClient(common.BaseObject):
 
             client = MongoClient('/tmp/mongodb-27017.sock')
 
+        Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
+        URI must include one, and only one, hostname. The hostname will be
+        resolved to one or more DNS `SRV records
+        <https://en.wikipedia.org/wiki/SRV_record>`_ which will be used
+        as the seed list for connecting to the MongoDB deployment. When using
+        SRV support configuration options can be specified using `TXT records
+        <https://en.wikipedia.org/wiki/TXT_record>`_. See the
+        `Initial DNS Seedlist Discovery spec
+        <https://github.com/mongodb/specifications/blob/master/source/
+        initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
+        for more details.
+
+        .. note:: MongoClient creation will block waiting for answers from
+          DNS when mongodb+srv:// URIs are used.
+
         .. note:: Starting with version 3.0 the :class:`MongoClient`
           constructor no longer blocks while connecting to the server or
           servers, and it no longer raises
@@ -338,6 +353,9 @@ class MongoClient(common.BaseObject):
 
         .. mongodoc:: connections
 
+        .. versionchanged:: 3.6
+           Added support for mongodb+srv:// URIs.
+
         .. versionchanged:: 3.5
            Add ``username`` and ``password`` options. Document the
            ``authSource``, ``authMechanism``, and ``authMechanismProperties ``
@@ -420,17 +438,12 @@ class MongoClient(common.BaseObject):
         opts = {}
         for entity in host:
             if "://" in entity:
-                if entity.startswith("mongodb://"):
-                    res = uri_parser.parse_uri(entity, port, warn=True)
-                    seeds.update(res["nodelist"])
-                    username = res["username"] or username
-                    password = res["password"] or password
-                    dbase = res["database"] or dbase
-                    opts = res["options"]
-                else:
-                    idx = entity.find("://")
-                    raise InvalidURI("Invalid URI scheme: "
-                                     "%s" % (entity[:idx],))
+                res = uri_parser.parse_uri(entity, port, warn=True)
+                seeds.update(res["nodelist"])
+                username = res["username"] or username
+                password = res["password"] or password
+                dbase = res["database"] or dbase
+                opts = res["options"]
             else:
                 seeds.update(uri_parser.split_hosts(entity, port))
         if not seeds:
@@ -1140,7 +1153,7 @@ class MongoClient(common.BaseObject):
         spec = SON([('killCursors', coll), ('cursors', cursor_ids)])
         with server.get_socket(self.__all_credentials) as sock_info:
             if sock_info.max_wire_version >= 4 and namespace is not None:
-                sock_info.command(db, spec, session=session)
+                sock_info.command(db, spec, session=session, client=self)
             else:
                 if publish:
                     start = datetime.datetime.now()
@@ -1270,6 +1283,14 @@ class MongoClient(common.BaseObject):
                 raise
         else:
             yield None
+
+    def _send_cluster_time(self, command):
+        cluster_time = self._topology.max_cluster_time()
+        if cluster_time:
+            command['$clusterTime'] = cluster_time
+
+    def _receive_cluster_time(self, reply):
+        self._topology.receive_cluster_time(reply.get('$clusterTime'))
 
     def server_info(self, session=None):
         """Get information about the MongoDB server we're connected to.
@@ -1476,7 +1497,8 @@ class MongoClient(common.BaseObject):
             if sock_info.max_wire_version >= 4:
                 try:
                     with self._tmp_session(session) as s:
-                        sock_info.command("admin", cmd, session=s)
+                        sock_info.command(
+                            "admin", cmd, session=s, client=self)
                 except OperationFailure as exc:
                     # Ignore "DB not locked" to replicate old behavior
                     if exc.code != 125:

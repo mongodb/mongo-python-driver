@@ -17,7 +17,17 @@
 import re
 import warnings
 
-from bson.py3compat import PY3, iteritems, string_type
+try:
+    # Eventlet monkey patches dnspython with a copy it bundles.
+    # We have to import dns.exception to ensure we can catch the
+    # patched DNSException.
+    import dns.exception
+    from dns import rdata, resolver
+    _HAVE_DNSPYTHON = True
+except ImportError:
+    _HAVE_DNSPYTHON = False
+
+from bson.py3compat import PY3, string_type
 
 if PY3:
     from urllib.parse import unquote_plus
@@ -30,6 +40,8 @@ from pymongo.errors import ConfigurationError, InvalidURI
 
 SCHEME = 'mongodb://'
 SCHEME_LEN = len(SCHEME)
+SRV_SCHEME = 'mongodb+srv://'
+SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
 
@@ -258,6 +270,38 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
 _BAD_DB_CHARS = re.compile('[' + re.escape(r'/ "$') + ']')
 
 
+if PY3:
+    def maybe_decode(text):
+        if isinstance(text, bytes):
+            return text.decode()
+        return text
+else:
+    def maybe_decode(text):
+        return text
+
+
+def _get_dns_srv_hosts(hostname):
+    try:
+        results = resolver.query('_mongodb._tcp.' + hostname, 'SRV')
+        # Some older versions of dnspython return bytes for target.to_text.
+        return [(maybe_decode(
+                    res.target.to_text(omit_final_dot=True)), res.port)
+                for res in results]
+    except dns.exception.DNSException as exc:
+        raise ConfigurationError(str(exc))
+
+
+def _get_dns_txt_options(hostname):
+    try:
+        results = resolver.query(hostname, 'TXT')
+        return '&'.join(['&'.join(["%s" % (rdata._escapify(ent),)
+                                   for ent in res.strings])
+                         for res in results])
+    except resolver.NoAnswer:
+        # No TXT records
+        return None
+
+
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
     """Parse and validate a MongoDB URI.
 
@@ -272,6 +316,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
             'options': <dict of MongoDB URI options>
         }
 
+    If the URI scheme is "mongodb+srv://" DNS SRV and TXT lookups will be done
+    to build nodelist and options.
+
     :Parameters:
         - `uri`: The MongoDB URI to parse.
         - `default_port`: The port number to use when one wasn't specified
@@ -283,6 +330,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
           validation will error when options are unsupported or values are
           invalid.
 
+    .. versionchanged:: 3.6
+        Added support for mongodb+srv:// URIs
+
     .. versionchanged:: 3.5
         Return the original value of the ``readPreference`` MongoDB URI option
         instead of the validated read preference mode.
@@ -290,11 +340,18 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
     .. versionchanged:: 3.1
         ``warn`` added so invalid options can be ignored.
     """
-    if not uri.startswith(SCHEME):
-        raise InvalidURI("Invalid URI scheme: URI "
-                         "must begin with '%s'" % (SCHEME,))
-
-    scheme_free = uri[SCHEME_LEN:]
+    if uri.startswith(SCHEME):
+        is_srv = False
+        scheme_free = uri[SCHEME_LEN:]
+    elif uri.startswith(SRV_SCHEME):
+        if not _HAVE_DNSPYTHON:
+            raise ConfigurationError('The "dnspython" module must be '
+                                     'installed to use mongodb+srv:// URIs')
+        is_srv = True
+        scheme_free = uri[SRV_SCHEME_LEN:]
+    else:
+        raise InvalidURI("Invalid URI scheme: URI must "
+                         "begin with '%s' or '%s'", (SCHEME, SRV_SCHEME))
 
     if not scheme_free:
         raise InvalidURI("Must provide at least one hostname or IP.")
@@ -325,7 +382,23 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
                          " percent-encoded: %s" % host_part)
 
     hosts = unquote_plus(hosts)
-    nodes = split_hosts(hosts, default_port=default_port)
+
+    if is_srv:
+        nodes = split_hosts(hosts, default_port=None)
+        if len(nodes) != 1:
+            raise InvalidURI(
+                "%s URIs must include one, "
+                "and only one, hostname" % (SRV_SCHEME,))
+        hostname, port = nodes[0]
+        if port is not None:
+            raise InvalidURI(
+                "%s URIs must not include a port number" % (SRV_SCHEME,))
+        nodes = _get_dns_srv_hosts(hostname)
+        dns_options = _get_dns_txt_options(hostname)
+        if dns_options:
+            options = split_options(dns_options, validate, warn)
+    else:
+        nodes = split_hosts(hosts, default_port=default_port)
 
     if path_part:
         if path_part[0] == '?':
@@ -339,7 +412,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
                 raise InvalidURI('Bad database name "%s"' % dbase)
 
         if opts:
-            options = split_options(opts, validate, warn)
+            options.update(split_options(opts, validate, warn))
 
     if dbase is not None:
         dbase = unquote_plus(dbase)
@@ -361,6 +434,6 @@ if __name__ == '__main__':
     import sys
     try:
         pprint.pprint(parse_uri(sys.argv[1]))
-    except InvalidURI as e:
-        print(e)
+    except InvalidURI as exc:
+        print(exc)
     sys.exit(0)

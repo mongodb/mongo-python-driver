@@ -164,7 +164,7 @@ static int init_insert_buffer(buffer_t buffer, int request_id, int options,
 }
 
 static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
-    /* Used for unacknowledged insert_one. Collection.insert_many
+    /* Used by the Bulk API to insert into pre-2.6 servers. Collection.insert
      * uses _cbson_do_batched_insert. */
     struct module_state *state = GETSTATE(self);
 
@@ -178,17 +178,20 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     int before, cur_size, max_size = 0;
     int flags = 0;
     unsigned char check_keys;
+    unsigned char safe;
     unsigned char continue_on_error;
     codec_options_t options;
+    PyObject* last_error_args;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#ObbO&",
+    if (!PyArg_ParseTuple(args, "et#ObbObO&",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &docs, &check_keys,
+                          &docs, &check_keys, &safe,
+                          &last_error_args,
                           &continue_on_error,
                           convert_codec_options, &options)) {
         return NULL;
@@ -268,6 +271,16 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
 
+    if (safe) {
+        if (!add_last_error(self, buffer, request_id, collection_name,
+                            collection_name_length, &options, last_error_args)) {
+            destroy_codec_options(&options);
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            return NULL;
+        }
+    }
+
     PyMem_Free(collection_name);
 
     /* objectify buffer */
@@ -292,18 +305,21 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     PyObject* spec;
     unsigned char multi;
     unsigned char upsert;
+    unsigned char safe;
     unsigned char check_keys;
     codec_options_t options;
+    PyObject* last_error_args;
     int flags;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#bbOObO&",
+    if (!PyArg_ParseTuple(args, "et#bbOObObO&",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &upsert, &multi, &spec, &doc, &check_keys,
+                          &upsert, &multi, &spec, &doc, &safe,
+                          &last_error_args, &check_keys,
                           convert_codec_options, &options)) {
         return NULL;
     }
@@ -371,6 +387,16 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
 
+    if (safe) {
+        if (!add_last_error(self, buffer, request_id, collection_name,
+                            collection_name_length, &options, last_error_args)) {
+            destroy_codec_options(&options);
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            return NULL;
+        }
+    }
+
     PyMem_Free(collection_name);
 
     /* objectify buffer */
@@ -388,6 +414,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     struct module_state *state = GETSTATE(self);
 
     int request_id = rand();
+    PyObject* cluster_time = NULL;
     unsigned int flags;
     char* collection_name = NULL;
     int collection_name_length;
@@ -429,6 +456,34 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         PyErr_NoMemory();
         return NULL;
     }
+
+    /* Pop $clusterTime from dict and write it at the end, avoiding an error
+     * from the $-prefix and check_keys.
+     *
+     * If "dict" is a defaultdict we don't want to call PyMapping_GetItemString
+     * on it. That would **create** an _id where one didn't previously exist
+     * (PYTHON-871).
+     */
+    if (PyDict_Check(query)) {
+        cluster_time = PyDict_GetItemString(query, "$clusterTime");
+        if (cluster_time) {
+            /* PyDict_GetItemString returns a borrowed reference. */
+            Py_INCREF(cluster_time);
+            if (-1 == PyMapping_DelItemString(query, "$clusterTime")) {
+                destroy_codec_options(&options);
+                PyMem_Free(collection_name);
+                return NULL;
+            }
+        }
+    } else if (PyMapping_HasKeyString(query, "$clusterTime")) {
+        cluster_time = PyMapping_GetItemString(query, "$clusterTime");
+        if (!cluster_time
+                || -1 == PyMapping_DelItemString(query, "$clusterTime")) {
+            destroy_codec_options(&options);
+            PyMem_Free(collection_name);
+            return NULL;
+        }
+    }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer, "\x00\x00\x00\x00\xd4\x07\x00\x00", 8) ||
         !buffer_write_int32(buffer, (int32_t)flags) ||
@@ -439,6 +494,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         destroy_codec_options(&options);
         buffer_free(buffer);
         PyMem_Free(collection_name);
+        Py_XDECREF(cluster_time);
         return NULL;
     }
 
@@ -447,8 +503,49 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         destroy_codec_options(&options);
         buffer_free(buffer);
         PyMem_Free(collection_name);
+        Py_XDECREF(cluster_time);
         return NULL;
     }
+
+    /* back up a byte and write $clusterTime */
+    if (cluster_time) {
+        int length;
+        char zero = 0;
+
+        buffer_update_position(buffer, buffer_get_position(buffer) - 1);
+        if (!write_pair(state->_cbson, buffer, "$clusterTime", 12, cluster_time,
+                        0, &options, 1)) {
+            destroy_codec_options(&options);
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            Py_DECREF(cluster_time);
+            return NULL;
+        }
+
+        if (!buffer_write_bytes(buffer, &zero, 1)) {
+            destroy_codec_options(&options);
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            Py_DECREF(cluster_time);
+            return NULL;
+        }
+
+        length = buffer_get_position(buffer) - begin;
+        buffer_write_int32_at_position(buffer, begin, (int32_t)length);
+
+        /* undo popping $clusterTime */
+        if (-1 == PyMapping_SetItemString(
+                query, "$clusterTime", cluster_time)) {
+            destroy_codec_options(&options);
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            Py_DECREF(cluster_time);
+            return NULL;
+        }
+
+        Py_DECREF(cluster_time);
+    }
+
     max_size = buffer_get_position(buffer) - begin;
 
     if (field_selector != Py_None) {
@@ -1258,9 +1355,9 @@ cmdfail:
 
 static PyMethodDef _CMessageMethods[] = {
     {"_insert_message", _cbson_insert_message, METH_VARARGS,
-     "Create an unacknowledged insert message to be sent to MongoDB"},
+     "Create an insert message to be sent to MongoDB"},
     {"_update_message", _cbson_update_message, METH_VARARGS,
-     "create an unacknowledged update message to be sent to MongoDB"},
+     "create an update message to be sent to MongoDB"},
     {"_query_message", _cbson_query_message, METH_VARARGS,
      "create a query message to be sent to MongoDB"},
     {"_get_more_message", _cbson_get_more_message, METH_VARARGS,

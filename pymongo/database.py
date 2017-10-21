@@ -434,19 +434,21 @@ class Database(common.BaseObject):
                 check,
                 allowable_errors,
                 parse_write_concern_error=parse_write_concern_error,
-                session=session)
+                session=session,
+                client=self.__client)
 
         with self.__client._tmp_session(session) as s:
             return sock_info.command(
-                    self.__name,
-                    command,
-                    slave_ok,
-                    read_preference,
-                    codec_options,
-                    check,
-                    allowable_errors,
-                    parse_write_concern_error=parse_write_concern_error,
-                    session=s)
+                self.__name,
+                command,
+                slave_ok,
+                read_preference,
+                codec_options,
+                check,
+                allowable_errors,
+                parse_write_concern_error=parse_write_concern_error,
+                session=s,
+                client=self.__client)
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
@@ -719,7 +721,8 @@ class Database(common.BaseObject):
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
                 with self.__client._tmp_session(session) as s:
-                    return sock_info.command("admin", cmd, session=s)
+                    return sock_info.command("admin", cmd, session=s,
+                                             client=self.__client)
             else:
                 spec = {"$all": True} if include_all else {}
                 x = _first_batch(sock_info, "admin", "$cmd.sys.inprog",

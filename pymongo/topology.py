@@ -108,6 +108,7 @@ class Topology(object):
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
         self._pid = None
+        self._max_cluster_time = None
         self._session_pool = _ServerSessionPool()
 
         if self._publish_server or self._publish_tp:
@@ -266,6 +267,8 @@ class Topology(object):
                     self._description, server_description)
 
                 self._update_servers()
+                self._receive_cluster_time_no_lock(
+                    server_description.cluster_time)
 
                 if self._publish_tp:
                     self._events.put((
@@ -316,6 +319,28 @@ class Topology(object):
     def get_arbiters(self):
         """Return set of arbiter addresses."""
         return self._get_replica_set_members(arbiter_server_selector)
+
+    def max_cluster_time(self):
+        """Return a document, the highest seen $clusterTime."""
+        return self._max_cluster_time
+
+    def _receive_cluster_time_no_lock(self, cluster_time):
+        # Driver Sessions Spec: "Whenever a driver receives a cluster time from
+        # a server it MUST compare it to the current highest seen cluster time
+        # for the deployment. If the new cluster time is higher than the
+        # highest seen cluster time it MUST become the new highest seen cluster
+        # time. Two cluster times are compared using only the BsonTimestamp
+        # value of the clusterTime embedded field."
+        if cluster_time:
+            # ">" uses bson.timestamp.Timestamp's comparison operator.
+            if (not self._max_cluster_time
+                or cluster_time['clusterTime'] >
+                    self._max_cluster_time['clusterTime']):
+                self._max_cluster_time = cluster_time
+
+    def receive_cluster_time(self, cluster_time):
+        with self._lock:
+            self._receive_cluster_time_no_lock(cluster_time)
 
     def request_check_all(self, wait_time=5):
         """Wake all monitors, wait for at least one to check its server."""

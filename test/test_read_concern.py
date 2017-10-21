@@ -14,18 +14,16 @@
 
 """Test the read_concern module."""
 
-import pymongo
-
 from bson.son import SON
 from pymongo import monitoring
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_concern import ReadConcern
 
-from test import client_context, unittest
+from test import client_context, PyMongoTestCase
 from test.utils import single_client, rs_or_single_client, EventListener
 
 
-class TestReadConcern(unittest.TestCase):
+class TestReadConcern(PyMongoTestCase):
 
     @classmethod
     @client_context.require_connection
@@ -89,7 +87,7 @@ class TestReadConcern(unittest.TestCase):
         # Explicitly set readConcern to 'local'.
         coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
         tuple(coll.find({'field': 'value'}))
-        self.assertEqual(
+        self.assertEqualCommand(
             SON([('find', 'coll'),
                  ('filter', {'field': 'value'}),
                  ('readConcern', {'level': 'local'})]),
