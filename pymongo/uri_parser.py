@@ -18,11 +18,7 @@ import re
 import warnings
 
 try:
-    # Eventlet monkey patches dnspython with a copy it bundles.
-    # We have to import dns.exception to ensure we can catch the
-    # patched DNSException.
-    import dns.exception
-    from dns import rdata, resolver
+    from dns import resolver
     _HAVE_DNSPYTHON = True
 except ImportError:
     _HAVE_DNSPYTHON = False
@@ -271,6 +267,8 @@ _BAD_DB_CHARS = re.compile('[' + re.escape(r'/ "$') + ']')
 
 
 if PY3:
+    # dnspython can return bytes or str from various parts
+    # of its API depending on version. We always want str.
     def maybe_decode(text):
         if isinstance(text, bytes):
             return text.decode()
@@ -283,23 +281,22 @@ else:
 def _get_dns_srv_hosts(hostname):
     try:
         results = resolver.query('_mongodb._tcp.' + hostname, 'SRV')
-        # Some older versions of dnspython return bytes for target.to_text.
-        return [(maybe_decode(
-                    res.target.to_text(omit_final_dot=True)), res.port)
-                for res in results]
-    except dns.exception.DNSException as exc:
+    except Exception as exc:
         raise ConfigurationError(str(exc))
+    return [(maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)
+            for res in results]
 
 
 def _get_dns_txt_options(hostname):
     try:
         results = resolver.query(hostname, 'TXT')
-        return '&'.join(['&'.join(["%s" % (rdata._escapify(ent),)
-                                   for ent in res.strings])
-                         for res in results])
     except resolver.NoAnswer:
         # No TXT records
         return None
+    except Exception as exc:
+        raise ConfigurationError(str(exc))
+    return '&'.join([maybe_decode(val)
+                     for res in results for val in res.strings])
 
 
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
