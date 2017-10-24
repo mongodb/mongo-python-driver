@@ -915,8 +915,20 @@ class Database(common.BaseObject):
 
     def _create_or_update_user(
             self, create, name, password, read_only, session=None, **kwargs):
-        """Use a command to create (if create=True) or modify a user.
+        """Use a command to create (if create=True) or modify a user with permissions for this :class:`Database`
+        
+        :Parameters:
+          - `name` : the name of the user to create
+          - `password` (optional): the password of the user to create
+          - `read_only` (optional): if ``True`` the user will be read only
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): optional fields for the user documentation
+            (e.g. ``customData`` or ``roles``. See
+            `<https://docs.mongodb.com/manual/reference/method/db.createUser/>`
         """
+        
+        
         opts = {}
         if read_only or (create and "roles" not in kwargs):
             warnings.warn("Creating a user with the read_only option "
