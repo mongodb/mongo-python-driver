@@ -53,10 +53,6 @@ _COMMANDS = ('insert', 'update', 'delete')
 # These string literals are used when we create fake server return
 # documents client side. We use unicode literals in python 2.x to
 # match the actual return values from the server.
-_UID = u"_id"
-_UCODE = u"code"
-_UERRMSG = u"errmsg"
-_UINDEX = u"index"
 _UOP = u"op"
 
 
@@ -90,60 +86,6 @@ class _Run(object):
         self.ops.append(operation)
 
 
-def _make_error(index, code, errmsg, operation):
-    """Create and return an error document.
-    """
-    return {
-        _UINDEX: index,
-        _UCODE: code,
-        _UERRMSG: errmsg,
-        _UOP: operation
-    }
-
-
-def _merge_legacy(run, full_result, result, index):
-    """Merge a result from a legacy opcode into the full results.
-    """
-    affected = result.get('n', 0)
-
-    errmsg = result.get("errmsg", result.get("err", ""))
-    if errmsg:
-        # wtimeout is not considered a hard failure in
-        # MongoDB 2.6 so don't treat it like one here.
-        if result.get("wtimeout"):
-            error_doc = {'errmsg': errmsg, 'code': _WRITE_CONCERN_ERROR}
-            full_result['writeConcernErrors'].append(error_doc)
-        else:
-            code = result.get("code", _UNKNOWN_ERROR)
-            error = _make_error(run.index(index), code, errmsg, run.ops[index])
-            if "errInfo" in result:
-                error["errInfo"] = result["errInfo"]
-            full_result["writeErrors"].append(error)
-            return
-    if run.op_type == _INSERT:
-        full_result['nInserted'] += 1
-    elif run.op_type == _UPDATE:
-        if "upserted" in result:
-            doc = {_UINDEX: run.index(index), _UID: result["upserted"]}
-            full_result["upserted"].append(doc)
-            full_result['nUpserted'] += affected
-        # Versions of MongoDB before 2.6 don't return the _id for an
-        # upsert if _id is not an ObjectId.
-        elif result.get("updatedExisting") is False and affected == 1:
-            op = run.ops[index]
-            # If _id is in both the update document *and* the query spec
-            # the update document _id takes precedence.
-            _id = op['u'].get('_id', op['q'].get('_id'))
-            doc = {_UINDEX: run.index(index), _UID: _id}
-            full_result["upserted"].append(doc)
-            full_result['nUpserted'] += affected
-        else:
-            full_result['nMatched'] += affected
-
-    elif run.op_type == _DELETE:
-        full_result['nRemoved'] += affected
-
-
 def _merge_command(run, full_result, results):
     """Merge a group of results from write commands into the full result.
     """
@@ -160,29 +102,15 @@ def _merge_command(run, full_result, results):
         elif run.op_type == _UPDATE:
             upserted = result.get("upserted")
             if upserted:
-                if isinstance(upserted, list):
-                    n_upserted = len(upserted)
-                    for doc in upserted:
-                        doc["index"] = run.index(doc["index"] + offset)
-                    full_result["upserted"].extend(upserted)
-                else:
-                    n_upserted = 1
-                    index = run.index(offset)
-                    doc = {_UINDEX: index, _UID: upserted}
-                    full_result["upserted"].append(doc)
+                n_upserted = len(upserted)
+                for doc in upserted:
+                    doc["index"] = run.index(doc["index"] + offset)
+                full_result["upserted"].extend(upserted)
                 full_result["nUpserted"] += n_upserted
                 full_result["nMatched"] += (affected - n_upserted)
             else:
                 full_result["nMatched"] += affected
-            n_modified = result.get("nModified")
-            # SERVER-13001 - in a mixed sharded cluster a call to
-            # update could return nModified (>= 2.6) or not (<= 2.4).
-            # If any call does not return nModified we can't report
-            # a valid final count so omit the field completely.
-            if n_modified is not None and "nModified" in full_result:
-                full_result["nModified"] += n_modified
-            else:
-                full_result.pop("nModified", None)
+            full_result["nModified"] += result["nModified"]
 
         write_errors = result.get("writeErrors")
         if write_errors:
