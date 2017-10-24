@@ -180,6 +180,78 @@ class TestDatabase(IntegrationTest):
         finally:
             self.client.drop_database("many_collections")
 
+    def test_list_collections(self):
+        self.client.drop_database("pymongo_test")
+        db = Database(self.client, "pymongo_test")
+        db.test.insert_one({"dummy": u"object"})
+        db.test.mike.insert_one({"dummy": u"object"})
+
+        results = db.list_collections()
+        colls = [result["name"] for result in results]
+
+        # All the collections present.
+        self.assertTrue("test" in colls)
+        self.assertTrue("test.mike" in colls)
+
+        # No collection containing a '$'.
+        for coll in colls:
+            self.assertTrue("$" not in coll)
+
+        # Duplicate check.
+        coll_cnt = {}
+        for coll in colls:
+            try:
+                # Found duplicate.
+                coll_cnt[coll] += 1
+                self.assertTrue(False)
+            except KeyError:
+                coll_cnt[coll] = 1
+        coll_cnt = {}
+
+        # Checking if is there any collection which don't exists.
+        if (len(set(colls) - set(["test","test.mike"])) == 0 or 
+            len(set(colls) - set(["test","test.mike","system.indexes"])) == 0):
+            self.assertTrue(True)
+        else:
+            self.assertTrue(False)
+           
+        
+        db.drop_collection("test")
+        
+        db.create_collection("test", capped=True, size=4096)
+        results = db.list_collections(filter={'options.capped': True})
+        colls = [result["name"] for result in results]
+
+        # Checking only capped collections are present
+        self.assertTrue("test" in colls)
+        self.assertFalse("test.mike" in colls)
+
+        # No collection containing a '$'.
+        for coll in colls:
+            self.assertTrue("$" not in coll)
+
+        # Duplicate check.
+        coll_cnt = {}
+        for coll in colls:
+            try:
+                # Found duplicate.
+                coll_cnt[coll] += 1
+                self.assertTrue(False)
+            except KeyError:
+                coll_cnt[coll] = 1
+        coll_cnt = {}
+
+        # Checking if is there any collection which don't exists.
+        if (len(set(colls) - set(["test"])) == 0 or 
+            len(set(colls) - set(["test","system.indexes"])) == 0):
+            self.assertTrue(True)
+        else:
+            self.assertTrue(False)
+
+        self.client.drop_database("pymongo_test")
+
+
+
     def test_collection_names_single_socket(self):
         # Test that Database.collection_names only requires one socket.
         client = rs_or_single_client(maxPoolSize=1)
