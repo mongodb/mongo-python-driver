@@ -914,8 +914,6 @@ class Database(common.BaseObject):
             self, create, name, password, read_only, session=None, **kwargs):
         """Use a command to create (if create=True) or modify a user with permissions for this :class:`Database`
         
-        
-                        
         :Parameters:
           - `name` : the name of the user to create
           - `password` (optional): the password of the user to create
