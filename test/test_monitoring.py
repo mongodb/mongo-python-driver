@@ -28,14 +28,18 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
-from test import unittest, client_context, client_knobs
+from test import (client_context,
+                  client_knobs,
+                  PyMongoTestCase,
+                  sanitize_cmd,
+                  unittest)
 from test.utils import (EventListener,
                         rs_or_single_client,
                         single_client,
                         wait_until)
 
 
-class TestCommandMonitoring(unittest.TestCase):
+class TestCommandMonitoring(PyMongoTestCase):
 
     @classmethod
     @client_context.require_connection
@@ -63,7 +67,7 @@ class TestCommandMonitoring(unittest.TestCase):
             isinstance(succeeded, monitoring.CommandSucceededEvent))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(SON([('ismaster', 1)]), started.command)
+        self.assertEqualCommand(SON([('ismaster', 1)]), started.command)
         self.assertEqual('ismaster', started.command_name)
         self.assertEqual(self.client.address, started.connection_id)
         self.assertEqual('pymongo_test', started.database_name)
@@ -114,7 +118,7 @@ class TestCommandMonitoring(unittest.TestCase):
             isinstance(succeeded, monitoring.CommandSucceededEvent))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(
+        self.assertEqualCommand(
             SON([('find', 'test'),
                  ('filter', {}),
                  ('limit', 1),
@@ -141,7 +145,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, len(results['failed']))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(
+        self.assertEqualCommand(
             SON([('find', 'test'),
                  ('filter', {}),
                  ('projection', {'_id': False}),
@@ -173,7 +177,7 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(0, len(results['failed']))
             self.assertTrue(
                 isinstance(started, monitoring.CommandStartedEvent))
-            self.assertEqual(
+            self.assertEqualCommand(
                 SON([('getMore', cursor_id),
                      ('collection', 'test'),
                      ('batchSize', 4)]),
@@ -214,7 +218,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, len(results['failed']))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(cmd, started.command)
+        self.assertEqualCommand(cmd, started.command)
         self.assertEqual('explain', started.command_name)
         self.assertEqual(self.client.address, started.connection_id)
         self.assertEqual('pymongo_test', started.database_name)
@@ -249,7 +253,7 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(0, len(results['failed']))
             self.assertTrue(
                 isinstance(started, monitoring.CommandStartedEvent))
-            self.assertEqual(expected_cmd, started.command)
+            self.assertEqualCommand(expected_cmd, started.command)
             self.assertEqual('find', started.command_name)
             self.assertEqual(self.client.address, started.connection_id)
             self.assertEqual('pymongo_test', started.database_name)
@@ -332,7 +336,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, len(results['failed']))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(
+        self.assertEqualCommand(
             SON([('aggregate', 'test'),
                  ('pipeline', [{'$project': {'_id': False, 'x': 1}}]),
                  ('cursor', {'batchSize': 4})]),
@@ -350,7 +354,7 @@ class TestCommandMonitoring(unittest.TestCase):
         expected_cursor = {'id': cursor_id,
                            'ns': 'pymongo_test.test',
                            'firstBatch': [{'x': 1} for _ in range(4)]}
-        self.assertEqual(expected_cursor, succeeded.reply.get('cursor'))
+        self.assertEqualCommand(expected_cursor, succeeded.reply.get('cursor'))
 
         self.listener.results.clear()
         next(cursor)
@@ -361,7 +365,7 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(0, len(results['failed']))
             self.assertTrue(
                 isinstance(started, monitoring.CommandStartedEvent))
-            self.assertEqual(
+            self.assertEqualCommand(
                 SON([('getMore', cursor_id),
                      ('collection', 'test'),
                      ('batchSize', 4)]),
@@ -380,8 +384,8 @@ class TestCommandMonitoring(unittest.TestCase):
                 'cursor': {'id': cursor_id,
                            'ns': 'pymongo_test.test',
                            'nextBatch': [{'x': 1} for _ in range(4)]},
-                'ok': 1}
-            self.assertEqual(expected_result, succeeded.reply)
+                'ok': 1.0}
+            self.assertEqualReply(expected_result, succeeded.reply)
         finally:
             # Exhaust the cursor to avoid kill cursors.
             tuple(cursor)
@@ -401,7 +405,7 @@ class TestCommandMonitoring(unittest.TestCase):
         failed = results['failed'][0]
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(
+        self.assertEqualCommand(
             SON([('getMore', 12345),
                  ('collection', 'test')]),
             started.command)
@@ -462,7 +466,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, len(results['failed']))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(
+        self.assertEqualCommand(
             SON([('find', 'test'),
                  ('filter', {}),
                  ('projection', {'_id': False}),
@@ -483,7 +487,7 @@ class TestCommandMonitoring(unittest.TestCase):
                        'ns': 'pymongo_test.test',
                        'firstBatch': [{} for _ in range(5)]},
             'ok': 1}
-        self.assertEqual(expected_result, succeeded.reply)
+        self.assertEqualReply(expected_result, succeeded.reply)
 
         self.listener.results.clear()
         tuple(cursor)
@@ -493,7 +497,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, len(results['failed']))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(
+        self.assertEqualCommand(
             SON([('getMore', cursor_id),
                  ('collection', 'test'),
                  ('batchSize', 5)]),
@@ -513,7 +517,7 @@ class TestCommandMonitoring(unittest.TestCase):
                        'ns': 'pymongo_test.test',
                        'nextBatch': [{} for _ in range(5)]},
             'ok': 1}
-        self.assertEqual(expected_result, succeeded.reply)
+        self.assertEqualReply(expected_result, succeeded.reply)
 
     def test_kill_cursors(self):
         with client_knobs(kill_cursor_frequency=0.01):
@@ -566,7 +570,7 @@ class TestCommandMonitoring(unittest.TestCase):
         expected = SON([('insert', coll.name),
                         ('ordered', True),
                         ('documents', [{'_id': res.inserted_id, 'x': 1}])])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('insert', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -593,7 +597,7 @@ class TestCommandMonitoring(unittest.TestCase):
                         ('ordered', True),
                         ('documents', [{'_id': res.inserted_id, 'x': 1}]),
                         ('writeConcern', {'w': 0})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('insert', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -603,7 +607,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(started.command_name, succeeded.command_name)
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
-        self.assertEqual(succeeded.reply, {'ok': 1})
+        self.assertEqualReply(succeeded.reply, {'ok': 1})
 
         # Explicit write concern insert_one
         self.listener.results.clear()
@@ -618,7 +622,7 @@ class TestCommandMonitoring(unittest.TestCase):
                         ('ordered', True),
                         ('documents', [{'_id': res.inserted_id, 'x': 1}]),
                         ('writeConcern', {'w': 1})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('insert', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -645,7 +649,7 @@ class TestCommandMonitoring(unittest.TestCase):
                         ('deletes', [SON([('q', {'x': 1}),
                                           ('limit', 0)])]),
                         ('writeConcern', {'w': 1})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('delete', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -675,7 +679,7 @@ class TestCommandMonitoring(unittest.TestCase):
                                           ('multi', False),
                                           ('upsert', True)])]),
                         ('writeConcern', {'w': 1})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('update', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -705,7 +709,7 @@ class TestCommandMonitoring(unittest.TestCase):
                                           ('multi', False),
                                           ('upsert', False)])]),
                         ('writeConcern', {'w': 1})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('update', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -734,7 +738,7 @@ class TestCommandMonitoring(unittest.TestCase):
                                           ('multi', True),
                                           ('upsert', False)])]),
                         ('writeConcern', {'w': 1})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('update', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -761,7 +765,7 @@ class TestCommandMonitoring(unittest.TestCase):
                         ('deletes', [SON([('q', {'x': 3}),
                                           ('limit', 1)])]),
                         ('writeConcern', {'w': 1})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('delete', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -793,7 +797,7 @@ class TestCommandMonitoring(unittest.TestCase):
                         ('ordered', True),
                         ('documents', [{'_id': 1}]),
                         ('writeConcern', {'w': 1})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('insert', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -831,7 +835,7 @@ class TestCommandMonitoring(unittest.TestCase):
             expected = SON([('insert', coll.name),
                             ('ordered', True),
                             ('documents', [{'_id': _id, 'x': 1}])])
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertEqual('insert', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -857,7 +861,7 @@ class TestCommandMonitoring(unittest.TestCase):
                             ('ordered', True),
                             ('documents', [{'_id': _id, 'x': 1}]),
                             ('writeConcern', {'w': 0})])
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertEqual('insert', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -881,7 +885,7 @@ class TestCommandMonitoring(unittest.TestCase):
                             ('ordered', True),
                             ('documents', [{'_id': _id, 'x': 1}]),
                             ('writeConcern', {'w': 1})])
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertEqual('insert', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -908,7 +912,7 @@ class TestCommandMonitoring(unittest.TestCase):
                             ('deletes', [SON([('q', {'x': 1}),
                                               ('limit', 0)])]),
                             ('writeConcern', {'w': 1})])
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertEqual('delete', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -938,7 +942,7 @@ class TestCommandMonitoring(unittest.TestCase):
                                               ('multi', False),
                                               ('upsert', True)])]),
                             ('writeConcern', {'w': 1})])
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertEqual('update', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -967,7 +971,7 @@ class TestCommandMonitoring(unittest.TestCase):
                                               ('u', {'$inc': {'x': 1}}),
                                               ('multi', False),
                                               ('upsert', False)])])])
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertEqual('update', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -995,7 +999,7 @@ class TestCommandMonitoring(unittest.TestCase):
                                               ('u', {'$inc': {'x': 1}}),
                                               ('multi', True),
                                               ('upsert', False)])])])
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertEqual('update', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -1021,7 +1025,7 @@ class TestCommandMonitoring(unittest.TestCase):
                             ('ordered', True),
                             ('deletes', [SON([('q', {'x': 3}),
                                               ('limit', 1)])])])
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('pymongo_test', started.database_name)
             self.assertEqual('delete', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -1056,7 +1060,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertIsInstance(operation_id, int)
         for start, succeed in zip(started, succeeded):
             self.assertIsInstance(start, monitoring.CommandStartedEvent)
-            cmd = start.command
+            cmd = sanitize_cmd(start.command)
             self.assertEqual(['insert', 'ordered', 'documents'],
                              list(cmd.keys()))
             self.assertEqual(coll.name, cmd['insert'])
@@ -1102,7 +1106,7 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertIsInstance(operation_id, int)
             for start, succeed in zip(started, succeeded):
                 self.assertIsInstance(start, monitoring.CommandStartedEvent)
-                cmd = start.command
+                cmd = sanitize_cmd(start.command)
                 self.assertEqual(['insert', 'ordered', 'documents'],
                                  list(cmd.keys()))
                 self.assertEqual(coll.name, cmd['insert'])
@@ -1156,19 +1160,19 @@ class TestCommandMonitoring(unittest.TestCase):
         expected = SON([('insert', coll.name),
                         ('ordered', True),
                         ('documents', [{'_id': 1}])])
-        self.assertEqual(expected, started[0].command)
+        self.assertEqualCommand(expected, started[0].command)
         expected = SON([('update', coll.name),
                         ('ordered', True),
                         ('updates', [SON([('q', {'_id': 1}),
                                           ('u', {'$set': {'x': 1}}),
                                           ('multi', False),
                                           ('upsert', False)])])])
-        self.assertEqual(expected, started[1].command)
+        self.assertEqualCommand(expected, started[1].command)
         expected = SON([('delete', coll.name),
                         ('ordered', True),
                         ('deletes', [SON([('q', {'_id': 1}),
                                           ('limit', 1)])])])
-        self.assertEqual(expected, started[2].command)
+        self.assertEqualCommand(expected, started[2].command)
 
     def test_write_errors(self):
         coll = self.client.pymongo_test.test
@@ -1221,7 +1225,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, len(results['failed']))
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         expected = SON([('listCollections', 1), ('cursor', {})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('listCollections', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -1239,7 +1243,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, len(results['failed']))
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         expected = SON([('listIndexes', 'test'), ('cursor', {})])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertEqual('listIndexes', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -1257,7 +1261,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(0, len(results['failed']))
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         expected = SON([('currentOp', 1), ('$all', True)])
-        self.assertEqual(expected, started.command)
+        self.assertEqualCommand(expected, started.command)
         self.assertEqual('admin', started.database_name)
         self.assertEqual('currentOp', started.command_name)
         self.assertIsInstance(started.request_id, int)
@@ -1280,7 +1284,7 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(0, len(results['failed']))
             self.assertIsInstance(started, monitoring.CommandStartedEvent)
             expected = {'fsyncUnlock': 1}
-            self.assertEqual(expected, started.command)
+            self.assertEqualCommand(expected, started.command)
             self.assertEqual('admin', started.database_name)
             self.assertEqual('fsyncUnlock', started.command_name)
             self.assertIsInstance(started.request_id, int)
@@ -1320,7 +1324,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual({}, succeeded.reply)
 
 
-class TestGlobalListener(unittest.TestCase):
+class TestGlobalListener(PyMongoTestCase):
 
     @classmethod
     @client_context.require_connection
@@ -1350,7 +1354,7 @@ class TestGlobalListener(unittest.TestCase):
             isinstance(succeeded, monitoring.CommandSucceededEvent))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqual(SON([('ismaster', 1)]), started.command)
+        self.assertEqualCommand(SON([('ismaster', 1)]), started.command)
         self.assertEqual('ismaster', started.command_name)
         self.assertEqual(self.client.address, started.connection_id)
         self.assertEqual('pymongo_test', started.database_name)

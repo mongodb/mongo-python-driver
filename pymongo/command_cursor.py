@@ -129,6 +129,10 @@ class CommandCursor(object):
         client = self.__collection.database.client
         listeners = client._event_listeners
         publish = listeners.enabled_for_commands
+        start = datetime.datetime.now()
+
+        def duration(): return datetime.datetime.now() - start
+
         try:
             response = client._send_message_with_response(
                 operation, address=self.__address)
@@ -140,27 +144,24 @@ class CommandCursor(object):
             kill()
             raise
 
-        cmd_duration = response.duration
         rqst_id = response.request_id
         from_command = response.from_command
         reply = response.data
 
-        if publish:
-            start = datetime.datetime.now()
         try:
             docs = self._unpack_response(reply,
                                          self.__id,
                                          self.__collection.codec_options)
             if from_command:
+                client._receive_cluster_time(docs[0])
                 helpers._check_command_response(docs[0])
 
         except OperationFailure as exc:
             kill()
 
             if publish:
-                duration = (datetime.datetime.now() - start) + cmd_duration
                 listeners.publish_command_failure(
-                    duration, exc.details, "getMore", rqst_id, self.__address)
+                    duration(), exc.details, "getMore", rqst_id, self.__address)
 
             raise
         except NotMasterError as exc:
@@ -169,17 +170,15 @@ class CommandCursor(object):
             kill()
 
             if publish:
-                duration = (datetime.datetime.now() - start) + cmd_duration
                 listeners.publish_command_failure(
-                    duration, exc.details, "getMore", rqst_id, self.__address)
+                    duration(), exc.details, "getMore", rqst_id, self.__address)
 
             client._reset_server_and_request_check(self.address)
             raise
         except Exception as exc:
             if publish:
-                duration = (datetime.datetime.now() - start) + cmd_duration
                 listeners.publish_command_failure(
-                    duration, _convert_exception(exc), "getMore", rqst_id,
+                    duration(), _convert_exception(exc), "getMore", rqst_id,
                     self.__address)
             raise
 
@@ -187,19 +186,22 @@ class CommandCursor(object):
             cursor = docs[0]['cursor']
             documents = cursor['nextBatch']
             self.__id = cursor['id']
+            if publish:
+                listeners.publish_command_success(
+                    duration(), docs[0], "getMore", rqst_id,
+                    self.__address)
         else:
             documents = docs
             self.__id = reply.cursor_id
 
-        if publish:
-            duration = (datetime.datetime.now() - start) + cmd_duration
-            # Must publish in getMore command response format.
-            res = {"cursor": {"id": self.__id,
-                              "ns": self.__collection.full_name,
-                              "nextBatch": documents},
-                   "ok": 1}
-            listeners.publish_command_success(
-                duration, res, "getMore", rqst_id, self.__address)
+            if publish:
+                # Must publish in getMore command response format.
+                res = {"cursor": {"id": self.__id,
+                                  "ns": self.__collection.full_name,
+                                  "nextBatch": documents},
+                       "ok": 1}
+                listeners.publish_command_success(
+                    duration(), res, "getMore", rqst_id, self.__address)
 
         if self.__id == 0:
             kill()
@@ -227,6 +229,7 @@ class CommandCursor(object):
                                     self.__id,
                                     self.__collection.codec_options,
                                     self.__session,
+                                    self.__collection.database.client,
                                     self.__max_await_time_ms))
         else:  # Cursor id is zero nothing else to return
             self.__killed = True

@@ -437,7 +437,8 @@ class SocketInfo(object):
                 write_concern=None,
                 parse_write_concern_error=False,
                 collation=None,
-                session=None):
+                session=None,
+                client=None):
         """Execute a command or raise an error.
 
         :Parameters:
@@ -455,6 +456,7 @@ class SocketInfo(object):
             ``writeConcernError`` field in the command response.
           - `collation`: The collation for this command.
           - `session`: optional ClientSession instance.
+          - `client`: optional MongoClient for gossipping $clusterTime.
         """
         self.check_session_auth_matches(session)
         if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
@@ -474,9 +476,9 @@ class SocketInfo(object):
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
-                           session, check, allowable_errors, self.address,
-                           check_keys, self.listeners, self.max_bson_size,
-                           read_concern,
+                           session, client, check, allowable_errors,
+                           self.address, check_keys, self.listeners,
+                           self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation)
         except OperationFailure:
@@ -823,6 +825,7 @@ class Pool:
                             False,
                             ReadPreference.PRIMARY,
                             DEFAULT_CODEC_OPTIONS,
+                            None,
                             None))
             else:
                 ismaster = None

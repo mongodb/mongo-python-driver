@@ -254,7 +254,7 @@ class TestSingleServerTopology(TopologyTest):
         available = True
 
         class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info, metadata=None):
+            def _check_with_socket(self, *args, **kwargs):
                 if available:
                     return (IsMaster({'ok': 1, 'maxWireVersion': 6}),
                             round_trip_time)
@@ -619,6 +619,7 @@ def wait_for_master(topology):
     thread. In applications this is harmless but it would break some tests,
     so we pass server_selection_timeout=0 and poll instead.
     """
+
     def get_master():
         try:
             return topology.select_server(writable_server_selector, 0)
@@ -636,7 +637,7 @@ class TestTopologyErrors(TopologyTest):
         ismaster_count = [0]
 
         class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info, metadata=None):
+            def _check_with_socket(self, *args, **kwargs):
                 ismaster_count[0] += 1
                 if ismaster_count[0] == 1:
                     return IsMaster({'ok': 1, 'maxWireVersion': 6}), 0
@@ -657,7 +658,7 @@ class TestTopologyErrors(TopologyTest):
         ismaster_count = [0]
 
         class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info, metadata=None):
+            def _check_with_socket(self, *args, **kwargs):
                 ismaster_count[0] += 1
                 if ismaster_count[0] in (1, 3):
                     return IsMaster({'ok': 1, 'maxWireVersion': 6}), 0
@@ -679,7 +680,7 @@ class TestTopologyErrors(TopologyTest):
         exception = AssertionError('internal error')
 
         class TestMonitor(Monitor):
-            def _check_with_socket(self, sock_info, metadata=None):
+            def _check_with_socket(self, *args, **kwargs):
                 raise exception
 
         t = create_mock_topology(monitor_class=TestMonitor)

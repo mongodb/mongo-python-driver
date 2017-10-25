@@ -434,19 +434,21 @@ class Database(common.BaseObject):
                 check,
                 allowable_errors,
                 parse_write_concern_error=parse_write_concern_error,
-                session=session)
+                session=session,
+                client=self.__client)
 
         with self.__client._tmp_session(session) as s:
             return sock_info.command(
-                    self.__name,
-                    command,
-                    slave_ok,
-                    read_preference,
-                    codec_options,
-                    check,
-                    allowable_errors,
-                    parse_write_concern_error=parse_write_concern_error,
-                    session=s)
+                self.__name,
+                command,
+                slave_ok,
+                read_preference,
+                codec_options,
+                check,
+                allowable_errors,
+                parse_write_concern_error=parse_write_concern_error,
+                session=s,
+                client=self.__client)
 
     def command(self, command, value=1, check=True,
                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
@@ -541,13 +543,14 @@ class Database(common.BaseObject):
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
-    def _list_collections(self, sock_info, slave_okay, criteria=None,
-                          session=None):
+    def _list_collections(self, sock_info, slave_okay, filter=None,
+                         session=None):
         """Internal listCollections helper."""
-        criteria = criteria or {}
+        filter = filter or {}
         cmd = SON([("listCollections", 1), ("cursor", {})])
-        if criteria:
-            cmd["filter"] = criteria
+
+        if filter:
+            cmd["filter"] = filter
 
         if sock_info.max_wire_version > 2:
             coll = self["$cmd"]
@@ -558,8 +561,12 @@ class Database(common.BaseObject):
                                      explicit_session=session is not None)
         else:
             coll = self["system.namespaces"]
+            if "name" in filter:
+                if not isinstance(filter["name"], string_type):
+                    raise TypeError("filter['name'] must be a string on MongoDB 2.6")
+                filter["name"] = coll.database.name + "." + filter["name"]
             res = _first_batch(sock_info, coll.database.name, coll.name,
-                               criteria, 0, slave_okay,
+                               filter, 0, slave_okay,
                                CodecOptions(), ReadPreference.PRIMARY, cmd,
                                self.client._event_listeners, session=None)
             data = res["data"]
@@ -570,7 +577,25 @@ class Database(common.BaseObject):
             }
             return CommandCursor(coll, cursor, sock_info.address)
 
-    def collection_names(self, include_system_collections=True, session=None):
+    def list_collections(self, filter=None, session=None):
+        """Get info about the collections in this database."""
+        with self.__client._socket_for_reads(
+                ReadPreference.PRIMARY) as (sock_info, slave_okay):
+
+             wire_version = sock_info.max_wire_version
+             results = self._list_collections(sock_info, slave_okay, filter=filter,
+                                              session=session)
+        for result in results:
+            if wire_version <= 2:
+                name = result["name"]
+                if "$" in name:
+                    continue
+                result["name"] = name.split(".", 1)[1]
+            yield result
+
+
+    def collection_names(self, include_system_collections=True,
+                         session=None):
         """Get a list of all the collection names in this database.
 
         :Parameters:
@@ -582,22 +607,13 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.__client._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_okay):
 
-            wire_version = sock_info.max_wire_version
-            results = self._list_collections(
-                sock_info, slave_okay, session=session)
+        results = self.list_collections(session=session)
 
         # Iterating the cursor to completion may require a socket for getmore.
         # Ensure we do that outside the "with" block so we don't require more
         # than one socket at a time.
         names = [result["name"] for result in results]
-        if wire_version <= 2:
-            # MongoDB 2.6 and older return index namespaces and collection
-            # namespaces prefixed with the database name.
-            names = [n[len(self.__name) + 1:] for n in names
-                     if n.startswith(self.__name + ".") and "$" not in n]
 
         if not include_system_collections:
             names = [name for name in names if not name.startswith("system.")]
@@ -719,7 +735,8 @@ class Database(common.BaseObject):
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
                 with self.__client._tmp_session(session) as s:
-                    return sock_info.command("admin", cmd, session=s)
+                    return sock_info.command("admin", cmd, session=s,
+                                             client=self.__client)
             else:
                 spec = {"$all": True} if include_all else {}
                 x = _first_batch(sock_info, "admin", "$cmd.sys.inprog",

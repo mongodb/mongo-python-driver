@@ -20,7 +20,7 @@ import threading
 
 sys.path[0:0] = [""]
 
-from bson import json_util
+from bson import json_util, Timestamp
 from pymongo import common
 from pymongo.errors import ConfigurationError
 from pymongo.topology import Topology
@@ -208,6 +208,34 @@ def create_tests():
 
 
 create_tests()
+
+
+class TestClusterTimeComparison(unittest.TestCase):
+    def test_cluster_time_comparison(self):
+        t = create_mock_topology('mongodb://host')
+
+        def send_cluster_time(time, inc, should_update):
+            old = t.max_cluster_time()
+            new = {'clusterTime': Timestamp(time, inc)}
+            got_ismaster(t,
+                         ('host', 27017),
+                         {'ok': 1,
+                          'minWireVersion': 0,
+                          'maxWireVersion': 6,
+                          '$clusterTime': new})
+
+            actual = t.max_cluster_time()
+            if should_update:
+                self.assertEqual(actual, new)
+            else:
+                self.assertEqual(actual, old)
+
+        send_cluster_time(0, 1, True)
+        send_cluster_time(2, 2, True)
+        send_cluster_time(2, 1, False)
+        send_cluster_time(1, 3, False)
+        send_cluster_time(2, 3, True)
+
 
 if __name__ == "__main__":
     unittest.main()

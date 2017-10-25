@@ -128,6 +128,10 @@ class IsMaster(object):
         return self._doc.get('electionId')
 
     @property
+    def cluster_time(self):
+        return self._doc.get('$clusterTime')
+
+    @property
     def logical_session_timeout_minutes(self):
         return self._doc.get('logicalSessionTimeoutMinutes')
 

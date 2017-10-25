@@ -34,6 +34,7 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo import auth, message
 from pymongo.common import _UUID_REPRESENTATIONS
+from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import CursorType
 from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
@@ -476,13 +477,47 @@ class TestClient(IntegrationTest):
         wait_until(lambda: client_context.nodes == self.client.nodes,
                    "find all nodes")
 
-    def test_database_names(self):
+    def test_list_databases(self):
+        cmd_docs = self.client.admin.command('listDatabases')['databases']
+        cursor = self.client.list_databases()
+        self.assertIsInstance(cursor, CommandCursor)
+        helper_docs = list(cursor)
+        self.assertTrue(len(helper_docs) > 0)
+        self.assertEqual(helper_docs, cmd_docs)
+        for doc in helper_docs:
+            self.assertIs(type(doc), dict)
+        client = rs_or_single_client(document_class=SON)
+        for doc in client.list_databases():
+            self.assertIs(type(doc), dict)
+
+        if client_context.version.at_least(3, 4, 2):
+            self.client.pymongo_test.test.insert_one({})
+            cursor = self.client.list_databases(filter={"name": "admin"})
+            docs = list(cursor)
+            self.assertEqual(1, len(docs))
+            self.assertEqual(docs[0]["name"], "admin")
+
+        if client_context.version.at_least(3, 4, 3):
+            cursor = self.client.list_databases(nameOnly=True)
+            for doc in cursor:
+                self.assertEqual(["name"], list(doc))
+
+    def _test_list_names(self, meth):
         self.client.pymongo_test.test.insert_one({"dummy": u"object"})
         self.client.pymongo_test_mike.test.insert_one({"dummy": u"object"})
+        cmd_docs = self.client.admin.command("listDatabases")["databases"]
+        cmd_names = [doc["name"] for doc in cmd_docs]
 
-        dbs = self.client.database_names()
-        self.assertTrue("pymongo_test" in dbs)
-        self.assertTrue("pymongo_test_mike" in dbs)
+        db_names = meth()
+        self.assertTrue("pymongo_test" in db_names)
+        self.assertTrue("pymongo_test_mike" in db_names)
+        self.assertEqual(db_names, cmd_names)
+
+    def test_list_database_names(self):
+        self._test_list_names(self.client.list_database_names)
+
+    def test_database_names(self):
+        self._test_list_names(self.client.database_names)
 
     def test_drop_database(self):
         self.assertRaises(TypeError, self.client.drop_database, 5)
@@ -1055,7 +1090,7 @@ class TestClient(IntegrationTest):
             client._send_message_with_response(
                 operation=message._GetMore('pymongo_test', 'collection',
                                            101, 1234, client.codec_options,
-                                           None),
+                                           None, client),
                 address=('not-a-member', 27017))
 
     def test_heartbeat_frequency_ms(self):

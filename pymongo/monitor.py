@@ -120,8 +120,10 @@ class Monitor(object):
 
         start = _time()
         try:
+            cluster_time = self._topology.max_cluster_time()
             # If the server type is unknown, send metadata with first check.
-            return self._check_once(metadata=metadata)
+            return self._check_once(metadata=metadata,
+                                    cluster_time=cluster_time)
         except ReferenceError:
             raise
         except Exception as error:
@@ -137,9 +139,12 @@ class Monitor(object):
                 return default
 
             # Try a second and final time. If it fails return original error.
+            # Always send metadata: this is a new connection.
             start = _time()
             try:
-                return self._check_once(metadata=self._pool.opts.metadata)
+                cluster_time = self._topology.max_cluster_time()
+                return self._check_once(metadata=self._pool.opts.metadata,
+                                        cluster_time=cluster_time)
             except ReferenceError:
                 raise
             except Exception as error:
@@ -150,7 +155,7 @@ class Monitor(object):
                 self._avg_round_trip_time.reset()
                 return default
 
-    def _check_once(self, metadata=None):
+    def _check_once(self, metadata=None, cluster_time=None):
         """A single attempt to call ismaster.
 
         Returns a ServerDescription, or raises an exception.
@@ -160,7 +165,7 @@ class Monitor(object):
             self._listeners.publish_server_heartbeat_started(address)
         with self._pool.get_socket({}) as sock_info:
             response, round_trip_time = self._check_with_socket(
-                sock_info, metadata=metadata)
+                sock_info, metadata=metadata, cluster_time=cluster_time)
             self._avg_round_trip_time.add_sample(round_trip_time)
             sd = ServerDescription(
                 address=address,
@@ -172,7 +177,7 @@ class Monitor(object):
 
             return sd
 
-    def _check_with_socket(self, sock_info, metadata=None):
+    def _check_with_socket(self, sock_info, metadata=None, cluster_time=None):
         """Return (IsMaster, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.
@@ -180,6 +185,8 @@ class Monitor(object):
         cmd = SON([('ismaster', 1)])
         if metadata is not None:
             cmd['client'] = metadata
+        if cluster_time is not None:
+            cmd['$clusterTime'] = cluster_time
         start = _time()
         request_id, msg, max_doc_size = message.query(
             0, 'admin.$cmd', 0, -1, cmd,
