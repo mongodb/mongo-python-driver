@@ -17,9 +17,8 @@
 import warnings
 
 from bson.code import Code
-from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
-from bson.objectid import ObjectId
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
 from pymongo import auth, common
@@ -33,6 +32,10 @@ from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
+
+
+_INDEX_REGEX = {"name": {"$regex": "^(?!.*\$)"}}
+_SYSTEM_FILTER = {"filter": {"name": {"$regex": "^(?!system\.)"}}}
 
 
 def _check_name(name):
@@ -543,56 +546,73 @@ class Database(common.BaseObject):
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
-    def _list_collections(self, sock_info, slave_okay, filter=None,
-                         session=None):
+    def _list_collections(self, sock_info, slave_okay, session=None, **kwargs):
         """Internal listCollections helper."""
-        filter = filter or {}
-        cmd = SON([("listCollections", 1), ("cursor", {})])
 
-        if filter:
-            cmd["filter"] = filter
-
+        coll = self["$cmd"]
         if sock_info.max_wire_version > 2:
-            coll = self["$cmd"]
-            with self.__client._tmp_session(session, close=False) as s:
+            cmd = SON([("listCollections", 1),
+                       ("cursor", {})])
+            cmd.update(kwargs)
+            with self.__client._tmp_session(
+                    session, close=False) as tmp_session:
                 cursor = self._command(
-                    sock_info, cmd, slave_okay, session=s)["cursor"]
-                return CommandCursor(coll, cursor, sock_info.address, session=s,
-                                     explicit_session=session is not None)
+                    sock_info, cmd, slave_okay, session=tmp_session)["cursor"]
+                return CommandCursor(
+                    coll,
+                    cursor,
+                    sock_info.address,
+                    session=tmp_session,
+                    explicit_session=session is not None)
         else:
-            coll = self["system.namespaces"]
-            if "name" in filter:
-                if not isinstance(filter["name"], string_type):
-                    raise TypeError("filter['name'] must be a string on MongoDB 2.6")
-                filter["name"] = coll.database.name + "." + filter["name"]
-            res = _first_batch(sock_info, coll.database.name, coll.name,
-                               filter, 0, slave_okay,
-                               CodecOptions(), ReadPreference.PRIMARY, cmd,
-                               self.client._event_listeners, session=None)
-            data = res["data"]
-            cursor = {
-                "id": res["cursor_id"],
-                "firstBatch": data,
-                "ns": coll.full_name,
-            }
+            match = _INDEX_REGEX
+            if "filter" in kwargs:
+                match = {"$and": [_INDEX_REGEX, kwargs["filter"]]}
+            dblen = len(self.name.encode("utf8") + b".")
+            pipeline = [
+                {"$project": {"name": {"$substr": ["$name", dblen, -1]},
+                              "options": 1}},
+                {"$match": match}
+            ]
+            cmd = SON([("aggregate", "system.namespaces"),
+                       ("pipeline", pipeline),
+                       ("cursor", kwargs.get("cursor", {}))])
+            cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
             return CommandCursor(coll, cursor, sock_info.address)
 
-    def list_collections(self, filter=None, session=None):
-        """Get info about the collections in this database."""
+    def list_collections(self, session=None, **kwargs):
+        """Get a cursor over the collectons of this database.
+
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): Optional parameters of the
+            `listCollections command
+            <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
+            can be passed as keyword arguments to this method. The supported
+            options differ by server version.
+
+        :Returns:
+          An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+
+        .. versionadded:: 3.6
+        """
         with self.__client._socket_for_reads(
                 ReadPreference.PRIMARY) as (sock_info, slave_okay):
+            return self._list_collections(
+                sock_info, slave_okay, session=session, **kwargs)
 
-             wire_version = sock_info.max_wire_version
-             results = self._list_collections(sock_info, slave_okay, filter=filter,
-                                              session=session)
-        for result in results:
-            if wire_version <= 2:
-                name = result["name"]
-                if "$" in name:
-                    continue
-                result["name"] = name.split(".", 1)[1]
-            yield result
+    def list_collection_names(self, session=None):
+        """Get a list of all the collection names in this database.
 
+        :Parameters:
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionadded:: 3.6
+        """
+        return [result["name"]
+                for result in self.list_collections(session=session)]
 
     def collection_names(self, include_system_collections=True,
                          session=None):
@@ -607,17 +627,9 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-
-        results = self.list_collections(session=session)
-
-        # Iterating the cursor to completion may require a socket for getmore.
-        # Ensure we do that outside the "with" block so we don't require more
-        # than one socket at a time.
-        names = [result["name"] for result in results]
-
-        if not include_system_collections:
-            names = [name for name in names if not name.startswith("system.")]
-        return names
+        kws = {} if include_system_collections else _SYSTEM_FILTER
+        return [result["name"]
+                for result in self.list_collections(session=session, **kws)]
 
     def drop_collection(self, name_or_collection, session=None):
         """Drop a collection.

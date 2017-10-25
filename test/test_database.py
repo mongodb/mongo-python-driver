@@ -155,20 +155,24 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(u"test.foo" in db.collection_names())
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
-    def test_collection_names(self):
+    def _test_collection_names(self, meth, test_no_system):
         db = Database(self.client, "pymongo_test")
         db.test.insert_one({"dummy": u"object"})
         db.test.mike.insert_one({"dummy": u"object"})
 
-        colls = db.collection_names()
+        colls = getattr(db, meth)()
         self.assertTrue("test" in colls)
         self.assertTrue("test.mike" in colls)
         for coll in colls:
             self.assertTrue("$" not in coll)
 
-        colls_without_systems = db.collection_names(False)
-        for coll in colls_without_systems:
-            self.assertTrue(not coll.startswith("system."))
+        if test_no_system:
+            db.systemcoll.test.insert_one({})
+            no_system_collections = getattr(
+                db, meth)(include_system_collections=False)
+            for coll in no_system_collections:
+                self.assertTrue(not coll.startswith("system."))
+            self.assertIn("systemcoll.test", no_system_collections)
 
         # Force more than one batch.
         db = self.client.many_collections
@@ -176,9 +180,15 @@ class TestDatabase(IntegrationTest):
             db["coll" + str(i)].insert_one({})
         # No Error
         try:
-            db.collection_names()
+            getattr(db, meth)()
         finally:
             self.client.drop_database("many_collections")
+
+    def test_collection_names(self):
+        self._test_collection_names('collection_names', True)
+
+    def test_list_collection_names(self):
+        self._test_collection_names('list_collection_names', False)
 
     def test_list_collections(self):
         self.client.drop_database("pymongo_test")
@@ -215,6 +225,11 @@ class TestDatabase(IntegrationTest):
         else:
             self.assertTrue(False)
 
+        colls = db.list_collections(filter={"name": {"$regex": "^test$"}})
+        self.assertEqual(1, len(list(colls)))
+
+        colls = db.list_collections(filter={"name": {"$regex": "^test.mike$"}})
+        self.assertEqual(1, len(list(colls)))
 
         db.drop_collection("test")
 

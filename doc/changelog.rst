@@ -19,6 +19,8 @@ Highlights include:
   external libraries that can parse raw batches of BSON data.
 - New methods :meth:`~pymongo.mongo_client.MongoClient.list_databases` and
   :meth:`~pymongo.mongo_client.MongoClient.list_database_names`.
+- New methods :meth:`~pymongo.database.Database.list_collections` and
+  :meth:`~pymongo.database.Database.list_collection_names`.
 - Support for mongodb+srv:// URIs. See
   :class:`~pymongo.mongo_client.MongoClient` for details.
 

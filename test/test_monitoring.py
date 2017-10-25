@@ -1218,26 +1218,8 @@ class TestCommandMonitoring(PyMongoTestCase):
         # Regardless of server version and use of helpers._first_batch
         # this test should still pass.
         self.listener.results.clear()
-        self.client.pymongo_test.collection_names()
-        results = self.listener.results
-        started = results['started'][0]
-        succeeded = results['succeeded'][0]
-        self.assertEqual(0, len(results['failed']))
-        self.assertIsInstance(started, monitoring.CommandStartedEvent)
-        expected = SON([('listCollections', 1), ('cursor', {})])
-        self.assertEqualCommand(expected, started.command)
-        self.assertEqual('pymongo_test', started.database_name)
-        self.assertEqual('listCollections', started.command_name)
-        self.assertIsInstance(started.request_id, int)
-        self.assertEqual(self.client.address, started.connection_id)
-        self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
-        self.assertIsInstance(succeeded.duration_micros, int)
-        self.assertEqual(started.command_name, succeeded.command_name)
-        self.assertEqual(started.request_id, succeeded.request_id)
-        self.assertEqual(started.connection_id, succeeded.connection_id)
-
-        self.listener.results.clear()
         tuple(self.client.pymongo_test.test.list_indexes())
+        results = self.listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
