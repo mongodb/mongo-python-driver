@@ -738,8 +738,7 @@ class Collection(common.BaseObject):
 
         blk = _Bulk(self, ordered, bypass_document_validation)
         blk.ops = [doc for doc in gen()]
-        with self.__database.client._tmp_session(session) as s:
-            blk.execute(self.write_concern.document, session=s)
+        blk.execute(self.write_concern.document, session=session)
         return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
 
     def _update(self, sock_info, criteria, document, upsert=False,

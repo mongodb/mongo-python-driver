@@ -201,5 +201,12 @@ class ServerDescription(object):
     def is_server_type_known(self):
         return self.server_type != SERVER_TYPE.Unknown
 
+    @property
+    def retryable_writes_supported(self):
+        """Checks if this server supports retryable writes."""
+        return (
+            self._ls_timeout_minutes is not None and
+            self._server_type in (SERVER_TYPE.Mongos, SERVER_TYPE.RSPrimary))
+
     # For unittesting only. Use under no circumstances!
     _host_to_round_trip_time = {}

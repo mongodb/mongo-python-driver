@@ -31,12 +31,14 @@ Highlights include:
   :meth:`~pymongo.database.Database.list_collection_names`.
 - Support for mongodb+srv:// URIs. See
   :class:`~pymongo.mongo_client.MongoClient` for details.
-- Index management helpers (
-  :meth:`~pymongo.collection.Collection.create_index`,
+- Index management helpers
+  (:meth:`~pymongo.collection.Collection.create_index`,
   :meth:`~pymongo.collection.Collection.create_indexes`,
   :meth:`~pymongo.collection.Collection.drop_index`,
   :meth:`~pymongo.collection.Collection.drop_indexes`,
   :meth:`~pymongo.collection.Collection.reindex`) now support maxTimeMS.
+- Support for retryable writes and the ``retryWrites`` URI option.  See
+  :class:`~pymongo.mongo_client.MongoClient` for details.
 
 Deprecations:
 

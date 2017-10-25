@@ -28,8 +28,10 @@ from pymongo.common import (validate_is_mapping,
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
+                            ConnectionFailure,
                             InvalidOperation,
-                            OperationFailure)
+                            OperationFailure,
+                            ServerSelectionTimeoutError)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
                              _do_batched_insert,
                              _do_batched_write_command,
@@ -64,6 +66,7 @@ class _Run(object):
         self.op_type = op_type
         self.index_map = []
         self.ops = []
+        self.idx_offset = 0
 
     def index(self, idx):
         """Get the original index of an operation in this run.
@@ -145,6 +148,10 @@ class _Bulk(object):
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
         self.uses_array_filters = False
+        self.is_retryable = True
+        self.retrying = False
+        # Extra state so that we know where to pick up on a retry attempt.
+        self.current_run = None
 
     def add_insert(self, document):
         """Add an insert document to the list of ops.
@@ -169,6 +176,9 @@ class _Bulk(object):
         if array_filters is not None:
             self.uses_array_filters = True
             cmd['arrayFilters'] = array_filters
+        if multi:
+            # A bulk_write containing an update_many is not retryable.
+            self.is_retryable = False
         self.ops.append((_UPDATE, cmd))
 
     def add_replace(self, selector, replacement, upsert=False,
@@ -192,6 +202,9 @@ class _Bulk(object):
         if collation is not None:
             self.uses_collation = True
             cmd['collation'] = collation
+        if limit == _DELETE_ALL:
+            # A bulk_write containing a delete_many is not retryable.
+            self.is_retryable = False
         self.ops.append((_DELETE, cmd))
 
     def gen_ordered(self):
@@ -220,7 +233,70 @@ class _Bulk(object):
             if run.ops:
                 yield run
 
-    def execute_command(self, sock_info, generator, write_concern, session):
+    def _execute_command(self, generator, write_concern, session,
+                         sock_info, op_id, retryable, full_result):
+        if sock_info.max_wire_version < 5 and self.uses_collation:
+            raise ConfigurationError(
+                'Must be connected to MongoDB 3.4+ to use a collation.')
+        if sock_info.max_wire_version < 6 and self.uses_array_filters:
+            raise ConfigurationError(
+                'Must be connected to MongoDB 3.6+ to use arrayFilters.')
+
+        db_name = self.collection.database.name
+        client = self.collection.database.client
+        listeners = client._event_listeners
+
+        if not self.current_run:
+            self.current_run = next(generator)
+        run = self.current_run
+
+        # sock_info.command validates the session, but we use
+        # sock_info.write_command.
+        sock_info.validate_session(client, session)
+        while run:
+            cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
+                       ('ordered', self.ordered)])
+            if write_concern.document:
+                cmd['writeConcern'] = write_concern.document
+            if self.bypass_doc_val and sock_info.max_wire_version >= 4:
+                cmd['bypassDocumentValidation'] = True
+            if session:
+                cmd['lsid'] = session._use_lsid()
+            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
+                                    listeners, session)
+
+            results = []
+            while run.idx_offset < len(run.ops):
+                if session and retryable:
+                    cmd['txnNumber'] = session._transaction_id()
+                client._send_cluster_time(cmd, session)
+                check_keys = run.op_type == _INSERT
+                ops = islice(run.ops, run.idx_offset, None)
+                # Run as many ops as possible.
+                request_id, msg, to_send = _do_batched_write_command(
+                    self.namespace, run.op_type, cmd, ops, check_keys,
+                    self.collection.codec_options, bwc)
+                if not to_send:
+                    raise InvalidOperation("cannot do an empty bulk write")
+                result = bwc.write_command(request_id, msg, to_send)
+                client._receive_cluster_time(result, session)
+                results.append((run.idx_offset, result))
+                # We're no longer in a retry once a command succeeds.
+                self.retrying = False
+                if self.ordered and "writeErrors" in result:
+                    break
+                run.idx_offset += len(to_send)
+
+            _merge_command(run, full_result, results)
+
+            # We're supposed to continue if errors are
+            # at the write concern level (e.g. wtimeout)
+            if self.ordered and full_result['writeErrors']:
+                break
+            # Reset our state
+            self.current_run = run = next(generator, None)
+
+    def execute_command(self, generator, write_concern, session):
         """Execute using write commands.
         """
         # nModified is only reported for write commands, not legacy ops.
@@ -235,51 +311,16 @@ class _Bulk(object):
             "upserted": [],
         }
         op_id = _randint()
-        db_name = self.collection.database.name
+
+        def retryable_bulk(session, sock_info, retryable):
+            self._execute_command(
+                generator, write_concern, session, sock_info, op_id,
+                retryable, full_result)
+
         client = self.collection.database.client
-        listeners = client._event_listeners
-
-        with self.collection.database.client._tmp_session(session) as s:
-            # sock_info.command validates the session, but we use
-            # sock_info.write_command.
-            sock_info.validate_session(client, s)
-            for run in generator:
-                cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
-                           ('ordered', self.ordered)])
-                if write_concern.document:
-                    cmd['writeConcern'] = write_concern.document
-                if self.bypass_doc_val and sock_info.max_wire_version >= 4:
-                    cmd['bypassDocumentValidation'] = True
-                if s:
-                    cmd['lsid'] = s._use_lsid()
-                bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
-                                        listeners, s)
-
-                results = []
-                idx_offset = 0
-                while idx_offset < len(run.ops):
-                    check_keys = run.op_type == _INSERT
-                    ops = islice(run.ops, idx_offset, None)
-                    # Run as many ops as possible.
-                    client._send_cluster_time(cmd, s)
-                    request_id, msg, to_send = _do_batched_write_command(
-                        self.namespace, run.op_type, cmd, ops, check_keys,
-                        self.collection.codec_options, bwc)
-                    if not to_send:
-                        raise InvalidOperation("cannot do an empty bulk write")
-                    result = bwc.write_command(request_id, msg, to_send)
-                    client._receive_cluster_time(result, s)
-                    results.append((idx_offset, result))
-                    if self.ordered and "writeErrors" in result:
-                        break
-                    idx_offset += len(to_send)
-
-                _merge_command(run, full_result, results)
-
-                # We're supposed to continue if errors are
-                # at the write concern level (e.g. wtimeout)
-                if self.ordered and full_result['writeErrors']:
-                    break
+        with client._tmp_session(session) as s:
+            client._retry_with_session(
+                self.is_retryable, retryable_bulk, s, self)
 
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
             if full_result['writeErrors']:
@@ -309,6 +350,12 @@ class _Bulk(object):
     def execute_no_results(self, sock_info, generator):
         """Execute all operations, returning no results (w=0).
         """
+        if self.uses_collation:
+            raise ConfigurationError(
+                'Collation is unsupported for unacknowledged writes.')
+        if self.uses_array_filters:
+            raise ConfigurationError(
+                'arrayFilters is unsupported for unacknowledged writes.')
         # Cannot have both unacknowledged write and bypass document validation.
         if self.bypass_doc_val and sock_info.max_wire_version >= 4:
             raise OperationFailure("Cannot set bypass_document_validation with"
@@ -378,25 +425,11 @@ class _Bulk(object):
             generator = self.gen_unordered()
 
         client = self.collection.database.client
-        with client._socket_for_writes() as sock_info:
-            if sock_info.max_wire_version < 5 and self.uses_collation:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use a collation.')
-            if sock_info.max_wire_version < 6 and self.uses_array_filters:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.6+ to use arrayFilters.')
-            if not write_concern.acknowledged:
-                if self.uses_collation:
-                    raise ConfigurationError(
-                        'Collation is unsupported for unacknowledged writes.')
-                if self.uses_array_filters:
-                    raise ConfigurationError(
-                        'arrayFilters is unsupported for unacknowledged '
-                        'writes.')
+        if not write_concern.acknowledged:
+            with client._socket_for_writes() as sock_info:
                 self.execute_no_results(sock_info, generator)
-            else:
-                return self.execute_command(
-                    sock_info, generator, write_concern, session)
+        else:
+            return self.execute_command(generator, write_concern, session)
 
 
 class BulkUpsertOperation(object):
