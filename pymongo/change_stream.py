@@ -16,9 +16,6 @@
 
 import copy
 
-from bson import _bson_to_dict
-from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
-
 from pymongo.errors import (ConnectionFailure, CursorNotFound,
                             InvalidOperation, PyMongoError)
 
@@ -56,9 +53,7 @@ class ChangeStream(object):
     def __init__(self, collection, pipeline, full_document,
                  resume_after=None, max_await_time_ms=None, batch_size=None,
                  collation=None, session=None):
-        self._codec_options = collection.codec_options
-        self._collection = collection.with_options(
-            codec_options=DEFAULT_RAW_BSON_OPTIONS)
+        self._collection = collection
         self._pipeline = copy.deepcopy(pipeline)
         self._full_document = full_document
         self._resume_token = copy.deepcopy(resume_after)
@@ -102,7 +97,7 @@ class ChangeStream(object):
         """
         while True:
             try:
-                raw_change = self._cursor.next()
+                change = self._cursor.next()
             except (ConnectionFailure, CursorNotFound):
                 try:
                     self._cursor.close()
@@ -111,16 +106,13 @@ class ChangeStream(object):
                 self._cursor = self._create_cursor()
                 continue
             try:
-                self._resume_token = raw_change['_id']
+                resume_token = change['_id']
             except KeyError:
                 raise InvalidOperation(
                     "Cannot provide resume functionality when the resume "
                     "token is missing.")
-            if self._codec_options.document_class == RawBSONDocument:
-                return raw_change
-            next_change = _bson_to_dict(raw_change.raw, self._codec_options)
-            next_change['_id'] = self._resume_token
-            return next_change
+            self._resume_token = copy.copy(resume_token)
+            return change
 
     __next__ = next
 

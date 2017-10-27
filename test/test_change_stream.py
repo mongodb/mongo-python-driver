@@ -343,8 +343,8 @@ class TestChangeStream(IntegrationTest):
                 coll.insert_one(random_doc)
                 resume_token = change_stream.next()['_id']
 
-            # The resume token is always a RawBSONDocument.
-            self.assertIsInstance(resume_token, RawBSONDocument)
+            # The resume token is always a document.
+            self.assertIsInstance(resume_token, document_class)
             # Should not error.
             coll.watch(resume_after=resume_token)
             coll.delete_many({})
