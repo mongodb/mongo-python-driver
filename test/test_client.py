@@ -68,6 +68,7 @@ from test.utils import (assertRaisesExactly,
                         connected,
                         delay,
                         get_pool,
+                        gevent_monkey_patched,
                         ignore_deprecations,
                         is_greenthread_patched,
                         lazy_client_trial,
@@ -1443,6 +1444,18 @@ class TestMongoClientFailover(MockClientTest):
     def test_network_error_on_delete(self):
         callback = lambda client: client.db.collection.delete_many({})
         self._test_network_error(callback)
+
+    def test_gevent_task(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import spawn
+        def poller():
+            while True:
+                client_context.client.pymongo_test.test.insert_one({})
+
+        task = spawn(poller)
+        task.kill()
+        self.assertTrue(task.dead)
 
 
 if __name__ == "__main__":

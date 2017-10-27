@@ -233,7 +233,7 @@ class SocketChecker(object):
                 if _errno_from_exception(exc) in (errno.EINTR, errno.EAGAIN):
                     continue
                 return True
-            except:
+            except Exception:
                 # Any other exceptions should be attributed to a closed
                 # or invalid socket.
                 return True

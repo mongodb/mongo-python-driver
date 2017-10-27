@@ -597,7 +597,7 @@ class SocketInfo(object):
         # Avoid exceptions on interpreter shutdown.
         try:
             self.sock.close()
-        except:
+        except Exception:
             pass
 
     def _raise_connection_failure(self, error):
