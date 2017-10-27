@@ -1199,7 +1199,7 @@ buildvariants:
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec: {"python-version": "*", auth: "auth"}
   display_name: "Enterprise Auth Linux ${python-version}"
-  run_on: ubuntu1204-test
+  run_on: rhel62-test
   tasks:
      - name: "test-enterprise-auth"
 
