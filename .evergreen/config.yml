@@ -1107,7 +1107,7 @@ buildvariants:
      ssl: "ssl"
      coverage: "*"
   display_name: "${python-version} RHEL 6.2 (x86_64) ${auth} ${ssl} ${coverage}"
-  run_on: rhel62-test
+  run_on: rhel62-small
   tasks:
      - ".latest"
      - ".3.4"
@@ -1125,7 +1125,7 @@ buildvariants:
      ssl: "*"
      coverage: "*"
   display_name: "${c-extensions} ${python-version} RHEL 6.2 (x86_64) ${auth} ${ssl} ${coverage}"
-  run_on: rhel62-test
+  run_on: rhel62-small
   tasks:
      - ".latest"
      - ".3.4"
@@ -1141,7 +1141,7 @@ buildvariants:
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} RHEL 6.2 (x86_64) ${auth-ssl}"
-  run_on: rhel62-test
+  run_on: rhel62-small
   tasks:
      - ".latest"
      - ".3.4"
@@ -1179,7 +1179,7 @@ buildvariants:
 - matrix_name: "tests-storage-engines"
   matrix_spec: {storage-engine: "*", python-version: "2.7"}
   display_name: "Storage ${storage-engine} ${python-version} RHEL 6.2 (x86_64)"
-  run_on: rhel62-test
+  run_on: rhel62-small
   rules:
     - if:
         storage-engine: ["mmapv1", "inmemory"]
@@ -1199,7 +1199,7 @@ buildvariants:
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec: {"python-version": "*", auth: "auth"}
   display_name: "Enterprise Auth Linux ${python-version}"
-  run_on: rhel62-test
+  run_on: rhel62-small
   tasks:
      - name: "test-enterprise-auth"
 
@@ -1224,7 +1224,7 @@ buildvariants:
     python-version: ["2.7", "3.4", "3.6"]
     mod-wsgi-version: ["2.8"]
   display_name: "${mod-wsgi-version} ${python-version}"
-  run_on: rhel62-test
+  run_on: rhel62-small
   tasks:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
@@ -1232,14 +1232,14 @@ buildvariants:
 - matrix_name: "mockupdb-tests"
   matrix_spec: {python-version: "2.7"}
   display_name: "MockupDB Tests"
-  run_on: rhel62-test
+  run_on: rhel62-small
   tasks:
      - name: "mockupdb"
 
 - matrix_name: "tests-doctests"
   matrix_spec: {python-version: ["2.7", "3.4"]}
   display_name: "Doctests ${python-version}"
-  run_on: rhel62-test
+  run_on: rhel62-small
   tasks:
      - name: "doctests"
 
@@ -1248,14 +1248,14 @@ buildvariants:
   display_name: "cdecimal ${python-version}"
   batchtime: 10080  # 7 days
   run_on:
-    - rhel62-test
+    - rhel62-small
   tasks:
     - name: "cdecimal"
 
 - name: "no-server"
   display_name: "No server test"
   run_on:
-    - rhel62-test
+    - rhel62-small
   tasks:
     - name: "no-server"
 
