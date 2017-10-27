@@ -324,7 +324,7 @@ class TestSSL(IntegrationTest):
                                   ssl_certfile=CLIENT_PEM,
                                   ssl_cert_reqs=ssl.CERT_REQUIRED,
                                   ssl_ca_certs=CA_PEM,
-                                  serverSelectionTimeoutMS=100,
+                                  serverSelectionTimeoutMS=500,
                                   **self.credentials))
 
         connected(MongoClient('server',
@@ -333,7 +333,7 @@ class TestSSL(IntegrationTest):
                               ssl_cert_reqs=ssl.CERT_REQUIRED,
                               ssl_ca_certs=CA_PEM,
                               ssl_match_hostname=False,
-                              serverSelectionTimeoutMS=100,
+                              serverSelectionTimeoutMS=500,
                               **self.credentials))
 
         if 'setName' in response:
@@ -344,7 +344,7 @@ class TestSSL(IntegrationTest):
                                       ssl_certfile=CLIENT_PEM,
                                       ssl_cert_reqs=ssl.CERT_REQUIRED,
                                       ssl_ca_certs=CA_PEM,
-                                      serverSelectionTimeoutMS=100,
+                                      serverSelectionTimeoutMS=500,
                                       **self.credentials))
 
             connected(MongoClient('server',
@@ -354,7 +354,7 @@ class TestSSL(IntegrationTest):
                                   ssl_cert_reqs=ssl.CERT_REQUIRED,
                                   ssl_ca_certs=CA_PEM,
                                   ssl_match_hostname=False,
-                                  serverSelectionTimeoutMS=100,
+                                  serverSelectionTimeoutMS=500,
                                   **self.credentials))
 
     @client_context.require_ssl_certfile
