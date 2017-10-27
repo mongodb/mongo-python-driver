@@ -24,6 +24,12 @@ Highlights include:
 - Support for mongodb+srv:// URIs. See
   :class:`~pymongo.mongo_client.MongoClient` for details.
 
+Deprecations:
+
+- The `useCursor` option for :meth:`~pymongo.collection.Collection.aggregate`
+  is deprecated. The option was only necessary when upgrading from MongoDB
+  2.4 to MongoDB 2.6. MongoDB 2.4 is no longer supported.
+
 Breaking changes include:
 
 - Certain commands, such as ``ismaster`` and ``ping``, that could be used

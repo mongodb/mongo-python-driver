@@ -1999,10 +1999,16 @@ class Collection(common.BaseObject):
                    ("pipeline", pipeline)])
 
         # Remove things that are not command options.
+        use_cursor = True
+        if "useCursor" in kwargs:
+            warnings.warn(
+                "The useCursor option is deprecated "
+                "and will be removed in PyMongo 4.0",
+                DeprecationWarning, stacklevel=2)
+            use_cursor = common.validate_boolean(
+                "useCursor", kwargs.pop("useCursor"))
         batch_size = common.validate_non_negative_integer_or_none(
             "batchSize", kwargs.pop("batchSize", None))
-        use_cursor = common.validate_boolean(
-            "useCursor", kwargs.pop("useCursor", True))
         # If the server does not support the "cursor" option we
         # ignore useCursor and batchSize.
         with self._socket_for_reads() as (sock_info, slave_ok):
@@ -2074,14 +2080,10 @@ class Collection(common.BaseObject):
             batch. Ignored if the connected mongod or mongos does not support
             returning aggregate results using a cursor, or `useCursor` is
             ``False``.
-          - `useCursor` (bool): Requests that the `server` provide results
-            using a cursor, if possible. Ignored if the connected mongod or
-            mongos does not support returning aggregate results using a cursor.
-            The default is ``True``. Set this to ``False`` when upgrading a 2.4
-            or older sharded cluster to 2.6 or newer (see the warning below).
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `useCursor` (bool): Deprecated. Will be removed in PyMongo 4.0.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`. Please note that using the ``$out`` pipeline stage
@@ -2089,10 +2091,6 @@ class Collection(common.BaseObject):
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` (the default).
         The server will raise an error if the ``$out`` pipeline stage is used
         with any other read preference.
-
-        .. warning:: When upgrading a 2.4 or older sharded cluster to 2.6 or
-           newer the `useCursor` option **must** be set to ``False``
-           until all shards have been upgraded to 2.6 or newer.
 
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead. An
@@ -2113,9 +2111,8 @@ class Collection(common.BaseObject):
           set.
 
         .. versionchanged:: 3.6
-           Added the `maxAwaitTimeMS` option.
-        .. versionchanged:: 3.6
-           Added ``session`` parameter.
+           Added the `session` parameter. Added the `maxAwaitTimeMS` option.
+           Deprecated the `useCursor` option.
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4. Support the `collation` option.
