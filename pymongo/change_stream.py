@@ -108,6 +108,7 @@ class ChangeStream(object):
             try:
                 resume_token = change['_id']
             except KeyError:
+                self.close()
                 raise InvalidOperation(
                     "Cannot provide resume functionality when the resume "
                     "token is missing.")

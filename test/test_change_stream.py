@@ -180,6 +180,9 @@ class TestChangeStream(IntegrationTest):
             self.coll.insert_one({})
             with self.assertRaises(InvalidOperation):
                 next(change_stream)
+            # The cursor should now be closed.
+            with self.assertRaises(StopIteration):
+                next(change_stream)
 
     def test_resume_on_error(self):
         """ChangeStream will automatically resume one time on a resumable
