@@ -53,6 +53,7 @@ def camel_to_snake(camel):
 def camel_to_upper_camel(camel):
     return camel[0].upper() + camel[1:]
 
+
 def check_result(expected_result, result):
     if isinstance(result, Cursor) or isinstance(result, CommandCursor):
         return list(result) == expected_result
@@ -69,6 +70,11 @@ def check_result(expected_result, result):
                     upserted_count = 0
                 if upserted_count != expected_result[res]:
                     return False
+            elif prop == "inserted_ids":
+                # BulkWriteResult does not have inserted_ids.
+                if isinstance(result, BulkWriteResult):
+                    return len(expected_result[res]) == result.inserted_count
+                return expected_result[res] == result.inserted_ids
             elif getattr(result, prop) != expected_result[res]:
                 return False
         return True
@@ -93,10 +99,10 @@ def run_operation(collection, test):
 
     # Convert arguments to snake_case and handle special cases.
     arguments = test['operation']['arguments']
+    options = arguments.pop("options", {})
+    for option_name in options:
+        arguments[camel_to_snake(option_name)] = options[option_name]
     if operation == "bulk_write":
-        unknown_args = set(arguments) - set(["options", "requests"])
-        assert not unknown_args, (
-                "unknown argument(s) to bulk_write test: %s" % (unknown_args,))
         # Parse each request into a bulk write model.
         requests = []
         for request in arguments["requests"]:
@@ -105,9 +111,6 @@ def run_operation(collection, test):
             bulk_arguments = camel_to_snake_args(request["arguments"])
             requests.append(bulk_class(**bulk_arguments))
         arguments["requests"] = requests
-        options = arguments.pop("options", {})
-        for option_name in options:
-            arguments[camel_to_snake(option_name)] = options[option_name]
     else:
         for arg_name in list(arguments):
             c2s = camel_to_snake(arg_name)
@@ -150,9 +153,11 @@ def create_test(scenario_def, test):
             else:
                 db_coll = self.db.test
             self.assertEqual(list(db_coll.find()), expected_c['data'])
-        else:
-            self.assertTrue(
-                check_result(test['outcome'].get('result'), result))
+        expected_result = test['outcome'].get('result')
+        # aggregate $out cursors return no documents.
+        if test['description'] == 'Aggregate with $out':
+            expected_result = []
+        self.assertTrue(check_result(expected_result, result))
 
     return run_scenario
 
