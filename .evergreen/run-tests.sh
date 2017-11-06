@@ -31,10 +31,21 @@ if [ "$SSL" != "nossl" ]; then
 fi
 
 if [ -z "$PYTHON_BINARY" ]; then
-    PYTHON=$(command -v python || command -v python3) || true
-    if [ -z "$PYTHON" ]; then
-        echo "Cannot test without python or python3 installed!"
-        exit 1
+    VIRTUALENV=$(command -v virtualenv) || true
+    if [ -z "$VIRTUALENV" ]; then
+        PYTHON=$(command -v python || command -v python3) || true
+        if [ -z "$PYTHON" ]; then
+            echo "Cannot test without python or python3 installed!"
+            exit 1
+        fi
+    else
+        # wheel and pip are dropping support for Python 2.6. Avoid virtualenv
+        # automatically upgrading its bundled versions to new versions that
+        # might fail in 2.6.
+        $VIRTUALENV --no-download pymongotestvenv || $VIRTUALENV pymongotestvenv
+        . pymongotestvenv/bin/activate
+        PYTHON=python
+        trap "deactivate; rm -rf pymongotestvenv" EXIT HUP
     fi
 else
     PYTHON="$PYTHON_BINARY"
