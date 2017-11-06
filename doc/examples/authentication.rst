@@ -155,7 +155,7 @@ URI::
 
   >>> # Note: the kerberos principal must be url encoded.
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI"
+  >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@mongo-server.example.com/?authMechanism=GSSAPI"
   >>> client = MongoClient(uri)
   >>>
 
@@ -163,7 +163,7 @@ The default service name used by MongoDB and PyMongo is `mongodb`. You can
 specify a custom service name with the ``authMechanismProperties`` option::
 
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:myservicename"
+  >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@mongo-server.example.com/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:myservicename"
   >>> client = MongoClient(uri)
 
 Windows (SSPI)
