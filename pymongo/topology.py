@@ -137,7 +137,7 @@ class Topology(object):
           by mutual exclusion. Using Topology from a process other than the one
           that initialized it will emit a warning and may result in deadlock. To
           prevent this from happening, MongoClient must be created after any
-          forking OR MongoClient must be started with connect=False.
+          forking.
 
         """
         if self._pid is None:
@@ -145,10 +145,10 @@ class Topology(object):
         else:
             if os.getpid() != self._pid:
                 warnings.warn(
-                    "MongoClient opened before fork. Create MongoClient "
-                    "with connect=False, or create client after forking. "
-                    "See PyMongo's documentation for details: http://api."
-                    "mongodb.org/python/current/faq.html#pymongo-fork-safe>")
+                    "MongoClient opened before fork. Create MongoClient only "
+                    "after forking. See PyMongo's documentation for details: "
+                    "http://api.mongodb.org/python/current/faq.html#"
+                    "is-pymongo-fork-safe")
 
         with self._lock:
             self._ensure_opened()
