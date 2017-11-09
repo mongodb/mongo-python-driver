@@ -1010,13 +1010,20 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
             listeners.publish_command_failure(
                 duration, failure, name, request_id, sock_info.address)
         raise
-    # TODO: PYTHON-1385 convert OP_REPLY to the equivalent command response.
-    result = {
-        'cursor_id': reply.cursor_id,
-        'starting_from': 0,
-        'number_returned': reply.number_returned,
-        'data': docs,
-    }
+    # listIndexes
+    if 'cursor' in cmd:
+        result = {
+            u'cursor': {
+                u'firstBatch': docs,
+                u'id': reply.cursor_id,
+                u'ns': u'%s.%s' % (db, coll)
+            },
+            u'ok': 1.0
+        }
+    # fsyncUnlock, currentOp
+    else:
+        result = docs[0] if docs else {}
+        result[u'ok'] = 1.0
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         listeners.publish_command_success(

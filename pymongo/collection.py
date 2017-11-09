@@ -1929,12 +1929,7 @@ class Collection(common.BaseObject):
                     {"ns": self.__full_name}, 0, slave_ok, codec_options,
                     ReadPreference.PRIMARY, cmd,
                     self.database.client._event_listeners, session=None)
-                data = res["data"]
-                cursor = {
-                    "id": res["cursor_id"],
-                    "firstBatch": data,
-                    "ns": namespace,
-                }
+                cursor = res["cursor"]
                 # Note that a collection can only have 64 indexes, so there
                 # will never be a getMore call.
                 return CommandCursor(coll, cursor, sock_info.address)

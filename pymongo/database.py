@@ -751,12 +751,11 @@ class Database(common.BaseObject):
                                              client=self.__client)
             else:
                 spec = {"$all": True} if include_all else {}
-                x = _first_batch(sock_info, "admin", "$cmd.sys.inprog",
-                                 spec, -1, True, self.codec_options,
-                                 ReadPreference.PRIMARY, cmd,
-                                 self.client._event_listeners,
-                                 session=None)
-                return x.get('data', [None])[0]
+                return _first_batch(sock_info, "admin", "$cmd.sys.inprog",
+                                    spec, -1, True, self.codec_options,
+                                    ReadPreference.PRIMARY, cmd,
+                                    self.client._event_listeners,
+                                    session=None)
 
     def profiling_level(self, session=None):
         """Get the database's current profiling level.

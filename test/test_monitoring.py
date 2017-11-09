@@ -1235,6 +1235,8 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertEqual(started.command_name, succeeded.command_name)
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
+        self.assertTrue('cursor' in succeeded.reply)
+        self.assertTrue('ok' in succeeded.reply)
 
         self.listener.results.clear()
         self.client.pymongo_test.current_op(True)
@@ -1253,6 +1255,8 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertEqual(started.command_name, succeeded.command_name)
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
+        self.assertTrue('inprog' in succeeded.reply)
+        self.assertTrue('ok' in succeeded.reply)
 
         if not client_context.is_mongos:
             self.client.fsync(lock=True)
@@ -1276,6 +1280,8 @@ class TestCommandMonitoring(PyMongoTestCase):
             self.assertEqual(started.command_name, succeeded.command_name)
             self.assertEqual(started.request_id, succeeded.request_id)
             self.assertEqual(started.connection_id, succeeded.connection_id)
+            self.assertTrue('info' in succeeded.reply)
+            self.assertTrue('ok' in succeeded.reply)
 
     def test_sensitive_commands(self):
         listeners = self.client._event_listeners
