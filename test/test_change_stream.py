@@ -44,10 +44,19 @@ class TestChangeStream(IntegrationTest):
 
     @classmethod
     @client_context.require_version_min(3, 5, 11)
-    @client_context.require_replica_set
+    @client_context.require_no_standalone
     def setUpClass(cls):
         super(TestChangeStream, cls).setUpClass()
         cls.coll = cls.db.change_stream_test
+        # SERVER-31885 On a mongos the database must exist in order to create
+        # a changeStream cursor. However, WiredTiger drops the database when
+        # there are no more collections. Let's prevent that.
+        cls.db.prevent_implicit_database_deletion.insert_one({})
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.db.prevent_implicit_database_deletion.drop()
+        super(TestChangeStream, cls).tearDownClass()
 
     def setUp(self):
         # Use a new collection for each test.
@@ -135,8 +144,8 @@ class TestChangeStream(IntegrationTest):
             t = threading.Thread(
                 target=lambda: changes.append(change_stream.next()))
             t.start()
-            time.sleep(1)
             self.coll.insert_one(inserted_doc)
+            time.sleep(1)
             t.join(3)
             self.assertFalse(t.is_alive())
             self.assertEqual(1, len(changes))
@@ -152,8 +161,8 @@ class TestChangeStream(IntegrationTest):
             t = threading.Thread(
                 target=lambda: changes.append(change_stream.next()))
             t.start()
-            time.sleep(1)
             self.coll.insert_one(inserted_doc)
+            time.sleep(1)
             t.join(3)
             self.assertFalse(t.is_alive())
             self.assertEqual(1, len(changes))
