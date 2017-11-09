@@ -47,9 +47,6 @@ class TestChangeStream(IntegrationTest):
     @client_context.require_replica_set
     def setUpClass(cls):
         super(TestChangeStream, cls).setUpClass()
-        # $changeStream requires read concern majority.
-        cls.db = cls.client.get_database(
-            cls.db.name, read_concern=ReadConcern('majority'))
         cls.coll = cls.db.change_stream_test
 
     def setUp(self):
@@ -352,6 +349,17 @@ class TestChangeStream(IntegrationTest):
             coll.watch(resume_after=resume_token)
             coll.delete_many({})
 
+    def test_read_concern(self):
+        """Test readConcern is not validated by the driver."""
+        # Read concern 'local' is not allowed for $changeStream.
+        coll = self.coll.with_options(read_concern=ReadConcern('local'))
+        with self.assertRaises(OperationFailure):
+            coll.watch()
+
+        # Does not error.
+        coll = self.coll.with_options(read_concern=ReadConcern('majority'))
+        with coll.watch():
+            pass
 
 if __name__ == '__main__':
     unittest.main()
