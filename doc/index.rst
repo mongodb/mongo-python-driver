@@ -34,6 +34,10 @@ everything you need to know to use **PyMongo**.
 :doc:`python3`
   Frequently asked questions about python 3 support.
 
+:doc:`compatibility-policy`
+  Explanation of deprecations, and how to keep pace with changes in PyMongo's
+  API.
+
 :doc:`api/index`
   The complete API documentation, organized by module.
 
@@ -96,6 +100,7 @@ Indices and tables
    tutorial
    examples/index
    faq
+   compatibility-policy
    api/index
    tools
    contributors
