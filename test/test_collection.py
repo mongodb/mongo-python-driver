@@ -284,6 +284,35 @@ class TestCollection(IntegrationTest):
         with self.write_concern_collection() as coll:
             coll.drop_index('hello_1')
 
+    @client_context.require_no_mongos
+    @client_context.require_test_commands
+    def test_index_management_max_time_ms(self):
+        if (client_context.version[:2] == (3, 4) and
+                client_context.version[2] < 4):
+            raise unittest.SkipTest("SERVER-27711")
+        coll = self.db.test
+        self.client.admin.command("configureFailPoint",
+                                  "maxTimeAlwaysTimeOut",
+                                  mode="alwaysOn")
+        try:
+            self.assertRaises(
+                ExecutionTimeout, coll.create_index, "foo", maxTimeMS=1)
+            self.assertRaises(
+                ExecutionTimeout,
+                coll.create_indexes,
+                [IndexModel("foo")],
+                maxTimeMS=1)
+            self.assertRaises(
+                ExecutionTimeout, coll.drop_index, "foo", maxTimeMS=1)
+            self.assertRaises(
+                ExecutionTimeout, coll.drop_indexes, maxTimeMS=1)
+            self.assertRaises(
+                ExecutionTimeout, coll.reindex, maxTimeMS=1)
+        finally:
+            self.client.admin.command("configureFailPoint",
+                                      "maxTimeAlwaysTimeOut",
+                                      mode="off")
+
     def test_reindex(self):
         db = self.db
         db.drop_collection("test")

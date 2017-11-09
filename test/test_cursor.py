@@ -169,7 +169,8 @@ class TestCursor(IntegrationTest):
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
         client = self.client
-        if "enableTestCommands=1" in client_context.cmd_line['argv']:
+        if (not client_context.is_mongos
+                and client_context.test_commands_enabled):
             # Cursor parses server timeout error in response to initial query.
             client.admin.command("configureFailPoint",
                                  "maxTimeAlwaysTimeOut",

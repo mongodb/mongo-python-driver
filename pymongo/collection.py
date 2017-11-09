@@ -1559,7 +1559,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
         return self._count(cmd, collation, session)
 
-    def create_indexes(self, indexes, session=None):
+    def create_indexes(self, indexes, session=None, **kwargs):
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
@@ -1574,6 +1574,8 @@ class Collection(common.BaseObject):
             instances.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): optional arguments to the createIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
         .. note:: `create_indexes` uses the `createIndexes`_ command
            introduced in MongoDB **2.6** and cannot be used with earlier
@@ -1584,7 +1586,8 @@ class Collection(common.BaseObject):
            MongoDB >= 3.4.
 
         .. versionchanged:: 3.6
-           Added ``session`` parameter.
+           Added ``session`` parameter. Added support for arbitrary keyword
+           arguments.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -1595,17 +1598,24 @@ class Collection(common.BaseObject):
         """
         common.validate_list('indexes', indexes)
         names = []
-        def gen_indexes():
-            for index in indexes:
-                if not isinstance(index, IndexModel):
-                    raise TypeError("%r is not an instance of "
-                                    "pymongo.operations.IndexModel" % (index,))
-                document = index.document
-                names.append(document["name"])
-                yield document
-        cmd = SON([('createIndexes', self.name),
-                   ('indexes', list(gen_indexes()))])
         with self._socket_for_writes() as sock_info:
+            supports_collations = sock_info.max_wire_version >= 5
+            def gen_indexes():
+                for index in indexes:
+                    if not isinstance(index, IndexModel):
+                        raise TypeError(
+                            "%r is not an instance of "
+                            "pymongo.operations.IndexModel" % (index,))
+                    document = index.document
+                    if "collation" in document and not supports_collations:
+                        raise ConfigurationError(
+                            "Must be connected to MongoDB "
+                            "3.4+ to use collations.")
+                    names.append(document["name"])
+                    yield document
+            cmd = SON([('createIndexes', self.name),
+                       ('indexes', list(gen_indexes()))])
+            cmd.update(kwargs)
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
@@ -1614,7 +1624,7 @@ class Collection(common.BaseObject):
                 session=session)
         return names
 
-    def __create_index(self, keys, index_options, session):
+    def __create_index(self, keys, index_options, session, **kwargs):
         """Internal create index helper.
 
         :Parameters:
@@ -1637,6 +1647,7 @@ class Collection(common.BaseObject):
                 else:
                     index['collation'] = collation
             cmd = SON([('createIndexes', self.name), ('indexes', [index])])
+            cmd.update(kwargs)
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
@@ -1721,7 +1732,8 @@ class Collection(common.BaseObject):
             arguments
 
         .. versionchanged:: 3.6
-           Added ``session`` parameter.
+           Added ``session`` parameter. Added support for passing maxTimeMS
+           in kwargs.
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4. Support the `collation` option.
@@ -1736,7 +1748,10 @@ class Collection(common.BaseObject):
         """
         keys = helpers._index_list(keys)
         name = kwargs.setdefault("name", helpers._gen_index_name(keys))
-        self.__create_index(keys, kwargs, session)
+        cmd_options = {}
+        if "maxTimeMS" in kwargs:
+            cmd_options["maxTimeMS"] = kwargs.pop("maxTimeMS")
+        self.__create_index(keys, kwargs, session, **cmd_options)
         return name
 
     def ensure_index(self, key_or_list, cache_for=300, **kwargs):
@@ -1775,7 +1790,7 @@ class Collection(common.BaseObject):
             return name
         return None
 
-    def drop_indexes(self, session=None):
+    def drop_indexes(self, session=None, **kwargs):
         """Drops all indexes on this collection.
 
         Can be used on non-existant collections or collections with no indexes.
@@ -1784,13 +1799,16 @@ class Collection(common.BaseObject):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): optional arguments to the createIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation when using
            MongoDB >= 3.4.
 
         .. versionchanged:: 3.6
-           Added ``session`` parameter.
+           Added ``session`` parameter. Added support for arbitrary keyword
+           arguments.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -1798,9 +1816,9 @@ class Collection(common.BaseObject):
 
         """
         self.__database.client._purge_index(self.__database.name, self.__name)
-        self.drop_index("*", session=session)
+        self.drop_index("*", session=session, **kwargs)
 
-    def drop_index(self, index_or_name, session=None):
+    def drop_index(self, index_or_name, session=None, **kwargs):
         """Drops the specified index on this collection.
 
         Can be used on non-existant collections or collections with no
@@ -1821,13 +1839,16 @@ class Collection(common.BaseObject):
           - `index_or_name`: index (or name of index) to drop
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): optional arguments to the createIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation when using
            MongoDB >= 3.4.
 
         .. versionchanged:: 3.6
-           Added ``session`` parameter.
+           Added ``session`` parameter. Added support for arbitrary keyword
+           arguments.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -1844,6 +1865,7 @@ class Collection(common.BaseObject):
         self.__database.client._purge_index(
             self.__database.name, self.__name, name)
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
+        cmd.update(kwargs)
         with self._socket_for_writes() as sock_info:
             self._command(sock_info,
                           cmd,
@@ -1853,19 +1875,22 @@ class Collection(common.BaseObject):
                           parse_write_concern_error=True,
                           session=session)
 
-    def reindex(self, session=None):
+    def reindex(self, session=None, **kwargs):
         """Rebuilds all indexes on this collection.
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): optional arguments to the reIndex
+            command (like maxTimeMS) can be passed as keyword arguments.
 
         .. warning:: reindex blocks all other operations (indexes
            are built in the foreground) and will be slow for large
            collections.
 
         .. versionchanged:: 3.6
-           Added ``session`` parameter.
+           Added ``session`` parameter. Added support for arbitrary keyword
+           arguments.
 
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
@@ -1877,6 +1902,7 @@ class Collection(common.BaseObject):
            an error if we include the write concern.
         """
         cmd = SON([("reIndex", self.__name)])
+        cmd.update(kwargs)
         with self._socket_for_writes() as sock_info:
             return self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
