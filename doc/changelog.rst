@@ -35,6 +35,9 @@ Deprecations:
 - The `useCursor` option for :meth:`~pymongo.collection.Collection.aggregate`
   is deprecated. The option was only necessary when upgrading from MongoDB
   2.4 to MongoDB 2.6. MongoDB 2.4 is no longer supported.
+- The :meth:`~pymongo.database.Database.add_user` and
+  :meth:`~pymongo.database.Database.remove_user` methods are deprecated. See
+  the method docstrings for alternatives.
 
 Breaking changes include:
 

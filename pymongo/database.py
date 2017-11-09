@@ -978,11 +978,37 @@ class Database(common.BaseObject):
 
     def add_user(self, name, password=None, read_only=None, session=None,
                  **kwargs):
-        """Create user `name` with password `password`.
+        """**DEPRECATED**: Create user `name` with password `password`.
 
         Add a new user with permissions for this :class:`Database`.
 
         .. note:: Will change the password if user `name` already exists.
+
+        .. note:: add_user is deprecated and will be removed in PyMongo
+          4.0. Starting with MongoDB 2.6 user management is handled with four
+          database commands, createUser_, usersInfo_, updateUser_, and
+          dropUser_.
+
+          To create a user::
+
+            db.command("createUser", "admin", pwd="password", roles=["root"])
+
+          To create a read-only user::
+
+            db.command("createUser", "user", pwd="password", roles=["read"])
+
+          To change a password::
+
+            db.command("updateUser", "user", pwd="newpassword")
+
+          Or change roles::
+
+            db.command("updateUser", "user", roles=["readWrite"])
+
+        .. _createUser: https://docs.mongodb.com/manual/reference/command/createUser/
+        .. _usersInfo: https://docs.mongodb.com/manual/reference/command/usersInfo/
+        .. _updateUser: https://docs.mongodb.com/manual/reference/command/updateUser/
+        .. _dropUser: https://docs.mongodb.com/manual/reference/command/createUser/
 
         :Parameters:
           - `name`: the name of the user to create
@@ -997,7 +1023,7 @@ class Database(common.BaseObject):
             :class:`~pymongo.client_session.ClientSession`.
 
         .. versionchanged:: 3.6
-           Added ``session`` parameter.
+           Added ``session`` parameter. Deprecated add_user.
 
         .. versionchanged:: 2.5
            Added kwargs support for optional fields introduced in MongoDB 2.4
@@ -1005,6 +1031,9 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.2
            Added support for read only users
         """
+        warnings.warn("add_user is deprecated and will be removed in PyMongo "
+                      "4.0. Use db.command with createUser or updateUser "
+                      "instead", DeprecationWarning, stacklevel=2)
         if not isinstance(name, string_type):
             raise TypeError("name must be an "
                             "instance of %s" % (string_type.__name__,))
@@ -1036,10 +1065,15 @@ class Database(common.BaseObject):
                 raise
 
     def remove_user(self, name, session=None):
-        """Remove user `name` from this :class:`Database`.
+        """**DEPRECATED**: Remove user `name` from this :class:`Database`.
 
         User `name` will no longer have permissions to access this
         :class:`Database`.
+
+        .. note:: remove_user is deprecated and will be removed in PyMongo
+          4.0. Use the dropUser command instead::
+
+            db.command("dropUser", "user")
 
         :Parameters:
           - `name`: the name of the user to remove
@@ -1047,8 +1081,11 @@ class Database(common.BaseObject):
             :class:`~pymongo.client_session.ClientSession`.
 
         .. versionchanged:: 3.6
-           Added ``session`` parameter.
+           Added ``session`` parameter. Deprecated remove_user.
         """
+        warnings.warn("remove_user is deprecated and will be removed in "
+                      "PyMongo 4.0. Use db.command with dropUser "
+                      "instead", DeprecationWarning, stacklevel=2)
         cmd = SON([("dropUser", name)])
         # Don't send {} as writeConcern.
         if self.write_concern.acknowledged and self.write_concern.document:
