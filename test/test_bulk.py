@@ -273,8 +273,6 @@ class TestBulk(BulkTestBase):
             'upserted': [{'index': 0, '_id': '...'}]
         }
 
-        # Note, in MongoDB 2.4 the server won't return the
-        # "upserted" field unless _id is an ObjectId
         result = self.coll.bulk_write([ReplaceOne({},
                                                   {'foo': 'bar'},
                                                   upsert=True)])

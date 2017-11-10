@@ -1326,8 +1326,7 @@ class TestCursor(IntegrationTest):
         self.assertTrue(bool(next(cursor)))
         cursor.close()
 
-        # The cursor should be killed if it had a non-zero id (MongoDB 2.4
-        # does not return a cursor for the aggregate command).
+        # The cursor should be killed if it had a non-zero id.
         if cursor.cursor_id:
             assertCursorKilled()
         else:
@@ -1453,8 +1452,6 @@ class TestRawBatchCommandCursor(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         super(TestRawBatchCommandCursor, cls).setUpClass()
-        if not client_context.version >= Version(2, 6):
-            raise SkipTest("Requires MongoDB 2.6 aggregation cursors")
 
     def test_aggregate_raw(self):
         c = self.db.test

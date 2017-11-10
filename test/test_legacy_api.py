@@ -1846,8 +1846,6 @@ class TestLegacyBulk(BulkTestBase):
             'upserted': [{'index': 0, '_id': '...'}]
         }
 
-        # Note, in MongoDB 2.4 the server won't return the
-        # "upserted" field unless _id is an ObjectId
         bulk.find({}).upsert().replace_one({'foo': 'bar'})
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
