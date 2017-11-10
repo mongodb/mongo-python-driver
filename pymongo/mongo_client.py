@@ -57,10 +57,10 @@ from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
-                            InvalidURI,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure,
+                            PyMongoError,
                             ServerSelectionTimeoutError)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (writable_preferred_server_selector,
@@ -1150,8 +1150,12 @@ class MongoClient(common.BaseObject):
         if self.__cursor_manager is not None:
             self.__cursor_manager.close(cursor_id, address)
         else:
-            self._kill_cursors(
-                [cursor_id], address, self._get_topology(), session)
+            try:
+                self._kill_cursors(
+                    [cursor_id], address, self._get_topology(), session)
+            except PyMongoError:
+                # Make another attempt to kill the cursor later.
+                self.__kill_cursors_queue.append((address, [cursor_id]))
 
     def kill_cursors(self, cursor_ids, address=None):
         """DEPRECATED - Send a kill cursors message soon with the given ids.

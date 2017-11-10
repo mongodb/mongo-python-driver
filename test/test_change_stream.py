@@ -169,6 +169,21 @@ class TestChangeStream(IntegrationTest):
             self.assertEqual(changes[0]['operationType'], 'insert')
             self.assertEqual(changes[0]['fullDocument'], inserted_doc)
 
+    def test_concurrent_close(self):
+        """Ensure a ChangeStream can be closed from another thread."""
+        # Use a short await time to speed up the test.
+        with self.coll.watch(max_await_time_ms=250) as change_stream:
+            def iterate_cursor():
+                for change in change_stream:
+                    pass
+            t = threading.Thread(target=iterate_cursor)
+            t.start()
+            self.coll.insert_one({})
+            time.sleep(1)
+            change_stream.close()
+            t.join(3)
+            self.assertFalse(t.is_alive())
+
     def test_update_resume_token(self):
         """ChangeStream must continuously track the last seen resumeToken."""
         with self.coll.watch() as change_stream:

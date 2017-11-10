@@ -71,7 +71,9 @@ class CommandCursor(object):
     def __die(self, synchronous=False):
         """Closes this cursor.
         """
-        if self.__id and not self.__killed:
+        already_killed = self.__killed
+        self.__killed = True
+        if self.__id and not already_killed:
             address = _CursorAddress(
                 self.__address, self.__collection.full_name)
             if synchronous:
@@ -81,7 +83,6 @@ class CommandCursor(object):
                 # The cursor will be closed later in a different session.
                 self.__collection.database.client.close_cursor(
                     self.__id, address)
-        self.__killed = True
         self.__end_session(synchronous)
 
     def __end_session(self, synchronous):

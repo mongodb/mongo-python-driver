@@ -19,6 +19,8 @@ import itertools
 import random
 import re
 import sys
+import time
+import threading
 
 sys.path[0:0] = [""]
 
@@ -1129,6 +1131,27 @@ class TestCursor(IntegrationTest):
             self.assertEqual([5, 6], [doc["x"] for doc in cursor[1:3]])
             cursor.rewind()
             self.assertEqual([4, 5, 6], [doc["x"] for doc in cursor[0:3]])
+
+    def test_concurrent_close(self):
+        """Ensure a tailable can be closed from another thread."""
+        db = self.db
+        db.drop_collection("test")
+        db.create_collection("test", capped=True, size=1000, max=3)
+        self.addCleanup(db.drop_collection, "test")
+        cursor = db.test.find(cursor_type=CursorType.TAILABLE)
+
+        def iterate_cursor():
+            while cursor.alive:
+                for doc in cursor:
+                    pass
+        t = threading.Thread(target=iterate_cursor)
+        t.start()
+        time.sleep(1)
+        cursor.close()
+        self.assertFalse(cursor.alive)
+        t.join(3)
+        self.assertFalse(t.is_alive())
+
 
     def test_distinct(self):
         self.db.drop_collection("test")

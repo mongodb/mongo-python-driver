@@ -293,7 +293,9 @@ class Cursor(object):
     def __die(self, synchronous=False):
         """Closes this cursor.
         """
-        if self.__id and not self.__killed:
+        already_killed = self.__killed
+        self.__killed = True
+        if self.__id and not already_killed:
             if self.__exhaust and self.__exhaust_mgr:
                 # If this is an exhaust cursor and we haven't completely
                 # exhausted the result set we *must* close the socket
@@ -311,7 +313,6 @@ class Cursor(object):
                         self.__id, address)
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
-        self.__killed = True
         if self.__session and not self.__explicit_session:
             self.__session._end_session(lock=synchronous)
             self.__session = None
