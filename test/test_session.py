@@ -20,12 +20,14 @@ import sys
 from bson import DBRef
 from bson.py3compat import StringIO
 from gridfs import GridFS, GridFSBucket
-from pymongo import InsertOne, IndexModel, OFF, monitoring
+from pymongo import ASCENDING, InsertOne, IndexModel, OFF, monitoring
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.monotonic import time as _time
-from test import IntegrationTest, client_context, db_user, db_pwd, SkipTest
+from pymongo.read_concern import ReadConcern
+from pymongo.write_concern import WriteConcern
+from test import IntegrationTest, client_context, db_user, db_pwd, unittest, SkipTest
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
 
 
@@ -621,6 +623,239 @@ class TestSession(IntegrationTest):
         self._test_cursor_helper(
             lambda coll, session: coll.aggregate([], session=session),
             lambda cursor: cursor.__del__())
+
+
+class TestCausalConsistency(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.listener = SessionTestListener()
+        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+
+    @client_context.require_sessions
+    def setUp(self):
+        super(TestCausalConsistency, self).setUp()
+
+    @client_context.require_no_standalone
+    def test_core(self):
+        with self.client.start_session() as sess:
+            self.assertIsNone(sess.cluster_time)
+            self.assertIsNone(sess.operation_time)
+            self.listener.results.clear()
+            self.client.pymongo_test.test.find_one(session=sess)
+            started = self.listener.results['started'][0]
+            cmd = started.command
+            self.assertIsNone(cmd.get('readConcern'))
+            op_time = sess.operation_time
+            self.assertIsNotNone(op_time)
+            succeeded = self.listener.results['succeeded'][0]
+            reply = succeeded.reply
+            self.assertEqual(op_time, reply.get('operationTime'))
+
+            # No explicit session
+            self.client.pymongo_test.test.insert_one({})
+            self.assertEqual(sess.operation_time, op_time)
+            self.listener.results.clear()
+            try:
+                self.client.pymongo_test.command('doesntexist', session=sess)
+            except:
+                pass
+            # operationTime was updated from a failed command
+            self.assertNotEqual(op_time, sess.operation_time)
+            failed = self.listener.results['failed'][0]
+            self.assertEqual(
+                sess.operation_time, failed.failure.get('operationTime'))
+
+            with self.client.start_session() as sess2:
+                self.assertIsNone(sess2.cluster_time)
+                self.assertIsNone(sess2.operation_time)
+                self.assertRaises(TypeError, sess2.advance_cluster_time, 1)
+                self.assertRaises(ValueError, sess2.advance_cluster_time, {})
+                self.assertRaises(TypeError, sess2.advance_operation_time, 1)
+                # No error
+                sess2.advance_cluster_time(sess.cluster_time)
+                sess2.advance_operation_time(sess.operation_time)
+                self.assertEqual(sess.cluster_time, sess2.cluster_time)
+                self.assertEqual(sess.operation_time, sess2.operation_time)
+
+    def _test_reads(self, op):
+        coll = self.client.pymongo_test.test
+        with self.client.start_session() as sess:
+            coll.find_one({}, session=sess)
+            operation_time = sess.operation_time
+            self.assertIsNotNone(operation_time)
+            self.listener.results.clear()
+            op(coll, sess)
+            act = self.listener.results['started'][0].command.get(
+                'readConcern', {}).get('afterClusterTime')
+            self.assertEqual(operation_time, act)
+
+    @client_context.require_no_standalone
+    def test_reads(self):
+        self._test_reads(
+            lambda coll, session: list(
+                coll.database.list_collections(session=session)))
+        self._test_reads(
+            lambda coll, session: coll.database.list_collection_names(
+                session=session))
+        self._test_reads(
+            lambda coll, session: coll.database.command(
+                'ismaster', session=session))
+        self._test_reads(
+            lambda coll, session: list(coll.aggregate([], session=session)))
+        # PYTHON-1398
+        #self._test_reads(
+        #    lambda coll, session: list(
+        #        coll.aggregate_raw_batches([], session=session)))
+        self._test_reads(
+            lambda coll, session: list(coll.find({}, session=session)))
+        # PYTHON-1398
+        #self._test_reads(
+        #    lambda coll, session: list(
+        #        coll.find_raw_batches({}, session=session)))
+        self._test_reads(
+            lambda coll, session: coll.find_one({}, session=session))
+        self._test_reads(
+            lambda coll, session: coll.count(session=session))
+        self._test_reads(
+            lambda coll, session: list(coll.list_indexes(session=session)))
+        self._test_reads(
+            lambda coll, session: coll.index_information(session=session))
+        self._test_reads(
+            lambda coll, session: coll.options(session=session))
+        self._test_reads(
+            lambda coll, session: coll.distinct('foo', session=session))
+        self._test_reads(
+            lambda coll, session: coll.map_reduce(
+                'function() {}', 'function() {}', 'output', session=session))
+        self._test_reads(
+            lambda coll, session: coll.inline_map_reduce(
+                'function() {}', 'function() {}', session=session))
+        if not client_context.is_mongos:
+            self._test_reads(
+                lambda coll, session: list(
+                    coll.parallel_scan(1, session=session)))
+
+    def _test_writes(self, op):
+        coll = self.client.pymongo_test.test
+        with self.client.start_session() as sess:
+            op(coll, sess)
+            operation_time = sess.operation_time
+            self.assertIsNotNone(operation_time)
+            self.listener.results.clear()
+            coll.find_one({}, session=sess)
+            act = self.listener.results['started'][0].command.get(
+                'readConcern', {}).get('afterClusterTime')
+            self.assertEqual(operation_time, act)
+
+    @client_context.require_no_standalone
+    def test_writes(self):
+        self._test_writes(
+            lambda coll, session: coll.bulk_write(
+                [InsertOne({})], session=session))
+        self._test_writes(
+            lambda coll, session: coll.insert_one({}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.insert_many([{}], session=session))
+        self._test_writes(
+            lambda coll, session: coll.replace_one(
+                {'_id': 1}, {'x': 1}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.update_one(
+                {}, {'$set': {'X': 1}}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.update_many(
+                {}, {'$set': {'x': 1}}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.delete_one({}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.delete_many({}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.find_one_and_replace(
+                {'x': 1}, {'y': 1}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.find_one_and_update(
+                {'y': 1}, {'$set': {'x': 1}}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.find_one_and_delete(
+                {'x': 1}, session=session))
+        self._test_writes(
+            lambda coll, session: coll.create_index("foo", session=session))
+        self._test_writes(
+            lambda coll, session: coll.create_indexes(
+                [IndexModel([("bar", ASCENDING)])], session=session))
+        self._test_writes(
+            lambda coll, session: coll.drop_index("foo_1", session=session))
+        self._test_writes(
+            lambda coll, session: coll.drop_indexes(session=session))
+        self._test_writes(
+            lambda coll, session: coll.reindex(session=session))
+
+    def test_session_not_causal(self):
+        with self.client.start_session(causal_consistency=False) as s:
+            self.client.pymongo_test.test.insert_one({}, session=s)
+            self.listener.results.clear()
+            self.client.pymongo_test.test.find_one({}, session=s)
+            act = self.listener.results['started'][0].command.get(
+                'readConcern', {}).get('afterClusterTime')
+            self.assertIsNone(act)
+
+    @client_context.require_standalone
+    def test_server_not_causal(self):
+        with self.client.start_session(causal_consistency=True) as s:
+            self.client.pymongo_test.test.insert_one({}, session=s)
+            self.listener.results.clear()
+            self.client.pymongo_test.test.find_one({}, session=s)
+            act = self.listener.results['started'][0].command.get(
+                'readConcern', {}).get('afterClusterTime')
+            self.assertIsNone(act)
+
+    @client_context.require_no_standalone
+    def test_read_concern(self):
+        with self.client.start_session(causal_consistency=True) as s:
+            coll = self.client.pymongo_test.test
+            coll.insert_one({}, session=s)
+            self.listener.results.clear()
+            coll.find_one({}, session=s)
+            read_concern = self.listener.results['started'][0].command.get(
+                'readConcern')
+            self.assertIsNotNone(read_concern)
+            self.assertIsNone(read_concern.get('level'))
+            self.assertIsNotNone(read_concern.get('afterClusterTime'))
+
+            coll = coll.with_options(read_concern=ReadConcern("majority"))
+            self.listener.results.clear()
+            coll.find_one({}, session=s)
+            read_concern = self.listener.results['started'][0].command.get(
+                'readConcern')
+            self.assertIsNotNone(read_concern)
+            self.assertEqual(read_concern.get('level'), 'majority')
+            self.assertIsNotNone(read_concern.get('afterClusterTime'))
+
+    def test_unacknowledged(self):
+        with self.client.start_session(causal_consistency=True) as s:
+            coll = self.client.pymongo_test.get_collection(
+                'test', write_concern=WriteConcern(w=0))
+            coll.insert_one({}, session=s)
+            self.assertIsNone(s.operation_time)
+
+    @client_context.require_no_standalone
+    def test_cluster_time_with_server_support(self):
+        self.client.pymongo_test.test.insert_one({})
+        self.listener.results.clear()
+        self.client.pymongo_test.test.find_one({})
+        after_cluster_time = self.listener.results['started'][0].command.get(
+            '$clusterTime')
+        self.assertIsNotNone(after_cluster_time)
+
+    @client_context.require_standalone
+    def test_cluster_time_no_server_support(self):
+        self.client.pymongo_test.test.insert_one({})
+        self.listener.results.clear()
+        self.client.pymongo_test.test.find_one({})
+        after_cluster_time = self.listener.results['started'][0].command.get(
+            '$clusterTime')
+        self.assertIsNone(after_cluster_time)
 
 
 class TestSessionsMultiAuth(IntegrationTest):

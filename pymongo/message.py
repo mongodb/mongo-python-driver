@@ -183,8 +183,12 @@ def _gen_explain_command(
 
     if session:
         explain['lsid'] = session._use_lsid()
+        if (session.options.causal_consistency
+                and session.operation_time is not None):
+            explain.setdefault(
+                'readConcern', {})['afterClusterTime'] = session.operation_time
 
-    client._send_cluster_time(explain)
+    client._send_cluster_time(explain, session)
     return explain
 
 
@@ -223,8 +227,12 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
                     if options & val])
     if session:
         cmd['lsid'] = session._use_lsid()
+        if (session.options.causal_consistency
+                and session.operation_time is not None):
+            cmd.setdefault(
+                'readConcern', {})['afterClusterTime'] = session.operation_time
     if client:
-        client._send_cluster_time(cmd)
+        client._send_cluster_time(cmd, session)
     return cmd
 
 
@@ -239,7 +247,7 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms,
         cmd['maxTimeMS'] = max_await_time_ms
     if session:
         cmd['lsid'] = session._use_lsid()
-    client._send_cluster_time(cmd)
+    client._send_cluster_time(cmd, session)
     return cmd
 
 

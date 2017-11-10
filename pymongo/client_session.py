@@ -23,7 +23,7 @@ Causally Consistent Reads
 
 .. code-block:: python
 
-  with client.start_session(causally_consistent_reads=True) as session:
+  with client.start_session(causal_consistency=True) as session:
       collection = client.db.collection
       collection.update_one({'_id': 1}, {'$set': {'x': 10}}, session=session)
       secondary_c = collection.with_options(
@@ -32,10 +32,10 @@ Causally Consistent Reads
       # A secondary read waits for replication of the write.
       secondary_c.find_one({'_id': 1}, session=session)
 
-If `causally_consistent_reads` is True, read operations that use the session are
-causally after previous read and write operations. Using a causally consistent
-session, an application can read its own writes and is guaranteed monotonic
-reads, even when reading from replica set secondaries.
+If `causal_consistency` is True (the default), read operations that use
+the session are causally after previous read and write operations. Using a
+causally consistent session, an application can read its own writes and is
+guaranteed monotonic reads, even when reading from replica set secondaries.
 
 Classes
 =======
@@ -46,6 +46,7 @@ import uuid
 
 from bson.binary import Binary
 from bson.int64 import Int64
+from bson.timestamp import Timestamp
 
 from pymongo import monotonic
 from pymongo.errors import InvalidOperation
@@ -55,16 +56,16 @@ class SessionOptions(object):
     """Options for a new :class:`ClientSession`.
 
     :Parameters:
-      - `causally_consistent_reads` (optional): If True, read operations are
-        causally ordered within the session.
+      - `causal_consistency` (optional): If True (the default), read
+        operations are causally ordered within the session.
     """
-    def __init__(self, causally_consistent_reads=False):
-        self._causally_consistent_reads = causally_consistent_reads
+    def __init__(self, causal_consistency=True):
+        self._causal_consistency = causal_consistency
 
     @property
-    def causally_consistent_reads(self):
-        """Whether causally consistent reads are configured."""
-        return self._causally_consistent_reads
+    def causal_consistency(self):
+        """Whether causal consistency is configured."""
+        return self._causal_consistency
 
 
 class ClientSession(object):
@@ -75,6 +76,8 @@ class ClientSession(object):
         self._server_session = server_session
         self._options = options
         self._authset = authset
+        self._cluster_time = None
+        self._operation_time = None
 
     def end_session(self):
         """Finish this session.
@@ -116,6 +119,64 @@ class ClientSession(object):
             raise InvalidOperation("Cannot use ended session")
 
         return self._server_session.session_id
+
+    @property
+    def cluster_time(self):
+        """The cluster time returned by the last operation executed
+        in this session.
+        """
+        return self._cluster_time
+
+    @property
+    def operation_time(self):
+        """The operation time returned by the last operation executed
+        in this session.
+        """
+        return self._operation_time
+
+    def _advance_cluster_time(self, cluster_time):
+        """Internal cluster time helper."""
+        if self._cluster_time is None:
+            self._cluster_time = cluster_time
+        elif cluster_time is not None:
+            if cluster_time["clusterTime"] > self._cluster_time["clusterTime"]:
+                self._cluster_time = cluster_time
+
+    def advance_cluster_time(self, cluster_time):
+        """Update the cluster time for this session.
+
+        :Parameters:
+          - `cluster_time`: The
+            :data:`~pymongo.client_session.ClientSession.cluster_time` from
+            another `ClientSession` instance.
+        """
+        if not isinstance(cluster_time, collections.Mapping):
+            raise TypeError(
+                "cluster_time must be a subclass of collections.Mapping")
+        if not isinstance(cluster_time.get("clusterTime"), Timestamp):
+            raise ValueError("Invalid cluster_time")
+        self._advance_cluster_time(cluster_time)
+
+    def _advance_operation_time(self, operation_time):
+        """Internal operation time helper."""
+        if self._operation_time is None:
+            self._operation_time = operation_time
+        elif operation_time is not None:
+            if operation_time > self._operation_time:
+                self._operation_time = operation_time
+
+    def advance_operation_time(self, operation_time):
+        """Update the operation time for this session.
+
+        :Parameters:
+          - `operation_time`: The
+            :data:`~pymongo.client_session.ClientSession.operation_time` from
+            another `ClientSession` instance.
+        """
+        if not isinstance(operation_time, Timestamp):
+            raise TypeError("operation_time must be an instance "
+                            "of bson.timestamp.Timestamp")
+        self._advance_operation_time(operation_time)
 
     @property
     def has_ended(self):

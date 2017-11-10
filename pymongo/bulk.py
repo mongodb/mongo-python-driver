@@ -28,7 +28,6 @@ from pymongo.common import (validate_is_mapping,
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
-                            DocumentTooLarge,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
@@ -261,7 +260,7 @@ class _Bulk(object):
                     check_keys = run.op_type == _INSERT
                     ops = islice(run.ops, idx_offset, None)
                     # Run as many ops as possible.
-                    client._send_cluster_time(cmd)
+                    client._send_cluster_time(cmd, s)
                     request_id, msg, to_send = _do_batched_write_command(
                         self.namespace, run.op_type, cmd, ops, check_keys,
                         self.collection.codec_options, bwc)
@@ -269,6 +268,9 @@ class _Bulk(object):
                         raise InvalidOperation("cannot do an empty bulk write")
                     result = bwc.write_command(request_id, msg, to_send)
                     client._receive_cluster_time(result)
+                    if s is not None:
+                        s._advance_cluster_time(result.get("$clusterTime"))
+                        s._advance_operation_time(result.get("operationTime"))
                     results.append((idx_offset, result))
                     if self.ordered and "writeErrors" in result:
                         break

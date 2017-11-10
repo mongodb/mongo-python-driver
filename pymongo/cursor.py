@@ -966,8 +966,14 @@ class Cursor(object):
                                          cursor_id=self.__id,
                                          codec_options=self.__codec_options)
             if from_command:
-                client._receive_cluster_time(docs[0])
-                helpers._check_command_response(docs[0])
+                first = docs[0]
+                client._receive_cluster_time(first)
+                if self.__session is not None:
+                    self.__session._advance_cluster_time(
+                        first.get("$clusterTime"))
+                    self.__session._advance_operation_time(
+                        first.get("operationTime"))
+                helpers._check_command_response(first)
         except OperationFailure as exc:
             self.__killed = True
 

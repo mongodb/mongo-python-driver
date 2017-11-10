@@ -1309,7 +1309,9 @@ class MongoClient(common.BaseObject):
             return session
 
         try:
-            return self.start_session()
+            # Don't make implied sessions causally consistent. Applications
+            # should always opt-in.
+            return self.start_session(causal_consistency=False)
         except (ConfigurationError, InvalidOperation):
             # Sessions not supported, or multiple users authenticated.
             return None
@@ -1337,8 +1339,16 @@ class MongoClient(common.BaseObject):
         else:
             yield None
 
-    def _send_cluster_time(self, command):
-        cluster_time = self._topology.max_cluster_time()
+    def _send_cluster_time(self, command, session):
+        topology_time = self._topology.max_cluster_time()
+        session_time = session.cluster_time if session else None
+        if topology_time and session_time:
+            if topology_time['clusterTime'] > session_time['clusterTime']:
+                cluster_time = topology_time
+            else:
+                cluster_time = session_time
+        else:
+            cluster_time = topology_time or session_time
         if cluster_time:
             command['$clusterTime'] = cluster_time
 

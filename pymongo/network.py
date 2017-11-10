@@ -90,7 +90,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         if retryable_write:
             spec['txnNumber'] = session._transaction_id()
     if client:
-        client._send_cluster_time(spec)
+        client._send_cluster_time(spec, session)
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
@@ -98,6 +98,10 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern.level:
         spec['readConcern'] = read_concern.document
+    if (session and session.options.causal_consistency
+            and session.operation_time is not None):
+        spec.setdefault(
+            'readConcern', {})['afterClusterTime'] = session.operation_time
     if collation is not None:
         spec['collation'] = collation
 
@@ -126,6 +130,11 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         response_doc = unpacked_docs[0]
         if client:
             client._receive_cluster_time(response_doc)
+            if session:
+                session._advance_cluster_time(
+                    response_doc.get('$clusterTime'))
+                session._advance_operation_time(
+                    response_doc.get('operationTime'))
         if check:
             helpers._check_command_response(
                 response_doc, None, allowable_errors,
