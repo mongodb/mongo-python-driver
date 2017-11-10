@@ -1622,19 +1622,10 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     codec_options_t options;
     buffer_t buffer;
     PyObject* raw_bson_document_bytes_obj;
-    char* raw_bson_document_bytes;
-    Py_ssize_t raw_bson_document_bytes_len;
-    int raw_bson_document_bytes_len_int;
     long type_marker;
 
     if (!PyArg_ParseTuple(args, "ObO&|b", &dict, &check_keys,
                           convert_codec_options, &options, &top_level)) {
-        return NULL;
-    }
-    buffer = buffer_new();
-    if (!buffer) {
-        destroy_codec_options(&options);
-        PyErr_NoMemory();
         return NULL;
     }
 
@@ -1642,42 +1633,24 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     type_marker = _type_marker(dict);
     if (type_marker < 0) {
         destroy_codec_options(&options);
-        buffer_free(buffer);
         return NULL;
     } else if (101 == type_marker) {
+        destroy_codec_options(&options);
         raw_bson_document_bytes_obj = PyObject_GetAttrString(dict, "raw");
         if (NULL == raw_bson_document_bytes_obj) {
-            destroy_codec_options(&options);
-            buffer_free(buffer);
             return NULL;
         }
-#if PY_MAJOR_VERSION >= 3
-        if (-1 == PyBytes_AsStringAndSize(raw_bson_document_bytes_obj,
-                                          &raw_bson_document_bytes,
-                                          &raw_bson_document_bytes_len)) {
-#else
-        if (-1 == PyString_AsStringAndSize(raw_bson_document_bytes_obj,
-                                           &raw_bson_document_bytes,
-                                           &raw_bson_document_bytes_len)) {
-#endif
-            Py_DECREF(raw_bson_document_bytes_obj);
-            destroy_codec_options(&options);
-            buffer_free(buffer);
-            return NULL;
-        }
-        raw_bson_document_bytes_len_int = _downcast_and_check(raw_bson_document_bytes_len, 0);
-        if (raw_bson_document_bytes_len_int < 0 ||
-            !buffer_write_bytes(buffer,
-                                raw_bson_document_bytes,
-                                raw_bson_document_bytes_len_int)) {
-            destroy_codec_options(&options);
-            buffer_free(buffer);
-            Py_DECREF(raw_bson_document_bytes_obj);
-            return NULL;
-        }
+        return raw_bson_document_bytes_obj;
+    }
 
-        Py_DECREF(raw_bson_document_bytes_obj);
-    } else if (!write_dict(self, buffer, dict, check_keys, &options, top_level)) {
+    buffer = buffer_new();
+    if (!buffer) {
+        destroy_codec_options(&options);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    if (!write_dict(self, buffer, dict, check_keys, &options, top_level)) {
         destroy_codec_options(&options);
         buffer_free(buffer);
         return NULL;
