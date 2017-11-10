@@ -337,8 +337,6 @@ class TestSession(IntegrationTest):
         # Test all cursor methods.
         ops = [
             ('find', lambda session: list(coll.find(session=session))),
-            ('find_raw_batches',
-             lambda session: list(coll.find_raw_batches(session=session))),
             ('getitem', lambda session: coll.find(session=session)[0]),
             ('count', lambda session: coll.find(session=session).count()),
             ('distinct',
@@ -696,16 +694,8 @@ class TestCausalConsistency(unittest.TestCase):
                 'ismaster', session=session))
         self._test_reads(
             lambda coll, session: list(coll.aggregate([], session=session)))
-        # PYTHON-1398
-        #self._test_reads(
-        #    lambda coll, session: list(
-        #        coll.aggregate_raw_batches([], session=session)))
         self._test_reads(
             lambda coll, session: list(coll.find({}, session=session)))
-        # PYTHON-1398
-        #self._test_reads(
-        #    lambda coll, session: list(
-        #        coll.find_raw_batches({}, session=session)))
         self._test_reads(
             lambda coll, session: coll.find_one({}, session=session))
         self._test_reads(
@@ -728,6 +718,17 @@ class TestCausalConsistency(unittest.TestCase):
             self._test_reads(
                 lambda coll, session: list(
                     coll.parallel_scan(1, session=session)))
+
+        self.assertRaises(
+            ConfigurationError,
+            self._test_reads,
+            lambda coll, session: list(
+                coll.aggregate_raw_batches([], session=session)))
+        self.assertRaises(
+            ConfigurationError,
+            self._test_reads,
+            lambda coll, session: list(
+                coll.find_raw_batches({}, session=session)))
 
     def _test_writes(self, op):
         coll = self.client.pymongo_test.test

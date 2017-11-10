@@ -1403,7 +1403,7 @@ class Collection(common.BaseObject):
     def find_raw_batches(self, *args, **kwargs):
         """Query the database and retrieve batches of raw BSON.
 
-        Takes the same parameters as :meth:`find` but returns a
+        Similar to the :meth:`find` method but returns a
         :class:`~pymongo.cursor.RawBatchCursor`.
 
         This example demonstrates how to work with raw batches, but in practice
@@ -1416,11 +1416,15 @@ class Collection(common.BaseObject):
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
-        Unlike most PyMongo methods, this method sends no session id to the
-        server.
+        .. note:: find_raw_batches does not support sessions.
 
         .. versionadded:: 3.6
         """
+        # OP_MSG with document stream returns is required to support
+        # sessions.
+        if "session" in kwargs:
+            raise ConfigurationError(
+                "find_raw_batches does not support sessions")
         return RawBatchCursor(self, *args, **kwargs)
 
     def parallel_scan(self, num_cursors, session=None, **kwargs):
@@ -2181,7 +2185,7 @@ class Collection(common.BaseObject):
     def aggregate_raw_batches(self, pipeline, **kwargs):
         """Perform an aggregation and retrieve batches of raw BSON.
 
-        Takes the same parameters as :meth:`aggregate` but returns a
+        Similar to the :meth:`aggregate` method but returns a
         :class:`~pymongo.cursor.RawBatchCursor`.
 
         This example demonstrates how to work with raw batches, but in practice
@@ -2195,11 +2199,15 @@ class Collection(common.BaseObject):
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
-        Unlike most PyMongo methods, this method sends no session id to the
-        server.
+        .. note:: aggregate_raw_batches does not support sessions.
 
         .. versionadded:: 3.6
         """
+        # OP_MSG with document stream returns is required to support
+        # sessions.
+        if "session" in kwargs:
+            raise ConfigurationError(
+                "aggregate_raw_batches does not support sessions")
         return self._aggregate(pipeline, RawBatchCommandCursor, 0,
                                None, False, **kwargs)
 
