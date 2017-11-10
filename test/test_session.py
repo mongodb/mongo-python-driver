@@ -103,9 +103,6 @@ class TestSession(IntegrationTest):
             with self.assertRaisesRegex(InvalidOperation, "ended session"):
                 f(*args, **kw)
 
-        if kwargs.get('explicit_only'):
-            return
-
         # No explicit session.
         for f, args, kw in ops:
             listener.results.clear()
@@ -218,14 +215,12 @@ class TestSession(IntegrationTest):
         self.addCleanup(client.drop_database, 'pymongo_test')
         db = client.pymongo_test
 
-        # createUser sends lsid only with explicit session, SERVER-31116.
         self._test_ops(
             client,
             (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
             # Do it again to test updateUser command.
             (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
-            (db.remove_user, ['session-test'], {}),
-            explicit_only=True)
+            (db.remove_user, ['session-test'], {}))
 
     def test_collection(self):
         listener = SessionTestListener()
@@ -285,12 +280,10 @@ class TestSession(IntegrationTest):
                 c.batch_size(2)
                 list(c)
 
-        self._test_ops(client,
-                       (scan, [], {}),
-                       explicit_only=True)
+        self._test_ops(client, (scan, [], {}))
 
-        # Implicit session with parallel_scan is uncorrelated with cursors', but
-        # each cursor's getMores all use the same lsid.
+        # Implicit session with parallel_scan is uncorrelated with cursors',
+        # but each cursor's getMores all use the same lsid.
         listener.results.clear()
         scan()
         cursor_lsids = {}

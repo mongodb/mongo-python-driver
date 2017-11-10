@@ -425,21 +425,6 @@ class Database(common.BaseObject):
             command['writeConcern'] = write_concern.document
 
         command.update(kwargs)
-
-        if not sock_info.authset and next(iter(command)) == 'createUser':
-            # Don't automatically include lsid, see SERVER-31116.
-            return sock_info.command(
-                self.__name,
-                command,
-                slave_ok,
-                read_preference,
-                codec_options,
-                check,
-                allowable_errors,
-                parse_write_concern_error=parse_write_concern_error,
-                session=session,
-                client=self.__client)
-
         with self.__client._tmp_session(session) as s:
             return sock_info.command(
                 self.__name,

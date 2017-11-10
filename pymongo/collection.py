@@ -1464,9 +1464,6 @@ class Collection(common.BaseObject):
           - `**kwargs`: additional options for the parallelCollectionScan
             command can be passed as keyword arguments.
 
-        Unlike most PyMongo methods, this method sends no session id to the
-        server unless an explicit ``session`` parameter is passed.
-
         .. note:: Requires server version **>= 2.5.5**.
 
         .. versionchanged:: 3.6
