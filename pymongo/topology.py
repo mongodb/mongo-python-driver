@@ -38,6 +38,7 @@ from pymongo.server import Server
 from pymongo.server_selectors import (any_server_selector,
                                       arbiter_server_selector,
                                       secondary_server_selector,
+                                      readable_server_selector,
                                       writable_server_selector,
                                       Selection)
 from pymongo.client_session import _ServerSessionPool
@@ -402,9 +403,15 @@ class Topology(object):
             session_timeout = self._description.logical_session_timeout_minutes
             if session_timeout is None:
                 # Maybe we need an initial scan? Can raise ServerSelectionError.
-                if not self.description.has_known_servers:
+                if self._description.topology_type == TOPOLOGY_TYPE.Single:
+                    if not self._description.has_known_servers:
+                        self._select_servers_loop(
+                            any_server_selector,
+                            self._settings.server_selection_timeout,
+                            None)
+                elif not self._description.readable_servers:
                     self._select_servers_loop(
-                        any_server_selector,
+                        readable_server_selector,
                         self._settings.server_selection_timeout,
                         None)
 

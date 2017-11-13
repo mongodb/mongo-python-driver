@@ -94,21 +94,22 @@ class TopologyDescription(object):
 
                 break
 
-        # Server Discovery And Monitoring Spec: "Whenever a client updates the
+        # Server Discovery And Monitoring Spec: Whenever a client updates the
         # TopologyDescription from an ismaster response, it MUST set
         # TopologyDescription.logicalSessionTimeoutMinutes to the smallest
-        # logicalSessionTimeoutMinutes value among all ServerDescriptions
-        # of known ServerType. If any ServerDescription of known ServerType has
-        # a null logicalSessionTimeoutMinutes, then
+        # logicalSessionTimeoutMinutes value among ServerDescriptions of all
+        # data-bearing server types. If any have a null
+        # logicalSessionTimeoutMinutes, then
         # TopologyDescription.logicalSessionTimeoutMinutes MUST be set to null.
-        readable = [s for s in self.known_servers if s.is_readable]
-        if not readable:
+        readable_servers = self.readable_servers
+        if not readable_servers:
             self._ls_timeout_minutes = None
-        elif any(s.logical_session_timeout_minutes is None for s in readable):
+        elif any(s.logical_session_timeout_minutes is None
+                 for s in readable_servers):
             self._ls_timeout_minutes = None
         else:
             self._ls_timeout_minutes = min(s.logical_session_timeout_minutes
-                                           for s in readable)
+                                           for s in readable_servers)
 
     def check_compatible(self):
         """Raise ConfigurationError if any server is incompatible.
@@ -194,6 +195,11 @@ class TopologyDescription(object):
         """Whether there are any Servers of types besides Unknown."""
         return any(s for s in self._server_descriptions.values()
                    if s.is_server_type_known)
+
+    @property
+    def readable_servers(self):
+        """List of readable Servers."""
+        return [s for s in self._server_descriptions.values() if s.is_readable]
 
     @property
     def common_wire_version(self):

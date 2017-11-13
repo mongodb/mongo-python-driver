@@ -156,7 +156,7 @@ def check_outcome(self, topology, outcome):
             server_type_name(actual_server_description.server_type))
 
         self.assertEqual(
-            expected_server['setName'],
+            expected_server.get('setName'),
             actual_server_description.replica_set_name)
 
         self.assertEqual(
