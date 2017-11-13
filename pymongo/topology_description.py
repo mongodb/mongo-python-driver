@@ -95,14 +95,14 @@ class TopologyDescription(object):
         # of known ServerType. If any ServerDescription of known ServerType has
         # a null logicalSessionTimeoutMinutes, then
         # TopologyDescription.logicalSessionTimeoutMinutes MUST be set to null.
-        known = self.known_servers
-        if not known:
+        readable = [s for s in self.known_servers if s.is_readable]
+        if not readable:
             self._ls_timeout_minutes = None
-        elif any(s.logical_session_timeout_minutes is None for s in known):
+        elif any(s.logical_session_timeout_minutes is None for s in readable):
             self._ls_timeout_minutes = None
         else:
             self._ls_timeout_minutes = min(s.logical_session_timeout_minutes
-                                           for s in known)
+                                           for s in readable)
 
     def check_compatible(self):
         """Raise ConfigurationError if any server is incompatible.
