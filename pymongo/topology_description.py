@@ -76,15 +76,21 @@ class TopologyDescription(object):
                 s.max_wire_version is not None
                 and s.max_wire_version < common.MIN_SUPPORTED_WIRE_VERSION)
 
-            if server_too_new or server_too_old:
+            if server_too_new:
                 self._incompatible_err = (
-                    "Server at %s:%d "
-                    "uses wire protocol versions %d through %d, "
-                    "but PyMongo only supports %d through %d"
+                    "Server at %s:%d requires wire version %d, but this "
+                    "version of PyMongo only supports up to %d."
                     % (s.address[0], s.address[1],
-                       s.min_wire_version, s.max_wire_version,
+                       s.min_wire_version, common.MAX_SUPPORTED_WIRE_VERSION))
+
+            elif server_too_old:
+                self._incompatible_err = (
+                    "Server at %s:%d reports wire version %d, but this "
+                    "version of PyMongo requires at least %d (MongoDB %s)."
+                    % (s.address[0], s.address[1],
+                       s.max_wire_version,
                        common.MIN_SUPPORTED_WIRE_VERSION,
-                       common.MAX_SUPPORTED_WIRE_VERSION))
+                       common.MIN_SUPPORTED_SERVER_VERSION))
 
                 break
 
