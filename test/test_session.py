@@ -651,11 +651,16 @@ class TestCausalConsistency(unittest.TestCase):
                 self.client.pymongo_test.command('doesntexist', session=sess)
             except:
                 pass
-            # operationTime was updated from a failed command
-            self.assertNotEqual(op_time, sess.operation_time)
             failed = self.listener.results['failed'][0]
-            self.assertEqual(
-                sess.operation_time, failed.failure.get('operationTime'))
+            failed_op_time = failed.failure.get('operationTime')
+            # Some older builds of MongoDB 3.5 / 3.6 return None for
+            # operationTime when a command fails. Make sure we don't
+            # change operation_time to None.
+            if failed_op_time is None:
+                self.assertIsNotNone(sess.operation_time)
+            else:
+                self.assertEqual(
+                    sess.operation_time, failed_op_time)
 
             with self.client.start_session() as sess2:
                 self.assertIsNone(sess2.cluster_time)
@@ -715,9 +720,12 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.inline_map_reduce(
                 'function() {}', 'function() {}', session=session))
         if not client_context.is_mongos:
+            def scan(coll, session):
+                cursors = coll.parallel_scan(1, session=session)
+                for cur in cursors:
+                    list(cur)
             self._test_reads(
-                lambda coll, session: list(
-                    coll.parallel_scan(1, session=session)))
+                lambda coll, session: scan(coll, session=session))
 
         self.assertRaises(
             ConfigurationError,
