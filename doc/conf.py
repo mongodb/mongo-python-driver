@@ -9,8 +9,6 @@ sys.path[0:0] = [os.path.abspath('..')]
 
 import pymongo
 
-import datetime
-
 # -- General configuration -----------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
