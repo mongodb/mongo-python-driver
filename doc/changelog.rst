@@ -13,6 +13,14 @@ a MongoDB 2.4 server or older, PyMongo now throws a
 
 Highlights include:
 
+- Support for change streams. See the
+  :meth:`~pymongo.collection.Collection.watch` method for details.
+- Support for array_filters in
+  :meth:`~pymongo.collection.Collection.update_one`,
+  :meth:`~pymongo.collection.Collection.update_many`,
+  :meth:`~pymongo.collection.Collection.find_one_and_update`,
+  :meth:`~pymongo.operations.UpdateOne`, and
+  :meth:`~pymongo.operations.UpdateMany`.
 - New Session API, see :meth:`~pymongo.mongo_client.MongoClient.start_session`.
 - New methods :meth:`~pymongo.collection.Collection.find_raw_batches` and
   :meth:`~pymongo.collection.Collection.aggregate_raw_batches` for use with
@@ -39,7 +47,7 @@ Deprecations:
   :meth:`~pymongo.database.Database.remove_user` methods are deprecated. See
   the method docstrings for alternatives.
 
-Breaking changes include:
+Unavoidable breaking changes:
 
 - Certain commands, such as ``ismaster`` and ``ping``, that could be used
   to check whether a server is available without requiring authentication, now
