@@ -1945,15 +1945,15 @@ class Collection(common.BaseObject):
                         if exc.code != 26:
                             raise
                         cursor = {'id': 0, 'firstBatch': []}
-                return CommandCursor(coll, cursor, sock_info.address, session=s,
+                return CommandCursor(coll, cursor, sock_info.address,
+                                     session=s,
                                      explicit_session=session is not None)
             else:
-                namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = message._first_batch(
                     sock_info, self.__database.name, "system.indexes",
                     {"ns": self.__full_name}, 0, slave_ok, codec_options,
                     ReadPreference.PRIMARY, cmd,
-                    self.database.client._event_listeners, session=None)
+                    self.database.client._event_listeners)
                 cursor = res["cursor"]
                 # Note that a collection can only have 64 indexes, so there
                 # will never be a getMore call.

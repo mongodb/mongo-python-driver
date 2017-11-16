@@ -269,7 +269,7 @@ class _Bulk(object):
             while run.idx_offset < len(run.ops):
                 if session and retryable:
                     cmd['txnNumber'] = session._transaction_id()
-                client._send_cluster_time(cmd, session)
+                sock_info.send_cluster_time(cmd, session, client)
                 check_keys = run.op_type == _INSERT
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.

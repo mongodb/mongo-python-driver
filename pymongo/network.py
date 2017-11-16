@@ -34,9 +34,8 @@ try:
 except ImportError:
     _SELECT_ERROR = OSError
 
-from bson import SON
 from pymongo import helpers, message
-from pymongo.common import MAX_MESSAGE_SIZE, ORDERED_TYPES
+from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import (AutoReconnect,
                             NotMasterError,
                             OperationFailure,
@@ -53,7 +52,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             check_keys=False, listeners=None, max_bson_size=None,
             read_concern=None,
             parse_write_concern_error=False,
-            collation=None, retryable_write=False):
+            collation=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -76,20 +75,10 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
         field in the command response.
       - `collation`: The collation for this command.
-      - `retryable_write`: True if this command is a retryable write.
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
-    if (client or session) and not isinstance(spec, ORDERED_TYPES):
-        # Ensure command name remains in first place.
-        spec = SON(spec)
-    if session:
-        spec['lsid'] = session._use_lsid()
-        if retryable_write:
-            spec['txnNumber'] = session._transaction_id()
-    if client:
-        client._send_cluster_time(spec, session)
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec

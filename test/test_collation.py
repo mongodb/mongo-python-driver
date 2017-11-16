@@ -114,10 +114,13 @@ class TestCollation(unittest.TestCase):
     def tearDown(self):
         self.listener.results.clear()
 
+    def last_command_started(self):
+        return self.listener.results['started'][-1].command
+
     def assertCollationInLastCommand(self):
         self.assertEqual(
             self.collation.document,
-            self.listener.results['started'][-1].command['collation'])
+            self.last_command_started()['collation'])
 
     @raisesConfigurationErrorForOldMongoDB
     def test_create_collection(self):
@@ -181,6 +184,15 @@ class TestCollation(unittest.TestCase):
         self.listener.results.clear()
         next(self.db.test.find(collation=self.collation))
         self.assertCollationInLastCommand()
+
+    @raisesConfigurationErrorForOldMongoDB
+    def test_explain_command(self):
+        self.listener.results.clear()
+        self.db.test.find(collation=self.collation).explain()
+        # The collation should be part of the explained command.
+        self.assertEqual(
+            self.collation.document,
+            self.last_command_started()['explain']['collation'])
 
     @raisesConfigurationErrorForOldMongoDB
     def test_group(self):

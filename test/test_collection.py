@@ -54,6 +54,7 @@ from pymongo.errors import (ConfigurationError,
 from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import *
+from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (InsertOneResult,
                              InsertManyResult,
@@ -2262,7 +2263,8 @@ class TestCollection(IntegrationTest):
 
     def test_find_command_generation(self):
         cmd = _gen_find_command('coll', {'$query': {'foo': 1}, '$dumb': 2},
-                                None, 0, 0, 0, None, None, None)
+                                None, 0, 0, 0, None, DEFAULT_READ_CONCERN,
+                                None)
         self.assertEqual(
             cmd.to_dict(),
             SON([('find', 'coll'),

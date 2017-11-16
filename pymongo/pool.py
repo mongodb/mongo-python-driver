@@ -33,7 +33,7 @@ from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import imap, itervalues, _unicode, integer_types
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
-from pymongo.common import MAX_MESSAGE_SIZE
+from pymongo.common import MAX_MESSAGE_SIZE, ORDERED_TYPES
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             ConfigurationError,
@@ -477,6 +477,15 @@ class SocketInfo(object):
         elif self.max_wire_version < 5 and collation is not None:
             raise ConfigurationError(
                 'Must be connected to MongoDB 3.4+ to use a collation.')
+
+        if (client or session) and not isinstance(spec, ORDERED_TYPES):
+            # Ensure command name remains in first place.
+            spec = SON(spec)
+        if session:
+            spec['lsid'] = session._use_lsid()
+            if retryable_write:
+                spec['txnNumber'] = session._transaction_id()
+        self.send_cluster_time(spec, session, client)
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
@@ -484,8 +493,7 @@ class SocketInfo(object):
                            self.address, check_keys, self.listeners,
                            self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
-                           collation=collation,
-                           retryable_write=retryable_write)
+                           collation=collation)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
@@ -614,6 +622,11 @@ class SocketInfo(object):
             self.sock.close()
         except Exception:
             pass
+
+    def send_cluster_time(self, command, session, client):
+        """Add cluster time for MongoDB >= 3.6."""
+        if self.max_wire_version >= 6 and client:
+            client._send_cluster_time(command, session)
 
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In

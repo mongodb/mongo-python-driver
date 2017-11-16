@@ -707,6 +707,8 @@ class TestCausalConsistency(unittest.TestCase):
 
     @client_context.require_no_standalone
     def test_reads(self):
+        # Make sure the collection exists.
+        self.client.pymongo_test.test.insert_one({})
         self._test_reads(
             lambda coll, session: list(coll.aggregate([], session=session)))
         self._test_reads(
@@ -858,9 +860,12 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.map_reduce(
                 'function() {}', 'function() {}', 'mrout', session=session))
 
-        # It's not a write, but currentOp also doesn't support readConcern
+        # They are not writes, but currentOp and explain also don't support
+        # readConcern.
         self._test_no_read_concern(
             lambda coll, session: coll.database.current_op(session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.find({}, session=session).explain())
 
     @client_context.require_no_standalone
     def test_get_more_does_not_include_read_concern(self):

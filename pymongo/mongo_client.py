@@ -1679,8 +1679,7 @@ class MongoClient(common.BaseObject):
                 message._first_batch(sock_info, "admin", "$cmd.sys.unlock",
                                      {}, -1, True, self.codec_options,
                                      ReadPreference.PRIMARY, cmd,
-                                     self._event_listeners,
-                                     session=None)
+                                     self._event_listeners)
 
     def __enter__(self):
         return self

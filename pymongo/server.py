@@ -91,12 +91,12 @@ class Server(object):
 
             use_find_cmd = operation.use_command(sock_info, exhaust)
             message = operation.get_message(
-                set_slave_okay, sock_info.is_mongos, use_find_cmd)
+                set_slave_okay, sock_info, use_find_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
             if publish:
                 encoding_duration = datetime.now() - start
-                cmd, dbn = operation.as_command()
+                cmd, dbn = operation.as_command(sock_info)
                 listeners.publish_command_start(
                     cmd, dbn, request_id, sock_info.address)
                 start = datetime.now()

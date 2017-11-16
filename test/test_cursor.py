@@ -347,6 +347,18 @@ class TestCursor(IntegrationTest):
         # "cursor" pre MongoDB 2.7.6, "executionStats" post
         self.assertTrue("cursor" in b or "executionStats" in b)
 
+    def test_explain_with_read_concern(self):
+        # Do not add readConcern level to explain.
+        listener = WhiteListEventListener("explain")
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        coll = client.pymongo_test.test.with_options(
+            read_concern=ReadConcern(level="local"))
+        self.assertTrue(coll.find().explain())
+        started = listener.results['started']
+        self.assertEqual(len(started), 1)
+        self.assertNotIn("readConern", started[0].command)
+
     def test_hint(self):
         db = self.db
         self.assertRaises(TypeError, db.test.find().hint, 5.5)
