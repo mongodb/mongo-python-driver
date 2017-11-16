@@ -689,15 +689,6 @@ class TestCausalConsistency(unittest.TestCase):
     @client_context.require_no_standalone
     def test_reads(self):
         self._test_reads(
-            lambda coll, session: list(
-                coll.database.list_collections(session=session)))
-        self._test_reads(
-            lambda coll, session: coll.database.list_collection_names(
-                session=session))
-        self._test_reads(
-            lambda coll, session: coll.database.command(
-                'ismaster', session=session))
-        self._test_reads(
             lambda coll, session: list(coll.aggregate([], session=session)))
         self._test_reads(
             lambda coll, session: list(coll.find({}, session=session)))
@@ -706,16 +697,10 @@ class TestCausalConsistency(unittest.TestCase):
         self._test_reads(
             lambda coll, session: coll.count(session=session))
         self._test_reads(
-            lambda coll, session: list(coll.list_indexes(session=session)))
-        self._test_reads(
-            lambda coll, session: coll.index_information(session=session))
-        self._test_reads(
-            lambda coll, session: coll.options(session=session))
-        self._test_reads(
             lambda coll, session: coll.distinct('foo', session=session))
         self._test_reads(
             lambda coll, session: coll.map_reduce(
-                'function() {}', 'function() {}', 'output', session=session))
+                'function() {}', 'function() {}', 'inline', session=session))
         self._test_reads(
             lambda coll, session: coll.inline_map_reduce(
                 'function() {}', 'function() {}', session=session))
@@ -792,6 +777,87 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.drop_indexes(session=session))
         self._test_writes(
             lambda coll, session: coll.reindex(session=session))
+
+    def _test_no_read_concern(self, op):
+        coll = self.client.pymongo_test.test
+        with self.client.start_session() as sess:
+            coll.find_one({}, session=sess)
+            operation_time = sess.operation_time
+            self.assertIsNotNone(operation_time)
+            self.listener.results.clear()
+            op(coll, sess)
+            rc = self.listener.results['started'][0].command.get(
+                'readConcern')
+            self.assertIsNone(rc)
+
+    @client_context.require_no_standalone
+    def test_writes_do_not_include_read_concern(self):
+        self._test_no_read_concern(
+            lambda coll, session: coll.bulk_write(
+                [InsertOne({})], session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.insert_one({}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.insert_many([{}], session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.replace_one(
+                {'_id': 1}, {'x': 1}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.update_one(
+                {}, {'$set': {'X': 1}}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.update_many(
+                {}, {'$set': {'x': 1}}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.delete_one({}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.delete_many({}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.find_one_and_replace(
+                {'x': 1}, {'y': 1}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.find_one_and_update(
+                {'y': 1}, {'$set': {'x': 1}}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.find_one_and_delete(
+                {'x': 1}, session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.create_index("foo", session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.create_indexes(
+                [IndexModel([("bar", ASCENDING)])], session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.drop_index("foo_1", session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.drop_indexes(session=session))
+        self._test_no_read_concern(
+            lambda coll, session: coll.reindex(session=session))
+        self._test_no_read_concern(
+                lambda coll, session: list(
+                    coll.aggregate([{"$out": "aggout"}], session=session)))
+        self._test_no_read_concern(
+            lambda coll, session: coll.map_reduce(
+                'function() {}', 'function() {}', 'mrout', session=session))
+
+        # It's not a write, but currentOp also doesn't support readConcern
+        self._test_no_read_concern(
+            lambda coll, session: coll.database.current_op(session=session))
+
+    @client_context.require_no_standalone
+    def test_get_more_does_not_include_read_concern(self):
+        coll = self.client.pymongo_test.test
+        with self.client.start_session() as sess:
+            coll.find_one({}, session=sess)
+            operation_time = sess.operation_time
+            self.assertIsNotNone(operation_time)
+            coll.insert_many([{}, {}])
+            cursor = coll.find({}).batch_size(1)
+            next(cursor)
+            self.listener.results.clear()
+            list(cursor)
+            started = self.listener.results['started'][0]
+            self.assertEqual(started.command_name, 'getMore')
+            self.assertIsNone(started.command.get('readConcern'))
 
     def test_session_not_causal(self):
         with self.client.start_session(causal_consistency=False) as s:

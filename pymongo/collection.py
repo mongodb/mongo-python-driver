@@ -43,7 +43,6 @@ from pymongo.helpers import (_check_write_command_response,
                              _raise_last_error)
 from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import IndexModel
-from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (BulkWriteResult,
                              DeleteResult,
@@ -196,7 +195,7 @@ class Collection(common.BaseObject):
     def _command(self, sock_info, command, slave_ok=False,
                  read_preference=None,
                  codec_options=None, check=True, allowable_errors=None,
-                 read_concern=DEFAULT_READ_CONCERN,
+                 read_concern=None,
                  write_concern=None,
                  parse_write_concern_error=False,
                  collation=None,
@@ -2073,7 +2072,7 @@ class Collection(common.BaseObject):
                     and not dollar_out):
                 read_concern = self.read_concern
             else:
-                read_concern = DEFAULT_READ_CONCERN
+                read_concern = None
 
             # Avoid auto-injecting a session: aggregate() passes a session,
             # aggregate_raw_batches() passes none.

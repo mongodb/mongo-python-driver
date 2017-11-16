@@ -47,7 +47,6 @@ from pymongo.monotonic import time as _time
 from pymongo.network import (command,
                              receive_message,
                              SocketChecker)
-from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
 # Always use our backport so we always have support for IP address matching
@@ -435,7 +434,7 @@ class SocketInfo(object):
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
                 allowable_errors=None, check_keys=False,
-                read_concern=DEFAULT_READ_CONCERN,
+                read_concern=None,
                 write_concern=None,
                 parse_write_concern_error=False,
                 collation=None,
@@ -463,7 +462,8 @@ class SocketInfo(object):
           - `retryable_write`: True if this command is a retryable write.
         """
         self.check_session_auth_matches(session)
-        if self.max_wire_version < 4 and not read_concern.ok_for_legacy:
+        if (read_concern and self.max_wire_version < 4
+                and not read_concern.ok_for_legacy):
             raise ConfigurationError(
                 'read concern level of %s is not valid '
                 'with a max wire version of %d.'

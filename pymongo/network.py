@@ -42,7 +42,6 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             ProtocolError)
 from pymongo.message import _OpReply
-from pymongo.read_concern import DEFAULT_READ_CONCERN
 
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -52,7 +51,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, session, client, check=True,
             allowable_errors=None, address=None,
             check_keys=False, listeners=None, max_bson_size=None,
-            read_concern=DEFAULT_READ_CONCERN,
+            read_concern=None,
             parse_write_concern_error=False,
             collation=None, retryable_write=False):
     """Execute a command over the socket, or raise socket.error.
@@ -96,12 +95,13 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     orig = spec
     if is_mongos:
         spec = message._maybe_add_read_preference(spec, read_preference)
-    if read_concern.level:
-        spec['readConcern'] = read_concern.document
-    if (session and session.options.causal_consistency
-            and session.operation_time is not None):
-        spec.setdefault(
-            'readConcern', {})['afterClusterTime'] = session.operation_time
+    if read_concern:
+        if read_concern.level:
+            spec['readConcern'] = read_concern.document
+        if (session and session.options.causal_consistency
+                and session.operation_time is not None):
+            spec.setdefault(
+                'readConcern', {})['afterClusterTime'] = session.operation_time
     if collation is not None:
         spec['collation'] = collation
 
