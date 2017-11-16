@@ -295,8 +295,8 @@ def _get_dns_txt_options(hostname):
         return None
     except Exception as exc:
         raise ConfigurationError(str(exc))
-    return '&'.join([maybe_decode(val)
-                     for res in results for val in res.strings])
+    return (
+        b'&'.join([b''.join(res.strings) for res in results])).decode('utf-8')
 
 
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
@@ -386,12 +386,28 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
             raise InvalidURI(
                 "%s URIs must include one, "
                 "and only one, hostname" % (SRV_SCHEME,))
-        hostname, port = nodes[0]
+        fqdn, port = nodes[0]
         if port is not None:
             raise InvalidURI(
                 "%s URIs must not include a port number" % (SRV_SCHEME,))
-        nodes = _get_dns_srv_hosts(hostname)
-        dns_options = _get_dns_txt_options(hostname)
+        nodes = _get_dns_srv_hosts(fqdn)
+
+        try:
+            plist = fqdn.split(".")[1:]
+        except Exception:
+            raise ConfigurationError("Invalid URI host")
+        slen = len(plist)
+        if slen < 2:
+            raise ConfigurationError("Invalid URI host")
+        for node in nodes:
+            try:
+                nlist = node[0].split(".")[1:][-slen:]
+            except Exception:
+                raise ConfigurationError("Invalid SRV host")
+            if plist != nlist:
+                raise ConfigurationError("Invalid SRV host")
+
+        dns_options = _get_dns_txt_options(fqdn)
         if dns_options:
             options = split_options(dns_options, validate, warn)
     else:

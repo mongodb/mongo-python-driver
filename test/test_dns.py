@@ -21,6 +21,7 @@ import sys
 
 sys.path[0:0] = [""]
 
+from pymongo.common import validate_read_preference_tags
 from pymongo.errors import ConfigurationError
 from pymongo.mongo_client import MongoClient
 from pymongo.uri_parser import parse_uri, split_hosts, _HAVE_DNSPYTHON
@@ -57,12 +58,18 @@ def create_test(test_case):
         if options:
             for key, value in options.items():
                 # Convert numbers to strings for comparison
-                options[key] = str(value)
+                if isinstance(value, (int, float)):
+                    options[key] = str(value)
 
         if seeds:
             result = parse_uri(uri, validate=False)
             self.assertEqual(sorted(result['nodelist']), sorted(seeds))
             if options:
+                opts = result['options']
+                if 'readpreferencetags' in opts:
+                    rpts = validate_read_preference_tags(
+                        'readPreferenceTags', opts.pop('readpreferencetags'))
+                    opts['readPreferenceTags'] = rpts
                 self.assertEqual(result['options'], options)
 
             hostname = next(iter(client_context.client.nodes))[0]
@@ -75,8 +82,12 @@ def create_test(test_case):
                     lambda: hosts == client.nodes,
                     'match test hosts to client nodes')
         else:
-            self.assertRaises(
-                ConfigurationError, parse_uri, uri, validate=False)
+            try:
+                parse_uri(uri)
+            except (ConfigurationError, ValueError):
+                pass
+            else:
+                self.fail("failed to raise an exception")
 
     return run_test
 
