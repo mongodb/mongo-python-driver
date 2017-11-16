@@ -11,6 +11,7 @@ PLATFORM="$(${PYTHON_BINARY} -c 'import platform, sys; sys.stdout.write(platform
 
 export DB_USER="bob"
 export DB_PASSWORD="pwd123"
+EXTRA_ARGS=""
 
 # There is no kerberos package for Jython, but we do want to test PLAIN.
 if [ ${PLATFORM} != "Java" ]; then
@@ -31,9 +32,11 @@ if [ ${PLATFORM} != "Java" ]; then
     export GSSAPI_HOST=${SASL_HOST}
     export GSSAPI_PORT=${SASL_PORT}
     export GSSAPI_PRINCIPAL=${PRINCIPAL}
+else
+    EXTRA_ARGS="-J-XX:-UseGCOverheadLimit -J-Xmx4096m"
 fi
 
 
 echo "Running tests"
 ${PYTHON_BINARY} setup.py clean
-${PYTHON_BINARY} setup.py test --xunit-output=xunit-results
+${PYTHON_BINARY} $EXTRA_ARGS setup.py test --xunit-output=xunit-results

@@ -91,9 +91,14 @@ def is_server_resolvable():
 def _connect(host, port, **kwargs):
     client = pymongo.MongoClient(host, port, **kwargs)
     start = time.time()
+    # Jython takes a long time to connect.
+    if sys.platform.startswith('java'):
+        time_limit = 10
+    else:
+        time_limit = .5
     while not client.nodes:
         time.sleep(0.05)
-        if time.time() - start > 0.1:
+        if time.time() - start > time_limit:
             return None
 
     return client
