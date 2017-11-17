@@ -25,6 +25,9 @@ class _WriteResult(object):
     def __init__(self, acknowledged):
         self.__acknowledged = acknowledged
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.__acknowledged)
+
     def _raise_if_unacknowledged(self, property_name):
         """Raise an exception on property access if unacknowledged."""
         if not self.__acknowledged:
@@ -57,11 +60,15 @@ class InsertOneResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.insert_one`.
     """
 
-    __slots__ = ("__inserted_id", "__acknowledged")
+    __slots__ = ("__inserted_id",)
 
     def __init__(self, inserted_id, acknowledged):
         self.__inserted_id = inserted_id
         super(InsertOneResult, self).__init__(acknowledged)
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (self.__class__.__name__, self.__inserted_id,
+                               self.acknowledged)
 
     @property
     def inserted_id(self):
@@ -73,11 +80,15 @@ class InsertManyResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.insert_many`.
     """
 
-    __slots__ = ("__inserted_ids", "__acknowledged")
+    __slots__ = ("__inserted_ids",)
 
     def __init__(self, inserted_ids, acknowledged):
         self.__inserted_ids = inserted_ids
         super(InsertManyResult, self).__init__(acknowledged)
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (self.__class__.__name__, self.__inserted_ids,
+                               self.acknowledged)
 
     @property
     def inserted_ids(self):
@@ -97,11 +108,15 @@ class UpdateResult(_WriteResult):
     :meth:`~pymongo.collection.Collection.replace_one`.
     """
 
-    __slots__ = ("__raw_result", "__acknowledged")
+    __slots__ = ("__raw_result",)
 
     def __init__(self, raw_result, acknowledged):
         self.__raw_result = raw_result
         super(UpdateResult, self).__init__(acknowledged)
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (self.__class__.__name__, self.__raw_result,
+                               self.acknowledged)
 
     @property
     def raw_result(self):
@@ -118,13 +133,7 @@ class UpdateResult(_WriteResult):
 
     @property
     def modified_count(self):
-        """The number of documents modified.
-
-        .. note:: modified_count is only reported by MongoDB 2.6 and later.
-          When connected to an earlier server version, or in certain mixed
-          version sharding configurations, this attribute will be set to
-          ``None``.
-        """
+        """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
         return self.__raw_result.get("nModified")
 
@@ -141,11 +150,15 @@ class DeleteResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.delete_one`
     and :meth:`~pymongo.collection.Collection.delete_many`"""
 
-    __slots__ = ("__raw_result", "__acknowledged")
+    __slots__ = ("__raw_result",)
 
     def __init__(self, raw_result, acknowledged):
         self.__raw_result = raw_result
         super(DeleteResult, self).__init__(acknowledged)
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (self.__class__.__name__, self.__raw_result,
+                               self.acknowledged)
 
     @property
     def raw_result(self):
@@ -162,7 +175,7 @@ class DeleteResult(_WriteResult):
 class BulkWriteResult(_WriteResult):
     """An object wrapper for bulk API write results."""
 
-    __slots__ = ("__bulk_api_result", "__acknowledged")
+    __slots__ = ("__bulk_api_result",)
 
     def __init__(self, bulk_api_result, acknowledged):
         """Create a BulkWriteResult instance.
@@ -175,6 +188,10 @@ class BulkWriteResult(_WriteResult):
         """
         self.__bulk_api_result = bulk_api_result
         super(BulkWriteResult, self).__init__(acknowledged)
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (self.__class__.__name__, self.__bulk_api_result,
+                               self.acknowledged)
 
     @property
     def bulk_api_result(self):
@@ -195,13 +212,7 @@ class BulkWriteResult(_WriteResult):
 
     @property
     def modified_count(self):
-        """The number of documents modified.
-
-        .. note:: modified_count is only reported by MongoDB 2.6 and later.
-          When connected to an earlier server version, or in certain mixed
-          version sharding configurations, this attribute will be set to
-          ``None``.
-        """
+        """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
         return self.__bulk_api_result.get("nModified")
 
