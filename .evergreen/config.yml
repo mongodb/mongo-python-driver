@@ -647,6 +647,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-3.6-standalone"
+      tags: ["3.6", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "3.6"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-3.6-replica_set"
+      tags: ["3.6", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "3.6"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-3.6-sharded_cluster"
+      tags: ["3.6", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "3.6"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-latest-standalone"
       tags: ["latest", "standalone"]
       commands:
@@ -749,6 +776,10 @@ axes:
         display_name: "latest"
         variables:
            VERSION: "latest"
+      - id: "3.6"
+        display_name: "3.6"
+        variables:
+           VERSION: "3.6"
       - id: "3.4"
         display_name: "3.4"
         variables:
@@ -1051,6 +1082,7 @@ buildvariants:
   display_name: "${os-fully-featured} ${auth-ssl}"
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
      - ".3.0"
@@ -1061,6 +1093,7 @@ buildvariants:
   display_name: "${os-nossl} ${auth} ${ssl}"
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
      - ".3.0"
@@ -1071,6 +1104,7 @@ buildvariants:
   display_name: "${os-requires-32} ${auth-ssl}"
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
 
@@ -1079,6 +1113,7 @@ buildvariants:
   display_name: "${os-ssl-requires-32} ${auth} ${ssl}"
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
 
@@ -1087,6 +1122,7 @@ buildvariants:
   display_name: "${os-requires-34} ${auth-ssl}"
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
 
 - matrix_name: "tests-python-version-rhel62-test-ssl"
@@ -1110,6 +1146,7 @@ buildvariants:
   run_on: rhel62-small
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
      - ".3.0"
@@ -1128,6 +1165,7 @@ buildvariants:
   run_on: rhel62-small
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
      - ".3.0"
@@ -1144,6 +1182,7 @@ buildvariants:
   run_on: rhel62-small
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
      - ".3.0"
@@ -1157,6 +1196,7 @@ buildvariants:
   run_on: windows-64-vs2010-test
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
      - ".3.0"
@@ -1170,6 +1210,7 @@ buildvariants:
   run_on: windows-64-vs2015-test
   tasks:
      - ".latest"
+     - ".3.6"
      - ".3.4"
      - ".3.2"
      - ".3.0"
@@ -1187,6 +1228,7 @@ buildvariants:
       then:
         add_tasks:
           - "test-latest-standalone"
+          - "test-3.6-standalone"
           - "test-3.4-standalone"
           - "test-3.2-standalone"
     - if:
