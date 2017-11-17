@@ -91,7 +91,7 @@ class ClientSession(object):
 
     def _end_session(self, lock):
         if self._server_session is not None:
-            self.client._return_server_session(self._server_session, lock)
+            self._client._return_server_session(self._server_session, lock)
             self._server_session = None
 
     def __enter__(self):

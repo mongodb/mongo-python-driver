@@ -129,12 +129,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
         response_doc = unpacked_docs[0]
         if client:
-            client._receive_cluster_time(response_doc)
-            if session:
-                session._advance_cluster_time(
-                    response_doc.get('$clusterTime'))
-                session._advance_operation_time(
-                    response_doc.get('operationTime'))
+            client._receive_cluster_time(response_doc, session)
         if check:
             helpers._check_command_response(
                 response_doc, None, allowable_errors,

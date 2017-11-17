@@ -461,7 +461,7 @@ class SocketInfo(object):
           - `client`: optional MongoClient for gossipping $clusterTime.
           - `retryable_write`: True if this command is a retryable write.
         """
-        self.check_session_auth_matches(session)
+        self.validate_session(client, session)
         if (read_concern and self.max_wire_version < 4
                 and not read_concern.ok_for_legacy):
             raise ConfigurationError(
@@ -591,11 +591,21 @@ class SocketInfo(object):
         auth.authenticate(credentials, self)
         self.authset.add(credentials)
 
-    def check_session_auth_matches(self, session):
-        """Raise error if a ClientSession is logged in as a different user."""
-        if session and session._authset != self.authset:
-            raise InvalidOperation('session was used after authenticating'
-                                   ' with different credentials')
+    def validate_session(self, client, session):
+        """Validate this session before use with client.
+
+        Raises error if this session is logged in as a different user or
+        the client is not the one that created the session.
+        """
+        if session:
+            if session._client is not client:
+                raise InvalidOperation(
+                    'Can only use session with the MongoClient that'
+                    ' started it')
+            if session._authset != self.authset:
+                raise InvalidOperation(
+                    'Cannot use session after authenticating with different'
+                    ' credentials')
 
     def close(self):
         self.closed = True

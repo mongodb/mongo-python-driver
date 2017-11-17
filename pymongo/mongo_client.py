@@ -1356,8 +1356,12 @@ class MongoClient(common.BaseObject):
         if cluster_time:
             command['$clusterTime'] = cluster_time
 
-    def _receive_cluster_time(self, reply):
-        self._topology.receive_cluster_time(reply.get('$clusterTime'))
+    def _receive_cluster_time(self, reply, session):
+        cluster_time = reply.get('$clusterTime')
+        self._topology.receive_cluster_time(cluster_time)
+        if session is not None:
+            session._advance_cluster_time(cluster_time)
+            session._advance_operation_time(reply.get("operationTime"))
 
     def server_info(self, session=None):
         """Get information about the MongoDB server we're connected to.

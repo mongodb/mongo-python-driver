@@ -57,19 +57,25 @@ def session_ids(client):
 
 
 class TestSession(IntegrationTest):
+
+    @classmethod
     @client_context.require_sessions
-    def setUp(self):
-        super(TestSession, self).setUp()
+    def setUpClass(cls):
+        super(TestSession, cls).setUpClass()
+        # Create a second client so we can make sure clients cannot share
+        # sessions.
+        cls.client2 = rs_or_single_client()
 
         # Redact no commands, so we can test user-admin commands have "lsid".
-        self.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
+        cls.sensitive_commands = monitoring._SENSITIVE_COMMANDS.copy()
         monitoring._SENSITIVE_COMMANDS.clear()
 
-    def tearDown(self):
-        monitoring._SENSITIVE_COMMANDS.update(self.sensitive_commands)
-        super(TestSession, self).tearDown()
+    @classmethod
+    def tearDownClass(cls):
+        monitoring._SENSITIVE_COMMANDS.update(cls.sensitive_commands)
+        super(TestSession, cls).tearDownClass()
 
-    def _test_ops(self, client, *ops, **kwargs):
+    def _test_ops(self, client, *ops):
         listener = client.event_listeners()[0][0]
 
         for f, args, kw in ops:
@@ -102,6 +108,18 @@ class TestSession(IntegrationTest):
             self.assertTrue(s.has_ended)
             with self.assertRaisesRegex(InvalidOperation, "ended session"):
                 f(*args, **kw)
+
+            # Test a session cannot be used on another client.
+            with self.client2.start_session() as s:
+                # In case "f" modifies its inputs.
+                args = copy.copy(args)
+                kw = copy.copy(kw)
+                kw['session'] = s
+                with self.assertRaisesRegex(
+                        InvalidOperation,
+                        'Can only use session with the MongoClient'
+                        ' that started it'):
+                    f(*args, **kw)
 
         # No explicit session.
         for f, args, kw in ops:
@@ -980,8 +998,8 @@ class TestSessionsMultiAuth(IntegrationTest):
             client.admin.logout()
             db.authenticate('second-user', 'pass')
 
-            err = 'session was used after authenticating with different' \
-                  ' credentials'
+            err = ('Cannot use session after authenticating with different'
+                   ' credentials')
 
             with self.assertRaisesRegex(InvalidOperation, err):
                 # Auth has changed between find and getMore.

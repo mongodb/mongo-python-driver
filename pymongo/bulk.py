@@ -240,8 +240,9 @@ class _Bulk(object):
         listeners = client._event_listeners
 
         with self.collection.database.client._tmp_session(session) as s:
-            # sock_info.command checks auth, but we use sock_info.write_command.
-            sock_info.check_session_auth_matches(s)
+            # sock_info.command validates the session, but we use
+            # sock_info.write_command.
+            sock_info.validate_session(client, s)
             for run in generator:
                 cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
                            ('ordered', self.ordered)])
@@ -267,10 +268,7 @@ class _Bulk(object):
                     if not to_send:
                         raise InvalidOperation("cannot do an empty bulk write")
                     result = bwc.write_command(request_id, msg, to_send)
-                    client._receive_cluster_time(result)
-                    if s is not None:
-                        s._advance_cluster_time(result.get("$clusterTime"))
-                        s._advance_operation_time(result.get("operationTime"))
+                    client._receive_cluster_time(result, s)
                     results.append((idx_offset, result))
                     if self.ordered and "writeErrors" in result:
                         break
