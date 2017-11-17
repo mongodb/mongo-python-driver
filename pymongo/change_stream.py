@@ -26,29 +26,8 @@ class ChangeStream(object):
     Should not be called directly by application developers. Use
     :meth:`~pymongo.collection.Collection.watch` instead.
 
-    :Parameters:
-      - `collection`: The watched :class:`~pymongo.collection.Collection`.
-      - `pipeline`: A list of aggregation pipeline stages to append to an
-        initial `$changeStream` aggregation stage.
-      - `full_document` (string): The fullDocument to pass as an option
-        to the $changeStream pipeline stage. Allowed values: 'default',
-        'updateLookup'. When set to 'updateLookup', the change notification
-        for partial updates will include both a delta describing the
-        changes to the document, as well as a copy of the entire document
-        that was changed from some time after the change occurred.
-      - `resume_after` (optional): The logical starting point for this
-        change stream.
-      - `max_await_time_ms` (optional): The maximum time in milliseconds
-        for the server to wait for changes before responding to a getMore
-        operation.
-      - `batch_size` (optional): The maximum number of documents to return
-        per batch.
-      - `collation` (optional): The :class:`~pymongo.collation.Collation`
-        to use for the aggregation.
-      - `session` (optional): a
-        :class:`~pymongo.client_session.ClientSession`.
-
     .. versionadded: 3.6
+    .. mongodoc:: changeStreams
     """
     def __init__(self, collection, pipeline, full_document,
                  resume_after=None, max_await_time_ms=None, batch_size=None,
