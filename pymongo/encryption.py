@@ -322,6 +322,9 @@ class RewrapManyDataKeyResult:
         """
         return self._bulk_write_result
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self._bulk_write_result!r})"
+
 
 class _Encrypter:
     """Encrypts and decrypts MongoDB commands.
