@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Changes in Next Version
------------------------
+Changes in Version 3.6.0
+------------------------
 
 This version drops support for MongoDB versions older than 2.6. If connecting to
 a MongoDB 2.4 server or older, PyMongo now throws a
