@@ -37,6 +37,8 @@ the session are causally after previous read and write operations. Using a
 causally consistent session, an application can read its own writes and is
 guaranteed monotonic reads, even when reading from replica set secondaries.
 
+.. mongodoc:: causal-consistency
+
 Classes
 =======
 """

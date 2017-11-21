@@ -4,12 +4,10 @@ Changelog
 Changes in Version 3.6.0
 ------------------------
 
-This version drops support for MongoDB versions older than 2.6. If connecting to
-a MongoDB 2.4 server or older, PyMongo now throws a
+Version 3.6 adds support for MongoDB 3.6, drops support for CPython 3.3 (PyPy3
+is still supported), and drops support for MongoDB versions older than 2.6. If
+connecting to a MongoDB 2.4 server or older, PyMongo now throws a
 :exc:`~pymongo.errors.ConfigurationError`.
-
-.. warning:: This version drops support for CPython 3.3 (pypy3 continues to
-  be supported).
 
 Highlights include:
 
@@ -51,14 +49,8 @@ Deprecations:
 
 Unavoidable breaking changes:
 
-- Certain commands, such as ``ismaster`` and ``ping``, that could be used
-  to check whether a server is available without requiring authentication, now
-  raise :exc:`~pymongo.errors.OperationFailure` if executed without
-  authenticating on a MongoDB 3.6+ server started with ``--auth``. (This is
-  because all commands are now sent with a session id, whether a
-  :class:`~pymongo.client_session.ClientSession` is used or not, and all
-  commands with a session id require auth.)
-- The deprecated methods :meth:`~pymongo.database.Database.authenticate` and
+- Starting in MongoDB 3.6, the deprecated methods
+  :meth:`~pymongo.database.Database.authenticate` and
   :meth:`~pymongo.database.Database.logout` now invalidate all cursors created
   prior. Instead of using these methods to change credentials, pass credentials
   for one user to the :class:`~pymongo.mongo_client.MongoClient` at construction
@@ -71,6 +63,15 @@ Unavoidable breaking changes:
   UUID representations, :data:`bson.binary.PYTHON_LEGACY` (the default) and
   :data:`bson.binary.STANDARD`, and the decoding of BSON binary subtype 3
   are unchanged.
+
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.6 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.6 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18043
 
 Changes in Version 3.5.1
 ------------------------
