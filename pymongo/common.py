@@ -94,6 +94,10 @@ COMMAND_NOT_FOUND_CODES = (59,)
 # Error codes to ignore if GridFS calls createIndex on a secondary
 UNAUTHORIZED_CODES = (13, 16547, 16548)
 
+# Maximum number of sessions to send in a single endSessions command.
+# From the driver sessions spec.
+_MAX_END_SESSIONS = 10000
+
 
 def partition_node(node):
     """Split a host:port string into (host, int(port)) pair."""

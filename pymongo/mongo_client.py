@@ -857,13 +857,42 @@ class MongoClient(common.BaseObject):
         except ConnectionFailure:
             return False
 
+    def _end_sessions(self, session_ids):
+        """Send endSessions command(s) with the given session ids."""
+        try:
+            # Use SocketInfo.command directly to avoid implicitly creating
+            # another session.
+            with self._socket_for_reads(
+                    ReadPreference.PRIMARY_PREFERRED) as (sock_info, slave_ok):
+                if not sock_info.supports_sessions:
+                    return
+
+                for i in range(0, len(session_ids), common._MAX_END_SESSIONS):
+                    spec = SON([('endSessions',
+                                 session_ids[i:i + common._MAX_END_SESSIONS])])
+                    sock_info.command(
+                        'admin', spec, slave_ok=slave_ok, client=self)
+        except PyMongoError:
+            # Drivers MUST ignore any errors returned by the endSessions
+            # command.
+            pass
+
     def close(self):
-        """Disconnect from MongoDB.
+        """Cleanup client resources and disconnect from MongoDB.
+
+        On MongoDB >= 3.6, end all server sessions created by this client by
+        sending one or more endSessions commands.
 
         Close all sockets in the connection pools and stop the monitor threads.
         If this instance is used again it will be automatically re-opened and
         the threads restarted.
+
+        .. versionchanged:: 3.6
+           End all server sessions created by this client.
         """
+        session_ids = self._topology.pop_all_sessions()
+        if session_ids:
+            self._end_sessions(session_ids)
         # Run _process_periodic_tasks to send pending killCursor requests
         # before closing the topology.
         self._process_periodic_tasks()
@@ -1307,7 +1336,7 @@ class MongoClient(common.BaseObject):
         except Exception:
             helpers._handle_exception()
 
-    def start_session(self, **kwargs):
+    def start_session(self, causal_consistency=True):
         """Start a logical session.
 
         This method takes the same parameters as
@@ -1317,6 +1346,12 @@ class MongoClient(common.BaseObject):
         Requires MongoDB 3.6. It is an error to call :meth:`start_session`
         if this client has been authenticated to multiple databases using the
         deprecated method :meth:`~pymongo.database.Database.authenticate`.
+
+        A :class:`~pymongo.client_session.ClientSession` may only be used with
+        the MongoClient that started it.
+
+        :Returns:
+          An instance of :class:`~pymongo.client_session.ClientSession`.
 
         .. versionadded:: 3.6
         """
@@ -1330,8 +1365,10 @@ class MongoClient(common.BaseObject):
 
         # Raises ConfigurationError if sessions are not supported.
         server_session = self._get_server_session()
-        opts = client_session.SessionOptions(**kwargs)
-        return client_session.ClientSession(self, server_session, opts, authset)
+        opts = client_session.SessionOptions(
+            causal_consistency=causal_consistency)
+        return client_session.ClientSession(
+            self, server_session, opts, authset)
 
     def _get_server_session(self):
         """Internal: start or resume a _ServerSession."""

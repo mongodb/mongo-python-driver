@@ -397,6 +397,11 @@ class Topology(object):
     def description(self):
         return self._description
 
+    def pop_all_sessions(self):
+        """Pop all session ids from the pool."""
+        with self._lock:
+            return self._session_pool.pop_all()
+
     def get_server_session(self):
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:

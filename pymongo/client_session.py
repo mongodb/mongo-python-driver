@@ -236,6 +236,12 @@ class _ServerSessionPool(collections.deque):
 
     This class is not thread-safe, access it while holding the Topology lock.
     """
+    def pop_all(self):
+        ids = []
+        while self:
+            ids.append(self.pop().session_id)
+        return ids
+
     def get_server_session(self, session_timeout_minutes):
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
