@@ -1,4 +1,4 @@
-# Copyright 2013-2015 MongoDB, Inc.
+# Copyright 2013-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ class TestSecondaryBecomesStandalone(MockClientTest):
             host='a:1,b:2,c:3',
             replicaSet='rs',
             serverSelectionTimeoutMS=100)
+        self.addCleanup(c.close)
 
         # MongoClient connects to primary by default.
         wait_until(lambda: c.address is not None, 'connect to primary')
@@ -70,6 +71,7 @@ class TestSecondaryBecomesStandalone(MockClientTest):
             mongoses=[],
             host='a:1,b:2,c:3',
             replicaSet='rs')
+        self.addCleanup(c.close)
 
         wait_until(lambda: ('b', 2) in c.secondaries,
                    'discover host "b"')
@@ -97,6 +99,7 @@ class TestSecondaryRemoved(MockClientTest):
             mongoses=[],
             host='a:1,b:2,c:3',
             replicaSet='rs')
+        self.addCleanup(c.close)
 
         wait_until(lambda: ('b', 2) in c.secondaries, 'discover host "b"')
         wait_until(lambda: ('c', 3) in c.secondaries, 'discover host "c"')
@@ -119,6 +122,7 @@ class TestSocketError(MockClientTest):
                 mongoses=[],
                 host='a:1',
                 replicaSet='rs')
+            self.addCleanup(c.close)
 
             wait_until(lambda: len(c.nodes) == 2, 'discover both nodes')
 
@@ -140,6 +144,7 @@ class TestSecondaryAdded(MockClientTest):
             mongoses=[],
             host='a:1',
             replicaSet='rs')
+        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 2, 'discover both nodes')
 
@@ -166,6 +171,7 @@ class TestSecondaryAdded(MockClientTest):
             mongoses=[],
             host='a:1',
             replicaSet='rs')
+        self.addCleanup(c.close)
 
         wait_until(lambda: ('a', 1) == c.primary, 'discover the primary')
         wait_until(lambda: set([('b', 2)]) == c.secondaries,

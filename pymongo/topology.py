@@ -1,4 +1,4 @@
-# Copyright 2014-2016 MongoDB, Inc.
+# Copyright 2014-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -453,10 +453,10 @@ class Topology(object):
             # Start or restart the events publishing thread.
             if self._publish_tp or self._publish_server:
                 self.__events_executor.open()
-        else:
-            # Restart monitors if we forked since previous call.
-            for server in itervalues(self._servers):
-                server.open()
+
+        # Ensure that the monitors are open.
+        for server in itervalues(self._servers):
+            server.open()
 
     def _reset_server(self, address):
         """Clear our pool for a server and mark it Unknown.
