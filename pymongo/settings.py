@@ -42,8 +42,8 @@ class TopologySettings(object):
         """
         if heartbeat_frequency < common.MIN_HEARTBEAT_INTERVAL:
             raise ConfigurationError(
-                "heartbeatFrequencyMS cannot be less than %d" %
-                common.MIN_HEARTBEAT_INTERVAL * 1000)
+                "heartbeatFrequencyMS cannot be less than %d" % (
+                    common.MIN_HEARTBEAT_INTERVAL * 1000,))
 
         self._seeds = seeds or [('localhost', 27017)]
         self._replica_set_name = replica_set_name
