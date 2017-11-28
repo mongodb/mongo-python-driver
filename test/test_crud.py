@@ -73,20 +73,24 @@ def check_result(expected_result, result):
             elif prop == "inserted_ids":
                 # BulkWriteResult does not have inserted_ids.
                 if isinstance(result, BulkWriteResult):
-                    return len(expected_result[res]) == result.inserted_count
-                # InsertManyResult may be compared to [id1] from the
-                # crud spec or {"0": id1} from the retryable write spec.
-                ids = expected_result[res]
-                if isinstance(ids, dict):
-                    ids = [ids[str(i)] for i in range(len(ids))]
-                return ids == result.inserted_ids
+                    if len(expected_result[res]) != result.inserted_count:
+                        return False
+                else:
+                    # InsertManyResult may be compared to [id1] from the
+                    # crud spec or {"0": id1} from the retryable write spec.
+                    ids = expected_result[res]
+                    if isinstance(ids, dict):
+                        ids = [ids[str(i)] for i in range(len(ids))]
+                    if ids != result.inserted_ids:
+                        return False
             elif prop == "upserted_ids":
                 # Convert indexes from strings to integers.
                 ids = expected_result[res]
                 expected_ids = {}
                 for str_index in ids:
                     expected_ids[int(str_index)] = ids[str_index]
-                return expected_ids == result.upserted_ids
+                if expected_ids != result.upserted_ids:
+                    return False
             elif getattr(result, prop) != expected_result[res]:
                 return False
         return True
