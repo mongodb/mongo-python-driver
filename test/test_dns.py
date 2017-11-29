@@ -44,6 +44,7 @@ class TestDNS(unittest.TestCase):
 def create_test(test_case):
 
     @client_context.require_replica_set
+    @client_context.require_ssl
     def run_test(self):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("DNS tests require the dnspython module")
@@ -57,8 +58,10 @@ def create_test(test_case):
             hosts = frozenset(split_hosts(','.join(hosts)))
         if options:
             for key, value in options.items():
-                # Convert numbers to strings for comparison
-                if isinstance(value, (int, float)):
+                # Convert numbers / booleans to strings for comparison
+                if isinstance(value, bool):
+                    options[key] = 'true' if value else 'false'
+                elif isinstance(value, (int, float)):
                     options[key] = str(value)
 
         if seeds:

@@ -8,5 +8,9 @@
     "localhost:27018",
     "localhost:27019"
   ],
+  "options": {
+    "replicaSet": "repl0",
+    "ssl": true
+  },
   "comment": "Is correct, as returned host name shared the URI root \"test.build.10gen.cc\"."
 }

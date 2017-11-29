@@ -133,12 +133,14 @@ class MongoClient(common.BaseObject):
         resolved to one or more DNS `SRV records
         <https://en.wikipedia.org/wiki/SRV_record>`_ which will be used
         as the seed list for connecting to the MongoDB deployment. When using
-        SRV support configuration options can be specified using `TXT records
+        SRV URIs, the `authSource` and `replicaSet` configuration options can
+        be specified using `TXT records
         <https://en.wikipedia.org/wiki/TXT_record>`_. See the
         `Initial DNS Seedlist Discovery spec
         <https://github.com/mongodb/specifications/blob/master/source/
         initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
-        for more details.
+        for more details. Note that the use of SRV URIs implicitly enables
+        TLS support. Pass ssl=false in the URI to override.
 
         .. note:: MongoClient creation will block waiting for answers from
           DNS when mongodb+srv:// URIs are used.

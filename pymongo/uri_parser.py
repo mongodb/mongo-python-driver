@@ -278,6 +278,10 @@ else:
         return text
 
 
+_ALLOWED_TXT_OPTS = frozenset(
+    ['authsource', 'authSource', 'replicaset', 'replicaSet'])
+
+
 def _get_dns_srv_hosts(hostname):
     try:
         results = resolver.query('_mongodb._tcp.' + hostname, 'SRV')
@@ -295,6 +299,8 @@ def _get_dns_txt_options(hostname):
         return None
     except Exception as exc:
         raise ConfigurationError(str(exc))
+    if len(results) > 1:
+        raise ConfigurationError('Only one TXT record is supported')
     return (
         b'&'.join([b''.join(res.strings) for res in results])).decode('utf-8')
 
@@ -410,6 +416,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
         dns_options = _get_dns_txt_options(fqdn)
         if dns_options:
             options = split_options(dns_options, validate, warn)
+            if set(options) - _ALLOWED_TXT_OPTS:
+                raise ConfigurationError(
+                    "Only authSource and replicaSet are supported from DNS")
+        options["ssl"] = True if validate else 'true'
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
