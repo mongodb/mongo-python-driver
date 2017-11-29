@@ -124,9 +124,12 @@ class Cursor(object):
 
         .. mongodoc:: cursors
         """
+        # Initialize all attributes used in __del__ before possibly raising
+        # an error to avoid attribute errors during garbage collection.
         self.__id = None
         self.__exhaust = False
         self.__exhaust_mgr = None
+        self.__killed = False
 
         if session:
             self.__session = session
@@ -206,7 +209,6 @@ class Cursor(object):
         self.__data = deque()
         self.__address = None
         self.__retrieved = 0
-        self.__killed = False
 
         self.__codec_options = collection.codec_options
         self.__read_preference = collection.read_preference
