@@ -99,7 +99,7 @@ static PyObject* _error(char* name) {
 /* Safely downcast from Py_ssize_t to int, setting an
  * exception and returning -1 on error. */
 static int
-_downcast_and_check(Py_ssize_t size, int extra) {
+_downcast_and_check(Py_ssize_t size, uint8_t extra) {
     if (size > BSON_MAX_SIZE || ((BSON_MAX_SIZE - extra) < size)) {
         PyObject* InvalidStringData = _error("InvalidStringData");
         if (InvalidStringData) {
@@ -384,6 +384,7 @@ static int _load_python_objects(PyObject* module) {
     }
 
     compiled = PyObject_CallFunction(re_compile, "O", empty_string);
+    Py_DECREF(re_compile);
     if (compiled == NULL) {
         state->REType = NULL;
         Py_DECREF(empty_string);
@@ -478,10 +479,14 @@ int convert_codec_options(PyObject* options_obj, void* p) {
  * Return 0 on failure.
  */
 int default_codec_options(struct module_state* state, codec_options_t* options) {
+    PyObject* options_obj = NULL;
     PyObject* codec_options_func = _get_object(
         state->CodecOptions, "bson.codec_options", "CodecOptions");
-    PyObject* options_obj = PyObject_CallFunctionObjArgs(
-        codec_options_func, NULL);
+    if (codec_options_func == NULL) {
+        return 0;
+    }
+    options_obj = PyObject_CallFunctionObjArgs(codec_options_func, NULL);
+    Py_DECREF(codec_options_func);
     if (options_obj == NULL) {
         return 0;
     }

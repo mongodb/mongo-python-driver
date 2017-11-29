@@ -72,8 +72,8 @@ static int add_last_error(PyObject* self, buffer_t buffer,
     int document_start;
     int message_length;
     int document_length;
-    PyObject* key;
-    PyObject* value;
+    PyObject* key = NULL;
+    PyObject* value = NULL;
     Py_ssize_t pos = 0;
     PyObject* one;
     char *p = strchr(ns, '.');
@@ -1290,9 +1290,9 @@ PyMODINIT_FUNC
 init_cmessage(void)
 #endif
 {
-    PyObject *_cbson;
-    PyObject *c_api_object;
-    PyObject *m;
+    PyObject *_cbson = NULL;
+    PyObject *c_api_object = NULL;
+    PyObject *m = NULL;
     struct module_state *state;
 
     /* Store a reference to the _cbson module since it's needed to call some
@@ -1300,7 +1300,7 @@ init_cmessage(void)
      */
     _cbson = PyImport_ImportModule("bson._cbson");
     if (_cbson == NULL) {
-        INITERROR;
+        goto fail;
     }
 
     /* Import C API of _cbson
@@ -1308,8 +1308,7 @@ init_cmessage(void)
      */
     c_api_object = PyObject_GetAttrString(_cbson, "_C_API");
     if (c_api_object == NULL) {
-        Py_DECREF(_cbson);
-        INITERROR;
+        goto fail;
     }
 #if PY_VERSION_HEX >= 0x03010000
     _cbson_API = (void **)PyCapsule_GetPointer(c_api_object, "_cbson._C_API");
@@ -1317,28 +1316,39 @@ init_cmessage(void)
     _cbson_API = (void **)PyCObject_AsVoidPtr(c_api_object);
 #endif
     if (_cbson_API == NULL) {
-        Py_DECREF(c_api_object);
-        Py_DECREF(_cbson);
-        INITERROR;
+        goto fail;
     }
 
 #if PY_MAJOR_VERSION >= 3
+    /* Returns a new reference. */
     m = PyModule_Create(&moduledef);
 #else
+    /* Returns a borrowed reference. */
     m = Py_InitModule("_cmessage", _CMessageMethods);
 #endif
     if (m == NULL) {
-        Py_DECREF(c_api_object);
-        Py_DECREF(_cbson);
-        INITERROR;
+        goto fail;
     }
 
     state = GETSTATE(m);
+    if (state == NULL) {
+        goto fail;
+    }
     state->_cbson = _cbson;
 
     Py_DECREF(c_api_object);
 
 #if PY_MAJOR_VERSION >= 3
     return m;
+#else
+    return;
 #endif
+
+fail:
+#if PY_MAJOR_VERSION >= 3
+    Py_XDECREF(m);
+#endif
+    Py_XDECREF(c_api_object);
+    Py_XDECREF(_cbson);
+    INITERROR;
 }
