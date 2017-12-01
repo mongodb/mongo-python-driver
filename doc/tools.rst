@@ -114,6 +114,9 @@ various Python frameworks and libraries.
   Django, an `example:
   <https://github.com/MongoEngine/django-mongoengine/tree/master/example/tumblelog>`_.
   For more information `<http://docs.mongoengine.org/en/latest/django.html>`_
+* `Djongo <https://nesdis.github.io/djongo/>`_ Djongo is a connector for using
+  Django with MongoDB as the database backend. Use the Django Admin GUI to add and
+  modify documents in MongoDB.
 * `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
   project to enable using MongoDB as a backend for `beaker's
   <http://beaker.groovie.org/>`_ caching / session system.
@@ -139,8 +142,6 @@ various Python frameworks and libraries.
   to better integrate MongoKit into Flask.
 * `Flask-PyMongo <http://github.com/dcrosta/flask-pymongo/>`_ Flask-PyMongo
   bridges Flask and PyMongo.
-* `djongo <https://nesdis.github.io/djongo/>`_ Djongo is a driver for allowing
-  Django to use MongoDB as the database backend.
 
 Alternative Drivers
 -------------------
