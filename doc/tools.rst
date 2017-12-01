@@ -102,6 +102,11 @@ Framework Tools
 This section lists tools and adapters that have been designed to work with
 various Python frameworks and libraries.
 
+* `Djongo <https://nesdis.github.io/djongo/>`_ is a connector for using
+  Django with MongoDB as the database backend. Use the Django Admin GUI to add and
+  modify documents in MongoDB. 
+  The `Djongo Source Code <https://github.com/nesdis/djongo>`_ is hosted on github
+  and the `Djongo package <https://pypi.python.org/pypi/djongo>`_ is on pypi.
 * `Django MongoDB Engine
   <https://django-mongodb-engine.readthedocs.io/en/latest/>`_ is a MongoDB
   database backend for Django that completely integrates with its ORM.
@@ -114,9 +119,6 @@ various Python frameworks and libraries.
   Django, an `example:
   <https://github.com/MongoEngine/django-mongoengine/tree/master/example/tumblelog>`_.
   For more information `<http://docs.mongoengine.org/en/latest/django.html>`_
-* `Djongo <https://nesdis.github.io/djongo/>`_ is a connector for using
-  Django with MongoDB as the database backend. Use the Django Admin GUI to add and
-  modify documents in MongoDB.
 * `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
   project to enable using MongoDB as a backend for `beaker's
   <http://beaker.groovie.org/>`_ caching / session system.
