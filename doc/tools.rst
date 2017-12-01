@@ -114,7 +114,7 @@ various Python frameworks and libraries.
   Django, an `example:
   <https://github.com/MongoEngine/django-mongoengine/tree/master/example/tumblelog>`_.
   For more information `<http://docs.mongoengine.org/en/latest/django.html>`_
-* `Djongo <https://nesdis.github.io/djongo/>`_ Djongo is a connector for using
+* `Djongo <https://nesdis.github.io/djongo/>`_ is a connector for using
   Django with MongoDB as the database backend. Use the Django Admin GUI to add and
   modify documents in MongoDB.
 * `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
