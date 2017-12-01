@@ -139,6 +139,8 @@ various Python frameworks and libraries.
   to better integrate MongoKit into Flask.
 * `Flask-PyMongo <http://github.com/dcrosta/flask-pymongo/>`_ Flask-PyMongo
   bridges Flask and PyMongo.
+* `djongo <https://nesdis.github.io/djongo/>`_ Djongo is a driver for allowing
+  Django to use MongoDB as the database backend.
 
 Alternative Drivers
 -------------------
