@@ -72,6 +72,14 @@ MotorEngine
   model defined in MongoEngine can be read in MotorEngine. The source is
   `available on github <http://github.com/heynemann/motorengine>`_.
 
+uMongo
+  `uMongo <https://umongo.readthedocs.io/>`_ is a Python MongoDB ODM.
+  Its inception comes from two needs: the lack of async ODM and the
+  difficulty to do document (un)serialization with existing ODMs.
+  Works with multiple drivers: PyMongo, TxMongo, motor_asyncio, and
+  mongomock.  The source `is on github
+  <https://github.com/Scille/umongo>`_
+
 No longer maintained
 """"""""""""""""""""
 
