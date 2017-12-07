@@ -156,3 +156,6 @@ These are alternatives to PyMongo.
   MongoDB driver for Python Tornado applications.
 * `TxMongo <https://github.com/twisted/txmongo>`_ is an asynchronous Twisted
   Python driver for MongoDB.
+* `MongoMock <https://github.com/mongomock/mongomock>`_ is a small
+  library to help testing Python code that interacts with MongoDB via
+  Pymongo.
