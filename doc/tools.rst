@@ -48,11 +48,6 @@ Humongolus
    `at github <https://github.com/entone/Humongolus>`_. Tutorials and usage
    examples are also available at GitHub.
 
-MongoKit
-  The `MongoKit <http://github.com/namlook/mongokit>`_ framework
-  is an ORM-like layer on top of PyMongo. There is also a MongoKit
-  `google group <http://groups.google.com/group/mongokit>`_.
-
 Ming
   `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) is a
   library that allows you to enforce schemas on a MongoDB database in
@@ -62,12 +57,6 @@ Ming
   <http://blog.pythonisito.com/2009/12/ming-01-released-python-library-for.html>`_
   for more details.
 
-MongoAlchemy
-  `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of
-  PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The
-  code is available `on github <http://github.com/jeffjenkins/MongoAlchemy>`_;
-  for more information, see `the tutorial <http://mongoalchemy.org/tutorial.html>`_.
-
 MongoEngine
   `MongoEngine <http://mongoengine.org/>`_ is another ORM-like
   layer on top of PyMongo. It allows you to define schemas for
@@ -75,6 +64,27 @@ MongoEngine
   ORM. The code is available on `github
   <http://github.com/mongoengine/mongoengine>`_; for more information, see
   the `tutorial <http://docs.mongoengine.org/en/latest/tutorial.html>`_.
+
+MotorEngine
+  `MotorEngine <https://motorengine.readthedocs.io/>`_ is a port of
+  MongoEngine to Motor, for asynchronous access with Tornado.
+  It implements the same modeling APIs to be data-portable, meaning that a
+  model defined in MongoEngine can be read in MotorEngine. The source is
+  `available on github <http://github.com/heynemann/motorengine>`_.
+
+No longer maintained
+""""""""""""""""""""
+
+MongoKit
+  The `MongoKit <http://github.com/namlook/mongokit>`_ framework
+  is an ORM-like layer on top of PyMongo. There is also a MongoKit
+  `google group <http://groups.google.com/group/mongokit>`_.
+
+MongoAlchemy
+  `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of
+  PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The
+  code is available `on github <http://github.com/jeffjenkins/MongoAlchemy>`_;
+  for more information, see `the tutorial <http://mongoalchemy.org/tutorial.html>`_.
 
 Minimongo
   `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
@@ -89,13 +99,6 @@ Manga
   layer on top of PyMongo. The syntax for defining schema is inspired by the
   Django ORM, but Pymongo's query language is maintained. The source `is on
   github <http://github.com/wladston/manga>`_.
-
-MotorEngine
-  `MotorEngine <https://motorengine.readthedocs.io/>`_ is a port of
-  MongoEngine to Motor, for asynchronous access with Tornado.
-  It implements the same modeling APIs to be data-portable, meaning that a
-  model defined in MongoEngine can be read in MotorEngine. The source is
-  `available on github <http://github.com/heynemann/motorengine>`_.
 
 Framework Tools
 ---------------
