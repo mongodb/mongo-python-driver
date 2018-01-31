@@ -2642,8 +2642,8 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
         return NULL;
     }
     while (position < max) {
-        PyObject* name;
-        PyObject* value;
+        PyObject* name = NULL;
+        PyObject* value = NULL;
         int new_position;
 
         new_position = _element_to_dict(

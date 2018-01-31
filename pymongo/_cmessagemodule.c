@@ -1293,7 +1293,6 @@ init_cmessage(void)
     PyObject *_cbson = NULL;
     PyObject *c_api_object = NULL;
     PyObject *m = NULL;
-    struct module_state *state;
 
     /* Store a reference to the _cbson module since it's needed to call some
      * of its functions
@@ -1330,11 +1329,7 @@ init_cmessage(void)
         goto fail;
     }
 
-    state = GETSTATE(m);
-    if (state == NULL) {
-        goto fail;
-    }
-    state->_cbson = _cbson;
+    GETSTATE(m)->_cbson = _cbson;
 
     Py_DECREF(c_api_object);
 
