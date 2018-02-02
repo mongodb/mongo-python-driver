@@ -2225,8 +2225,9 @@ class Collection(common.BaseObject):
 
         .. code-block:: python
 
-           for change in db.collection.watch():
-               print(change)
+           with db.collection.watch() as stream:
+               for change in stream:
+                   print(change)
 
         The :class:`~pymongo.change_stream.ChangeStream` iterable blocks
         until the next change document is returned or an error is raised. If
@@ -2239,13 +2240,14 @@ class Collection(common.BaseObject):
         .. code-block:: python
 
             try:
-                for insert_change in db.collection.watch(
-                        [{'$match': {'operationType': 'insert'}}]):
-                    print(insert_change)
+                with db.collection.watch(
+                        [{'$match': {'operationType': 'insert'}}]) as stream:
+                    for insert_change in stream:
+                        print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
-                log.error('...')
+                logging.error('...')
 
         For a precise description of the resume process see the
         `change streams specification`_.
