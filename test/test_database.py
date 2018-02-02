@@ -398,11 +398,14 @@ class TestDatabase(IntegrationTest):
             self.assertEqual(None, db.error())
             self.assertEqual(None, db.previous_error())
 
-            db.command("forceerror", check=False)
+            db.test.insert_one({"_id": 1})
+            unacked = db.test.with_options(write_concern=WriteConcern(w=0))
+
+            unacked.insert_one({"_id": 1})
             self.assertTrue(db.error())
             self.assertTrue(db.previous_error())
 
-            db.command("forceerror", check=False)
+            unacked.insert_one({"_id": 1})
             self.assertTrue(db.error())
             prev_error = db.previous_error()
             self.assertEqual(prev_error["nPrev"], 1)
