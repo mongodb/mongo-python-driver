@@ -159,12 +159,14 @@ def create_test(scenario_def):
         # the set of servers matching both the ReadPreference's mode
         # and tag sets.
         top_latency = Topology(TopologySettings(**settings))
+        top_latency.open()
 
         # "In latency window" is defined in the server selection
         # spec as the subset of suitable_servers that falls within the
         # allowable latency window.
         settings['local_threshold_ms'] = 1000000
         top_suitable = Topology(TopologySettings(**settings))
+        top_suitable.open()
 
         # Update topologies with server descriptions.
         for server in scenario_def['topology_description']['servers']:

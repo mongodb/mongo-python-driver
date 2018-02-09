@@ -75,15 +75,16 @@ class MockMonitor(object):
     def __init__(self, server_description, topology, pool, topology_settings):
         self._server_description = server_description
         self._topology = topology
+        self.opened = False
 
     def open(self):
-        pass
+        self.opened = True
 
     def request_check(self):
         pass
 
     def close(self):
-        pass
+        self.opened = False
 
 
 class SetNameDiscoverySettings(TopologySettings):
@@ -122,9 +123,16 @@ def disconnected(topology, server_address):
     topology.on_change(ServerDescription(server_address))
 
 
+def get_server(topology, hostname):
+    return topology.get_server_by_address((hostname, 27017))
+
+
 def get_type(topology, hostname):
-    description = topology.get_server_by_address((hostname, 27017)).description
-    return description.server_type
+    return get_server(topology, hostname).description.server_type
+
+
+def get_monitor(topology, hostname):
+    return get_server(topology, hostname)._monitor
 
 
 class TopologyTest(unittest.TestCase):
@@ -398,6 +406,8 @@ class TestMultiServerTopology(TopologyTest):
 
         self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.RSSecondary, get_type(t, 'b'))
+        self.assertTrue(get_monitor(t, 'a').opened)
+        self.assertTrue(get_monitor(t, 'b').opened)
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
                          t.description.topology_type)
 
@@ -405,19 +415,28 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(2, len(t.description.server_descriptions()))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))
+        self.assertFalse(get_monitor(t, 'a').opened)
+        self.assertFalse(get_monitor(t, 'b').opened)
         self.assertEqual('rs', t.description.replica_set_name)
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
                          t.description.topology_type)
 
+        # A closed topology should not be updated when receiving an isMaster.
         got_ismaster(t, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
-            'hosts': ['a', 'b']})
+            'hosts': ['a', 'b', 'c']})
 
-        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
+        self.assertEqual(2, len(t.description.server_descriptions()))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))
-        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+        self.assertFalse(get_monitor(t, 'a').opened)
+        self.assertFalse(get_monitor(t, 'b').opened)
+        # Server c should not have been added.
+        self.assertEqual(None, get_server(t, 'c'))
+        self.assertEqual('rs', t.description.replica_set_name)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
                          t.description.topology_type)
 
     def test_reset_server(self):
@@ -480,7 +499,7 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(t.description.replica_set_name, None)
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
-
+        t.open()
         got_ismaster(t, address, {
             'ok': 1,
             'ismaster': True,
@@ -516,7 +535,7 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(t.description.replica_set_name, None)
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
-
+        t.open()
         got_ismaster(t, address, {
             'ok': 1,
             'ismaster': False,

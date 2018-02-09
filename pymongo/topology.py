@@ -246,38 +246,49 @@ class Topology(object):
                                   server_selection_timeout,
                                   address)
 
+    def _process_change(self, server_description):
+        """Process a new ServerDescription on an opened topology.
+
+        Hold the lock when calling this.
+        """
+        td_old = self._description
+        if self._publish_server:
+            old_server_description = td_old._server_descriptions[
+                server_description.address]
+            self._events.put((
+                self._listeners.publish_server_description_changed,
+                (old_server_description, server_description,
+                 server_description.address, self._topology_id)))
+
+        self._description = updated_topology_description(
+            self._description, server_description)
+
+        self._update_servers()
+        self._receive_cluster_time_no_lock(server_description.cluster_time)
+
+        if self._publish_tp:
+            self._events.put((
+                self._listeners.publish_topology_description_changed,
+                (td_old, self._description, self._topology_id)))
+
+        # Wake waiters in select_servers().
+        self._condition.notify_all()
+
     def on_change(self, server_description):
         """Process a new ServerDescription after an ismaster call completes."""
         # We do no I/O holding the lock.
         with self._lock:
+            # Monitors may continue working on ismaster calls for some time
+            # after a call to Topology.close, so this method may be called at
+            # any time. Ensure the topology is open before processing the
+            # change.
             # Any monitored server was definitely in the topology description
             # once. Check if it's still in the description or if some state-
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
-            if self._description.has_server(server_description.address):
-                td_old = self._description
-                if self._publish_server:
-                    old_server_description = td_old._server_descriptions[
-                        server_description.address]
-                    self._events.put((
-                        self._listeners.publish_server_description_changed,
-                        (old_server_description, server_description,
-                         server_description.address, self._topology_id)))
-
-                self._description = updated_topology_description(
-                    self._description, server_description)
-
-                self._update_servers()
-                self._receive_cluster_time_no_lock(
-                    server_description.cluster_time)
-
-                if self._publish_tp:
-                    self._events.put((
-                        self._listeners.publish_topology_description_changed,
-                        (td_old, self._description, self._topology_id)))
-
-                # Wake waiters in select_servers().
-                self._condition.notify_all()
+            if (self._opened and
+                    self._description.has_server(server_description.address)):
+                self._process_change(server_description)
 
     def get_server_by_address(self, address):
         """Get a Server or None.
