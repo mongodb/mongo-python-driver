@@ -283,6 +283,7 @@ class TestClient(IntegrationTest):
                 pass
             self.assertEqual(1, len(server._pool.sockets))
             self.assertTrue(sock_info in server._pool.sockets)
+            client.close()
 
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500,
@@ -290,11 +291,30 @@ class TestClient(IntegrationTest):
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
+            # When the reaper runs at the same time as the get_socket, two
+            # sockets could be created and checked into the pool.
+            self.assertGreaterEqual(len(server._pool.sockets), 1)
+            wait_until(lambda: sock_info not in server._pool.sockets,
+                       "remove stale socket")
+            wait_until(lambda: 1 <= len(server._pool.sockets),
+                       "replace stale socket")
+            client.close()
+
+            # Assert reaper respects maxPoolSize when adding new sockets.
+            client = rs_or_single_client(maxIdleTimeMS=500,
+                                         minPoolSize=1,
+                                         maxPoolSize=1)
+            server = client._get_topology().select_server(any_server_selector)
+            with server._pool.get_socket({}) as sock_info:
+                pass
+            # When the reaper runs at the same time as the get_socket,
+            # maxPoolSize=1 should prevent two sockets from being created.
             self.assertEqual(1, len(server._pool.sockets))
             wait_until(lambda: sock_info not in server._pool.sockets,
-                       "reaper removes stale socket eventually")
+                       "remove stale socket")
             wait_until(lambda: 1 == len(server._pool.sockets),
-                       "reaper replaces stale socket with new one")
+                       "replace stale socket")
+            client.close()
 
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
@@ -304,6 +324,7 @@ class TestClient(IntegrationTest):
             wait_until(
                 lambda: 0 == len(server._pool.sockets),
                 "stale socket reaped and new one NOT added to the pool")
+            client.close()
 
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=.1):

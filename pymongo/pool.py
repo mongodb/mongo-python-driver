@@ -815,6 +815,7 @@ class Pool:
             sock_info.close()
 
     def remove_stale_sockets(self):
+        """Removes stale sockets then adds new ones if pool is too small."""
         if self.opts.max_idle_time_ms is not None:
             with self.lock:
                 for sock_info in self.sockets.copy():
@@ -823,11 +824,22 @@ class Pool:
                         self.sockets.remove(sock_info)
                         sock_info.close()
 
-        while len(
-                self.sockets) + self.active_sockets < self.opts.min_pool_size:
-            sock_info = self.connect()
+        while True:
             with self.lock:
-                self.sockets.add(sock_info)
+                if (len(self.sockets) + self.active_sockets >=
+                        self.opts.min_pool_size):
+                    # There are enough sockets in the pool.
+                    break
+
+            # We must acquire the semaphore to respect max_pool_size.
+            if not self._socket_semaphore.acquire(False):
+                break
+            try:
+                sock_info = self.connect()
+                with self.lock:
+                    self.sockets.add(sock_info)
+            finally:
+                self._socket_semaphore.release()
 
     def connect(self):
         """Connect to Mongo and return a new SocketInfo.
