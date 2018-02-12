@@ -354,7 +354,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
         scheme_free = uri[SRV_SCHEME_LEN:]
     else:
         raise InvalidURI("Invalid URI scheme: URI must "
-                         "begin with '%s' or '%s'", (SCHEME, SRV_SCHEME))
+                         "begin with '%s' or '%s'" % (SCHEME, SRV_SCHEME))
 
     if not scheme_free:
         raise InvalidURI("Must provide at least one hostname or IP.")
