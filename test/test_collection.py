@@ -1743,6 +1743,16 @@ class TestCollection(IntegrationTest):
 
         self.assertTrue("hello" in db.test.find_one(projection=["hello"]))
         self.assertTrue("hello" not in db.test.find_one(projection=["foo"]))
+
+        self.assertTrue("hello" in db.test.find_one(projection=("hello",)))
+        self.assertTrue("hello" not in db.test.find_one(projection=("foo",)))
+
+        self.assertTrue("hello" in db.test.find_one(projection=set(["hello"])))
+        self.assertTrue("hello" not in db.test.find_one(projection=set(["foo"])))
+
+        self.assertTrue("hello" in db.test.find_one(projection=frozenset(["hello"])))
+        self.assertTrue("hello" not in db.test.find_one(projection=frozenset(["foo"])))
+
         self.assertEqual(["_id"], list(db.test.find_one(projection=[])))
 
         self.assertEqual(None, db.test.find_one({"hello": "foo"}))
