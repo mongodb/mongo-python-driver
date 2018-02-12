@@ -349,3 +349,43 @@ class Decimal128(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __add__(self, other):
+        if isinstance(other, Decimal128):
+            return Decimal128(self.to_decimal() + other.to_decimal())
+        return NotImplemented
+
+    def __sub__(self, other):
+        if isinstance(other, Decimal128):
+            return Decimal128(self.to_decimal() - other.to_decimal())
+        return NotImplemented
+
+    def __mul__(self, other):
+        if isinstance(other, Decimal128):
+            return Decimal128(self.to_decimal() * other.to_decimal())
+        return NotImplemented
+
+    def __div__(self, other):
+        if isinstance(other, Decimal128):
+            return Decimal128(self.to_decimal() / other.to_decimal())
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, Decimal128):
+            return self.to_decimal() < other.to_decimal()
+        return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, Decimal128):
+            return self.to_decimal() <= other.to_decimal()
+        return NotImplemented
+
+    def __ge__(self, other):
+        if isinstance(other, Decimal128):
+            return self.to_decimal() >= other.to_decimal()
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, Decimal128):
+            return self.to_decimal() > other.to_decimal()
+        return NotImplemented
