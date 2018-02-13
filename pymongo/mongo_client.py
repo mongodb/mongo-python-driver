@@ -1642,6 +1642,13 @@ class MongoClient(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
+        .. note:: Starting with Python 3.7 `async` is a reserved keyword.
+          The async option to the fsync command can be passed using a
+          dictionary instead::
+
+            options = {'async': True}
+            client.fsync(**options)
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 

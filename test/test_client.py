@@ -886,7 +886,9 @@ class TestClient(IntegrationTest):
         self.assertFalse(self.client.is_locked)
         # async flushing not supported on windows...
         if sys.platform not in ('cygwin', 'win32'):
-            self.client.fsync(async=True)
+            # Work around async becoming a reserved keyword in Python 3.7
+            opts = {'async': True}
+            self.client.fsync(**opts)
             self.assertFalse(self.client.is_locked)
         self.client.fsync(lock=True)
         self.assertTrue(self.client.is_locked)
