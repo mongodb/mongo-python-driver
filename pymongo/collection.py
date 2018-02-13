@@ -21,6 +21,7 @@ import warnings
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.py3compat import (_unicode,
+                            abc,
                             integer_types,
                             string_type)
 from bson.raw_bson import RawBSONDocument
@@ -592,7 +593,7 @@ class Collection(common.BaseObject):
                 manipulate=False, write_concern=None, op_id=None,
                 bypass_doc_val=False, session=None):
         """Internal insert helper."""
-        if isinstance(docs, collections.Mapping):
+        if isinstance(docs, abc.Mapping):
             return self._insert_one(
                 docs, ordered, check_keys, manipulate, write_concern, op_id,
                 bypass_doc_val, session)
@@ -723,7 +724,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        if not isinstance(documents, collections.Iterable) or not documents:
+        if not isinstance(documents, abc.Iterable) or not documents:
             raise TypeError("documents must be a non-empty list")
         inserted_ids = []
         def gen():
@@ -1217,7 +1218,7 @@ class Collection(common.BaseObject):
               >>> collection.find_one(max_time_ms=100)
         """
         if (filter is not None and not
-                isinstance(filter, collections.Mapping)):
+                isinstance(filter, abc.Mapping)):
             filter = {"_id": filter}
 
         cursor = self.find(filter, *args, **kwargs)
@@ -2499,7 +2500,7 @@ class Collection(common.BaseObject):
         .. mongodoc:: mapreduce
 
         """
-        if not isinstance(out, (string_type, collections.Mapping)):
+        if not isinstance(out, (string_type, abc.Mapping)):
             raise TypeError("'out' must be an instance of "
                             "%s or a mapping" % (string_type.__name__,))
 
@@ -2983,7 +2984,7 @@ class Collection(common.BaseObject):
                       "instead.", DeprecationWarning, stacklevel=2)
         if spec_or_id is None:
             spec_or_id = {}
-        if not isinstance(spec_or_id, collections.Mapping):
+        if not isinstance(spec_or_id, abc.Mapping):
             spec_or_id = {"_id": spec_or_id}
         write_concern = None
         collation = validate_collation_or_none(kwargs.pop('collation', None))

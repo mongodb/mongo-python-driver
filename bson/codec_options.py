@@ -16,9 +16,9 @@
 
 import datetime
 
-from collections import MutableMapping, namedtuple
+from collections import namedtuple
 
-from bson.py3compat import string_type
+from bson.py3compat import abc, string_type
 from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          PYTHON_LEGACY,
                          UUID_REPRESENTATION_NAMES)
@@ -69,7 +69,7 @@ class CodecOptions(_options_base):
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
                 unicode_decode_error_handler="strict",
                 tzinfo=None):
-        if not (issubclass(document_class, MutableMapping) or
+        if not (issubclass(document_class, abc.MutableMapping) or
                 _raw_document_class(document_class)):
             raise TypeError("document_class must be dict, bson.son.SON, "
                             "bson.raw_bson.RawBSONDocument, or a "

@@ -23,7 +23,7 @@ from bson import SON
 from bson.binary import (STANDARD, PYTHON_LEGACY,
                          JAVA_LEGACY, CSHARP_LEGACY)
 from bson.codec_options import CodecOptions
-from bson.py3compat import string_type, integer_types, iteritems
+from bson.py3compat import abc, integer_types, iteritems, string_type
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
@@ -396,7 +396,7 @@ def validate_auth_mechanism_properties(option, value):
 
 def validate_document_class(option, value):
     """Validate the document_class option."""
-    if not issubclass(value, (collections.MutableMapping, RawBSONDocument)):
+    if not issubclass(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError("%s must be dict, bson.son.SON, "
                         "bson.raw_bson.RawBSONDocument, or a "
                         "sublass of collections.MutableMapping" % (option,))
@@ -419,7 +419,7 @@ def validate_list_or_none(option, value):
 
 def validate_is_mapping(option, value):
     """Validate the type of method arguments that expect a document."""
-    if not isinstance(value, collections.Mapping):
+    if not isinstance(value, abc.Mapping):
         raise TypeError("%s must be an instance of dict, bson.son.SON, or "
                         "other type that inherits from "
                         "collections.Mapping" % (option,))
@@ -427,7 +427,7 @@ def validate_is_mapping(option, value):
 
 def validate_is_document_type(option, value):
     """Validate the type of method arguments that expect a MongoDB document."""
-    if not isinstance(value, (collections.MutableMapping, RawBSONDocument)):
+    if not isinstance(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError("%s must be an instance of dict, bson.son.SON, "
                         "bson.raw_bson.RawBSONDocument, or "
                         "a type that inherits from "

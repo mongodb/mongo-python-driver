@@ -18,11 +18,10 @@ Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
 dictionary."""
 
-import collections
 import copy
 import re
 
-from bson.py3compat import iteritems
+from bson.py3compat import abc, iteritems
 
 
 # This sort of sucks, but seems to be as good as it gets...
@@ -179,7 +178,7 @@ class SON(dict):
         def transform_value(value):
             if isinstance(value, list):
                 return [transform_value(v) for v in value]
-            elif isinstance(value, collections.Mapping):
+            elif isinstance(value, abc.Mapping):
                 return dict([
                     (k, transform_value(v))
                     for k, v in iteritems(value)])

@@ -14,11 +14,10 @@
 
 """Bits and pieces used by the driver that don't really fit elsewhere."""
 
-import collections
 import sys
 import traceback
 
-from bson.py3compat import string_type, iteritems, itervalues
+from bson.py3compat import abc, iteritems, itervalues, string_type
 from bson.son import SON
 from pymongo import ASCENDING
 from pymongo.errors import (CursorNotFound,
@@ -59,7 +58,7 @@ def _index_document(index_list):
 
     Takes a list of (key, direction) pairs.
     """
-    if isinstance(index_list, collections.Mapping):
+    if isinstance(index_list, abc.Mapping):
         raise TypeError("passing a dict to sort/create_index/hint is not "
                         "allowed - use a list of tuples instead. did you "
                         "mean %r?" % list(iteritems(index_list)))
@@ -73,7 +72,7 @@ def _index_document(index_list):
     for (key, value) in index_list:
         if not isinstance(key, string_type):
             raise TypeError("first item in each key pair must be a string")
-        if not isinstance(value, (string_type, int, collections.Mapping)):
+        if not isinstance(value, (string_type, int, abc.Mapping)):
             raise TypeError("second item in each key pair must be 1, -1, "
                             "'2d', 'geoHaystack', or another valid MongoDB "
                             "index specifier.")
@@ -232,10 +231,10 @@ def _fields_list_to_dict(fields, option_name):
 
     ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
     """
-    if isinstance(fields, collections.Mapping):
+    if isinstance(fields, abc.Mapping):
         return fields
 
-    if isinstance(fields, (collections.Sequence, collections.Set)):
+    if isinstance(fields, (abc.Sequence, abc.Set)):
         if not all(isinstance(field, string_type) for field in fields):
             raise TypeError("%s must be a list of key names, each an "
                             "instance of %s" % (option_name,

@@ -362,7 +362,11 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->BSONInt64, "bson.int64", "Int64") ||
         _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
+#if PY_MAJOR_VERSION >= 3
+        _load_object(&state->Mapping, "collections.abc", "Mapping") ||
+#else
         _load_object(&state->Mapping, "collections", "Mapping") ||
+#endif
         _load_object(&state->CodecOptions, "bson.codec_options", "CodecOptions")) {
         return 1;
     }
@@ -1199,7 +1203,11 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
      * Try Mapping and UUID last since we have to import
      * them if we're in a sub-interpreter.
      */
+#if PY_MAJOR_VERSION >= 3
+    mapping_type = _get_object(state->Mapping, "collections.abc", "Mapping");
+#else
     mapping_type = _get_object(state->Mapping, "collections", "Mapping");
+#endif
     if (mapping_type && PyObject_IsInstance(value, mapping_type)) {
         Py_DECREF(mapping_type);
         /* PyObject_IsInstance returns -1 on error */
@@ -1497,8 +1505,13 @@ int write_dict(PyObject* self, buffer_t buffer,
     int length;
     int length_location;
     struct module_state *state = GETSTATE(self);
+#if PY_MAJOR_VERSION >= 3
+    PyObject* mapping_type = _get_object(state->Mapping,
+                                         "collections.abc", "Mapping");
+#else
     PyObject* mapping_type = _get_object(state->Mapping,
                                          "collections", "Mapping");
+#endif
 
     if (mapping_type) {
         if (!PyObject_IsInstance(dict, mapping_type)) {

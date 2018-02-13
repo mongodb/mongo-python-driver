@@ -15,16 +15,14 @@
 """Tools for representing raw BSON documents.
 """
 
-import collections
-
 from bson import _UNPACK_INT, _iterate_elements
-from bson.py3compat import iteritems
+from bson.py3compat import abc, iteritems
 from bson.codec_options import (
     DEFAULT_CODEC_OPTIONS as DEFAULT, _RAW_BSON_DOCUMENT_MARKER)
 from bson.errors import InvalidBSON
 
 
-class RawBSONDocument(collections.Mapping):
+class RawBSONDocument(abc.Mapping):
     """Representation for a MongoDB document that provides access to the raw
     BSON bytes that compose it.
 

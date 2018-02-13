@@ -48,6 +48,7 @@ import uuid
 
 from bson.binary import Binary
 from bson.int64 import Int64
+from bson.py3compat import abc
 from bson.timestamp import Timestamp
 
 from pymongo import monotonic
@@ -152,7 +153,7 @@ class ClientSession(object):
             :data:`~pymongo.client_session.ClientSession.cluster_time` from
             another `ClientSession` instance.
         """
-        if not isinstance(cluster_time, collections.Mapping):
+        if not isinstance(cluster_time, abc.Mapping):
             raise TypeError(
                 "cluster_time must be a subclass of collections.Mapping")
         if not isinstance(cluster_time.get("clusterTime"), Timestamp):

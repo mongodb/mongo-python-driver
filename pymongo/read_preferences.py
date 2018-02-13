@@ -14,9 +14,7 @@
 
 """Utilities for choosing which member of a replica set to read from."""
 
-from collections import Mapping
-
-from bson.py3compat import integer_types
+from bson.py3compat import abc, integer_types
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import (member_with_tags_server_selector,
@@ -54,7 +52,7 @@ def _validate_tag_sets(tag_sets):
             " tags") % (tag_sets,))
 
     for tags in tag_sets:
-        if not isinstance(tags, Mapping):
+        if not isinstance(tags, abc.Mapping):
             raise TypeError(
                 "Tag set %r invalid, must be an instance of dict, "
                 "bson.son.SON or other type that inherits from "

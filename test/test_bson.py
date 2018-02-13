@@ -38,7 +38,7 @@ from bson.codec_options import CodecOptions
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
-from bson.py3compat import PY3, text_type, iteritems, StringIO
+from bson.py3compat import abc, iteritems, PY3, StringIO, text_type
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset
@@ -56,7 +56,7 @@ if PY3:
     long = int
 
 
-class NotADict(collections.MutableMapping):
+class NotADict(abc.MutableMapping):
     """Non-dict type that implements the mapping protocol."""
 
     def __init__(self, initial=None):
@@ -81,7 +81,7 @@ class NotADict(collections.MutableMapping):
         return len(self._dict)
 
     def __eq__(self, other):
-        if isinstance(other, collections.Mapping):
+        if isinstance(other, abc.Mapping):
             return all(self.get(k) == other.get(k) for k in self)
         return NotImplemented
 

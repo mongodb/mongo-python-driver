@@ -20,8 +20,7 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 .. mongodoc:: gridfs
 """
 
-from collections import Mapping
-
+from bson.py3compat import abc
 from gridfs.errors import NoFile
 from gridfs.grid_file import (GridIn,
                               GridOut,
@@ -288,7 +287,7 @@ class GridFS(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        if filter is not None and not isinstance(filter, Mapping):
+        if filter is not None and not isinstance(filter, abc.Mapping):
             filter = {"_id": filter}
 
         for f in self.find(filter, *args, session=session, **kwargs):

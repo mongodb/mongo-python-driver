@@ -65,7 +65,6 @@ type.
 """
 
 import calendar
-import collections
 import datetime
 import itertools
 import re
@@ -91,7 +90,8 @@ from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
-from bson.py3compat import (b,
+from bson.py3compat import (abc,
+                            b,
                             PY3,
                             iteritems,
                             text_type,
@@ -726,7 +726,7 @@ _ENCODERS = {
     UUIDLegacy: _encode_binary,
     Decimal128: _encode_decimal128,
     # Special case. This will never be looked up directly.
-    collections.Mapping: _encode_mapping,
+    abc.Mapping: _encode_mapping,
 }
 
 

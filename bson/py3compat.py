@@ -22,6 +22,13 @@ if PY3:
     import codecs
     import _thread as thread
     from io import BytesIO as StringIO
+
+    try:
+        import collections.abc as abc
+    except ImportError:
+        # PyPy3 (based on CPython 3.2)
+        import collections as abc
+
     MAXSIZE = sys.maxsize
 
     imap = map
@@ -53,6 +60,7 @@ if PY3:
     string_type = str
     integer_types = int
 else:
+    import collections as abc
     import thread
 
     from itertools import imap
