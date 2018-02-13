@@ -365,9 +365,14 @@ class Decimal128(object):
             return Decimal128(self.to_decimal() * other.to_decimal())
         return NotImplemented
 
-    def __div__(self, other):
+    def __truediv__(self, other):
         if isinstance(other, Decimal128):
             return Decimal128(self.to_decimal() / other.to_decimal())
+        return NotImplemented
+
+    def __floordiv__(self, other):
+        if isinstance(other, Decimal128):
+            return Decimal128(self.to_decimal() // other.to_decimal())
         return NotImplemented
 
     def __lt__(self, other):
