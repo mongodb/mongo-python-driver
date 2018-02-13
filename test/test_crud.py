@@ -148,14 +148,21 @@ def run_operation(collection, test):
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
-    return cmd(**arguments)
+    result = cmd(**arguments)
+
+    if operation == "aggregate":
+        if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
+            out = collection.database[arguments["pipeline"][-1]["$out"]]
+            return out.find()
+    return result
 
 
 def create_test(scenario_def, test):
     def run_scenario(self):
         # Load data.
         assert scenario_def['data'], "tests must have non-empty data"
-        self.db.test.drop()
+        for name in self.db.collection_names(False):
+            self.db.drop_collection(name)
         self.db.test.insert_many(scenario_def['data'])
 
         result = run_operation(self.db.test, test)
@@ -170,9 +177,6 @@ def create_test(scenario_def, test):
                 db_coll = self.db.test
             self.assertEqual(list(db_coll.find()), expected_c['data'])
         expected_result = test['outcome'].get('result')
-        # aggregate $out cursors return no documents.
-        if test['description'] == 'Aggregate with $out':
-            expected_result = []
         self.assertTrue(check_result(expected_result, result))
 
     return run_scenario

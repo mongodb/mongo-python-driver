@@ -2052,13 +2052,16 @@ class Collection(common.BaseObject):
         # If the server does not support the "cursor" option we
         # ignore useCursor and batchSize.
         with self._socket_for_reads() as (sock_info, slave_ok):
+            dollar_out = pipeline and '$out' in pipeline[-1]
             if use_cursor:
                 if "cursor" not in kwargs:
                     kwargs["cursor"] = {}
-                if first_batch_size is not None:
+                # Ignore batchSize when the $out pipeline stage is used.
+                # batchSize is meaningless in that case since the server
+                # doesn't return results. This also avoids SERVER-23923.
+                if first_batch_size is not None and not dollar_out:
                     kwargs["cursor"]["batchSize"] = first_batch_size
 
-            dollar_out = pipeline and '$out' in pipeline[-1]
             if (sock_info.max_wire_version >= 5 and dollar_out and
                     self.write_concern):
                 cmd['writeConcern'] = self.write_concern.document
