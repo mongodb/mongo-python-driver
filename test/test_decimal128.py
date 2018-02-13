@@ -79,6 +79,22 @@ class TestDecimal128(unittest.TestCase):
         self.assertEqual("Infinity", str(ctx.copy().create_decimal("1E6145")))
         self.assertEqual("0E-6176", str(ctx.copy().create_decimal("1E-6177")))
 
+    def test_operators(self):
+        a = Decimal128(Decimal(1984))
+        b = Decimal128(Decimal(42))
+        c = Decimal128(Decimal(2))
+        d = Decimal128(Decimal(2))
+        self.assertEqual(a + b, Decimal128('2026'))
+        self.assertEqual(a - b, Decimal128('1942'))
+        self.assertEqual(a * b, Decimal128('83328'))
+        self.assertEqual(a / c, Decimal128('992'))
+        self.assertEqual(a // b, Decimal128('47'))
+        self.assertFalse(a < b)
+        self.assertFalse(a <= b)
+        self.assertTrue(a > b)
+        self.assertTrue(a >= b)
+        self.assertEqual(c, d)
+
 
 if __name__ == '__main__':
     unittest.main()
