@@ -370,6 +370,10 @@ class Decimal128(object):
             return Decimal128(self.to_decimal() / other.to_decimal())
         return NotImplemented
 
+    def __div__(self, other):
+        # mapping __div__ to __truediv_ for Python 2 compatiblity
+        return self.__truediv__(other)
+
     def __floordiv__(self, other):
         if isinstance(other, Decimal128):
             return Decimal128(self.to_decimal() // other.to_decimal())
