@@ -656,12 +656,14 @@ class TestSampleShellCommands(unittest.TestCase):
 
         def insert_docs():
             while not done:
-                db.inventory.insert_one({})
+                db.inventory.insert_one({"username": "alice"})
+                db.inventory.delete_one({"username": "alice"})
 
         t = threading.Thread(target=insert_docs)
         t.start()
 
         try:
+            # 1. The database for reactive, real-time applications
             # Start Changestream Example 1
             cursor = db.inventory.watch()
             document = next(cursor)
@@ -677,9 +679,46 @@ class TestSampleShellCommands(unittest.TestCase):
             cursor = db.inventory.watch(resume_after=resume_token)
             document = next(cursor)
             # End Changestream Example 3
+
+            # Start Changestream Example 4
+            pipeline = [
+                {"$match":
+                    {"$or": [
+                        {"fullDocument.username": "alice"},
+                        {"operationType": {"$in": ["delete"]}}]
+                    }
+                }
+            ]
+            cursor = db.inventory.watch(pipeline=pipeline)
+            document = next(cursor)
+            # End Changestream Example 4
         finally:
             done = True
             t.join()
+
+    @client_context.require_version_min(3, 6, 0)
+    @client_context.require_replica_set
+    def test_misc(self):
+        # Marketing examples
+        client = client_context.client
+        self.addCleanup(client.drop_database, "test")
+        self.addCleanup(client.drop_database, "my_database")
+
+        # 2. Tunable consistency controls
+        collection = client.my_database.my_collection
+        with client.start_session() as session:
+            collection.insert_one({'_id': 1}, session=session)
+            collection.update_one(
+                {'_id': 1}, {"$set": {"a": 1}}, session=session)
+            for doc in collection.find({}, session=session):
+                pass
+
+        # 3. Exploiting the power of arrays
+        collection = client.test.array_updates_test
+        collection.update_one(
+            {'_id': 1},
+            {"$set": {"a.$[i].b": 2}},
+            array_filters=[{"i.b": 0}])
 
 
 if __name__ == "__main__":
