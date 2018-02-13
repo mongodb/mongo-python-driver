@@ -83,7 +83,7 @@ class TestDecimal128(unittest.TestCase):
         a = Decimal128(Decimal(1984))
         b = Decimal128(Decimal(42))
         c = Decimal128(Decimal(2))
-        d = Decimal128(Decimal(2.0))
+        d = Decimal128(Decimal(2))
         self.assertEqual(a + b, Decimal128('2026'))
         self.assertEqual(a - b, Decimal128('1942'))
         self.assertEqual(a * b, Decimal128('83328'))
