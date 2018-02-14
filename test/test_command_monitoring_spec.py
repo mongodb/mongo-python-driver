@@ -156,6 +156,11 @@ def create_test(scenario_def, test):
                     # and "" for any error message.
                     if 'writeErrors' in reply:
                         for doc in reply['writeErrors']:
+                            # Remove any new fields the server adds. The tests
+                            # only have index, code, and errmsg.
+                            diff = set(doc) - set(['index', 'code', 'errmsg'])
+                            for field in diff:
+                                doc.pop(field)
                             doc['code'] = 42
                             doc['errmsg'] = ""
                     elif 'cursor' in reply:

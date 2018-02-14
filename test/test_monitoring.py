@@ -1212,7 +1212,7 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertEqual(2, len(errors))
         fields = set(['index', 'code', 'errmsg'])
         for error in errors:
-            self.assertEqual(fields, set(error))
+            self.assertTrue(fields.issubset(set(error)))
 
     def test_first_batch_helper(self):
         # Regardless of server version and use of helpers._first_batch
