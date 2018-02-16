@@ -30,8 +30,7 @@ When using CPython < 2.7.9 or PyPy < 2.5.1:
 
 Python 3.x
 ``````````
-On Windows, the `wincertstore`_ module is required when using CPython < 3.4.0
-or any version of PyPy3.
+On Windows, the `wincertstore`_ module is required when using PyPy3 < 3.5.
 
 .. _ipaddress: https://pypi.python.org/pypi/ipaddress
 .. _wincertstore: https://pypi.python.org/pypi/wincertstore

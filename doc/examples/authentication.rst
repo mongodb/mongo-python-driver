@@ -46,8 +46,7 @@ Or through the MongoDB URI::
   >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=SCRAM-SHA-1"
   >>> client = MongoClient(uri)
 
-For best performance install `backports.pbkdf2`_, especially on Python older
-than 2.7.8, or on Python 3 before Python 3.4.
+For best performance on Python versions older than 2.7.8 install `backports.pbkdf2`_.
 
 .. _backports.pbkdf2: https://pypi.python.org/pypi/backports.pbkdf2/
 

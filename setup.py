@@ -262,12 +262,16 @@ Oracle Linux, Fedora, etc.) should issue the following command:
     $ sudo yum install gcc python-devel
 
 If you are seeing this message on Microsoft Windows please install
-PyMongo using the MS Windows installer for your version of Python,
-available on pypi here:
+PyMongo using pip. Modern versions of pip will install PyMongo
+from binary wheels available on pypi. If you must install from
+source read the documentation here:
 
-http://pypi.python.org/pypi/pymongo/#downloads
+https://api.mongodb.com/python/current/installation.html#installing-from-source-on-windows
 
-If you are seeing this message on OSX please read the documentation
+If you are seeing this message on macOS / OSX please install PyMongo
+using pip. Modern versions of pip will install PyMongo from binary
+wheels available on pypi. If wheels are not available for your version
+of macOS / OSX, or you must install from source read the documentation
 here:
 
 http://api.mongodb.org/python/current/installation.html#osx

@@ -5,9 +5,9 @@ Installing / Upgrading
 **PyMongo** is in the `Python Package Index
 <http://pypi.python.org/pypi/pymongo/>`_.
 
-.. warning:: **Do not install the "bson" package.** PyMongo comes with its own
-   bson package; doing "pip install bson" or "easy_install bson" installs a
-   third-party package that is incompatible with PyMongo.
+.. warning:: **Do not install the "bson" package from pypi.** PyMongo comes
+   with its own bson package; doing "pip install bson" or "easy_install bson"
+   installs a third-party package that is incompatible with PyMongo.
 
 Installing with pip
 -------------------
@@ -19,7 +19,7 @@ to install pymongo on all platforms::
 
 To get a specific version of pymongo::
 
-  $ python -m pip install pymongo==3.1.1
+  $ python -m pip install pymongo==3.5.1
 
 To upgrade using pip::
 
@@ -80,30 +80,11 @@ Other optional packages:
 - `backports.pbkdf2 <https://pypi.python.org/pypi/backports.pbkdf2/>`_,
   improves authentication performance with SCRAM-SHA-1, the default
   authentication mechanism for MongoDB 3.0+. It especially improves
-  performance on Python older than 2.7.8, or on Python 3 before Python 3.4.
+  performance on Python versions older than 2.7.8.
 - `monotonic <https://pypi.python.org/pypi/monotonic>`_ adds support for
   a monotonic clock, which improves reliability in environments
-  where clock adjustments are frequent. Not needed in Python 3.3+.
+  where clock adjustments are frequent. Not needed in Python 3.
 
-
-Dependencies for installing C Extensions on Unix
-------------------------------------------------
-
-MongoDB, Inc. does not provide statically linked binary packages for Unix
-flavors other than OSX. To build the optional C extensions you must have the
-GNU C compiler (gcc) installed. Depending on your flavor of Unix (or Linux
-distribution) you may also need a python development package that provides
-the necessary header files for your version of Python. The package name may
-vary from distro to distro.
-
-Debian and Ubuntu users should issue the following command::
-
-  $ sudo apt-get install build-essential python-dev
-
-Users of Red Hat based distributions (RHEL, CentOS, Amazon Linux, Oracle Linux,
-Fedora, etc.) should issue the following command::
-
-  $ sudo yum install gcc python-devel
 
 Installing from source
 ----------------------
@@ -116,11 +97,36 @@ latest source from github and install the driver from the resulting tree::
   $ cd pymongo/
   $ python setup.py install
 
-Installing from source on OSX
-.............................
+Installing from source on Unix
+..............................
 
-If you want to install PyMongo from source on OSX you will have to install the
-following to build the C extensions:
+To build the optional C extensions on Linux or another non-macOS Unix you must
+have the GNU C compiler (gcc) installed. Depending on your flavor of Unix
+(or Linux distribution) you may also need a python development package that
+provides the necessary header files for your version of Python. The package
+name may vary from distro to distro.
+
+Debian and Ubuntu users should issue the following command::
+
+  $ sudo apt-get install build-essential python-dev
+
+Users of Red Hat based distributions (RHEL, CentOS, Amazon Linux, Oracle Linux,
+Fedora, etc.) should issue the following command::
+
+  $ sudo yum install gcc python-devel
+
+Installing from source on macOS / OSX
+.....................................
+
+If you want to install PyMongo with C extensions from source you will need
+the command line developer tools. On modern versions of macOS they can be
+installed by running the following in Terminal (found in
+/Applications/Utilities/)::
+
+  xcode-select --install
+
+For older versions of OSX you may need Xcode. See the notes below for various
+OSX and Xcode versions.
 
 **Snow Leopard (10.6)** - Xcode 3 with 'UNIX Development Support'.
 
@@ -173,11 +179,10 @@ requirements apply to both CPython and ActiveState's ActivePython:
 ~~~~~~~~~~~~~~
 
 For Python 3.5 and newer install Visual Studio 2015. For Python 3.4
-install Visual Studio 2010. For Python 2.6 and 2.7 install Visual Studio
-2008, or the Microsoft Visual C++ Compiler for Python 2.7. You must use the
-full version of Visual Studio 2010 or 2008 as Visual C++ Express does not
-provide 64-bit compilers. Make sure that you check the "x64 Compilers and
-Tools" option under Visual C++.
+install Visual Studio 2010. You must use the full version of Visual Studio
+2010 as Visual C++ Express does not provide 64-bit compilers. Make sure that
+you check the "x64 Compilers and Tools" option under Visual C++. For Python 2.6
+and 2.7 install the `Microsoft Visual C++ Compiler for Python 2.7`_.
 
 32-bit Windows
 ~~~~~~~~~~~~~~
@@ -186,7 +191,9 @@ For Python 3.5 and newer install Visual Studio 2015.
 
 For Python 3.4 install Visual C++ 2010 Express.
 
-For Python 2.6 and 2.7 install Visual C++ 2008 Express SP1.
+For Python 2.6 and 2.7 install the `Microsoft Visual C++ Compiler for Python 2.7`_
+
+.. _`Microsoft Visual C++ Compiler for Python 2.7`: https://www.microsoft.com/en-us/download/details.aspx?id=44266
 
 .. _install-no-c:
 
