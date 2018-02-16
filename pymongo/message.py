@@ -299,11 +299,15 @@ class _Query(object):
 
         ns = _UJOIN % (self.db, self.coll)
         spec = self.spec
+        if sock_info.is_mongos:
+            spec = _maybe_add_read_preference(spec, self.read_preference)
 
         if use_cmd:
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command(sock_info)[0]
             ntoreturn = -1  # All DB commands return 1 document
+            return query(flags, ns, self.ntoskip, ntoreturn,
+                         spec, None, self.codec_options)
         else:
             # OP_QUERY treats ntoreturn of -1 and 1 the same, return
             # one document and close the cursor. We have to use 2 for
@@ -314,13 +318,8 @@ class _Query(object):
                     ntoreturn = min(self.limit, ntoreturn)
                 else:
                     ntoreturn = self.limit
-
-        if sock_info.is_mongos:
-            spec = _maybe_add_read_preference(spec,
-                                              self.read_preference)
-
-        return query(flags, ns, self.ntoskip, ntoreturn,
-                     spec, self.fields, self.codec_options)
+            return query(flags, ns, self.ntoskip, ntoreturn,
+                         spec, self.fields, self.codec_options)
 
 
 class _GetMore(object):
