@@ -54,7 +54,7 @@ class SessionTestListener(EventListener):
 
 
 def session_ids(client):
-    return [s.session_id for s in client._topology._session_pool]
+    return [s.session_id for s in copy.copy(client._topology._session_pool)]
 
 
 class TestSession(IntegrationTest):
@@ -174,6 +174,29 @@ class TestSession(IntegrationTest):
 
         with self.assertRaisesRegex(InvalidOperation, "ended session"):
             s.session_id
+
+    def test_end_sessions(self):
+        listener = SessionTestListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        # Start many sessions.
+        sessions = [client.start_session()
+                    for _ in range(_MAX_END_SESSIONS + 1)]
+        for s in sessions:
+            s.end_session()
+
+        # Closing the client should end all sessions and clear the pool.
+        self.assertEqual(len(client._topology._session_pool),
+                         _MAX_END_SESSIONS + 1)
+        client.close()
+        self.assertEqual(len(client._topology._session_pool), 0)
+        end_sessions = [e for e in listener.results['started']
+                        if e.command_name == 'endSessions']
+        self.assertEqual(len(end_sessions), 2)
+
+        # Closing again should not send any commands.
+        listener.results.clear()
+        client.close()
+        self.assertEqual(len(listener.results['started']), 0)
 
     def test_client(self):
         listener = SessionTestListener()
@@ -953,29 +976,6 @@ class TestCausalConsistency(unittest.TestCase):
         after_cluster_time = self.listener.results['started'][0].command.get(
             '$clusterTime')
         self.assertIsNone(after_cluster_time)
-
-    def test_end_sessions(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        # Start many sessions.
-        sessions = [client.start_session()
-                    for _ in range(_MAX_END_SESSIONS + 1)]
-        for s in sessions:
-            s.end_session()
-
-        # Closing the client should end all sessions and clear the pool.
-        self.assertEqual(len(client._topology._session_pool),
-                         _MAX_END_SESSIONS + 1)
-        client.close()
-        self.assertEqual(len(client._topology._session_pool), 0)
-        end_sessions = [e for e in listener.results['started']
-                        if e.command_name == 'endSessions']
-        self.assertEqual(len(end_sessions), 2)
-
-        # Closing again should not send any commands.
-        listener.results.clear()
-        client.close()
-        self.assertEqual(len(listener.results['started']), 0)
 
 
 class TestSessionsMultiAuth(IntegrationTest):
