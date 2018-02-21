@@ -45,6 +45,7 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.mongo_client import MongoClient
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.saslprep import HAVE_STRINGPREP
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   SkipTest,
@@ -503,12 +504,8 @@ class TestDatabase(IntegrationTest):
             self.assertRaises(ConfigurationError, auth_db.add_user,
                               "user", "password", digestPassword=True)
 
-        extra = {}
-        if client_context.version.at_least(3, 7, 2):
-            extra['mechanisms'] = ['SCRAM-SHA-1']
-
         # Add / authenticate / remove
-        auth_db.add_user("mike", "password", roles=["read"], **extra)
+        auth_db.add_user("mike", "password", roles=["read"])
         self.addCleanup(remove_all_users, auth_db)
         self.assertRaises(TypeError, check_auth, 5, "password")
         self.assertRaises(TypeError, check_auth, "mike", 5)
@@ -517,35 +514,34 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(OperationFailure, check_auth, "faker", "password")
         check_auth("mike", "password")
 
-        # Unicode name and password.
-        check_auth(u"mike", u"password")
+        if not client_context.version.at_least(3, 7, 2) or HAVE_STRINGPREP:
+            # Unicode name and password.
+            check_auth(u"mike", u"password")
 
-        auth_db.remove_user("mike")
-        self.assertRaises(OperationFailure,
-                          check_auth, "mike", "password")
+            auth_db.remove_user("mike")
+            self.assertRaises(
+                OperationFailure, check_auth, "mike", "password")
 
-        # Add / authenticate / change password
-        self.assertRaises(OperationFailure, check_auth, "Gustave", u"Dor\xe9")
-        auth_db.add_user("Gustave", u"Dor\xe9", roles=["read"], **extra)
-        check_auth("Gustave", u"Dor\xe9")
+            # Add / authenticate / change password
+            self.assertRaises(
+                OperationFailure, check_auth, "Gustave", u"Dor\xe9")
+            auth_db.add_user("Gustave", u"Dor\xe9", roles=["read"])
+            check_auth("Gustave", u"Dor\xe9")
 
-        # Change password.
-        auth_db.add_user("Gustave", "password", roles=["read"], **extra)
-        self.assertRaises(OperationFailure, check_auth, "Gustave", u"Dor\xe9")
-        check_auth("Gustave", u"password")
+            # Change password.
+            auth_db.add_user("Gustave", "password", roles=["read"])
+            self.assertRaises(
+                OperationFailure, check_auth, "Gustave", u"Dor\xe9")
+            check_auth("Gustave", u"password")
 
     @client_context.require_auth
     @ignore_deprecations
     def test_make_user_readonly(self):
-        extra = {}
-        if client_context.version.at_least(3, 7, 2):
-            extra['mechanisms'] = ['SCRAM-SHA-1']
-
         # "self.client" is logged in as root.
         auth_db = self.client.pymongo_test
 
         # Make a read-write user.
-        auth_db.add_user('jesse', 'pw', **extra)
+        auth_db.add_user('jesse', 'pw')
         self.addCleanup(remove_all_users, auth_db)
 
         # Check that we're read-write by default.
@@ -556,7 +552,7 @@ class TestDatabase(IntegrationTest):
         c.pymongo_test.collection.insert_one({})
 
         # Make the user read-only.
-        auth_db.add_user('jesse', 'pw', read_only=True, **extra)
+        auth_db.add_user('jesse', 'pw', read_only=True)
 
         c = rs_or_single_client_noauth(username='jesse',
                                        password='pw',
@@ -569,13 +565,9 @@ class TestDatabase(IntegrationTest):
     @client_context.require_auth
     @ignore_deprecations
     def test_default_roles(self):
-        extra = {}
-        if client_context.version.at_least(3, 7, 2):
-            extra['mechanisms'] = ['SCRAM-SHA-1']
-
         # "self.client" is logged in as root.
         auth_admin = self.client.admin
-        auth_admin.add_user('test_default_roles', 'pass', **extra)
+        auth_admin.add_user('test_default_roles', 'pass')
         self.addCleanup(client_context.drop_user, 'admin', 'test_default_roles')
         info = auth_admin.command(
             'usersInfo', 'test_default_roles')['users'][0]
@@ -583,33 +575,29 @@ class TestDatabase(IntegrationTest):
         self.assertEqual("root", info['roles'][0]['role'])
 
         # Read only "admin" user
-        auth_admin.add_user('ro-admin', 'pass', read_only=True, **extra)
+        auth_admin.add_user('ro-admin', 'pass', read_only=True)
         self.addCleanup(client_context.drop_user, 'admin', 'ro-admin')
         info = auth_admin.command('usersInfo', 'ro-admin')['users'][0]
         self.assertEqual("readAnyDatabase", info['roles'][0]['role'])
 
         # "Non-admin" user
         auth_db = self.client.pymongo_test
-        auth_db.add_user('user', 'pass', **extra)
+        auth_db.add_user('user', 'pass')
         self.addCleanup(remove_all_users, auth_db)
         info = auth_db.command('usersInfo', 'user')['users'][0]
         self.assertEqual("dbOwner", info['roles'][0]['role'])
 
         # Read only "Non-admin" user
-        auth_db.add_user('ro-user', 'pass', read_only=True, **extra)
+        auth_db.add_user('ro-user', 'pass', read_only=True)
         info = auth_db.command('usersInfo', 'ro-user')['users'][0]
         self.assertEqual("read", info['roles'][0]['role'])
 
     @client_context.require_auth
     @ignore_deprecations
     def test_new_user_cmds(self):
-        extra = {}
-        if client_context.version.at_least(3, 7, 2):
-            extra['mechanisms'] = ['SCRAM-SHA-1']
-
         # "self.client" is logged in as root.
         auth_db = self.client.pymongo_test
-        auth_db.add_user("amalia", "password", roles=["userAdmin"], **extra)
+        auth_db.add_user("amalia", "password", roles=["userAdmin"])
         self.addCleanup(client_context.drop_user, "pymongo_test", "amalia")
 
         db = rs_or_single_client_noauth(username="amalia",
@@ -618,7 +606,7 @@ class TestDatabase(IntegrationTest):
 
         # This tests the ability to update user attributes.
         db.add_user("amalia", "new_password",
-                    customData={"secret": "koalas"}, **extra)
+                    customData={"secret": "koalas"})
 
         user_info = db.command("usersInfo", "amalia")
         self.assertTrue(user_info["users"])
@@ -629,10 +617,6 @@ class TestDatabase(IntegrationTest):
     @client_context.require_auth
     @ignore_deprecations
     def test_authenticate_multiple(self):
-        extra = {}
-        if client_context.version.at_least(3, 7, 2):
-            extra['mechanisms'] = ['SCRAM-SHA-1']
-
         # "self.client" is logged in as root.
         self.client.drop_database("pymongo_test")
         self.client.drop_database("pymongo_test1")
@@ -650,12 +634,11 @@ class TestDatabase(IntegrationTest):
         admin_db_auth.add_user(
             'ro-admin',
             'pass',
-            roles=["userAdmin", "readAnyDatabase"],
-            **extra)
+            roles=["userAdmin", "readAnyDatabase"])
 
         self.addCleanup(client_context.drop_user, 'admin', 'ro-admin')
         users_db_auth.add_user(
-            'user', 'pass', roles=["userAdmin", "readWrite"], **extra)
+            'user', 'pass', roles=["userAdmin", "readWrite"])
         self.addCleanup(remove_all_users, users_db_auth)
 
         # Regular user should be able to query its own db, but

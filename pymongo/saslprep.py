@@ -19,6 +19,7 @@ from bson.py3compat import text_type as _text_type
 try:
     import stringprep
 except ImportError:
+    HAVE_STRINGPREP = False
     def saslprep(data):
         """SASLprep dummy"""
         if isinstance(data, _text_type):
@@ -27,6 +28,7 @@ except ImportError:
                 "passwords must be ASCII strings.")
         return data
 else:
+    HAVE_STRINGPREP = True
     import unicodedata
     # RFC4013 section 2.3 prohibited output.
     _PROHIBITED = (

@@ -939,14 +939,12 @@ class Database(common.BaseObject):
                           ">= 2.6, use 'roles' instead", DeprecationWarning)
 
         if password is not None:
-            # We always salt and hash client side.
             if "digestPassword" in kwargs:
                 raise ConfigurationError("The digestPassword option is not "
                                          "supported via add_user. Please use "
                                          "db.command('createUser', ...) "
                                          "instead for this option.")
-            opts["pwd"] = auth._password_digest(name, password)
-            opts["digestPassword"] = False
+            opts["pwd"] = password
 
         # Don't send {} as writeConcern.
         if self.write_concern.acknowledged and self.write_concern.document:
@@ -994,6 +992,9 @@ class Database(common.BaseObject):
         .. _updateUser: https://docs.mongodb.com/manual/reference/command/updateUser/
         .. _dropUser: https://docs.mongodb.com/manual/reference/command/createUser/
 
+        .. warning:: Never create or modify users over an insecure network without
+          the use of TLS. See :doc:`/examples/tls` for more information.
+
         :Parameters:
           - `name`: the name of the user to create
           - `password` (optional): the password of the user to create. Can not
@@ -1005,6 +1006,9 @@ class Database(common.BaseObject):
             for more information.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+
+        .. versionchanged:: 3.7
+           Added support for SCRAM-SHA-256 users with MongoDB 4.0 and later.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter. Deprecated add_user.
@@ -1121,6 +1125,9 @@ class Database(common.BaseObject):
             authentication mechanism specific options. To specify the service
             name for GSSAPI authentication pass
             authMechanismProperties='SERVICE_NAME:<service name>'
+
+        .. versionchanged:: 3.7
+           Added support for SCRAM-SHA-256 with MongoDB 4.0 and later.
 
         .. versionchanged:: 3.5
            Deprecated. Authenticating multiple users conflicts with support for

@@ -273,15 +273,11 @@ class TestSession(IntegrationTest):
         client = self.client
         db = client.pymongo_test
 
-        extra = {'roles': ['read']}
-        if client_context.version.at_least(3, 7, 2):
-            extra['mechanisms'] = ['SCRAM-SHA-1']
-
         self._test_ops(
             client,
-            (db.add_user, ['session-test', 'pass'], extra),
+            (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
             # Do it again to test updateUser command.
-            (db.add_user, ['session-test', 'pass'], extra),
+            (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
             (db.remove_user, ['session-test'], {}))
 
     def test_collection(self):

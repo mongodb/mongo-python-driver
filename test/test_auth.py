@@ -26,15 +26,17 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from pymongo import MongoClient
+from pymongo import MongoClient, monitoring
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
+from pymongo.saslprep import saslprep, HAVE_STRINGPREP
 from test import client_context, SkipTest, unittest, Version
 from test.utils import (delay,
                         ignore_deprecations,
                         rs_or_single_client_noauth,
-                        single_client_noauth)
+                        single_client_noauth,
+                        WhiteListEventListener)
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -363,6 +365,152 @@ class TestSCRAMSHA1(unittest.TestCase):
             client.pymongo_test.command('dbstats')
             db = client.get_database(
                 'pymongo_test', read_preference=ReadPreference.SECONDARY)
+            db.command('dbstats')
+
+
+class TestSCRAM(unittest.TestCase):
+
+    @client_context.require_auth
+    @client_context.require_version_min(3, 7, 2)
+    def setUp(self):
+        self._SENSITIVE_COMMANDS = monitoring._SENSITIVE_COMMANDS
+        monitoring._SENSITIVE_COMMANDS = set([])
+        self.listener = WhiteListEventListener("saslStart")
+
+    def tearDown(self):
+        monitoring._SENSITIVE_COMMANDS = self._SENSITIVE_COMMANDS
+        client_context.client.testscram.command("dropAllUsersFromDatabase")
+        client_context.client.drop_database("testscram")
+
+    def test_scram(self):
+        host, port = client_context.host, client_context.port
+
+        client_context.create_user(
+            'testscram',
+            'sha1',
+            'pwd',
+            roles=['dbOwner'],
+            mechanisms=['SCRAM-SHA-1'])
+
+        client_context.create_user(
+            'testscram',
+            'sha256',
+            'pwd',
+            roles=['dbOwner'],
+            mechanisms=['SCRAM-SHA-256'])
+
+        client_context.create_user(
+            'testscram',
+            'both',
+            'pwd',
+            roles=['dbOwner'],
+            mechanisms=['SCRAM-SHA-1', 'SCRAM-SHA-256'])
+
+        client = rs_or_single_client_noauth(
+            event_listeners=[self.listener])
+        self.assertTrue(
+            client.testscram.authenticate('sha1', 'pwd'))
+        client.testscram.command('dbstats')
+        client.testscram.logout()
+        self.assertTrue(
+            client.testscram.authenticate(
+                'sha1', 'pwd', mechanism='SCRAM-SHA-1'))
+        client.testscram.command('dbstats')
+        client.testscram.logout()
+        self.assertRaises(
+            OperationFailure,
+            client.testscram.authenticate,
+            'sha1', 'pwd', mechanism='SCRAM-SHA-256')
+
+        self.assertTrue(
+            client.testscram.authenticate('sha256', 'pwd'))
+        client.testscram.command('dbstats')
+        client.testscram.logout()
+        self.assertTrue(
+            client.testscram.authenticate(
+                'sha256', 'pwd', mechanism='SCRAM-SHA-256'))
+        client.testscram.command('dbstats')
+        client.testscram.logout()
+        self.assertRaises(
+            OperationFailure,
+            client.testscram.authenticate,
+            'sha256', 'pwd', mechanism='SCRAM-SHA-1')
+
+        self.listener.results.clear()
+        self.assertTrue(
+            client.testscram.authenticate('both', 'pwd'))
+        started = self.listener.results['started'][0]
+        self.assertEqual(started.command.get('mechanism'), 'SCRAM-SHA-256')
+        client.testscram.command('dbstats')
+        client.testscram.logout()
+        self.assertTrue(
+            client.testscram.authenticate(
+                'both', 'pwd', mechanism='SCRAM-SHA-256'))
+        client.testscram.command('dbstats')
+        client.testscram.logout()
+        self.assertTrue(
+            client.testscram.authenticate(
+                'both', 'pwd', mechanism='SCRAM-SHA-1'))
+        client.testscram.command('dbstats')
+        client.testscram.logout()
+
+        self.assertRaises(
+            OperationFailure,
+            client.testscram.authenticate,
+            'not-a-user', 'pwd')
+
+        if HAVE_STRINGPREP:
+            client_context.create_user(
+                'testscram',
+                saslprep(u'\u2168'),
+                u'\u2168',
+                roles=['dbOwner'],
+                mechanisms=['SCRAM-SHA-256'])
+
+            self.assertTrue(
+                client.testscram.authenticate(u'\u2168', u'\u2168'))
+            client.testscram.command('dbstats')
+            client.testscram.logout()
+            self.assertTrue(
+                client.testscram.authenticate(
+                    u'\u2168', u'\u2168', mechanism='SCRAM-SHA-256'))
+            client.testscram.command('dbstats')
+            client.testscram.logout()
+            self.assertRaises(
+                OperationFailure,
+                client.testscram.authenticate,
+                u'\u2168', u'\u2168', mechanism='SCRAM-SHA-1')
+
+            client = rs_or_single_client_noauth(
+                u'mongodb://\u2168:\u2168@%s:%d/testscram' % (host, port))
+            client.testscram.command('dbstats')
+
+        self.listener.results.clear()
+        client = rs_or_single_client_noauth(
+            'mongodb://both:pwd@%s:%d/testscram' % (host, port),
+            event_listeners=[self.listener])
+        client.testscram.command('dbstats')
+        started = self.listener.results['started'][0]
+        self.assertEqual(started.command.get('mechanism'), 'SCRAM-SHA-256')
+
+        client = rs_or_single_client_noauth(
+            'mongodb://both:pwd@%s:%d/testscram?authMechanism=SCRAM-SHA-1'
+            % (host, port))
+        client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            'mongodb://both:pwd@%s:%d/testscram?authMechanism=SCRAM-SHA-256'
+            % (host, port))
+        client.testscram.command('dbstats')
+
+        if client_context.is_rs:
+            uri = ('mongodb://both:pwd@%s:%d/testscram'
+                   '?replicaSet=%s' % (host, port,
+                                       client_context.replica_set_name))
+            client = single_client_noauth(uri)
+            client.testscram.command('dbstats')
+            db = client.get_database(
+                'testscram', read_preference=ReadPreference.SECONDARY)
             db.command('dbstats')
 
 

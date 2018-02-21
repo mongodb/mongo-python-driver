@@ -111,9 +111,9 @@ def _connection_string(h, p, authenticate):
     if h.startswith("mongodb://"):
         return h
     elif client_context.auth_enabled and authenticate:
-        return "mongodb://%s:%s@%s:%d" % (db_user, db_pwd, h, p)
+        return "mongodb://%s:%s@%s:%d" % (db_user, db_pwd, str(h), p)
     else:
-        return "mongodb://%s:%d" % (h, p)
+        return "mongodb://%s:%d" % (str(h), p)
 
 
 def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):

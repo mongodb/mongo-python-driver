@@ -50,14 +50,12 @@ if HAVE_SSL:
     import ssl
 
 # The host and port of a single mongod or mongos, or the seed host
-# for a replica set. Hostnames retrieved from isMaster will be of
-# unicode type in Python 2, so ensure these hostnames are unicodes,
-# too. It makes tests like `test_repr` predictable.
-host = _unicode(os.environ.get("DB_IP", 'localhost'))
+# for a replica set.
+host = os.environ.get("DB_IP", 'localhost')
 port = int(os.environ.get("DB_PORT", 27017))
 
-db_user = _unicode(os.environ.get("DB_USER", "user"))
-db_pwd = _unicode(os.environ.get("DB_PASSWORD", "password"))
+db_user = os.environ.get("DB_USER", "user")
+db_pwd = os.environ.get("DB_PASSWORD", "password")
 
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                          'certificates')
@@ -234,7 +232,7 @@ class ClientContext(object):
             self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
 
             if 'setName' in ismaster:
-                self.replica_set_name = ismaster['setName']
+                self.replica_set_name = str(ismaster['setName'])
                 self.is_rs = True
                 if self.auth_enabled:
                     # It doesn't matter which member we use as the seed here.
@@ -314,7 +312,7 @@ class ClientContext(object):
     def host(self):
         if self.is_rs:
             primary = self.client.primary
-            return primary[0] if primary is not None else host
+            return str(primary[0]) if primary is not None else host
         return host
 
     @property
