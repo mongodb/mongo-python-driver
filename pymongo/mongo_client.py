@@ -781,7 +781,10 @@ class MongoClient(common.BaseObject):
         idle in the pool before being removed and replaced. Defaults to
         `None` (no limit).
         """
-        return self.__options.pool_options.max_idle_time_ms
+        seconds = self.__options.pool_options.max_idle_time_seconds
+        if seconds is None:
+            return None
+        return 1000 * seconds
 
     @property
     def nodes(self):

@@ -319,8 +319,13 @@ class TestClient(IntegrationTest):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(any_server_selector)
-            with server._pool.get_socket({}):
+            with server._pool.get_socket({}) as sock_info_one:
                 pass
+            # Assert that the pool does not close sockets prematurely.
+            time.sleep(.300)
+            with server._pool.get_socket({}) as sock_info_two:
+                pass
+            self.assertIs(sock_info_one, sock_info_two)
             wait_until(
                 lambda: 0 == len(server._pool.sockets),
                 "stale socket reaped and new one NOT added to the pool")
@@ -760,10 +765,16 @@ class TestClient(IntegrationTest):
         self.assertTrue(isinstance(db.test.find_one(), SON))
 
     def test_timeouts(self):
-        client = rs_or_single_client(connectTimeoutMS=10500)
+        client = rs_or_single_client(
+            connectTimeoutMS=10500,
+            socketTimeoutMS=10500,
+            maxIdleTimeMS=10500,
+            serverSelectionTimeoutMS=10500)
         self.assertEqual(10.5, get_pool(client).opts.connect_timeout)
-        client = rs_or_single_client(socketTimeoutMS=10500)
         self.assertEqual(10.5, get_pool(client).opts.socket_timeout)
+        self.assertEqual(10.5, get_pool(client).opts.max_idle_time_seconds)
+        self.assertEqual(10500, client.max_idle_time_ms)
+        self.assertEqual(10.5, client.server_selection_timeout)
 
     def test_socket_timeout_ms_validation(self):
         c = rs_or_single_client(socketTimeoutMS=10 * 1000)

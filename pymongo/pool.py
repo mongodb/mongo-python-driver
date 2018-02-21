@@ -271,14 +271,15 @@ def _raise_connection_failure(address, error):
 
 class PoolOptions(object):
 
-    __slots__ = ('__max_pool_size', '__min_pool_size', '__max_idle_time_ms',
+    __slots__ = ('__max_pool_size', '__min_pool_size',
+                 '__max_idle_time_seconds',
                  '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
                  '__event_listeners', '__appname', '__metadata')
 
     def __init__(self, max_pool_size=100, min_pool_size=0,
-                 max_idle_time_ms=None, connect_timeout=None,
+                 max_idle_time_seconds=None, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=True,
@@ -286,7 +287,7 @@ class PoolOptions(object):
 
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
-        self.__max_idle_time_ms = max_idle_time_ms
+        self.__max_idle_time_seconds = max_idle_time_seconds
         self.__connect_timeout = connect_timeout
         self.__socket_timeout = socket_timeout
         self.__wait_queue_timeout = wait_queue_timeout
@@ -323,12 +324,12 @@ class PoolOptions(object):
         return self.__min_pool_size
 
     @property
-    def max_idle_time_ms(self):
-        """The maximum number of milliseconds that a connection can remain
+    def max_idle_time_seconds(self):
+        """The maximum number of seconds that a connection can remain
         idle in the pool before being removed and replaced. Defaults to
         `None` (no limit).
         """
-        return self.__max_idle_time_ms
+        return self.__max_idle_time_seconds
 
     @property
     def connect_timeout(self):
@@ -408,7 +409,7 @@ class SocketInfo(object):
         self.address = address
         self.authset = set()
         self.closed = False
-        self.last_checkin = _time()
+        self.last_checkin_time = _time()
         self.is_writable = ismaster.is_writable if ismaster else None
         self.max_wire_version = ismaster.max_wire_version if ismaster else None
         self.max_bson_size = ismaster.max_bson_size if ismaster else None
@@ -628,6 +629,13 @@ class SocketInfo(object):
         if self.max_wire_version >= 6 and client:
             client._send_cluster_time(command, session)
 
+    def update_last_checkin_time(self):
+        self.last_checkin_time = _time()
+
+    def idle_time_seconds(self):
+        """Seconds since this socket was last checked into its pool."""
+        return _time() - self.last_checkin_time
+
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In
         # regular Python, socket operations only raise socket.error, even if
@@ -816,11 +824,11 @@ class Pool:
 
     def remove_stale_sockets(self):
         """Removes stale sockets then adds new ones if pool is too small."""
-        if self.opts.max_idle_time_ms is not None:
+        if self.opts.max_idle_time_seconds is not None:
             with self.lock:
                 for sock_info in self.sockets.copy():
-                    idle_time_ms = 1000 * _time() - sock_info.last_checkin
-                    if idle_time_ms > self.opts.max_idle_time_ms:
+                    if (sock_info.idle_time_seconds() >
+                            self.opts.max_idle_time_seconds):
                         self.sockets.remove(sock_info)
                         sock_info.close()
 
@@ -957,7 +965,7 @@ class Pool:
             if sock_info.pool_id != self.pool_id:
                 sock_info.close()
             elif not sock_info.closed:
-                sock_info.last_checkin = _time()
+                sock_info.update_last_checkin_time()
                 with self.lock:
                     self.sockets.add(sock_info)
 
@@ -979,11 +987,10 @@ class Pool:
         pool, to keep performance reasonable - we can't avoid AutoReconnects
         completely anyway.
         """
-        # How long since socket was last checked in.
-        idle_time_seconds = _time() - sock_info.last_checkin
+        idle_time_seconds = sock_info.idle_time_seconds()
         # If socket is idle, open a new one.
-        if (self.opts.max_idle_time_ms is not None and
-                idle_time_seconds * 1000 > self.opts.max_idle_time_ms):
+        if (self.opts.max_idle_time_seconds is not None and
+                idle_time_seconds > self.opts.max_idle_time_seconds):
             sock_info.close()
             return self.connect()
 

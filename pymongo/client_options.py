@@ -102,7 +102,9 @@ def _parse_pool_options(options):
     """Parse connection pool options."""
     max_pool_size = options.get('maxpoolsize', common.MAX_POOL_SIZE)
     min_pool_size = options.get('minpoolsize', common.MIN_POOL_SIZE)
-    max_idle_time_ms = options.get('maxidletimems', common.MAX_IDLE_TIME_MS)
+    default_idle_seconds = common.validate_timeout_or_none(
+        'maxidletimems', common.MAX_IDLE_TIME_MS)
+    max_idle_time_seconds = options.get('maxidletimems', default_idle_seconds)
     if max_pool_size is not None and min_pool_size > max_pool_size:
         raise ValueError("minPoolSize must be smaller or equal to maxPoolSize")
     connect_timeout = options.get('connecttimeoutms', common.CONNECT_TIMEOUT)
@@ -115,7 +117,7 @@ def _parse_pool_options(options):
     ssl_context, ssl_match_hostname = _parse_ssl_options(options)
     return PoolOptions(max_pool_size,
                        min_pool_size,
-                       max_idle_time_ms,
+                       max_idle_time_seconds,
                        connect_timeout, socket_timeout,
                        wait_queue_timeout, wait_queue_multiple,
                        ssl_context, ssl_match_hostname, socket_keepalive,
