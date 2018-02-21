@@ -1,6 +1,29 @@
 Changelog
 =========
 
+Changes in Version 3.6.1
+------------------------
+
+Version 3.6.1 fixes bugs reported since the release of 3.6.0:
+
+- Fix regression in PyMongo 3.5.0 that causes idle sockets to be closed every
+  second when ``maxIdleTimeMS`` is set. Idle sockets are now closed after
+  ``maxIdleTimeMS`` milliseconds.
+- :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms` returns
+  milliseconds instead of seconds.
+- Properly import and use the
+  `monotonic <https://pypi.python.org/pypi/monotonic>`_
+  library for monotonic time when it is installed.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.6.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.6.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=19438
+
+
 Changes in Version 3.6.0
 ------------------------
 

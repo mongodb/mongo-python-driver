@@ -15,6 +15,8 @@
 """Time. Monotonic if possible.
 """
 
+from __future__ import absolute_import
+
 __all__ = ['time']
 
 try:
@@ -25,11 +27,11 @@ except ImportError:
     pass
 
 try:
-    # From https://pypi.python.org/pypi/monotinic.
+    # From https://pypi.python.org/pypi/monotonic.
     from monotonic import monotonic as time
 except ImportError:
     try:
-        # Monotime or Python 3.3+.
+        # Monotime or Python 3.
         from time import monotonic as time
     except ImportError:
         # Not monotonic.
