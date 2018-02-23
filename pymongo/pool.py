@@ -33,7 +33,11 @@ from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import imap, itervalues, _unicode, integer_types
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
-from pymongo.common import MAX_MESSAGE_SIZE, ORDERED_TYPES
+from pymongo.common import (MAX_BSON_SIZE,
+                            MAX_MESSAGE_SIZE,
+                            MAX_WIRE_VERSION,
+                            MAX_WRITE_BATCH_SIZE,
+                            ORDERED_TYPES)
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             ConfigurationError,
@@ -401,35 +405,48 @@ class SocketInfo(object):
     :Parameters:
       - `sock`: a raw socket object
       - `pool`: a Pool instance
-      - `ismaster`: optional IsMaster instance, response to ismaster on `sock`
       - `address`: the server's (host, port)
     """
-    def __init__(self, sock, pool, ismaster, address):
+    def __init__(self, sock, pool, address):
         self.sock = sock
         self.address = address
         self.authset = set()
         self.closed = False
         self.last_checkin_time = _time()
-        self.is_writable = ismaster.is_writable if ismaster else None
-        self.max_wire_version = ismaster.max_wire_version if ismaster else None
-        self.max_bson_size = ismaster.max_bson_size if ismaster else None
-        self.max_message_size = (
-            ismaster.max_message_size if ismaster else MAX_MESSAGE_SIZE)
-        self.max_write_batch_size = (
-            ismaster.max_write_batch_size if ismaster else None)
-        self.supports_sessions = (
-            ismaster and ismaster.logical_session_timeout_minutes is not None)
+        self.performed_handshake = False
+        self.is_writable = False
+        self.max_wire_version = MAX_WIRE_VERSION
+        self.max_bson_size = MAX_BSON_SIZE
+        self.max_message_size = MAX_MESSAGE_SIZE
+        self.max_write_batch_size = MAX_WRITE_BATCH_SIZE
+        self.supports_sessions = False
+        self.is_mongos = False
 
         self.listeners = pool.opts.event_listeners
-
-        if ismaster:
-            self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
-        else:
-            self.is_mongos = None
 
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
         self.pool_id = pool.pool_id
+
+    def ismaster(self, metadata, cluster_time):
+        cmd = SON([('ismaster', 1)])
+        if not self.performed_handshake:
+            cmd['client'] = metadata
+            self.performed_handshake = True
+
+        if self.max_wire_version >= 6 and cluster_time is not None:
+            cmd['$clusterTime'] = cluster_time
+
+        ismaster = IsMaster(self.command('admin', cmd, publish_events=False))
+        self.is_writable = ismaster.is_writable
+        self.max_wire_version = ismaster.max_wire_version
+        self.max_bson_size = ismaster.max_bson_size
+        self.max_message_size = ismaster.max_message_size
+        self.max_write_batch_size = ismaster.max_write_batch_size
+        self.supports_sessions = (
+            ismaster.logical_session_timeout_minutes is not None)
+        self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
+        return ismaster
 
     def command(self, dbname, spec, slave_ok=False,
                 read_preference=ReadPreference.PRIMARY,
@@ -441,7 +458,8 @@ class SocketInfo(object):
                 collation=None,
                 session=None,
                 client=None,
-                retryable_write=False):
+                retryable_write=False,
+                publish_events=True):
         """Execute a command or raise an error.
 
         :Parameters:
@@ -461,6 +479,7 @@ class SocketInfo(object):
           - `session`: optional ClientSession instance.
           - `client`: optional MongoClient for gossipping $clusterTime.
           - `retryable_write`: True if this command is a retryable write.
+          - `publish_events`: Should we publish events for this command?
         """
         self.validate_session(client, session)
         if (read_concern and self.max_wire_version < 4
@@ -487,11 +506,12 @@ class SocketInfo(object):
             if retryable_write:
                 spec['txnNumber'] = session._transaction_id()
         self.send_cluster_time(spec, session, client)
+        listeners = self.listeners if publish_events else None
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
                            session, client, check, allowable_errors,
-                           self.address, check_keys, self.listeners,
+                           self.address, check_keys, listeners,
                            self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation)
@@ -860,28 +880,15 @@ class Pool:
         sock = None
         try:
             sock = _configured_socket(self.address, self.opts)
-            if self.handshake:
-                cmd = SON([
-                    ('ismaster', 1),
-                    ('client', self.opts.metadata)
-                ])
-                ismaster = IsMaster(
-                    command(sock,
-                            'admin',
-                            cmd,
-                            False,
-                            False,
-                            ReadPreference.PRIMARY,
-                            DEFAULT_CODEC_OPTIONS,
-                            None,
-                            None))
-            else:
-                ismaster = None
-            return SocketInfo(sock, self, ismaster, self.address)
         except socket.error as error:
             if sock is not None:
                 sock.close()
             _raise_connection_failure(self.address, error)
+
+        sock_info = SocketInfo(sock, self, self.address)
+        if self.handshake:
+            sock_info.ismaster(self.opts.metadata, None)
+        return sock_info
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
