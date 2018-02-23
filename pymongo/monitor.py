@@ -173,6 +173,12 @@ class Monitor(object):
         Can raise ConnectionFailure or OperationFailure.
         """
         start = _time()
-        return (sock_info.ismaster(self._pool.opts.metadata,
-                                   self._topology.max_cluster_time()),
-                _time() - start)
+        try:
+            return (sock_info.ismaster(self._pool.opts.metadata,
+                                       self._topology.max_cluster_time()),
+                    _time() - start)
+        except OperationFailure as exc:
+            # Update max cluster time even when isMaster fails.
+            self._topology.receive_cluster_time(
+                exc.details.get('$clusterTime'))
+            raise
