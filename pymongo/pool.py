@@ -762,6 +762,9 @@ def _create_connection(address, options):
         raise socket.error('getaddrinfo failed')
 
 
+_PY37PLUS = sys.version_info[:2] >= (3, 7)
+
+
 def _configured_socket(address, options):
     """Given (host, port) and PoolOptions, return a configured socket.
 
@@ -777,14 +780,21 @@ def _configured_socket(address, options):
         try:
             # According to RFC6066, section 3, IPv4 and IPv6 literals are
             # not permitted for SNI hostname.
-            if _HAVE_SNI and not is_ip_address(host):
+            # Previous to Python 3.7 wrap_socket would blindly pass
+            # IP addresses as SNI hostname.
+            # https://bugs.python.org/issue32185
+            # We have to pass hostname / ip address to wrap_socket
+            # to use SSLContext.check_hostname.
+            if _HAVE_SNI and (not is_ip_address(host) or _PY37PLUS):
                 sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
                 sock = ssl_context.wrap_socket(sock)
         except IOError as exc:
             sock.close()
             raise ConnectionFailure("SSL handshake failed: %s" % (str(exc),))
-        if ssl_context.verify_mode and options.ssl_match_hostname:
+        if (ssl_context.verify_mode and not
+                getattr(ssl_context, "check_hostname", False) and
+                options.ssl_match_hostname):
             try:
                 match_hostname(sock.getpeercert(), hostname=host)
             except CertificateError:

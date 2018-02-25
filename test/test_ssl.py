@@ -53,6 +53,8 @@ CRL_PEM = os.path.join(CERT_PATH, 'crl.pem')
 MONGODB_X509_USERNAME = (
     "C=US,ST=California,L=Palo Alto,O=,OU=Drivers,CN=client")
 
+_PY37PLUS = sys.version_info[:2] >= (3, 7)
+
 # To fully test this start a mongod instance (built with SSL support) like so:
 # mongod --dbpath /path/to/data/directory --sslOnNormalPorts \
 # --sslPEMKeyFile /path/to/pymongo/test/certificates/server.pem \
@@ -315,7 +317,26 @@ class TestSSL(IntegrationTest):
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
-        #
+
+        # Python > 2.7.9. If SSLContext doesn't have load_default_certs
+        # it also doesn't have check_hostname.
+        ctx = get_ssl_context(
+            None, None, None, None, ssl.CERT_NONE, None, False)
+        if hasattr(ctx, 'load_default_certs'):
+            self.assertFalse(ctx.check_hostname)
+            ctx = get_ssl_context(
+                None, None, None, None, ssl.CERT_NONE, None, True)
+            self.assertFalse(ctx.check_hostname)
+            ctx = get_ssl_context(
+                None, None, None, None, ssl.CERT_REQUIRED, None, False)
+            self.assertFalse(ctx.check_hostname)
+            ctx = get_ssl_context(
+                None, None, None, None, ssl.CERT_REQUIRED, None, True)
+            if _PY37PLUS:
+                self.assertTrue(ctx.check_hostname)
+            else:
+                self.assertFalse(ctx.check_hostname)
+
         response = self.client.admin.command('ismaster')
 
         with self.assertRaises(ConnectionFailure):
@@ -441,7 +462,8 @@ class TestSSL(IntegrationTest):
             os.environ.pop('SSL_CERT_FILE')
 
     def test_system_certs_config_error(self):
-        ctx = get_ssl_context(None, None, None, None, ssl.CERT_NONE, None)
+        ctx = get_ssl_context(
+            None, None, None, None, ssl.CERT_NONE, None, False)
         if ((sys.platform != "win32"
              and hasattr(ctx, "set_default_verify_paths"))
                 or hasattr(ctx, "load_default_certs")):
@@ -473,11 +495,12 @@ class TestSSL(IntegrationTest):
         # Force the test on Windows, regardless of environment.
         ssl_support.HAVE_WINCERTSTORE = False
         try:
-            ctx = get_ssl_context(None, None, None, CA_PEM, ssl.CERT_REQUIRED, None)
+            ctx = get_ssl_context(
+                None, None, None, CA_PEM, ssl.CERT_REQUIRED, None, True)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-            ctx = get_ssl_context(None, None, None, None, None, None)
+            ctx = get_ssl_context(None, None, None, None, None, None, True)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, ssl_support.certifi.where())
         finally:
@@ -494,11 +517,12 @@ class TestSSL(IntegrationTest):
         if not ssl_support.HAVE_WINCERTSTORE:
             raise SkipTest("Need wincertstore to test wincertstore.")
 
-        ctx = get_ssl_context(None, None, None, CA_PEM, ssl.CERT_REQUIRED, None)
+        ctx = get_ssl_context(
+            None, None, None, CA_PEM, ssl.CERT_REQUIRED, None, True)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-        ctx = get_ssl_context(None, None, None, None, None, None)
+        ctx = get_ssl_context(None, None, None, None, None, None, True)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 

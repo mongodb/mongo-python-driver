@@ -93,7 +93,13 @@ def _parse_ssl_options(options):
 
     if use_ssl is True:
         ctx = get_ssl_context(
-            certfile, keyfile, passphrase, ca_certs, cert_reqs, crlfile)
+            certfile,
+            keyfile,
+            passphrase,
+            ca_certs,
+            cert_reqs,
+            crlfile,
+            match_hostname)
         return ctx, match_hostname
     return None, match_hostname
 
