@@ -12,7 +12,7 @@ python:
 services:
   - mongodb
 
-script: python setup.py test
+script: PYMONGO_MUST_CONNECT=1 python setup.py test
 
 install:
     # Temporary solution for Travis CI multiprocessing issue #943

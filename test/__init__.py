@@ -171,6 +171,7 @@ class ClientContext(object):
 
     def __init__(self):
         """Create a client and grab essential information from the server."""
+        self.connection_attempts = []
         self.connected = False
         self.ismaster = {}
         self.w = None
@@ -189,11 +190,11 @@ class ClientContext(object):
         self.server_is_resolvable = is_server_resolvable()
         self.ssl_client_options = {}
         self.sessions_enabled = False
-        self.client = _connect(host, port)
+        self.client = self._connect(host, port)
 
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
-            self.client = _connect(host, port, **_SSL_OPTIONS)
+            self.client = self._connect(host, port, **_SSL_OPTIONS)
             if self.client:
                 self.ssl = True
                 self.ssl_client_options = _SSL_OPTIONS
@@ -221,12 +222,10 @@ class ClientContext(object):
                 if not self._check_user_provided():
                     _create_user(self.client.admin, db_user, db_pwd)
 
-                self.client = _connect(host,
-                                       port,
-                                       username=db_user,
-                                       password=db_pwd,
-                                       replicaSet=self.replica_set_name,
-                                       **self.ssl_client_options)
+                self.client = self._connect(
+                    host, port, username=db_user, password=db_pwd,
+                    replicaSet=self.replica_set_name,
+                    **self.ssl_client_options)
 
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
@@ -281,6 +280,35 @@ class ClientContext(object):
 
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
             self.has_ipv6 = self._server_started_with_ipv6()
+
+    def _connect(self, host, port, **kwargs):
+        # Jython takes a long time to connect.
+        if sys.platform.startswith('java'):
+            timeout_ms = 10000
+        else:
+            timeout_ms = 500
+        client = pymongo.MongoClient(
+            host, port, serverSelectionTimeoutMS=timeout_ms, **kwargs)
+        try:
+            try:
+                client.admin.command('isMaster')  # Can we connect?
+            except pymongo.errors.OperationFailure as exc:
+                # SERVER-32063
+                self.connection_attempts.append(
+                    'connected client %r, but isMaster failed: %s' % (
+                        client, exc))
+            else:
+                self.connection_attempts.append(
+                    'successfully connected client %r' % (client,))
+            # If connected, then return client with default timeout
+            return pymongo.MongoClient(host, port, **kwargs)
+        except pymongo.errors.ConnectionFailure as exc:
+            self.connection_attempts.append(
+                'failed to connect client %r: %s' % (client, exc))
+            return None
+
+    def connection_attempt_info(self):
+        return '\n'.join(self.connection_attempts)
 
     @property
     def host(self):

@@ -356,6 +356,11 @@ functions:
     - command: expansions.update
       params:
         file: mo-expansion.yml
+    - command: expansions.update
+      params:
+        updates:
+          - key: MONGODB_STARTED
+            value: "1"
 
   "stop mongo-orchestration":
     - command: shell.exec
@@ -407,6 +412,9 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          if [ -n "${MONGODB_STARTED}" ]; then
+            export PYMONGO_MUST_CONNECT=1
+          fi
           PYTHON_BINARY=${PYTHON_BINARY} GREEN_FRAMEWORK=${GREEN_FRAMEWORK} C_EXTENSIONS=${C_EXTENSIONS} COVERAGE=${COVERAGE} AUTH=${AUTH} SSL=${SSL} sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
