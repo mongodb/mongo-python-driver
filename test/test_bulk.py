@@ -340,7 +340,8 @@ class BulkAuthorizationTestBase(BulkTestBase):
 
     def setUp(self):
         super(BulkAuthorizationTestBase, self).setUp()
-        self.db.add_user('readonly', 'pw', roles=['read'])
+        client_context.create_user(
+            self.db.name, 'readonly', 'pw', ['read'])
         self.db.command(
             'createRole', 'noremove',
             privileges=[{
@@ -349,7 +350,7 @@ class BulkAuthorizationTestBase(BulkTestBase):
             }],
             roles=[])
 
-        self.db.add_user('noremove', 'pw', roles=['noremove'])
+        client_context.create_user(self.db.name, 'noremove', 'pw', ['noremove'])
 
     def tearDown(self):
         self.db.command('dropRole', 'noremove')

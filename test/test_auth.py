@@ -334,11 +334,11 @@ class TestSCRAMSHA1(unittest.TestCase):
                     {}).get('authenticationMechanisms', ''):
                 raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
 
-        client = client_context.client
-        client.pymongo_test.add_user(
-            'user', 'pass',
-            roles=['userAdmin', 'readWrite'],
-            writeConcern={'w': client_context.w})
+        client_context.create_user(
+            'pymongo_test', 'user', 'pass', roles=['userAdmin', 'readWrite'])
+
+    def tearDown(self):
+        client_context.drop_user('pymongo_test', 'user')
 
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
@@ -365,33 +365,20 @@ class TestSCRAMSHA1(unittest.TestCase):
                 'pymongo_test', read_preference=ReadPreference.SECONDARY)
             db.command('dbstats')
 
-    def tearDown(self):
-        client_context.client.pymongo_test.remove_user('user')
-
 
 class TestAuthURIOptions(unittest.TestCase):
 
     @client_context.require_auth
     def setUp(self):
-        client_context.client.admin.add_user('admin', 'pass',
-                                             roles=['userAdminAnyDatabase',
-                                                    'dbAdminAnyDatabase',
-                                                    'readWriteAnyDatabase',
-                                                    'clusterAdmin'])
-        client = rs_or_single_client_noauth(username='admin', password='pass')
-        client.pymongo_test.add_user('user', 'pass',
-                                     roles=['userAdmin', 'readWrite'])
-
-        if client_context.is_rs:
-            # Make sure the admin user is replicated after calling add_user
-            # above. This avoids a race in the replica set tests below.
-            client.admin.command('getLastError', w=client_context.w)
-        self.client = client
+        client_context.create_user('admin', 'admin', 'pass')
+        client_context.create_user(
+            'pymongo_test', 'user', 'pass', ['userAdmin', 'readWrite'])
+        self.client = rs_or_single_client_noauth(
+            username='admin', password='pass')
 
     def tearDown(self):
-        self.client.pymongo_test.remove_user('user')
-        self.client.admin.remove_user('admin')
-        self.client = None
+        client_context.drop_user('pymongo_test', 'user')
+        client_context.drop_user('admin', 'admin')
 
     def test_uri_options(self):
         # Test default to admin

@@ -227,6 +227,7 @@ class TestSession(IntegrationTest):
         self._test_ops(client, *ops)
 
     @client_context.require_auth
+    @ignore_deprecations
     def test_user_admin(self):
         listener = SessionTestListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -234,11 +235,15 @@ class TestSession(IntegrationTest):
         self.addCleanup(client.drop_database, 'pymongo_test')
         db = client.pymongo_test
 
+        extra = {'roles': ['read']}
+        if client_context.version.at_least(3, 7, 2):
+            extra['mechanisms'] = ['SCRAM-SHA-1']
+
         self._test_ops(
             client,
-            (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
+            (db.add_user, ['session-test', 'pass'], extra),
             # Do it again to test updateUser command.
-            (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
+            (db.add_user, ['session-test', 'pass'], extra),
             (db.remove_user, ['session-test'], {}))
 
     def test_collection(self):
@@ -979,10 +984,9 @@ class TestSessionsMultiAuth(IntegrationTest):
     def setUp(self):
         super(TestSessionsMultiAuth, self).setUp()
 
-        client = rs_or_single_client()  # Logged in as root.
-        db = client.pymongo_test
-        db.add_user('second-user', 'pass', roles=['readWrite'])
-        self.addCleanup(db.remove_user, 'second-user')
+        client_context.create_user(
+            'pymongo_test', 'second-user', 'pass', roles=['readWrite'])
+        self.addCleanup(client_context.drop_user, 'pymongo_test','second-user')
 
     @ignore_deprecations
     def test_session_authenticate_multiple(self):

@@ -39,6 +39,7 @@ from functools import wraps
 import pymongo
 import pymongo.errors
 
+from bson.son import SON
 from bson.py3compat import _unicode
 from pymongo import common
 from pymongo.common import partition_node
@@ -102,6 +103,16 @@ def _connect(host, port, **kwargs):
             return None
 
     return client
+
+
+def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
+    cmd = SON([('createUser', user)])
+    # X509 doesn't use a password
+    if pwd:
+        cmd['pwd'] = pwd
+    cmd['roles'] = roles or ['root']
+    cmd.update(**kwargs)
+    return authdb.command(cmd)
 
 
 class client_knobs(object):
@@ -208,7 +219,7 @@ class ClientContext(object):
             if self.auth_enabled:
                 # See if db_user already exists.
                 if not self._check_user_provided():
-                    self.client.admin.add_user(db_user, db_pwd, roles=['root'])
+                    _create_user(self.client.admin, db_user, db_pwd)
 
                 self.client = _connect(host,
                                        port,
@@ -371,6 +382,14 @@ class ClientContext(object):
                 return make_wrapper(f)
             return decorate
         return make_wrapper(func)
+
+    def create_user(self, dbname, user, pwd=None, roles=None, **kwargs):
+        kwargs['writeConcern'] = {'w': self.w}
+        return _create_user(self.client[dbname], user, pwd, roles, **kwargs)
+
+    def drop_user(self, dbname, user):
+        self.client[dbname].command(
+            'dropUser', user, writeConcern={'w': self.w})
 
     def require_connection(self, func):
         """Run a test only if we can connect to MongoDB."""

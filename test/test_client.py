@@ -625,12 +625,12 @@ class TestClient(IntegrationTest):
     @client_context.require_auth
     def test_auth_from_uri(self):
         host, port = client_context.host, client_context.port
-        self.client.admin.add_user("admin", "pass", roles=["root"])
-        self.addCleanup(self.client.admin.remove_user, 'admin')
+        client_context.create_user("admin", "admin", "pass")
+        self.addCleanup(client_context.drop_user, "admin", "admin")
         self.addCleanup(remove_all_users, self.client.pymongo_test)
 
-        self.client.pymongo_test.add_user(
-            "user", "pass", roles=['userAdmin', 'readWrite'])
+        client_context.create_user(
+            "pymongo_test", "user", "pass", roles=['userAdmin', 'readWrite'])
 
         with self.assertRaises(OperationFailure):
             connected(rs_or_single_client(
@@ -664,8 +664,8 @@ class TestClient(IntegrationTest):
 
     @client_context.require_auth
     def test_username_and_password(self):
-        self.client.admin.add_user("ad min", "pa/ss", roles=["root"])
-        self.addCleanup(self.client.admin.remove_user, "ad min")
+        client_context.create_user("admin", "ad min", "pa/ss")
+        self.addCleanup(client_context.drop_user, "admin", "ad min")
 
         c = rs_or_single_client(username="ad min", password="pa/ss")
 
@@ -684,8 +684,10 @@ class TestClient(IntegrationTest):
     @client_context.require_auth
     @ignore_deprecations
     def test_multiple_logins(self):
-        self.client.pymongo_test.add_user('user1', 'pass', roles=['readWrite'])
-        self.client.pymongo_test.add_user('user2', 'pass', roles=['readWrite'])
+        client_context.create_user(
+            'pymongo_test', 'user1', 'pass', roles=['readWrite'])
+        client_context.create_user(
+            'pymongo_test', 'user2', 'pass', roles=['readWrite'])
         self.addCleanup(remove_all_users, self.client.pymongo_test)
 
         client = rs_or_single_client_noauth(

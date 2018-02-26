@@ -516,7 +516,7 @@ class TestSSL(IntegrationTest):
         ssl_client.admin.authenticate(db_user, db_pwd)
 
         # Give x509 user all necessary privileges.
-        ssl_client['$external'].add_user(MONGODB_X509_USERNAME, roles=[
+        client_context.create_user('$external', MONGODB_X509_USERNAME, roles=[
             {'role': 'readWriteAnyDatabase', 'db': 'admin'},
             {'role': 'userAdminAnyDatabase', 'db': 'admin'}])
 
