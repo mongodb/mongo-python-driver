@@ -111,13 +111,18 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         c.admin.command('ping')
 
         wait_until(lambda: c.primary == self.primary, "discover primary")
-        wait_until(lambda: c.arbiters == self.arbiters, "discover arbiters")
         wait_until(lambda: c.secondaries == self.secondaries,
                    "discover secondaries")
 
+        # SERVER-32845
+        if not (client_context.version >= (3, 7, 2)
+                and client_context.auth_enabled and client_context.is_rs):
+            wait_until(lambda: c.arbiters == self.arbiters,
+                       "discover arbiters")
+            self.assertEqual(c.arbiters, self.arbiters)
+
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.secondaries, self.secondaries)
-        self.assertEqual(c.arbiters, self.arbiters)
         self.assertEqual(c.max_pool_size, 100)
 
         # Make sure MongoClient's properties are copied to Database and

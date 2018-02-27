@@ -501,6 +501,9 @@ class TestClient(IntegrationTest):
         self.assertEqual(eval(the_repr), client)
 
     def test_getters(self):
+        if (client_context.version >= (3, 7, 2)
+                and client_context.auth_enabled and client_context.is_rs):
+            raise SkipTest("Disabled due to SERVER-32845")
         wait_until(lambda: client_context.nodes == self.client.nodes,
                    "find all nodes")
 
