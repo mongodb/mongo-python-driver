@@ -938,6 +938,7 @@ class Cursor(object):
                 # assertion on some server releases if we get here
                 # due to a socket timeout.
                 self.__killed = True
+                self.__die()
                 raise
         else:
             # Exhaust cursor - no getMore message.
@@ -1043,15 +1044,12 @@ class Cursor(object):
 
         if self.__id == 0:
             self.__killed = True
-
+            # Don't wait for garbage collection to call __del__, return the
+            # socket and the session to the pool now.
+            self.__die()
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()
-
-        # Don't wait for garbage collection to call __del__, return the
-        # socket to the pool now.
-        if self.__exhaust and self.__id == 0:
-            self.__exhaust_mgr.close()
 
     def _unpack_response(self, response, cursor_id, codec_options):
         return response.unpack_response(cursor_id, codec_options)
@@ -1085,8 +1083,6 @@ class Cursor(object):
                                   self.__session,
                                   self.__collection.database.client)
             self.__send_message(q)
-            if not self.__id:
-                self.__killed = True
         elif self.__id:  # Get More
             if self.__limit:
                 limit = self.__limit - self.__retrieved
@@ -1108,9 +1104,6 @@ class Cursor(object):
                                         self.__collection.database.client,
                                         self.__max_await_time_ms)
                 self.__send_message(g)
-
-        else:  # Cursor id is zero nothing else to return
-            self.__killed = True
 
         return len(self.__data)
 

@@ -76,6 +76,25 @@ class TestSession(IntegrationTest):
         monitoring._SENSITIVE_COMMANDS.update(cls.sensitive_commands)
         super(TestSession, cls).tearDownClass()
 
+    def setUp(self):
+        self.listener = SessionTestListener()
+        self.session_checker_listener = SessionTestListener()
+        self.client = rs_or_single_client(
+            event_listeners=[self.listener, self.session_checker_listener])
+        self.db = self.client.pymongo_test
+        self.initial_lsids = set(s['id'] for s in session_ids(self.client))
+
+    def tearDown(self):
+        """All sessions used in the test must be returned to the pool."""
+        self.client.drop_database('pymongo_test')
+        used_lsids = self.initial_lsids.copy()
+        for event in self.session_checker_listener.results['started']:
+            if 'lsid' in event.command:
+                used_lsids.add(event.command['lsid']['id'])
+
+        current_lsids = set(s['id'] for s in session_ids(self.client))
+        self.assertLessEqual(used_lsids, current_lsids)
+
     def _test_ops(self, client, *ops):
         listener = client.event_listeners()[0][0]
 
@@ -158,9 +177,12 @@ class TestSession(IntegrationTest):
         self.assertEqual(b_id, s.session_id)
         self.assertNotEqual(a_id, s.session_id)
 
-        s = self.client.start_session()
-        self.assertEqual(a_id, s.session_id)
-        self.assertNotEqual(b_id, s.session_id)
+        s2 = self.client.start_session()
+        self.assertEqual(a_id, s2.session_id)
+        self.assertNotEqual(b_id, s2.session_id)
+
+        s.end_session()
+        s2.end_session()
 
     def test_end_session(self):
         # We test elsewhere that using an ended session throws InvalidOperation.
@@ -176,6 +198,7 @@ class TestSession(IntegrationTest):
             s.session_id
 
     def test_end_sessions(self):
+        # Use a new client so that the tearDown hook does not error.
         listener = SessionTestListener()
         client = rs_or_single_client(event_listeners=[listener])
         # Start many sessions.
@@ -199,8 +222,7 @@ class TestSession(IntegrationTest):
         self.assertEqual(len(listener.results['started']), 0)
 
     def test_client(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.client
 
         # Make sure if the test fails we unlock the server.
         def unlock():
@@ -226,11 +248,7 @@ class TestSession(IntegrationTest):
         self._test_ops(client, *ops)
 
     def test_database(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        client.drop_database('pymongo_test')
-        self.addCleanup(client.drop_database, 'pymongo_test')
-
+        client = self.client
         db = client.pymongo_test
         ops = [
             (db.command, ['ping'], {}),
@@ -252,10 +270,7 @@ class TestSession(IntegrationTest):
     @client_context.require_auth
     @ignore_deprecations
     def test_user_admin(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        client.drop_database('pymongo_test')
-        self.addCleanup(client.drop_database, 'pymongo_test')
+        client = self.client
         db = client.pymongo_test
 
         extra = {'roles': ['read']}
@@ -270,13 +285,8 @@ class TestSession(IntegrationTest):
             (db.remove_user, ['session-test'], {}))
 
     def test_collection(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        client.drop_database('pymongo_test')
-        self.addCleanup(client.drop_database, 'pymongo_test')
-
+        client = self.client
         coll = client.pymongo_test.collection
-        self.addCleanup(self.client.pymongo_test.collection.drop)
 
         # Test some collection methods - the rest are in test_cursor.
         self._test_ops(
@@ -313,11 +323,10 @@ class TestSession(IntegrationTest):
 
     @client_context.require_no_mongos
     def test_parallel_collection_scan(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        listener = self.listener
+        client = self.client
         coll = client.pymongo_test.collection
         coll.insert_many([{'_id': i} for i in range(1000)])
-        self.addCleanup(self.client.pymongo_test.collection.drop)
 
         listener.results.clear()
 
@@ -370,16 +379,14 @@ class TestSession(IntegrationTest):
         self.assertIsNone(clone.session)
         self.assertIsNotNone(clone._Cursor__session)
         self.assertFalse(cursor._Cursor__session is clone._Cursor__session)
+        cursor.close()
+        clone.close()
 
     def test_cursor(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        client.drop_database('pymongo_test')
-        self.addCleanup(client.drop_database, 'pymongo_test')
-
+        listener = self.listener
+        client = self.client
         coll = client.pymongo_test.collection
         coll.insert_many([{} for _ in range(1000)])
-        self.addCleanup(self.client.pymongo_test.collection.drop)
 
         # Test all cursor methods.
         ops = [
@@ -436,11 +443,7 @@ class TestSession(IntegrationTest):
                         name, event.command_name))
 
     def test_gridfs(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        client.drop_database('pymongo_test')
-        self.addCleanup(client.drop_database, 'pymongo_test')
-
+        client = self.client
         fs = GridFS(client.pymongo_test)
 
         def new_file(session=None):
@@ -471,11 +474,7 @@ class TestSession(IntegrationTest):
             (fs.delete, [1], {}))
 
     def test_gridfs_bucket(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        client.drop_database('pymongo_test')
-        self.addCleanup(client.drop_database, 'pymongo_test')
-
+        client = self.client
         bucket = GridFSBucket(client.pymongo_test)
 
         def upload(session=None):
@@ -521,10 +520,8 @@ class TestSession(IntegrationTest):
 
     def test_gridfsbucket_cursor(self):
         client = self.client
-        client.drop_database('pymongo_test')
-        self.addCleanup(client.drop_database, 'pymongo_test')
-
         bucket = GridFSBucket(client.pymongo_test)
+
         for file_id in 1, 2:
             stream = bucket.open_upload_stream_with_id(file_id, str(file_id))
             stream.write(b'a' * 1048576)
@@ -540,13 +537,15 @@ class TestSession(IntegrationTest):
         self.assertTrue(s.has_ended)
 
         # No explicit session.
-        cursor = bucket.find()
-        files = list(cursor)
+        cursor = bucket.find(batch_size=1)
+        files = [cursor.next()]
 
         s = cursor._Cursor__session
         self.assertFalse(s.has_ended)
         cursor.__del__()
+
         self.assertTrue(s.has_ended)
+        self.assertIsNone(cursor._Cursor__session)
 
         # Files are still valid, they use their own sessions.
         for f in files:
@@ -567,10 +566,8 @@ class TestSession(IntegrationTest):
             files[0].read()
 
     def test_aggregate(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.client
         coll = client.pymongo_test.collection
-        coll.drop()
 
         def agg(session=None):
             list(coll.aggregate(
@@ -587,11 +584,9 @@ class TestSession(IntegrationTest):
         self._test_ops(client, (agg, [], {}))
 
     def test_killcursors(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        client = self.client
         coll = client.pymongo_test.collection
         coll.insert_many([{} for _ in range(10)])
-        self.addCleanup(self.client.pymongo_test.collection.drop)
 
         def explicit_close(session=None):
             cursor = coll.find(batch_size=2, session=session)
@@ -601,9 +596,14 @@ class TestSession(IntegrationTest):
         self._test_ops(client, (explicit_close, [], {}))
 
     def test_aggregate_error(self):
-        listener = SessionTestListener()
-        client = rs_or_single_client(event_listeners=[listener])
+        listener = self.listener
+        client = self.client
         coll = client.pymongo_test.collection
+        # 3.6.0 mongos only validates the aggregate pipeline when the
+        # database exists.
+        coll.insert_one({})
+        listener.results.clear()
+
         with self.assertRaises(OperationFailure):
             coll.aggregate([{'$badOperation': {'bar': 1}}])
 
@@ -616,7 +616,6 @@ class TestSession(IntegrationTest):
     def _test_cursor_helper(self, create_cursor, close_cursor):
         coll = self.client.pymongo_test.collection
         coll.insert_many([{} for _ in range(1000)])
-        self.addCleanup(coll.drop)
 
         cursor = create_cursor(coll, None)
         next(cursor)
@@ -661,6 +660,28 @@ class TestSession(IntegrationTest):
         self._test_cursor_helper(
             lambda coll, session: coll.aggregate([], session=session),
             lambda cursor: cursor.__del__())
+
+    def test_cursor_exhaust(self):
+        self._test_cursor_helper(
+            lambda coll, session: coll.find(session=session),
+            lambda cursor: list(cursor))
+
+    def test_command_cursor_exhaust(self):
+        self._test_cursor_helper(
+            lambda coll, session: coll.aggregate([], session=session),
+            lambda cursor: list(cursor))
+
+    def test_cursor_limit_reached(self):
+        self._test_cursor_helper(
+            lambda coll, session: coll.find(limit=4, batch_size=2,
+                                            session=session),
+            lambda cursor: list(cursor))
+
+    def test_command_cursor_limit_reached(self):
+        self._test_cursor_helper(
+            lambda coll, session: coll.aggregate([], batchSize=900,
+                                                 session=session),
+            lambda cursor: list(cursor))
 
 
 class TestCausalConsistency(unittest.TestCase):
