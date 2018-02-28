@@ -6,14 +6,17 @@ Changes in Version 3.6.1
 
 Version 3.6.1 fixes bugs reported since the release of 3.6.0:
 
-- Fix regression in PyMongo 3.5.0 that causes idle sockets to be closed every
-  second when ``maxIdleTimeMS`` is set. Idle sockets are now closed after
+- Fix regression in PyMongo 3.5.0 that causes idle sockets to be closed almost
+  instantly when ``maxIdleTimeMS`` is set. Idle sockets are now closed after
   ``maxIdleTimeMS`` milliseconds.
-- :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms` returns
+- :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms` now returns
   milliseconds instead of seconds.
 - Properly import and use the
   `monotonic <https://pypi.python.org/pypi/monotonic>`_
   library for monotonic time when it is installed.
+- :meth:`~pymongo.collection.Collection.aggregate` now ignores the
+  ``batchSize`` argument when running a pipeline with a ``$out`` stage.
+- Always send handshake metadata for new connections.
 
 Issues Resolved
 ...............
