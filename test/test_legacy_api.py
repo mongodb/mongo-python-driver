@@ -1371,6 +1371,10 @@ class TestLegacy(IntegrationTest):
         wait_until(raises_cursor_not_found, 'close cursor')
 
     def test_kill_cursors_with_tuple(self):
+        if (client_context.version[:2] == (3, 6)
+                and client_context.auth_enabled):
+            raise SkipTest("SERVER-33553")
+
         coll = self.client.pymongo_test.test
         coll.drop()
 
