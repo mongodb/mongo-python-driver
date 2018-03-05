@@ -995,6 +995,13 @@ axes:
         batchtime: 10080  # 7 days
         variables:
            PYTHON_BINARY: "/opt/python/jython2.7/bin/jython"
+  - id: python-version-requires-openssl-102-plus
+    display_name: "Python"
+    values:
+      - id: "3.7"
+        display_name: "Python 3.7"
+        variables:
+           PYTHON_BINARY: "/opt/python/3.7/bin/python3"
   - id: mod-wsgi-version
     display_name: "mod_wsgi version"
     values:
@@ -1209,6 +1216,23 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
+
+- matrix_name: "tests-python-version-requires-openssl-102-plus-test-ssl"
+  matrix_spec: {"python-version-requires-openssl-102-plus": "*", auth-ssl: "*"}
+  display_name: "${python-version-requires-openssl-102-plus} OpenSSL 1.0.2 Ubuntu 16.04 (x86_64) ${auth-ssl}"
+  run_on: ubuntu1604-test
+  tasks:
+     - ".latest"
+     - ".3.6"
+     - ".3.4"
+     - ".3.2"
+
+- matrix_name: "tests-python-version-supports-openssl-110-test-ssl"
+  matrix_spec: {"python-version-requires-openssl-102-plus": "*", auth-ssl: "*"}
+  display_name: "${python-version-requires-openssl-102-plus} OpenSSL 1.1.0 Debian 9.2 (x86_64) ${auth-ssl}"
+  run_on: debian92-test
+  tasks:
+     - ".latest"
 
 # Test CPython 2.6, 2.7, 3.5 and 3.6 against all versions on MongoDB >= 2.6
 # on Windows with the Microsoft Visual C++ Compiler for Python 2.7 or Visual Studio 2015.
