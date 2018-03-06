@@ -990,6 +990,10 @@ axes:
         display_name: "PyPy 3"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3/bin/pypy3"
+      - id: "pypy3.5"
+        display_name: "PyPy 3.5"
+        variables:
+           PYTHON_BINARY: "/opt/python/pypy3.5/bin/pypy3"
       - id: "jython2.7"
         display_name: "Jython 2.7"
         batchtime: 10080  # 7 days
@@ -1171,7 +1175,7 @@ buildvariants:
   matrix_spec: {"python-version": "*", "c-extensions": "without-c-extensions", auth: "noauth", ssl: "nossl", coverage: "*"}
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - python-version: ["pypy", "pypy3", "jython2.7"]
+   - python-version: ["pypy", "pypy3", "pypy3.5", "jython2.7"]
      c-extensions: "*"
      auth: "*"
      ssl: "*"
@@ -1190,7 +1194,7 @@ buildvariants:
   matrix_spec: {"python-version": "*", "green-framework": "*", auth-ssl: "*"}
   exclude_spec:
    # Don't test green frameworks on these Python versions.
-   - python-version: ["pypy", "pypy3", "jython2.7"]
+   - python-version: ["pypy", "pypy3", "pypy3.5", "jython2.7"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} RHEL 6.2 (x86_64) ${auth-ssl}"
