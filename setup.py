@@ -25,11 +25,14 @@ from distutils.errors import CCompilerError, DistutilsOptionError
 from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
+_HAVE_SPHINX = True
 try:
-    import sphinx
-    _HAVE_SPHINX = True
+    from sphinx.cmd import build as sphinx
 except ImportError:
-    _HAVE_SPHINX = False
+    try:
+        import sphinx
+    except ImportError:
+        _HAVE_SPHINX = False
 
 version = "3.7.0.dev0"
 
