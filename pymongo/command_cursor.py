@@ -87,7 +87,7 @@ class CommandCursor(object):
 
     def __end_session(self, synchronous):
         if self.__session and not self.__explicit_session:
-            self.__session._end_session(lock=synchronous)
+            self.__session._end_session(lock=synchronous, abort_txn=False)
             self.__session = None
 
     def close(self):

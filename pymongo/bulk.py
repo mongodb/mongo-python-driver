@@ -260,15 +260,13 @@ class _Bulk(object):
                 cmd['writeConcern'] = write_concern.document
             if self.bypass_doc_val and sock_info.max_wire_version >= 4:
                 cmd['bypassDocumentValidation'] = True
-            if session:
-                cmd['lsid'] = session._use_lsid()
             bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
                                     listeners, session)
 
             results = []
             while run.idx_offset < len(run.ops):
-                if session and retryable:
-                    cmd['txnNumber'] = session._transaction_id()
+                if session:
+                    session._apply_to(cmd, retryable)
                 sock_info.send_cluster_time(cmd, session, client)
                 check_keys = run.op_type == _INSERT
                 ops = islice(run.ops, run.idx_offset, None)
@@ -278,6 +276,8 @@ class _Bulk(object):
                     self.collection.codec_options, bwc)
                 if not to_send:
                     raise InvalidOperation("cannot do an empty bulk write")
+                if session:
+                    session._advance_statement_id(len(to_send))
                 result = bwc.write_command(request_id, msg, to_send)
                 client._receive_cluster_time(result, session)
                 results.append((run.idx_offset, result))

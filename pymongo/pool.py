@@ -502,9 +502,7 @@ class SocketInfo(object):
             # Ensure command name remains in first place.
             spec = SON(spec)
         if session:
-            spec['lsid'] = session._use_lsid()
-            if retryable_write:
-                spec['txnNumber'] = session._transaction_id()
+            session._apply_to(spec, retryable_write)
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         try:

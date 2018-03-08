@@ -1344,7 +1344,9 @@ class MongoClient(common.BaseObject):
         except Exception:
             helpers._handle_exception()
 
-    def start_session(self, causal_consistency=True):
+    def start_session(self,
+                      causal_consistency=True,
+                      auto_start_transaction=False):
         """Start a logical session.
 
         This method takes the same parameters as
@@ -1374,7 +1376,8 @@ class MongoClient(common.BaseObject):
         # Raises ConfigurationError if sessions are not supported.
         server_session = self._get_server_session()
         opts = client_session.SessionOptions(
-            causal_consistency=causal_consistency)
+            causal_consistency=causal_consistency,
+            auto_start_transaction=auto_start_transaction)
         return client_session.ClientSession(
             self, server_session, opts, authset)
 

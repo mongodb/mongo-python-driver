@@ -1,0 +1,180 @@
+{
+  "data": [],
+  "tests": [
+    {
+      "description": "primary",
+      "skipReason": "Implement read preference rules",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1
+            },
+            "session": "session0"
+          },
+          "result": {
+            "insertedId": 1
+          }
+        },
+        {
+          "name": "count",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "readPreference": {
+              "mode": "primary"
+            },
+            "session": "session0"
+          },
+          "result": 1
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "write and read",
+      "skipReason": "Implement read preference rules",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1
+            },
+            "session": "session0"
+          },
+          "result": {
+            "insertedId": 1
+          }
+        },
+        {
+          "name": "count",
+          "arguments": {
+            "readPreference": {
+              "mode": "secondary"
+            },
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "cannot use read preference \"secondary\" in a transaction that began with a write"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "conflict",
+      "skipReason": "Implement read preference rules",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "count",
+          "arguments": {
+            "readPreference": {
+              "mode": "primaryPreferred"
+            },
+            "session": "session0"
+          },
+          "result": 0
+        },
+        {
+          "name": "count",
+          "arguments": {
+            "readPreference": {
+              "mode": "primary"
+            },
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "read preference \"primary\" does not match the transaction's original read preference \"primaryPreferred\""
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": []
+        }
+      }
+    },
+    {
+      "description": "read and write",
+      "skipReason": "Implement read preference rules",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "count",
+          "arguments": {
+            "readPreference": {
+              "mode": "secondary"
+            },
+            "session": "session0"
+          },
+          "result": 0
+        },
+        {
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1
+            },
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "cannot write in a transaction that began with read preference \"secondary\""
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": []
+        }
+      }
+    }
+  ]
+}

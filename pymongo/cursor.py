@@ -316,7 +316,7 @@ class Cursor(object):
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
         if self.__session and not self.__explicit_session:
-            self.__session._end_session(lock=synchronous)
+            self.__session._end_session(lock=synchronous, abort_txn=False)
             self.__session = None
 
     def close(self):

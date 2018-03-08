@@ -279,10 +279,11 @@ class _Query(object):
             cmd = SON([('explain', cmd)])
         session = self.session
         if session:
-            cmd['lsid'] = session._use_lsid()
+            session._apply_to(cmd, False)
             # Explain does not support readConcern.
             if (not explain and session.options.causal_consistency
-                    and session.operation_time is not None):
+                    and session.operation_time is not None
+                    and not session.in_transaction):
                 cmd.setdefault(
                     'readConcern', {})[
                     'afterClusterTime'] = session.operation_time
@@ -353,7 +354,7 @@ class _GetMore(object):
                                     self.max_await_time_ms)
 
         if self.session:
-            cmd['lsid'] = self.session._use_lsid()
+            self.session._apply_to(cmd, False)
         sock_info.send_cluster_time(cmd, self.session, self.client)
         return cmd, self.db
 
@@ -653,9 +654,6 @@ class _BulkWriteContext(object):
     def write_command(self, request_id, msg, docs):
         """A proxy for SocketInfo.write_command that handles event publishing.
         """
-        if self.session:
-            # Update last_use time.
-            self.session._use_lsid()
         if self.publish:
             duration = datetime.datetime.now() - self.start_time
             self._start(request_id, docs)
