@@ -442,6 +442,12 @@ Does PyMongo work with **mod_wsgi**?
 ------------------------------------
 Yes. See the configuration guide for :ref:`pymongo-and-mod_wsgi`.
 
+Does PyMongo work with PythonAnywhere?
+--------------------------------------
+No. PyMongo creates Python threads which
+`PythonAnywhere <https://www.pythonanywhere.com>`_ does not support. For more
+information see `PYTHON-1495 <https://jira.mongodb.org/browse/PYTHON-1495>`_.
+
 How can I use something like Python's :mod:`json` module to encode my documents to JSON?
 ----------------------------------------------------------------------------------------
 :mod:`~bson.json_util` is PyMongo's built in, flexible tool for using
