@@ -20,7 +20,7 @@ import re
 import sys
 
 from bson import json_util, py3compat
-from pymongo.errors import OperationFailure
+from pymongo.errors import PyMongoError
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name)
@@ -175,7 +175,7 @@ class TestTransactions(IntegrationTest):
         return result
 
     # TODO: factor with test_command_monitoring.py
-    def check_events(self, test, listener, sessions):
+    def check_events(self, test, listener, session_ids):
         res = listener.results
         if not len(test['expectations']):
             return
@@ -194,8 +194,8 @@ class TestTransactions(IntegrationTest):
 
             # Replace lsid with a name like "session0" to match test.
             if 'lsid' in event.command:
-                for name, session in sessions.items():
-                    if event.command['lsid'] == session.session_id:
+                for name, lsid in session_ids.items():
+                    if event.command['lsid'] == lsid:
                         event.command['lsid'] = name
                         break
 
@@ -256,10 +256,15 @@ def create_test(scenario_def, test):
 
         # Create session0 and session1.
         sessions = {}
+        session_ids = {}
         for i in range(2):
             session_name = 'session%d' % i
-            sessions[session_name] = client.start_session(
+            s = client.start_session(
                 **camel_to_snake_args(test['transactionOptions'][session_name]))
+
+            sessions[session_name] = s
+            # Store lsid so we can access it after end_session, in check_events.
+            session_ids[session_name] = s.session_id
 
         self.addCleanup(end_sessions, sessions)
 
@@ -272,17 +277,20 @@ def create_test(scenario_def, test):
         for op in test['operations']:
             expected_result = op.get('result')
             if expect_error(expected_result):
-                with self.assertRaises(OperationFailure) as context:
+                with self.assertRaises(PyMongoError) as context:
                     self.run_operation(sessions, collection, op.copy())
 
-                self.assertIn(expected_result['errorContains'],
-                              str(context.exception))
+                self.assertIn(expected_result['errorContains'].lower(),
+                              str(context.exception).lower())
 
             else:
                 result = self.run_operation(sessions, collection, op.copy())
                 self.check_result(expected_result, result)
 
-        self.check_events(test, listener, sessions)
+        for s in sessions.values():
+            s.end_session()
+
+        self.check_events(test, listener, session_ids)
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')

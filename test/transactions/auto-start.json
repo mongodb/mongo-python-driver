@@ -406,6 +406,9 @@
           "name": "commitTransaction",
           "arguments": {
             "session": "session0"
+          },
+          "result": {
+            "errorContains": "no transaction in progress"
           }
         }
       ],
@@ -421,7 +424,7 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": 2,
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -435,7 +438,7 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": 2,
               "writeConcern": null
             },
             "command_name": "commitTransaction",

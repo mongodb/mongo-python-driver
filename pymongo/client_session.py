@@ -195,6 +195,9 @@ class ClientSession(object):
         Do not use this method if the session is configured to automatically
         start a transaction.
         """
+        if self._server_session.in_transaction:
+            raise InvalidOperation("Transaction already in progress")
+
         self._transaction_options = TransactionOptions(**kwargs)
         self._server_session.start_transaction()
 
@@ -204,14 +207,19 @@ class ClientSession(object):
 
     def abort_txn(self):
         """Abort a multi-statement transaction."""
-        assert False, "Not implemented"  # Await server.
         self._finish_transaction("abortTransaction")
 
     def _finish_transaction(self, command_name):
-        if (self.options.auto_start_transaction
-                and self._server_session.statement_id == 0):
+        if not self._server_session.in_transaction:
+            raise InvalidOperation("No transaction in progress")
+
+        if self._server_session.statement_id == 0:
             # Not really started.
+            self._server_session.reset_transaction()
             return
+
+        if command_name == 'abortTransaction':
+            assert False, "Not implemented"  # Await server.
 
         try:
             # TODO: retryable. And it's weird to pass parse_write_concern_error

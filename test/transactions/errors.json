@@ -2,8 +2,7 @@
   "data": [],
   "tests": [
     {
-      "description": "start twice",
-      "skipReason": "Server hangs afterward",
+      "description": "start insert start",
       "operations": [
         {
           "name": "startTransaction",
@@ -27,6 +26,46 @@
           "name": "startTransaction",
           "arguments": {
             "session": "session0"
+          },
+          "result": {
+            "errorContains": "transaction already in progress"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ]
+    },
+    {
+      "description": "start twice",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "transaction already in progress"
+          }
+        }
+      ]
+    },
+    {
+      "description": "commit and start twice",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
           }
         },
         {
@@ -38,7 +77,28 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "Cannot start"
+            "insertedId": 1
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "transaction already in progress"
           }
         }
       ]
