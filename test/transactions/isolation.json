@@ -23,16 +23,6 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            },
-            "session": "session0"
-          },
-          "result": 1
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
@@ -47,26 +37,6 @@
           ]
         },
         {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id",
-            "session": "session0"
-          },
-          "result": [
-            1
-          ]
-        },
-        {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            },
-            "session": "session1"
-          },
-          "result": 0
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
@@ -77,35 +47,11 @@
           "result": []
         },
         {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id",
-            "session": "session1"
-          },
-          "result": []
-        },
-        {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            }
-          },
-          "result": 0
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
               "_id": 1
             }
-          },
-          "result": []
-        },
-        {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id"
           },
           "result": []
         },
@@ -116,16 +62,6 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            },
-            "session": "session1"
-          },
-          "result": 1
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
@@ -140,25 +76,6 @@
           ]
         },
         {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id",
-            "session": "session1"
-          },
-          "result": [
-            1
-          ]
-        },
-        {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            }
-          },
-          "result": 1
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
@@ -169,15 +86,6 @@
             {
               "_id": 1
             }
-          ]
-        },
-        {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id"
-          },
-          "result": [
-            1
           ]
         }
       ],
@@ -220,16 +128,6 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            },
-            "session": "session0"
-          },
-          "result": 1
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
@@ -244,26 +142,6 @@
           ]
         },
         {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id",
-            "session": "session0"
-          },
-          "result": [
-            1
-          ]
-        },
-        {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            },
-            "session": "session1"
-          },
-          "result": 0
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
@@ -274,35 +152,11 @@
           "result": []
         },
         {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id",
-            "session": "session1"
-          },
-          "result": []
-        },
-        {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            }
-          },
-          "result": 0
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
               "_id": 1
             }
-          },
-          "result": []
-        },
-        {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id"
           },
           "result": []
         },
@@ -313,16 +167,6 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            },
-            "session": "session1"
-          },
-          "result": 0
-        },
-        {
           "name": "find",
           "arguments": {
             "filter": {
@@ -331,23 +175,6 @@
             "session": "session1"
           },
           "result": []
-        },
-        {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id",
-            "session": "session1"
-          },
-          "result": []
-        },
-        {
-          "name": "count",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            }
-          },
-          "result": 1
         },
         {
           "name": "find",
@@ -360,15 +187,6 @@
             {
               "_id": 1
             }
-          ]
-        },
-        {
-          "name": "distinct",
-          "arguments": {
-            "fieldName": "_id"
-          },
-          "result": [
-            1
           ]
         },
         {

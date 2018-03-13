@@ -162,7 +162,6 @@
     },
     {
       "description": "explicit start",
-      "skipReason": "Server must implement abortTransaction",
       "transactionOptions": {
         "session0": {
           "autoStartTransaction": true
@@ -185,18 +184,15 @@
           "name": "startTransaction",
           "arguments": {
             "session": "session0"
+          },
+          "result": {
+            "errorContains": "transaction already in progress"
           }
         },
         {
-          "name": "insertOne",
+          "name": "commitTransaction",
           "arguments": {
-            "document": {
-              "_id": 2
-            },
             "session": "session0"
-          },
-          "result": {
-            "errorContains": "Cannot start"
           }
         }
       ],
@@ -224,27 +220,23 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "test",
-              "documents": [
-                {
-                  "_id": 2
-                }
-              ],
-              "ordered": true,
+              "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 2,
-              "stmtId": 0,
-              "autocommit": false,
+              "txnNumber": 1,
               "writeConcern": null
             },
-            "command_name": "insert",
-            "database_name": "transaction-tests"
+            "command_name": "commitTransaction",
+            "database_name": "admin"
           }
         }
       ],
       "outcome": {
         "collection": {
-          "data": []
+          "data": [
+            {
+              "_id": 1
+            }
+          ]
         }
       }
     },
@@ -424,7 +416,7 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": 1,
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -438,7 +430,7 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": 1,
               "writeConcern": null
             },
             "command_name": "commitTransaction",

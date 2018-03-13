@@ -117,11 +117,11 @@ class ClientSession(object):
         self._authset = authset
         self._cluster_time = None
         self._operation_time = None
-        self._transaction_options = None  # Current transaction's options.
         if self.options.auto_start_transaction:
             # TODO: Get transaction options from self.options.
-            self._transaction_options = TransactionOptions()
-            self._server_session.start_transaction()
+            self._current_transaction_opts = TransactionOptions()
+        else:
+            self._current_transaction_opts = None
 
     def end_session(self):
         """Finish this session. If a transaction has started, abort it.
@@ -136,14 +136,19 @@ class ClientSession(object):
     def _end_session(self, lock, abort_txn):
         if self._server_session is not None:
             try:
-                if self.in_transaction:
+                if self._current_transaction_opts is not None:
                     if abort_txn:
-                        self.abort_txn()
+                        self.abort_transaction()
                     else:
                         self.commit_transaction()
             finally:
                 self._client._return_server_session(self._server_session, lock)
                 self._server_session = None
+                self._current_transaction_opts = None
+
+    def _check_ended(self):
+        if self._server_session is None:
+            raise InvalidOperation("Cannot use ended session")
 
     def __enter__(self):
         return self
@@ -168,9 +173,7 @@ class ClientSession(object):
     @property
     def session_id(self):
         """A BSON document, the opaque server session identifier."""
-        if self._server_session is None:
-            raise InvalidOperation("Cannot use ended session")
-
+        self._check_ended()
         return self._server_session.session_id
 
     @property
@@ -195,27 +198,28 @@ class ClientSession(object):
         Do not use this method if the session is configured to automatically
         start a transaction.
         """
-        if self._server_session.in_transaction:
+        self._check_ended()
+
+        if self._current_transaction_opts is not None:
             raise InvalidOperation("Transaction already in progress")
 
-        self._transaction_options = TransactionOptions(**kwargs)
-        self._server_session.start_transaction()
+        self._current_transaction_opts = TransactionOptions(**kwargs)
+        self._server_session.statement_id = 0
 
     def commit_transaction(self):
         """Commit a multi-statement transaction."""
         self._finish_transaction("commitTransaction")
 
-    def abort_txn(self):
+    def abort_transaction(self):
         """Abort a multi-statement transaction."""
         self._finish_transaction("abortTransaction")
 
     def _finish_transaction(self, command_name):
-        if not self._server_session.in_transaction:
+        if self._current_transaction_opts is None:
             raise InvalidOperation("No transaction in progress")
 
         if self._server_session.statement_id == 0:
             # Not really started.
-            self._server_session.reset_transaction()
             return
 
         if command_name == 'abortTransaction':
@@ -228,11 +232,11 @@ class ClientSession(object):
                 command_name,
                 txnNumber=self._server_session.transaction_id,
                 session=self,
-                write_concern=self._transaction_options.write_concern,
+                write_concern=self._current_transaction_opts.write_concern,
                 parse_write_concern_error=True)
         finally:
             self._server_session.reset_transaction()
-            self._transaction_options = None
+            self._current_transaction_opts = None
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""
@@ -286,31 +290,42 @@ class ClientSession(object):
     @property
     def in_transaction(self):
         """True if this session has an active multi-statement transaction."""
-        return (self._server_session is not None
-                and self._server_session.in_transaction)
+        return self._current_transaction_opts is not None
 
     def _apply_to(self, command, is_retryable):
-        # Internal function.
-        if self._server_session is None:
-            raise InvalidOperation("Cannot use ended session")
+        self._check_ended()
 
         if self.options.auto_start_transaction and not self.in_transaction:
             self.start_transaction()
 
-        self._server_session.apply_to(command, is_retryable)
+        self._server_session.last_use = monotonic.time()
+        command['lsid'] = self._server_session.session_id
+
+        if is_retryable:
+            self._server_session._transaction_id += 1
+            command['txnNumber'] = self._server_session.transaction_id
+            return
+
+        if self._current_transaction_opts:
+            if self._server_session.statement_id == 0:
+                # First statement begins a new transaction.
+                self._server_session._transaction_id += 1
+                command['readConcern'] = {'level': 'snapshot'}
+                command['autocommit'] = False
+
+            command['txnNumber'] = self._server_session.transaction_id
+            # TODO: Allow stmtId for find/getMore, SERVER-33213.
+            name = next(iter(command))
+            if name not in ('find', 'getMore'):
+                command['stmtId'] = self._server_session.statement_id
+                self._server_session.statement_id += 1
 
     def _advance_statement_id(self, n):
-        # Internal function.
-        if self._server_session is None:
-            raise InvalidOperation("Cannot use ended session")
-
+        self._check_ended()
         self._server_session.advance_statement_id(n)
 
     def _retry_transaction_id(self):
-        # Internal function.
-        if self._server_session is None:
-            raise InvalidOperation("Cannot use ended session")
-
+        self._check_ended()
         self._server_session.retry_transaction_id()
 
 
@@ -319,7 +334,6 @@ class _ServerSession(object):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
         self.session_id = {'id': Binary(uuid.uuid4().bytes, 4)}
         self.last_use = monotonic.time()
-        self.in_transaction = False
         self._transaction_id = 0
         self.statement_id = 0
 
@@ -328,25 +342,6 @@ class _ServerSession(object):
 
         # Timed out if we have less than a minute to live.
         return idle_seconds > (session_timeout_minutes - 1) * 60
-
-    def apply_to(self, command, is_retryable):
-        command['lsid'] = self.session_id
-
-        if is_retryable:
-            self._transaction_id += 1
-            command['txnNumber'] = self.transaction_id
-        elif self.in_transaction:
-            command['txnNumber'] = self.transaction_id
-            # TODO: Allow stmtId for find/getMore, SERVER-33213.
-            name = next(iter(command))
-            if name not in ('find', 'getMore'):
-                command['stmtId'] = self.statement_id
-            if self.statement_id == 0:
-                command['readConcern'] = {'level': 'snapshot'}
-                command['autocommit'] = False
-            self.statement_id += 1
-
-        self.last_use = monotonic.time()
 
     def advance_statement_id(self, n):
         # Every command advances the statement id by 1 already.
@@ -357,13 +352,7 @@ class _ServerSession(object):
         """Positive 64-bit integer."""
         return Int64(self._transaction_id)
 
-    def start_transaction(self):
-        self._transaction_id += 1
-        self.statement_id = 0
-        self.in_transaction = True
-
     def reset_transaction(self):
-        self.in_transaction = False
         self.statement_id = 0
 
     def retry_transaction_id(self):

@@ -279,7 +279,6 @@
     },
     {
       "description": "abort without start",
-      "skipReason": "Server must implement abortTransaction",
       "operations": [
         {
           "name": "abortTransaction",
@@ -332,7 +331,7 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "no such transaction"
+            "errorContains": "no transaction in progress"
           }
         }
       ],
@@ -366,18 +365,6 @@
               "writeConcern": null
             },
             "command_name": "abortTransaction",
-            "database_name": "admin"
-          }
-        },
-        {
-          "command_started_event": {
-            "command": {
-              "abortTransaction": 1,
-              "lsid": "session0",
-              "txnNumber": 1,
-              "writeConcern": null
-            },
-            "command_name": "commitTransaction",
             "database_name": "admin"
           }
         }
