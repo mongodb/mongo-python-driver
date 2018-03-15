@@ -19,6 +19,7 @@ import sys
 
 sys.path[0:0] = [""]
 
+import pymongo
 from test import client_context, unittest
 
 
@@ -29,6 +30,10 @@ class TestSampleShellCommands(unittest.TestCase):
     def setUpClass(cls):
         # Run once before any tests run.
         client_context.client.pymongo_test.inventory.drop()
+
+    @classmethod
+    def tearDownClass(cls):
+        client_context.client.drop_database("pymongo_test")
 
     def tearDown(self):
         # Run after every test.
@@ -682,8 +687,8 @@ class TestSampleShellCommands(unittest.TestCase):
 
             # Start Changestream Example 4
             pipeline = [
-                {"$match":
-                    {"$or": [
+                {"$match": {
+                    "$or": [
                         {"fullDocument.username": "alice"},
                         {"operationType": {"$in": ["delete"]}}]
                     }
@@ -695,6 +700,118 @@ class TestSampleShellCommands(unittest.TestCase):
         finally:
             done = True
             t.join()
+
+    def test_aggregate_examples(self):
+        db = client_context.client.pymongo_test
+
+        # Start Aggregation Example 1
+        db.sales.aggregate([
+            {"$match": {"items.fruit": "banana"}},
+            {"$sort": {"date": 1}}
+        ])
+        # End Aggregation Example 1
+
+        # Start Aggregation Example 2
+        db.sales.aggregate([
+            {"$unwind": "$items"},
+            {"$match": {"items.fruit": "banana"}},
+            {"$group": {
+                "_id": {"day": {"$dayOfWeek": "$date"}},
+                "count": {"$sum": "$items.quantity"}}
+            },
+            {"$project": {
+                "dayOfWeek": "$_id.day",
+                "numberSold": "$count",
+                "_id": 0}
+            },
+            {"$sort": {"numberSold": 1}}
+        ])
+        # End Aggregation Example 2
+
+        # Start Aggregation Example 3
+        db.sales.aggregate([
+            {"$unwind": "$items"},
+            {"$group": {
+                "_id": {"day": {"$dayOfWeek": "$date"}},
+                "items_sold": {"$sum": "$items.quantity"},
+                "revenue": {
+                    "$sum": {
+                        "$multiply": [
+                            "$items.quantity", "$items.price"]
+                        }
+                    }
+                }
+            },
+            {"$project": {
+                "day": "$_id.day",
+                "revenue": 1,
+                "items_sold": 1,
+                "discount": {
+                    "$cond": {
+                        "if": {"$lte": ["$revenue", 250]},
+                        "then": 25,
+                        "else": 0
+                        }
+                    }
+                }
+            }
+        ])
+        # End Aggregation Example 3
+
+        # $lookup was new in 3.2. The let and pipeline options
+        # were added in 3.6.
+        if client_context.version.at_least(3, 6, 0):
+            # Start Aggregation Example 4
+            db.air_alliances.aggregate([
+                {"$lookup": {
+                    "from": "air_airlines",
+                    "let": {"constituents": "$airlines"},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$in": ["$name", "$$constituents"]}}}
+                    ],
+                    "as": "airlines"
+                    }
+                },
+                {"$project": {
+                    "_id": 0,
+                    "name": 1,
+                    "airlines": {
+                        "$filter": {
+                            "input": "$airlines",
+                            "as": "airline",
+                            "cond": {"$eq": ["$$airline.country", "Canada"]}
+                            }
+                        }
+                    }
+                }
+            ])
+            # End Aggregation Example 4
+
+    def test_commands(self):
+        db = client_context.client.pymongo_test
+        db.restaurants.insert_one({})
+
+        # Start runCommand Example 1
+        db.command("buildInfo")
+        # End runCommand Example 1
+
+        # Start runCommand Example 2
+        db.command("collStats", "restaurants")
+        # End runCommand Example 2
+
+    def test_index_management(self):
+        db = client_context.client.pymongo_test
+
+        # Start Index Example 1
+        db.records.create_index("score")
+        # End Index Example 1
+
+        # Start Index Example 1
+        db.restaurants.create_index(
+            [("cuisine", pymongo.ASCENDING), ("name", pymongo.ASCENDING)],
+            partialFilterExpression={"rating": {"$gt": 5}}
+        )
+        # End Index Example 1
 
     @client_context.require_version_min(3, 6, 0)
     @client_context.require_replica_set
