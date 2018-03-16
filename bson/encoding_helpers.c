@@ -78,7 +78,7 @@ static unsigned char isLegalUTF8(const unsigned char* source, int length) {
             /* no fall-through in this inner switch */
             case 0xE0: if (a < 0xA0) return 0; break;
             case 0xF0: if (a < 0x90) return 0; break;
-            case 0xF4: if (a > 0x8F) return 0; break;
+            case 0xF4: if ((a > 0x8F) || (a < 0x80)) return 0; break;
             default:  if (a < 0x80) return 0;
         }
         case 1: if (*source >= 0x80 && *source < 0xC2) return 0;
