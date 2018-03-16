@@ -650,6 +650,89 @@ class TestBSON(unittest.TestCase):
             z = {iso8859_bytes: "hello"}
             self.assertRaises(InvalidStringData, BSON.encode, z)
 
+    # Verify that python and bson have the same understanding of
+    # legal utf-8 if the first byte is 0xf4 (244)
+    @staticmethod
+    def _py_is_legal_utf8(x):
+        try:
+            x.decode('utf-8')
+            return True
+        except UnicodeDecodeError:
+            return False
+
+    @staticmethod
+    def _bson_is_legal_utf8(x):
+        try:
+            BSON.encode({'x': x})
+            return True
+        except InvalidStringData:
+            return False
+
+    @unittest.skipIf(PY3, "python3 has strong separation between bytes/unicode")
+    def test_legal_utf8_full_coverage(self):
+        # this tests takes 400 seconds. Which is too long to run each time.
+        # However it is the only one which covers all possible bit combinations
+        # in the 244 space.
+
+        b1 = chr(0xf4)
+
+        for b2 in map(chr, range(255)):
+            m2 = b1 + b2
+            self.assertEqual(
+                self._py_is_legal_utf8(m2),
+                self._bson_is_legal_utf8(m2)
+            )
+
+            for b3 in map(chr, range(255)):
+                m3 = m2 + b3
+                self.assertEqual(
+                    self._py_is_legal_utf8(m3),
+                    self._bson_is_legal_utf8(m3)
+                )
+
+                for b4 in map(chr, range(255)):
+                    m4 = m3 + b4
+
+                    self.assertEqual(
+                        self._py_is_legal_utf8(m4),
+                        self._bson_is_legal_utf8(m4)
+                    )
+
+    # In python3:
+    #  - 'bytes' are not checked with isLegalutf
+    #  - 'unicode' I cannot create unicode objects with invalid utf8, since it
+    #    would result in non valid code-points.
+    @unittest.skipIf(PY3, "python3 has strong separation between bytes/unicode")
+    def test_legal_utf8_few_samples(self):
+        good_samples = [
+            '\xf4\x80\x80\x80',
+            '\xf4\x8a\x80\x80',
+            '\xf4\x8e\x80\x80',
+            '\xf4\x81\x80\x80',
+        ]
+
+        for data in good_samples:
+            self.assertEqual(
+                self._py_is_legal_utf8(data),
+                self._bson_is_legal_utf8(data)
+            )
+
+        bad_samples = [
+            '\xf4\x00\x80\x80',
+            '\xf4\x3a\x80\x80',
+            '\xf4\x7f\x80\x80',
+            '\xf4\x90\x80\x80',
+            '\xf4\xff\x80\x80',
+        ]
+
+        for data in bad_samples:
+            self.assertEqual(
+                self._py_is_legal_utf8(data),
+                self._bson_is_legal_utf8(data),
+                data
+            )
+
+
     def test_null_character(self):
         doc = {"a": "\x00"}
         self.assertEqual(doc, BSON.encode(doc).decode())
