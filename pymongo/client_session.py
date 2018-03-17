@@ -231,6 +231,7 @@ class ClientSession(object):
             self._client.admin.command(
                 command_name,
                 txnNumber=self._server_session.transaction_id,
+                stmtId=self._server_session.statement_id,
                 session=self,
                 write_concern=self._current_transaction_opts.write_concern,
                 parse_write_concern_error=True)
@@ -314,11 +315,13 @@ class ClientSession(object):
                 command['autocommit'] = False
 
             command['txnNumber'] = self._server_session.transaction_id
+
             # TODO: Allow stmtId for find/getMore, SERVER-33213.
             name = next(iter(command))
             if name not in ('find', 'getMore'):
                 command['stmtId'] = self._server_session.statement_id
-                self._server_session.statement_id += 1
+
+            self._server_session.statement_id += 1
 
     def _advance_statement_id(self, n):
         self._check_ended()

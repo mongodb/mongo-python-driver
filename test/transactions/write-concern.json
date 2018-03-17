@@ -58,6 +58,7 @@
               "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": 1,
+              "stmtId": 1,
               "writeConcern": {
                 "w": "majority"
               }
@@ -131,6 +132,7 @@
               "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": 1,
+              "stmtId": 1,
               "writeConcern": null
             },
             "command_name": "commitTransaction",

@@ -36,10 +36,10 @@
             "session": "session0"
           },
           "result": {
-            "insertedIds": [
-              2,
-              3
-            ]
+            "insertedIds": {
+              "0": 2,
+              "1": 3
+            }
           }
         },
         {
@@ -153,6 +153,7 @@
               "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": 1,
+              "stmtId": 4,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -185,6 +186,7 @@
               "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": 2,
+              "stmtId": 1,
               "writeConcern": null
             },
             "command_name": "commitTransaction",

@@ -25,18 +25,6 @@
       "arguments": {
         "session": "session0"
       }
-    },
-    {
-      "command_started_event": {
-        "command": {
-          "commitTransaction": 1,
-          "lsid": "session0",
-          "txnNumber": 1,
-          "writeConcern": null
-        },
-        "command_name": "commitTransaction",
-        "database_name": "admin"
-      }
     }
   ],
   "tests": [
@@ -122,6 +110,7 @@
               "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": 1,
+              "stmtId": 2,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -270,6 +259,7 @@
               "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": 1,
+              "stmtId": 4,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -358,6 +348,7 @@
               "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": 1,
+              "stmtId": 2,
               "writeConcern": null
             },
             "command_name": "commitTransaction",

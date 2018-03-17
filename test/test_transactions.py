@@ -75,8 +75,8 @@ class TestTransactions(IntegrationTest):
             for res in expected_result:
                 prop = camel_to_snake(res)
                 # SPEC-869: Only BulkWriteResult has upserted_count.
-                if (prop == "upserted_count" and
-                    not isinstance(result, BulkWriteResult)):
+                if (prop == "upserted_count"
+                        and not isinstance(result, BulkWriteResult)):
                     if result.upserted_id is not None:
                         upserted_count = 1
                     else:
@@ -85,22 +85,27 @@ class TestTransactions(IntegrationTest):
                 elif prop == "inserted_ids":
                     # BulkWriteResult does not have inserted_ids.
                     if isinstance(result, BulkWriteResult):
-                        self.assertEqual(len(expected_result[res]), result.inserted_count)
+                        self.assertEqual(len(expected_result[res]),
+                                         result.inserted_count)
                     else:
                         # InsertManyResult may be compared to [id1] from the
                         # crud spec or {"0": id1} from the retryable write spec.
                         ids = expected_result[res]
                         if isinstance(ids, dict):
                             ids = [ids[str(i)] for i in range(len(ids))]
-                        self.assertEqual(ids, result.inserted_ids)
+                        self.assertEqual(ids,
+                                         result.inserted_ids)
                 elif prop == "upserted_ids":
                     # Convert indexes from strings to integers.
                     ids = expected_result[res]
                     expected_ids = {}
                     for str_index in ids:
                         expected_ids[int(str_index)] = ids[str_index]
-                    self.assertEqual(expected_ids != result.upserted_ids)
-                self.assertEqual(getattr(result, prop), expected_result[res])
+                    self.assertEqual(expected_ids,
+                                     result.upserted_ids)
+                else:
+                    self.assertEqual(getattr(result, prop),
+                                     expected_result[res])
             return True
         else:
             self.assertEqual(result, expected_result)

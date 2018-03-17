@@ -222,7 +222,7 @@ class _Query(object):
     __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
                  'batch_size', 'name', 'read_concern', 'collation',
-                 'session', 'client')
+                 'session', 'client', '__as_command')
 
     def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
@@ -242,6 +242,7 @@ class _Query(object):
         self.session = session
         self.client = client
         self.name = 'find'
+        self.__as_command = None
 
     def use_command(self, sock_info, exhaust):
         use_find_cmd = False
@@ -265,10 +266,13 @@ class _Query(object):
         return use_find_cmd
 
     def as_command(self, sock_info):
-        """Return a find command document for this query.
+        """Return a find command document for this query."""
+        # We use the command twice: on the wire and for command monitoring.
+        # Generate it once, for speed and to avoid repeating side-effects
+        # like incrementing the session's statement id.
+        if self.__as_command is not None:
+            return self.__as_command
 
-        Should be called *after* get_message.
-        """
         explain = '$explain' in self.spec
         cmd = _gen_find_command(
             self.coll, self.spec, self.fields, self.ntoskip,
@@ -288,7 +292,8 @@ class _Query(object):
                     'readConcern', {})[
                     'afterClusterTime'] = session.operation_time
         sock_info.send_cluster_time(cmd, session, self.client)
-        return cmd, self.db
+        self.__as_command = cmd, self.db
+        return self.__as_command
 
     def get_message(self, set_slave_ok, sock_info, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""
@@ -328,7 +333,7 @@ class _GetMore(object):
     """A getmore operation."""
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_await_time_ms',
-                 'codec_options', 'session', 'client')
+                 'codec_options', 'session', 'client', '__as_command')
 
     name = 'getMore'
 
@@ -342,6 +347,7 @@ class _GetMore(object):
         self.session = session
         self.client = client
         self.max_await_time_ms = max_await_time_ms
+        self.__as_command = None
 
     def use_command(self, sock_info, exhaust):
         sock_info.validate_session(self.client, self.session)
@@ -349,6 +355,10 @@ class _GetMore(object):
 
     def as_command(self, sock_info):
         """Return a getMore command document for this query."""
+        # See _Query.as_command for an explanation of this caching.
+        if self.__as_command is not None:
+            return self.__as_command
+
         cmd = _gen_get_more_command(self.cursor_id, self.coll,
                                     self.ntoreturn,
                                     self.max_await_time_ms)
@@ -356,7 +366,8 @@ class _GetMore(object):
         if self.session:
             self.session._apply_to(cmd, False)
         sock_info.send_cluster_time(cmd, self.session, self.client)
-        return cmd, self.db
+        self.__as_command = cmd, self.db
+        return self.__as_command
 
     def get_message(self, dummy0, sock_info, use_cmd=False):
         """Get a getmore message."""
