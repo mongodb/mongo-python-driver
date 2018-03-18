@@ -81,7 +81,7 @@ class TestTransactions(IntegrationTest):
                         upserted_count = 1
                     else:
                         upserted_count = 0
-                    self.assertEqual(upserted_count, expected_result[res])
+                    self.assertEqual(upserted_count, expected_result[res], prop)
                 elif prop == "inserted_ids":
                     # BulkWriteResult does not have inserted_ids.
                     if isinstance(result, BulkWriteResult):
@@ -93,19 +93,18 @@ class TestTransactions(IntegrationTest):
                         ids = expected_result[res]
                         if isinstance(ids, dict):
                             ids = [ids[str(i)] for i in range(len(ids))]
-                        self.assertEqual(ids,
-                                         result.inserted_ids)
+                        self.assertEqual(ids, result.inserted_ids, prop)
                 elif prop == "upserted_ids":
                     # Convert indexes from strings to integers.
                     ids = expected_result[res]
                     expected_ids = {}
                     for str_index in ids:
                         expected_ids[int(str_index)] = ids[str_index]
-                    self.assertEqual(expected_ids,
-                                     result.upserted_ids)
+                    self.assertEqual(expected_ids, result.upserted_ids, prop)
                 else:
-                    self.assertEqual(getattr(result, prop),
-                                     expected_result[res])
+                    self.assertEqual(
+                        getattr(result, prop), expected_result[res], prop)
+
             return True
         else:
             self.assertEqual(result, expected_result)
@@ -136,7 +135,7 @@ class TestTransactions(IntegrationTest):
             cmd = getattr(collection, name)
             arguments['session'] = session
 
-        if operation == "bulk_write":
+        if name == "bulk_write":
             # Parse each request into a bulk write model.
             requests = []
             for request in arguments["requests"]:

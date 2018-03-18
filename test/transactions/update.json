@@ -1,0 +1,164 @@
+{
+  "data": [
+    {
+      "_id": 1
+    },
+    {
+      "_id": 2
+    },
+    {
+      "_id": 3
+    }
+  ],
+  "tests": [
+    {
+      "description": "update",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "updateOne",
+          "arguments": {
+            "filter": {
+              "_id": 4
+            },
+            "update": {
+              "$inc": {
+                "x": 1
+              }
+            },
+            "upsert": true,
+            "session": "session0"
+          },
+          "result": {
+            "matchedCount": 0,
+            "modifiedCount": 0,
+            "upsertedCount": 1,
+            "upsertedId": 4
+          }
+        },
+        {
+          "name": "replaceOne",
+          "arguments": {
+            "filter": {
+              "x": 1
+            },
+            "replacement": {
+              "y": 1
+            },
+            "session": "session0"
+          },
+          "result": {
+            "matchedCount": 1,
+            "modifiedCount": 1,
+            "upsertedCount": 0
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "command_started_event": {
+            "command": {
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "_id": 4
+                  },
+                  "u": {
+                    "$inc": {
+                      "x": 1
+                    }
+                  },
+                  "multi": false,
+                  "upsert": true
+                }
+              ],
+              "lsid": "session0",
+              "txnNumber": 1,
+              "stmtId": 0,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "x": 1
+                  },
+                  "u": {
+                    "y": 1
+                  },
+                  "multi": false,
+                  "upsert": false
+                }
+              ],
+              "lsid": "session0",
+              "txnNumber": 1,
+              "stmtId": 1,
+              "autocommit": null,
+              "writeConcern": null
+            },
+            "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "commitTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": 1,
+              "stmtId": 2,
+              "writeConcern": null
+            },
+            "command_name": "commitTransaction",
+            "database_name": "admin"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            },
+            {
+              "_id": 3
+            },
+            {
+              "_id": 4,
+              "y": 1
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

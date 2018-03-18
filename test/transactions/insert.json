@@ -2,7 +2,7 @@
   "data": [],
   "tests": [
     {
-      "description": "insertMany",
+      "description": "insert",
       "operations": [
         {
           "name": "startTransaction",
