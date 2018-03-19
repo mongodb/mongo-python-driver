@@ -283,7 +283,7 @@ class _Query(object):
             cmd = SON([('explain', cmd)])
         session = self.session
         if session:
-            session._apply_to(cmd, False)
+            session._apply_to(cmd, False, self.read_preference)
             # Explain does not support readConcern.
             if (not explain and session.options.causal_consistency
                     and session.operation_time is not None
@@ -333,17 +333,19 @@ class _GetMore(object):
     """A getmore operation."""
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_await_time_ms',
-                 'codec_options', 'session', 'client', '__as_command')
+                 'codec_options', 'read_preference', 'session', 'client',
+                 '__as_command')
 
     name = 'getMore'
 
-    def __init__(self, db, coll, ntoreturn, cursor_id, codec_options, session,
-                 client, max_await_time_ms=None):
+    def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
+                 read_preference, session, client, max_await_time_ms=None):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
         self.codec_options = codec_options
+        self.read_preference = read_preference
         self.session = session
         self.client = client
         self.max_await_time_ms = max_await_time_ms
@@ -364,7 +366,7 @@ class _GetMore(object):
                                     self.max_await_time_ms)
 
         if self.session:
-            self.session._apply_to(cmd, False)
+            self.session._apply_to(cmd, False, self.read_preference)
         sock_info.send_cluster_time(cmd, self.session, self.client)
         self.__as_command = cmd, self.db
         return self.__as_command

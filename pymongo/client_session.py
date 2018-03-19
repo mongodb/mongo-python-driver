@@ -117,6 +117,7 @@ class ClientSession(object):
         self._authset = authset
         self._cluster_time = None
         self._operation_time = None
+        self._current_txn_read_pref = None
         if self.options.auto_start_transaction:
             # TODO: Get transaction options from self.options.
             self._current_transaction_opts = TransactionOptions()
@@ -234,6 +235,7 @@ class ClientSession(object):
                 stmtId=self._server_session.statement_id,
                 session=self,
                 write_concern=self._current_transaction_opts.write_concern,
+                read_preference=self._current_txn_read_pref,
                 parse_write_concern_error=True)
         finally:
             self._server_session.reset_transaction()
@@ -293,7 +295,7 @@ class ClientSession(object):
         """True if this session has an active multi-statement transaction."""
         return self._current_transaction_opts is not None
 
-    def _apply_to(self, command, is_retryable):
+    def _apply_to(self, command, is_retryable, read_preference):
         self._check_ended()
 
         if self.options.auto_start_transaction and not self.in_transaction:
@@ -310,9 +312,12 @@ class ClientSession(object):
         if self._current_transaction_opts:
             if self._server_session.statement_id == 0:
                 # First statement begins a new transaction.
+                self._current_txn_read_pref = read_preference
                 self._server_session._transaction_id += 1
                 command['readConcern'] = {'level': 'snapshot'}
                 command['autocommit'] = False
+            elif read_preference != self._current_txn_read_pref:
+                raise InvalidOperation('Transaction readPreference changed')
 
             command['txnNumber'] = self._server_session.transaction_id
 

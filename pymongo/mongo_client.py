@@ -1478,15 +1478,15 @@ class MongoClient(common.BaseObject):
         """
         cmd = SON([("listDatabases", 1)])
         cmd.update(kwargs)
-        res = self._database_default_options(
-            "admin").command(cmd, session=session)
+        admin = self._database_default_options("admin")
+        res = admin.command(cmd, session=session)
         # listDatabases doesn't return a cursor (yet). Fake one.
         cursor = {
             "id": 0,
             "firstBatch": res["databases"],
             "ns": "admin.$cmd",
         }
-        return CommandCursor(self.admin["$cmd"], cursor, None)
+        return CommandCursor(admin["$cmd"], cursor, None)
 
     def list_database_names(self, session=None):
         """Get a list of the names of all databases on the connected server.

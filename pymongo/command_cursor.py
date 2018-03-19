@@ -229,6 +229,7 @@ class CommandCursor(object):
                                     self.__batch_size,
                                     self.__id,
                                     self.__collection.codec_options,
+                                    self.__collection.read_preference,
                                     self.__session,
                                     self.__collection.database.client,
                                     self.__max_await_time_ms))

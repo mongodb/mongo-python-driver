@@ -502,7 +502,7 @@ class SocketInfo(object):
             # Ensure command name remains in first place.
             spec = SON(spec)
         if session:
-            session._apply_to(spec, retryable_write)
+            session._apply_to(spec, retryable_write, read_preference)
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         try:

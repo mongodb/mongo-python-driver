@@ -37,6 +37,7 @@ from pymongo.message import (_INSERT, _UPDATE, _DELETE,
                              _do_batched_write_command,
                              _randint,
                              _BulkWriteContext)
+from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 
@@ -266,7 +267,7 @@ class _Bulk(object):
             results = []
             while run.idx_offset < len(run.ops):
                 if session:
-                    session._apply_to(cmd, retryable)
+                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY)
                 sock_info.send_cluster_time(cmd, session, client)
                 check_keys = run.op_type == _INSERT
                 ops = islice(run.ops, run.idx_offset, None)

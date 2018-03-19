@@ -1938,7 +1938,8 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         codec_options = CodecOptions(SON)
-        coll = self.with_options(codec_options)
+        coll = self.with_options(codec_options=codec_options,
+                                 read_preference=ReadPreference.PRIMARY)
         with self._socket_for_primary_reads() as (sock_info, slave_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:

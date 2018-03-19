@@ -534,7 +534,8 @@ class Database(common.BaseObject):
     def _list_collections(self, sock_info, slave_okay, session=None, **kwargs):
         """Internal listCollections helper."""
 
-        coll = self["$cmd"]
+        coll = self.get_collection(
+            "$cmd", read_preference=ReadPreference.PRIMARY)
         if sock_info.max_wire_version > 2:
             cmd = SON([("listCollections", 1),
                        ("cursor", {})])

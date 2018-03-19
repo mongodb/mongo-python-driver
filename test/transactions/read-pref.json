@@ -3,7 +3,6 @@
   "tests": [
     {
       "description": "primary",
-      "skipReason": "Implement read preference rules",
       "operations": [
         {
           "name": "startTransaction",
@@ -55,7 +54,6 @@
     },
     {
       "description": "write and read",
-      "skipReason": "Implement read preference rules",
       "operations": [
         {
           "name": "startTransaction",
@@ -84,7 +82,13 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "cannot use read preference \"secondary\" in a transaction that began with a write"
+            "errorContains": "transaction readPreference changed"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
           }
         }
       ],
@@ -100,7 +104,6 @@
     },
     {
       "description": "conflict",
-      "skipReason": "Implement read preference rules",
       "operations": [
         {
           "name": "startTransaction",
@@ -127,7 +130,13 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "read preference \"primary\" does not match the transaction's original read preference \"primaryPreferred\""
+            "errorContains": "transaction readPreference changed"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
           }
         }
       ],
@@ -139,7 +148,7 @@
     },
     {
       "description": "read and write",
-      "skipReason": "Implement read preference rules",
+      "skipReason": "Server changes needed for commitTransaction on secondary.",
       "operations": [
         {
           "name": "startTransaction",
@@ -166,7 +175,13 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "cannot write in a transaction that began with read preference \"secondary\""
+            "errorContains": "transaction readPreference changed"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
           }
         }
       ],

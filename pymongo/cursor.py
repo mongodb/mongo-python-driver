@@ -1106,6 +1106,7 @@ class Cursor(object):
                                         limit,
                                         self.__id,
                                         self.__codec_options,
+                                        self.__read_preference,
                                         self.__session,
                                         self.__collection.database.client,
                                         self.__max_await_time_ms)
