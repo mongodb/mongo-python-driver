@@ -652,51 +652,39 @@ class TestBSON(unittest.TestCase):
 
     # Verify that python and bson have the same understanding of
     # legal utf-8 if the first byte is 0xf4 (244)
-    @staticmethod
-    def _py_is_legal_utf8(x):
+    def _assert_same_utf8_validation(self, data):
         try:
-            x.decode('utf-8')
-            return True
+            data.decode('utf-8')
+            py_is_legal = True
         except UnicodeDecodeError:
-            return False
+            py_is_legal = False
 
-    @staticmethod
-    def _bson_is_legal_utf8(x):
         try:
-            BSON.encode({'x': x})
-            return True
+            BSON.encode({'x': data})
+            bson_is_legal = True
         except InvalidStringData:
-            return False
+            bson_is_legal = False
+
+        self.assertEqual(py_is_legal, bson_is_legal, data)
 
     @unittest.skipIf(PY3, "python3 has strong separation between bytes/unicode")
     def test_legal_utf8_full_coverage(self):
         # this tests takes 400 seconds. Which is too long to run each time.
         # However it is the only one which covers all possible bit combinations
         # in the 244 space.
-
         b1 = chr(0xf4)
 
         for b2 in map(chr, range(255)):
             m2 = b1 + b2
-            self.assertEqual(
-                self._py_is_legal_utf8(m2),
-                self._bson_is_legal_utf8(m2)
-            )
+            self._assert_same_utf8_validation(m2)
 
             for b3 in map(chr, range(255)):
                 m3 = m2 + b3
-                self.assertEqual(
-                    self._py_is_legal_utf8(m3),
-                    self._bson_is_legal_utf8(m3)
-                )
+                self._assert_same_utf8_validation(m3)
 
                 for b4 in map(chr, range(255)):
                     m4 = m3 + b4
-
-                    self.assertEqual(
-                        self._py_is_legal_utf8(m4),
-                        self._bson_is_legal_utf8(m4)
-                    )
+                    self._assert_same_utf8_validation(m4)
 
     # In python3:
     #  - 'bytes' are not checked with isLegalutf
@@ -712,10 +700,7 @@ class TestBSON(unittest.TestCase):
         ]
 
         for data in good_samples:
-            self.assertEqual(
-                self._py_is_legal_utf8(data),
-                self._bson_is_legal_utf8(data)
-            )
+            self._assert_same_utf8_validation(data)
 
         bad_samples = [
             '\xf4\x00\x80\x80',
@@ -726,12 +711,7 @@ class TestBSON(unittest.TestCase):
         ]
 
         for data in bad_samples:
-            self.assertEqual(
-                self._py_is_legal_utf8(data),
-                self._bson_is_legal_utf8(data),
-                data
-            )
-
+            self._assert_same_utf8_validation(data)
 
     def test_null_character(self):
         doc = {"a": "\x00"}
