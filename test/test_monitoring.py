@@ -304,6 +304,7 @@ class TestCommandMonitoring(PyMongoTestCase):
 
         self._test_find_options(query, cmd)
 
+    @client_context.require_version_max(3, 7, 2)
     def test_find_snapshot(self):
         # Test "snapshot" parameter separately, can't combine with "sort".
         query = dict(filter={},

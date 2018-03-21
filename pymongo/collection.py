@@ -1310,9 +1310,9 @@ class Collection(common.BaseObject):
             each document.
           - `show_record_id` (optional): If True, adds a field ``$recordId`` in
             each document with the storage engine's internal record identifier.
-          - `snapshot` (optional): If True, prevents the cursor from returning
-            a document more than once because of an intervening write
-            operation.
+          - `snapshot` (optional): **DEPRECATED** - If True, prevents the
+            cursor from returning a document more than once because of an
+            intervening write operation.
           - `hint` (optional): An index, in the same format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). Pass this as an alternative to calling
@@ -1356,6 +1356,10 @@ class Collection(common.BaseObject):
             completely iterated the underlying :class:`~socket.socket`
             connection will be closed and discarded without being returned to
             the connection pool.
+
+        .. versionchanged:: 3.7
+           Deprecated the `snapshot` option, which is deprecated in MongoDB
+           3.6 and removed in MongoDB 4.0.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.

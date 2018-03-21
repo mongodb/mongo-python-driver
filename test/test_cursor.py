@@ -1298,15 +1298,16 @@ class TestCursor(IntegrationTest):
             cur = c.find(hint=[("a", 1)], modifiers={"$hint": {"b": "1"}})
             self.assertEqual(cur._Cursor__query_spec()["$hint"], {"a": 1})
 
-            cur = c.find(snapshot=True, modifiers={"$snapshot": False})
-            self.assertEqual(cur._Cursor__query_spec()["$snapshot"], True)
-
             # The arg is named show_record_id after the "find" command arg, the
             # modifier is named $showDiskLoc for the OP_QUERY modifier. It's
             # stored as $showDiskLoc then upgraded to showRecordId if we send a
             # "find" command.
             cur = c.find(show_record_id=True, modifiers={"$showDiskLoc": False})
             self.assertEqual(cur._Cursor__query_spec()["$showDiskLoc"], True)
+
+            if not client_context.version.at_least(3, 7, 3):
+                cur = c.find(snapshot=True, modifiers={"$snapshot": False})
+                self.assertEqual(cur._Cursor__query_spec()["$snapshot"], True)
 
     def test_alive(self):
         self.db.test.delete_many({})

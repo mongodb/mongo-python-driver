@@ -105,58 +105,6 @@
           }
         }
       ]
-    },
-    {
-      "description": "A successful unordered bulk write with an unacknowledged write concern",
-      "comment": "On a 2.4 server, no GLE is sent and requires a client-side manufactured reply",
-      "operation": {
-        "name": "bulkWrite",
-        "arguments": {
-          "requests": [
-            {
-              "insertOne": {
-                "document": {
-                  "_id": 4,
-                  "x": 44
-                }
-              }
-            }
-          ],
-          "ordered": false,
-          "writeConcern": {
-            "w": 0
-          }
-        }
-      },
-      "expectations": [
-        {
-          "command_started_event": {
-            "command": {
-              "insert": "test",
-              "documents": [
-                {
-                  "_id": 4,
-                  "x": 44
-                }
-              ],
-              "ordered": false,
-              "writeConcern": {
-                "w": 0
-              }
-            },
-            "command_name": "insert",
-            "database_name": "command-monitoring-tests"
-          }
-        },
-        {
-          "command_succeeded_event": {
-            "reply": {
-              "ok": 1
-            },
-            "command_name": "insert"
-          }
-        }
-      ]
     }
   ]
 }
