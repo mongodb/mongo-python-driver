@@ -615,7 +615,8 @@ class Cursor(object):
                         "instances" % index)
 
     def max_scan(self, max_scan):
-        """Limit the number of documents to scan when performing the query.
+        """**DEPRECATED** - Limit the number of documents to scan when
+        performing the query.
 
         Raises :class:`~pymongo.errors.InvalidOperation` if this
         cursor has already been used. Only the last :meth:`max_scan`
@@ -623,6 +624,11 @@ class Cursor(object):
 
         :Parameters:
           - `max_scan`: the maximum number of documents to scan
+
+        .. versionchanged:: 3.7
+          Deprecated :meth:`max_scan`. Support for this option is deprecated in
+          MongoDB 4.0. Use :meth:`max_time_ms` instead to limit server side
+          execution time.
         """
         self.__check_okay_to_chain()
         self.__max_scan = max_scan

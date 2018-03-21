@@ -1323,8 +1323,8 @@ class Collection(common.BaseObject):
             aborted and :exc:`~pymongo.errors.ExecutionTimeout` is raised. Pass
             this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.max_time_ms` on the cursor.
-          - `max_scan` (optional): The maximum number of documents to scan.
-            Pass this as an alternative to calling
+          - `max_scan` (optional): **DEPRECATED** - The maximum number of
+            documents to scan. Pass this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.max_scan` on the cursor.
           - `min` (optional): A list of field, limit pairs specifying the
             inclusive lower bound for all keys of a specific index in order.
@@ -1360,6 +1360,10 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.7
            Deprecated the `snapshot` option, which is deprecated in MongoDB
            3.6 and removed in MongoDB 4.0.
+           Deprecated the `max_scan` option. Support for this option is
+           deprecated in MongoDB 4.0. Use `max_time_ms` instead to limit server
+           side execution time.
+
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
