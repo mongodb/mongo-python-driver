@@ -53,6 +53,9 @@ For best performance on Python versions older than 2.7.8 install `backports.pbkd
 MONGODB-CR
 ----------
 
+.. warning:: MONGODB-CR was deprecated with the release of MongoDB 3.6 and
+  is no longer supported by MongoDB 4.0.
+
 Before MongoDB 3.0 the default authentication mechanism was MONGODB-CR,
 the "MongoDB Challenge-Response" protocol::
 
