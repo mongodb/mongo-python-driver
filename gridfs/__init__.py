@@ -36,7 +36,7 @@ from pymongo.errors import ConfigurationError, OperationFailure
 class GridFS(object):
     """An instance of GridFS on top of a single Database.
     """
-    def __init__(self, database, collection="fs"):
+    def __init__(self, database, collection="fs", disable_md5=False):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
@@ -45,6 +45,9 @@ class GridFS(object):
         :Parameters:
           - `database`: database to use
           - `collection` (optional): root collection to use
+          - `disable_md5` (optional): When True, MD5 checksums will not be
+            computed for uploaded files. Useful in environments where MD5
+            cannot be used for regulatory or other reasons. Defaults to False.
 
         .. versionchanged:: 3.1
            Indexes are only ensured on the first write to the DB.
@@ -66,6 +69,7 @@ class GridFS(object):
         self.__collection = database[collection]
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
+        self.__disable_md5 = disable_md5
 
     def new_file(self, **kwargs):
         """Create a new file in GridFS.
@@ -83,7 +87,8 @@ class GridFS(object):
         """
         # No need for __ensure_index_files_id() here; GridIn ensures
         # the (files_id, n) index when needed.
-        return GridIn(self.__collection, **kwargs)
+        return GridIn(
+            self.__collection, disable_md5=self.__disable_md5, **kwargs)
 
     def put(self, data, **kwargs):
         """Put data in GridFS as a new file.
@@ -116,7 +121,8 @@ class GridFS(object):
         .. versionchanged:: 3.0
            w=0 writes to GridFS are now prohibited.
         """
-        grid_file = GridIn(self.__collection, **kwargs)
+        grid_file = GridIn(
+            self.__collection, disable_md5=self.__disable_md5, **kwargs)
         try:
             grid_file.write(data)
         finally:
@@ -407,7 +413,7 @@ class GridFSBucket(object):
 
     def __init__(self, db, bucket_name="fs",
                  chunk_size_bytes=DEFAULT_CHUNK_SIZE, write_concern=None,
-                 read_preference=None):
+                 read_preference=None, disable_md5=False):
         """Create a new instance of :class:`GridFSBucket`.
 
         Raises :exc:`TypeError` if `database` is not an instance of
@@ -426,6 +432,9 @@ class GridFSBucket(object):
             (the default) db.write_concern is used.
           - `read_preference` (optional): The read preference to use. If
             ``None`` (the default) db.read_preference is used.
+          - `disable_md5` (optional): When True, MD5 checksums will not be
+            computed for uploaded files. Useful in environments where MD5
+            cannot be used for regulatory or other reasons. Defaults to False.
 
         .. versionadded:: 3.1
 
@@ -441,6 +450,7 @@ class GridFSBucket(object):
         self._db = db
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
+        self._disable_md5 = disable_md5
 
         self._chunks = self._collection.chunks.with_options(
             write_concern=write_concern,
@@ -464,7 +474,7 @@ class GridFSBucket(object):
 
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
-          grid_in, file_id = fs.open_upload_stream(
+          grid_in = fs.open_upload_stream(
                 "test_file", chunk_size_bytes=4,
                 metadata={"contentType": "text/plain"})
           grid_in.write("data I want to store!")
@@ -497,7 +507,11 @@ class GridFSBucket(object):
         if metadata is not None:
             opts["metadata"] = metadata
 
-        return GridIn(self._collection, session=session, **opts)
+        return GridIn(
+            self._collection,
+            session=session,
+            disable_md5=self._disable_md5,
+            **opts)
 
     def open_upload_stream_with_id(
             self, file_id, filename, chunk_size_bytes=None, metadata=None,
@@ -512,7 +526,7 @@ class GridFSBucket(object):
 
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
-          grid_in, file_id = fs.open_upload_stream(
+          grid_in = fs.open_upload_stream_with_id(
                 ObjectId(),
                 "test_file",
                 chunk_size_bytes=4,
@@ -550,7 +564,11 @@ class GridFSBucket(object):
         if metadata is not None:
             opts["metadata"] = metadata
 
-        return GridIn(self._collection, session=session, **opts)
+        return GridIn(
+            self._collection,
+            session=session,
+            disable_md5=self._disable_md5,
+            **opts)
 
     def upload_from_stream(self, filename, source, chunk_size_bytes=None,
                            metadata=None, session=None):

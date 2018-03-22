@@ -456,6 +456,34 @@ class TestGridfs(IntegrationTest):
         with self.assertRaises(ConfigurationError):
             gridfs.GridFS(rs_or_single_client(w=0).pymongo_test)
 
+    def test_md5(self):
+        gin = self.fs.new_file()
+        gin.write(b"includes md5 sum")
+        gin.close()
+        self.assertIsNotNone(gin.md5)
+        md5sum = gin.md5
+
+        gout = self.fs.get(gin._id)
+        self.assertIsNotNone(gout.md5)
+        self.assertEqual(md5sum, gout.md5)
+
+        _id = self.fs.put(b"also includes md5 sum")
+        gout = self.fs.get(_id)
+        self.assertIsNotNone(gout.md5)
+
+        fs = gridfs.GridFS(self.db, disable_md5=True)
+        gin = fs.new_file()
+        gin.write(b"no md5 sum")
+        gin.close()
+        self.assertIsNone(gin.md5)
+
+        gout = self.fs.get(gin._id)
+        self.assertIsNone(gout.md5)
+
+        _id = fs.put(b"still no md5 sum")
+        gout = self.fs.get(_id)
+        self.assertIsNone(gout.md5)
+
 
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
 

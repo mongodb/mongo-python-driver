@@ -14,10 +14,9 @@
 
 """Tools for representing files stored in GridFS."""
 import datetime
+import hashlib
 import math
 import os
-
-from hashlib import md5
 
 from bson.son import SON
 from bson.binary import Binary
@@ -100,7 +99,8 @@ def _grid_out_property(field_name, docstring):
 class GridIn(object):
     """Class to write data to GridFS.
     """
-    def __init__(self, root_collection, session=None, **kwargs):
+    def __init__(
+            self, root_collection, session=None, disable_md5=False, **kwargs):
         """Write a file to GridFS
 
         Application developers should generally not need to
@@ -139,6 +139,10 @@ class GridIn(object):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession` to use for all
             commands
+          - `disable_md5` (optional): When True, an MD5 checksum will not be
+            computed for the uploaded file. Useful in environments where
+            MD5 cannot be used for regulatory or other reasons. Defaults to
+            False.
           - `**kwargs` (optional): file level options (see above)
 
         .. versionchanged:: 3.6
@@ -152,7 +156,6 @@ class GridIn(object):
             raise TypeError("root_collection must be an "
                             "instance of Collection")
 
-        # With w=0, 'filemd5' might run before the final chunks are written.
         if not root_collection.write_concern.acknowledged:
             raise ConfigurationError('root_collection must use '
                                      'acknowledged write_concern')
@@ -166,7 +169,8 @@ class GridIn(object):
         coll = root_collection.with_options(
             read_preference=ReadPreference.PRIMARY)
 
-        kwargs['md5'] = md5()
+        if not disable_md5:
+            kwargs["md5"] = hashlib.md5()
         # Defaults
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
@@ -226,7 +230,7 @@ class GridIn(object):
                                     "Date that this file was uploaded.",
                                     closed_only=True)
     md5 = _grid_in_property("md5", "MD5 of the contents of this file "
-                            "(generated on the server).",
+                            "if an md5 sum was created.",
                             closed_only=True)
 
     def __getattr__(self, name):
@@ -251,10 +255,9 @@ class GridIn(object):
     def __flush_data(self, data):
         """Flush `data` to a chunk.
         """
-        # Ensure the index, even if there's nothing to write, so
-        # the filemd5 command always succeeds.
         self.__ensure_indexes()
-        self._file['md5'].update(data)
+        if 'md5' in self._file:
+            self._file['md5'].update(data)
 
         if not data:
             return
@@ -284,7 +287,8 @@ class GridIn(object):
         try:
             self.__flush_buffer()
 
-            self._file['md5'] = self._file["md5"].hexdigest()
+            if "md5" in self._file:
+                self._file["md5"] = self._file["md5"].hexdigest()
             self._file["length"] = self._position
             self._file["uploadDate"] = datetime.datetime.utcnow()
 
@@ -445,7 +449,7 @@ class GridOut(object):
     aliases = _grid_out_property("aliases", "List of aliases for this file.")
     metadata = _grid_out_property("metadata", "Metadata attached to this file.")
     md5 = _grid_out_property("md5", "MD5 of the contents of this file "
-                             "(generated on the server).")
+                             "if an md5 sum was created.")
 
     def _ensure_file(self):
         if not self._file:
