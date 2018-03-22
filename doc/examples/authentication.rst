@@ -23,6 +23,29 @@ Python 2, to be used in a MongoDB URI. For example, in Python 3::
   >>> MongoClient('mongodb://%s:%s@127.0.0.1' % (username, password))
   ...
 
+SCRAM-SHA-256 (RFC 7677)
+------------------------
+.. versionadded:: 3.7
+
+SCRAM-SHA-256 is the default authentication mechanism supported by a cluster
+configured for authentication with MongoDB 4.0 or later. Authentication
+requires a username, a password, and a database name. The default database
+name is "admin", this can be overidden with the ``authSource`` option.
+Credentials can be specified as arguments to
+:class:`~pymongo.mongo_client.MongoClient`::
+
+  >>> from pymongo import MongoClient
+  >>> client = MongoClient('example.com',
+  ...                      username='user',
+  ...                      password='password',
+  ...                      authSource='the_database',
+  ...                      authMechanism='SCRAM-SHA-256')
+
+Or through the MongoDB URI::
+
+  >>> uri = "mongodb://user:password@example.com/?authSource=the_database&authMechanism=SCRAM-SHA-256"
+  >>> client = MongoClient(uri)
+
 SCRAM-SHA-1 (RFC 5802)
 ----------------------
 .. versionadded:: 2.8
@@ -43,7 +66,7 @@ Credentials can be specified as arguments to
 
 Or through the MongoDB URI::
 
-  >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=SCRAM-SHA-1"
+  >>> uri = "mongodb://user:password@example.com/?authSource=the_database&authMechanism=SCRAM-SHA-1"
   >>> client = MongoClient(uri)
 
 For best performance on Python versions older than 2.7.8 install `backports.pbkdf2`_.
@@ -65,15 +88,16 @@ the "MongoDB Challenge-Response" protocol::
   ...                      password='password',
   ...                      authMechanism='MONGODB-CR')
   >>>
-  >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=MONGODB-CR"
+  >>> uri = "mongodb://user:password@example.com/?authSource=the_database&authMechanism=MONGODB-CR"
   >>> client = MongoClient(uri)
 
 Default Authentication Mechanism
 --------------------------------
 
 If no mechanism is specified, PyMongo automatically uses MONGODB-CR when
-connected to a pre-3.0 version of MongoDB, and SCRAM-SHA-1 when connected to
-a recent version.
+connected to a pre-3.0 version of MongoDB, SCRAM-SHA-1 when connected to
+MongoDB 3.0 through 3.6, and negotiates the mechanism to use (SCRAM-SHA-1
+or SCRAM-SHA-256) when connected to MongoDB 4.0+.
 
 Default Database and "authSource"
 ---------------------------------

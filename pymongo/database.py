@@ -1117,10 +1117,12 @@ class Database(common.BaseObject):
             Not used with GSSAPI or MONGODB-X509 authentication.
           - `source` (optional): the database to authenticate on. If not
             specified the current database is used.
-          - `mechanism` (optional): See
-            :data:`~pymongo.auth.MECHANISMS` for options.
-            By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
-            MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
+          - `mechanism` (optional): See :data:`~pymongo.auth.MECHANISMS` for
+            options. If no mechanism is specified, PyMongo automatically uses
+            MONGODB-CR when connected to a pre-3.0 version of MongoDB,
+            SCRAM-SHA-1 when connected to MongoDB 3.0 through 3.6, and
+            negotiates the mechanism to use (SCRAM-SHA-1 or SCRAM-SHA-256) when
+            connected to MongoDB 4.0+.
           - `authMechanismProperties` (optional): Used to specify
             authentication mechanism specific options. To specify the service
             name for GSSAPI authentication pass

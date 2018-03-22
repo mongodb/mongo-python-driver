@@ -121,9 +121,8 @@ command::
 Other optional packages:
 
 - `backports.pbkdf2 <https://pypi.python.org/pypi/backports.pbkdf2/>`_,
-  improves authentication performance with SCRAM-SHA-1, the default
-  authentication mechanism for MongoDB 3.0+. It especially improves
-  performance on Python versions older than 2.7.8.
+  improves authentication performance with SCRAM-SHA-1 and SCRAM-SHA-256.
+  It especially improves performance on Python versions older than 2.7.8.
 - `monotonic <https://pypi.python.org/pypi/monotonic>`_ adds support for
   a monotonic clock, which improves reliability in environments
   where clock adjustments are frequent. Not needed in Python 3.

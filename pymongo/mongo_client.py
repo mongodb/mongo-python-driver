@@ -317,8 +317,11 @@ class MongoClient(common.BaseObject):
           - `authSource`: The database to authenticate on. Defaults to the
             database specified in the URI, if provided, or to "admin".
           - `authMechanism`: See :data:`~pymongo.auth.MECHANISMS` for options.
-            By default, use SCRAM-SHA-1 with MongoDB 3.0 and later, MONGODB-CR
-            (MongoDB Challenge Response protocol) for older servers.
+            If no mechanism is specified, PyMongo automatically uses MONGODB-CR
+            when connected to a pre-3.0 version of MongoDB, SCRAM-SHA-1 when
+            connected to MongoDB 3.0 through 3.6, and negotiates the mechanism
+            to use (SCRAM-SHA-1 or SCRAM-SHA-256) when connected to MongoDB
+            4.0+.
           - `authMechanismProperties`: Used to specify authentication mechanism
             specific options. To specify the service name for GSSAPI
             authentication pass authMechanismProperties='SERVICE_NAME:<service
