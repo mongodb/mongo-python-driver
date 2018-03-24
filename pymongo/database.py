@@ -526,7 +526,8 @@ class Database(common.BaseObject):
         .. mongodoc:: commands
         """
         client = self.__client
-        with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
+        with client._socket_for_reads(
+                read_preference, session) as (sock_info, slave_ok):
             return self._command(sock_info, command, slave_ok, value,
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
@@ -584,7 +585,7 @@ class Database(common.BaseObject):
         .. versionadded:: 3.6
         """
         with self.__client._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_okay):
+                ReadPreference.PRIMARY, session) as (sock_info, slave_okay):
             return self._list_collections(
                 sock_info, slave_okay, session=session, **kwargs)
 
@@ -649,7 +650,7 @@ class Database(common.BaseObject):
         self.__client._purge_index(self.__name, name)
 
         with self.__client._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_ok):
+                ReadPreference.PRIMARY, session) as (sock_info, slave_ok):
             return self._command(
                 sock_info, 'drop', slave_ok, _unicode(name),
                 allowable_errors=['ns not found'],
@@ -730,7 +731,7 @@ class Database(common.BaseObject):
            Added ``session`` parameter.
         """
         cmd = SON([("currentOp", 1), ("$all", include_all)])
-        with self.__client._socket_for_writes() as sock_info:
+        with self.__client._socket_for_writes(session) as sock_info:
             if sock_info.max_wire_version >= 4:
                 with self.__client._tmp_session(session) as s:
                     return sock_info.command("admin", cmd, session=s,

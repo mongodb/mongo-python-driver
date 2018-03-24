@@ -118,6 +118,7 @@ class ClientSession(object):
         self._cluster_time = None
         self._operation_time = None
         self._current_txn_read_pref = None
+        self._current_txn_address = None
         if self.options.auto_start_transaction:
             # TODO: Get transaction options from self.options.
             self._current_transaction_opts = TransactionOptions()
@@ -240,6 +241,8 @@ class ClientSession(object):
         finally:
             self._server_session.reset_transaction()
             self._current_transaction_opts = None
+            self._current_txn_address = None
+            self._current_txn_read_pref = None
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""
@@ -294,6 +297,10 @@ class ClientSession(object):
     def in_transaction(self):
         """True if this session has an active multi-statement transaction."""
         return self._current_transaction_opts is not None
+
+    def _pin_server_address(self, address):
+        assert self._current_txn_address is None, "Transaction already pinned"
+        self._current_txn_address = address
 
     def _apply_to(self, command, is_retryable, read_preference):
         self._check_ended()

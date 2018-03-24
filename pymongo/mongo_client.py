@@ -871,7 +871,8 @@ class MongoClient(common.BaseObject):
             # Use SocketInfo.command directly to avoid implicitly creating
             # another session.
             with self._socket_for_reads(
-                    ReadPreference.PRIMARY_PREFERRED) as (sock_info, slave_ok):
+                    ReadPreference.PRIMARY_PREFERRED,
+                    None) as (sock_info, slave_ok):
                 if not sock_info.supports_sessions:
                     return
 
@@ -967,13 +968,31 @@ class MongoClient(common.BaseObject):
             self.__reset_server(server.description.address)
             raise
 
-    def _socket_for_writes(self):
-        server = self._get_topology().select_server(writable_server_selector)
-        return self._get_socket(server)
+    def _select_server(self, read_preference, session):
+        topology = self._get_topology()
+        if session and session.in_transaction:
+            if session._current_txn_address:
+                server = topology.select_server_by_address(
+                    session._current_txn_address)
+                if not server:
+                    raise AutoReconnect(
+                        'Pinned server %s:%d for transaction no longer'
+                        'available' % session._current_txn_address)
+                return server
+
+            server = topology.select_server(read_preference)
+            session._pin_server_address(server.description.address)
+            return server
+        else:
+            return topology.select_server(read_preference)
+
+    def _socket_for_writes(self, session):
+        return self._get_socket(self._select_server(
+            ReadPreference.PRIMARY, session))
 
     @contextlib.contextmanager
-    def _socket_for_reads(self, read_preference):
-        preference = read_preference or ReadPreference.PRIMARY
+    def _socket_for_reads(self, read_preference, session):
+        assert read_preference is not None, "read_preference must not be None"
         # Get a socket for a server matching the read preference, and yield
         # sock_info, slave_ok. Server Selection Spec: "slaveOK must be sent to
         # mongods with topology type Single. If the server type is Mongos,
@@ -982,10 +1001,11 @@ class MongoClient(common.BaseObject):
         # Thread safe: if the type is single it cannot change.
         topology = self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
-        server = topology.select_server(read_preference)
+        server = self._select_server(read_preference, session)
+
         with self._get_socket(server) as sock_info:
             slave_ok = (single and not sock_info.is_mongos) or (
-                preference != ReadPreference.PRIMARY)
+                read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
 
     def _send_message_with_response(self, operation, read_preference=None,
@@ -1005,14 +1025,14 @@ class MongoClient(common.BaseObject):
             self._kill_cursors_executor.open()
 
         topology = self._get_topology()
+        session = operation.session
         if address:
             server = topology.select_server_by_address(address)
             if not server:
                 raise AutoReconnect('server %s:%d no longer available'
                                     % address)
         else:
-            selector = read_preference or writable_server_selector
-            server = topology.select_server(selector)
+            server = self._select_server(read_preference, session)
 
         # A _Query's slaveOk bit is already set for queries with non-primary
         # read preference. If this is a direct connection to a mongod, override
@@ -1064,8 +1084,7 @@ class MongoClient(common.BaseObject):
             return bulk.retrying if bulk else retrying
         while True:
             try:
-                server = self._get_topology().select_server(
-                    writable_server_selector)
+                server = self._select_server(ReadPreference.PRIMARY, session)
                 supports_session = (
                     session is not None and
                     server.description.retryable_writes_supported)
@@ -1539,7 +1558,7 @@ class MongoClient(common.BaseObject):
 
         self._purge_index(name)
         with self._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_ok):
+                ReadPreference.PRIMARY, None) as (sock_info, slave_ok):
             self[name]._command(
                 sock_info,
                 "dropDatabase",
@@ -1681,7 +1700,7 @@ class MongoClient(common.BaseObject):
            Added ``session`` parameter.
         """
         cmd = SON([("fsyncUnlock", 1)])
-        with self._socket_for_writes() as sock_info:
+        with self._socket_for_writes(session=None) as sock_info:
             if sock_info.max_wire_version >= 4:
                 try:
                     with self._tmp_session(session) as s:
