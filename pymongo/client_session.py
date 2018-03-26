@@ -216,14 +216,17 @@ class ClientSession(object):
         self._finish_transaction("abortTransaction")
 
     def _finish_transaction(self, command_name):
+        self._check_ended()
+
         if self._current_transaction_opts is None:
             raise InvalidOperation("No transaction started")
 
-        if self._server_session.statement_id == 0:
-            # Not really started.
-            return
-
         try:
+            if self._server_session.statement_id == 0:
+                # Not really started.
+                self._server_session._transaction_id += 1
+                return
+
             # TODO: retryable. And it's weird to pass parse_write_concern_error
             # from outside database.py.
             self._client.admin.command(
