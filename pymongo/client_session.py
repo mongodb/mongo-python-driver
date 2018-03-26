@@ -217,14 +217,11 @@ class ClientSession(object):
 
     def _finish_transaction(self, command_name):
         if self._current_transaction_opts is None:
-            raise InvalidOperation("No transaction in progress")
+            raise InvalidOperation("No transaction started")
 
         if self._server_session.statement_id == 0:
             # Not really started.
             return
-
-        if command_name == 'abortTransaction':
-            assert False, "Not implemented"  # Await server.
 
         try:
             # TODO: retryable. And it's weird to pass parse_write_concern_error

@@ -234,13 +234,7 @@ def expect_error(expected_result):
 
 def end_sessions(sessions):
     for s in sessions.values():
-        try:
-            s.commit_transaction()
-        except Exception:
-            # Ignore errors from committing without an open transaction.
-            pass
-
-    for s in sessions.values():
+        # Aborts the transaction if it's open.
         s.end_session()
 
 
