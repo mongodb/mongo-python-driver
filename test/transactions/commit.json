@@ -65,7 +65,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -79,7 +81,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "writeConcern": null
             },
@@ -98,7 +102,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -112,7 +118,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 1,
               "writeConcern": null
             },
@@ -167,7 +175,7 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "no transaction in progress"
+            "errorContains": "no transaction started"
           }
         }
       ],
@@ -183,7 +191,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -197,7 +207,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "writeConcern": null
             },

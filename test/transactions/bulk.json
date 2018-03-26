@@ -139,10 +139,10 @@
             "deletedCount": 2,
             "insertedIds": {
               "0": 1,
-              "1": 3,
-              "2": 4,
-              "3": 5,
-              "4": 6
+              "4": 3,
+              "5": 4,
+              "6": 5,
+              "7": 6
             },
             "matchedCount": 2,
             "modifiedCount": 2,
@@ -170,7 +170,9 @@
                 }
               ],
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -192,7 +194,9 @@
                 }
               ],
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "autocommit": null,
               "writeConcern": null
@@ -212,7 +216,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 2,
               "autocommit": null,
               "writeConcern": null
@@ -262,7 +268,9 @@
                 }
               ],
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 3,
               "autocommit": null,
               "writeConcern": null
@@ -291,7 +299,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 6,
               "autocommit": null,
               "writeConcern": null
@@ -319,7 +329,9 @@
                 }
               ],
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 10,
               "autocommit": null,
               "writeConcern": null
@@ -333,7 +345,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 12,
               "writeConcern": null
             },

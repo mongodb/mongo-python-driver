@@ -16,6 +16,7 @@
   "tests": [
     {
       "description": "primary",
+      "skipReason": "Skip until find supports stmtId, SERVER-33213",
       "operations": [
         {
           "name": "startTransaction",
@@ -177,7 +178,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false
             },
@@ -190,7 +193,9 @@
             "command": {
               "find": "test",
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "autocommit": null
             },
@@ -205,7 +210,9 @@
                 "$numberLong": "42"
               },
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 2,
               "autocommit": null
             },
@@ -218,7 +225,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 3,
               "writeConcern": null
             },
@@ -272,7 +281,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 0,
               "autocommit": false
             },
@@ -285,7 +296,9 @@
             "command": {
               "find": "test",
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 1,
               "autocommit": null
             },
@@ -300,7 +313,9 @@
                 "$numberLong": "42"
               },
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 2,
               "autocommit": null
             },
@@ -313,7 +328,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 3,
               "writeConcern": null
             },
@@ -384,7 +401,7 @@
     },
     {
       "description": "primary abort",
-      "skipReason": "Server must implement abortTransaction",
+      "skipReason": "Skip until find supports stmtId, SERVER-33213",
       "operations": [
         {
           "name": "startTransaction",
@@ -467,7 +484,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false
             },
@@ -480,7 +499,9 @@
             "command": {
               "find": "test",
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "autocommit": null
             },
@@ -495,7 +516,9 @@
                 "$numberLong": "42"
               },
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 2,
               "autocommit": null
             },
@@ -508,7 +531,9 @@
             "command": {
               "abortTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "writeConcern": null
             },
             "command_name": "abortTransaction",
@@ -578,7 +603,7 @@
     },
     {
       "description": "secondary",
-      "skipReason": "Implement transaction pinning",
+      "skipReason": "Await abortTransaction on secondaries, SERVER-34004",
       "operations": [
         {
           "name": "startTransaction",
@@ -759,7 +784,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false
             },
@@ -772,7 +799,9 @@
             "command": {
               "find": "test",
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "autocommit": null
             },
@@ -787,7 +816,9 @@
                 "$numberLong": "42"
               },
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 2,
               "autocommit": null
             },
@@ -800,7 +831,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 3,
               "writeConcern": null
             },
@@ -854,7 +887,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 0,
               "autocommit": false
             },
@@ -867,7 +902,9 @@
             "command": {
               "find": "test",
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 1,
               "autocommit": null
             },
@@ -882,7 +919,9 @@
                 "$numberLong": "42"
               },
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 2,
               "autocommit": null
             },
@@ -895,7 +934,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 3,
               "writeConcern": null
             },
@@ -966,7 +1007,7 @@
     },
     {
       "description": "secondary abort",
-      "skipReason": "Server must implement abortTransaction",
+      "skipReason": "Await abortTransaction on secondaries, SERVER-34004",
       "operations": [
         {
           "name": "startTransaction",
@@ -991,6 +1032,9 @@
               "_id": 1
             },
             "batchSize": 3,
+            "readPreference": {
+              "mode": "secondary"
+            },
             "session": "session0"
           },
           "result": [
@@ -1055,7 +1099,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false
             },
@@ -1068,7 +1114,9 @@
             "command": {
               "find": "test",
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "autocommit": null
             },
@@ -1083,7 +1131,9 @@
                 "$numberLong": "42"
               },
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 2,
               "autocommit": null
             },
@@ -1096,7 +1146,9 @@
             "command": {
               "abortTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "writeConcern": null
             },
             "command_name": "abortTransaction",

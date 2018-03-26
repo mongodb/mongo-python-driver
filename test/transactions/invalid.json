@@ -1,0 +1,107 @@
+{
+  "data": [],
+  "tests": [
+    {
+      "description": "start insert start",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1
+            },
+            "session": "session0"
+          },
+          "result": {
+            "insertedId": 1
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "transaction already in progress"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ]
+    },
+    {
+      "description": "start twice",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "transaction already in progress"
+          }
+        }
+      ]
+    },
+    {
+      "description": "commit and start twice",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1
+            },
+            "session": "session0"
+          },
+          "result": {
+            "insertedId": 1
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "transaction already in progress"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -42,8 +42,11 @@
                   "_id": 1
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -57,7 +60,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "writeConcern": {
                 "w": "majority"
@@ -116,8 +121,11 @@
                   "_id": 1
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -131,7 +139,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "writeConcern": null
             },
@@ -152,7 +162,6 @@
     },
     {
       "description": "abort with majority",
-      "skipReason": "Server must implement abortTransaction",
       "operations": [
         {
           "name": "startTransaction",
@@ -192,10 +201,13 @@
                   "_id": 1
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
-              "autoabort": false,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "insert",
@@ -207,7 +219,10 @@
             "command": {
               "abortTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 1,
               "writeConcern": {
                 "w": "majority"
               }
@@ -219,17 +234,12 @@
       ],
       "outcome": {
         "collection": {
-          "data": [
-            {
-              "_id": 1
-            }
-          ]
+          "data": []
         }
       }
     },
     {
       "description": "abort with default",
-      "skipReason": "Server must implement abortTransaction",
       "operations": [
         {
           "name": "startTransaction",
@@ -266,10 +276,13 @@
                   "_id": 1
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
-              "autoabort": false,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "insert",
@@ -281,7 +294,10 @@
             "command": {
               "abortTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 1,
               "writeConcern": null
             },
             "command_name": "abortTransaction",
@@ -291,11 +307,7 @@
       ],
       "outcome": {
         "collection": {
-          "data": [
-            {
-              "_id": 1
-            }
-          ]
+          "data": []
         }
       }
     }

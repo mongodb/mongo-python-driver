@@ -3,6 +3,7 @@
   "tests": [
     {
       "description": "one transaction",
+      "skipReason": "Skip until find supports stmtId, SERVER-33213",
       "operations": [
         {
           "name": "startTransaction",

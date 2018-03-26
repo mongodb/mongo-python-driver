@@ -3,7 +3,7 @@
   "tests": [
     {
       "description": "commit",
-      "transactionOptions": {
+      "sessionOptions": {
         "session0": {
           "autoStartTransaction": true
         }
@@ -70,7 +70,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -84,7 +86,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "writeConcern": null
             },
@@ -103,7 +107,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -123,7 +129,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 1,
               "autocommit": null,
               "writeConcern": null
@@ -137,7 +145,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 2,
               "writeConcern": null
             },
@@ -164,7 +174,7 @@
     },
     {
       "description": "explicit start",
-      "transactionOptions": {
+      "sessionOptions": {
         "session0": {
           "autoStartTransaction": true
         }
@@ -210,7 +220,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -224,7 +236,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "writeConcern": null
             },
@@ -245,8 +259,7 @@
     },
     {
       "description": "abort",
-      "skipReason": "Server must implement abortTransaction",
-      "transactionOptions": {
+      "sessionOptions": {
         "session0": {
           "autoStartTransaction": true
         }
@@ -301,7 +314,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -315,7 +330,9 @@
             "command": {
               "abortTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 1,
               "writeConcern": null
             },
@@ -333,8 +350,9 @@
                 }
               ],
               "ordered": true,
-              "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -348,7 +366,9 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 2,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 1,
               "writeConcern": null
             },
@@ -369,7 +389,7 @@
     },
     {
       "description": "commit empty transaction",
-      "transactionOptions": {
+      "sessionOptions": {
         "session0": {
           "autoStartTransaction": true
         }
@@ -405,7 +425,7 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "no transaction in progress"
+            "errorContains": "no transaction started"
           }
         }
       ],
@@ -421,7 +441,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -435,7 +457,10 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "2"
+              },
+              "stmtId": 1,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -455,7 +480,7 @@
     },
     {
       "description": "isolation",
-      "transactionOptions": {
+      "sessionOptions": {
         "session0": {
           "autoStartTransaction": true
         }
@@ -516,7 +541,9 @@
               ],
               "ordered": true,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
               "stmtId": 0,
               "autocommit": false,
               "writeConcern": null
@@ -529,6 +556,9 @@
           "command_started_event": {
             "command": {
               "find": "test",
+              "filter": {
+                "_id": 1
+              },
               "lsid": "session1",
               "txnNumber": null,
               "stmtId": null,
@@ -543,7 +573,10 @@
             "command": {
               "commitTransaction": 1,
               "lsid": "session0",
-              "txnNumber": 1,
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 1,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -554,6 +587,9 @@
           "command_started_event": {
             "command": {
               "find": "test",
+              "filter": {
+                "_id": 1
+              },
               "lsid": "session1",
               "txnNumber": null,
               "stmtId": null,
