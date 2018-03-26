@@ -258,7 +258,7 @@ def create_test(scenario_def, test):
         for i in range(2):
             session_name = 'session%d' % i
             s = client.start_session(
-                **camel_to_snake_args(test['transactionOptions'][session_name]))
+                **camel_to_snake_args(test['sessionOptions'][session_name]))
 
             sessions[session_name] = s
             # Store lsid so we can access it after end_session, in check_events.
