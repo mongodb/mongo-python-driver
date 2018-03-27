@@ -256,6 +256,10 @@ class ClientSession(object):
                 self._server_session._transaction_id += 1
                 return
 
+            write_concern = self._current_transaction_opts.write_concern
+            if write_concern is None:
+                write_concern = self.client.write_concern
+
             # TODO: retryable. And it's weird to pass parse_write_concern_error
             # from outside database.py.
             self._client.admin.command(
@@ -263,7 +267,7 @@ class ClientSession(object):
                 txnNumber=self._server_session.transaction_id,
                 stmtId=self._server_session.statement_id,
                 session=self,
-                write_concern=self._current_transaction_opts.write_concern,
+                write_concern=write_concern,
                 read_preference=self._current_txn_read_pref,
                 parse_write_concern_error=True)
         finally:
