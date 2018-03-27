@@ -52,7 +52,7 @@ from bson.py3compat import abc
 from bson.timestamp import Timestamp
 
 from pymongo import monotonic
-from pymongo.errors import InvalidOperation
+from pymongo.errors import InvalidOperation, OperationFailure
 
 
 class SessionOptions(object):
@@ -105,7 +105,23 @@ class TransactionOptions(object):
     def write_concern(self):
         """This transaction's :class:`~write_concern.WriteConcern`."""
         return self._write_concern
-        
+
+
+class _TransactionContext(object):
+    """Internal transaction context manager for start_transaction."""
+    def __init__(self, session):
+        self.__session = session
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.__session.in_transaction:
+            if exc_val is None:
+                self.__session.commit_transaction()
+            else:
+                self.__session.abort_transaction()
+
 
 class ClientSession(object):
     """A session for ordering sequential operations."""
@@ -207,6 +223,7 @@ class ClientSession(object):
 
         self._current_transaction_opts = TransactionOptions(**kwargs)
         self._server_session.statement_id = 0
+        return _TransactionContext(self)
 
     def commit_transaction(self):
         """Commit a multi-statement transaction."""
@@ -214,7 +231,18 @@ class ClientSession(object):
 
     def abort_transaction(self):
         """Abort a multi-statement transaction."""
-        self._finish_transaction("abortTransaction")
+        try:
+            self._finish_transaction("abortTransaction")
+        except OperationFailure as exc:
+            # TODO: "Transaction isn't in progress" should change to
+            # NoSuchTransaction.
+            # Ignore TransactionTooOld and TransactionAborted.
+            errmsg = exc.details.get('errmsg')
+            if exc.code in (225, 244) or (
+                    errmsg == "Transaction isn't in progress"
+                    and exc.code == 125):
+                return
+            raise
 
     def _finish_transaction(self, command_name):
         self._check_ended()

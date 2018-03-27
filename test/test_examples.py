@@ -21,6 +21,7 @@ sys.path[0:0] = [""]
 
 import pymongo
 from test import client_context, unittest
+from test.utils import rs_or_single_client
 
 
 class TestSampleShellCommands(unittest.TestCase):
@@ -28,8 +29,9 @@ class TestSampleShellCommands(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
+        cls.client = rs_or_single_client(w="majority")
         # Run once before any tests run.
-        client_context.client.pymongo_test.inventory.drop()
+        cls.client.pymongo_test.inventory.drop()
 
     @classmethod
     def tearDownClass(cls):
@@ -37,7 +39,7 @@ class TestSampleShellCommands(unittest.TestCase):
 
     def tearDown(self):
         # Run after every test.
-        client_context.client.pymongo_test.inventory.drop()
+        self.client.pymongo_test.inventory.drop()
 
     def test_first_three_examples(self):
         db = client_context.client.pymongo_test
@@ -836,6 +838,42 @@ class TestSampleShellCommands(unittest.TestCase):
             {'_id': 1},
             {"$set": {"a.$[i].b": 2}},
             array_filters=[{"i.b": 0}])
+
+    @client_context.require_version_min(3, 7, 3)
+    @client_context.require_replica_set
+    def test_tranactions(self):
+        # Transaction examples
+        client = self.client
+        self.addCleanup(client.drop_database, "test")
+
+        db = client.test
+        orders = db.create_collection("orders")
+        inventory = db.create_collection("inventory")
+        inventory.insert_one({"sku": "abc123", "qty": 500})
+
+        with client.start_session() as s:
+            # Multi-document transaction
+            with s.start_transaction():
+                orders.insert_one({"sku": "abc123", "qty": 100}, session=s)
+                inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
+                                     {"$inc": {"qty": -100}}, session=s)
+
+            # Explicit start, commit, abort
+            s.start_transaction()
+            try:
+                orders.insert_one({"sku": "abc123", "qty": 100}, session=s)
+                inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
+                                     {"$inc": {"qty": -100}}, session=s)
+            except Exception:
+                s.abort_transaction()
+                raise
+            s.commit_transaction()
+
+            # Snapshot read
+            with s.start_transaction():
+                doc = inventory.find_one({"sku": "abc123"}, session=s)
+                for order in orders.find({"sku": "abc123"}, session=s):
+                    pass
 
 
 if __name__ == "__main__":

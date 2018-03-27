@@ -283,7 +283,8 @@ def create_test(scenario_def, test):
 
             else:
                 result = self.run_operation(sessions, collection, op.copy())
-                self.check_result(expected_result, result)
+                if 'result' in op:
+                    self.check_result(expected_result, result)
 
         for s in sessions.values():
             s.end_session()
