@@ -1,0 +1,310 @@
+{
+  "data": [
+    {
+      "_id": 1,
+      "count": 0
+    }
+  ],
+  "tests": [
+    {
+      "description": "casual consistency",
+      "operations": [
+        {
+          "name": "updateOne",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "update": {
+              "$inc": {
+                "count": 1
+              }
+            },
+            "upsert": false,
+            "session": "session0"
+          },
+          "result": {
+            "matchedCount": 1,
+            "modifiedCount": 1,
+            "upsertedCount": 0
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "updateOne",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "update": {
+              "$inc": {
+                "count": 1
+              }
+            },
+            "upsert": false,
+            "session": "session0"
+          },
+          "result": {
+            "matchedCount": 1,
+            "modifiedCount": 1,
+            "upsertedCount": 0
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "command_started_event": {
+            "command": {
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "_id": 1
+                  },
+                  "u": {
+                    "$inc": {
+                      "count": 1
+                    }
+                  },
+                  "multi": false,
+                  "upsert": false
+                }
+              ],
+              "ordered": true,
+              "lsid": "session0",
+              "readConcern": null,
+              "txnNumber": null,
+              "stmtId": null,
+              "autocommit": null,
+              "writeConcern": null
+            },
+            "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "_id": 1
+                  },
+                  "u": {
+                    "$inc": {
+                      "count": 1
+                    }
+                  },
+                  "multi": false,
+                  "upsert": false
+                }
+              ],
+              "ordered": true,
+              "readConcern": {
+                "level": "snapshot",
+                "afterClusterTime": 42
+              },
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 0,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "commitTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 1,
+              "writeConcern": null
+            },
+            "command_name": "commitTransaction",
+            "database_name": "admin"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1,
+              "count": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "casual consistency disabled",
+      "sessionOptions": {
+        "session0": {
+          "causalConsistency": false
+        }
+      },
+      "operations": [
+        {
+          "name": "updateOne",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "update": {
+              "$inc": {
+                "count": 1
+              }
+            },
+            "upsert": false,
+            "session": "session0"
+          },
+          "result": {
+            "matchedCount": 1,
+            "modifiedCount": 1,
+            "upsertedCount": 0
+          }
+        },
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "updateOne",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "update": {
+              "$inc": {
+                "count": 1
+              }
+            },
+            "upsert": false,
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "WriteConflict"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "command_started_event": {
+            "command": {
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "_id": 1
+                  },
+                  "u": {
+                    "$inc": {
+                      "count": 1
+                    }
+                  },
+                  "multi": false,
+                  "upsert": false
+                }
+              ],
+              "ordered": true,
+              "lsid": "session0",
+              "readConcern": null,
+              "txnNumber": null,
+              "stmtId": null,
+              "autocommit": null,
+              "writeConcern": null
+            },
+            "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "_id": 1
+                  },
+                  "u": {
+                    "$inc": {
+                      "count": 1
+                    }
+                  },
+                  "multi": false,
+                  "upsert": false
+                }
+              ],
+              "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 0,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "abortTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 1,
+              "writeConcern": null
+            },
+            "command_name": "abortTransaction",
+            "database_name": "admin"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1,
+              "count": 1
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -110,7 +110,8 @@
               ],
               "ordered": true,
               "readConcern": {
-                "level": "snapshot"
+                "level": "snapshot",
+                "afterClusterTime": 42
               },
               "lsid": "session0",
               "txnNumber": {
@@ -363,7 +364,8 @@
               ],
               "ordered": true,
               "readConcern": {
-                "level": "snapshot"
+                "level": "snapshot",
+                "afterClusterTime": 42
               },
               "txnNumber": {
                 "$numberLong": "2"

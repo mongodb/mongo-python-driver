@@ -358,7 +358,11 @@ class ClientSession(object):
                 # First statement begins a new transaction.
                 self._transaction.read_preference = read_preference
                 self._server_session._transaction_id += 1
-                command['readConcern'] = {'level': 'snapshot'}
+                read_concern = command.setdefault('readConcern', {})
+                read_concern['level'] = 'snapshot'
+                if (self.options.causal_consistency
+                        and self.operation_time is not None):
+                    read_concern['afterClusterTime'] = self.operation_time
                 command['autocommit'] = False
             elif read_preference != self._transaction.read_preference:
                 raise InvalidOperation('Transaction readPreference changed')

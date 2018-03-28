@@ -196,6 +196,17 @@ class TestTransactions(IntegrationTest):
             elif event.command_name == 'killCursors':
                 event.command['cursors'] = [42]
 
+            # Replace afterClusterTime: 42 with actual afterClusterTime.
+            expected_cmd = expectation[event_type]['command']
+            expected_read_concern = expected_cmd.get('readConcern')
+            if expected_read_concern is not None:
+                time = expected_read_concern.get('afterClusterTime')
+                if time == 42:
+                    actual_time = event.command.get(
+                        'readConcern', {}).get('afterClusterTime')
+                    if actual_time is not None:
+                        expected_read_concern['afterClusterTime'] = actual_time
+
             # Replace lsid with a name like "session0" to match test.
             if 'lsid' in event.command:
                 for name, lsid in session_ids.items():
@@ -205,7 +216,7 @@ class TestTransactions(IntegrationTest):
 
             # TODO: Allow stmtId for find/getMore, SERVER-33213.
             if event.command_name in ('find', 'getMore'):
-                expectation[event_type]['command'].pop('stmtId', None)
+                expected_cmd.pop('stmtId', None)
 
             for attr, expected in expectation[event_type].items():
                 actual = getattr(event, attr)
