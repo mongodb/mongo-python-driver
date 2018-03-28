@@ -74,17 +74,6 @@
                 }
               },
               {
-                "name": "replaceOne",
-                "arguments": {
-                  "filter": {
-                    "_id": 1
-                  },
-                  "replacement": {
-                    "y": 1
-                  }
-                }
-              },
-              {
                 "name": "insertOne",
                 "arguments": {
                   "document": {
@@ -117,6 +106,28 @@
                 }
               },
               {
+                "name": "replaceOne",
+                "arguments": {
+                  "filter": {
+                    "_id": 1
+                  },
+                  "replacement": {
+                    "y": 1
+                  }
+                }
+              },
+              {
+                "name": "replaceOne",
+                "arguments": {
+                  "filter": {
+                    "_id": 2
+                  },
+                  "replacement": {
+                    "y": 2
+                  }
+                }
+              },
+              {
                 "name": "deleteOne",
                 "arguments": {
                   "filter": {
@@ -139,13 +150,13 @@
             "deletedCount": 2,
             "insertedIds": {
               "0": 1,
-              "4": 3,
-              "5": 4,
-              "6": 5,
-              "7": 6
+              "3": 3,
+              "4": 4,
+              "5": 5,
+              "6": 6
             },
-            "matchedCount": 2,
-            "modifiedCount": 2,
+            "matchedCount": 3,
+            "modifiedCount": 3,
             "upsertedCount": 1,
             "upsertedIds": {
               "2": 2
@@ -169,6 +180,10 @@
                   "_id": 1
                 }
               ],
+              "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -193,6 +208,7 @@
                   "limit": 1
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -255,18 +271,9 @@
                   },
                   "multi": false,
                   "upsert": true
-                },
-                {
-                  "q": {
-                    "_id": 1
-                  },
-                  "u": {
-                    "y": 1
-                  },
-                  "multi": false,
-                  "upsert": false
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -302,11 +309,50 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 6,
+              "stmtId": 5,
               "autocommit": null,
               "writeConcern": null
             },
             "command_name": "insert",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "_id": 1
+                  },
+                  "u": {
+                    "y": 1
+                  },
+                  "multi": false,
+                  "upsert": false
+                },
+                {
+                  "q": {
+                    "_id": 2
+                  },
+                  "u": {
+                    "y": 2
+                  },
+                  "multi": false,
+                  "upsert": false
+                }
+              ],
+              "ordered": true,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 9,
+              "autocommit": null,
+              "writeConcern": null
+            },
+            "command_name": "update",
             "database_name": "transaction-tests"
           }
         },
@@ -328,11 +374,12 @@
                   "limit": 1
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 10,
+              "stmtId": 11,
               "autocommit": null,
               "writeConcern": null
             },
@@ -348,7 +395,7 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 12,
+              "stmtId": 13,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -365,7 +412,7 @@
             },
             {
               "_id": 2,
-              "x": 2
+              "y": 2
             },
             {
               "_id": 5

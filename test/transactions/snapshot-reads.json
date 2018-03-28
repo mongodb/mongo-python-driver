@@ -178,6 +178,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
+              "readConcern": {
+                "level": "snapshot"
+              },
               "txnNumber": {
                 "$numberLong": "1"
               },
@@ -281,6 +284,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
+              "readConcern": {
+                "level": "snapshot"
+              },
               "txnNumber": {
                 "$numberLong": "2"
               },
@@ -484,6 +490,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
+              "readConcern": {
+                "level": "snapshot"
+              },
               "txnNumber": {
                 "$numberLong": "1"
               },
@@ -784,6 +793,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
+              "readConcern": {
+                "level": "snapshot"
+              },
               "txnNumber": {
                 "$numberLong": "1"
               },
@@ -887,6 +899,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
+              "readConcern": {
+                "level": "snapshot"
+              },
               "txnNumber": {
                 "$numberLong": "2"
               },
@@ -1099,6 +1114,9 @@
             "command": {
               "count": "test",
               "lsid": "session0",
+              "readConcern": {
+                "level": "snapshot"
+              },
               "txnNumber": {
                 "$numberLong": "1"
               },

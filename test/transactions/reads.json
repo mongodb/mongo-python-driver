@@ -75,6 +75,9 @@
                   "_id": 1
                 }
               ],
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -207,6 +210,9 @@
           "command_started_event": {
             "command": {
               "find": "test",
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -335,6 +341,9 @@
             "command": {
               "distinct": "test",
               "lsid": "session0",
+              "readConcern": {
+                "level": "snapshot"
+              },
               "txnNumber": {
                 "$numberLong": "1"
               },

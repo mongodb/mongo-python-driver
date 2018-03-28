@@ -70,6 +70,10 @@
                   "limit": 1
                 }
               ],
+              "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -94,6 +98,7 @@
                   "limit": 1
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"

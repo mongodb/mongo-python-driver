@@ -971,13 +971,13 @@ class MongoClient(common.BaseObject):
     def _select_server(self, read_preference, session):
         topology = self._get_topology()
         if session and session.in_transaction:
-            if session._current_txn_address:
-                server = topology.select_server_by_address(
-                    session._current_txn_address)
+            address = session._pinned_server_address()
+            if address:
+                server = topology.select_server_by_address(address)
                 if not server:
                     raise AutoReconnect(
                         'Pinned server %s:%d for transaction no longer'
-                        'available' % session._current_txn_address)
+                        'available' % address)
                 return server
 
             server = topology.select_server(read_preference)

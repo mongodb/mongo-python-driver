@@ -64,6 +64,9 @@
                 }
               ],
               "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -101,6 +104,9 @@
                 }
               ],
               "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "2"
@@ -168,6 +174,9 @@
                 }
               ],
               "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -250,6 +259,9 @@
                 }
               ],
               "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -352,6 +364,9 @@
                 }
               ],
               "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"

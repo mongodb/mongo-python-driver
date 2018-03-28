@@ -90,6 +90,10 @@
                   "upsert": true
                 }
               ],
+              "ordered": true,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -118,6 +122,7 @@
                   "upsert": false
                 }
               ],
+              "ordered": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"

@@ -123,6 +123,14 @@ class _TransactionContext(object):
                 self.__session.abort_transaction()
 
 
+class _Transaction(object):
+    """Internal class to hold transaction information in a ClientSession."""
+    def __init__(self, opts):
+        self.opts = opts
+        self.read_preference = None
+        self.address = None
+
+
 class ClientSession(object):
     """A session for ordering sequential operations."""
     def __init__(self, client, server_session, options, authset):
@@ -133,13 +141,9 @@ class ClientSession(object):
         self._authset = authset
         self._cluster_time = None
         self._operation_time = None
-        self._current_txn_read_pref = None
-        self._current_txn_address = None
+        self._transaction = None
         if self.options.auto_start_transaction:
-            # TODO: Get transaction options from self.options.
-            self._current_transaction_opts = TransactionOptions()
-        else:
-            self._current_transaction_opts = None
+            self.start_transaction()
 
     def end_session(self):
         """Finish this session. If a transaction has started, abort it.
@@ -154,7 +158,7 @@ class ClientSession(object):
     def _end_session(self, lock, abort_txn):
         if self._server_session is not None:
             try:
-                if self._current_transaction_opts is not None:
+                if self.in_transaction:
                     if abort_txn:
                         self.abort_transaction()
                     else:
@@ -162,7 +166,6 @@ class ClientSession(object):
             finally:
                 self._client._return_server_session(self._server_session, lock)
                 self._server_session = None
-                self._current_transaction_opts = None
 
     def _check_ended(self):
         if self._server_session is None:
@@ -208,7 +211,7 @@ class ClientSession(object):
         """
         return self._operation_time
 
-    def start_transaction(self, **kwargs):
+    def start_transaction(self, read_concern=None, write_concern=None):
         """Start a multi-statement transaction.
 
         Takes the same arguments as :class:`TransactionOptions`.
@@ -218,10 +221,11 @@ class ClientSession(object):
         """
         self._check_ended()
 
-        if self._current_transaction_opts is not None:
+        if self.in_transaction:
             raise InvalidOperation("Transaction already in progress")
 
-        self._current_transaction_opts = TransactionOptions(**kwargs)
+        self._transaction = _Transaction(TransactionOptions(
+            read_concern=read_concern, write_concern=write_concern))
         self._server_session.statement_id = 0
         return _TransactionContext(self)
 
@@ -247,7 +251,7 @@ class ClientSession(object):
     def _finish_transaction(self, command_name):
         self._check_ended()
 
-        if self._current_transaction_opts is None:
+        if not self.in_transaction:
             raise InvalidOperation("No transaction started")
 
         try:
@@ -256,7 +260,7 @@ class ClientSession(object):
                 self._server_session._transaction_id += 1
                 return
 
-            write_concern = self._current_transaction_opts.write_concern
+            write_concern = self._transaction.opts.write_concern
             if write_concern is None:
                 write_concern = self.client.write_concern
 
@@ -268,13 +272,11 @@ class ClientSession(object):
                 stmtId=self._server_session.statement_id,
                 session=self,
                 write_concern=write_concern,
-                read_preference=self._current_txn_read_pref,
+                read_preference=self._transaction.read_preference,
                 parse_write_concern_error=True)
         finally:
             self._server_session.reset_transaction()
-            self._current_transaction_opts = None
-            self._current_txn_address = None
-            self._current_txn_read_pref = None
+            self._transaction = None
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""
@@ -328,11 +330,14 @@ class ClientSession(object):
     @property
     def in_transaction(self):
         """True if this session has an active multi-statement transaction."""
-        return self._current_transaction_opts is not None
+        return self._transaction is not None
 
     def _pin_server_address(self, address):
-        assert self._current_txn_address is None, "Transaction already pinned"
-        self._current_txn_address = address
+        assert self._transaction.address is None, "Transaction already pinned"
+        self._transaction.address = address
+
+    def _pinned_server_address(self):
+        return self._transaction.address
 
     def _apply_to(self, command, is_retryable, read_preference):
         self._check_ended()
@@ -348,14 +353,14 @@ class ClientSession(object):
             command['txnNumber'] = self._server_session.transaction_id
             return
 
-        if self._current_transaction_opts:
+        if self.in_transaction:
             if self._server_session.statement_id == 0:
                 # First statement begins a new transaction.
-                self._current_txn_read_pref = read_preference
+                self._transaction.read_preference = read_preference
                 self._server_session._transaction_id += 1
                 command['readConcern'] = {'level': 'snapshot'}
                 command['autocommit'] = False
-            elif read_preference != self._current_txn_read_pref:
+            elif read_preference != self._transaction.read_preference:
                 raise InvalidOperation('Transaction readPreference changed')
 
             command['txnNumber'] = self._server_session.transaction_id
