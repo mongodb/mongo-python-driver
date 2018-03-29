@@ -253,7 +253,7 @@ def create_test(scenario_def, test):
     def run_scenario(self):
         listener = EventListener()
         # New client to avoid interference from pooled sessions.
-        client = rs_client(event_listeners=[listener])
+        client = rs_client(event_listeners=[listener], **test['clientOptions'])
         write_concern_db = client.get_database(
             'transaction-tests', write_concern=WriteConcern(w='majority'))
 
