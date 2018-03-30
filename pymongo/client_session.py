@@ -52,7 +52,7 @@ from bson.py3compat import abc
 from bson.timestamp import Timestamp
 
 from pymongo import monotonic
-from pymongo.errors import InvalidOperation, OperationFailure
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 
 
 class SessionOptions(object):
@@ -237,16 +237,8 @@ class ClientSession(object):
         """Abort a multi-statement transaction."""
         try:
             self._finish_transaction("abortTransaction")
-        except OperationFailure as exc:
-            # TODO: "Transaction isn't in progress" should change to
-            # NoSuchTransaction.
-            # Ignore TransactionTooOld and TransactionAborted.
-            errmsg = exc.details.get('errmsg')
-            if exc.code in (225, 244) or (
-                    errmsg == "Transaction isn't in progress"
-                    and exc.code == 125):
-                return
-            raise
+        except (OperationFailure, ConnectionFailure):
+            pass
 
     def _finish_transaction(self, command_name):
         self._check_ended()
