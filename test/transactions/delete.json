@@ -39,6 +39,20 @@
           }
         },
         {
+          "name": "deleteMany",
+          "arguments": {
+            "filter": {
+              "_id": {
+                "$lte": 3
+              }
+            },
+            "session": "session0"
+          },
+          "result": {
+            "deletedCount": 2
+          }
+        },
+        {
           "name": "deleteOne",
           "arguments": {
             "filter": {
@@ -93,9 +107,11 @@
               "deletes": [
                 {
                   "q": {
-                    "_id": 4
+                    "_id": {
+                      "$lte": 3
+                    }
                   },
-                  "limit": 1
+                  "limit": 0
                 }
               ],
               "ordered": true,
@@ -114,12 +130,37 @@
         {
           "command_started_event": {
             "command": {
-              "commitTransaction": 1,
+              "delete": "test",
+              "deletes": [
+                {
+                  "q": {
+                    "_id": 4
+                  },
+                  "limit": 1
+                }
+              ],
+              "ordered": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
               },
               "stmtId": 2,
+              "autocommit": null,
+              "writeConcern": null
+            },
+            "command_name": "delete",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "commitTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 3,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -130,12 +171,6 @@
       "outcome": {
         "collection": {
           "data": [
-            {
-              "_id": 2
-            },
-            {
-              "_id": 3
-            },
             {
               "_id": 5
             }
