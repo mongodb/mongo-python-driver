@@ -966,7 +966,12 @@ class _OpReply(object):
         """Construct an _OpReply from raw bytes."""
         # PYTHON-945: ignore starting_from field.
         flags, cursor_id, _, number_returned = cls.UNPACK(msg[:20])
-        return cls(flags, cursor_id, number_returned, msg[20:])
+
+        documents = msg[20:]
+        if not isinstance(msg, bytes):
+            # msg is a memoryview in Python 3.
+            documents = documents.tobytes()
+        return cls(flags, cursor_id, number_returned, documents)
 
 
 def _first_batch(sock_info, db, coll, query, ntoreturn,
