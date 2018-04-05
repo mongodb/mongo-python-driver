@@ -75,6 +75,20 @@
         "contentType": "application/octet-stream",
         "aliases": [],
         "metadata": {}
+      },
+      {
+        "_id": {
+          "$oid": "000000000000000000000006"
+        },
+        "length": 2,
+        "chunkSize": 4,
+        "uploadDate": {
+          "$date": "1970-01-01T00:00:00.000Z"
+        },
+        "md5": "c700ed4fdb1d27055aa3faa2c2432283",
+        "contentType": "application/octet-stream",
+        "aliases": [],
+        "metadata": {}
       }
     ],
     "chunks": [
@@ -160,6 +174,18 @@
         "n": 2,
         "data": {
           "$hex": "99aa"
+        }
+      },
+      {
+        "_id": {
+          "$oid": "000000000000000000000008"
+        },
+        "files_id": {
+          "$oid": "000000000000000000000006"
+        },
+        "n": 0,
+        "data": {
+          "$hex": "1122"
         }
       }
     ]
@@ -418,6 +444,23 @@
       },
       "assert": {
         "error": "ChunkIsWrongSize"
+      }
+    },
+    {
+      "description": "Download legacy file with no name",
+      "act": {
+        "operation": "download",
+        "arguments": {
+          "id": {
+            "$oid": "000000000000000000000006"
+          },
+          "options": {}
+        }
+      },
+      "assert": {
+        "result": {
+          "$hex": "1122"
+        }
       }
     }
   ]
