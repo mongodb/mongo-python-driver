@@ -208,6 +208,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -233,7 +234,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
-              "autocommit": null,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "delete",
@@ -255,7 +257,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 2,
-              "autocommit": null,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "insert",
@@ -298,7 +301,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 3,
-              "autocommit": null,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "update",
@@ -332,7 +336,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 5,
-              "autocommit": null,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "insert",
@@ -371,7 +376,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 10,
-              "autocommit": null,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "update",
@@ -410,7 +416,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 12,
-              "autocommit": null,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "delete",
@@ -426,6 +433,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 15,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",

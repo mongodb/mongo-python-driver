@@ -7,7 +7,7 @@
   ],
   "tests": [
     {
-      "description": "casual consistency",
+      "description": "causal consistency",
       "operations": [
         {
           "name": "updateOne",
@@ -86,6 +86,7 @@
               "readConcern": null,
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null,
               "writeConcern": null
             },
@@ -121,6 +122,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -137,6 +139,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -156,7 +160,7 @@
       }
     },
     {
-      "description": "casual consistency disabled",
+      "description": "causal consistency disabled",
       "sessionOptions": {
         "session0": {
           "causalConsistency": false
@@ -238,6 +242,7 @@
               "readConcern": null,
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null,
               "writeConcern": null
             },
@@ -272,6 +277,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -288,6 +294,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "abortTransaction",

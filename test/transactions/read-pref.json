@@ -115,7 +115,7 @@
           "name": "count",
           "arguments": {
             "readPreference": {
-              "mode": "primaryPreferred"
+              "mode": "primary"
             },
             "session": "session0"
           },
@@ -125,7 +125,7 @@
           "name": "count",
           "arguments": {
             "readPreference": {
-              "mode": "primary"
+              "mode": "secondary"
             },
             "session": "session0"
           },

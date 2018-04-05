@@ -8,17 +8,11 @@
     },
     {
       "_id": 3
-    },
-    {
-      "_id": 4
-    },
-    {
-      "_id": 5
     }
   ],
   "tests": [
     {
-      "description": "delete",
+      "description": "findOneAndReplace",
       "operations": [
         {
           "name": "startTransaction",
@@ -27,41 +21,37 @@
           }
         },
         {
-          "name": "deleteOne",
+          "name": "findOneAndReplace",
           "arguments": {
             "filter": {
-              "_id": 1
+              "_id": 3
             },
+            "replacement": {
+              "x": 1
+            },
+            "returnDocument": "Before",
             "session": "session0"
           },
           "result": {
-            "deletedCount": 1
+            "_id": 3
           }
         },
         {
-          "name": "deleteMany",
-          "arguments": {
-            "filter": {
-              "_id": {
-                "$lte": 3
-              }
-            },
-            "session": "session0"
-          },
-          "result": {
-            "deletedCount": 2
-          }
-        },
-        {
-          "name": "deleteOne",
+          "name": "findOneAndReplace",
           "arguments": {
             "filter": {
               "_id": 4
             },
+            "replacement": {
+              "x": 1
+            },
+            "upsert": true,
+            "returnDocument": "After",
             "session": "session0"
           },
           "result": {
-            "deletedCount": 1
+            "_id": 4,
+            "x": 1
           }
         },
         {
@@ -75,19 +65,14 @@
         {
           "command_started_event": {
             "command": {
-              "delete": "test",
-              "deletes": [
-                {
-                  "q": {
-                    "_id": 1
-                  },
-                  "limit": 1
-                }
-              ],
-              "ordered": true,
-              "readConcern": {
-                "level": "snapshot"
+              "findAndModify": "test",
+              "query": {
+                "_id": 3
               },
+              "update": {
+                "x": 1
+              },
+              "new": false,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -95,27 +80,27 @@
               "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
+              "readConcern": {
+                "level": "snapshot"
+              },
               "writeConcern": null
             },
-            "command_name": "delete",
+            "command_name": "findAndModify",
             "database_name": "transaction-tests"
           }
         },
         {
           "command_started_event": {
             "command": {
-              "delete": "test",
-              "deletes": [
-                {
-                  "q": {
-                    "_id": {
-                      "$lte": 3
-                    }
-                  },
-                  "limit": 0
-                }
-              ],
-              "ordered": true,
+              "findAndModify": "test",
+              "query": {
+                "_id": 4
+              },
+              "update": {
+                "x": 1
+              },
+              "new": true,
+              "upsert": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -123,35 +108,10 @@
               "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
+              "readConcern": null,
               "writeConcern": null
             },
-            "command_name": "delete",
-            "database_name": "transaction-tests"
-          }
-        },
-        {
-          "command_started_event": {
-            "command": {
-              "delete": "test",
-              "deletes": [
-                {
-                  "q": {
-                    "_id": 4
-                  },
-                  "limit": 1
-                }
-              ],
-              "ordered": true,
-              "lsid": "session0",
-              "txnNumber": {
-                "$numberLong": "1"
-              },
-              "stmtId": 2,
-              "startTransaction": null,
-              "autocommit": false,
-              "writeConcern": null
-            },
-            "command_name": "delete",
+            "command_name": "findAndModify",
             "database_name": "transaction-tests"
           }
         },
@@ -163,9 +123,10 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 3,
+              "stmtId": 2,
               "startTransaction": null,
               "autocommit": false,
+              "readConcern": null,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -177,7 +138,18 @@
         "collection": {
           "data": [
             {
-              "_id": 5
+              "_id": 1
+            },
+            {
+              "_id": 2
+            },
+            {
+              "_id": 3,
+              "x": 1
+            },
+            {
+              "_id": 4,
+              "x": 1
             }
           ]
         }

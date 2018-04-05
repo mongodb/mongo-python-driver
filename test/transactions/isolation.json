@@ -102,7 +102,6 @@
     },
     {
       "description": "two transactions",
-      "skipReason": "TODO: Crashes server.",
       "operations": [
         {
           "name": "startTransaction",

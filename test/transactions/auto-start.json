@@ -77,6 +77,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -93,6 +94,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -118,6 +121,7 @@
                 "$numberLong": "2"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -140,7 +144,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 1,
-              "autocommit": null,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "insert",
@@ -156,6 +161,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 2,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -234,6 +241,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -250,6 +258,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -331,6 +341,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -347,6 +358,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "abortTransaction",
@@ -371,6 +384,7 @@
                 "$numberLong": "2"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -387,6 +401,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -465,6 +481,7 @@
                 "$numberLong": "2"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -481,6 +498,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -568,6 +587,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -585,6 +605,7 @@
               "lsid": "session1",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "find",
@@ -600,6 +621,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -613,9 +636,13 @@
               "filter": {
                 "_id": 1
               },
+              "readConcern": {
+                "afterClusterTime": 42
+              },
               "lsid": "session1",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "find",

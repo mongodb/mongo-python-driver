@@ -185,6 +185,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false
             },
             "command_name": "count",
@@ -200,7 +201,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "find",
             "database_name": "transaction-tests"
@@ -217,7 +219,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 2,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "getMore",
             "database_name": "transaction-tests"
@@ -232,6 +235,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 3,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -245,6 +250,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "count",
@@ -258,6 +264,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "find",
@@ -273,6 +280,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "getMore",
@@ -291,6 +299,7 @@
                 "$numberLong": "2"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false
             },
             "command_name": "count",
@@ -306,7 +315,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 1,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "find",
             "database_name": "transaction-tests"
@@ -323,7 +333,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 2,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "getMore",
             "database_name": "transaction-tests"
@@ -338,6 +349,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 3,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -351,6 +364,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "count",
@@ -364,6 +378,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "find",
@@ -379,6 +394,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "getMore",
@@ -497,6 +513,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false
             },
             "command_name": "count",
@@ -512,7 +529,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "find",
             "database_name": "transaction-tests"
@@ -529,7 +547,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 2,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "getMore",
             "database_name": "transaction-tests"
@@ -543,6 +562,9 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
+              "stmtId": 3,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "abortTransaction",
@@ -556,6 +578,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "count",
@@ -569,6 +592,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "find",
@@ -584,6 +608,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "getMore",
@@ -800,6 +825,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false
             },
             "command_name": "count",
@@ -815,7 +841,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "find",
             "database_name": "transaction-tests"
@@ -832,7 +859,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 2,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "getMore",
             "database_name": "transaction-tests"
@@ -847,6 +875,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 3,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -860,6 +890,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "count",
@@ -873,6 +904,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "find",
@@ -888,6 +920,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "getMore",
@@ -906,6 +939,7 @@
                 "$numberLong": "2"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false
             },
             "command_name": "count",
@@ -921,7 +955,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 1,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "find",
             "database_name": "transaction-tests"
@@ -938,7 +973,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 2,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "getMore",
             "database_name": "transaction-tests"
@@ -953,6 +989,8 @@
                 "$numberLong": "2"
               },
               "stmtId": 3,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "commitTransaction",
@@ -966,6 +1004,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "count",
@@ -979,6 +1018,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "find",
@@ -994,6 +1034,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "getMore",
@@ -1121,6 +1162,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false
             },
             "command_name": "count",
@@ -1136,7 +1178,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 1,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "find",
             "database_name": "transaction-tests"
@@ -1153,7 +1196,8 @@
                 "$numberLong": "1"
               },
               "stmtId": 2,
-              "autocommit": null
+              "startTransaction": null,
+              "autocommit": false
             },
             "command_name": "getMore",
             "database_name": "transaction-tests"
@@ -1167,6 +1211,9 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
+              "stmtId": 3,
+              "startTransaction": null,
+              "autocommit": false,
               "writeConcern": null
             },
             "command_name": "abortTransaction",
@@ -1180,6 +1227,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "count",
@@ -1193,6 +1241,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "find",
@@ -1208,6 +1257,7 @@
               "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
+              "startTransaction": null,
               "autocommit": null
             },
             "command_name": "getMore",
