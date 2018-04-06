@@ -211,6 +211,17 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-3.4-standalone"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "3.4"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
     - name: "perf-3.6-standalone"
       tags: ["perf"]
       commands:
@@ -230,5 +241,6 @@ buildvariants:
   run_on: centos6-perf
   tasks:
      - name: "perf-3.0-standalone"
+     - name: "perf-3.4-standalone"
      - name: "perf-3.6-standalone"
 
