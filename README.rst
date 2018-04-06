@@ -1,7 +1,7 @@
 =======
 PyMongo
 =======
-:Info: See `the mongo site <http://www.mongodb.org>`_ for more information. See `github <http://github.com/mongodb/mongo-python-driver/tree>`_ for the latest source.
+:Info: See `the mongo site <http://www.mongodb.org>`_ for more information. See `GitHub <http://github.com/mongodb/mongo-python-driver>`_ for the latest source.
 :Author: Mike Dirolf
 :Maintainer: Bernie Hackett <bernie@mongodb.com>
 

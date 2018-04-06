@@ -90,7 +90,7 @@ Installing from source
 
 If you'd rather install directly from the source (i.e. to stay on the
 bleeding edge), install the C extension dependencies then check out the
-latest source from github and install the driver from the resulting tree::
+latest source from GitHub and install the driver from the resulting tree::
 
   $ git clone git://github.com/mongodb/mongo-python-driver.git pymongo
   $ cd pymongo/
@@ -243,7 +243,7 @@ Installing a beta or release candidate
 MongoDB, Inc. may occasionally tag a beta or release candidate for testing by
 the community before final release. These releases will not be uploaded to pypi
 but can be found on the
-`github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
+`GitHub tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
 They can be installed by passing the full URL for the tag to pip::
 
   $ python -m pip install https://github.com/mongodb/mongo-python-driver/archive/3.6rc0.tar.gz
