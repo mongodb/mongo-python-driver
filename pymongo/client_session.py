@@ -360,12 +360,8 @@ class ClientSession(object):
                 raise InvalidOperation('Transaction readPreference changed')
 
             command['txnNumber'] = self._server_session.transaction_id
+            command['stmtId'] = self._server_session.statement_id
             command['autocommit'] = False
-
-            # TODO: Allow stmtId for find/getMore, SERVER-33213.
-            name = next(iter(command))
-            if name not in ('find', 'getMore'):
-                command['stmtId'] = self._server_session.statement_id
 
             self._server_session.statement_id += 1
 

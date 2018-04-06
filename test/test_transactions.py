@@ -214,10 +214,6 @@ class TestTransactions(IntegrationTest):
                         event.command['lsid'] = name
                         break
 
-            # TODO: Allow stmtId for find/getMore, SERVER-33213.
-            if event.command_name in ('find', 'getMore'):
-                expected_cmd.pop('stmtId', None)
-
             for attr, expected in expectation[event_type].items():
                 actual = getattr(event, attr)
                 if isinstance(expected, dict):
