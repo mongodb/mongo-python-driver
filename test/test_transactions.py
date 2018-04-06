@@ -20,7 +20,7 @@ import re
 import sys
 
 from bson import json_util, py3compat
-from pymongo.errors import PyMongoError
+from pymongo.errors import OperationFailure, PyMongoError
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name)
@@ -236,9 +236,16 @@ class TestTransactions(IntegrationTest):
                     self.assertEqual(actual, expected)
 
 
-def expect_error(expected_result):
+def expect_error_message(expected_result):
     if isinstance(expected_result, dict):
         return expected_result['errorContains']
+
+    return False
+
+
+def expect_error_code(expected_result):
+    if isinstance(expected_result, dict):
+        return expected_result['errorCodeName']
 
     return False
 
@@ -285,13 +292,18 @@ def create_test(scenario_def, test):
 
         for op in test['operations']:
             expected_result = op.get('result')
-            if expect_error(expected_result):
+            if expect_error_message(expected_result):
                 with self.assertRaises(PyMongoError) as context:
                     self.run_operation(sessions, collection, op.copy())
 
                 self.assertIn(expected_result['errorContains'].lower(),
                               str(context.exception).lower())
+            elif expect_error_code(expected_result):
+                with self.assertRaises(OperationFailure) as context:
+                    self.run_operation(sessions, collection, op.copy())
 
+                self.assertEqual(expected_result['errorCodeName'],
+                                 context.exception.details.get('codeName'))
             else:
                 result = self.run_operation(sessions, collection, op.copy())
                 if 'result' in op:

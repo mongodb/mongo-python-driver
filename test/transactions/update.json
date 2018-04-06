@@ -59,6 +59,27 @@
           }
         },
         {
+          "name": "updateMany",
+          "arguments": {
+            "filter": {
+              "_id": {
+                "$gte": 3
+              }
+            },
+            "update": {
+              "$set": {
+                "z": 1
+              }
+            },
+            "session": "session0"
+          },
+          "result": {
+            "matchedCount": 2,
+            "modifiedCount": 2,
+            "upsertedCount": 0
+          }
+        },
+        {
           "name": "commitTransaction",
           "arguments": {
             "session": "session0"
@@ -134,12 +155,46 @@
         {
           "command_started_event": {
             "command": {
-              "commitTransaction": 1,
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "_id": {
+                      "$gte": 3
+                    }
+                  },
+                  "u": {
+                    "$set": {
+                      "z": 1
+                    }
+                  },
+                  "multi": true,
+                  "upsert": false
+                }
+              ],
+              "ordered": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
               },
               "stmtId": 2,
+              "startTransaction": null,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "commitTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 3,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -159,11 +214,13 @@
               "_id": 2
             },
             {
-              "_id": 3
+              "_id": 3,
+              "z": 1
             },
             {
               "_id": 4,
-              "y": 1
+              "y": 1,
+              "z": 1
             }
           ]
         }

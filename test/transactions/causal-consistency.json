@@ -208,7 +208,7 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "WriteConflict"
+            "errorCodeName": "WriteConflict"
           }
         },
         {

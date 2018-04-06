@@ -72,6 +72,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -115,6 +116,7 @@
                 "$numberLong": "2"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -187,6 +189,7 @@
                 "$numberLong": "1"
               },
               "stmtId": 0,
+              "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
             },
@@ -439,7 +442,19 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "duplicate key error"
+            "errorCodeName": "DuplicateKey"
+          }
+        },
+        {
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1
+            },
+            "session": "session0"
+          },
+          "result": {
+            "errorCodeName": "NoSuchTransaction"
           }
         },
         {
@@ -503,12 +518,36 @@
         {
           "command_started_event": {
             "command": {
-              "abortTransaction": 1,
+              "insert": "test",
+              "documents": [
+                {
+                  "_id": 1
+                }
+              ],
+              "ordered": true,
+              "readConcern": null,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
               },
               "stmtId": 2,
+              "startTransaction": null,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "insert",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "abortTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 3,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null

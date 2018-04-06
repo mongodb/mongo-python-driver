@@ -160,6 +160,21 @@
                     }
                   }
                 }
+              },
+              {
+                "name": "updateMany",
+                "arguments": {
+                  "filter": {
+                    "_id": {
+                      "$gte": 2
+                    }
+                  },
+                  "update": {
+                    "$set": {
+                      "z": 1
+                    }
+                  }
+                }
               }
             ],
             "session": "session0"
@@ -174,8 +189,8 @@
               "6": 6,
               "7": 7
             },
-            "matchedCount": 3,
-            "modifiedCount": 3,
+            "matchedCount": 5,
+            "modifiedCount": 5,
             "upsertedCount": 1,
             "upsertedIds": {
               "2": 2
@@ -427,12 +442,46 @@
         {
           "command_started_event": {
             "command": {
-              "commitTransaction": 1,
+              "update": "test",
+              "updates": [
+                {
+                  "q": {
+                    "_id": {
+                      "$gte": 2
+                    }
+                  },
+                  "u": {
+                    "$set": {
+                      "z": 1
+                    }
+                  },
+                  "multi": true,
+                  "upsert": false
+                }
+              ],
+              "ordered": true,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
               },
               "stmtId": 15,
+              "startTransaction": null,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "commitTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 16,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -451,10 +500,12 @@
             },
             {
               "_id": 2,
-              "y": 2
+              "y": 2,
+              "z": 1
             },
             {
-              "_id": 5
+              "_id": 5,
+              "z": 1
             }
           ]
         }
