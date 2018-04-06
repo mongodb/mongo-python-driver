@@ -10,6 +10,8 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
 - Support for the SCRAM-SHA-256 authentication mechanism.
 - Support for Python 3.7.
 - MD5 is now optional in GridFS.
+- If not specified, the authSource for the PLAIN authentication mechanism
+  defaults to $external.
 - wtimeoutMS is once again supported as a URI option.
 - Deprecate the snapshot option of :meth:`~pymongo.collection.Collection.find`
   and :meth:`~pymongo.collection.Collection.find_one`. The option was

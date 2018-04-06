@@ -97,19 +97,19 @@ class TestGSSAPI(unittest.TestCase):
     def test_credentials_hashing(self):
         # GSSAPI credentials are properly hashed.
         creds0 = _build_credentials_tuple(
-            'GSSAPI', '', 'user', 'pass', {})
+            'GSSAPI', None, 'user', 'pass', {}, None)
 
         creds1 = _build_credentials_tuple(
-            'GSSAPI', '', 'user', 'pass',
-            {'authmechanismproperties': {'SERVICE_NAME': 'A'}})
+            'GSSAPI', None, 'user', 'pass',
+            {'authmechanismproperties': {'SERVICE_NAME': 'A'}}, None)
 
         creds2 = _build_credentials_tuple(
-            'GSSAPI', '', 'user', 'pass',
-            {'authmechanismproperties': {'SERVICE_NAME': 'A'}})
+            'GSSAPI', None, 'user', 'pass',
+            {'authmechanismproperties': {'SERVICE_NAME': 'A'}}, None)
 
         creds3 = _build_credentials_tuple(
-            'GSSAPI', '', 'user', 'pass',
-            {'authmechanismproperties': {'SERVICE_NAME': 'B'}})
+            'GSSAPI', None, 'user', 'pass',
+            {'authmechanismproperties': {'SERVICE_NAME': 'B'}}, None)
 
         self.assertEqual(1, len(set([creds1, creds2])))
         self.assertEqual(3, len(set([creds0, creds1, creds2, creds3])))

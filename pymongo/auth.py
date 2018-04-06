@@ -71,10 +71,15 @@ GSSAPIProperties = namedtuple('GSSAPIProperties',
 """Mechanism properties for GSSAPI authentication."""
 
 
-def _build_credentials_tuple(mech, source, user, passwd, extra):
+def _build_credentials_tuple(mech, source, user, passwd, extra, database):
     """Build and return a mechanism specific credentials tuple.
     """
+    if mech != 'MONGODB-X509' and user is None:
+        raise ConfigurationError("%s requires a username." % (mech,))
     if mech == 'GSSAPI':
+        if source is not None and source != '$external':
+            raise ValueError(
+                "authentication source must be $external or None for GSSAPI")
         properties = extra.get('authmechanismproperties', {})
         service_name = properties.get('SERVICE_NAME', 'mongodb')
         canonicalize = properties.get('CANONICALIZE_HOST_NAME', False)
@@ -85,12 +90,23 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
         # Source is always $external.
         return MongoCredential(mech, '$external', user, passwd, props)
     elif mech == 'MONGODB-X509':
+        if passwd is not None:
+            raise ConfigurationError(
+                "Passwords are not supported by MONGODB-X509")
+        if source is not None and source != '$external':
+            raise ValueError(
+                "authentication source must be "
+                "$external or None for MONGODB-X509")
         # user can be None.
         return MongoCredential(mech, '$external', user, None, None)
+    elif mech == 'PLAIN':
+        source_database = source or database or '$external'
+        return MongoCredential(mech, source_database, user, passwd, None)
     else:
+        source_database = source or database or 'admin'
         if passwd is None:
             raise ConfigurationError("A password is required.")
-        return MongoCredential(mech, source, user, passwd, None)
+        return MongoCredential(mech, source_database, user, passwd, None)
 
 
 if PY3:

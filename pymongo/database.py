@@ -1166,10 +1166,11 @@ class Database(common.BaseObject):
 
         credentials = auth._build_credentials_tuple(
             mechanism,
-            source or self.name,
+            source,
             name,
             password,
-            validated_options)
+            validated_options,
+            self.name)
 
         self.client._cache_credentials(
             self.name,
