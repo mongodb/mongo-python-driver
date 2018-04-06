@@ -1,6 +1,19 @@
 Changelog
 =========
 
+Changes in Version 3.7.0
+------------------------
+
+- wtimeoutMS is once again supported as a URI option.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.7 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.7 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=19287
+
 Changes in Version 3.6.1
 ------------------------
 

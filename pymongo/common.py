@@ -159,10 +159,11 @@ def validate_integer(option, value):
     if isinstance(value, integer_types):
         return value
     elif isinstance(value, string_type):
-        if not value.isdigit():
+        try:
+            return int(value)
+        except ValueError:
             raise ValueError("The value of %s must be "
                              "an integer" % (option,))
-        return int(value)
     raise TypeError("Wrong type for %s, value must be an integer" % (option,))
 
 
@@ -238,11 +239,27 @@ def validate_int_or_basestring(option, value):
     if isinstance(value, integer_types):
         return value
     elif isinstance(value, string_type):
-        if value.isdigit():
+        try:
             return int(value)
-        return value
+        except ValueError:
+            return value
     raise TypeError("Wrong type for %s, value must be an "
                     "integer or a string" % (option,))
+
+
+def validate_non_negative_int_or_basestring(option, value):
+    """Validates that 'value' is an integer or string.
+    """
+    if isinstance(value, integer_types):
+        return value
+    elif isinstance(value, string_type):
+        try:
+            val = int(value)
+        except ValueError:
+            return value
+        return validate_non_negative_integer(option, val)
+    raise TypeError("Wrong type for %s, value must be an "
+                    "non negative integer or a string" % (option,))
 
 
 def validate_positive_float(option, value):
@@ -491,9 +508,9 @@ def validate_tzinfo(dummy, value):
 # wtimeoutms is an alias for wtimeout,
 URI_VALIDATORS = {
     'replicaset': validate_string_or_none,
-    'w': validate_int_or_basestring,
-    'wtimeout': validate_integer,
-    'wtimeoutms': validate_integer,
+    'w': validate_non_negative_int_or_basestring,
+    'wtimeout': validate_non_negative_integer,
+    'wtimeoutms': validate_non_negative_integer,
     'fsync': validate_boolean_or_string,
     'j': validate_boolean_or_string,
     'journal': validate_boolean_or_string,

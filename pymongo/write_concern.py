@@ -54,6 +54,8 @@ class WriteConcern(object):
         if wtimeout is not None:
             if not isinstance(wtimeout, integer_types):
                 raise TypeError("wtimeout must be an integer")
+            if wtimeout < 0:
+                raise ValueError("wtimeout cannot be less than 0")
             self.__document["wtimeout"] = wtimeout
 
         if j is not None:
@@ -69,11 +71,13 @@ class WriteConcern(object):
                                          "and fsync at the same time")
             self.__document["fsync"] = fsync
 
-        if self.__document and w == 0:
-            raise ConfigurationError("Can not use w value "
-                                     "of 0 with other options")
+        if w == 0 and j is True:
+            raise ConfigurationError("Cannot set w to 0 and j to True")
+
         if w is not None:
             if isinstance(w, integer_types):
+                if w < 0:
+                    raise ValueError("w cannot be less than 0")
                 self.__acknowledged = w > 0
             elif not isinstance(w, string_type):
                 raise TypeError("w must be an integer or string")
