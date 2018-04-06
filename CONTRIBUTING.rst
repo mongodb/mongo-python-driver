@@ -46,5 +46,5 @@ just make your changes to the inline documentation of the appropriate
 `source code <https://github.com/mongodb/mongo-python-driver>`_ or `rst file
 <https://github.com/mongodb/mongo-python-driver/tree/master/doc>`_ in a
 branch and submit a `pull request <https://help.github.com/articles/using-pull-requests>`_.
-You might also use the github `Edit <https://github.com/blog/844-forking-with-the-edit-button>`_
+You might also use the GitHub `Edit <https://github.com/blog/844-forking-with-the-edit-button>`_
 button.

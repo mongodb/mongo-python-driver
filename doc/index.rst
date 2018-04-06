@@ -64,7 +64,7 @@ Contributing
 **PyMongo** has a large :doc:`community <contributors>` and
 contributions are always encouraged. Contributions can be as simple as
 minor tweaks to this documentation. To contribute, fork the project on
-`github <http://github.com/mongodb/mongo-python-driver/>`_ and send a
+`GitHub <http://github.com/mongodb/mongo-python-driver/>`_ and send a
 pull request.
 
 Changes

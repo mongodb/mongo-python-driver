@@ -45,7 +45,7 @@ Humongolus
    you to create models/schemas with robust validation. It attempts to be as
    pythonic as possible and exposes the pymongo cursor objects whenever
    possible. The code is available for download
-   `at github <https://github.com/entone/Humongolus>`_. Tutorials and usage
+   `at GitHub <https://github.com/entone/Humongolus>`_. Tutorials and usage
    examples are also available at GitHub.
 
 Ming
@@ -61,7 +61,7 @@ MongoEngine
   `MongoEngine <http://mongoengine.org/>`_ is another ORM-like
   layer on top of PyMongo. It allows you to define schemas for
   documents and query collections using syntax inspired by the Django
-  ORM. The code is available on `github
+  ORM. The code is available on `GitHub
   <http://github.com/mongoengine/mongoengine>`_; for more information, see
   the `tutorial <http://docs.mongoengine.org/en/latest/tutorial.html>`_.
 
@@ -70,14 +70,14 @@ MotorEngine
   MongoEngine to Motor, for asynchronous access with Tornado.
   It implements the same modeling APIs to be data-portable, meaning that a
   model defined in MongoEngine can be read in MotorEngine. The source is
-  `available on github <http://github.com/heynemann/motorengine>`_.
+  `available on GitHub <http://github.com/heynemann/motorengine>`_.
 
 uMongo
   `uMongo <https://umongo.readthedocs.io/>`_ is a Python MongoDB ODM.
   Its inception comes from two needs: the lack of async ODM and the
   difficulty to do document (un)serialization with existing ODMs.
   Works with multiple drivers: PyMongo, TxMongo, motor_asyncio, and
-  mongomock.  The source `is available on github
+  mongomock.  The source `is available on GitHub
   <https://github.com/Scille/umongo>`_
 
 No longer maintained
@@ -91,7 +91,7 @@ MongoKit
 MongoAlchemy
   `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of
   PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The
-  code is available `on github <http://github.com/jeffjenkins/MongoAlchemy>`_;
+  code is available `on GitHub <http://github.com/jeffjenkins/MongoAlchemy>`_;
   for more information, see `the tutorial <http://mongoalchemy.org/tutorial.html>`_.
 
 Minimongo
@@ -99,14 +99,14 @@ Minimongo
   pythonic interface to MongoDB.  It retains pymongo's query and update API,
   and provides a number of additional features, including a simple
   document-oriented interface, connection pooling, index management, and
-  collection & database naming helpers. The `source is on github
+  collection & database naming helpers. The `source is on GitHub
   <https://github.com/MiniMongo/minimongo>`_.
 
 Manga
   `Manga <http://pypi.python.org/pypi/manga>`_ aims to be a simpler ORM-like
   layer on top of PyMongo. The syntax for defining schema is inspired by the
   Django ORM, but Pymongo's query language is maintained. The source `is on
-  github <http://github.com/wladston/manga>`_.
+  GitHub <http://github.com/wladston/manga>`_.
 
 Framework Tools
 ---------------
@@ -115,8 +115,8 @@ various Python frameworks and libraries.
 
 * `Djongo <https://nesdis.github.io/djongo/>`_ is a connector for using
   Django with MongoDB as the database backend. Use the Django Admin GUI to add and
-  modify documents in MongoDB. 
-  The `Djongo Source Code <https://github.com/nesdis/djongo>`_ is hosted on github
+  modify documents in MongoDB.
+  The `Djongo Source Code <https://github.com/nesdis/djongo>`_ is hosted on GitHub
   and the `Djongo package <https://pypi.python.org/pypi/djongo>`_ is on pypi.
 * `Django MongoDB Engine
   <https://django-mongodb-engine.readthedocs.io/en/latest/>`_ is a MongoDB
@@ -133,7 +133,7 @@ various Python frameworks and libraries.
 * `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
   project to enable using MongoDB as a backend for `beaker's
   <http://beaker.groovie.org/>`_ caching / session system.
-  `The source is on github <http://github.com/bwmcadams/mongodb_beaker>`_.
+  `The source is on GitHub <http://github.com/bwmcadams/mongodb_beaker>`_.
 * `Log4Mongo <https://github.com/log4mongo/log4mongo-python>`_ is a flexible
   Python logging handler that can store logs in MongoDB using normal and capped
   collections.
