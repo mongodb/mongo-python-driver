@@ -52,10 +52,13 @@ from bson.py3compat import abc
 from bson.timestamp import Timestamp
 
 from pymongo import monotonic
-from pymongo.errors import (ConnectionFailure,
+from pymongo.errors import (ConfigurationError,
+                            ConnectionFailure,
                             InvalidOperation,
                             OperationFailure)
+from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.write_concern import WriteConcern
 
 
 class SessionOptions(object):
@@ -66,13 +69,22 @@ class SessionOptions(object):
         operations are causally ordered within the session.
       - `auto_start_transaction` (optional): If True, any operation using
         the session begins a transaction if none is in progress.
+      - `default_transaction_options` (optional): The default
+        TransactionOptions to use for transactions started on this session.
     """
-    # TODO: accept a TransactionOptions.
     def __init__(self,
                  causal_consistency=True,
-                 auto_start_transaction=False):
+                 auto_start_transaction=False,
+                 default_transaction_options=None):
         self._causal_consistency = causal_consistency
         self._auto_start_transaction = auto_start_transaction
+        if default_transaction_options is not None:
+            if not isinstance(default_transaction_options, TransactionOptions):
+                raise TypeError(
+                    "default_transaction_options must be an instance of "
+                    "pymongo.client_session.TransactionOptions, not: %r" %
+                    (default_transaction_options,))
+        self._default_transaction_options = default_transaction_options
 
     @property
     def causal_consistency(self):
@@ -83,6 +95,13 @@ class SessionOptions(object):
     def auto_start_transaction(self):
         """Whether the session is configured to always start a transaction."""
         return self._auto_start_transaction
+
+    @property
+    def default_transaction_options(self):
+        """The default TransactionOptions to use for transactions started on
+        this session.
+        """
+        return self._default_transaction_options
 
 
 class TransactionOptions(object):
@@ -95,9 +114,22 @@ class TransactionOptions(object):
         this transaction.
     """
     def __init__(self, read_concern=None, write_concern=None):
-        # TODO: validate arguments.
         self._read_concern = read_concern
         self._write_concern = write_concern
+        if read_concern is not None:
+            if not isinstance(read_concern, ReadConcern):
+                raise TypeError("read_concern must be an instance of "
+                                "pymongo.read_concern.ReadConcern, not: %r" %
+                                (read_concern,))
+        if write_concern is not None:
+            if not isinstance(write_concern, WriteConcern):
+                raise TypeError("write_concern must be an instance of "
+                                "pymongo.write_concern.WriteConcern, not: %r" %
+                                (write_concern,))
+            if not write_concern.acknowledged:
+                raise ConfigurationError(
+                    "transactions must use an acknowledged write concern, "
+                    "not: %r" % (write_concern,))
     
     @property
     def read_concern(self):
@@ -207,6 +239,16 @@ class ClientSession(object):
         """
         return self._operation_time
 
+    def _inherit_option(self, name, val):
+        """Return the inherited TransactionOption value."""
+        if val:
+            return val
+        txn_opts = self.options.default_transaction_options
+        val = txn_opts and getattr(txn_opts, name)
+        if val:
+            return val
+        return getattr(self.client, name)
+
     def start_transaction(self, read_concern=None, write_concern=None):
         """Start a multi-statement transaction.
 
@@ -219,6 +261,9 @@ class ClientSession(object):
 
         if self.in_transaction:
             raise InvalidOperation("Transaction already in progress")
+
+        read_concern = self._inherit_option("read_concern", read_concern)
+        write_concern = self._inherit_option("write_concern", write_concern)
 
         self._transaction = _Transaction(TransactionOptions(
             read_concern=read_concern, write_concern=write_concern))

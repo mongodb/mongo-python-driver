@@ -19,18 +19,20 @@ import os
 import re
 import sys
 
+sys.path[0:0] = [""]
+
 from bson import json_util, py3compat
-from pymongo.errors import OperationFailure, PyMongoError
+from bson.py3compat import iteritems
+from pymongo import client_session, operations, WriteConcern
+from pymongo.client_session import TransactionOptions
+from pymongo.command_cursor import CommandCursor
+from pymongo.cursor import Cursor
+from pymongo.errors import (ConfigurationError,
+                            OperationFailure,
+                            PyMongoError)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name)
-
-sys.path[0:0] = [""]
-
-from bson.py3compat import iteritems
-from pymongo import operations, WriteConcern
-from pymongo.command_cursor import CommandCursor
-from pymongo.cursor import Cursor
 from pymongo.results import _WriteResult, BulkWriteResult
 
 from test import unittest, client_context, IntegrationTest
@@ -65,6 +67,23 @@ class TestTransactions(IntegrationTest):
     def transaction_test_debug(self, msg):
         if _TXN_TESTS_DEBUG:
             print(msg)
+
+    @client_context.require_version_min(3, 7)
+    @client_context.require_replica_set
+    def test_transaction_options_validation(self):
+        default_options = TransactionOptions()
+        self.assertIsNone(default_options.read_concern)
+        self.assertIsNone(default_options.write_concern)
+        TransactionOptions(read_concern=ReadConcern(),
+                           write_concern=WriteConcern())
+        with self.assertRaisesRegex(TypeError, "read_concern must be "):
+            TransactionOptions(read_concern={})
+        with self.assertRaisesRegex(TypeError, "write_concern must be "):
+            TransactionOptions(write_concern={})
+        with self.assertRaisesRegex(
+                ConfigurationError,
+                "transactions must use an acknowledged write concern"):
+            TransactionOptions(write_concern=WriteConcern(w=0))
 
     # TODO: factor the following function with test_crud.py.
     def check_result(self, expected_result, result):
@@ -271,8 +290,25 @@ def create_test(scenario_def, test):
         session_ids = {}
         for i in range(2):
             session_name = 'session%d' % i
-            s = client.start_session(
-                **camel_to_snake_args(test['sessionOptions'][session_name]))
+            opts = camel_to_snake_args(test['sessionOptions'][session_name])
+            if 'default_transaction_options' in opts:
+                txn_opts = opts['default_transaction_options']
+                if 'readConcern' in txn_opts:
+                    read_concern = ReadConcern(**txn_opts['readConcern'])
+                else:
+                    read_concern = None
+                if 'writeConcern' in txn_opts:
+                    write_concern = WriteConcern(**txn_opts['writeConcern'])
+                else:
+                    write_concern = None
+
+                txn_opts = client_session.TransactionOptions(
+                    read_concern=read_concern,
+                    write_concern=write_concern
+                )
+                opts['default_transaction_options'] = txn_opts
+
+            s = client.start_session(**opts)
 
             sessions[session_name] = s
             # Store lsid so we can access it after end_session, in check_events.
