@@ -427,6 +427,16 @@ functions:
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           PYTHON_BINARY=${PYTHON_BINARY} SASL_HOST=${sasl_host} SASL_PORT=${sasl_port} SASL_USER=${sasl_user} SASL_PASS=${sasl_pass} SASL_DB=${sasl_db} PRINCIPAL=${principal} GSSAPI_DB=${gssapi_db} KEYTAB_BASE64=${keytab_base64} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
 
+  "run atlas tests":
+    - command: shell.exec
+      type: test
+      params:
+        silent: true
+        working_dir: "src"
+        script: |
+          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
+          PYTHON_BINARY=${PYTHON_BINARY} ATLAS_REPL='${atlas_repl}' ATLAS_SHRD='${atlas_shrd}' ATLAS_FREE='${atlas_free}' sh ${PROJECT_DIRECTORY}/.evergreen/run-atlas-tests.sh
+
   "cleanup":
     - command: shell.exec
       params:
@@ -751,6 +761,11 @@ tasks:
         - func: "run tests"
           vars:
             PYTHON_BINARY: /opt/python/2.7/bin/python
+
+    - name: "atlas-connect"
+      tags: ["atlas-connect"]
+      commands:
+        - func: "run atlas tests"
 
 # }}}
     - name: "coverage-report"
@@ -1337,6 +1352,29 @@ buildvariants:
   run_on: ubuntu1604-test
   tasks:
      - name: "coverage-report"
+
+- matrix_name: "atlas-connect"
+  matrix_spec: {python-version: "*"}
+  exclude_spec:
+    # Portable pypy3-2.4 doesn't have TLS > 1.0, even though
+    # it ships with OpenSSL 1.0.1.
+    # TODO: Jython needs its own install of virtualenv *15.1.0*.
+    - python-version: ["pypy3"]
+  display_name: "Atlas connect ${python-version}"
+  batchtime: 10080  # 7 days
+  run_on:
+    - rhel62-small
+  tasks:
+    - name: "atlas-connect"
+
+- matrix_name: "atlas-connect-openssl-102-plus"
+  matrix_spec: {python-version-requires-openssl-102-plus: "*"}
+  display_name: "Atlas connect ${python-version-requires-openssl-102-plus}"
+  batchtime: 10080  # 7 days
+  run_on:
+    - debian92-test
+  tasks:
+    - name: "atlas-connect"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
