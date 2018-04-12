@@ -319,13 +319,6 @@ class ClientSession(object):
         """True if this session has an active multi-statement transaction."""
         return self._transaction is not None
 
-    def _pin_server_address(self, address):
-        assert self._transaction.address is None, "Transaction already pinned"
-        self._transaction.address = address
-
-    def _pinned_server_address(self):
-        return self._transaction.address
-
     def _apply_to(self, command, is_retryable, read_preference):
         self._check_ended()
 

@@ -184,16 +184,14 @@ class Collection(common.BaseObject):
             unicode_decode_error_handler='replace',
             document_class=dict)
 
-    def _socket_for_reads(self, session):
-        return self.__database.client._socket_for_reads(
-            self.read_preference, session)
+    def _socket_for_reads(self):
+        return self.__database.client._socket_for_reads(self.read_preference)
 
-    def _socket_for_primary_reads(self, session):
-        return self.__database.client._socket_for_reads(
-            ReadPreference.PRIMARY, session)
+    def _socket_for_primary_reads(self):
+        return self.__database.client._socket_for_reads(ReadPreference.PRIMARY)
 
-    def _socket_for_writes(self, session):
-        return self.__database.client._socket_for_writes(session)
+    def _socket_for_writes(self):
+        return self.__database.client._socket_for_writes()
 
     def _command(self, sock_info, command, slave_ok=False,
                  read_preference=None,
@@ -254,7 +252,7 @@ class Collection(common.BaseObject):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        with self._socket_for_writes(session) as sock_info:
+        with self._socket_for_writes() as sock_info:
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 write_concern=self.write_concern,
@@ -581,7 +579,7 @@ class Collection(common.BaseObject):
                 True, _insert_command, session)
             _check_write_command_response(result)
         else:
-            with self._socket_for_writes(session=None) as sock_info:
+            with self._socket_for_writes() as sock_info:
                 # Legacy OP_INSERT.
                 self._legacy_write(
                     sock_info, 'insert', command, op_id,
@@ -1495,7 +1493,7 @@ class Collection(common.BaseObject):
                    ('numCursors', num_cursors)])
         cmd.update(kwargs)
 
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
+        with self._socket_for_reads() as (sock_info, slave_ok):
             result = self._command(sock_info, cmd, slave_ok,
                                    read_concern=self.read_concern,
                                    session=session)
@@ -1511,7 +1509,7 @@ class Collection(common.BaseObject):
 
     def _count(self, cmd, collation=None, session=None):
         """Internal count helper."""
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
+        with self._socket_for_reads() as (sock_info, slave_ok):
             res = self._command(
                 sock_info, cmd, slave_ok,
                 allowable_errors=["ns missing"],
@@ -1608,7 +1606,7 @@ class Collection(common.BaseObject):
         """
         common.validate_list('indexes', indexes)
         names = []
-        with self._socket_for_writes(session) as sock_info:
+        with self._socket_for_writes() as sock_info:
             supports_collations = sock_info.max_wire_version >= 5
             def gen_indexes():
                 for index in indexes:
@@ -1649,7 +1647,7 @@ class Collection(common.BaseObject):
             index_options.pop('collation', None))
         index.update(index_options)
 
-        with self._socket_for_writes(session) as sock_info:
+        with self._socket_for_writes() as sock_info:
             if collation is not None:
                 if sock_info.max_wire_version < 5:
                     raise ConfigurationError(
@@ -1876,7 +1874,7 @@ class Collection(common.BaseObject):
             self.__database.name, self.__name, name)
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         cmd.update(kwargs)
-        with self._socket_for_writes(session) as sock_info:
+        with self._socket_for_writes() as sock_info:
             self._command(sock_info,
                           cmd,
                           read_preference=ReadPreference.PRIMARY,
@@ -1913,7 +1911,7 @@ class Collection(common.BaseObject):
         """
         cmd = SON([("reIndex", self.__name)])
         cmd.update(kwargs)
-        with self._socket_for_writes(session) as sock_info:
+        with self._socket_for_writes() as sock_info:
             return self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 parse_write_concern_error=True, session=session)
@@ -1942,7 +1940,7 @@ class Collection(common.BaseObject):
         codec_options = CodecOptions(SON)
         coll = self.with_options(codec_options=codec_options,
                                  read_preference=ReadPreference.PRIMARY)
-        with self._socket_for_primary_reads(session) as (sock_info, slave_ok):
+        with self._socket_for_primary_reads() as (sock_info, slave_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:
                 with self.__database.client._tmp_session(session, False) as s:
@@ -2063,7 +2061,7 @@ class Collection(common.BaseObject):
             "batchSize", kwargs.pop("batchSize", None))
         # If the server does not support the "cursor" option we
         # ignore useCursor and batchSize.
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
+        with self._socket_for_reads() as (sock_info, slave_ok):
             dollar_out = pipeline and '$out' in pipeline[-1]
             if use_cursor:
                 if "cursor" not in kwargs:
@@ -2352,7 +2350,7 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
 
-        with self._socket_for_reads(session=None) as (sock_info, slave_ok):
+        with self._socket_for_reads() as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
                                  collation=collation)["retval"]
 
@@ -2398,7 +2396,7 @@ class Collection(common.BaseObject):
 
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
-        with self._socket_for_writes(session) as sock_info:
+        with self._socket_for_writes() as sock_info:
             with self.__database.client._tmp_session(session) as s:
                 if sock_info.max_wire_version >= 5 and self.write_concern:
                     cmd['writeConcern'] = self.write_concern.document
@@ -2453,7 +2451,7 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
+        with self._socket_for_reads() as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
                                  read_concern=self.read_concern,
                                  collation=collation, session=session)["values"]
@@ -2525,7 +2523,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         inline = 'inline' in cmd['out']
-        with self._socket_for_primary_reads(session) as (sock_info, slave_ok):
+        with self._socket_for_primary_reads() as (sock_info, slave_ok):
             if (sock_info.max_wire_version >= 5 and self.write_concern and
                     not inline):
                 cmd['writeConcern'] = self.write_concern.document
@@ -2594,7 +2592,7 @@ class Collection(common.BaseObject):
                    ("out", {"inline": 1})])
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
+        with self._socket_for_reads() as (sock_info, slave_ok):
             if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
                 res = self._command(sock_info, cmd, slave_ok,
                                     read_concern=self.read_concern,
