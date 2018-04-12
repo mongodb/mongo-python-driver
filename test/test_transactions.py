@@ -283,9 +283,6 @@ def create_test(scenario_def, test):
         listener.results.clear()
         collection = client['transaction-tests'].test
 
-        if _TXN_TESTS_DEBUG:
-            self.transaction_test_debug("")
-
         for op in test['operations']:
             expected_result = op.get('result')
             if expect_error_message(expected_result):

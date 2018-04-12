@@ -153,16 +153,13 @@ class ClientSession(object):
         :class:`~pymongo.collection.Collection`, or
         :class:`~pymongo.cursor.Cursor` after the session has ended.
         """
-        self._end_session(lock=True, abort_txn=True)
+        self._end_session(lock=True)
 
-    def _end_session(self, lock, abort_txn):
+    def _end_session(self, lock):
         if self._server_session is not None:
             try:
                 if self.in_transaction:
-                    if abort_txn:
-                        self.abort_transaction()
-                    else:
-                        self.commit_transaction()
+                    self.abort_transaction()
             finally:
                 self._client._return_server_session(self._server_session, lock)
                 self._server_session = None
@@ -175,9 +172,7 @@ class ClientSession(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # Abort when exiting with an exception, otherwise commit.
-        # TODO: test and document this.
-        self._end_session(lock=True, abort_txn=exc_val is not None)
+        self._end_session(lock=True)
 
     @property
     def client(self):
