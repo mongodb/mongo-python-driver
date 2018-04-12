@@ -17,6 +17,7 @@
 from bson.py3compat import integer_types, string_type
 from pymongo.errors import ConfigurationError
 
+
 class WriteConcern(object):
     """WriteConcern
 
@@ -102,13 +103,15 @@ class WriteConcern(object):
 
     def __repr__(self):
         return ("WriteConcern(%s)" % (
-            ", ".join("%s=%s" % kvt for kvt in self.document.items()),))
+            ", ".join("%s=%s" % kvt for kvt in self.__document.items()),))
 
     def __eq__(self, other):
-        return self.document == other.document
+        return self.__document == other.document
 
     def __ne__(self, other):
-        return self.document != other.document
+        return self.__document != other.document
 
     def __bool__(self):
-        return bool(self.document)
+        return bool(self.__document)
+
+    __nonzero__ = __bool__  # Python 2.

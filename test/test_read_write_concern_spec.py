@@ -23,9 +23,11 @@ sys.path[0:0] = [""]
 
 from pymongo.errors import ConfigurationError
 from pymongo.mongo_client import MongoClient
+from pymongo.operations import InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
-from test import unittest
+from test import client_context, unittest
+from test.utils import EventListener, rs_or_single_client
 
 
 _TEST_PATH = os.path.join(
@@ -33,7 +35,59 @@ _TEST_PATH = os.path.join(
 
 
 class TestReadWriteConcernSpec(unittest.TestCase):
-    pass
+
+    @client_context.require_connection
+    def test_omit_default_read_write_concern(self):
+        listener = EventListener()
+        # Client with default readConcern and writeConcern
+        client = rs_or_single_client(event_listeners=[listener])
+        collection = client.pymongo_test.collection
+        # Prepare for tests of find() and aggregate().
+        collection.insert_many([{} for _ in range(10)])
+        self.addCleanup(collection.drop)
+        self.addCleanup(client.pymongo_test.collection2.drop)
+        # Commands MUST NOT send the default read/write concern to the server.
+
+        def rename_and_drop():
+            # Ensure collection exists.
+            collection.insert_one({})
+            collection.rename('collection2')
+            client.pymongo_test.collection2.drop()
+
+        def insert_command_default_write_concern():
+            collection.database.command(
+                'insert', 'collection', documents=[{}],
+                write_concern=WriteConcern())
+
+        ops = [
+            ('aggregate', lambda: list(collection.aggregate([]))),
+            ('find', lambda: list(collection.find())),
+            ('insert_one', lambda: collection.insert_one({})),
+            ('update_one',
+             lambda: collection.update_one({}, {'$set': {'x': 1}})),
+            ('update_many',
+             lambda: collection.update_many({}, {'$set': {'x': 1}})),
+            ('delete_one', lambda: collection.delete_one({})),
+            ('delete_many', lambda: collection.delete_many({})),
+            ('bulk_write', lambda: collection.bulk_write([InsertOne({})])),
+            ('rename_and_drop', rename_and_drop),
+            ('command', insert_command_default_write_concern)
+        ]
+
+        for name, f in ops:
+            listener.results.clear()
+            f()
+
+            self.assertGreaterEqual(len(listener.results['started']), 1)
+            for i, event in enumerate(listener.results['started']):
+                self.assertNotIn(
+                    'readConcern', event.command,
+                    "%s sent default readConcern with %s" % (
+                        f.__name__, event.command_name))
+                self.assertNotIn(
+                    'writeConcern', event.command,
+                    "%s sent default writeConcern with %s" % (
+                        f.__name__, event.command_name))
 
 
 def normalize_write_concern(concern):
@@ -100,11 +154,16 @@ def create_document_test(test_case):
                 concern = WriteConcern(**normalized)
                 self.assertEqual(
                     concern.document, test_case['writeConcernDocument'])
-                self.assertEqual(concern.acknowledged, test_case['isAcknowledged'])
+                self.assertEqual(
+                    concern.acknowledged, test_case['isAcknowledged'])
+                self.assertEqual(
+                    not bool(concern), test_case['isServerDefault'])
         if 'readConcern' in test_case:
             # Any string for 'level' is equaly valid
             concern = ReadConcern(**test_case['readConcern'])
             self.assertEqual(concern.document, test_case['readConcernDocument'])
+            self.assertEqual(
+                not bool(concern.level), test_case['isServerDefault'])
 
     return run_test
 
