@@ -151,7 +151,7 @@ class _TransactionContext(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.__session.in_transaction:
+        if self.__session._in_transaction:
             if exc_val is None:
                 self.__session.commit_transaction()
             else:
@@ -175,8 +175,6 @@ class ClientSession(object):
         self._cluster_time = None
         self._operation_time = None
         self._transaction = None
-        if self.options.auto_start_transaction:
-            self.start_transaction()
 
     def end_session(self):
         """Finish this session. If a transaction has started, abort it.
@@ -191,7 +189,7 @@ class ClientSession(object):
     def _end_session(self, lock):
         if self._server_session is not None:
             try:
-                if self.in_transaction:
+                if self._in_transaction:
                     self.abort_transaction()
             finally:
                 self._client._return_server_session(self._server_session, lock)
@@ -259,7 +257,7 @@ class ClientSession(object):
         """
         self._check_ended()
 
-        if self.in_transaction:
+        if self._in_transaction:
             raise InvalidOperation("Transaction already in progress")
 
         read_concern = self._inherit_option("read_concern", read_concern)
@@ -284,7 +282,7 @@ class ClientSession(object):
     def _finish_transaction(self, command_name):
         self._check_ended()
 
-        if not self.in_transaction:
+        if not self._in_transaction_or_auto_start():
             raise InvalidOperation("No transaction started")
 
         try:
@@ -293,19 +291,12 @@ class ClientSession(object):
                 self._server_session._transaction_id += 1
                 return
 
-            write_concern = self._transaction.opts.write_concern
-            if write_concern is None:
-                write_concern = self.client.write_concern
-
             # TODO: retryable. And it's weird to pass parse_write_concern_error
             # from outside database.py.
             self._client.admin.command(
                 command_name,
-                txnNumber=self._server_session.transaction_id,
-                stmtId=self._server_session.statement_id,
                 session=self,
-                write_concern=write_concern,
-                read_preference=ReadPreference.PRIMARY,
+                write_concern=self._transaction.opts.write_concern,
                 parse_write_concern_error=True)
         finally:
             self._server_session.reset_transaction()
@@ -361,15 +352,22 @@ class ClientSession(object):
         return self._server_session is None
 
     @property
-    def in_transaction(self):
+    def _in_transaction(self):
         """True if this session has an active multi-statement transaction."""
         return self._transaction is not None
 
+    def _in_transaction_or_auto_start(self):
+        """True if this session has an active transaction or will have one."""
+        if self._in_transaction:
+            return True
+        if self.options.auto_start_transaction:
+            self.start_transaction()
+            return True
+        return False
+
     def _apply_to(self, command, is_retryable, read_preference):
         self._check_ended()
-
-        if self.options.auto_start_transaction and not self.in_transaction:
-            self.start_transaction()
+        self._in_transaction_or_auto_start()
 
         self._server_session.last_use = monotonic.time()
         command['lsid'] = self._server_session.session_id
@@ -379,7 +377,7 @@ class ClientSession(object):
             command['txnNumber'] = self._server_session.transaction_id
             return
 
-        if self.in_transaction:
+        if self._in_transaction:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
                     'read preference in a transaction must be primary, not: '

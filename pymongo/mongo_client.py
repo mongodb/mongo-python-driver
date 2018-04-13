@@ -1057,7 +1057,8 @@ class MongoClient(common.BaseObject):
         Re-raises any exception thrown by func().
         """
         retryable = (retryable and self.retry_writes
-                     and session and not session.in_transaction)
+                     and session
+                     and not session._in_transaction_or_auto_start())
         last_error = None
         retrying = False
 

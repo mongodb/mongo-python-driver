@@ -287,7 +287,7 @@ class _Query(object):
             # Explain does not support readConcern.
             if (not explain and session.options.causal_consistency
                     and session.operation_time is not None
-                    and not session.in_transaction):
+                    and not session._in_transaction):
                 cmd.setdefault(
                     'readConcern', {})[
                     'afterClusterTime'] = session.operation_time

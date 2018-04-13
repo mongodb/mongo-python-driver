@@ -89,7 +89,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             spec['readConcern'] = read_concern.document
         if (session and session.options.causal_consistency
                 and session.operation_time is not None
-                and not session.in_transaction):
+                and not session._in_transaction):
             spec.setdefault(
                 'readConcern', {})['afterClusterTime'] = session.operation_time
     if collation is not None:
