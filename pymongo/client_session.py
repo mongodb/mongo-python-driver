@@ -130,12 +130,12 @@ class TransactionOptions(object):
                 raise ConfigurationError(
                     "transactions must use an acknowledged write concern, "
                     "not: %r" % (write_concern,))
-    
+
     @property
     def read_concern(self):
         """This transaction's :class:`~read_concern.ReadConcern`."""
         return self._read_concern
-    
+
     @property
     def write_concern(self):
         """This transaction's :class:`~write_concern.WriteConcern`."""
@@ -387,11 +387,18 @@ class ClientSession(object):
                 # First statement begins a new transaction.
                 self._server_session._transaction_id += 1
                 command['startTransaction'] = True
-                read_concern = command.setdefault('readConcern', {})
-                read_concern['level'] = 'snapshot'
+
+                if self._transaction.opts.read_concern:
+                    rc = self._transaction.opts.read_concern.document
+                else:
+                    rc = {}
+
                 if (self.options.causal_consistency
                         and self.operation_time is not None):
-                    read_concern['afterClusterTime'] = self.operation_time
+                    rc['afterClusterTime'] = self.operation_time
+
+                if rc:
+                    command['readConcern'] = rc
 
             command['txnNumber'] = self._server_session.transaction_id
             command['stmtId'] = self._server_session.statement_id
