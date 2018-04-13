@@ -52,7 +52,10 @@ from bson.py3compat import abc
 from bson.timestamp import Timestamp
 
 from pymongo import monotonic
-from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.errors import (ConnectionFailure,
+                            InvalidOperation,
+                            OperationFailure)
+from pymongo.read_preferences import ReadPreference
 
 
 class SessionOptions(object):
@@ -127,8 +130,6 @@ class _Transaction(object):
     """Internal class to hold transaction information in a ClientSession."""
     def __init__(self, opts):
         self.opts = opts
-        self.read_preference = None
-        self.address = None
 
 
 class ClientSession(object):
@@ -259,7 +260,7 @@ class ClientSession(object):
                 stmtId=self._server_session.statement_id,
                 session=self,
                 write_concern=write_concern,
-                read_preference=self._transaction.read_preference,
+                read_preference=ReadPreference.PRIMARY,
                 parse_write_concern_error=True)
         finally:
             self._server_session.reset_transaction()
@@ -334,9 +335,13 @@ class ClientSession(object):
             return
 
         if self.in_transaction:
+            if read_preference != ReadPreference.PRIMARY:
+                raise InvalidOperation(
+                    'read preference in a transaction must be primary, not: '
+                    '%r' % (read_preference,))
+
             if self._server_session.statement_id == 0:
                 # First statement begins a new transaction.
-                self._transaction.read_preference = read_preference
                 self._server_session._transaction_id += 1
                 command['startTransaction'] = True
                 read_concern = command.setdefault('readConcern', {})
@@ -344,8 +349,6 @@ class ClientSession(object):
                 if (self.options.causal_consistency
                         and self.operation_time is not None):
                     read_concern['afterClusterTime'] = self.operation_time
-            elif read_preference != self._transaction.read_preference:
-                raise InvalidOperation('Transaction readPreference changed')
 
             command['txnNumber'] = self._server_session.transaction_id
             command['stmtId'] = self._server_session.statement_id
