@@ -234,6 +234,11 @@ class TestTransactions(IntegrationTest):
                     if actual_time is not None:
                         expected_read_concern['afterClusterTime'] = actual_time
 
+            # TODO: Do not send writeConcern in transactions.
+            if expectation[event_type]['command_name'] not in (
+                    'commitTransaction', 'abortTransaction'):
+                expected_cmd.pop('writeConcern', None)
+
             # Replace lsid with a name like "session0" to match test.
             if 'lsid' in event.command:
                 for name, lsid in session_ids.items():
