@@ -380,6 +380,7 @@
                 "level": "snapshot",
                 "afterClusterTime": 42
               },
+              "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "2"
               },
@@ -456,9 +457,6 @@
           "name": "commitTransaction",
           "arguments": {
             "session": "session0"
-          },
-          "result": {
-            "errorContains": "no transaction started"
           }
         }
       ],

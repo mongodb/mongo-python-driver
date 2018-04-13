@@ -138,15 +138,23 @@ class TestTransactions(IntegrationTest):
 
         # Convert arguments to snake_case and handle special cases.
         arguments = operation['arguments']
-        options = arguments.pop("options", {})
-        for option_name in options:
-            arguments[camel_to_snake(option_name)] = options[option_name]
-
         pref = arguments.pop('readPreference', None)
         if pref:
             mode = read_pref_mode_from_name(pref['mode'])
             collection = collection.with_options(
                 read_preference=make_read_preference(mode, None))
+        write_c = arguments.pop('writeConcern', None)
+        if write_c:
+            collection = collection.with_options(
+                write_concern=WriteConcern(**write_c))
+        read_c = arguments.pop('readConcern', None)
+        if read_c:
+            collection = collection.with_options(
+                read_concern=ReadConcern(**read_c))
+
+        options = arguments.pop("options", {})
+        for option_name in options:
+            arguments[camel_to_snake(option_name)] = options[option_name]
 
         if name.endswith('_transaction'):
             cmd = getattr(session, name)
@@ -181,9 +189,9 @@ class TestTransactions(IntegrationTest):
                 # Requires boolean returnDocument.
                 elif arg_name == "returnDocument":
                     arguments[c2s] = arguments[arg_name] == "After"
-                elif arg_name == "readConcern":
+                elif c2s == "read_concern":
                     arguments[c2s] = ReadConcern(**arguments.pop(arg_name))
-                elif arg_name == "writeConcern":
+                elif c2s == "write_concern":
                     arguments[c2s] = WriteConcern(**arguments.pop(arg_name))
                 else:
                     arguments[c2s] = arguments.pop(arg_name)

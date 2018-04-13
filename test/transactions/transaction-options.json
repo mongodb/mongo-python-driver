@@ -506,11 +506,13 @@
           "name": "startTransaction",
           "arguments": {
             "session": "session0",
-            "readConcern": {
-              "level": "snapshot"
-            },
-            "writeConcern": {
-              "w": "majority"
+            "options": {
+              "readConcern": {
+                "level": "snapshot"
+              },
+              "writeConcern": {
+                "w": "majority"
+              }
             }
           }
         },
@@ -536,11 +538,13 @@
           "name": "startTransaction",
           "arguments": {
             "session": "session0",
-            "readConcern": {
-              "level": "snapshot"
-            },
-            "writeConcern": {
-              "w": "majority"
+            "options": {
+              "readConcern": {
+                "level": "snapshot"
+              },
+              "writeConcern": {
+                "w": "majority"
+              }
             }
           }
         },

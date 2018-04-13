@@ -82,7 +82,7 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "transaction readPreference changed"
+            "errorContains": "read preference in a transaction must be primary"
           }
         },
         {
@@ -99,6 +99,40 @@
               "_id": 1
             }
           ]
+        }
+      }
+    },
+    {
+      "description": "non-primary readPreference",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "count",
+          "arguments": {
+            "readPreference": {
+              "mode": "secondary"
+            },
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "read preference in a transaction must be primary"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": []
         }
       }
     },
@@ -130,7 +164,7 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "transaction readPreference changed"
+            "errorContains": "read preference in a transaction must be primary"
           }
         },
         {

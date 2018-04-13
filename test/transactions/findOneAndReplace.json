@@ -154,6 +154,96 @@
           ]
         }
       }
+    },
+    {
+      "description": "operation writeConcern ignored for findOneAndReplace",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0",
+            "options": {
+              "writeConcern": {
+                "w": "majority"
+              }
+            }
+          }
+        },
+        {
+          "name": "findOneAndReplace",
+          "arguments": {
+            "filter": {
+              "_id": 3
+            },
+            "replacement": {
+              "x": 1
+            },
+            "returnDocument": "Before",
+            "session": "session0",
+            "writeConcern": {
+              "w": "majority"
+            }
+          },
+          "result": {
+            "_id": 3
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "command_started_event": {
+            "command": {
+              "findAndModify": "test",
+              "query": {
+                "_id": 3
+              },
+              "update": {
+                "x": 1
+              },
+              "new": false,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 0,
+              "startTransaction": true,
+              "autocommit": false,
+              "readConcern": {
+                "level": "snapshot"
+              },
+              "writeConcern": null
+            },
+            "command_name": "findAndModify",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "commitTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "stmtId": 1,
+              "startTransaction": null,
+              "autocommit": false,
+              "readConcern": null,
+              "writeConcern": {
+                "w": "majority"
+              }
+            },
+            "command_name": "commitTransaction",
+            "database_name": "admin"
+          }
+        }
+      ]
     }
   ]
 }

@@ -13,20 +13,6 @@
       "_id": 4
     }
   ],
-  "common": [
-    {
-      "name": "startTransaction",
-      "arguments": {
-        "session": "session0"
-      }
-    },
-    {
-      "name": "commitTransaction",
-      "arguments": {
-        "session": "session0"
-      }
-    }
-  ],
   "tests": [
     {
       "description": "count",
