@@ -33,6 +33,7 @@ import pymongo
 _REPL = os.environ.get("ATLAS_REPL")
 _SHRD = os.environ.get("ATLAS_SHRD")
 _FREE = os.environ.get("ATLAS_FREE")
+_TLSP = os.environ.get("ATLAS_TLSP")
 
 
 def _connect(uri):
@@ -61,6 +62,9 @@ class TestAtlasConnect(unittest.TestCase):
         if not getattr(ssl, 'HAS_SNI', False):
             raise unittest.SkipTest("Free tier requires SNI support.")
         _connect(_FREE)
+
+    def test_tls_11_plus(self):
+        _connect(_TLSP)
 
 
 if __name__ == '__main__':
