@@ -15,6 +15,7 @@
 """Execute Transactions Spec tests."""
 
 import collections
+from functools import partial
 import os
 import re
 import sys
@@ -136,65 +137,63 @@ class TestTransactions(IntegrationTest):
         if session_name:
             session = sessions[session_name]
 
-        # Convert arguments to snake_case and handle special cases.
+        # Combine arguments with options and handle special cases.
         arguments = operation['arguments']
-        pref = arguments.pop('readPreference', None)
-        if pref:
-            mode = read_pref_mode_from_name(pref['mode'])
-            collection = collection.with_options(
-                read_preference=make_read_preference(mode, None))
-        write_c = arguments.pop('writeConcern', None)
-        if write_c:
-            collection = collection.with_options(
-                write_concern=WriteConcern(**write_c))
-        read_c = arguments.pop('readConcern', None)
-        if read_c:
-            collection = collection.with_options(
-                read_concern=ReadConcern(**read_c))
+        arguments.update(arguments.pop("options", {}))
+        pref = write_c = read_c = None
+        if 'readPreference' in arguments:
+            pref = make_read_preference(read_pref_mode_from_name(
+                arguments.pop('readPreference')['mode']), tag_sets=None)
 
-        options = arguments.pop("options", {})
-        for option_name in options:
-            arguments[camel_to_snake(option_name)] = options[option_name]
+        if 'writeConcern' in arguments:
+            write_c = WriteConcern(**arguments.pop('writeConcern'))
 
-        if name.endswith('_transaction'):
+        if 'readConcern' in arguments:
+            read_c = ReadConcern(**arguments.pop('readConcern'))
+
+        if name == 'start_transaction':
+            cmd = partial(session.start_transaction,
+                          write_concern=write_c,
+                          read_concern=read_c)
+        elif name in ('commit_transaction', 'abort_transaction'):
             cmd = getattr(session, name)
         else:
+            collection = collection.with_options(
+                write_concern=write_c,
+                read_concern=read_c,
+                read_preference=pref)
+
             cmd = getattr(collection, name)
             arguments['session'] = session
 
-        if name == "bulk_write":
-            # Parse each request into a bulk write model.
-            requests = []
-            for request in arguments["requests"]:
-                bulk_model = camel_to_upper_camel(request["name"])
-                bulk_class = getattr(operations, bulk_model)
-                bulk_arguments = camel_to_snake_args(request["arguments"])
-                requests.append(bulk_class(**bulk_arguments))
-            arguments["requests"] = requests
-        else:
-            for arg_name in list(arguments):
-                c2s = camel_to_snake(arg_name)
-                # PyMongo accepts sort as list of tuples. Asserting len=1
-                # because ordering dicts from JSON in 2.6 is unwieldy.
-                if arg_name == "sort":
-                    sort_dict = arguments[arg_name]
-                    assert len(sort_dict) == 1, 'test can only have 1 sort key'
-                    arguments[arg_name] = list(iteritems(sort_dict))
-                # Named "key" instead not fieldName.
-                if arg_name == "fieldName":
-                    arguments["key"] = arguments.pop(arg_name)
-                # Aggregate uses "batchSize", while find uses batch_size.
-                elif arg_name == "batchSize" and operation == "aggregate":
-                    continue
-                # Requires boolean returnDocument.
-                elif arg_name == "returnDocument":
-                    arguments[c2s] = arguments[arg_name] == "After"
-                elif c2s == "read_concern":
-                    arguments[c2s] = ReadConcern(**arguments.pop(arg_name))
-                elif c2s == "write_concern":
-                    arguments[c2s] = WriteConcern(**arguments.pop(arg_name))
-                else:
-                    arguments[c2s] = arguments.pop(arg_name)
+        for arg_name in list(arguments):
+            c2s = camel_to_snake(arg_name)
+            # PyMongo accepts sort as list of tuples. Asserting len=1
+            # because ordering dicts from JSON in 2.6 is unwieldy.
+            if arg_name == "sort":
+                sort_dict = arguments[arg_name]
+                assert len(sort_dict) == 1, 'test can only have 1 sort key'
+                arguments[arg_name] = list(iteritems(sort_dict))
+            # Named "key" instead not fieldName.
+            if arg_name == "fieldName":
+                arguments["key"] = arguments.pop(arg_name)
+            # Aggregate uses "batchSize", while find uses batch_size.
+            elif arg_name == "batchSize" and operation == "aggregate":
+                continue
+            # Requires boolean returnDocument.
+            elif arg_name == "returnDocument":
+                arguments[c2s] = arguments[arg_name] == "After"
+            elif c2s == "requests":
+                # Parse each request into a bulk write model.
+                requests = []
+                for request in arguments["requests"]:
+                    bulk_model = camel_to_upper_camel(request["name"])
+                    bulk_class = getattr(operations, bulk_model)
+                    bulk_arguments = camel_to_snake_args(request["arguments"])
+                    requests.append(bulk_class(**bulk_arguments))
+                arguments["requests"] = requests
+            else:
+                arguments[c2s] = arguments.pop(arg_name)
 
         result = cmd(**arguments)
 
