@@ -378,6 +378,11 @@ class ClientSession(object):
             return
 
         if self._in_transaction:
+            # TODO: hack
+            name = next(iter(command))
+            if name not in ('commitTransaction', 'abortTransaction'):
+                command.pop('writeConcern', None)
+
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
                     'read preference in a transaction must be primary, not: '
