@@ -148,9 +148,7 @@
               "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "writeConcern": null
             },
             "command_name": "findAndModify",
@@ -224,7 +222,6 @@
               "startTransaction": true,
               "autocommit": false,
               "readConcern": {
-                "level": "snapshot",
                 "afterClusterTime": 42
               },
               "writeConcern": null
@@ -272,7 +269,6 @@
               "startTransaction": true,
               "autocommit": false,
               "readConcern": {
-                "level": "snapshot",
                 "afterClusterTime": 42
               },
               "writeConcern": null
@@ -384,9 +380,7 @@
               "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "writeConcern": null
             },
             "command_name": "findAndModify",

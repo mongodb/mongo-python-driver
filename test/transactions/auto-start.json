@@ -69,9 +69,7 @@
                 }
               ],
               "ordered": true,
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -113,7 +111,6 @@
               ],
               "ordered": true,
               "readConcern": {
-                "level": "snapshot",
                 "afterClusterTime": 42
               },
               "lsid": "session0",
@@ -233,9 +230,7 @@
                 }
               ],
               "ordered": true,
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -333,9 +328,7 @@
                 }
               ],
               "ordered": true,
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -377,7 +370,6 @@
               ],
               "ordered": true,
               "readConcern": {
-                "level": "snapshot",
                 "afterClusterTime": 42
               },
               "lsid": "session0",
@@ -471,9 +463,7 @@
                 }
               ],
               "ordered": true,
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "2"
@@ -577,9 +567,7 @@
                 }
               ],
               "ordered": true,
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"

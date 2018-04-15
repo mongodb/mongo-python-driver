@@ -58,9 +58,7 @@
               "query": {
                 "_id": 1
               },
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -195,9 +193,7 @@
             "command": {
               "find": "test",
               "batchSize": 3,
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -340,9 +336,7 @@
               "distinct": "test",
               "key": "_id",
               "lsid": "session0",
-              "readConcern": {
-                "level": "snapshot"
-              },
+              "readConcern": null,
               "txnNumber": {
                 "$numberLong": "1"
               },
