@@ -88,10 +88,7 @@ class TestTransactions(IntegrationTest):
 
     # TODO: factor the following function with test_crud.py.
     def check_result(self, expected_result, result):
-        if isinstance(result, Cursor) or isinstance(result, CommandCursor):
-            self.assertEqual(list(result), expected_result)
-
-        elif isinstance(result, _WriteResult):
+        if isinstance(result, _WriteResult):
             for res in expected_result:
                 prop = camel_to_snake(res)
                 # SPEC-869: Only BulkWriteResult has upserted_count.
@@ -178,7 +175,7 @@ class TestTransactions(IntegrationTest):
             if arg_name == "fieldName":
                 arguments["key"] = arguments.pop(arg_name)
             # Aggregate uses "batchSize", while find uses batch_size.
-            elif arg_name == "batchSize" and operation == "aggregate":
+            elif arg_name == "batchSize" and name == "aggregate":
                 continue
             # Requires boolean returnDocument.
             elif arg_name == "returnDocument":
@@ -197,10 +194,13 @@ class TestTransactions(IntegrationTest):
 
         result = cmd(**arguments)
 
-        if operation == "aggregate":
+        if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
                 out = collection.database[arguments["pipeline"][-1]["$out"]]
                 return out.find()
+
+        if isinstance(result, Cursor) or isinstance(result, CommandCursor):
+            return list(result)
 
         return result
 
