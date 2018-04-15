@@ -288,6 +288,12 @@ def create_test(scenario_def, test):
         listener = EventListener()
         # New client to avoid interference from pooled sessions.
         client = rs_client(event_listeners=[listener], **test['clientOptions'])
+        try:
+            client.admin.command('killAllSessions', [])
+        except OperationFailure:
+            # "operation was interrupted" by killing the command's own session.
+            pass
+
         write_concern_db = client.get_database(
             'transaction-tests', write_concern=WriteConcern(w='majority'))
 
