@@ -30,7 +30,7 @@ from pymongo import MongoClient, monitoring
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
-from pymongo.saslprep import saslprep, HAVE_STRINGPREP
+from pymongo.saslprep import HAVE_STRINGPREP
 from test import client_context, SkipTest, unittest, Version
 from test.utils import (delay,
                         ignore_deprecations,
@@ -460,29 +460,64 @@ class TestSCRAM(unittest.TestCase):
             'not-a-user', 'pwd')
 
         if HAVE_STRINGPREP:
+            # Test the use of SASLprep on passwords. For example,
+            # saslprep(u'\u2136') becomes u'IV' and saslprep(u'I\u00ADX')
+            # becomes u'IX'. SASLprep is only supported when the standard
+            # library provides stringprep.
             client_context.create_user(
                 'testscram',
-                saslprep(u'\u2168'),
                 u'\u2168',
+                u'\u2163',
+                roles=['dbOwner'],
+                mechanisms=['SCRAM-SHA-256'])
+
+            client_context.create_user(
+                'testscram',
+                u'IX',
+                u'IX',
                 roles=['dbOwner'],
                 mechanisms=['SCRAM-SHA-256'])
 
             self.assertTrue(
-                client.testscram.authenticate(u'\u2168', u'\u2168'))
+                client.testscram.authenticate(u'\u2168', u'\u2163'))
             client.testscram.command('dbstats')
             client.testscram.logout()
             self.assertTrue(
                 client.testscram.authenticate(
-                    u'\u2168', u'\u2168', mechanism='SCRAM-SHA-256'))
+                    u'\u2168', u'\u2163', mechanism='SCRAM-SHA-256'))
             client.testscram.command('dbstats')
             client.testscram.logout()
-            self.assertRaises(
-                OperationFailure,
-                client.testscram.authenticate,
-                u'\u2168', u'\u2168', mechanism='SCRAM-SHA-1')
+            self.assertTrue(
+                client.testscram.authenticate(u'\u2168', u'IV'))
+            client.testscram.command('dbstats')
+            client.testscram.logout()
+
+            self.assertTrue(
+                client.testscram.authenticate(u'IX', u'I\u00ADX'))
+            client.testscram.command('dbstats')
+            client.testscram.logout()
+            self.assertTrue(
+                client.testscram.authenticate(
+                    u'IX', u'I\u00ADX', mechanism='SCRAM-SHA-256'))
+            client.testscram.command('dbstats')
+            client.testscram.logout()
+            self.assertTrue(
+                client.testscram.authenticate(u'IX', u'IX'))
+            client.testscram.command('dbstats')
+            client.testscram.logout()
 
             client = rs_or_single_client_noauth(
-                u'mongodb://\u2168:\u2168@%s:%d/testscram' % (host, port))
+                u'mongodb://\u2168:\u2163@%s:%d/testscram' % (host, port))
+            client.testscram.command('dbstats')
+            client = rs_or_single_client_noauth(
+                u'mongodb://\u2168:IV@%s:%d/testscram' % (host, port))
+            client.testscram.command('dbstats')
+
+            client = rs_or_single_client_noauth(
+                u'mongodb://IX:I\u00ADX@%s:%d/testscram' % (host, port))
+            client.testscram.command('dbstats')
+            client = rs_or_single_client_noauth(
+                u'mongodb://IX:IX@%s:%d/testscram' % (host, port))
             client.testscram.command('dbstats')
 
         self.listener.results.clear()

@@ -197,13 +197,12 @@ def _parse_scram_response(response):
 def _authenticate_scram(credentials, sock_info, mechanism):
     """Authenticate using SCRAM."""
 
+    username = credentials.username
     if mechanism == 'SCRAM-SHA-256':
         digestmod = sha256
-        username = saslprep(credentials.username)
         data = saslprep(credentials.password).encode("utf-8")
     else:
         digestmod = sha1
-        username = credentials.username
         data = _password_digest(username, credentials.password).encode("utf-8")
     source = credentials.source
 
