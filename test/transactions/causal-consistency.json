@@ -167,23 +167,15 @@
       },
       "operations": [
         {
-          "name": "updateOne",
+          "name": "insertOne",
           "arguments": {
-            "filter": {
-              "_id": 1
+            "document": {
+              "_id": 2
             },
-            "update": {
-              "$inc": {
-                "count": 1
-              }
-            },
-            "upsert": false,
             "session": "session0"
           },
           "result": {
-            "matchedCount": 1,
-            "modifiedCount": 1,
-            "upsertedCount": 0
+            "insertedId": 2
           }
         },
         {
@@ -207,11 +199,13 @@
             "session": "session0"
           },
           "result": {
-            "errorCodeName": "WriteConflict"
+            "matchedCount": 1,
+            "modifiedCount": 1,
+            "upsertedCount": 0
           }
         },
         {
-          "name": "abortTransaction",
+          "name": "commitTransaction",
           "arguments": {
             "session": "session0"
           }
@@ -221,31 +215,21 @@
         {
           "command_started_event": {
             "command": {
-              "update": "test",
-              "updates": [
+              "insert": "test",
+              "documents": [
                 {
-                  "q": {
-                    "_id": 1
-                  },
-                  "u": {
-                    "$inc": {
-                      "count": 1
-                    }
-                  },
-                  "multi": false,
-                  "upsert": false
+                  "_id": 2
                 }
               ],
               "ordered": true,
-              "lsid": "session0",
               "readConcern": null,
+              "lsid": "session0",
               "txnNumber": null,
               "stmtId": null,
-              "startTransaction": null,
               "autocommit": null,
               "writeConcern": null
             },
-            "command_name": "update",
+            "command_name": "insert",
             "database_name": "transaction-tests"
           }
         },
@@ -285,7 +269,7 @@
         {
           "command_started_event": {
             "command": {
-              "abortTransaction": 1,
+              "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -295,7 +279,7 @@
               "autocommit": false,
               "writeConcern": null
             },
-            "command_name": "abortTransaction",
+            "command_name": "commitTransaction",
             "database_name": "admin"
           }
         }
@@ -306,6 +290,9 @@
             {
               "_id": 1,
               "count": 1
+            },
+            {
+              "_id": 2
             }
           ]
         }
