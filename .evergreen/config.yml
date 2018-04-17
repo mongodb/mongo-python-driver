@@ -1355,11 +1355,6 @@ buildvariants:
 
 - matrix_name: "atlas-connect"
   matrix_spec: {python-version: "*"}
-  exclude_spec:
-    # Portable pypy3-2.4 doesn't have TLS > 1.0, even though
-    # it ships with OpenSSL 1.0.1.
-    # TODO: Jython needs its own install of virtualenv *15.1.0*.
-    - python-version: ["pypy3"]
   display_name: "Atlas connect ${python-version}"
   batchtime: 10080  # 7 days
   run_on:
