@@ -4,7 +4,19 @@ Changelog
 Changes in Version 3.7.0
 ------------------------
 
+Version 3.7 adds support for MongoDB 4.0. Highlights include:
+
+- Support for multi-document transactions.
+- Support for the SCRAM-SHA-256 authentication mechanism.
+- Support for Python 3.7.
+- MD5 is now optional in GridFS.
 - wtimeoutMS is once again supported as a URI option.
+- Deprecate the snapshot option of :meth:`~pymongo.collection.Collection.find`
+  and :meth:`~pymongo.collection.Collection.find_one`. The option was
+  deprecated in MongoDB 3.6 and removed in MongoDB 4.0.
+- Deprecate the max_scan option of :meth:`~pymongo.collection.Collection.find`
+  and :meth:`~pymongo.collection.Collection.find_one`. The option was
+  deprecated in MongoDB 4.0.
 
 Issues Resolved
 ...............
