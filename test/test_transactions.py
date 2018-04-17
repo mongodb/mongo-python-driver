@@ -143,10 +143,10 @@ class TestTransactions(IntegrationTest):
                 arguments.pop('readPreference')['mode']), tag_sets=None)
 
         if 'writeConcern' in arguments:
-            write_c = WriteConcern(**arguments.pop('writeConcern'))
+            write_c = WriteConcern(**dict(arguments.pop('writeConcern')))
 
         if 'readConcern' in arguments:
-            read_c = ReadConcern(**arguments.pop('readConcern'))
+            read_c = ReadConcern(**dict(arguments.pop('readConcern')))
 
         if name == 'start_transaction':
             cmd = partial(session.start_transaction,
@@ -187,12 +187,12 @@ class TestTransactions(IntegrationTest):
                     bulk_model = camel_to_upper_camel(request["name"])
                     bulk_class = getattr(operations, bulk_model)
                     bulk_arguments = camel_to_snake_args(request["arguments"])
-                    requests.append(bulk_class(**bulk_arguments))
+                    requests.append(bulk_class(**dict(bulk_arguments)))
                 arguments["requests"] = requests
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
-        result = cmd(**arguments)
+        result = cmd(**dict(arguments))
 
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
@@ -281,8 +281,11 @@ def end_sessions(sessions):
 def create_test(scenario_def, test):
     def run_scenario(self):
         listener = EventListener()
-        # New client to avoid interference from pooled sessions.
-        client = rs_client(event_listeners=[listener], **test['clientOptions'])
+        # New client, to avoid interference from pooled sessions.
+        # Convert test['clientOptions'] to dict to avoid a Jython bug using "**"
+        # with ScenarioDict.
+        client = rs_client(event_listeners=[listener],
+                           **dict(test['clientOptions']))
         try:
             client.admin.command('killAllSessions', [])
         except OperationFailure:
@@ -307,11 +310,13 @@ def create_test(scenario_def, test):
             if 'default_transaction_options' in opts:
                 txn_opts = opts['default_transaction_options']
                 if 'readConcern' in txn_opts:
-                    read_concern = ReadConcern(**txn_opts['readConcern'])
+                    read_concern = ReadConcern(
+                        **dict(txn_opts['readConcern']))
                 else:
                     read_concern = None
                 if 'writeConcern' in txn_opts:
-                    write_concern = WriteConcern(**txn_opts['writeConcern'])
+                    write_concern = WriteConcern(
+                        **dict(txn_opts['writeConcern']))
                 else:
                     write_concern = None
 
@@ -321,7 +326,7 @@ def create_test(scenario_def, test):
                 )
                 opts['default_transaction_options'] = txn_opts
 
-            s = client.start_session(**opts)
+            s = client.start_session(**dict(opts))
 
             sessions[session_name] = s
             # Store lsid so we can access it after end_session, in check_events.
