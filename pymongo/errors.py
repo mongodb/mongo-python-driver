@@ -33,6 +33,13 @@ class ProtocolError(PyMongoError):
 class ConnectionFailure(PyMongoError):
     """Raised when a connection to the database cannot be made or is lost."""
 
+    def has_label(self, label):
+        """Return True if this error contains the given label.
+
+        .. versionadded:: 3.7
+        """
+        return label == "TemporaryTxnFailure"
+
 
 class AutoReconnect(ConnectionFailure):
     """Raised when a connection to the database is lost and an attempt to
@@ -123,6 +130,16 @@ class OperationFailure(PyMongoError):
         on multiple shards.
         """
         return self.__details
+
+    def has_label(self, label):
+        """Return True if this error contains the given label.
+
+        .. versionadded:: 3.7
+        """
+        if label == "TemporaryTxnFailure":
+            # WriteConflict, TransactionAborted, and NoSuchTransaction.
+            return self.__code in (112, 244, 251)
+        return False
 
 
 class CursorNotFound(OperationFailure):
