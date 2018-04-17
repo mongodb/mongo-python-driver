@@ -39,6 +39,44 @@ guaranteed monotonic reads, even when reading from replica set secondaries.
 
 .. mongodoc:: causal-consistency
 
+.. _transactions-ref:
+
+Transactions
+============
+
+MongoDB 4.0 adds support for transactions on replica set primaries. A
+transaction is associated with a :class:`ClientSession`. To start a transaction
+on a session, use :meth:`ClientSession.start_transaction` in a with-statement.
+Then, execute an operation within the transaction by passing the session to the
+operation:
+
+.. code-block:: python
+
+  orders = client.db.orders
+  inventory = client.db.inventory
+  with client.start_session() as session:
+      with session.start_transaction():
+          orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
+          inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
+                               {"$inc": {"qty": -100}}, session=session)
+
+Upon normal completion of ``with session.start_transaction()`` block, the
+transaction automatically calls :meth:`ClientSession.commit_transaction`.
+If the block exits with an exception, the transaction automatically calls
+:meth:`ClientSession.abort_transaction`.
+
+For multi-document transactions, you can only specify read/write (CRUD)
+operations on existing collections. For example, a multi-document transaction
+cannot include a create or drop collection/index operations, including an
+insert operation that would result in the creation of a new collection.
+
+A session may only have a single active transaction at a time, multiple
+transactions on the same session can be executed in sequence.
+
+.. versionadded:: 3.7
+.. seealso:: The MongoDB beta documentation for
+   `transactions <https://docs-beta-transactions.mongodb.com/transactions/>`_
+
 Classes
 =======
 """
@@ -68,7 +106,7 @@ class SessionOptions(object):
       - `causal_consistency` (optional): If True (the default), read
         operations are causally ordered within the session.
       - `auto_start_transaction` (optional): If True, any operation using
-        the session begins a transaction if none is in progress.
+        the session automatically starts a transaction.
       - `default_transaction_options` (optional): The default
         TransactionOptions to use for transactions started on this session.
     """
@@ -93,13 +131,19 @@ class SessionOptions(object):
 
     @property
     def auto_start_transaction(self):
-        """Whether the session is configured to always start a transaction."""
+        """Whether any operation using the session automatically starts a
+        transaction.
+
+        .. versionadded:: 3.7
+        """
         return self._auto_start_transaction
 
     @property
     def default_transaction_options(self):
         """The default TransactionOptions to use for transactions started on
         this session.
+
+        .. versionadded:: 3.7
         """
         return self._default_transaction_options
 
@@ -112,6 +156,8 @@ class TransactionOptions(object):
         transaction.
       - `write_concern`: The :class:`~write_concern.WriteConcern` to use for 
         this transaction.
+
+    .. versionadded:: 3.7
     """
     def __init__(self, read_concern=None, write_concern=None):
         self._read_concern = read_concern
@@ -252,8 +298,7 @@ class ClientSession(object):
 
         Takes the same arguments as :class:`TransactionOptions`.
 
-        Do not use this method if the session is configured to automatically
-        start a transaction.
+        .. versionadded:: 3.7
         """
         self._check_ended()
 
@@ -269,11 +314,17 @@ class ClientSession(object):
         return _TransactionContext(self)
 
     def commit_transaction(self):
-        """Commit a multi-statement transaction."""
+        """Commit a multi-statement transaction.
+
+        .. versionadded:: 3.7
+        """
         self._finish_transaction("commitTransaction")
 
     def abort_transaction(self):
-        """Abort a multi-statement transaction."""
+        """Abort a multi-statement transaction.
+
+        .. versionadded:: 3.7
+        """
         try:
             self._finish_transaction("abortTransaction")
         except (OperationFailure, ConnectionFailure):

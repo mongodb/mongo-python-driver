@@ -6,7 +6,7 @@ Changes in Version 3.7.0
 
 Version 3.7 adds support for MongoDB 4.0. Highlights include:
 
-- Support for multi-document transactions.
+- Support for multi-document transactions, see :ref:`transactions-ref`.
 - Support for the SCRAM-SHA-256 authentication mechanism.
 - Support for Python 3.7.
 - MD5 is now optional in GridFS.
