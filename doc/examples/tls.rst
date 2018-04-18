@@ -36,8 +36,8 @@ On Windows, the `wincertstore`_ module is required when using PyPy3 < 3.5.
 .. _wincertstore: https://pypi.python.org/pypi/wincertstore
 .. _certifi: https://pypi.python.org/pypi/certifi
 
-.. warning:: Industry best practices, and some regulations, require the use
-  of TLS 1.1 or newer. Though no application changes are required for
+.. warning:: Industry best practices recommend, and some regulations require,
+  the use of TLS 1.1 or newer. Though no application changes are required for
   PyMongo to make use of the newest protocols, some operating systems or
   versions may not provide an OpenSSL version new enough to support them.
 
@@ -165,3 +165,42 @@ to decrypt encrypted private keys. Use the `ssl_pem_passphrase` option::
 
 
 These options can also be passed as part of the MongoDB URI.
+
+Troubleshooting TLS Errors
+..........................
+
+TLS errors often fall into two categories, certificate verification failure or
+protocol version mismatch. An error message similar to the following means that
+OpenSSL was not able to verify the server's certificate::
+
+  [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed
+
+This often occurs because OpenSSL does not have access to the system's
+root certificates or the certificates are out of date. Linux users should
+ensure that they have the latest root certificate updates installed from
+their Linux vendor. macOS users using Python 3.6.0 or newer downloaded
+from python.org `may have to run a script included with python
+<https://bugs.python.org/issue29065#msg283984>`_ to install
+root certificates::
+
+  open "/Applications/Python <YOUR PYTHON VERSION>/Install Certificates.command"
+
+Users of older PyPy and PyPy3 portable versions may have to `set an environment
+variable <https://github.com/squeaky-pl/portable-pypy/issues/15>`_ to tell
+OpenSSL where to find root certificates. This is easily done using the `certifi
+module <https://pypi.org/project/certifi/>`_ from pypi::
+
+  $ pypy -m pip install certifi
+  $ export SSL_CERT_FILE=$(pypy -c "import certifi; print(certifi.where())")
+
+An error message similar to the following message means that the OpenSSL
+version used by Python does not support a new enough TLS protocol to connect
+to the server::
+
+  [SSL: TLSV1_ALERT_PROTOCOL_VERSION] tlsv1 alert protocol version
+
+Industry best practices recommend, and some regulations require, that older
+TLS protocols be disabled in some MongoDB deployments. Some deployments may
+disable TLS 1.0, others may disable TLS 1.0 and TLS 1.1. See the warning
+earlier in this document for troubleshooting steps and solutions.
+

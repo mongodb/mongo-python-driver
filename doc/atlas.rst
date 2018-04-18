@@ -17,8 +17,17 @@ dependencies using the following pip command::
 Earlier versions of PyMongo require you to manually install the dependencies.
 For a list of TLS/SSL-related dependencies, see :doc:`examples/tls`.
 
-.. warning:: Industry best practices, and some regulations, require the use
-  of TLS 1.1 or newer. Though no application changes are required for
+.. note:: Connecting to Atlas "Free Tier" or "Shared Cluster" instances
+  requires Server Name Indication (SNI) support. SNI support requires CPython
+  2.7.9 / PyPy 2.5.1 or newer. To check if your version of Python supports
+  SNI run the following command::
+
+    $ python -c "import ssl; print(getattr(ssl, 'HAS_SNI', False))"
+
+  You should see "True".
+
+.. warning:: Industry best practices recommend, and some regulations require,
+  the use of TLS 1.1 or newer. Though no application changes are required for
   PyMongo to make use of the newest protocols, some operating systems or
   versions may not provide an OpenSSL version new enough to support them.
 
