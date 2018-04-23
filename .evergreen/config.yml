@@ -435,7 +435,7 @@ functions:
         working_dir: "src"
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          PYTHON_BINARY=${PYTHON_BINARY} ATLAS_REPL='${atlas_repl}' ATLAS_SHRD='${atlas_shrd}' ATLAS_FREE='${atlas_free}' ATLAS_TLSP='${atlas_tls11plus}' sh ${PROJECT_DIRECTORY}/.evergreen/run-atlas-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ATLAS_REPL='${atlas_repl}' ATLAS_SHRD='${atlas_shrd}' ATLAS_FREE='${atlas_free}' ATLAS_TLS11='${atlas_tls11}' ATLAS_TLS12='${atlas_tls12}'  sh ${PROJECT_DIRECTORY}/.evergreen/run-atlas-tests.sh
 
   "cleanup":
     - command: shell.exec
