@@ -85,7 +85,6 @@
               "lsid": "session0",
               "readConcern": null,
               "txnNumber": null,
-              "stmtId": null,
               "startTransaction": null,
               "autocommit": null,
               "writeConcern": null
@@ -120,7 +119,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -137,7 +135,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -225,7 +222,6 @@
               "readConcern": null,
               "lsid": "session0",
               "txnNumber": null,
-              "stmtId": null,
               "autocommit": null,
               "writeConcern": null
             },
@@ -257,7 +253,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -274,7 +269,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null

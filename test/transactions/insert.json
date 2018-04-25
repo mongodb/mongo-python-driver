@@ -101,7 +101,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -127,7 +126,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -150,7 +148,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 3,
               "autocommit": false,
               "writeConcern": null
             },
@@ -166,7 +163,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 4,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -192,7 +188,6 @@
               "txnNumber": {
                 "$numberLong": "2"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -209,7 +204,6 @@
               "txnNumber": {
                 "$numberLong": "2"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -316,7 +310,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -342,7 +335,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -359,7 +351,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 3,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": {

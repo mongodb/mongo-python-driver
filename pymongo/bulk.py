@@ -277,8 +277,6 @@ class _Bulk(object):
                     self.collection.codec_options, bwc)
                 if not to_send:
                     raise InvalidOperation("cannot do an empty bulk write")
-                if session:
-                    session._advance_statement_id(len(to_send))
                 result = bwc.write_command(request_id, msg, to_send)
                 client._receive_cluster_time(result, session)
                 results.append((run.idx_offset, result))

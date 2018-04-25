@@ -111,7 +111,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -141,7 +140,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -175,7 +173,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 2,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -192,7 +189,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 3,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -338,7 +334,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -368,7 +363,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -402,7 +396,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 2,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -419,7 +412,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 3,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": {

@@ -208,6 +208,7 @@ class _Transaction(object):
     """Internal class to hold transaction information in a ClientSession."""
     def __init__(self, opts):
         self.opts = opts
+        self.sent_command = False
 
 
 class ClientSession(object):
@@ -310,7 +311,7 @@ class ClientSession(object):
 
         self._transaction = _Transaction(TransactionOptions(
             read_concern=read_concern, write_concern=write_concern))
-        self._server_session.statement_id = 0
+        self._server_session._transaction_id += 1
         return _TransactionContext(self)
 
     def commit_transaction(self):
@@ -337,9 +338,8 @@ class ClientSession(object):
             raise InvalidOperation("No transaction started")
 
         try:
-            if self._server_session.statement_id == 0:
+            if not self._transaction.sent_command:
                 # Not really started.
-                self._server_session._transaction_id += 1
                 return
 
             # TODO: retryable. And it's weird to pass parse_write_concern_error
@@ -350,7 +350,6 @@ class ClientSession(object):
                 write_concern=self._transaction.opts.write_concern,
                 parse_write_concern_error=True)
         finally:
-            self._server_session.reset_transaction()
             self._transaction = None
 
     def _advance_cluster_time(self, cluster_time):
@@ -439,9 +438,9 @@ class ClientSession(object):
                     'read preference in a transaction must be primary, not: '
                     '%r' % (read_preference,))
 
-            if self._server_session.statement_id == 0:
-                # First statement begins a new transaction.
-                self._server_session._transaction_id += 1
+            if not self._transaction.sent_command:
+                # First command begins a new transaction.
+                self._transaction.sent_command = True
                 command['startTransaction'] = True
 
                 if self._transaction.opts.read_concern:
@@ -457,14 +456,7 @@ class ClientSession(object):
                     command['readConcern'] = rc
 
             command['txnNumber'] = self._server_session.transaction_id
-            command['stmtId'] = self._server_session.statement_id
             command['autocommit'] = False
-
-            self._server_session.statement_id += 1
-
-    def _advance_statement_id(self, n):
-        self._check_ended()
-        self._server_session.advance_statement_id(n)
 
     def _retry_transaction_id(self):
         self._check_ended()
@@ -477,7 +469,6 @@ class _ServerSession(object):
         self.session_id = {'id': Binary(uuid.uuid4().bytes, 4)}
         self.last_use = monotonic.time()
         self._transaction_id = 0
-        self.statement_id = 0
 
     def timed_out(self, session_timeout_minutes):
         idle_seconds = monotonic.time() - self.last_use
@@ -485,17 +476,10 @@ class _ServerSession(object):
         # Timed out if we have less than a minute to live.
         return idle_seconds > (session_timeout_minutes - 1) * 60
 
-    def advance_statement_id(self, n):
-        # Every command advances the statement id by 1 already.
-        self.statement_id += (n - 1)
-
     @property
     def transaction_id(self):
         """Positive 64-bit integer."""
         return Int64(self._transaction_id)
-
-    def reset_transaction(self):
-        self.statement_id = 0
 
     def retry_transaction_id(self):
         self._transaction_id -= 1

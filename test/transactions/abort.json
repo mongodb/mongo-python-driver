@@ -69,7 +69,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -86,7 +85,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -112,7 +110,6 @@
               "txnNumber": {
                 "$numberLong": "2"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -129,7 +126,6 @@
               "txnNumber": {
                 "$numberLong": "2"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -183,7 +179,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -200,7 +195,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -269,7 +263,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -286,7 +279,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -375,7 +367,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -392,7 +383,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -471,7 +461,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 0,
               "startTransaction": true,
               "autocommit": false,
               "writeConcern": null
@@ -495,7 +484,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 1,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -519,7 +507,6 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 2,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
@@ -536,13 +523,51 @@
               "txnNumber": {
                 "$numberLong": "1"
               },
-              "stmtId": 3,
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null
             },
             "command_name": "abortTransaction",
             "database_name": "admin"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": []
+        }
+      }
+    },
+    {
+      "description": "abort does not apply writeConcern",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0",
+            "options": {
+              "writeConcern": {
+                "w": 10
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1
+            },
+            "session": "session0"
+          },
+          "result": {
+            "insertedId": 1
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "arguments": {
+            "session": "session0"
           }
         }
       ],
