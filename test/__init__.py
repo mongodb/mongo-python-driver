@@ -554,6 +554,14 @@ class ClientContext(object):
                              "Sessions not supported",
                              func=func)
 
+    def require_transactions(self, func):
+        """Run a test only if the deployment might support transactions.
+
+        *Might* because this does not test the storage engine or FCV.
+        """
+        new_func = self.require_version_min(3, 7, 7)(func)
+        return self.require_replica_set(new_func)
+
 
 # Reusable client context
 client_context = ClientContext()

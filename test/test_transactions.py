@@ -69,8 +69,7 @@ class TestTransactions(IntegrationTest):
         if _TXN_TESTS_DEBUG:
             print(msg)
 
-    @client_context.require_version_min(3, 7)
-    @client_context.require_replica_set
+    @client_context.require_transactions
     def test_transaction_options_validation(self):
         default_options = TransactionOptions()
         self.assertIsNone(default_options.read_concern)
@@ -412,8 +411,7 @@ def create_tests():
                     str(test['description'].replace(" ", "_")))
 
                 new_test = create_test(scenario_def, test)
-                new_test = client_context.require_version_min(3, 7)(new_test)
-                new_test = client_context.require_replica_set(new_test)
+                new_test = client_context.require_transactions(new_test)
                 new_test = client_context._require(
                     not test.get('skipReason'),
                     test.get('skipReason'),

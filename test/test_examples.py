@@ -841,8 +841,7 @@ class TestSampleShellCommands(unittest.TestCase):
             {"$set": {"a.$[i].b": 2}},
             array_filters=[{"i.b": 0}])
 
-    @client_context.require_version_min(3, 7, 3)
-    @client_context.require_replica_set
+    @client_context.require_transactions
     def test_tranactions(self):
         # Transaction examples
         client = self.client
