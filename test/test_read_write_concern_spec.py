@@ -21,13 +21,21 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import ConfigurationError
+from pymongo import DESCENDING
+from pymongo.errors import (BulkWriteError,
+                            ConfigurationError,
+                            WTimeoutError,
+                            WriteConcernError)
 from pymongo.mongo_client import MongoClient
-from pymongo.operations import InsertOne
+from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 from test import client_context, unittest
-from test.utils import EventListener, rs_or_single_client
+from test.utils import (IMPOSSIBLE_WRITE_CONCERN,
+                        EventListener,
+                        disable_replication,
+                        enable_replication,
+                        rs_or_single_client)
 
 
 _TEST_PATH = os.path.join(
@@ -83,11 +91,78 @@ class TestReadWriteConcernSpec(unittest.TestCase):
                 self.assertNotIn(
                     'readConcern', event.command,
                     "%s sent default readConcern with %s" % (
-                        f.__name__, event.command_name))
+                        name, event.command_name))
                 self.assertNotIn(
                     'writeConcern', event.command,
                     "%s sent default writeConcern with %s" % (
-                        f.__name__, event.command_name))
+                        name, event.command_name))
+
+    def assertWriteOpsRaise(self, write_concern, expected_exception):
+        client = rs_or_single_client(**write_concern.document)
+        db = client.get_database('pymongo_test')
+        coll = db.test
+
+        def insert_command():
+            coll.database.command(
+                'insert', 'new_collection', documents=[{}],
+                writeConcern=write_concern.document,
+                parse_write_concern_error=True)
+
+        ops = [
+            ('insert_one', lambda: coll.insert_one({})),
+            ('insert_many', lambda: coll.insert_many([{}, {}])),
+            ('update_one', lambda: coll.update_one({}, {'$set': {'x': 1}})),
+            ('update_many', lambda: coll.update_many({}, {'$set': {'x': 1}})),
+            ('delete_one', lambda: coll.delete_one({})),
+            ('delete_many', lambda: coll.delete_many({})),
+            ('bulk_write', lambda: coll.bulk_write([InsertOne({})])),
+            ('command', insert_command),
+        ]
+        ops_require_34 = [
+            ('aggregate', lambda: coll.aggregate([{'$out': 'out'}])),
+            ('create_index', lambda: coll.create_index([('a', DESCENDING)])),
+            ('create_indexes', lambda: coll.create_indexes([IndexModel('b')])),
+            ('drop_index', lambda: coll.drop_index([('a', DESCENDING)])),
+            ('create', lambda: db.create_collection('new')),
+            ('rename', lambda: coll.rename('new')),
+            ('drop', lambda: db.new.drop()),
+        ]
+        if client_context.version > (3, 4):
+            ops.extend(ops_require_34)
+            # SERVER-34776: Drop database does not respect wtimeout in 4.0.
+            if client_context.version <= (3, 6):
+                ops.append(('drop_database', lambda: client.drop_database(db)))
+
+        for name, f in ops:
+            # Ensure insert_many and bulk_write still raise BulkWriteError.
+            if name in ('insert_many', 'bulk_write'):
+                expected = BulkWriteError
+            else:
+                expected = expected_exception
+            with self.assertRaises(expected, msg=name) as cm:
+                f()
+            if expected == BulkWriteError:
+                bulk_result = cm.exception.details
+                wc_errors = bulk_result['writeConcernErrors']
+                self.assertTrue(wc_errors)
+
+    @client_context.require_replica_set
+    def test_raise_write_concern_error(self):
+        self.addCleanup(client_context.client.drop_database, 'pymongo_test')
+        self.assertWriteOpsRaise(
+            WriteConcern(w=client_context.w+1, wtimeout=1), WriteConcernError)
+
+    # MongoDB 3.2 introduced the stopReplProducer failpoint.
+    @client_context.require_version_min(3, 2)
+    @client_context.require_secondaries_count(1)
+    @client_context.require_test_commands
+    def test_raise_wtimeout(self):
+        self.addCleanup(client_context.client.drop_database, 'pymongo_test')
+        self.addCleanup(enable_replication, client_context.client)
+        # Disable replication to guarantee a wtimeout error.
+        disable_replication(client_context.client)
+        self.assertWriteOpsRaise(WriteConcern(w=client_context.w, wtimeout=1),
+                                 WTimeoutError)
 
 
 def normalize_write_concern(concern):

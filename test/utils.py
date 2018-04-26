@@ -558,3 +558,19 @@ def eventlet_monkey_patched():
 
 def is_greenthread_patched():
     return gevent_monkey_patched() or eventlet_monkey_patched()
+
+
+def disable_replication(client):
+    """Disable replication on all secondaries, requires MongoDB 3.2."""
+    for host, port in client.secondaries:
+        secondary = single_client(host, port)
+        secondary.admin.command('configureFailPoint', 'stopReplProducer',
+                                mode='alwaysOn')
+
+
+def enable_replication(client):
+    """Enable replication on all secondaries, requires MongoDB 3.2."""
+    for host, port in client.secondaries:
+        secondary = single_client(host, port)
+        secondary.admin.command('configureFailPoint', 'stopReplProducer',
+                                mode='off')

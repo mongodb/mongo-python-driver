@@ -90,18 +90,8 @@ def _check_command_response(response, msg=None, allowable_errors=None,
                                response.get("code"),
                                response)
 
-    # TODO: remove, this is moving to _check_gle_response
-    if response.get("wtimeout", False):
-        # MongoDB versions before 1.8.0 return the error message in an "errmsg"
-        # field. If "errmsg" exists "err" will also exist set to None, so we
-        # have to check for "errmsg" first.
-        raise WTimeoutError(response.get("errmsg", response.get("err")),
-                            response.get("code"),
-                            response)
-
     if parse_write_concern_error and 'writeConcernError' in response:
-        wce = response['writeConcernError']
-        raise WriteConcernError(wce['errmsg'], wce['code'], wce)
+        _raise_write_concern_error(response['writeConcernError'])
 
     if not response["ok"]:
 
