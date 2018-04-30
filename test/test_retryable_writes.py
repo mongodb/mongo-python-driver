@@ -27,7 +27,6 @@ from bson.son import SON
 
 from pymongo.errors import (ConnectionFailure,
                             ServerSelectionTimeoutError)
-from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import (InsertOne,
                                 DeleteMany,
@@ -38,29 +37,14 @@ from pymongo.operations import (InsertOne,
 from pymongo.write_concern import WriteConcern
 
 from test import unittest, client_context, IntegrationTest, SkipTest
-from test.utils import rs_or_single_client, EventListener, DeprecationFilter
+from test.utils import (rs_or_single_client,
+                        DeprecationFilter,
+                        OvertCommandListener)
 from test.test_crud import check_result, run_operation
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'retryable_writes')
-
-
-class CommandListener(EventListener):
-    def started(self, event):
-        if event.command_name.lower() in _SENSITIVE_COMMANDS:
-            return
-        super(CommandListener, self).started(event)
-
-    def succeeded(self, event):
-        if event.command_name.lower() in _SENSITIVE_COMMANDS:
-            return
-        super(CommandListener, self).succeeded(event)
-
-    def failed(self, event):
-        if event.command_name.lower() in _SENSITIVE_COMMANDS:
-            return
-        super(CommandListener, self).failed(event)
 
 
 class TestAllScenarios(IntegrationTest):
@@ -240,7 +224,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     @classmethod
     def setUpClass(cls):
         super(TestRetryableWrites, cls).setUpClass()
-        cls.listener = CommandListener()
+        cls.listener = OvertCommandListener()
         cls.client = rs_or_single_client(
             retryWrites=True, event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
@@ -260,7 +244,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                 ('mode', 'off')]))
 
     def test_supported_single_statement_no_retry(self):
-        listener = CommandListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(
             retryWrites=False, event_listeners=[listener])
         self.addCleanup(client.close)
@@ -350,7 +334,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
     def test_server_selection_timeout_not_retried(self):
         """A ServerSelectionTimeoutError is not retried."""
-        listener = CommandListener()
+        listener = OvertCommandListener()
         client = MongoClient(
             'somedomainthatdoesntexist.org',
             serverSelectionTimeoutMS=1,
@@ -370,7 +354,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         """A ServerSelectionTimeoutError on the retry attempt raises the
         original error.
         """
-        listener = CommandListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(
             retryWrites=True, event_listeners=[listener])
         self.addCleanup(client.close)

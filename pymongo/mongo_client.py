@@ -973,7 +973,7 @@ class MongoClient(common.BaseObject):
 
     @contextlib.contextmanager
     def _socket_for_reads(self, read_preference):
-        preference = read_preference or ReadPreference.PRIMARY
+        assert read_preference is not None, "read_preference must not be None"
         # Get a socket for a server matching the read preference, and yield
         # sock_info, slave_ok. Server Selection Spec: "slaveOK must be sent to
         # mongods with topology type Single. If the server type is Mongos,
@@ -983,13 +983,14 @@ class MongoClient(common.BaseObject):
         topology = self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
         server = topology.select_server(read_preference)
+
         with self._get_socket(server) as sock_info:
             slave_ok = (single and not sock_info.is_mongos) or (
-                preference != ReadPreference.PRIMARY)
+                read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
 
-    def _send_message_with_response(self, operation, read_preference=None,
-                                    exhaust=False, address=None):
+    def _send_message_with_response(self, operation, exhaust=False,
+                                    address=None):
         """Send a message to MongoDB and return a Response.
 
         :Parameters:
@@ -1011,16 +1012,14 @@ class MongoClient(common.BaseObject):
                 raise AutoReconnect('server %s:%d no longer available'
                                     % address)
         else:
-            selector = read_preference or writable_server_selector
-            server = topology.select_server(selector)
+            server = topology.select_server(operation.read_preference)
 
-        # A _Query's slaveOk bit is already set for queries with non-primary
-        # read preference. If this is a direct connection to a mongod, override
-        # and *always* set the slaveOk bit. See bullet point 2 in
-        # server-selection.rst#topology-type-single.
+        # If this is a direct connection to a mongod, *always* set the slaveOk
+        # bit. See bullet point 2 in server-selection.rst#topology-type-single.
         set_slave_ok = (
             topology.description.topology_type == TOPOLOGY_TYPE.Single
-            and server.description.server_type != SERVER_TYPE.Mongos)
+            and server.description.server_type != SERVER_TYPE.Mongos) or (
+                operation.read_preference != ReadPreference.PRIMARY)
 
         return self._reset_on_error(
             server,
@@ -1542,12 +1541,10 @@ class MongoClient(common.BaseObject):
                             "of %s or a Database" % (string_type.__name__,))
 
         self._purge_index(name)
-        with self._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_ok):
+        with self._socket_for_writes() as sock_info:
             self[name]._command(
                 sock_info,
                 "dropDatabase",
-                slave_ok=slave_ok,
                 read_preference=ReadPreference.PRIMARY,
                 write_concern=self.write_concern,
                 parse_write_concern_error=True,

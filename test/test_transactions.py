@@ -32,12 +32,12 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure,
                             PyMongoError)
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import (make_read_preference,
-                                      read_pref_mode_from_name)
+from pymongo.read_preferences import ReadPreference
 from pymongo.results import _WriteResult, BulkWriteResult
 
 from test import unittest, client_context, IntegrationTest
-from test.utils import EventListener, rs_client
+from test.utils import OvertCommandListener, rs_client
+from test.utils_selection_tests import parse_read_preference
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -74,8 +74,10 @@ class TestTransactions(IntegrationTest):
         default_options = TransactionOptions()
         self.assertIsNone(default_options.read_concern)
         self.assertIsNone(default_options.write_concern)
+        self.assertIsNone(default_options.read_preference)
         TransactionOptions(read_concern=ReadConcern(),
-                           write_concern=WriteConcern())
+                           write_concern=WriteConcern(),
+                           read_preference=ReadPreference.PRIMARY)
         with self.assertRaisesRegex(TypeError, "read_concern must be "):
             TransactionOptions(read_concern={})
         with self.assertRaisesRegex(TypeError, "write_concern must be "):
@@ -84,6 +86,9 @@ class TestTransactions(IntegrationTest):
                 ConfigurationError,
                 "transactions must use an acknowledged write concern"):
             TransactionOptions(write_concern=WriteConcern(w=0))
+        with self.assertRaisesRegex(
+                TypeError, "is not valid for read_preference"):
+            TransactionOptions(read_preference={})
 
     # TODO: factor the following function with test_crud.py.
     def check_result(self, expected_result, result):
@@ -138,8 +143,7 @@ class TestTransactions(IntegrationTest):
         arguments.update(arguments.pop("options", {}))
         pref = write_c = read_c = None
         if 'readPreference' in arguments:
-            pref = make_read_preference(read_pref_mode_from_name(
-                arguments.pop('readPreference')['mode']), tag_sets=None)
+            pref = parse_read_preference(arguments.pop('readPreference'))
 
         if 'writeConcern' in arguments:
             write_c = WriteConcern(**dict(arguments.pop('writeConcern')))
@@ -150,7 +154,8 @@ class TestTransactions(IntegrationTest):
         if name == 'start_transaction':
             cmd = partial(session.start_transaction,
                           write_concern=write_c,
-                          read_concern=read_c)
+                          read_concern=read_c,
+                          read_preference=pref)
         elif name in ('commit_transaction', 'abort_transaction'):
             cmd = getattr(session, name)
         else:
@@ -195,7 +200,10 @@ class TestTransactions(IntegrationTest):
 
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
-                out = collection.database[arguments["pipeline"][-1]["$out"]]
+                # Read from the primary to ensure causal consistency.
+                out = collection.database.get_collection(
+                    arguments["pipeline"][-1]["$out"],
+                    read_preference=ReadPreference.PRIMARY)
                 return out.find()
 
         if isinstance(result, Cursor) or isinstance(result, CommandCursor):
@@ -279,7 +287,7 @@ def end_sessions(sessions):
 
 def create_test(scenario_def, test):
     def run_scenario(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         # New client, to avoid interference from pooled sessions.
         # Convert test['clientOptions'] to dict to avoid a Jython bug using "**"
         # with ScenarioDict.
@@ -319,9 +327,16 @@ def create_test(scenario_def, test):
                 else:
                     write_concern = None
 
+                if 'readPreference' in txn_opts:
+                    read_pref = parse_read_preference(
+                        txn_opts['readPreference'])
+                else:
+                    read_pref = None
+
                 txn_opts = client_session.TransactionOptions(
                     read_concern=read_concern,
-                    write_concern=write_concern
+                    write_concern=write_concern,
+                    read_preference=read_pref,
                 )
                 opts['default_transaction_options'] = txn_opts
 
@@ -339,7 +354,8 @@ def create_test(scenario_def, test):
         for op in test['operations']:
             expected_result = op.get('result')
             if expect_error_message(expected_result):
-                with self.assertRaises(PyMongoError) as context:
+                with self.assertRaises(PyMongoError,
+                                       msg=op.get('name')) as context:
                     self.run_operation(sessions, collection, op.copy())
 
                 self.assertIn(expected_result['errorContains'].lower(),
@@ -363,7 +379,10 @@ def create_test(scenario_def, test):
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')
         if expected_c is not None:
-            self.assertEqual(list(collection.find()), expected_c['data'])
+            # Read from the primary to ensure causal consistency.
+            primary_coll = collection.with_options(
+                read_preference=ReadPreference.PRIMARY)
+            self.assertEqual(list(primary_coll.find()), expected_c['data'])
 
     return run_scenario
 

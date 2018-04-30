@@ -300,15 +300,6 @@ class Database(common.BaseObject):
             self, name, False, codec_options, read_preference,
             write_concern, read_concern)
 
-    def _collection_default_options(self, name, **kargs):
-        """Get a Collection instance with the default settings."""
-        wc = (self.write_concern
-              if self.write_concern.acknowledged else WriteConcern())
-        return self.get_collection(
-            name, codec_options=DEFAULT_CODEC_OPTIONS,
-            read_preference=ReadPreference.PRIMARY,
-            write_concern=wc)
-
     def create_collection(self, name, codec_options=None,
                           read_preference=None, write_concern=None,
                           read_concern=None, session=None, **kwargs):
@@ -525,17 +516,20 @@ class Database(common.BaseObject):
 
         .. mongodoc:: commands
         """
-        client = self.__client
-        with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
+        read_preference = ((session and session._txn_read_preference())
+                           or read_preference)
+        with self.__client._socket_for_reads(
+                read_preference) as (sock_info, slave_ok):
             return self._command(sock_info, command, slave_ok, value,
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
-    def _list_collections(self, sock_info, slave_okay, session=None, **kwargs):
+    def _list_collections(self, sock_info, slave_okay, session,
+                          read_preference, **kwargs):
         """Internal listCollections helper."""
 
         coll = self.get_collection(
-            "$cmd", read_preference=ReadPreference.PRIMARY)
+            "$cmd", read_preference=read_preference)
         if sock_info.max_wire_version > 2:
             cmd = SON([("listCollections", 1),
                        ("cursor", {})])
@@ -543,7 +537,9 @@ class Database(common.BaseObject):
             with self.__client._tmp_session(
                     session, close=False) as tmp_session:
                 cursor = self._command(
-                    sock_info, cmd, slave_okay, session=tmp_session)["cursor"]
+                    sock_info, cmd, slave_okay,
+                    read_preference=read_preference,
+                    session=tmp_session)["cursor"]
                 return CommandCursor(
                     coll,
                     cursor,
@@ -583,10 +579,13 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.6
         """
+        read_pref = ((session and session._txn_read_preference())
+                     or ReadPreference.PRIMARY)
         with self.__client._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_okay):
+                read_pref) as (sock_info, slave_okay):
             return self._list_collections(
-                sock_info, slave_okay, session=session, **kwargs)
+                sock_info, slave_okay, session, read_preference=read_pref,
+                **kwargs)
 
     def list_collection_names(self, session=None):
         """Get a list of all the collection names in this database.
@@ -648,10 +647,9 @@ class Database(common.BaseObject):
 
         self.__client._purge_index(self.__name, name)
 
-        with self.__client._socket_for_reads(
-                ReadPreference.PRIMARY) as (sock_info, slave_ok):
+        with self.__client._socket_for_writes() as sock_info:
             return self._command(
-                sock_info, 'drop', slave_ok, _unicode(name),
+                sock_info, 'drop', value=_unicode(name),
                 allowable_errors=['ns not found'],
                 write_concern=self.write_concern,
                 parse_write_concern_error=True,

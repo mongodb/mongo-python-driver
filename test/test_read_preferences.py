@@ -316,7 +316,8 @@ class ReadPrefTester(MongoClient):
 
     @contextlib.contextmanager
     def _socket_for_reads(self, read_preference):
-        context = super(ReadPrefTester, self)._socket_for_reads(read_preference)
+        context = super(ReadPrefTester, self)._socket_for_reads(
+            read_preference)
         with context as (sock_info, slave_ok):
             self.record_a_read(sock_info.address)
             yield sock_info, slave_ok
@@ -412,17 +413,11 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             self._test_fn(server_type, func)
 
     def test_create_collection(self):
-        # Collections should be created on primary, obviously
+        # create_collection runs listCollections on the primary to check if
+        # the collection already exists.
         self._test_primary_helper(
             lambda: self.c.pymongo_test.create_collection(
                 'some_collection%s' % random.randint(0, MAXSIZE)))
-
-    def test_drop_collection(self):
-        self._test_primary_helper(
-            lambda: self.c.pymongo_test.drop_collection('some_collection'))
-
-        self._test_primary_helper(
-            lambda: self.c.pymongo_test.some_collection.drop())
 
     def test_group(self):
         with warnings.catch_warnings():

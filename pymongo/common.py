@@ -674,6 +674,14 @@ class BaseObject(object):
         """
         return self.__read_preference
 
+    def _read_preference_for(self, session):
+        """Read only access to the read preference of this instance or session.
+        """
+        # Override this operation's read preference with the transaction's.
+        if session:
+            return session._txn_read_preference() or self.__read_preference
+        return self.__read_preference
+
     @property
     def read_concern(self):
         """Read only access to the :class:`~pymongo.read_concern.ReadConcern`

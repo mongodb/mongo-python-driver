@@ -134,7 +134,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(
-            ReadPreference.PRIMARY, cursor._Cursor__read_preference)
+            ReadPreference.PRIMARY, cursor._read_preference())
 
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
         secondary = Secondary(tag_sets=tag_sets)
@@ -155,13 +155,13 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(
-            secondary, cursor._Cursor__read_preference)
+            secondary, cursor._read_preference())
 
         nearest = Nearest(tag_sets=[{'dc': 'ny'}, {}])
         cursor = c.pymongo_test.get_collection(
             "test", read_preference=nearest).find()
 
-        self.assertEqual(nearest, cursor._Cursor__read_preference)
+        self.assertEqual(nearest, cursor._read_preference())
         self.assertEqual(c.max_bson_size, 16777216)
         c.close()
 

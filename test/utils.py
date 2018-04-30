@@ -29,6 +29,7 @@ from functools import partial
 
 from pymongo import MongoClient, monitoring
 from pymongo.errors import AutoReconnect, OperationFailure
+from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.write_concern import WriteConcern
@@ -72,6 +73,21 @@ class EventListener(monitoring.CommandListener):
 
     def failed(self, event):
         self.results['failed'].append(event)
+
+
+class OvertCommandListener(EventListener):
+    """A CommandListener that ignores sensitive commands."""
+    def started(self, event):
+        if event.command_name.lower() not in _SENSITIVE_COMMANDS:
+            super(OvertCommandListener, self).started(event)
+
+    def succeeded(self, event):
+        if event.command_name.lower() not in _SENSITIVE_COMMANDS:
+            super(OvertCommandListener, self).succeeded(event)
+
+    def failed(self, event):
+        if event.command_name.lower() not in _SENSITIVE_COMMANDS:
+            super(OvertCommandListener, self).failed(event)
 
 
 class ServerAndTopologyEventListener(monitoring.ServerListener,

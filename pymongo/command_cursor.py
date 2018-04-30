@@ -223,13 +223,14 @@ class CommandCursor(object):
 
         if self.__id:  # Get More
             dbname, collname = self.__ns.split('.', 1)
+            read_pref = self.__collection._read_preference_for(self.session)
             self.__send_message(
                 self._getmore_class(dbname,
                                     collname,
                                     self.__batch_size,
                                     self.__id,
                                     self.__collection.codec_options,
-                                    self.__collection.read_preference,
+                                    read_pref,
                                     self.__session,
                                     self.__collection.database.client,
                                     self.__max_await_time_ms))

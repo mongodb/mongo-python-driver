@@ -95,7 +95,7 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.write_concern import WriteConcern
 
 
@@ -159,9 +159,11 @@ class TransactionOptions(object):
 
     .. versionadded:: 3.7
     """
-    def __init__(self, read_concern=None, write_concern=None):
+    def __init__(self, read_concern=None, write_concern=None,
+                 read_preference=None):
         self._read_concern = read_concern
         self._write_concern = write_concern
+        self._read_preference = read_preference
         if read_concern is not None:
             if not isinstance(read_concern, ReadConcern):
                 raise TypeError("read_concern must be an instance of "
@@ -176,6 +178,11 @@ class TransactionOptions(object):
                 raise ConfigurationError(
                     "transactions must use an acknowledged write concern, "
                     "not: %r" % (write_concern,))
+        if read_preference is not None:
+            if not isinstance(read_preference, _ServerMode):
+                raise TypeError("%r is not valid for read_preference. See "
+                                "pymongo.read_preferences for valid "
+                                "options." % (read_preference,))
 
     @property
     def read_concern(self):
@@ -186,6 +193,11 @@ class TransactionOptions(object):
     def write_concern(self):
         """This transaction's :class:`~write_concern.WriteConcern`."""
         return self._write_concern
+
+    @property
+    def read_preference(self):
+        """This transaction's :class:`~read_preference.ReadPreference`."""
+        return self._read_preference
 
 
 class _TransactionContext(object):
@@ -294,7 +306,8 @@ class ClientSession(object):
             return val
         return getattr(self.client, name)
 
-    def start_transaction(self, read_concern=None, write_concern=None):
+    def start_transaction(self, read_concern=None, write_concern=None,
+                          read_preference=None):
         """Start a multi-statement transaction.
 
         Takes the same arguments as :class:`TransactionOptions`.
@@ -308,9 +321,11 @@ class ClientSession(object):
 
         read_concern = self._inherit_option("read_concern", read_concern)
         write_concern = self._inherit_option("write_concern", write_concern)
+        read_preference = self._inherit_option(
+            "read_preference", read_preference)
 
         self._transaction = _Transaction(TransactionOptions(
-            read_concern=read_concern, write_concern=write_concern))
+            read_concern, write_concern, read_preference))
         self._server_session._transaction_id += 1
         return _TransactionContext(self)
 
@@ -342,13 +357,16 @@ class ClientSession(object):
                 # Not really started.
                 return
 
-            # TODO: retryable. And it's weird to pass parse_write_concern_error
-            # from outside database.py.
-            self._client.admin.command(
-                command_name,
-                session=self,
-                write_concern=self._transaction.opts.write_concern,
-                parse_write_concern_error=True)
+            # TODO: commitTransaction should be a retryable write.
+            # Use _command directly because commit/abort are writes and must
+            # always go to the primary.
+            with self._client._socket_for_writes() as sock_info:
+                return self._client.admin._command(
+                    sock_info,
+                    command_name,
+                    session=self,
+                    write_concern=self._transaction.opts.write_concern,
+                    parse_write_concern_error=True)
         finally:
             self._transaction = None
 
@@ -414,6 +432,12 @@ class ClientSession(object):
             self.start_transaction()
             return True
         return False
+
+    def _txn_read_preference(self):
+        """Return read preference of this transaction or None."""
+        if self._in_transaction_or_auto_start():
+            return self._transaction.opts.read_preference
+        return None
 
     def _apply_to(self, command, is_retryable, read_preference):
         self._check_ended()

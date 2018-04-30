@@ -180,23 +180,14 @@ def create_test(scenario_def):
         else:
             # Make first letter lowercase to match read_pref's modes.
             pref_def = scenario_def['read_preference']
-            mode_string = pref_def.get('mode', 'primary')
-            mode_string = mode_string[:1].lower() + mode_string[1:]
-            mode = read_preferences.read_pref_mode_from_name(mode_string)
-            max_staleness = pref_def.get('maxStalenessSeconds', -1)
-            tag_sets = pref_def.get('tag_sets')
-
             if scenario_def.get('error'):
                 with self.assertRaises((ConfigurationError, ValueError)):
                     # Error can be raised when making Read Pref or selecting.
-                    pref = read_preferences.make_read_preference(
-                        mode, tag_sets=tag_sets, max_staleness=max_staleness)
-
+                    pref = parse_read_preference(pref_def)
                     top_latency.select_server(pref)
                 return
 
-            pref = read_preferences.make_read_preference(
-                mode, tag_sets=tag_sets, max_staleness=max_staleness)
+            pref = parse_read_preference(pref_def)
 
         # Select servers.
         if not scenario_def.get('suitable_servers'):
@@ -281,3 +272,14 @@ def create_selection_tests(test_dir):
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
     return TestAllScenarios
+
+
+def parse_read_preference(pref):
+    # Make first letter lowercase to match read_pref's modes.
+    mode_string = pref.get('mode', 'primary')
+    mode_string = mode_string[:1].lower() + mode_string[1:]
+    mode = read_preferences.read_pref_mode_from_name(mode_string)
+    max_staleness = pref.get('maxStalenessSeconds', -1)
+    tag_sets = pref.get('tag_sets')
+    return read_preferences.make_read_preference(
+        mode, tag_sets=tag_sets, max_staleness=max_staleness)

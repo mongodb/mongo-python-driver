@@ -211,12 +211,11 @@ class Cursor(object):
         self.__retrieved = 0
 
         self.__codec_options = collection.codec_options
-        self.__read_preference = collection.read_preference
+        # Read preference is set when the initial find is sent.
+        self.__read_preference = None
         self.__read_concern = collection.read_concern
 
         self.__query_flags = cursor_type
-        if self.__read_preference != ReadPreference.PRIMARY:
-            self.__query_flags |= _QUERY_OPTIONS["slave_okay"]
         if no_cursor_timeout:
             self.__query_flags |= _QUERY_OPTIONS["no_timeout"]
         if allow_partial_results:
@@ -918,16 +917,9 @@ class Cursor(object):
         def duration(): return datetime.datetime.now() - start
 
         if operation:
-            kwargs = {
-                "read_preference": self.__read_preference,
-                "exhaust": self.__exhaust,
-            }
-            if self.__address is not None:
-                kwargs["address"] = self.__address
-
             try:
-                response = client._send_message_with_response(operation,
-                                                              **kwargs)
+                response = client._send_message_with_response(
+                    operation, exhaust=self.__exhaust, address=self.__address)
                 self.__address = response.address
                 if self.__exhaust:
                     # 'response' is an ExhaustResponse.
@@ -1060,6 +1052,13 @@ class Cursor(object):
     def _unpack_response(self, response, cursor_id, codec_options):
         return response.unpack_response(cursor_id, codec_options)
 
+    def _read_preference(self):
+        if self.__read_preference is None:
+            # Save the read preference for getMore commands.
+            self.__read_preference = self.__collection._read_preference_for(
+                self.session)
+        return self.__read_preference
+
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
 
@@ -1081,7 +1080,7 @@ class Cursor(object):
                                   self.__query_spec(),
                                   self.__projection,
                                   self.__codec_options,
-                                  self.__read_preference,
+                                  self._read_preference(),
                                   self.__limit,
                                   self.__batch_size,
                                   self.__read_concern,
@@ -1106,7 +1105,7 @@ class Cursor(object):
                                         limit,
                                         self.__id,
                                         self.__codec_options,
-                                        self.__read_preference,
+                                        self._read_preference(),
                                         self.__session,
                                         self.__collection.database.client,
                                         self.__max_await_time_ms)

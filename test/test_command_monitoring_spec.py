@@ -25,11 +25,10 @@ import pymongo
 from bson import json_util
 from pymongo import monitoring
 from pymongo.errors import OperationFailure
-from pymongo.read_preferences import (make_read_preference,
-                                      read_pref_mode_from_name)
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context
 from test.utils import single_client, wait_until, EventListener
+from test.utils_selection_tests import parse_read_preference
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -82,10 +81,8 @@ def create_test(scenario_def, test):
         self.listener.results.clear()
         name = camel_to_snake(test['operation']['name'])
         if 'read_preference' in test['operation']:
-            mode = read_pref_mode_from_name(
-                test['operation']['read_preference']['mode'])
-            coll = coll.with_options(
-                read_preference=make_read_preference(mode, None))
+            coll = coll.with_options(read_preference=parse_read_preference(
+                test['operation']['read_preference']))
 
         test_args = test['operation']['arguments']
         if 'writeConcern' in test_args:

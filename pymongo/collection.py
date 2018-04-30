@@ -14,7 +14,6 @@
 
 """Collection level utilities for Mongo."""
 
-import collections
 import datetime
 import warnings
 
@@ -184,11 +183,14 @@ class Collection(common.BaseObject):
             unicode_decode_error_handler='replace',
             document_class=dict)
 
-    def _socket_for_reads(self):
-        return self.__database.client._socket_for_reads(self.read_preference)
+    def _socket_for_reads(self, session):
+        return self.__database.client._socket_for_reads(
+            self._read_preference_for(session))
 
-    def _socket_for_primary_reads(self):
-        return self.__database.client._socket_for_reads(ReadPreference.PRIMARY)
+    def _socket_for_primary_reads(self, session):
+        read_pref = ((session and session._txn_read_preference())
+                     or ReadPreference.PRIMARY)
+        return self.__database.client._socket_for_reads(read_pref)
 
     def _socket_for_writes(self):
         return self.__database.client._socket_for_writes()
@@ -198,7 +200,6 @@ class Collection(common.BaseObject):
                  codec_options=None, check=True, allowable_errors=None,
                  read_concern=None,
                  write_concern=None,
-                 parse_write_concern_error=False,
                  collation=None,
                  session=None,
                  retryable_write=False):
@@ -217,8 +218,6 @@ class Collection(common.BaseObject):
           - `write_concern`: An instance of
             :class:`~pymongo.write_concern.WriteConcern`. This option is only
             valid for MongoDB 3.4 and above.
-          - `parse_write_concern_error` (optional): Whether to parse a
-            ``writeConcernError`` field in the command response.
           - `collation` (optional) - An instance of
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
@@ -232,13 +231,13 @@ class Collection(common.BaseObject):
                 self.__database.name,
                 command,
                 slave_ok,
-                read_preference or self.read_preference,
+                read_preference or self._read_preference_for(session),
                 codec_options or self.codec_options,
                 check,
                 allowable_errors,
                 read_concern=read_concern,
                 write_concern=write_concern,
-                parse_write_concern_error=parse_write_concern_error,
+                parse_write_concern_error=True,
                 collation=collation,
                 session=s,
                 client=self.__database.client,
@@ -256,7 +255,6 @@ class Collection(common.BaseObject):
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 write_concern=self.write_concern,
-                parse_write_concern_error=True,
                 collation=collation, session=session)
 
     def __getattr__(self, name):
@@ -1493,7 +1491,7 @@ class Collection(common.BaseObject):
                    ('numCursors', num_cursors)])
         cmd.update(kwargs)
 
-        with self._socket_for_reads() as (sock_info, slave_ok):
+        with self._socket_for_reads(session) as (sock_info, slave_ok):
             result = self._command(sock_info, cmd, slave_ok,
                                    read_concern=self.read_concern,
                                    session=session)
@@ -1509,7 +1507,7 @@ class Collection(common.BaseObject):
 
     def _count(self, cmd, collation=None, session=None):
         """Internal count helper."""
-        with self._socket_for_reads() as (sock_info, slave_ok):
+        with self._socket_for_reads(session) as (sock_info, slave_ok):
             res = self._command(
                 sock_info, cmd, slave_ok,
                 allowable_errors=["ns missing"],
@@ -1628,7 +1626,6 @@ class Collection(common.BaseObject):
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                 write_concern=self.write_concern,
-                parse_write_concern_error=True,
                 session=session)
         return names
 
@@ -1660,7 +1657,6 @@ class Collection(common.BaseObject):
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                 write_concern=self.write_concern,
-                parse_write_concern_error=True,
                 session=session)
 
     def create_index(self, keys, session=None, **kwargs):
@@ -1880,7 +1876,6 @@ class Collection(common.BaseObject):
                           read_preference=ReadPreference.PRIMARY,
                           allowable_errors=["ns not found"],
                           write_concern=self.write_concern,
-                          parse_write_concern_error=True,
                           session=session)
 
     def reindex(self, session=None, **kwargs):
@@ -1914,7 +1909,7 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             return self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                parse_write_concern_error=True, session=session)
+                session=session)
 
     def list_indexes(self, session=None):
         """Get a cursor over the index documents for this collection.
@@ -1940,13 +1935,15 @@ class Collection(common.BaseObject):
         codec_options = CodecOptions(SON)
         coll = self.with_options(codec_options=codec_options,
                                  read_preference=ReadPreference.PRIMARY)
-        with self._socket_for_primary_reads() as (sock_info, slave_ok):
+        with self._socket_for_primary_reads(session) as (sock_info, slave_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
+            read_pref = ((session and session._txn_read_preference())
+                         or ReadPreference.PRIMARY)
             if sock_info.max_wire_version > 2:
                 with self.__database.client._tmp_session(session, False) as s:
                     try:
                         cursor = self._command(sock_info, cmd, slave_ok,
-                                               ReadPreference.PRIMARY,
+                                               read_pref,
                                                codec_options,
                                                session=s)["cursor"]
                     except OperationFailure as exc:
@@ -1962,7 +1959,7 @@ class Collection(common.BaseObject):
                 res = message._first_batch(
                     sock_info, self.__database.name, "system.indexes",
                     {"ns": self.__full_name}, 0, slave_ok, codec_options,
-                    ReadPreference.PRIMARY, cmd,
+                    read_pref, cmd,
                     self.database.client._event_listeners)
                 cursor = res["cursor"]
                 # Note that a collection can only have 64 indexes, so there
@@ -2061,7 +2058,7 @@ class Collection(common.BaseObject):
             "batchSize", kwargs.pop("batchSize", None))
         # If the server does not support the "cursor" option we
         # ignore useCursor and batchSize.
-        with self._socket_for_reads() as (sock_info, slave_ok):
+        with self._socket_for_reads(session) as (sock_info, slave_ok):
             dollar_out = pipeline and '$out' in pipeline[-1]
             if use_cursor:
                 if "cursor" not in kwargs:
@@ -2092,9 +2089,9 @@ class Collection(common.BaseObject):
                 self.__database.name,
                 cmd,
                 slave_ok,
-                self.read_preference,
+                self._read_preference_for(session),
                 self.codec_options,
-                parse_write_concern_error=dollar_out,
+                parse_write_concern_error=True,
                 read_concern=read_concern,
                 collation=collation,
                 session=session,
@@ -2350,7 +2347,7 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
 
-        with self._socket_for_reads() as (sock_info, slave_ok):
+        with self._socket_for_reads(session=None) as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
                                  collation=collation)["retval"]
 
@@ -2451,7 +2448,7 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        with self._socket_for_reads() as (sock_info, slave_ok):
+        with self._socket_for_reads(session) as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
                                  read_concern=self.read_concern,
                                  collation=collation, session=session)["values"]
@@ -2523,24 +2520,21 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         inline = 'inline' in cmd['out']
-        with self._socket_for_primary_reads() as (sock_info, slave_ok):
+        with self._socket_for_primary_reads(session) as (sock_info, slave_ok):
             if (sock_info.max_wire_version >= 5 and self.write_concern and
                     not inline):
                 cmd['writeConcern'] = self.write_concern.document
             cmd.update(kwargs)
             if (sock_info.max_wire_version >= 4 and 'readConcern' not in cmd and
                     inline):
-                # No need to parse 'writeConcernError' here, since the command
-                # is an inline map reduce.
-                response = self._command(
-                    sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
-                    read_concern=self.read_concern,
-                    collation=collation, session=session)
+                read_concern = self.read_concern
             else:
-                response = self._command(
-                    sock_info, cmd, slave_ok, ReadPreference.PRIMARY,
-                    parse_write_concern_error=not inline,
-                    collation=collation, session=session)
+                read_concern = None
+
+            response = self._command(
+                sock_info, cmd, slave_ok, self._read_preference_for(session),
+                read_concern=read_concern,
+                collation=collation, session=session)
 
         if full_response or not response.get('result'):
             return response
@@ -2592,7 +2586,7 @@ class Collection(common.BaseObject):
                    ("out", {"inline": 1})])
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        with self._socket_for_reads() as (sock_info, slave_ok):
+        with self._socket_for_reads(session) as (sock_info, slave_ok):
             if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
                 res = self._command(sock_info, cmd, slave_ok,
                                     read_concern=self.read_concern,
