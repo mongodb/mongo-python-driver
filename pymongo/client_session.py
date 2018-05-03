@@ -203,11 +203,24 @@ class _TransactionContext(object):
                 self.__session.abort_transaction()
 
 
+class _TxnState(object):
+    NONE = 1
+    STARTING = 2
+    IN_PROGRESS = 3
+    COMMITTED = 4
+    COMMITTED_EMPTY = 5
+    ABORTED = 6
+
+
 class _Transaction(object):
     """Internal class to hold transaction information in a ClientSession."""
     def __init__(self, opts):
         self.opts = opts
-        self.sent_command = False
+        self.state = _TxnState.NONE
+        self.transaction_id = 0
+
+    def active(self):
+        return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
 
 
 class ClientSession(object):
@@ -220,7 +233,7 @@ class ClientSession(object):
         self._authset = authset
         self._cluster_time = None
         self._operation_time = None
-        self._transaction = None
+        self._transaction = _Transaction(None)
 
     def end_session(self):
         """Finish this session. If a transaction has started, abort it.
@@ -311,9 +324,11 @@ class ClientSession(object):
         read_preference = self._inherit_option(
             "read_preference", read_preference)
 
-        self._transaction = _Transaction(TransactionOptions(
-            read_concern, write_concern, read_preference))
+        self._transaction.opts = TransactionOptions(
+            read_concern, write_concern, read_preference)
+        self._transaction.state = _TxnState.STARTING
         self._server_session._transaction_id += 1
+        self._transaction.transaction_id = self._server_session.transaction_id
         return _TransactionContext(self)
 
     def commit_transaction(self):
@@ -321,41 +336,65 @@ class ClientSession(object):
 
         .. versionadded:: 3.7
         """
-        self._finish_transaction("commitTransaction")
+        self._check_ended()
+
+        state = self._transaction.state
+        if state is _TxnState.NONE:
+            raise InvalidOperation("No transaction started")
+        elif state in (_TxnState.STARTING, _TxnState.COMMITTED_EMPTY):
+            # Server transaction was never started, no need to send a command.
+            self._transaction.state = _TxnState.COMMITTED_EMPTY
+            return
+        elif state is _TxnState.ABORTED:
+            raise InvalidOperation(
+                "Cannot call commitTransaction after calling abortTransaction")
+
+        try:
+            self._finish_transaction("commitTransaction")
+        finally:
+            self._transaction.state = _TxnState.COMMITTED
 
     def abort_transaction(self):
         """Abort a multi-statement transaction.
 
         .. versionadded:: 3.7
         """
+        self._check_ended()
+
+        state = self._transaction.state
+        if state is _TxnState.NONE:
+            raise InvalidOperation("No transaction started")
+        elif state is _TxnState.STARTING:
+            # Server transaction was never started, no need to send a command.
+            self._transaction.state = _TxnState.ABORTED
+            return
+        elif state is _TxnState.ABORTED:
+            raise InvalidOperation("Cannot call abortTransaction twice")
+        elif state in (_TxnState.COMMITTED, _TxnState.COMMITTED_EMPTY):
+            raise InvalidOperation(
+                "Cannot call abortTransaction after calling commitTransaction")
+
         try:
             self._finish_transaction("abortTransaction")
         except (OperationFailure, ConnectionFailure):
+            # The transactions spec says to ignore abortTransaction errors.
             pass
+        finally:
+            self._transaction.state = _TxnState.ABORTED
 
     def _finish_transaction(self, command_name):
-        self._check_ended()
-
-        if not self._in_transaction:
-            raise InvalidOperation("No transaction started")
-
-        try:
-            if not self._transaction.sent_command:
-                # Not really started.
-                return
-
-            # TODO: commitTransaction should be a retryable write.
-            # Use _command directly because commit/abort are writes and must
-            # always go to the primary.
-            with self._client._socket_for_writes() as sock_info:
-                return self._client.admin._command(
-                    sock_info,
-                    command_name,
-                    session=self,
-                    write_concern=self._transaction.opts.write_concern,
-                    parse_write_concern_error=True)
-        finally:
-            self._transaction = None
+        # TODO: commitTransaction should be a retryable write.
+        # Use _command directly because commit/abort are writes and must
+        # always go to the primary.
+        with self._client._socket_for_writes() as sock_info:
+            return self._client.admin._command(
+                sock_info,
+                command_name,
+                txnNumber=self._transaction.transaction_id,
+                autocommit=False,
+                session=self,
+                write_concern=self._transaction.opts.write_concern,
+                parse_write_concern_error=True)
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""
@@ -409,7 +448,7 @@ class ClientSession(object):
     @property
     def _in_transaction(self):
         """True if this session has an active multi-statement transaction."""
-        return self._transaction is not None
+        return self._transaction.active()
 
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""
@@ -422,6 +461,9 @@ class ClientSession(object):
 
         self._server_session.last_use = monotonic.time()
         command['lsid'] = self._server_session.session_id
+
+        if not self._in_transaction:
+            self._transaction.state = _TxnState.NONE
 
         if is_retryable:
             self._server_session._transaction_id += 1
@@ -439,9 +481,9 @@ class ClientSession(object):
                     'read preference in a transaction must be primary, not: '
                     '%r' % (read_preference,))
 
-            if not self._transaction.sent_command:
+            if self._transaction.state == _TxnState.STARTING:
                 # First command begins a new transaction.
-                self._transaction.sent_command = True
+                self._transaction.state = _TxnState.IN_PROGRESS
                 command['startTransaction'] = True
 
                 if self._transaction.opts.read_concern:

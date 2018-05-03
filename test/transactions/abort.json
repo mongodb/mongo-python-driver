@@ -245,7 +245,7 @@
             "session": "session0"
           },
           "result": {
-            "errorContains": "no transaction started"
+            "errorContains": "cannot call abortTransaction twice"
           }
         }
       ],
@@ -317,7 +317,39 @@
       }
     },
     {
-      "description": "commit after abort",
+      "description": "abort directly after no-op commit",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "arguments": {
+            "session": "session0"
+          },
+          "result": {
+            "errorContains": "Cannot call abortTransaction after calling commitTransaction"
+          }
+        }
+      ],
+      "expectations": [],
+      "outcome": {
+        "collection": {
+          "data": []
+        }
+      }
+    },
+    {
+      "description": "abort directly after commit",
       "operations": [
         {
           "name": "startTransaction",
@@ -338,18 +370,18 @@
           }
         },
         {
-          "name": "abortTransaction",
+          "name": "commitTransaction",
           "arguments": {
             "session": "session0"
           }
         },
         {
-          "name": "commitTransaction",
+          "name": "abortTransaction",
           "arguments": {
             "session": "session0"
           },
           "result": {
-            "errorContains": "no transaction started"
+            "errorContains": "Cannot call abortTransaction after calling commitTransaction"
           }
         }
       ],
@@ -380,7 +412,7 @@
         {
           "command_started_event": {
             "command": {
-              "abortTransaction": 1,
+              "commitTransaction": 1,
               "lsid": "session0",
               "txnNumber": {
                 "$numberLong": "1"
@@ -389,11 +421,20 @@
               "autocommit": false,
               "writeConcern": null
             },
-            "command_name": "abortTransaction",
+            "command_name": "commitTransaction",
             "database_name": "admin"
           }
         }
-      ]
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            }
+          ]
+        }
+      }
     },
     {
       "description": "abort ignores TransactionAborted",
