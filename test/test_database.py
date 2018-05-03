@@ -417,7 +417,7 @@ class TestDatabase(IntegrationTest):
             # getLastError includes "connectionId" in recent
             # server versions, getPrevError does not.
             error.pop("connectionId", None)
-            self.assertEqual(error, prev_error)
+            self.assertEqualReply(error, prev_error)
 
             db.test.find_one()
             self.assertEqual(None, db.error())

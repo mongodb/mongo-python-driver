@@ -583,10 +583,10 @@ def sanitize_reply(reply):
 
 class PyMongoTestCase(unittest.TestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
-        self.assertEqual(expected, sanitize_cmd(actual), msg)
+        self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
 
     def assertEqualReply(self, expected, actual, msg=None):
-        self.assertEqual(expected, sanitize_reply(actual), msg)
+        self.assertEqual(sanitize_reply(expected), sanitize_reply(actual), msg)
 
 
 class IntegrationTest(PyMongoTestCase):
