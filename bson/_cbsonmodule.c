@@ -2120,6 +2120,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             /* convert to local time */
             if (options->tzinfo != Py_None) {
                 astimezone = PyObject_GetAttrString(value, "astimezone");
+                Py_DECREF(value);
                 if (!astimezone) {
                     Py_DECREF(replace);
                     Py_DECREF(args);
