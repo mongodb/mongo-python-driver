@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """MongoDB benchmarking suite."""
+from __future__ import print_function
 
 import time
 import sys
@@ -87,7 +88,7 @@ def timed(name, function, args=[], setup=None):
         function(*args)
         times.append(time.time() - start)
     best_time = min(times)
-    print "%s%d" % (name + (60 - len(name)) * ".", per_trial / best_time)
+    print("{0:s}{1:d}".format(name + (60 - len(name)) * ".", per_trial / best_time))
     return best_time
 
 

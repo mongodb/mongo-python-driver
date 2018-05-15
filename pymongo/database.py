@@ -34,8 +34,8 @@ from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
 
 
-_INDEX_REGEX = {"name": {"$regex": "^(?!.*\$)"}}
-_SYSTEM_FILTER = {"filter": {"name": {"$regex": "^(?!system\.)"}}}
+_INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
+_SYSTEM_FILTER = {"filter": {"name": {"$regex": r"^(?!system\.)"}}}
 
 
 def _check_name(name):

@@ -1217,7 +1217,7 @@ class TestCursor(IntegrationTest):
             raise SkipTest("SERVER-4754 - This test uses profiling.")
 
         # MongoDB 3.1.5 changed the ns for commands.
-        regex = {'$regex': 'pymongo_test.(\$cmd|test)'}
+        regex = {'$regex': r'pymongo_test.(\$cmd|test)'}
 
         if client_context.version.at_least(3, 5, 8, -1):
             query_key = "command.comment"
