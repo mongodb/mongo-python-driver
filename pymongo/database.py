@@ -597,7 +597,8 @@ class Database(common.BaseObject):
         .. versionadded:: 3.6
         """
         return [result["name"]
-                for result in self.list_collections(session=session)]
+                for result in self.list_collections(session=session,
+                                                    nameOnly=True)]
 
     def collection_names(self, include_system_collections=True,
                          session=None):
@@ -614,7 +615,8 @@ class Database(common.BaseObject):
         """
         kws = {} if include_system_collections else _SYSTEM_FILTER
         return [result["name"]
-                for result in self.list_collections(session=session, **kws)]
+                for result in self.list_collections(session=session,
+                                                    nameOnly=True, **kws)]
 
     def drop_collection(self, name_or_collection, session=None):
         """Drop a collection.
