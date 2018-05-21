@@ -835,7 +835,7 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
         else:
             return {"$uuid": obj.hex}
     if isinstance(obj, Decimal128):
-        return {"$numberDecimal": str(obj)}
+        return {"$numberDecimal": str(obj.to_decimal())}
     if isinstance(obj, bool):
         return obj
     if (json_options.json_mode == JSONMode.CANONICAL and
