@@ -32,7 +32,7 @@ from test.utils import wait_until
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'dns')
 
-_SSL_OPTS = client_context.ssl_client_options.copy()
+_SSL_OPTS = client_context.default_client_options.copy()
 if client_context.ssl is True:
     # Our test certs don't support the SRV hosts used in these tests.
     _SSL_OPTS['ssl_match_hostname'] = False

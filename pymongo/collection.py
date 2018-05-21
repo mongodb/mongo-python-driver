@@ -504,6 +504,7 @@ class Collection(common.BaseObject):
 
         if publish:
             start = datetime.datetime.now()
+        args = args + (sock_info.compression_context,)
         rqst_id, msg, max_size = func(*args)
         if publish:
             duration = datetime.datetime.now() - start

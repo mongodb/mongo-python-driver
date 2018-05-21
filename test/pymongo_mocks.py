@@ -123,7 +123,7 @@ class MockClient(MongoClient):
         kwargs['_pool_class'] = partial(MockPool, self)
         kwargs['_monitor_class'] = partial(MockMonitor, self)
 
-        client_options = client_context.ssl_client_options.copy()
+        client_options = client_context.default_client_options.copy()
         client_options.update(kwargs)
 
         super(MockClient, self).__init__(*args, **client_options)

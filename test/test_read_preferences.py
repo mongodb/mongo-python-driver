@@ -310,7 +310,7 @@ class TestReadPreferences(TestReadPreferencesBase):
 class ReadPrefTester(MongoClient):
     def __init__(self, *args, **kwargs):
         self.has_read_from = set()
-        client_options = client_context.ssl_client_options.copy()
+        client_options = client_context.default_client_options.copy()
         client_options.update(kwargs)
         super(ReadPrefTester, self).__init__(*args, **client_options)
 

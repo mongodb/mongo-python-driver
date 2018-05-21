@@ -18,6 +18,7 @@ from bson.codec_options import _parse_codec_options
 from pymongo.auth import _build_credentials_tuple
 from pymongo.common import validate_boolean
 from pymongo import common
+from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListeners
 from pymongo.pool import PoolOptions
@@ -120,6 +121,9 @@ def _parse_pool_options(options):
     wait_queue_multiple = options.get('waitqueuemultiple')
     event_listeners = options.get('event_listeners')
     appname = options.get('appname')
+    compression_settings = CompressionSettings(
+        options.get('compressors', []),
+        options.get('zlibcompressionlevel', -1))
     ssl_context, ssl_match_hostname = _parse_ssl_options(options)
     return PoolOptions(max_pool_size,
                        min_pool_size,
@@ -128,7 +132,8 @@ def _parse_pool_options(options):
                        wait_queue_timeout, wait_queue_multiple,
                        ssl_context, ssl_match_hostname, socket_keepalive,
                        _EventListeners(event_listeners),
-                       appname)
+                       appname,
+                       compression_settings)
 
 
 class ClientOptions(object):

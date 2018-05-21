@@ -70,10 +70,15 @@ PyMongo::
 
   $ python -m pip install pymongo[tls]
 
+Wire protocol compression with snappy requires `python-snappy
+<https://pypi.org/project/python-snappy>`_::
+
+  $ python -m pip install pymongo[snappy]
+
 You can install all dependencies automatically with the following
 command::
 
-  $ python -m pip install pymongo[gssapi,srv,tls]
+  $ python -m pip install pymongo[snappy,gssapi,srv,tls]
 
 Other optional packages:
 

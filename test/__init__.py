@@ -72,6 +72,7 @@ if CA_PEM:
 if CERT_REQS is not None:
     _SSL_OPTIONS['ssl_cert_reqs'] = CERT_REQS
 
+COMPRESSORS = os.environ.get("COMPRESSORS")
 
 def is_server_resolvable():
     """Returns True if 'server' is resolvable."""
@@ -186,16 +187,19 @@ class ClientContext(object):
         self.ssl_cert_none = False
         self.ssl_certfile = False
         self.server_is_resolvable = is_server_resolvable()
-        self.ssl_client_options = {}
+        self.default_client_options = {}
         self.sessions_enabled = False
         self.client = self._connect(host, port)
+
+        if COMPRESSORS:
+            self.default_client_options["compressors"] = COMPRESSORS
 
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
             self.client = self._connect(host, port, **_SSL_OPTIONS)
             if self.client:
                 self.ssl = True
-                self.ssl_client_options = _SSL_OPTIONS
+                self.default_client_options.update(_SSL_OPTIONS)
                 self.ssl_certfile = True
                 if _SSL_OPTIONS.get('ssl_cert_reqs') == ssl.CERT_NONE:
                     self.ssl_cert_none = True
@@ -223,7 +227,7 @@ class ClientContext(object):
                 self.client = self._connect(
                     host, port, username=db_user, password=db_pwd,
                     replicaSet=self.replica_set_name,
-                    **self.ssl_client_options)
+                    **self.default_client_options)
 
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
@@ -242,13 +246,13 @@ class ClientContext(object):
                         username=db_user,
                         password=db_pwd,
                         replicaSet=self.replica_set_name,
-                        **self.ssl_client_options)
+                        **self.default_client_options)
                 else:
                     self.client = pymongo.MongoClient(
                         host,
                         port,
                         replicaSet=self.replica_set_name,
-                        **self.ssl_client_options)
+                        **self.default_client_options)
 
                 # Get the authoritative ismaster result from the primary.
                 self.ismaster = self.client.admin.command('ismaster')
@@ -285,6 +289,8 @@ class ClientContext(object):
             timeout_ms = 10000
         else:
             timeout_ms = 500
+        if COMPRESSORS:
+            kwargs["compressors"] = COMPRESSORS
         client = pymongo.MongoClient(
             host, port, serverSelectionTimeoutMS=timeout_ms, **kwargs)
         try:
@@ -339,7 +345,7 @@ class ClientContext(object):
             username=db_user,
             password=db_pwd,
             serverSelectionTimeoutMS=100,
-            **self.ssl_client_options)
+            **self.default_client_options)
 
         try:
             return db_user in _all_users(client.admin)

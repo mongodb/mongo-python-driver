@@ -280,14 +280,16 @@ class PoolOptions(object):
                  '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
-                 '__event_listeners', '__appname', '__metadata')
+                 '__event_listeners', '__appname', '__metadata',
+                 '__compression_settings')
 
     def __init__(self, max_pool_size=100, min_pool_size=0,
                  max_idle_time_seconds=None, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=True,
-                 event_listeners=None, appname=None):
+                 event_listeners=None, appname=None,
+                 compression_settings=None):
 
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -301,6 +303,7 @@ class PoolOptions(object):
         self.__socket_keepalive = socket_keepalive
         self.__event_listeners = event_listeners
         self.__appname = appname
+        self.__compression_settings = compression_settings
         self.__metadata = _METADATA.copy()
         if appname:
             self.__metadata['application'] = {'name': appname}
@@ -393,6 +396,10 @@ class PoolOptions(object):
         return self.__appname
 
     @property
+    def compression_settings(self):
+        return self.__compression_settings
+
+    @property
     def metadata(self):
         """A dict of metadata about the application, driver, os, and platform.
         """
@@ -423,6 +430,8 @@ class SocketInfo(object):
         self.is_mongos = False
 
         self.listeners = pool.opts.event_listeners
+        self.compression_settings = pool.opts.compression_settings
+        self.compression_context = None
 
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
@@ -432,7 +441,8 @@ class SocketInfo(object):
         cmd = SON([('ismaster', 1)])
         if not self.performed_handshake:
             cmd['client'] = metadata
-            self.performed_handshake = True
+            if self.compression_settings:
+                cmd['compression'] = self.compression_settings.compressors
 
         if self.max_wire_version >= 6 and cluster_time is not None:
             cmd['$clusterTime'] = cluster_time
@@ -446,6 +456,12 @@ class SocketInfo(object):
         self.supports_sessions = (
             ismaster.logical_session_timeout_minutes is not None)
         self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
+        if not self.performed_handshake and self.compression_settings:
+            ctx = self.compression_settings.get_compression_context(
+                ismaster.compressors)
+            self.compression_context = ctx
+
+        self.performed_handshake = True
         return ismaster
 
     def command(self, dbname, spec, slave_ok=False,
@@ -512,7 +528,8 @@ class SocketInfo(object):
                            self.address, check_keys, listeners,
                            self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
-                           collation=collation)
+                           collation=collation,
+                           compression_ctx=self.compression_context)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

@@ -26,6 +26,8 @@ from bson.codec_options import CodecOptions
 from bson.py3compat import abc, integer_types, iteritems, string_type
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
+from pymongo.compression_support import (validate_compressors,
+                                         validate_zlib_compression_level)
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
@@ -539,6 +541,8 @@ URI_VALIDATORS = {
     'appname': validate_appname_or_none,
     'unicode_decode_error_handler': validate_unicode_decode_error_handler,
     'retrywrites': validate_boolean_or_string,
+    'compressors': validate_compressors,
+    'zlibcompressionlevel': validate_zlib_compression_level
 }
 
 TIMEOUT_VALIDATORS = {

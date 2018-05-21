@@ -38,6 +38,7 @@ from bson.py3compat import PY3
 
 from pymongo import helpers, message
 from pymongo.common import MAX_MESSAGE_SIZE
+from pymongo.compression_support import decompress, _NO_COMPRESSION
 from pymongo.errors import (AutoReconnect,
                             NotMasterError,
                             OperationFailure,
@@ -54,7 +55,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             check_keys=False, listeners=None, max_bson_size=None,
             read_concern=None,
             parse_write_concern_error=False,
-            collation=None):
+            collation=None,
+            compression_ctx=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -101,8 +103,12 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     if publish:
         start = datetime.datetime.now()
 
-    request_id, msg, size = message.query(flags, ns, 0, -1, spec,
-                                          None, codec_options, check_keys)
+    if name.lower() not in _NO_COMPRESSION and compression_ctx:
+        request_id, msg, size = message.query(
+            flags, ns, 0, -1, spec, None, codec_options, check_keys, compression_ctx)
+    else:
+        request_id, msg, size = message.query(
+            flags, ns, 0, -1, spec, None, codec_options, check_keys)
 
     if (max_bson_size is not None
             and size > max_bson_size + message._COMMAND_OVERHEAD):
@@ -142,15 +148,13 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             duration, response_doc, name, request_id, address)
     return response_doc
 
+_UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 def receive_message(sock, request_id, max_message_size=MAX_MESSAGE_SIZE):
     """Receive a raw BSON message or raise socket.error."""
     # Ignore the response's request id.
     length, _, response_to, op_code = _UNPACK_HEADER(
         _receive_data_on_socket(sock, 16))
-    if op_code != _OpReply.OP_CODE:
-        raise ProtocolError("Got opcode %r but expected "
-                            "%r" % (op_code, _OpReply.OP_CODE))
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
@@ -162,8 +166,18 @@ def receive_message(sock, request_id, max_message_size=MAX_MESSAGE_SIZE):
     if length > max_message_size:
         raise ProtocolError("Message length (%r) is larger than server max "
                             "message size (%r)" % (length, max_message_size))
+    if op_code == 2012:
+        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
+            _receive_data_on_socket(sock, 9))
+        data = decompress(
+            _receive_data_on_socket(sock, length - 25), compressor_id)
+    else:
+        data = _receive_data_on_socket(sock, length - 16)
+    if op_code != _OpReply.OP_CODE:
+        raise ProtocolError("Got opcode %r but expected "
+                            "%r" % (op_code, _OpReply.OP_CODE))
 
-    return _OpReply.unpack(_receive_data_on_socket(sock, length - 16))
+    return _OpReply.unpack(data)
 
 
 # memoryview was introduced in Python 2.7 but we only use it on Python 3

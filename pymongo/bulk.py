@@ -35,6 +35,7 @@ from pymongo.errors import (BulkWriteError,
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
                              _do_batched_insert,
                              _do_batched_write_command,
+                             _do_batched_write_command_compressed,
                              _randint,
                              _BulkWriteContext)
 from pymongo.read_preferences import ReadPreference
@@ -251,6 +252,11 @@ class _Bulk(object):
             self.current_run = next(generator)
         run = self.current_run
 
+        if sock_info.compression_context:
+            do_writes = _do_batched_write_command_compressed
+        else:
+            do_writes = _do_batched_write_command
+
         # sock_info.command validates the session, but we use
         # sock_info.write_command.
         sock_info.validate_session(client, session)
@@ -272,7 +278,7 @@ class _Bulk(object):
                 check_keys = run.op_type == _INSERT
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
-                request_id, msg, to_send = _do_batched_write_command(
+                request_id, msg, to_send = do_writes(
                     self.namespace, run.op_type, cmd, ops, check_keys,
                     self.collection.codec_options, bwc)
                 if not to_send:

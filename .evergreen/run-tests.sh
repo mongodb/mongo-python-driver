@@ -17,6 +17,11 @@ PYTHON_BINARY=${PYTHON_BINARY:-}
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
 C_EXTENSIONS=${C_EXTENSIONS:-}
 COVERAGE=${COVERAGE:-}
+COMPRESSORS=${COMPRESSORS:-}
+
+if [ -n $COMPRESSORS ]; then
+    export COMPRESSORS=$COMPRESSORS
+fi
 
 export JAVA_HOME=/opt/java/jdk8
 
@@ -47,6 +52,13 @@ if [ -z "$PYTHON_BINARY" ]; then
         PYTHON=python
         trap "deactivate; rm -rf pymongotestvenv" EXIT HUP
     fi
+elif [ $COMPRESSORS = "snappy" ]; then
+    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download snappytest
+    . snappytest/bin/activate
+    trap "deactivate; rm -rf snappytest" EXIT HUP
+    # 0.5.2 has issues in pypy3(.5)
+    pip install python-snappy==0.5.1
+    PYTHON=python
 else
     PYTHON="$PYTHON_BINARY"
 fi

@@ -252,6 +252,20 @@ class MongoClient(common.BaseObject):
             periodic keep-alive packets on connected sockets. Defaults to
             ``True``. Disabling it is not recommended, see
             https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments",
+          - `compressors`: Comma separated list of compressors for wire
+            protocol compression. The list is used to negotiate a compressor
+            with the server. Currently supported options are "snappy" and
+            "zlib". Support for snappy requires the
+            `python-snappy <https://pypi.org/project/python-snappy/>`_ package.
+            zlib support requires the Python standard library zlib module.
+            By default no compression is used. Compression support must also be
+            enabled on the server. MongoDB 3.4+ supports snappy compression.
+            MongoDB 3.6+ supports snappy and zlib.
+          - `zlibCompressionLevel`: (int) The zlib compression level to use
+            when zlib is used as the wire protocol compressor. Supported values
+            are -1 through 9. -1 tells the zlib library to use its default
+            compression level (usually 6). 0 means no compression. 1 is best
+            speed. 9 is best compression. Defaults to -1.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)

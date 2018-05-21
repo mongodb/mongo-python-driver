@@ -415,7 +415,7 @@ functions:
           if [ -n "${MONGODB_STARTED}" ]; then
             export PYMONGO_MUST_CONNECT=1
           fi
-          PYTHON_BINARY=${PYTHON_BINARY} GREEN_FRAMEWORK=${GREEN_FRAMEWORK} C_EXTENSIONS=${C_EXTENSIONS} COVERAGE=${COVERAGE} AUTH=${AUTH} SSL=${SSL} sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} GREEN_FRAMEWORK=${GREEN_FRAMEWORK} C_EXTENSIONS=${C_EXTENSIONS} COVERAGE=${COVERAGE} COMPRESSORS=${COMPRESSORS} AUTH=${AUTH} SSL=${SSL} sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -968,6 +968,17 @@ axes:
         variables:
            AUTH: "noauth"
            SSL: "nossl"
+  - id: compression
+    display_name: Compression
+    values:
+      - id: snappy
+        display_name: snappy compression
+        variables:
+            COMPRESSORS: "snappy"
+      - id: zlib
+        display_name: zlib compression
+        variables:
+            COMPRESSORS: "zlib"
   - id: python-version
     display_name: "Python"
     values:
@@ -1049,6 +1060,10 @@ axes:
         display_name: "Without C Extensions"
         variables:
           C_EXTENSIONS: "--no_ext"
+      - id: "with-c-extensions"
+        display_name: "With C Extensions"
+        variables:
+          C_EXTENSIONS: ""
   - id: storage-engine
     display_name: Storage
     values:
@@ -1186,7 +1201,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - python-version: ["pypy", "pypy3", "pypy3.5", "jython2.7"]
-     c-extensions: "*"
+     c-extensions: "without-c-extensions"
      auth: "*"
      ssl: "*"
      coverage: "*"
@@ -1199,6 +1214,35 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
+
+- matrix_name: "tests-python-version-ubuntu16-compression"
+  matrix_spec: {"python-version": "*", "c-extensions": "*", "compression": "*"}
+  exclude_spec:
+   # These interpreters are always tested without extensions.
+   - python-version: ["pypy", "pypy3", "pypy3.5", "jython2.7"]
+     c-extensions: "with-c-extensions"
+     compression: "*"
+   - python-version: ["jython2.7"]
+     c-extensions: "*"
+     compression: "snappy"
+  batchtime: 10080  # 7 days
+  display_name: "${compression} ${c-extensions} ${python-version} (x86_64)"
+  # Ubuntu 16.04 images have libsnappy-dev installed
+  run_on: ubuntu1604-test
+  tasks:
+     - "test-latest-standalone"
+     - "test-3.6-standalone"
+
+- matrix_name: "tests-python-version-py37-plus-compression"
+  matrix_spec: {"python-version-requires-openssl-102-plus": "*", "c-extensions": "*", "compression": "*"}
+  exclude_spec:
+  display_name: "${compression} ${c-extensions} ${python-version-requires-openssl-102-plus} (x86_64)"
+  batchtime: 10080  # 7 days
+  # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2
+  run_on: ubuntu1604-test
+  tasks:
+     - "test-latest-standalone"
+     - "test-3.6-standalone"
 
 - matrix_name: "tests-python-version-green-framework-rhel62"
   matrix_spec: {"python-version": "*", "green-framework": "*", auth-ssl: "*"}

@@ -9,6 +9,8 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
 - Support for multi-document transactions, see :ref:`transactions-ref`.
 - Support for the SCRAM-SHA-256 authentication mechanism.
 - Support for Python 3.7.
+- Support for wire protocol compression. See
+  :meth:`~pymongo.mongo_client.MongoClient` for details.
 - MD5 is now optional in GridFS.
 - If not specified, the authSource for the PLAIN authentication mechanism
   defaults to $external.

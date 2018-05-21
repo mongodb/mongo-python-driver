@@ -33,9 +33,7 @@ from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.write_concern import WriteConcern
-from test import (client_context,
-                  db_user,
-                  db_pwd)
+from test import (client_context, db_user, db_pwd)
 
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=1000)
@@ -134,8 +132,7 @@ def _connection_string(h, p, authenticate):
 
 def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
     """Create a new client over SSL/TLS if necessary."""
-    client_options = client_context.ssl_client_options.copy()
-
+    client_options = client_context.default_client_options.copy()
     if client_context.replica_set_name and not direct:
         client_options['replicaSet'] = client_context.replica_set_name
     client_options.update(kwargs)

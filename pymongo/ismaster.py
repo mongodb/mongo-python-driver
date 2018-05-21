@@ -152,3 +152,7 @@ class IsMaster(object):
     @property
     def last_write_date(self):
         return self._doc.get('lastWrite', {}).get('lastWriteDate')
+
+    @property
+    def compressors(self):
+        return self._doc.get('compression')
