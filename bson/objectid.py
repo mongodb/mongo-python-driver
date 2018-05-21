@@ -35,7 +35,12 @@ from bson.tz_util import utc
 def _machine_bytes():
     """Get the machine portion of an ObjectId.
     """
-    machine_hash = hashlib.md5()
+    try:
+        machine_hash = hashlib.md5()
+    except ValueError:
+        # md5 isn't available in FIPS mode
+        machine_hash = hashlib.sha1()
+
     if PY3:
         # gethostname() returns a unicode string in python 3.x
         # while update() requires a byte string.
