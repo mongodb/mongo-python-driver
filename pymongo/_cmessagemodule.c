@@ -1216,6 +1216,7 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
     codec_options_t options;
+    buffer_t buffer;
     struct module_state *state = GETSTATE(self);
 
     if (!PyArg_ParseTuple(args, "et#bOObO&O", "utf-8",
@@ -1224,7 +1225,6 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
                           &ctx)) {
         return NULL;
     }
-    buffer_t buffer;
     if (!(buffer = buffer_new())) {
         PyErr_NoMemory();
         PyMem_Free(ns);
@@ -1276,6 +1276,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     PyObject* to_publish = NULL;
     PyObject* result = NULL;
     codec_options_t options;
+    buffer_t buffer;
     struct module_state *state = GETSTATE(self);
 
     if (!PyArg_ParseTuple(args, "et#bOObO&O", "utf-8",
@@ -1284,7 +1285,6 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
                           &ctx)) {
         return NULL;
     }
-    buffer_t buffer;
     if (!(buffer = buffer_new())) {
         PyErr_NoMemory();
         PyMem_Free(ns);
