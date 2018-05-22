@@ -1,4 +1,6 @@
 {
+  "database_name": "transaction-tests",
+  "collection_name": "test",
   "data": [],
   "tests": [
     {
@@ -152,16 +154,6 @@
                 }
               },
               {
-                "name": "deleteMany",
-                "arguments": {
-                  "filter": {
-                    "_id": {
-                      "$gte": 6
-                    }
-                  }
-                }
-              },
-              {
                 "name": "updateMany",
                 "arguments": {
                   "filter": {
@@ -172,6 +164,16 @@
                   "update": {
                     "$set": {
                       "z": 1
+                    }
+                  }
+                }
+              },
+              {
+                "name": "deleteMany",
+                "arguments": {
+                  "filter": {
+                    "_id": {
+                      "$gte": 6
                     }
                   }
                 }
@@ -189,8 +191,8 @@
               "6": 6,
               "7": 7
             },
-            "matchedCount": 5,
-            "modifiedCount": 5,
+            "matchedCount": 7,
+            "modifiedCount": 7,
             "upsertedCount": 1,
             "upsertedIds": {
               "2": 2
@@ -407,14 +409,6 @@
                     "_id": 4
                   },
                   "limit": 1
-                },
-                {
-                  "q": {
-                    "_id": {
-                      "$gte": 6
-                    }
-                  },
-                  "limit": 0
                 }
               ],
               "ordered": true,
@@ -460,6 +454,33 @@
               "writeConcern": null
             },
             "command_name": "update",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "delete": "test",
+              "deletes": [
+                {
+                  "q": {
+                    "_id": {
+                      "$gte": 6
+                    }
+                  },
+                  "limit": 0
+                }
+              ],
+              "ordered": true,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "startTransaction": null,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "delete",
             "database_name": "transaction-tests"
           }
         },

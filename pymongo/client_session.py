@@ -105,17 +105,13 @@ class SessionOptions(object):
     :Parameters:
       - `causal_consistency` (optional): If True (the default), read
         operations are causally ordered within the session.
-      - `auto_start_transaction` (optional): If True, any operation using
-        the session automatically starts a transaction.
       - `default_transaction_options` (optional): The default
         TransactionOptions to use for transactions started on this session.
     """
     def __init__(self,
                  causal_consistency=True,
-                 auto_start_transaction=False,
                  default_transaction_options=None):
         self._causal_consistency = causal_consistency
-        self._auto_start_transaction = auto_start_transaction
         if default_transaction_options is not None:
             if not isinstance(default_transaction_options, TransactionOptions):
                 raise TypeError(
@@ -128,15 +124,6 @@ class SessionOptions(object):
     def causal_consistency(self):
         """Whether causal consistency is configured."""
         return self._causal_consistency
-
-    @property
-    def auto_start_transaction(self):
-        """Whether any operation using the session automatically starts a
-        transaction.
-
-        .. versionadded:: 3.7
-        """
-        return self._auto_start_transaction
 
     @property
     def default_transaction_options(self):
@@ -349,7 +336,7 @@ class ClientSession(object):
     def _finish_transaction(self, command_name):
         self._check_ended()
 
-        if not self._in_transaction_or_auto_start():
+        if not self._in_transaction:
             raise InvalidOperation("No transaction started")
 
         try:
@@ -424,24 +411,14 @@ class ClientSession(object):
         """True if this session has an active multi-statement transaction."""
         return self._transaction is not None
 
-    def _in_transaction_or_auto_start(self):
-        """True if this session has an active transaction or will have one."""
-        if self._in_transaction:
-            return True
-        if self.options.auto_start_transaction:
-            self.start_transaction()
-            return True
-        return False
-
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""
-        if self._in_transaction_or_auto_start():
+        if self._in_transaction:
             return self._transaction.opts.read_preference
         return None
 
     def _apply_to(self, command, is_retryable, read_preference):
         self._check_ended()
-        self._in_transaction_or_auto_start()
 
         self._server_session.last_use = monotonic.time()
         command['lsid'] = self._server_session.session_id

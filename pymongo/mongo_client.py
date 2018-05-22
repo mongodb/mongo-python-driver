@@ -1070,8 +1070,7 @@ class MongoClient(common.BaseObject):
         Re-raises any exception thrown by func().
         """
         retryable = (retryable and self.retry_writes
-                     and session
-                     and not session._in_transaction_or_auto_start())
+                     and session and not session._in_transaction)
         last_error = None
         retrying = False
 
@@ -1361,7 +1360,6 @@ class MongoClient(common.BaseObject):
 
     def start_session(self,
                       causal_consistency=True,
-                      auto_start_transaction=False,
                       default_transaction_options=None):
         """Start a logical session.
 
@@ -1393,7 +1391,6 @@ class MongoClient(common.BaseObject):
         server_session = self._get_server_session()
         opts = client_session.SessionOptions(
             causal_consistency=causal_consistency,
-            auto_start_transaction=auto_start_transaction,
             default_transaction_options=default_transaction_options)
         return client_session.ClientSession(
             self, server_session, opts, authset)

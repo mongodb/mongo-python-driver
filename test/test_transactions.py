@@ -299,14 +299,16 @@ def create_test(scenario_def, test):
             # "operation was interrupted" by killing the command's own session.
             pass
 
+        database_name = scenario_def['database_name']
+        collection_name = scenario_def['collection_name']
         write_concern_db = client.get_database(
-            'transaction-tests', write_concern=WriteConcern(w='majority'))
-
-        write_concern_db.test.drop()
-        write_concern_db.create_collection('test')
+            database_name, write_concern=WriteConcern(w='majority'))
+        write_concern_coll = write_concern_db[collection_name]
+        write_concern_coll.drop()
+        write_concern_db.create_collection(collection_name)
         if scenario_def['data']:
             # Load data.
-            write_concern_db.test.insert_many(scenario_def['data'])
+            write_concern_coll.insert_many(scenario_def['data'])
 
         # Create session0 and session1.
         sessions = {}
@@ -349,7 +351,7 @@ def create_test(scenario_def, test):
         self.addCleanup(end_sessions, sessions)
 
         listener.results.clear()
-        collection = client['transaction-tests'].test
+        collection = client[database_name][collection_name]
 
         for op in test['operations']:
             expected_result = op.get('result')
