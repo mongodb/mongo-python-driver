@@ -190,7 +190,7 @@ class Collection(common.BaseObject):
     def _socket_for_primary_reads(self, session):
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
-        return self.__database.client._socket_for_reads(read_pref)
+        return self.__database.client._socket_for_reads(read_pref), read_pref
 
     def _socket_for_writes(self):
         return self.__database.client._socket_for_writes()
@@ -1936,10 +1936,9 @@ class Collection(common.BaseObject):
         codec_options = CodecOptions(SON)
         coll = self.with_options(codec_options=codec_options,
                                  read_preference=ReadPreference.PRIMARY)
-        with self._socket_for_primary_reads(session) as (sock_info, slave_ok):
+        sock_ctx, read_pref = self._socket_for_primary_reads(session)
+        with sock_ctx as (sock_info, slave_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
-            read_pref = ((session and session._txn_read_preference())
-                         or ReadPreference.PRIMARY)
             if sock_info.max_wire_version > 2:
                 with self.__database.client._tmp_session(session, False) as s:
                     try:
@@ -2521,7 +2520,8 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         inline = 'inline' in cmd['out']
-        with self._socket_for_primary_reads(session) as (sock_info, slave_ok):
+        sock_ctx, read_pref = self._socket_for_primary_reads(session)
+        with sock_ctx as (sock_info, slave_ok):
             if (sock_info.max_wire_version >= 5 and self.write_concern and
                     not inline):
                 cmd['writeConcern'] = self.write_concern.document
@@ -2533,7 +2533,7 @@ class Collection(common.BaseObject):
                 read_concern = None
 
             response = self._command(
-                sock_info, cmd, slave_ok, self._read_preference_for(session),
+                sock_info, cmd, slave_ok, read_pref,
                 read_concern=read_concern,
                 collation=collation, session=session)
 

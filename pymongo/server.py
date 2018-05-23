@@ -133,10 +133,8 @@ class Server(object):
                     request_id=request_id,
                     from_command=use_find_cmd)
 
-    @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
-        with self.pool.get_socket(all_credentials, checkout) as sock_info:
-            yield sock_info
+        return self.pool.get_socket(all_credentials, checkout)
 
     @property
     def description(self):
