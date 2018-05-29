@@ -15,10 +15,10 @@
 """Test the mongo_client module."""
 
 import contextlib
+import copy
 import datetime
 import gc
 import os
-import platform
 import signal
 import socket
 import struct
@@ -50,6 +50,7 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
 from pymongo.mongo_client import MongoClient
+from pymongo.driver_info import DriverInfo
 from pymongo.pool import SocketInfo, _METADATA
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
@@ -214,7 +215,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
     def test_metadata(self):
-        metadata = _METADATA.copy()
+        metadata = copy.deepcopy(_METADATA)
         metadata['application'] = {'name': 'foobar'}
         client = MongoClient(
             "mongodb://foo:27017/?appname=foobar&connect=false")
@@ -226,6 +227,25 @@ class ClientUnitTest(unittest.TestCase):
         # No error
         MongoClient(appname='x' * 128)
         self.assertRaises(ValueError, MongoClient, appname='x' * 129)
+        # Bad "driver" options.
+        self.assertRaises(TypeError, DriverInfo, 'Foo', 1, 'a')
+        self.assertRaises(TypeError, MongoClient, driver=1)
+        self.assertRaises(TypeError, MongoClient, driver='abc')
+        self.assertRaises(TypeError, MongoClient, driver=('Foo', '1', 'a'))
+        # Test appending to driver info.
+        metadata['driver']['name'] = 'PyMongo|FooDriver'
+        metadata['driver']['version'] = '%s|1.2.3' % (
+            _METADATA['driver']['version'],)
+        client = MongoClient('foo', 27017, appname='foobar',
+                             driver=DriverInfo('FooDriver', '1.2.3', None), connect=False)
+        options = client._MongoClient__options
+        self.assertEqual(options.pool_options.metadata, metadata)
+        metadata['platform'] = '%s|FooPlatform' % (
+            _METADATA['platform'],)
+        client = MongoClient('foo', 27017, appname='foobar',
+                             driver=DriverInfo('FooDriver', '1.2.3', 'FooPlatform'), connect=False)
+        options = client._MongoClient__options
+        self.assertEqual(options.pool_options.metadata, metadata)
 
     def test_kwargs_codec_options(self):
         # Ensure codec options are passed in correctly

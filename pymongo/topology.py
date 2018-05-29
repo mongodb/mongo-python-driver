@@ -551,7 +551,8 @@ class Topology(object):
             ssl_context=options.ssl_context,
             ssl_match_hostname=options.ssl_match_hostname,
             event_listeners=options.event_listeners,
-            appname=options.appname)
+            appname=options.appname,
+            driver=options.driver)
 
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)

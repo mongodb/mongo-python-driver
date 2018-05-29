@@ -224,6 +224,10 @@ class MongoClient(common.BaseObject):
             print this value in the server log upon establishing each
             connection. It is also recorded in the slow query log and
             profile collections.
+          - `driver`: (pair or None) A driver implemented on top of PyMongo can
+            pass a :class:`~pymongo.driver_info.DriverInfo` to add its name,
+            version, and platform to the message printed in the server log when
+            establishing a connection.
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
           - `retryWrites`: (boolean) Whether supported write operations
@@ -399,6 +403,9 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.6
            Added support for mongodb+srv:// URIs.
            Added the ``retryWrites`` keyword argument and URI option.
+
+        .. versionchanged:: 3.7
+           Added the ``driver`` keyword argument.
 
         .. versionchanged:: 3.5
            Add ``username`` and ``password`` options. Document the

@@ -15,7 +15,6 @@
 
 """Functions and classes common to multiple pymongo modules."""
 
-import collections
 import datetime
 import warnings
 
@@ -28,6 +27,7 @@ from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (validate_compressors,
                                          validate_zlib_compression_level)
+from pymongo.driver_info import DriverInfo
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
@@ -464,6 +464,15 @@ def validate_appname_or_none(option, value):
     return value
 
 
+def validate_driver_or_none(option, value):
+    """Validate the driver keyword arg."""
+    if value is None:
+        return value
+    if not isinstance(value, DriverInfo):
+        raise TypeError("%s must be an instance of DriverInfo" % (option,))
+    return value
+
+
 def validate_ok_for_replace(replacement):
     """Validate a replacement document."""
     validate_is_mapping("replacement", replacement)
@@ -539,6 +548,7 @@ URI_VALIDATORS = {
     'connect': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
     'appname': validate_appname_or_none,
+    'driver': validate_driver_or_none,
     'unicode_decode_error_handler': validate_unicode_decode_error_handler,
     'retrywrites': validate_boolean_or_string,
     'compressors': validate_compressors,

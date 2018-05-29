@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 import contextlib
+import copy
 import os
 import platform
 import socket
@@ -280,7 +281,7 @@ class PoolOptions(object):
                  '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
-                 '__event_listeners', '__appname', '__metadata',
+                 '__event_listeners', '__appname', '__driver', '__metadata',
                  '__compression_settings')
 
     def __init__(self, max_pool_size=100, min_pool_size=0,
@@ -288,7 +289,7 @@ class PoolOptions(object):
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=True,
-                 event_listeners=None, appname=None,
+                 event_listeners=None, appname=None, driver=None,
                  compression_settings=None):
 
         self.__max_pool_size = max_pool_size
@@ -303,10 +304,30 @@ class PoolOptions(object):
         self.__socket_keepalive = socket_keepalive
         self.__event_listeners = event_listeners
         self.__appname = appname
+        self.__driver = driver
         self.__compression_settings = compression_settings
-        self.__metadata = _METADATA.copy()
+        self.__metadata = copy.deepcopy(_METADATA)
         if appname:
             self.__metadata['application'] = {'name': appname}
+
+        # Combine the "driver" MongoClient option with PyMongo's info, like:
+        # {
+        #    'driver': {
+        #        'name': 'PyMongo|MyDriver',
+        #        'version': '3.7.0|1.2.3',
+        #    },
+        #    'platform': 'CPython 3.6.0|MyPlatform'
+        # }
+        if driver:
+            if driver.name:
+                self.__metadata['driver']['name'] = "%s|%s" % (
+                    _METADATA['driver']['name'], driver.name)
+            if driver.version:
+                self.__metadata['driver']['version'] = "%s|%s" % (
+                    _METADATA['driver']['version'], driver.version)
+            if driver.platform:
+                self.__metadata['platform'] = "%s|%s" % (
+                    _METADATA['platform'], driver.platform)
 
     @property
     def max_pool_size(self):
@@ -394,6 +415,12 @@ class PoolOptions(object):
         """The application name, for sending with ismaster in server handshake.
         """
         return self.__appname
+
+    @property
+    def driver(self):
+        """Driver name and version, for sending with ismaster in handshake.
+        """
+        return self.__driver
 
     @property
     def compression_settings(self):

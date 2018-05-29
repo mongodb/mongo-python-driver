@@ -121,6 +121,7 @@ def _parse_pool_options(options):
     wait_queue_multiple = options.get('waitqueuemultiple')
     event_listeners = options.get('event_listeners')
     appname = options.get('appname')
+    driver = options.get('driver')
     compression_settings = CompressionSettings(
         options.get('compressors', []),
         options.get('zlibcompressionlevel', -1))
@@ -133,6 +134,7 @@ def _parse_pool_options(options):
                        ssl_context, ssl_match_hostname, socket_keepalive,
                        _EventListeners(event_listeners),
                        appname,
+                       driver,
                        compression_settings)
 
 
