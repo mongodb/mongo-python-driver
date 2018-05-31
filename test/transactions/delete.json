@@ -24,17 +24,16 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "deleteOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 1
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "deletedCount": 1
@@ -42,13 +41,14 @@
         },
         {
           "name": "deleteMany",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": {
                 "$lte": 3
               }
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "deletedCount": 2
@@ -56,11 +56,12 @@
         },
         {
           "name": "deleteOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 4
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "deletedCount": 1
@@ -68,9 +69,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "expectations": [
@@ -180,12 +179,12 @@
       }
     },
     {
-      "description": "operation writeConcern ignored for delete",
+      "description": "collection writeConcern ignored for delete",
       "operations": [
         {
           "name": "startTransaction",
+          "object": "session0",
           "arguments": {
-            "session": "session0",
             "options": {
               "writeConcern": {
                 "w": "majority"
@@ -195,14 +194,17 @@
         },
         {
           "name": "deleteOne",
-          "arguments": {
-            "filter": {
-              "_id": 1
-            },
+          "object": "collection",
+          "collectionOptions": {
             "writeConcern": {
               "w": "majority"
-            },
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "filter": {
+              "_id": 1
+            }
           },
           "result": {
             "deletedCount": 1
@@ -210,16 +212,19 @@
         },
         {
           "name": "deleteMany",
+          "object": "collection",
+          "collectionOptions": {
+            "writeConcern": {
+              "w": "majority"
+            }
+          },
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": {
                 "$lte": 3
               }
-            },
-            "writeConcern": {
-              "w": "majority"
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "deletedCount": 2
@@ -227,9 +232,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "expectations": [

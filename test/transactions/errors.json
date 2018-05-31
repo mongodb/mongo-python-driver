@@ -8,17 +8,16 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "document": {
               "_id": 1
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "insertedId": 1
@@ -26,18 +25,14 @@
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          },
+          "object": "session0",
           "result": {
             "errorContains": "transaction already in progress"
           }
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ]
     },
@@ -46,15 +41,11 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          },
+          "object": "session0",
           "result": {
             "errorContains": "transaction already in progress"
           }
@@ -66,17 +57,16 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "document": {
               "_id": 1
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "insertedId": 1
@@ -84,21 +74,15 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          },
+          "object": "session0",
           "result": {
             "errorContains": "transaction already in progress"
           }
@@ -110,17 +94,16 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "document": {
               "_id": 1
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "insertedId": 1
@@ -128,17 +111,16 @@
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session1"
-          }
+          "object": "session1"
         },
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session1",
             "document": {
               "_id": 1
-            },
-            "session": "session1"
+            }
           },
           "result": {
             "errorCodeName": "WriteConflict"
@@ -146,15 +128,11 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session1"
-          },
+          "object": "session1",
           "result": {
             "errorCodeName": "NoSuchTransaction"
           }
@@ -166,17 +144,16 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "document": {
               "_id": 1
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "insertedId": 1
@@ -184,17 +161,16 @@
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session1"
-          }
+          "object": "session1"
         },
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session1",
             "document": {
               "_id": 1
-            },
-            "session": "session1"
+            }
           },
           "result": {
             "errorCodeName": "WriteConflict"
@@ -202,15 +178,11 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "abortTransaction",
-          "arguments": {
-            "session": "session1"
-          }
+          "object": "session1"
         }
       ]
     }

@@ -13,7 +13,9 @@
       "operations": [
         {
           "name": "updateOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 1
             },
@@ -22,8 +24,7 @@
                 "count": 1
               }
             },
-            "upsert": false,
-            "session": "session0"
+            "upsert": false
           },
           "result": {
             "matchedCount": 1,
@@ -33,13 +34,13 @@
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "updateOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 1
             },
@@ -48,8 +49,7 @@
                 "count": 1
               }
             },
-            "upsert": false,
-            "session": "session0"
+            "upsert": false
           },
           "result": {
             "matchedCount": 1,
@@ -59,9 +59,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "expectations": [
@@ -167,11 +165,12 @@
       "operations": [
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "document": {
               "_id": 2
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "insertedId": 2
@@ -179,13 +178,13 @@
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "updateOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 1
             },
@@ -194,8 +193,7 @@
                 "count": 1
               }
             },
-            "upsert": false,
-            "session": "session0"
+            "upsert": false
           },
           "result": {
             "matchedCount": 1,
@@ -205,9 +203,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "expectations": [

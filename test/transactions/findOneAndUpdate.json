@@ -18,13 +18,13 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "findOneAndUpdate",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 3
             },
@@ -33,8 +33,7 @@
                 "x": 1
               }
             },
-            "returnDocument": "Before",
-            "session": "session0"
+            "returnDocument": "Before"
           },
           "result": {
             "_id": 3
@@ -42,7 +41,9 @@
         },
         {
           "name": "findOneAndUpdate",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 4
             },
@@ -52,8 +53,7 @@
               }
             },
             "upsert": true,
-            "returnDocument": "After",
-            "session": "session0"
+            "returnDocument": "After"
           },
           "result": {
             "_id": 4,
@@ -62,19 +62,17 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "findOneAndUpdate",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 3
             },
@@ -83,8 +81,7 @@
                 "x": 1
               }
             },
-            "returnDocument": "Before",
-            "session": "session0"
+            "returnDocument": "Before"
           },
           "result": {
             "_id": 3,
@@ -93,19 +90,17 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "findOneAndUpdate",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 3
             },
@@ -114,8 +109,7 @@
                 "x": 1
               }
             },
-            "returnDocument": "Before",
-            "session": "session0"
+            "returnDocument": "Before"
           },
           "result": {
             "_id": 3,
@@ -124,9 +118,7 @@
         },
         {
           "name": "abortTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "expectations": [
@@ -313,12 +305,12 @@
       }
     },
     {
-      "description": "operation writeConcern ignored for findOneAndUpdate",
+      "description": "collection writeConcern ignored for findOneAndUpdate",
       "operations": [
         {
           "name": "startTransaction",
+          "object": "session0",
           "arguments": {
-            "session": "session0",
             "options": {
               "writeConcern": {
                 "w": "majority"
@@ -328,7 +320,14 @@
         },
         {
           "name": "findOneAndUpdate",
+          "object": "collection",
+          "collectionOptions": {
+            "writeConcern": {
+              "w": "majority"
+            }
+          },
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 3
             },
@@ -337,11 +336,7 @@
                 "x": 1
               }
             },
-            "returnDocument": "Before",
-            "session": "session0",
-            "writeConcern": {
-              "w": "majority"
-            }
+            "returnDocument": "Before"
           },
           "result": {
             "_id": 3
@@ -349,9 +344,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "expectations": [

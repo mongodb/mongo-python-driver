@@ -430,7 +430,7 @@ class Database(common.BaseObject):
                 client=self.__client)
 
     def command(self, command, value=1, check=True,
-                allowable_errors=None, read_preference=ReadPreference.PRIMARY,
+                allowable_errors=None, read_preference=None,
                 codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
         """Issue a MongoDB command.
 
@@ -474,18 +474,22 @@ class Database(common.BaseObject):
             :class:`~pymongo.errors.OperationFailure` if there are any
           - `allowable_errors`: if `check` is ``True``, error messages
             in this list will be ignored by error-checking
-          - `read_preference`: The read preference for this operation.
-            See :mod:`~pymongo.read_preferences` for options.
+          - `read_preference` (optional): The read preference for this
+            operation. See :mod:`~pymongo.read_preferences` for options.
+            If the provided `session` is in a transaction, defaults to the
+            read preference configured for the transaction.
+            Otherwise, defaults to
+            :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
           - `codec_options`: A :class:`~bson.codec_options.CodecOptions`
             instance.
-          - `session` (optional): a
+          - `session` (optional): A
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
-        .. note:: :meth:`command` does **not** obey :attr:`read_preference`
-           or :attr:`codec_options`. You must use the `read_preference` and
-           `codec_options` parameters instead.
+        .. note:: :meth:`command` does **not** obey this Database's
+           :attr:`read_preference` or :attr:`codec_options`. You must use the
+           `read_preference` and `codec_options` parameters instead.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -516,8 +520,9 @@ class Database(common.BaseObject):
 
         .. mongodoc:: commands
         """
-        read_preference = ((session and session._txn_read_preference())
-                           or read_preference)
+        if read_preference is None:
+            read_preference = ((session and session._txn_read_preference())
+                               or ReadPreference.PRIMARY)
         with self.__client._socket_for_reads(
                 read_preference) as (sock_info, slave_ok):
             return self._command(sock_info, command, slave_ok, value,

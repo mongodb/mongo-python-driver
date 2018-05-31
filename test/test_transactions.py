@@ -24,6 +24,7 @@ sys.path[0:0] = [""]
 
 from bson import json_util, py3compat
 from bson.py3compat import iteritems
+from bson.son import SON
 from pymongo import client_session, operations, WriteConcern
 from pymongo.client_session import TransactionOptions
 from pymongo.command_cursor import CommandCursor
@@ -90,6 +91,16 @@ class TestTransactions(IntegrationTest):
                 TypeError, "is not valid for read_preference"):
             TransactionOptions(read_preference={})
 
+    def check_command_result(self, expected_result, result):
+        # Only compare the keys in the expected result.
+        filtered_result = {}
+        for key in expected_result:
+            try:
+                filtered_result[key] = result[key]
+            except KeyError:
+                pass
+        self.assertEqual(filtered_result, expected_result)
+
     # TODO: factor the following function with test_crud.py.
     def check_result(self, expected_result, result):
         if isinstance(result, _WriteResult):
@@ -131,41 +142,41 @@ class TestTransactions(IntegrationTest):
             self.assertEqual(result, expected_result)
 
     def run_operation(self, sessions, collection, operation):
-        session = None
         name = camel_to_snake(operation['name'])
+        if name == 'run_command':
+            name = 'command'
         self.transaction_test_debug(name)
-        session_name = operation['arguments'].pop('session', None)
-        if session_name:
-            session = sessions[session_name]
+
+        def parse_options(opts):
+            if 'readPreference' in opts:
+                opts['read_preference'] = parse_read_preference(
+                    opts.pop('readPreference'))
+
+            if 'writeConcern' in opts:
+                opts['write_concern'] = WriteConcern(
+                    **dict(opts.pop('writeConcern')))
+
+            if 'readConcern' in opts:
+                opts['read_concern'] = ReadConcern(
+                    **dict(opts.pop('readConcern')))
+            return opts
+
+        database = collection.database
+        collection = database.get_collection(collection.name)
+        if 'collectionOptions' in operation:
+            collection = collection.with_options(
+                **dict(parse_options(operation['collectionOptions'])))
+
+        objects = {'database': database, 'collection': collection}
+        objects.update(sessions)
+        obj = objects[operation['object']]
 
         # Combine arguments with options and handle special cases.
-        arguments = operation['arguments']
+        arguments = operation.get('arguments', {})
         arguments.update(arguments.pop("options", {}))
-        pref = write_c = read_c = None
-        if 'readPreference' in arguments:
-            pref = parse_read_preference(arguments.pop('readPreference'))
+        parse_options(arguments)
 
-        if 'writeConcern' in arguments:
-            write_c = WriteConcern(**dict(arguments.pop('writeConcern')))
-
-        if 'readConcern' in arguments:
-            read_c = ReadConcern(**dict(arguments.pop('readConcern')))
-
-        if name == 'start_transaction':
-            cmd = partial(session.start_transaction,
-                          write_concern=write_c,
-                          read_concern=read_c,
-                          read_preference=pref)
-        elif name in ('commit_transaction', 'abort_transaction'):
-            cmd = getattr(session, name)
-        else:
-            collection = collection.with_options(
-                write_concern=write_c,
-                read_concern=read_c,
-                read_preference=pref)
-
-            cmd = getattr(collection, name)
-            arguments['session'] = session
+        cmd = getattr(obj, name)
 
         for arg_name in list(arguments):
             c2s = camel_to_snake(arg_name)
@@ -193,6 +204,13 @@ class TestTransactions(IntegrationTest):
                     bulk_arguments = camel_to_snake_args(request["arguments"])
                     requests.append(bulk_class(**dict(bulk_arguments)))
                 arguments["requests"] = requests
+            elif arg_name == "session":
+                arguments['session'] = sessions[arguments['session']]
+            elif name == 'command' and arg_name == 'command':
+                # Ensure the first key is the command name.
+                ordered_command = SON([(operation['command_name'], 1)])
+                ordered_command.update(arguments['command'])
+                arguments['command'] = ordered_command
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
@@ -371,7 +389,10 @@ def create_test(scenario_def, test):
             else:
                 result = self.run_operation(sessions, collection, op.copy())
                 if 'result' in op:
-                    self.check_result(expected_result, result)
+                    if op['name'] == 'runCommand':
+                        self.check_command_result(expected_result, result)
+                    else:
+                        self.check_result(expected_result, result)
 
         for s in sessions.values():
             s.end_session()

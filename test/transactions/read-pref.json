@@ -8,12 +8,11 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "insertMany",
+          "object": "collection",
           "arguments": {
             "documents": [
               {
@@ -41,26 +40,43 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
+          "name": "aggregate",
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Secondary"
-            },
-            "filter": {
-              "_id": 1
-            },
-            "session": "session0"
+            }
           },
-          "result": 1
+          "arguments": {
+            "session": "session0",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              },
+              {
+                "$count": "count"
+              }
+            ]
+          },
+          "result": [
+            {
+              "count": 1
+            }
+          ]
         },
         {
           "name": "find",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Secondary"
-            },
-            "batchSize": 3,
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "batchSize": 3
           },
           "result": [
             {
@@ -79,10 +95,13 @@
         },
         {
           "name": "aggregate",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Secondary"
-            },
+            }
+          },
+          "arguments": {
             "pipeline": [
               {
                 "$project": {
@@ -110,9 +129,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "outcome": {
@@ -139,8 +156,8 @@
       "operations": [
         {
           "name": "startTransaction",
+          "object": "session0",
           "arguments": {
-            "session": "session0",
             "options": {
               "readPreference": {
                 "mode": "Primary"
@@ -150,6 +167,7 @@
         },
         {
           "name": "insertMany",
+          "object": "collection",
           "arguments": {
             "documents": [
               {
@@ -177,26 +195,43 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
+          "name": "aggregate",
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Secondary"
-            },
-            "filter": {
-              "_id": 1
-            },
-            "session": "session0"
+            }
           },
-          "result": 1
+          "arguments": {
+            "session": "session0",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              },
+              {
+                "$count": "count"
+              }
+            ]
+          },
+          "result": [
+            {
+              "count": 1
+            }
+          ]
         },
         {
           "name": "find",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Secondary"
-            },
-            "batchSize": 3,
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "batchSize": 3
           },
           "result": [
             {
@@ -215,10 +250,13 @@
         },
         {
           "name": "aggregate",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Secondary"
-            },
+            }
+          },
+          "arguments": {
             "pipeline": [
               {
                 "$project": {
@@ -246,9 +284,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "outcome": {
@@ -275,8 +311,8 @@
       "operations": [
         {
           "name": "startTransaction",
+          "object": "session0",
           "arguments": {
-            "session": "session0",
             "options": {
               "readPreference": {
                 "mode": "Secondary"
@@ -286,6 +322,7 @@
         },
         {
           "name": "insertMany",
+          "object": "collection",
           "arguments": {
             "documents": [
               {
@@ -313,15 +350,25 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
+          "name": "aggregate",
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
-            "filter": {
-              "_id": 1
-            },
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              },
+              {
+                "$count": "count"
+              }
+            ]
           },
           "result": {
             "errorContains": "read preference in a transaction must be primary"
@@ -329,12 +376,15 @@
         },
         {
           "name": "find",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
-            "batchSize": 3,
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "batchSize": 3
           },
           "result": {
             "errorContains": "read preference in a transaction must be primary"
@@ -342,10 +392,13 @@
         },
         {
           "name": "aggregate",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
+            }
+          },
+          "arguments": {
             "pipeline": [
               {
                 "$project": {
@@ -362,9 +415,7 @@
         },
         {
           "name": "abortTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "outcome": {
@@ -378,8 +429,8 @@
       "operations": [
         {
           "name": "startTransaction",
+          "object": "session0",
           "arguments": {
-            "session": "session0",
             "options": {
               "readPreference": {
                 "mode": "PrimaryPreferred"
@@ -389,6 +440,7 @@
         },
         {
           "name": "insertMany",
+          "object": "collection",
           "arguments": {
             "documents": [
               {
@@ -416,15 +468,25 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
+          "name": "aggregate",
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
-            "filter": {
-              "_id": 1
-            },
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              },
+              {
+                "$count": "count"
+              }
+            ]
           },
           "result": {
             "errorContains": "read preference in a transaction must be primary"
@@ -432,12 +494,15 @@
         },
         {
           "name": "find",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
-            "batchSize": 3,
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "batchSize": 3
           },
           "result": {
             "errorContains": "read preference in a transaction must be primary"
@@ -445,10 +510,13 @@
         },
         {
           "name": "aggregate",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
+            }
+          },
+          "arguments": {
             "pipeline": [
               {
                 "$project": {
@@ -465,9 +533,7 @@
         },
         {
           "name": "abortTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "outcome": {
@@ -481,8 +547,8 @@
       "operations": [
         {
           "name": "startTransaction",
+          "object": "session0",
           "arguments": {
-            "session": "session0",
             "options": {
               "readPreference": {
                 "mode": "Nearest"
@@ -492,6 +558,7 @@
         },
         {
           "name": "insertMany",
+          "object": "collection",
           "arguments": {
             "documents": [
               {
@@ -519,15 +586,25 @@
           }
         },
         {
-          "name": "count",
-          "arguments": {
+          "name": "aggregate",
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
-            "filter": {
-              "_id": 1
-            },
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              },
+              {
+                "$count": "count"
+              }
+            ]
           },
           "result": {
             "errorContains": "read preference in a transaction must be primary"
@@ -535,12 +612,15 @@
         },
         {
           "name": "find",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
-            "batchSize": 3,
-            "session": "session0"
+            }
+          },
+          "arguments": {
+            "session": "session0",
+            "batchSize": 3
           },
           "result": {
             "errorContains": "read preference in a transaction must be primary"
@@ -548,10 +628,13 @@
         },
         {
           "name": "aggregate",
-          "arguments": {
+          "object": "collection",
+          "collectionOptions": {
             "readPreference": {
               "mode": "Primary"
-            },
+            }
+          },
+          "arguments": {
             "pipeline": [
               {
                 "$project": {
@@ -568,9 +651,7 @@
         },
         {
           "name": "abortTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "outcome": {
@@ -584,8 +665,8 @@
       "operations": [
         {
           "name": "startTransaction",
+          "object": "session0",
           "arguments": {
-            "session": "session0",
             "options": {
               "readPreference": {
                 "mode": "Secondary"
@@ -595,11 +676,12 @@
         },
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "document": {
               "_id": 1
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "insertedId": 1
@@ -607,9 +689,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "outcome": {

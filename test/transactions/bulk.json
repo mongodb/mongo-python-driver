@@ -8,17 +8,16 @@
       "operations": [
         {
           "name": "startTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         },
         {
           "name": "insertOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "document": {
               "_id": 1
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "insertedId": 1
@@ -26,11 +25,12 @@
         },
         {
           "name": "deleteOne",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "filter": {
               "_id": 1
-            },
-            "session": "session0"
+            }
           },
           "result": {
             "deletedCount": 1
@@ -38,7 +38,9 @@
         },
         {
           "name": "bulkWrite",
+          "object": "collection",
           "arguments": {
+            "session": "session0",
             "requests": [
               {
                 "name": "insertOne",
@@ -178,8 +180,7 @@
                   }
                 }
               }
-            ],
-            "session": "session0"
+            ]
           },
           "result": {
             "deletedCount": 4,
@@ -201,9 +202,7 @@
         },
         {
           "name": "commitTransaction",
-          "arguments": {
-            "session": "session0"
-          }
+          "object": "session0"
         }
       ],
       "expectations": [
