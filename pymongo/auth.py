@@ -15,6 +15,7 @@
 """Authentication helpers."""
 
 import functools
+import hashlib
 import hmac
 import socket
 
@@ -37,11 +38,10 @@ except ImportError:
 
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
-from hashlib import md5, sha1, sha256
 from random import SystemRandom
 
 from bson.binary import Binary
-from bson.py3compat import b, string_type, _unicode, PY3
+from bson.py3compat import string_type, _unicode, PY3
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
@@ -127,9 +127,9 @@ else:
         return b"".join([chr(ord(x) ^ ord(y)) for x, y in zip(fir, sec)])
 
 
-    def _from_bytes(value, dummy, int=int, _hexlify=_hexlify):
+    def _from_bytes(value, dummy, _int=int, _hexlify=_hexlify):
         """An implementation of int.from_bytes for python 2.x."""
-        return int(_hexlify(value), 16)
+        return _int(_hexlify(value), 16)
 
 
     def _to_bytes(value, length, dummy, _unhexlify=_unhexlify):
@@ -140,24 +140,16 @@ else:
 
 try:
     # The fastest option, if it's been compiled to use OpenSSL's HMAC.
-    from backports.pbkdf2 import pbkdf2_hmac
-
-    def _hi(data, salt, iterations, digestmod):
-        return pbkdf2_hmac(digestmod().name, data, salt, iterations)
-
+    from backports.pbkdf2 import pbkdf2_hmac as _hi
 except ImportError:
     try:
         # Python 2.7.8+, or Python 3.4+.
-        from hashlib import pbkdf2_hmac
-
-        def _hi(data, salt, iterations, digestmod):
-            return pbkdf2_hmac(digestmod().name, data, salt, iterations)
-
+        from hashlib import pbkdf2_hmac as _hi
     except ImportError:
 
-        def _hi(data, salt, iterations, digestmod):
+        def _hi(hash_name, data, salt, iterations):
             """A simple implementation of PBKDF2-HMAC."""
-            mac = hmac.HMAC(data, None, digestmod)
+            mac = hmac.HMAC(data, None, getattr(hashlib, hash_name))
 
             def _digest(msg, mac=mac):
                 """Get a digest for msg."""
@@ -215,10 +207,12 @@ def _authenticate_scram(credentials, sock_info, mechanism):
 
     username = credentials.username
     if mechanism == 'SCRAM-SHA-256':
-        digestmod = sha256
+        digest = "sha256"
+        digestmod = hashlib.sha256
         data = saslprep(credentials.password).encode("utf-8")
     else:
-        digestmod = sha1
+        digest = "sha1"
+        digestmod = hashlib.sha1
         data = _password_digest(username, credentials.password).encode("utf-8")
     source = credentials.source
 
@@ -248,7 +242,7 @@ def _authenticate_scram(credentials, sock_info, mechanism):
 
     without_proof = b"c=biws,r=" + rnonce
     salted_pass = _hi(
-        data, standard_b64decode(salt), iterations, digestmod)
+        digest, data, standard_b64decode(salt), iterations)
     client_key = _hmac(salted_pass, b"Client Key", digestmod).digest()
     stored_key = digestmod(client_key).digest()
     auth_msg = b",".join((first_bare, server_first, without_proof))
@@ -292,7 +286,7 @@ def _password_digest(username, password):
         raise TypeError("password must be an "
                         "instance of  %s" % (string_type.__name__,))
 
-    md5hash = md5()
+    md5hash = hashlib.md5()
     data = "%s:mongo:%s" % (username, password)
     md5hash.update(data.encode('utf-8'))
     return _unicode(md5hash.hexdigest())
@@ -302,7 +296,7 @@ def _auth_key(nonce, username, password):
     """Get an auth key to use for authentication.
     """
     digest = _password_digest(username, password)
-    md5hash = md5()
+    md5hash = hashlib.md5()
     data = "%s%s%s" % (nonce, username, digest)
     md5hash.update(data.encode('utf-8'))
     return _unicode(md5hash.hexdigest())
@@ -448,9 +442,9 @@ def _authenticate_cram_md5(credentials, sock_info):
     response = sock_info.command(source, cmd)
     # MD5 as implicit default digest for digestmod is deprecated
     # in python 3.4
-    mac = hmac.HMAC(key=passwd.encode('utf-8'), digestmod=md5)
+    mac = hmac.HMAC(key=passwd.encode('utf-8'), digestmod=hashlib.md5)
     mac.update(response['payload'])
-    challenge = username.encode('utf-8') + b' ' + b(mac.hexdigest())
+    challenge = username.encode('utf-8') + b' ' + mac.hexdigest().encode('utf-8')
     cmd = SON([('saslContinue', 1),
                ('conversationId', response['conversationId']),
                ('payload', Binary(challenge))])
