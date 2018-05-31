@@ -19,7 +19,6 @@
 import binascii
 import calendar
 import datetime
-import hashlib
 import os
 import random
 import socket
@@ -31,19 +30,35 @@ from bson.errors import InvalidId
 from bson.py3compat import PY3, bytes_from_hex, string_type, text_type
 from bson.tz_util import utc
 
+if PY3:
+    _ord = lambda x: x
+else:
+    _ord = ord
+
+
+# http://isthe.com/chongo/tech/comp/fnv/index.html#FNV-1a
+def _fnv_1a_24(data, _ord=_ord):
+    """FNV-1a 24 bit hash"""
+    # http://www.isthe.com/chongo/tech/comp/fnv/index.html#xor-fold
+    # Start with FNV-1a 32 bit.
+    hash_size = 2 ** 32
+    fnv_32_prime = 16777619
+    fnv_1a_hash = 2166136261  # 32-bit FNV-1 offset basis
+    for elt in data:
+        fnv_1a_hash = fnv_1a_hash ^ _ord(elt)
+        fnv_1a_hash = (fnv_1a_hash * fnv_32_prime) % hash_size
+
+    # xor-fold the result to 24 bit.
+    return (fnv_1a_hash >> 24) ^ (fnv_1a_hash & 0xffffff)
+
 
 def _machine_bytes():
     """Get the machine portion of an ObjectId.
     """
-    machine_hash = hashlib.md5()
-    if PY3:
-        # gethostname() returns a unicode string in python 3.x
-        # while update() requires a byte string.
-        machine_hash.update(socket.gethostname().encode())
-    else:
-        # Calling encode() here will fail with non-ascii hostnames
-        machine_hash.update(socket.gethostname())
-    return machine_hash.digest()[0:3]
+    # gethostname() returns a unicode string in python 3.x
+    # We only need 3 bytes, and _fnv_1a_24 returns a 24 bit integer.
+    # Remove the padding byte.
+    return struct.pack("<I", _fnv_1a_24(socket.gethostname().encode()))[:3]
 
 
 def _raise_invalid_id(oid):
