@@ -419,6 +419,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             lambda: self.c.pymongo_test.create_collection(
                 'some_collection%s' % random.randint(0, MAXSIZE)))
 
+    @client_context.require_version_max(4, 1, 0, -1)
     def test_group(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")

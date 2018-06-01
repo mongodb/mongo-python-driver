@@ -915,6 +915,7 @@ class TestLegacy(IntegrationTest):
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            new=True))
 
+    @client_context.require_version_max(4, 1, 0, -1)
     def test_group(self):
         db = self.db
         db.drop_collection("test")
@@ -979,6 +980,7 @@ class TestLegacy(IntegrationTest):
         self.assertRaises(OperationFailure, db.test.group,
                           [], {}, {}, "5 ++ 5")
 
+    @client_context.require_version_max(4, 1, 0, -1)
     def test_group_with_scope(self):
         db = self.db
         db.drop_collection("test")
@@ -1010,6 +1012,7 @@ class TestLegacy(IntegrationTest):
             [], {}, {"count": 0},
             Code(reduce_function, {"inc_value": 0.5}))[0]['count'])
 
+    @client_context.require_version_max(4, 1, 0, -1)
     def test_group_uuid_representation(self):
         db = self.db
         coll = db.uuid
