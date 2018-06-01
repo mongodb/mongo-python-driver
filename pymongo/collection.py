@@ -1493,16 +1493,24 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         with self._socket_for_reads(session) as (sock_info, slave_ok):
-            result = self._command(sock_info, cmd, slave_ok,
-                                   read_concern=self.read_concern,
-                                   session=session)
+            # We call sock_info.command here directly, instead of
+            # calling self._command to avoid using an implicit session.
+            result = sock_info.command(
+                self.__database.name,
+                cmd,
+                slave_ok,
+                self._read_preference_for(session),
+                self.codec_options,
+                read_concern=self.read_concern,
+                parse_write_concern_error=True,
+                session=session,
+                client=self.__database.client)
 
         cursors = []
         for cursor in result['cursors']:
-            s = self.__database.client._ensure_session(session)
             cursors.append(CommandCursor(
                 self, cursor['cursor'], sock_info.address,
-                session=s, explicit_session=session is not None))
+                session=session, explicit_session=session is not None))
 
         return cursors
 

@@ -332,12 +332,9 @@ class TestSession(IntegrationTest):
                 c.batch_size(2)
                 list(c)
 
-        self._test_ops(client, (scan, [], {}))
-
-        # Implicit session with parallel_scan is uncorrelated with cursors',
-        # but each cursor's getMores all use the same lsid.
         listener.results.clear()
-        scan()
+        with client.start_session() as session:
+            scan(session)
         cursor_lsids = {}
         for event in listener.results['started']:
             self.assertIn(
