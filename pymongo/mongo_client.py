@@ -1119,6 +1119,20 @@ class MongoClient(common.BaseObject):
                 else:
                     retrying = True
                 last_error = exc
+            except OperationFailure as exc:
+                if not retryable or is_retrying():
+                    raise
+                if exc.code not in (7, 6, 89, 9001):
+                    # HostNotFound, HostUnreachable, NetworkTimeout, and
+                    # SocketException are temporary failures not considered
+                    # "not master" or "node is recovering" errors but should
+                    # nonetheless be retried.
+                    raise
+                if bulk:
+                    bulk.retrying = True
+                else:
+                    retrying = True
+                last_error = exc
 
     def _retryable_write(self, retryable, func, session):
         """Internal retryable write helper."""

@@ -17,6 +17,7 @@
         "retryWrites": true
       },
       "failPoint": {
+        "configureFailPoint": "onPrimaryTransactionalWrite",
         "mode": {
           "times": 1
         }
@@ -58,6 +59,7 @@
         "retryWrites": true
       },
       "failPoint": {
+        "configureFailPoint": "onPrimaryTransactionalWrite",
         "mode": {
           "times": 1
         },
@@ -102,6 +104,7 @@
         "retryWrites": true
       },
       "failPoint": {
+        "configureFailPoint": "onPrimaryTransactionalWrite",
         "mode": {
           "times": 2
         },

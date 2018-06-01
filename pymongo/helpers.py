@@ -108,9 +108,12 @@ def _check_command_response(response, msg=None, allowable_errors=None,
         errmsg = details["errmsg"]
         if allowable_errors is None or errmsg not in allowable_errors:
 
+            code = details.get("code")
             # Server is "not master" or "recovering"
-            if (errmsg.startswith("not master")
-                    or errmsg.startswith("node is recovering")):
+            if code in (10107, 13435, 13436, 11600, 11602, 189, 91):
+                raise NotMasterError(errmsg, response)
+            elif ("not master" in errmsg
+                  or "node is recovering" in errmsg):
                 raise NotMasterError(errmsg, response)
 
             # Server assertion failures
@@ -122,7 +125,6 @@ def _check_command_response(response, msg=None, allowable_errors=None,
                                        response)
 
             # Other errors
-            code = details.get("code")
             # findAndModify with upsert can raise duplicate key error
             if code in (11000, 11001, 12582):
                 raise DuplicateKeyError(errmsg, code, response)

@@ -22,6 +22,16 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
   and :meth:`~pymongo.collection.Collection.find_one`. The option was
   deprecated in MongoDB 4.0.
 
+Unavoidable breaking changes:
+
+- Commands that fail with server error codes 10107, 13435, 13436, 11600,
+  11602, 189, 91 (NotMaster, NotMasterNoSlaveOk, NotMasterOrSecondary,
+  InterruptedAtShutdown, InterruptedDueToReplStateChange,
+  PrimarySteppedDown, ShutdownInProgress respectively) now always raise
+  :class:`~pymongo.errors.NotMasterError` instead of
+  :class:`~pymongo.errors.OperationFailure`.
+
+
 Issues Resolved
 ...............
 
