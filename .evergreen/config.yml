@@ -692,6 +692,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-4.0-standalone"
+      tags: ["4.0", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "4.0"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-4.0-replica_set"
+      tags: ["4.0", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "4.0"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-4.0-sharded_cluster"
+      tags: ["4.0", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "4.0"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-latest-standalone"
       tags: ["latest", "standalone"]
       commands:
@@ -799,6 +826,10 @@ axes:
         display_name: "latest"
         variables:
            VERSION: "latest"
+      - id: "4.0"
+        display_name: "4.0"
+        variables:
+           VERSION: "4.0"
       - id: "3.6"
         display_name: "3.6"
         variables:
@@ -1126,6 +1157,7 @@ buildvariants:
   display_name: "${os-fully-featured} ${auth-ssl}"
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1137,6 +1169,7 @@ buildvariants:
   display_name: "${os-nossl} ${auth} ${ssl}"
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1148,6 +1181,7 @@ buildvariants:
   display_name: "${os-requires-32} ${auth-ssl}"
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1157,6 +1191,7 @@ buildvariants:
   display_name: "${os-ssl-requires-32} ${auth} ${ssl}"
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1166,6 +1201,7 @@ buildvariants:
   display_name: "${os-requires-34} ${auth-ssl}"
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
 
@@ -1190,6 +1226,7 @@ buildvariants:
   run_on: rhel62-small
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1209,6 +1246,7 @@ buildvariants:
   run_on: rhel62-small
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1231,6 +1269,7 @@ buildvariants:
   run_on: ubuntu1604-test
   tasks:
      - "test-latest-standalone"
+     - "test-4.0-standalone"
      - "test-3.6-standalone"
 
 - matrix_name: "tests-python-version-py37-plus-compression"
@@ -1242,6 +1281,7 @@ buildvariants:
   run_on: ubuntu1604-test
   tasks:
      - "test-latest-standalone"
+     - "test-4.0-standalone"
      - "test-3.6-standalone"
 
 - matrix_name: "tests-python-version-green-framework-rhel62"
@@ -1255,6 +1295,7 @@ buildvariants:
   run_on: rhel62-small
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1269,6 +1310,7 @@ buildvariants:
   run_on: windows-64-vs2010-test
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1281,6 +1323,7 @@ buildvariants:
   run_on: ubuntu1604-test
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1300,6 +1343,7 @@ buildvariants:
   run_on: windows-64-vs2015-test
   tasks:
      - ".latest"
+     - ".4.0"
      - ".3.6"
      - ".3.4"
      - ".3.2"
@@ -1313,11 +1357,22 @@ buildvariants:
   run_on: rhel62-small
   rules:
     - if:
-        storage-engine: ["mmapv1", "inmemory"]
+        storage-engine: ["inmemory"]
         python-version: "*"
       then:
         add_tasks:
           - "test-latest-standalone"
+          - "test-4.0-standalone"
+          - "test-3.6-standalone"
+          - "test-3.4-standalone"
+          - "test-3.2-standalone"
+    - if:
+        # MongoDB 4.2 drops support for MMAPv1
+        storage-engine: ["mmapv1"]
+        python-version: "*"
+      then:
+        add_tasks:
+          - "test-4.0-standalone"
           - "test-3.6-standalone"
           - "test-3.4-standalone"
           - "test-3.2-standalone"
