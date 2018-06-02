@@ -1073,14 +1073,27 @@ class TestClient(IntegrationTest):
 
         # Use a separate collection to avoid races where we're still
         # completing an operation on a collection while the next test begins.
+        client_context.client.drop_database('test_lazy_connect_w0')
+        self.addCleanup(
+            client_context.client.drop_database, 'test_lazy_connect_w0')
+
         client = rs_or_single_client(connect=False, w=0)
         client.test_lazy_connect_w0.test.insert_one({})
+        wait_until(
+            lambda: client.test_lazy_connect_w0.test.count() == 1,
+            "find one document")
 
-        client = rs_or_single_client(connect=False)
+        client = rs_or_single_client(connect=False, w=0)
         client.test_lazy_connect_w0.test.update_one({}, {'$set': {'x': 1}})
+        wait_until(
+            lambda: client.test_lazy_connect_w0.test.find_one().get('x') == 1,
+            "update one document")
 
-        client = rs_or_single_client(connect=False)
+        client = rs_or_single_client(connect=False, w=0)
         client.test_lazy_connect_w0.test.delete_one({})
+        wait_until(
+            lambda: client.test_lazy_connect_w0.test.count() == 0,
+            "delete one document")
 
     @client_context.require_no_mongos
     def test_exhaust_network_error(self):
