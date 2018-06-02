@@ -231,9 +231,6 @@ class TestReadPreferences(TestReadPreferencesBase):
                           localthresholdms=-1)
 
     def test_zero_latency(self):
-        if (client_context.version >= (3, 7, 2)
-                and client_context.auth_enabled and client_context.is_rs):
-            raise SkipTest("Disabled due to SERVER-32845")
         ping_times = set()
         # Generate unique ping times.
         while len(ping_times) < len(self.client.nodes):
