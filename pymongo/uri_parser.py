@@ -294,7 +294,7 @@ def _get_dns_srv_hosts(hostname):
 def _get_dns_txt_options(hostname):
     try:
         results = resolver.query(hostname, 'TXT')
-    except resolver.NoAnswer:
+    except (resolver.NoAnswer, resolver.NXDOMAIN):
         # No TXT records
         return None
     except Exception as exc:
