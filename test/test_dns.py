@@ -32,11 +32,6 @@ from test.utils import wait_until
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'dns')
 
-_SSL_OPTS = client_context.default_client_options.copy()
-if client_context.ssl is True:
-    # Our test certs don't support the SRV hosts used in these tests.
-    _SSL_OPTS['ssl_match_hostname'] = False
-
 class TestDNS(unittest.TestCase):
     pass
 
@@ -78,7 +73,12 @@ def create_test(test_case):
             hostname = next(iter(client_context.client.nodes))[0]
             # The replica set members must be configured as 'localhost'.
             if hostname == 'localhost':
-                client = MongoClient(uri, **_SSL_OPTS)
+                copts = client_context.default_client_options.copy()
+                if client_context.ssl is True:
+                    # Our test certs don't support the SRV hosts used in these tests.
+                    copts['ssl_match_hostname'] = False
+
+                client = MongoClient(uri, **copts)
                 # Force server selection
                 client.admin.command('ismaster')
                 wait_until(

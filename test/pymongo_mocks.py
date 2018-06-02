@@ -28,8 +28,6 @@ from pymongo.server_description import ServerDescription
 
 from test import client_context
 
-default_host, default_port = client_context.host, client_context.port
-
 
 class MockPool(Pool):
     def __init__(self, client, pair, *args, **kwargs):
@@ -39,7 +37,7 @@ class MockPool(Pool):
         self.mock_host, self.mock_port = pair
 
         # Actually connect to the default server.
-        Pool.__init__(self, (default_host, default_port), *args, **kwargs)
+        Pool.__init__(self, (client_context.host, client_context.port), *args, **kwargs)
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):

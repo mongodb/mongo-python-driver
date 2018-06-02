@@ -18,6 +18,7 @@
 import os
 import socket
 import sys
+import threading
 import time
 import warnings
 
@@ -86,22 +87,6 @@ def is_server_resolvable():
             return False
     finally:
         socket.setdefaulttimeout(socket_timeout)
-
-
-def _connect(host, port, **kwargs):
-    client = pymongo.MongoClient(host, port, **kwargs)
-    start = time.time()
-    # Jython takes a long time to connect.
-    if sys.platform.startswith('java'):
-        time_limit = 10
-    else:
-        time_limit = .5
-    while not client.nodes:
-        time.sleep(0.05)
-        if time.time() - start > time_limit:
-            return None
-
-    return client
 
 
 def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
@@ -189,11 +174,42 @@ class ClientContext(object):
         self.server_is_resolvable = is_server_resolvable()
         self.default_client_options = {}
         self.sessions_enabled = False
-        self.client = self._connect(host, port)
+        self.client = None
+        self.conn_lock = threading.Lock()
 
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
 
+    def _connect(self, host, port, **kwargs):
+        # Jython takes a long time to connect.
+        if sys.platform.startswith('java'):
+            timeout_ms = 10000
+        else:
+            timeout_ms = 500
+        if COMPRESSORS:
+            kwargs["compressors"] = COMPRESSORS
+        client = pymongo.MongoClient(
+            host, port, serverSelectionTimeoutMS=timeout_ms, **kwargs)
+        try:
+            try:
+                client.admin.command('isMaster')  # Can we connect?
+            except pymongo.errors.OperationFailure as exc:
+                # SERVER-32063
+                self.connection_attempts.append(
+                    'connected client %r, but isMaster failed: %s' % (
+                        client, exc))
+            else:
+                self.connection_attempts.append(
+                    'successfully connected client %r' % (client,))
+            # If connected, then return client with default timeout
+            return pymongo.MongoClient(host, port, **kwargs)
+        except pymongo.errors.ConnectionFailure as exc:
+            self.connection_attempts.append(
+                'failed to connect client %r: %s' % (client, exc))
+            return None
+
+    def _init_client(self):
+        self.client = self._connect(host, port)
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
             self.client = self._connect(host, port, **_SSL_OPTIONS)
@@ -283,33 +299,10 @@ class ClientContext(object):
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
             self.has_ipv6 = self._server_started_with_ipv6()
 
-    def _connect(self, host, port, **kwargs):
-        # Jython takes a long time to connect.
-        if sys.platform.startswith('java'):
-            timeout_ms = 10000
-        else:
-            timeout_ms = 500
-        if COMPRESSORS:
-            kwargs["compressors"] = COMPRESSORS
-        client = pymongo.MongoClient(
-            host, port, serverSelectionTimeoutMS=timeout_ms, **kwargs)
-        try:
-            try:
-                client.admin.command('isMaster')  # Can we connect?
-            except pymongo.errors.OperationFailure as exc:
-                # SERVER-32063
-                self.connection_attempts.append(
-                    'connected client %r, but isMaster failed: %s' % (
-                        client, exc))
-            else:
-                self.connection_attempts.append(
-                    'successfully connected client %r' % (client,))
-            # If connected, then return client with default timeout
-            return pymongo.MongoClient(host, port, **kwargs)
-        except pymongo.errors.ConnectionFailure as exc:
-            self.connection_attempts.append(
-                'failed to connect client %r: %s' % (client, exc))
-            return None
+    def init(self):
+        with self.conn_lock:
+            if not self.client and not self.connection_attempts:
+                self._init_client()
 
     def connection_attempt_info(self):
         return '\n'.join(self.connection_attempts)
@@ -400,11 +393,12 @@ class ClientContext(object):
         def make_wrapper(f):
             @wraps(f)
             def wrap(*args, **kwargs):
+                self.init()
                 # Always raise SkipTest if we can't connect to MongoDB
                 if not self.connected:
                     raise SkipTest(
                         "Cannot connect to MongoDB on %s" % (self.pair,))
-                if condition:
+                if condition():
                     return f(*args, **kwargs)
                 raise SkipTest(msg)
             return wrap
@@ -426,40 +420,40 @@ class ClientContext(object):
     def require_connection(self, func):
         """Run a test only if we can connect to MongoDB."""
         return self._require(
-            self.connected,
+            lambda: True,  # _require checks if we're connected
             "Cannot connect to MongoDB on %s" % (self.pair,),
             func=func)
 
     def require_version_min(self, *ver):
         """Run a test only if the server version is at least ``version``."""
         other_version = Version(*ver)
-        return self._require(self.version >= other_version,
+        return self._require(lambda: self.version >= other_version,
                              "Server version must be at least %s"
                              % str(other_version))
 
     def require_version_max(self, *ver):
         """Run a test only if the server version is at most ``version``."""
         other_version = Version(*ver)
-        return self._require(self.version <= other_version,
+        return self._require(lambda: self.version <= other_version,
                              "Server version must be at most %s"
                              % str(other_version))
 
     def require_auth(self, func):
         """Run a test only if the server is running with auth enabled."""
         return self.check_auth_with_sharding(
-            self._require(self.auth_enabled,
+            self._require(lambda: self.auth_enabled,
                           "Authentication is not enabled on the server",
                           func=func))
 
     def require_no_auth(self, func):
         """Run a test only if the server is running without auth enabled."""
-        return self._require(not self.auth_enabled,
+        return self._require(lambda: not self.auth_enabled,
                              "Authentication must not be enabled on the server",
                              func=func)
 
     def require_replica_set(self, func):
         """Run a test only if the client is connected to a replica set."""
-        return self._require(self.is_rs,
+        return self._require(lambda: self.is_rs,
                              "Not connected to a replica set",
                              func=func)
 
@@ -467,51 +461,51 @@ class ClientContext(object):
         """Run a test only if the client is connected to a replica set that has
         `count` secondaries.
         """
-        sec_count = 0 if not self.client else len(self.client.secondaries)
-        return self._require(sec_count >= count,
-                             "Need %d secondaries, %d available"
-                             % (count, sec_count))
+        def sec_count():
+            return 0 if not self.client else len(self.client.secondaries)
+        return self._require(lambda: sec_count() >= count,
+                             "Not enough secondaries available")
 
     def require_no_replica_set(self, func):
         """Run a test if the client is *not* connected to a replica set."""
         return self._require(
-            not self.is_rs,
+            lambda: not self.is_rs,
             "Connected to a replica set, not a standalone mongod",
             func=func)
 
     def require_ipv6(self, func):
         """Run a test only if the client can connect to a server via IPv6."""
-        return self._require(self.has_ipv6,
+        return self._require(lambda: self.has_ipv6,
                              "No IPv6",
                              func=func)
 
     def require_no_mongos(self, func):
         """Run a test only if the client is not connected to a mongos."""
-        return self._require(not self.is_mongos,
+        return self._require(lambda: not self.is_mongos,
                              "Must be connected to a mongod, not a mongos",
                              func=func)
 
     def require_mongos(self, func):
         """Run a test only if the client is connected to a mongos."""
-        return self._require(self.is_mongos,
+        return self._require(lambda: self.is_mongos,
                              "Must be connected to a mongos",
                              func=func)
 
     def require_standalone(self, func):
         """Run a test only if the client is connected to a standalone."""
-        return self._require(not (self.is_mongos or self.is_rs),
+        return self._require(lambda: not (self.is_mongos or self.is_rs),
                              "Must be connected to a standalone",
                              func=func)
 
     def require_no_standalone(self, func):
         """Run a test only if the client is not connected to a standalone."""
-        return self._require(self.is_mongos or self.is_rs,
+        return self._require(lambda: self.is_mongos or self.is_rs,
                              "Must be connected to a replica set or mongos",
                              func=func)
 
     def check_auth_with_sharding(self, func):
         """Skip a test when connected to mongos < 2.0 and running with auth."""
-        condition = not (self.auth_enabled and
+        condition = lambda: not (self.auth_enabled and
                          self.is_mongos and self.version < (2,))
         return self._require(condition,
                              "Auth with sharding requires MongoDB >= 2.0.0",
@@ -519,44 +513,44 @@ class ClientContext(object):
 
     def require_test_commands(self, func):
         """Run a test only if the server has test commands enabled."""
-        return self._require(self.test_commands_enabled,
+        return self._require(lambda: self.test_commands_enabled,
                              "Test commands must be enabled",
                              func=func)
 
     def require_ssl(self, func):
         """Run a test only if the client can connect over SSL."""
-        return self._require(self.ssl,
+        return self._require(lambda: self.ssl,
                              "Must be able to connect via SSL",
                              func=func)
 
     def require_no_ssl(self, func):
         """Run a test only if the client can connect over SSL."""
-        return self._require(not self.ssl,
+        return self._require(lambda: not self.ssl,
                              "Must be able to connect without SSL",
                              func=func)
 
     def require_ssl_cert_none(self, func):
         """Run a test only if the client can connect with ssl.CERT_NONE."""
-        return self._require(self.ssl_cert_none,
+        return self._require(lambda: self.ssl_cert_none,
                              "Must be able to connect with ssl.CERT_NONE",
                              func=func)
 
     def require_ssl_certfile(self, func):
         """Run a test only if the client can connect with ssl_certfile."""
-        return self._require(self.ssl_certfile,
+        return self._require(lambda: self.ssl_certfile,
                              "Must be able to connect with ssl_certfile",
                              func=func)
 
     def require_server_resolvable(self, func):
         """Run a test only if the hostname 'server' is resolvable."""
-        return self._require(self.server_is_resolvable,
+        return self._require(lambda: self.server_is_resolvable,
                              "No hosts entry for 'server'. Cannot validate "
                              "hostname in the certificate",
                              func=func)
 
     def require_sessions(self, func):
         """Run a test only if the deployment supports sessions."""
-        return self._require(self.sessions_enabled,
+        return self._require(lambda: self.sessions_enabled,
                              "Sessions not supported",
                              func=func)
 

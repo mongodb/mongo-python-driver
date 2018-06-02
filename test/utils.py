@@ -132,6 +132,8 @@ def _connection_string(h, p, authenticate):
 
 def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
     """Create a new client over SSL/TLS if necessary."""
+    host = host or client_context.host
+    port = port or client_context.port
     client_options = client_context.default_client_options.copy()
     if client_context.replica_set_name and not direct:
         client_options['replicaSet'] = client_context.replica_set_name
@@ -143,32 +145,27 @@ def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
     return client
 
 
-def single_client_noauth(
-        h=client_context.host, p=client_context.port, **kwargs):
+def single_client_noauth(h=None, p=None, **kwargs):
     """Make a direct connection. Don't authenticate."""
     return _mongo_client(h, p, authenticate=False, direct=True, **kwargs)
 
 
-def single_client(
-        h=client_context.host, p=client_context.port, **kwargs):
+def single_client(h=None, p=None, **kwargs):
     """Make a direct connection, and authenticate if necessary."""
     return _mongo_client(h, p, direct=True, **kwargs)
 
 
-def rs_client_noauth(
-        h=client_context.host, p=client_context.port, **kwargs):
+def rs_client_noauth(h=None, p=None, **kwargs):
     """Connect to the replica set. Don't authenticate."""
     return _mongo_client(h, p, authenticate=False, **kwargs)
 
 
-def rs_client(
-        h=client_context.host, p=client_context.port, **kwargs):
+def rs_client(h=None, p=None, **kwargs):
     """Connect to the replica set and authenticate if necessary."""
     return _mongo_client(h, p, **kwargs)
 
 
-def rs_or_single_client_noauth(
-        h=client_context.host, p=client_context.port, **kwargs):
+def rs_or_single_client_noauth(h=None, p=None, **kwargs):
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Like rs_or_single_client, but does not authenticate.
@@ -176,8 +173,7 @@ def rs_or_single_client_noauth(
     return _mongo_client(h, p, authenticate=False, **kwargs)
 
 
-def rs_or_single_client(
-        h=client_context.host, p=client_context.port, **kwargs):
+def rs_or_single_client(h=None, p=None, **kwargs):
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Authenticates if necessary.
