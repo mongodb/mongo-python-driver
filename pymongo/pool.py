@@ -535,7 +535,9 @@ class SocketInfo(object):
                 collation is None):
             raise ConfigurationError(
                 'Collation is unsupported for unacknowledged writes.')
-        if self.max_wire_version >= 5 and write_concern:
+        if (self.max_wire_version >= 5 and
+                write_concern and
+                not write_concern.is_server_default):
             spec['writeConcern'] = write_concern.document
         elif self.max_wire_version < 5 and collation is not None:
             raise ConfigurationError(

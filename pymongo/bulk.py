@@ -263,7 +263,7 @@ class _Bulk(object):
         while run:
             cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
                        ('ordered', self.ordered)])
-            if write_concern.document:
+            if not write_concern.is_server_default:
                 cmd['writeConcern'] = write_concern.document
             if self.bypass_doc_val and sock_info.max_wire_version >= 4:
                 cmd['bypassDocumentValidation'] = True

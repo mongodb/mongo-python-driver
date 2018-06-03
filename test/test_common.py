@@ -155,6 +155,10 @@ class TestCommon(IntegrationTest):
         wc = WriteConcern(w=2, wtimeout=1000)
         self.assertEqual(wc, c.write_concern)
 
+        # Can we override back to the server default?
+        db = c.get_database('pymongo_test', write_concern=WriteConcern())
+        self.assertEqual(db.write_concern, WriteConcern())
+
         db = c.pymongo_test
         self.assertEqual(wc, db.write_concern)
         coll = db.test

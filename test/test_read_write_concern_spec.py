@@ -232,7 +232,7 @@ def create_document_test(test_case):
                 self.assertEqual(
                     concern.acknowledged, test_case['isAcknowledged'])
                 self.assertEqual(
-                    not bool(concern), test_case['isServerDefault'])
+                    concern.is_server_default, test_case['isServerDefault'])
         if 'readConcern' in test_case:
             # Any string for 'level' is equaly valid
             concern = ReadConcern(**test_case['readConcern'])

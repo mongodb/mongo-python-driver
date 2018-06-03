@@ -412,7 +412,9 @@ class Database(common.BaseObject):
         if isinstance(command, string_type):
             command = SON([(command, value)])
 
-        if sock_info.max_wire_version >= 5 and write_concern:
+        if (sock_info.max_wire_version >= 5 and
+                write_concern and
+                not write_concern.is_server_default):
             command['writeConcern'] = write_concern.document
 
         command.update(kwargs)

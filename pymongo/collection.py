@@ -2078,7 +2078,7 @@ class Collection(common.BaseObject):
                     kwargs["cursor"]["batchSize"] = first_batch_size
 
             if (sock_info.max_wire_version >= 5 and dollar_out and
-                    self.write_concern):
+                    not self.write_concern.is_server_default):
                 cmd['writeConcern'] = self.write_concern.document
 
             cmd.update(kwargs)
@@ -2403,7 +2403,8 @@ class Collection(common.BaseObject):
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         with self._socket_for_writes() as sock_info:
             with self.__database.client._tmp_session(session) as s:
-                if sock_info.max_wire_version >= 5 and self.write_concern:
+                if (sock_info.max_wire_version >= 5 and
+                        not self.write_concern.is_server_default):
                     cmd['writeConcern'] = self.write_concern.document
                 cmd.update(kwargs)
                 return sock_info.command(
@@ -2530,7 +2531,8 @@ class Collection(common.BaseObject):
         inline = 'inline' in cmd['out']
         sock_ctx, read_pref = self._socket_for_primary_reads(session)
         with sock_ctx as (sock_info, slave_ok):
-            if (sock_info.max_wire_version >= 5 and self.write_concern and
+            if (sock_info.max_wire_version >= 5 and
+                    not self.write_concern.is_server_default and
                     not inline):
                 cmd['writeConcern'] = self.write_concern.document
             cmd.update(kwargs)

@@ -46,7 +46,7 @@ class WriteConcern(object):
           journal. Cannot be used in combination with `j`.
     """
 
-    __slots__ = ("__document", "__acknowledged")
+    __slots__ = ("__document", "__acknowledged", "__server_default")
 
     def __init__(self, w=None, wtimeout=None, j=None, fsync=None):
         self.__document = {}
@@ -84,6 +84,13 @@ class WriteConcern(object):
                 raise TypeError("w must be an integer or string")
             self.__document["w"] = w
 
+        self.__server_default = not self.__document
+
+    @property
+    def is_server_default(self):
+        """Does this WriteConcern match the server default."""
+        return self.__server_default
+
     @property
     def document(self):
         """The document representation of this write concern.
@@ -110,8 +117,3 @@ class WriteConcern(object):
 
     def __ne__(self, other):
         return self.__document != other.document
-
-    def __bool__(self):
-        return bool(self.__document)
-
-    __nonzero__ = __bool__  # Python 2.
