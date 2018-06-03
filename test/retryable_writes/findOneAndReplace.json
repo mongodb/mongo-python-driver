@@ -13,6 +13,9 @@
   "tests": [
     {
       "description": "FindOneAndReplace is committed on first attempt",
+      "clientOptions": {
+        "retryWrites": true
+      },
       "failPoint": {
         "mode": {
           "times": 1
@@ -52,6 +55,9 @@
     },
     {
       "description": "FindOneAndReplace is not committed on first attempt",
+      "clientOptions": {
+        "retryWrites": true
+      },
       "failPoint": {
         "mode": {
           "times": 1
@@ -94,6 +100,9 @@
     },
     {
       "description": "FindOneAndReplace is never committed",
+      "clientOptions": {
+        "retryWrites": true
+      },
       "failPoint": {
         "mode": {
           "times": 2

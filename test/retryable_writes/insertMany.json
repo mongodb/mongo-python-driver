@@ -9,6 +9,9 @@
   "tests": [
     {
       "description": "InsertMany succeeds after one network error",
+      "clientOptions": {
+        "retryWrites": true
+      },
       "failPoint": {
         "mode": {
           "times": 1
@@ -59,6 +62,9 @@
     },
     {
       "description": "InsertMany with unordered execution",
+      "clientOptions": {
+        "retryWrites": true
+      },
       "failPoint": {
         "mode": {
           "times": 1
@@ -109,6 +115,9 @@
     },
     {
       "description": "InsertMany fails after multiple network errors",
+      "clientOptions": {
+        "retryWrites": true
+      },
       "failPoint": {
         "mode": "alwaysOn",
         "data": {

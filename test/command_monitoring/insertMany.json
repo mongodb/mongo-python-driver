@@ -32,7 +32,9 @@
                   "x": 22
                 }
               ],
-              "ordered": true
+              "options": {
+                "ordered": true
+              }
             },
             "command_name": "insert",
             "database_name": "command-monitoring-tests"
@@ -73,7 +75,9 @@
                   "x": 11
                 }
               ],
-              "ordered": true
+              "options": {
+                "ordered": true
+              }
             },
             "command_name": "insert",
             "database_name": "command-monitoring-tests"
@@ -108,7 +112,9 @@
               "x": 22
             }
           ],
-          "ordered": false
+          "options": {
+            "ordered": false
+          }
         }
       },
       "expectations": [
@@ -122,7 +128,9 @@
                   "x": 22
                 }
               ],
-              "ordered": false
+              "options": {
+                "ordered": false
+              }
             },
             "command_name": "insert",
             "database_name": "command-monitoring-tests"

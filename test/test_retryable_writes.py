@@ -55,26 +55,24 @@ class TestAllScenarios(IntegrationTest):
     @client_context.require_test_commands
     def setUpClass(cls):
         super(TestAllScenarios, cls).setUpClass()
-        cls.client = rs_or_single_client(retryWrites=True)
-        cls.db = cls.client.pymongo_test
 
     def tearDown(self):
-        self.client.admin.command(SON([
+        client_context.client.admin.command(SON([
             ('configureFailPoint', 'onPrimaryTransactionalWrite'),
             ('mode', 'off')]))
 
     def set_fail_point(self, command_args):
         cmd = SON([('configureFailPoint', 'onPrimaryTransactionalWrite')])
         cmd.update(command_args)
-        self.client.admin.command(cmd)
+        client_context.client.admin.command(cmd)
 
 
 def create_test(scenario_def, test):
     def run_scenario(self):
         # Load data.
         assert scenario_def['data'], "tests must have non-empty data"
-        self.db.test.drop()
-        self.db.test.insert_many(scenario_def['data'])
+        client_context.client.pymongo_test.test.drop()
+        client_context.client.pymongo_test.test.insert_many(scenario_def['data'])
 
         # Set the failPoint
         self.set_fail_point(test['failPoint'])
@@ -83,8 +81,10 @@ def create_test(scenario_def, test):
         should_fail = test_outcome.get('error')
         result = None
         error = None
+
+        db = rs_or_single_client(**test['clientOptions']).pymongo_test
         try:
-            result = run_operation(self.db.test, test)
+            result = run_operation(db.test, test)
         except ConnectionFailure as exc:
             error = exc
 
@@ -98,9 +98,9 @@ def create_test(scenario_def, test):
         if expected_c is not None:
             expected_name = expected_c.get('name')
             if expected_name is not None:
-                db_coll = self.db[expected_name]
+                db_coll = db[expected_name]
             else:
-                db_coll = self.db.test
+                db_coll = db.test
             self.assertEqual(list(db_coll.find()), expected_c['data'])
         expected_result = test_outcome.get('result')
         # We can't test the expected result when the test should fail because

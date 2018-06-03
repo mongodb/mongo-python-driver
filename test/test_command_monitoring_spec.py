@@ -83,12 +83,17 @@ def create_test(scenario_def, test):
         if 'read_preference' in test['operation']:
             coll = coll.with_options(read_preference=parse_read_preference(
                 test['operation']['read_preference']))
+        if 'collectionOptions' in test['operation']:
+            colloptions = test['operation']['collectionOptions']
+            if 'writeConcern' in colloptions:
+                concern = colloptions['writeConcern']
+                coll = coll.with_options(
+                    write_concern=WriteConcern(**concern))
 
         test_args = test['operation']['arguments']
-        if 'writeConcern' in test_args:
-            concern = test_args.pop('writeConcern')
-            coll = coll.with_options(
-                write_concern=WriteConcern(**concern))
+        if 'options' in test_args:
+            options = test_args.pop('options')
+            test_args.update(options)
         args = {}
         for arg in test_args:
             args[camel_to_snake(arg)] = test_args[arg]
@@ -96,9 +101,9 @@ def create_test(scenario_def, test):
         if name == 'bulk_write':
             bulk_args = []
             for request in args['requests']:
-                opname = next(iter(request))
+                opname = request['name']
                 klass = opname[0:1].upper() + opname[1:]
-                arg = getattr(pymongo, klass)(**request[opname])
+                arg = getattr(pymongo, klass)(**request['arguments'])
                 bulk_args.append(arg)
             try:
                 coll.bulk_write(bulk_args, args.get('ordered', True))
@@ -189,6 +194,9 @@ def create_test(scenario_def, test):
                         format_actual_results(res)))
 
             for attr, expected in expectation[event_type].items():
+                if 'options' in expected:
+                    options = expected.pop('options')
+                    expected.update(options)
                 actual = getattr(event, attr)
                 if isinstance(expected, dict):
                     for key, val in expected.items():
