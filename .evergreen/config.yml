@@ -1335,10 +1335,13 @@ buildvariants:
   tasks:
      - ".latest"
 
-# Test CPython 2.6, 2.7, 3.5 and 3.6 against all versions on MongoDB >= 2.6
+# Test CPython 2.7, 3.5 and 3.6 against all versions on MongoDB >= 2.6
 # on Windows with the Microsoft Visual C++ Compiler for Python 2.7 or Visual Studio 2015.
-- matrix_name: "tests-windows-vs2015-python-version"
+- matrix_name: "tests-windows-vs2015-python-version-27plus"
   matrix_spec: {windows-vs2015-python-version: "*", auth-ssl: "*"}
+  exclude_spec:
+   - windows-vs2015-python-version: "2.6"
+     auth-ssl: "*"
   display_name: "Windows 64 Visual Studio 2015 ${windows-vs2015-python-version} ${auth-ssl}"
   run_on: windows-64-vs2015-test
   tasks:
@@ -1349,6 +1352,51 @@ buildvariants:
      - ".3.2"
      - ".3.0"
      - ".2.6"
+
+# Test CPython 2.6 against all versions on MongoDB >= 2.6
+# on Windows with the Microsoft Visual C++ Compiler for Python 2.7.
+# Python 2.6.6 (the last 2.6 version with Windows installers) bundles
+# OpenSSL 0.9.8, which doesn't support TLS 1.1+. MongoDB 4.0+ requires
+# TLS 1.1+ by default.
+- matrix_name: "tests-windows-vs2015-python-version-26"
+  matrix_spec: {windows-vs2015-python-version: "2.6", auth: "*", ssl: "*"}
+  exclude_spec:
+   - windows-vs2015-python-version: "*"
+     auth: "noauth"
+     ssl: "ssl"
+  display_name: "Windows 64 Visual Studio 2015 ${windows-vs2015-python-version} ${auth} ${ssl}"
+  run_on: windows-64-vs2015-test
+  rules:
+    - if:
+        windows-vs2015-python-version: "*"
+        auth: "*"
+        ssl: "nossl"
+      then:
+        add_tasks:
+          - ".latest"
+          - ".4.0"
+    - if:
+        windows-vs2015-python-version: "*"
+        auth: "noauth"
+        ssl: "nossl"
+      then:
+        add_tasks:
+          - ".3.6"
+          - ".3.4"
+          - ".3.2"
+          - ".3.0"
+          - ".2.6"
+    - if:
+        windows-vs2015-python-version: "*"
+        auth: "auth"
+        ssl: "ssl"
+      then:
+        add_tasks:
+          - ".3.6"
+          - ".3.4"
+          - ".3.2"
+          - ".3.0"
+          - ".2.6"
 
 # Storage engine tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"

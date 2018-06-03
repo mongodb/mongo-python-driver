@@ -185,7 +185,7 @@ class ClientContext(object):
         if sys.platform.startswith('java'):
             timeout_ms = 10000
         else:
-            timeout_ms = 1000
+            timeout_ms = 5000
         if COMPRESSORS:
             kwargs["compressors"] = COMPRESSORS
         client = pymongo.MongoClient(
