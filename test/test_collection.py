@@ -109,6 +109,14 @@ class TestCollectionNoConnect(unittest.TestCase):
         self.assertIn("has no attribute '_does_not_exist'",
                       str(context.exception))
 
+        coll2 = coll.with_options(write_concern=WriteConcern(w=0))
+        self.assertEqual(coll2.write_concern, WriteConcern(w=0))
+        self.assertNotEqual(coll.write_concern, coll2.write_concern)
+        coll3 = coll2.subcoll
+        self.assertEqual(coll2.write_concern, coll3.write_concern)
+        coll4 = coll2["subcoll"]
+        self.assertEqual(coll2.write_concern, coll4.write_concern)
+
     def test_iteration(self):
         self.assertRaises(TypeError, next, self.db)
 

@@ -274,7 +274,13 @@ class Collection(common.BaseObject):
         return self.__getitem__(name)
 
     def __getitem__(self, name):
-        return Collection(self.__database, _UJOIN % (self.__name, name))
+        return Collection(self.__database,
+                          _UJOIN % (self.__name, name),
+                          False,
+                          self.codec_options,
+                          self.read_preference,
+                          self.write_concern,
+                          self.read_concern)
 
     def __repr__(self):
         return "Collection(%r, %r)" % (self.__database, self.__name)
@@ -1055,10 +1061,19 @@ class Collection(common.BaseObject):
           >>> db.foo.drop()
           >>> db.drop_collection("foo")
 
+        .. versionchanged:: 3.7
+           :meth:`drop` now respects this :class:`Collection`'s :attr:`write_concern`.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        self.__database.drop_collection(self.__name, session=session)
+        dbo = self.__database.client.get_database(
+            self.__database.name,
+            self.codec_options,
+            self.read_preference,
+            self.write_concern,
+            self.read_concern)
+        dbo.drop_collection(self.__name, session=session)
 
     def _delete(
             self, sock_info, criteria, multi,
@@ -2023,7 +2038,13 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cursor = self.__database.list_collections(
+        dbo = self.__database.client.get_database(
+            self.__database.name,
+            self.codec_options,
+            self.read_preference,
+            self.write_concern,
+            self.read_concern)
+        cursor = dbo.list_collections(
             session=session, filter={"name": self.__name})
 
         result = None
