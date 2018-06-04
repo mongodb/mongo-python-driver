@@ -185,7 +185,7 @@ class ClientContext(object):
         if sys.platform.startswith('java'):
             timeout_ms = 10000
         else:
-            timeout_ms = 500
+            timeout_ms = 1000
         if COMPRESSORS:
             kwargs["compressors"] = COMPRESSORS
         client = pymongo.MongoClient(
@@ -633,6 +633,7 @@ class MockClientTest(unittest.TestCase):
 
 
 def setup():
+    client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
 
