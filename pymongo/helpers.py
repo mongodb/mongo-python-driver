@@ -29,6 +29,24 @@ from pymongo.errors import (CursorNotFound,
                             WriteConcernError,
                             WTimeoutError)
 
+# From the Server Discovery and Monitoring spec, the "not master" error codes
+# are combined with the "node is recovering" error codes.
+_NOT_MASTER_CODES = frozenset([
+    10107,  # NotMaster
+    13435,  # NotMasterNoSlaveOk
+    11600,  # InterruptedAtShutdown
+    11602,  # InterruptedDueToReplStateChange
+    13436,  # NotMasterOrSecondary
+    189,    # PrimarySteppedDown
+    91,     # ShutdownInProgress
+])
+# From the retryable writes spec.
+_RETRYABLE_ERROR_CODES = _NOT_MASTER_CODES | frozenset([
+    7,     # HostNotFound
+    6,     # HostUnreachable
+    89,    # NetworkTimeout
+    9001,  # SocketException
+])
 _UUNDER = u"_"
 
 
@@ -110,7 +128,7 @@ def _check_command_response(response, msg=None, allowable_errors=None,
 
             code = details.get("code")
             # Server is "not master" or "recovering"
-            if code in (10107, 13435, 13436, 11600, 11602, 189, 91):
+            if code in _NOT_MASTER_CODES:
                 raise NotMasterError(errmsg, response)
             elif ("not master" in errmsg
                   or "node is recovering" in errmsg):

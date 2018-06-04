@@ -82,18 +82,21 @@ Classes
 """
 
 import collections
+import sys
 import uuid
 
 from bson.binary import Binary
 from bson.int64 import Int64
-from bson.py3compat import abc
+from bson.py3compat import abc, reraise_instance
 from bson.timestamp import Timestamp
 
 from pymongo import monotonic
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
-                            OperationFailure)
+                            OperationFailure,
+                            ServerSelectionTimeoutError)
+from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.write_concern import WriteConcern
@@ -163,8 +166,8 @@ class TransactionOptions(object):
                                 (write_concern,))
             if not write_concern.acknowledged:
                 raise ConfigurationError(
-                    "transactions must use an acknowledged write concern, "
-                    "not: %r" % (write_concern,))
+                    "transactions do not support unacknowledged write concern"
+                    ": %r" % (write_concern,))
         if read_preference is not None:
             if not isinstance(read_preference, _ServerMode):
                 raise TypeError("%r is not valid for read_preference. See "
@@ -347,7 +350,20 @@ class ClientSession(object):
                 "Cannot call commitTransaction after calling abortTransaction")
 
         try:
-            self._finish_transaction("commitTransaction")
+            self._finish_transaction_with_retry("commitTransaction")
+        except ConnectionFailure as exc:
+            # We do not know if the commit was successfully applied on the
+            # server, set the unknown commit error label.
+            exc._error_labels = ("UnknownTransactionCommitResult",)
+            reraise_instance(exc, trace=sys.exc_info()[2])
+        except OperationFailure as exc:
+            if exc.code not in _RETRYABLE_ERROR_CODES:
+                # The server reports errorLabels in the case.
+                raise
+            # We do not know if the commit was successfully applied on the
+            # server, set the unknown commit error label.
+            exc._error_labels = ("UnknownTransactionCommitResult",)
+            reraise_instance(exc, trace=sys.exc_info()[2])
         finally:
             self._transaction.state = _TxnState.COMMITTED
 
@@ -372,7 +388,7 @@ class ClientSession(object):
                 "Cannot call abortTransaction after calling commitTransaction")
 
         try:
-            self._finish_transaction("abortTransaction")
+            self._finish_transaction_with_retry("abortTransaction")
         except (OperationFailure, ConnectionFailure):
             # The transactions spec says to ignore abortTransaction errors.
             pass
@@ -380,9 +396,6 @@ class ClientSession(object):
             self._transaction.state = _TxnState.ABORTED
 
     def _finish_transaction(self, command_name):
-        # TODO: commitTransaction should be a retryable write.
-        # Use _command directly because commit/abort are writes and must
-        # always go to the primary.
         with self._client._socket_for_writes() as sock_info:
             return self._client.admin._command(
                 sock_info,
@@ -392,6 +405,29 @@ class ClientSession(object):
                 session=self,
                 write_concern=self._transaction.opts.write_concern,
                 parse_write_concern_error=True)
+
+    def _finish_transaction_with_retry(self, command_name):
+        # This can be refactored with MongoClient._retry_with_session.
+        try:
+            return self._finish_transaction(command_name)
+        except ServerSelectionTimeoutError:
+            raise
+        except ConnectionFailure as exc:
+            try:
+                return self._finish_transaction(command_name)
+            except ServerSelectionTimeoutError:
+                # Raise the original error so the application can infer that
+                # an attempt was made.
+                raise exc
+        except OperationFailure as exc:
+            if exc.code not in _RETRYABLE_ERROR_CODES:
+                raise
+            try:
+                return self._finish_transaction(command_name)
+            except ServerSelectionTimeoutError:
+                # Raise the original error so the application can infer that
+                # an attempt was made.
+                raise exc
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""

@@ -987,6 +987,12 @@ class MongoClient(common.BaseObject):
             # ... MUST NOT request an immediate check of the server."
             self.__reset_server(server.description.address)
             raise
+        except OperationFailure as exc:
+            if exc.code in helpers._RETRYABLE_ERROR_CODES:
+                # Do not request an immediate check since the server is likely
+                # shutting down.
+                self.__reset_server(server.description.address)
+            raise
 
     def _socket_for_writes(self):
         server = self._get_topology().select_server(writable_server_selector)
@@ -1122,11 +1128,7 @@ class MongoClient(common.BaseObject):
             except OperationFailure as exc:
                 if not retryable or is_retrying():
                     raise
-                if exc.code not in (7, 6, 89, 9001):
-                    # HostNotFound, HostUnreachable, NetworkTimeout, and
-                    # SocketException are temporary failures not considered
-                    # "not master" or "node is recovering" errors but should
-                    # nonetheless be retried.
+                if exc.code not in helpers._RETRYABLE_ERROR_CODES:
                     raise
                 if bulk:
                     bulk.retrying = True

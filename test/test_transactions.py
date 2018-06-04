@@ -70,6 +70,21 @@ class TestTransactions(IntegrationTest):
         if _TXN_TESTS_DEBUG:
             print(msg)
 
+    def assertErrorLabelsContain(self, exc, expected_labels):
+        labels = [l for l in expected_labels if exc.has_error_label(l)]
+        self.assertEqual(labels, expected_labels)
+
+    def assertErrorLabelsOmit(self, exc, omit_labels):
+        for label in omit_labels:
+            self.assertFalse(
+                exc.has_error_label(label),
+                msg='error labels should not contain %s' % (label,))
+
+    def set_fail_point(self, command_args):
+        cmd = SON([('configureFailPoint', 'failCommand')])
+        cmd.update(command_args)
+        self.client.admin.command(cmd)
+
     @client_context.require_transactions
     def test_transaction_options_validation(self):
         default_options = TransactionOptions()
@@ -85,7 +100,7 @@ class TestTransactions(IntegrationTest):
             TransactionOptions(write_concern={})
         with self.assertRaisesRegex(
                 ConfigurationError,
-                "transactions must use an acknowledged write concern"):
+                "transactions do not support unacknowledged write concern"):
             TransactionOptions(write_concern=WriteConcern(w=0))
         with self.assertRaisesRegex(
                 TypeError, "is not valid for read_preference"):
@@ -297,6 +312,27 @@ def expect_error_code(expected_result):
     return False
 
 
+def expect_error_labels_contain(expected_result):
+    if isinstance(expected_result, dict):
+        return expected_result['errorLabelsContain']
+
+    return False
+
+
+def expect_error_labels_omit(expected_result):
+    if isinstance(expected_result, dict):
+        return expected_result['errorLabelsOmit']
+
+    return False
+
+
+def expect_error(expected_result):
+    return (expect_error_message(expected_result)
+            or expect_error_code(expected_result)
+            or expect_error_labels_contain(expected_result)
+            or expect_error_labels_omit(expected_result))
+
+
 def end_sessions(sessions):
     for s in sessions.values():
         # Aborts the transaction if it's open.
@@ -311,11 +347,19 @@ def create_test(scenario_def, test):
         # with ScenarioDict.
         client = rs_client(event_listeners=[listener],
                            **dict(test['clientOptions']))
-        try:
-            client.admin.command('killAllSessions', [])
-        except OperationFailure:
-            # "operation was interrupted" by killing the command's own session.
-            pass
+
+        # Kill all sessions before and after each test to prevent an open
+        # transaction (from a test failure) from blocking collection/database
+        # operations during test set up and tear down.
+        def kill_all_sessions():
+            try:
+                client.admin.command('killAllSessions', [])
+            except OperationFailure:
+                # "operation was interrupted" by killing the command's
+                # own session.
+                pass
+        kill_all_sessions()
+        self.addCleanup(kill_all_sessions)
 
         database_name = scenario_def['database_name']
         collection_name = scenario_def['collection_name']
@@ -368,24 +412,35 @@ def create_test(scenario_def, test):
 
         self.addCleanup(end_sessions, sessions)
 
+        if 'failPoint' in test:
+            self.set_fail_point(test['failPoint'])
+            self.addCleanup(self.set_fail_point, {
+                'configureFailPoint': 'failCommand', 'mode': 'off'})
+
         listener.results.clear()
         collection = client[database_name][collection_name]
 
         for op in test['operations']:
             expected_result = op.get('result')
-            if expect_error_message(expected_result):
+            if expect_error(expected_result):
                 with self.assertRaises(PyMongoError,
-                                       msg=op.get('name')) as context:
+                                       msg=op['name']) as context:
                     self.run_operation(sessions, collection, op.copy())
 
-                self.assertIn(expected_result['errorContains'].lower(),
-                              str(context.exception).lower())
-            elif expect_error_code(expected_result):
-                with self.assertRaises(OperationFailure) as context:
-                    self.run_operation(sessions, collection, op.copy())
-
-                self.assertEqual(expected_result['errorCodeName'],
-                                 context.exception.details.get('codeName'))
+                if expect_error_message(expected_result):
+                    self.assertIn(expected_result['errorContains'].lower(),
+                                  str(context.exception).lower())
+                if expect_error_code(expected_result):
+                    self.assertEqual(expected_result['errorCodeName'],
+                                     context.exception.details.get('codeName'))
+                if expect_error_labels_contain(expected_result):
+                    self.assertErrorLabelsContain(
+                        context.exception,
+                        expected_result['errorLabelsContain'])
+                if expect_error_labels_omit(expected_result):
+                    self.assertErrorLabelsOmit(
+                        context.exception,
+                        expected_result['errorLabelsOmit'])
             else:
                 result = self.run_operation(sessions, collection, op.copy())
                 if 'result' in op:
