@@ -238,10 +238,7 @@ class ClientSession(object):
     def end_session(self):
         """Finish this session. If a transaction has started, abort it.
 
-        It is an error to use the session or any derived
-        :class:`~pymongo.database.Database`,
-        :class:`~pymongo.collection.Collection`, or
-        :class:`~pymongo.cursor.Cursor` after the session has ended.
+        It is an error to use the session after the session has ended.
         """
         self._end_session(lock=True)
 
