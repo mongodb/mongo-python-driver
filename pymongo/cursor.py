@@ -310,7 +310,7 @@ class Cursor(object):
                         self.__id, address, session=self.__session)
                 else:
                     # The cursor will be closed later in a different session.
-                    self.__collection.database.client.close_cursor(
+                    self.__collection.database.client._close_cursor(
                         self.__id, address)
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()

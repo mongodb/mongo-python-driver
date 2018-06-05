@@ -1201,7 +1201,7 @@ class MongoClient(common.BaseObject):
         return database.Database(self, name)
 
     def close_cursor(self, cursor_id, address=None):
-        """Send a kill cursors message soon with the given id.
+        """DEPRECATED - Send a kill cursors message soon with the given id.
 
         Raises :class:`TypeError` if `cursor_id` is not an instance of
         ``(int, long)``. What closing the cursor actually means
@@ -1218,12 +1218,28 @@ class MongoClient(common.BaseObject):
             If it is not provided, the client attempts to close the cursor on
             the primary or standalone, or a mongos server.
 
+        .. versionchanged:: 3.7
+           Deprecated.
+
         .. versionchanged:: 3.0
            Added ``address`` parameter.
         """
+        warnings.warn(
+            "close_cursor is deprecated.",
+            DeprecationWarning,
+            stacklevel=2)
         if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
+        self._close_cursor(cursor_id, address)
+
+    def _close_cursor(self, cursor_id, address):
+        """Send a kill cursors message with the given id.
+
+        What closing the cursor actually means depends on this client's
+        cursor manager. If there is none, the cursor is closed asynchronously
+        on a background thread.
+        """
         if self.__cursor_manager is not None:
             self.__cursor_manager.close(cursor_id, address)
         else:
