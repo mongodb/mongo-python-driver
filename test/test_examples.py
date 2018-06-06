@@ -842,7 +842,7 @@ class TestSampleShellCommands(unittest.TestCase):
             array_filters=[{"i.b": 0}])
 
     @client_context.require_transactions
-    def test_tranactions(self):
+    def test_transactions(self):
         # Transaction examples
         client = self.client
         self.addCleanup(client.drop_database, "test")
