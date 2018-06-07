@@ -35,9 +35,10 @@ from pymongo.operations import (InsertOne,
                                 ReplaceOne,
                                 UpdateMany,
                                 UpdateOne)
+from pymongo.results import BulkWriteResult
 from pymongo.write_concern import WriteConcern
 
-from test import unittest, client_context, IntegrationTest, SkipTest
+from test import unittest, client_context, IntegrationTest, SkipTest, client_knobs
 from test.utils import (rs_or_single_client,
                         DeprecationFilter,
                         OvertCommandListener)
@@ -56,6 +57,15 @@ class TestAllScenarios(IntegrationTest):
     @client_context.require_test_commands
     def setUpClass(cls):
         super(TestAllScenarios, cls).setUpClass()
+        # Speed up the tests by decreasing the heartbeat frequency.
+        cls.knobs = client_knobs(heartbeat_frequency=0.1,
+                                 min_heartbeat_interval=0.1)
+        cls.knobs.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.knobs.disable()
+        super(TestAllScenarios, cls).tearDownClass()
 
     def tearDown(self):
         client_context.client.admin.command(SON([
@@ -77,6 +87,9 @@ def create_test(scenario_def, test):
 
         # Set the failPoint
         self.set_fail_point(test['failPoint'])
+        self.addCleanup(self.set_fail_point, {
+            'configureFailPoint': test['failPoint']['configureFailPoint'],
+            'mode': 'off'})
 
         test_outcome = test['outcome']
         should_fail = test_outcome.get('error')
@@ -92,7 +105,7 @@ def create_test(scenario_def, test):
         if should_fail:
             self.assertIsNotNone(error, 'should have raised an error')
         else:
-            self.assertIsNone(error, 'should not have raised an error')
+            self.assertIsNone(error)
 
         # Assert final state is expected.
         expected_c = test_outcome.get('collection')
@@ -241,10 +254,19 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     @classmethod
     def setUpClass(cls):
         super(TestRetryableWrites, cls).setUpClass()
+        # Speed up the tests by decreasing the heartbeat frequency.
+        cls.knobs = client_knobs(heartbeat_frequency=0.1,
+                                 min_heartbeat_interval=0.1)
+        cls.knobs.enable()
         cls.listener = OvertCommandListener()
         cls.client = rs_or_single_client(
             retryWrites=True, event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.knobs.disable()
+        super(TestRetryableWrites, cls).tearDownClass()
 
     def setUp(self):
         if (client_context.version.at_least(3, 5) and client_context.is_rs
@@ -406,7 +428,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         coll = self.db.retryable_write_test
         coll.delete_many({})
         self.listener.results.clear()
-        coll.bulk_write([
+        bulk_result = coll.bulk_write([
             InsertOne({'_id': 1, 'l': large}),
             InsertOne({'_id': 2, 'l': large}),
             InsertOne({'_id': 3, 'l': large}),
@@ -418,6 +440,18 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         # Each command should fail and be retried.
         self.assertEqual(len(self.listener.results['started']), 14)
         self.assertEqual(coll.find_one(), {'_id': 1, 'count': 1})
+        # Assert the final result
+        expected_result = {
+            "writeErrors": [],
+            "writeConcernErrors": [],
+            "nInserted": 3,
+            "nUpserted": 0,
+            "nMatched": 2,
+            "nModified": 2,
+            "nRemoved": 2,
+            "upserted": [],
+        }
+        self.assertEqual(bulk_result.bulk_api_result, expected_result)
 
     @client_context.require_version_min(3, 5)
     @client_context.require_replica_set

@@ -571,7 +571,7 @@ class Collection(common.BaseObject):
                 if bypass_doc_val and sock_info.max_wire_version >= 4:
                     command['bypassDocumentValidation'] = True
 
-                return sock_info.command(
+                result = sock_info.command(
                     self.__database.name,
                     command,
                     codec_options=self.__write_response_codec_options,
@@ -580,9 +580,10 @@ class Collection(common.BaseObject):
                     client=self.__database.client,
                     retryable_write=retryable_write)
 
-            result = self.__database.client._retryable_write(
+                _check_write_command_response(result)
+
+            self.__database.client._retryable_write(
                 True, _insert_command, session)
-            _check_write_command_response(result)
         else:
             with self._socket_for_writes() as sock_info:
                 # Legacy OP_INSERT.
@@ -3191,14 +3192,16 @@ class Collection(common.BaseObject):
                 wc_doc = self.write_concern.document
                 if wc_doc:
                     cmd['writeConcern'] = wc_doc
-            return self._command(
+            result = self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 allowable_errors=[_NO_OBJ_ERROR], collation=collation,
                 session=session, retryable_write=retryable_write)
 
+            _check_write_command_response(result)
+            return result
+
         out = self.__database.client._retryable_write(
             acknowledged, _find_and_modify, None)
-        _check_write_command_response(out)
 
         if not out['ok']:
             if out["errmsg"] == _NO_OBJ_ERROR:

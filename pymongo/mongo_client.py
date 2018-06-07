@@ -54,6 +54,7 @@ from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
+                            BulkWriteError,
                             ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
@@ -1119,6 +1120,20 @@ class MongoClient(common.BaseObject):
                 raise
             except ConnectionFailure as exc:
                 if not retryable or is_retrying():
+                    raise
+                if bulk:
+                    bulk.retrying = True
+                else:
+                    retrying = True
+                last_error = exc
+            except BulkWriteError as exc:
+                if not retryable or is_retrying():
+                    raise
+                # Check the last writeConcernError to determine if this
+                # BulkWriteError is retryable.
+                wces = exc.details['writeConcernErrors']
+                wce = wces[-1] if wces else {}
+                if wce.get('code', 0) not in helpers._RETRYABLE_ERROR_CODES:
                     raise
                 if bulk:
                     bulk.retrying = True

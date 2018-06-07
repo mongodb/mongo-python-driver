@@ -16,6 +16,8 @@
 
 .. versionadded:: 2.7
 """
+import copy
+
 from itertools import islice
 
 from bson.objectid import ObjectId
@@ -25,13 +27,12 @@ from pymongo.common import (validate_is_mapping,
                             validate_is_document_type,
                             validate_ok_for_replace,
                             validate_ok_for_update)
+from pymongo.helpers import _RETRYABLE_ERROR_CODES, _raise_write_concern_error
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
-                            ConnectionFailure,
                             InvalidOperation,
-                            OperationFailure,
-                            ServerSelectionTimeoutError)
+                            OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
                              _do_batched_insert,
                              _do_batched_write_command,
@@ -90,46 +91,53 @@ class _Run(object):
         self.ops.append(operation)
 
 
-def _merge_command(run, full_result, results):
-    """Merge a group of results from write commands into the full result.
+def _merge_command(run, full_result, offset, result):
+    """Merge a write command result into the full bulk result.
     """
-    for offset, result in results:
+    affected = result.get("n", 0)
 
-        affected = result.get("n", 0)
+    if run.op_type == _INSERT:
+        full_result["nInserted"] += affected
 
-        if run.op_type == _INSERT:
-            full_result["nInserted"] += affected
+    elif run.op_type == _DELETE:
+        full_result["nRemoved"] += affected
 
-        elif run.op_type == _DELETE:
-            full_result["nRemoved"] += affected
+    elif run.op_type == _UPDATE:
+        upserted = result.get("upserted")
+        if upserted:
+            n_upserted = len(upserted)
+            for doc in upserted:
+                doc["index"] = run.index(doc["index"] + offset)
+            full_result["upserted"].extend(upserted)
+            full_result["nUpserted"] += n_upserted
+            full_result["nMatched"] += (affected - n_upserted)
+        else:
+            full_result["nMatched"] += affected
+        full_result["nModified"] += result["nModified"]
 
-        elif run.op_type == _UPDATE:
-            upserted = result.get("upserted")
-            if upserted:
-                n_upserted = len(upserted)
-                for doc in upserted:
-                    doc["index"] = run.index(doc["index"] + offset)
-                full_result["upserted"].extend(upserted)
-                full_result["nUpserted"] += n_upserted
-                full_result["nMatched"] += (affected - n_upserted)
-            else:
-                full_result["nMatched"] += affected
-            full_result["nModified"] += result["nModified"]
+    write_errors = result.get("writeErrors")
+    if write_errors:
+        for doc in write_errors:
+            # Leave the server response intact for APM.
+            replacement = doc.copy()
+            idx = doc["index"] + offset
+            replacement["index"] = run.index(idx)
+            # Add the failed operation to the error document.
+            replacement[_UOP] = run.ops[idx]
+            full_result["writeErrors"].append(replacement)
 
-        write_errors = result.get("writeErrors")
-        if write_errors:
-            for doc in write_errors:
-                # Leave the server response intact for APM.
-                replacement = doc.copy()
-                idx = doc["index"] + offset
-                replacement["index"] = run.index(idx)
-                # Add the failed operation to the error document.
-                replacement[_UOP] = run.ops[idx]
-                full_result["writeErrors"].append(replacement)
+    wc_error = result.get("writeConcernError")
+    if wc_error:
+        full_result["writeConcernErrors"].append(wc_error)
 
-        wc_error = result.get("writeConcernError")
-        if wc_error:
-            full_result["writeConcernErrors"].append(wc_error)
+
+def _raise_bulk_write_error(full_result):
+    """Raise a BulkWriteError from the full bulk api result.
+    """
+    if full_result["writeErrors"]:
+        full_result["writeErrors"].sort(
+            key=lambda error: error["index"])
+    raise BulkWriteError(full_result)
 
 
 class _Bulk(object):
@@ -270,7 +278,6 @@ class _Bulk(object):
             bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
                                     listeners, session)
 
-            results = []
             while run.idx_offset < len(run.ops):
                 if session:
                     session._apply_to(cmd, retryable, ReadPreference.PRIMARY)
@@ -285,14 +292,22 @@ class _Bulk(object):
                     raise InvalidOperation("cannot do an empty bulk write")
                 result = bwc.write_command(request_id, msg, to_send)
                 client._receive_cluster_time(result, session)
-                results.append((run.idx_offset, result))
+
+                # Retryable writeConcernErrors halt the execution of this run.
+                wce = result.get('writeConcernError', {})
+                if wce.get('code', 0) in _RETRYABLE_ERROR_CODES:
+                    # Synthesize the full bulk result without modifying the
+                    # current one because this write operation may be retried.
+                    full = copy.deepcopy(full_result)
+                    _merge_command(run, full, run.idx_offset, result)
+                    _raise_bulk_write_error(full)
+
+                _merge_command(run, full_result, run.idx_offset, result)
                 # We're no longer in a retry once a command succeeds.
                 self.retrying = False
                 if self.ordered and "writeErrors" in result:
                     break
                 run.idx_offset += len(to_send)
-
-            _merge_command(run, full_result, results)
 
             # We're supposed to continue if errors are
             # at the write concern level (e.g. wtimeout)
@@ -328,10 +343,7 @@ class _Bulk(object):
                 self.is_retryable, retryable_bulk, s, self)
 
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:
-            if full_result['writeErrors']:
-                full_result['writeErrors'].sort(
-                    key=lambda error: error['index'])
-            raise BulkWriteError(full_result)
+            _raise_bulk_write_error(full_result)
         return full_result
 
     def execute_insert_no_results(self, sock_info, run, op_id, acknowledged):
