@@ -34,6 +34,8 @@ from pymongo.saslprep import HAVE_STRINGPREP
 from test import client_context, SkipTest, unittest, Version
 from test.utils import (delay,
                         ignore_deprecations,
+                        single_client,
+                        rs_or_single_client,
                         rs_or_single_client_noauth,
                         single_client_noauth,
                         WhiteListEventListener)
@@ -382,6 +384,7 @@ class TestSCRAM(unittest.TestCase):
         client_context.client.testscram.command("dropAllUsersFromDatabase")
         client_context.client.drop_database("testscram")
 
+    @ignore_deprecations
     def test_scram(self):
         host, port = client_context.host, client_context.port
 
@@ -547,6 +550,50 @@ class TestSCRAM(unittest.TestCase):
             db = client.get_database(
                 'testscram', read_preference=ReadPreference.SECONDARY)
             db.command('dbstats')
+
+    def test_cache(self):
+        client = single_client()
+        # Force authentication.
+        client.admin.command('ismaster')
+        all_credentials = client._MongoClient__all_credentials
+        credentials = all_credentials.get('admin')
+        cache = credentials.cache
+        self.assertIsNotNone(cache)
+        keys = cache.data
+        self.assertIsNotNone(keys)
+        self.assertEqual(len(keys), 2)
+        for elt in keys:
+            self.assertIsInstance(elt, bytes)
+
+        pool = next(iter(client._topology._servers.values()))._pool
+        with pool.get_socket(all_credentials) as sock_info:
+            authset = sock_info.authset
+        cached = set(all_credentials.values())
+        self.assertEqual(len(cached), 1)
+        self.assertFalse(authset - cached)
+        self.assertFalse(cached - authset)
+
+        sock_credentials = next(iter(authset))
+        sock_cache = sock_credentials.cache
+        self.assertIsNotNone(sock_cache)
+        self.assertEqual(sock_cache.data, keys)
+
+    def test_scram_threaded(self):
+
+        coll = client_context.client.db.test
+        coll.drop()
+        coll.insert_one({'_id': 1})
+
+        # The first thread to call find() will authenticate
+        coll = rs_or_single_client().db.test
+        threads = []
+        for _ in range(4):
+            threads.append(AutoAuthenticateThread(coll))
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+            self.assertTrue(thread.success)
 
 
 class TestAuthURIOptions(unittest.TestCase):
