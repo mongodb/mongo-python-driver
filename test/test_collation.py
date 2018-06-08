@@ -170,6 +170,11 @@ class TestCollation(unittest.TestCase):
         self.assertCollationInLastCommand()
 
     @raisesConfigurationErrorForOldMongoDB
+    def test_count_documents(self):
+        self.db.test.count_documents({}, collation=self.collation)
+        self.assertCollationInLastCommand()
+
+    @raisesConfigurationErrorForOldMongoDB
     def test_distinct(self):
         self.db.test.distinct('foo', collation=self.collation)
         self.assertCollationInLastCommand()

@@ -1529,6 +1529,32 @@ class TestCollection(IntegrationTest):
         self.assertEqual(
             db.test.count({'foo': re.compile(r'ba.*')}), 2)
 
+    def test_count_documents(self):
+        db = self.db
+        db.drop_collection("test")
+        self.addCleanup(db.drop_collection, "test")
+
+        self.assertEqual(db.test.count_documents({}), 0)
+        db.wrong.insert_many([{}, {}])
+        self.assertEqual(db.test.count_documents({}), 0)
+        db.test.insert_many([{}, {}])
+        self.assertEqual(db.test.count_documents({}), 2)
+        db.test.insert_many([{'foo': 'bar'}, {'foo': 'baz'}])
+        self.assertEqual(db.test.count_documents({'foo': 'bar'}), 1)
+        self.assertEqual(
+            db.test.count_documents({'foo': re.compile(r'ba.*')}), 2)
+
+    def test_estimated_document_count(self):
+        db = self.db
+        db.drop_collection("test")
+        self.addCleanup(db.drop_collection, "test")
+
+        self.assertEqual(db.test.estimated_document_count(), 0)
+        db.wrong.insert_many([{}, {}])
+        self.assertEqual(db.test.estimated_document_count(), 0)
+        db.test.insert_many([{}, {}])
+        self.assertEqual(db.test.estimated_document_count(), 2)
+
     def test_aggregate(self):
         db = self.db
         db.drop_collection("test")

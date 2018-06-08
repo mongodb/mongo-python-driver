@@ -710,7 +710,11 @@ class Cursor(object):
         return self
 
     def count(self, with_limit_and_skip=False):
-        """Get the size of the results set for this query.
+        """**DEPRECATED** - Get the size of the results set for this query.
+
+        The :meth:`count` method is deprecated and **not** supported in a
+        transaction. Please use
+        :meth:`~pymongo.collection.Collection.count_documents` instead.
 
         Returns the number of documents in the results set for this query. Does
         not take :meth:`limit` and :meth:`skip` into account by default - set
@@ -735,6 +739,9 @@ class Cursor(object):
 
         .. note:: The `with_limit_and_skip` parameter requires server
            version **>= 1.1.4-**
+
+        .. versionchanged:: 3.7
+           Deprecated.
 
         .. versionchanged:: 2.8
            The :meth:`~count` method now supports :meth:`~hint`.

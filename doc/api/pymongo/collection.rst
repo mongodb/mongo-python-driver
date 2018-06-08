@@ -53,7 +53,8 @@
       .. automethod:: find_one_and_delete
       .. automethod:: find_one_and_replace(filter, replacement, projection=None, sort=None, return_document=ReturnDocument.BEFORE, session=None, **kwargs)
       .. automethod:: find_one_and_update(filter, update, projection=None, sort=None, return_document=ReturnDocument.BEFORE, array_filters=None, session=None, **kwargs)
-      .. automethod:: count
+      .. automethod:: count_documents
+      .. automethod:: estimated_document_count
       .. automethod:: distinct
       .. automethod:: create_index
       .. automethod:: create_indexes
@@ -71,6 +72,7 @@
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
       .. automethod:: group
+      .. automethod:: count
       .. automethod:: insert(doc_or_docs, manipulate=True, check_keys=True, continue_on_error=False, **kwargs)
       .. automethod:: save(to_save, manipulate=True, check_keys=True, **kwargs)
       .. automethod:: update(spec, document, upsert=False, manipulate=False, multi=False, check_keys=True, **kwargs)

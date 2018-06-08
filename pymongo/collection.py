@@ -1533,7 +1533,9 @@ class Collection(common.BaseObject):
         """Internal count helper."""
         with self._socket_for_reads(session) as (sock_info, slave_ok):
             res = self._command(
-                sock_info, cmd, slave_ok,
+                sock_info,
+                cmd,
+                slave_ok,
                 allowable_errors=["ns missing"],
                 codec_options=self.__write_response_codec_options,
                 read_concern=self.read_concern,
@@ -1543,23 +1545,117 @@ class Collection(common.BaseObject):
             return 0
         return int(res["n"])
 
+    def _aggregate_one_result(
+            self, sock_info, slave_ok, cmd, collation=None, session=None):
+        """Internal helper to run an aggregate that returns a single result."""
+        result = self._command(
+            sock_info,
+            cmd,
+            slave_ok,
+            codec_options=self.__write_response_codec_options,
+            read_concern=self.read_concern,
+            collation=collation,
+            session=session)
+        batch = result['cursor']['firstBatch']
+        return batch[0] if batch else None
+
+    def estimated_document_count(self, **kwargs):
+        """Get an estimate of the number of documents in this collection using
+        collection metadata.
+
+        The :meth:`estimated_document_count` method is **not** supported in a
+        transaction.
+
+        All optional parameters should be passed as keyword arguments
+        to this method. Valid options include:
+
+          - `maxTimeMS` (int): The maximum amount of time to allow this
+            operation to run, in milliseconds.
+
+        :Parameters:
+          - `**kwargs` (optional): See list of options above.
+
+        .. versionadded:: 3.7
+        """
+        cmd = SON([('count', self.__name)])
+        cmd.update(kwargs)
+        return self._count(cmd)
+
+    def count_documents(self, filter, session=None, **kwargs):
+        """Count the number of documents in this collection.
+
+        The :meth:`count_documents` method is supported in a transaction.
+
+        All optional parameters should be passed as keyword arguments
+        to this method. Valid options include:
+
+          - `skip` (int): The number of matching documents to skip before
+            returning results.
+          - `limit` (int): The maximum number of documents to count.
+          - `maxTimeMS` (int): The maximum amount of time to allow this
+            operation to run, in milliseconds.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`. This option is only supported
+            on MongoDB 3.4 and above.
+          - `hint` (string or list of tuples): The index to use. Specify either
+            the index name as a string or the index specification as a list of
+            tuples (e.g. [('a', pymongo.ASCENDING), ('b', pymongo.ASCENDING)]).
+            This option is only supported on MongoDB 3.6 and above.
+
+        The :meth:`count_documents` method obeys the :attr:`read_preference` of
+        this :class:`Collection`.
+
+        :Parameters:
+          - `filter` (required): A query document that selects which documents
+            to count in the collection. Can be an empty document to count all
+            documents.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): See list of options above.
+
+        .. versionadded:: 3.7
+        """
+        pipeline = [{'$match': filter}]
+        if 'skip' in kwargs:
+            pipeline.append({'$skip': kwargs.pop('skip')})
+        if 'limit' in kwargs:
+            pipeline.append({'$limit': kwargs.pop('limit')})
+        pipeline.append({'$group': {'_id': None, 'n': {'$sum': 1}}})
+        cmd = SON([('aggregate', self.__name),
+                   ('pipeline', pipeline),
+                   ('cursor', {})])
+        if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
+            kwargs["hint"] = helpers._index_document(kwargs["hint"])
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        cmd.update(kwargs)
+        with self._socket_for_reads(session) as (sock_info, slave_ok):
+            result = self._aggregate_one_result(
+                sock_info, slave_ok, cmd, collation, session)
+        if not result:
+            return 0
+        return result['n']
+
     def count(self, filter=None, session=None, **kwargs):
-        """Get the number of documents in this collection.
+        """**DEPRECATED** - Get the number of documents in this collection.
+
+        The :meth:`count` method is deprecated and **not** supported in a
+        transaction. Please use :meth:`count_documents` or
+        :meth:`estimated_document_count` instead.
 
         All optional count parameters should be passed as keyword arguments
         to this method. Valid options include:
 
-          - `hint` (string or list of tuples): The index to use. Specify either
-            the index name as a string or the index specification as a list of
-            tuples (e.g. [('a', pymongo.ASCENDING), ('b', pymongo.ASCENDING)]).
-          - `limit` (int): The maximum number of documents to count.
           - `skip` (int): The number of matching documents to skip before
             returning results.
+          - `limit` (int): The maximum number of documents to count.
           - `maxTimeMS` (int): The maximum amount of time to allow the count
             command to run, in milliseconds.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `hint` (string or list of tuples): The index to use. Specify either
+            the index name as a string or the index specification as a list of
+            tuples (e.g. [('a', pymongo.ASCENDING), ('b', pymongo.ASCENDING)]).
 
         The :meth:`count` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
@@ -1570,6 +1666,9 @@ class Collection(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): See list of options above.
+
+        .. versionchanged:: 3.7
+           Deprecated.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.

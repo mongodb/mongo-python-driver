@@ -436,6 +436,14 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
     def test_count(self):
         self._test_coll_helper(True, self.c.pymongo_test.test, 'count')
 
+    def test_count_documents(self):
+        self._test_coll_helper(
+            True, self.c.pymongo_test.test, 'count_documents', {})
+
+    def test_estimated_document_count(self):
+        self._test_coll_helper(
+            True, self.c.pymongo_test.test, 'estimated_document_count')
+
     def test_distinct(self):
         self._test_coll_helper(True, self.c.pymongo_test.test, 'distinct', 'a')
 
