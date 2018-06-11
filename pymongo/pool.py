@@ -29,6 +29,12 @@ except ImportError:
     class SSLError(socket.error):
         pass
 
+try:
+    from ssl import CertificateError as _SSLCertificateError
+except ImportError:
+    class _SSLCertificateError(ValueError):
+        pass
+
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import imap, itervalues, _unicode, integer_types
@@ -252,7 +258,7 @@ else:
 u'foo'.encode('idna')
 
 
-def _raise_connection_failure(address, error):
+def _raise_connection_failure(address, error, msg_prefix=None):
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
     # If connecting to a Unix socket, port will be None.
@@ -260,6 +266,8 @@ def _raise_connection_failure(address, error):
         msg = '%s:%d: %s' % (host, port, error)
     else:
         msg = '%s: %s' % (host, error)
+    if msg_prefix:
+        msg = msg_prefix + msg
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg)
     elif isinstance(error, SSLError) and 'timed out' in str(error):
@@ -833,9 +841,17 @@ def _configured_socket(address, options):
                 sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
                 sock = ssl_context.wrap_socket(sock)
+        except _SSLCertificateError:
+            sock.close()
+            # Raise CertificateError directly like we do after match_hostname
+            # below.
+            raise
         except IOError as exc:
             sock.close()
-            raise ConnectionFailure("SSL handshake failed: %s" % (str(exc),))
+            # We raise AutoReconnect for transient and permanent SSL handshake
+            # failures alike. Permanent handshake failures, like protocol
+            # mismatch, will be turned into ServerSelectionTimeoutErrors later.
+            _raise_connection_failure(address, exc, "SSL handshake failed: ")
         if (ssl_context.verify_mode and not
                 getattr(ssl_context, "check_hostname", False) and
                 options.ssl_match_hostname):
