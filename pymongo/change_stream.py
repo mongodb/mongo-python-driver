@@ -29,13 +29,14 @@ class ChangeStream(object):
     .. versionadded: 3.6
     .. mongodoc:: changeStreams
     """
-    def __init__(self, collection, pipeline, full_document,
+    def __init__(self, target, pipeline, full_document,
                  resume_after=None, max_await_time_ms=None, batch_size=None,
-                 collation=None, session=None):
-        self._collection = collection
+                 collation=None, session=None, cluster_changes=False):
+        self._target = target
         self._pipeline = copy.deepcopy(pipeline)
         self._full_document = full_document
         self._resume_token = copy.deepcopy(resume_after)
+        self._cluster_changes = cluster_changes
         self._max_await_time_ms = max_await_time_ms
         self._batch_size = batch_size
         self._collation = collation
@@ -45,6 +46,8 @@ class ChangeStream(object):
     def _full_pipeline(self):
         """Return the full aggregation pipeline for this ChangeStream."""
         options = {}
+        if self._cluster_changes is True:
+            options['allChangesForCluster'] = True
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
         if self._resume_token is not None:
@@ -55,7 +58,7 @@ class ChangeStream(object):
 
     def _create_cursor(self):
         """Initialize the cursor or raise a fatal error"""
-        return self._collection.aggregate(
+        return self._target._cs_aggregate(
             self._full_pipeline(), self._session, batchSize=self._batch_size,
             collation=self._collation, maxAwaitTimeMS=self._max_await_time_ms)
 
@@ -74,6 +77,7 @@ class ChangeStream(object):
 
         Raises :exc:`StopIteration` if this ChangeStream is closed.
         """
+        #import ipdb as pdb; pdb.set_trace()
         while True:
             try:
                 change = self._cursor.next()

@@ -2166,6 +2166,9 @@ class Collection(common.BaseObject):
 
         return options
 
+    def _cs_aggregate(self, *args, **kwargs):
+        return self.aggregate(*args, **kwargs)
+
     def _aggregate(self, pipeline, cursor_class, first_batch_size, session,
                    explicit_session, **kwargs):
         common.validate_list('pipeline', pipeline)
@@ -2435,6 +2438,7 @@ class Collection(common.BaseObject):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams.rst
         """
+        #import ipdb as pdb; pdb.set_trace()
         if pipeline is None:
             pipeline = []
         else:
