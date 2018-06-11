@@ -124,12 +124,14 @@ class TestChangeStream(IntegrationTest):
             num_inserted = 10
             self.coll.insert_many([{} for _ in range(num_inserted)])
             self.coll.drop()
-            received = 0
+            inserts_received = 0
             for change in change_stream:
-                received += 1
-                if change['operationType'] != 'invalidate':
+                if change['operationType'] not in ('drop', 'invalidate'):
                     self.assertEqual(change['operationType'], 'insert')
-            self.assertEqual(num_inserted + 1, received)
+                    inserts_received += 1
+            self.assertEqual(num_inserted, inserts_received)
+            # Last change should be invalidate.
+            self.assertEqual(change['operationType'], 'invalidate')
             with self.assertRaises(StopIteration):
                 change_stream.next()
             with self.assertRaises(StopIteration):
@@ -312,6 +314,12 @@ class TestChangeStream(IntegrationTest):
             # Invalidate.
             self.coll.drop()
             change = change_stream.next()
+            # 4.1 returns a "drop" change document.
+            if change['operationType'] == 'drop':
+                self.assertTrue(change['_id'])
+                self.assertEqual(change['ns'], expected_ns)
+                # Last change should be invalidate.
+                change = change_stream.next()
             self.assertTrue(change['_id'])
             self.assertEqual(change['operationType'], 'invalidate')
             self.assertNotIn('ns', change)
