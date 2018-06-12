@@ -2166,9 +2166,6 @@ class Collection(common.BaseObject):
 
         return options
 
-    def _cs_aggregate(self, *args, **kwargs):
-        return self.aggregate(*args, **kwargs)
-
     def _aggregate(self, pipeline, cursor_class, first_batch_size, session,
                    explicit_session, **kwargs):
         common.validate_list('pipeline', pipeline)

@@ -405,17 +405,6 @@ class Database(common.BaseObject):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
-    def _cs_aggregate(self, pipeline, session=None, **kwargs):
-        with self.client._tmp_session(session, close=False) as s:
-            return self._aggregate(
-                pipeline,
-                CommandCursor,
-                kwargs.get('batchSize'),
-                session=s,
-                explicit_session=session is not None,
-                **kwargs
-            )
-
     def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
               session=None):
@@ -431,97 +420,6 @@ class Database(common.BaseObject):
             self, pipeline, full_document, resume_after, max_await_time_ms,
             batch_size, collation, session
         )
-
-    def _aggregate(self, pipeline, cursor_class, first_batch_size,
-                   session, explicit_session, **kwargs):
-        common.validate_list('pipeline', pipeline)
-
-        if "explain" in kwargs:
-            raise ConfigurationError("The explain option is not supported. "
-                                     "Use Database.command instead.")
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        max_await_time_ms = kwargs.pop('maxAwaitTimeMS', None)
-
-        cmd = SON([("aggregate", 1),
-                   ("pipeline", pipeline)])
-
-        # Remove things that are not command options.
-        use_cursor = True
-        if "useCursor" in kwargs:
-            warnings.warn(
-                "The useCursor option is deprecated "
-                "and will be removed in PyMongo 4.0",
-                DeprecationWarning, stacklevel=2)
-            use_cursor = common.validate_boolean(
-                "useCursor", kwargs.pop("useCursor"))
-        batch_size = common.validate_non_negative_integer_or_none(
-            "batchSize", kwargs.pop("batchSize", None))
-        # If the server does not support the "cursor" option we
-        # ignore useCursor and batchSize.
-        with self.client._socket_for_reads(self._read_preference_for(session)) as (sock_info, slave_ok):
-            dollar_out = pipeline and '$out' in pipeline[-1]
-            if use_cursor:
-                if "cursor" not in kwargs:
-                    kwargs["cursor"] = {}
-                # Ignore batchSize when the $out pipeline stage is used.
-                # batchSize is meaningless in that case since the server
-                # doesn't return results. This also avoids SERVER-23923.
-                if first_batch_size is not None and not dollar_out:
-                    kwargs["cursor"]["batchSize"] = first_batch_size
-
-            if (sock_info.max_wire_version >= 5 and dollar_out and
-                    self.write_concern):
-                cmd['writeConcern'] = self.write_concern.document
-
-            cmd.update(kwargs)
-            # Apply this Collection's read concern if $out is not in the
-            # pipeline.
-            if (sock_info.max_wire_version >= 4
-                    and 'readConcern' not in cmd
-                    and not dollar_out):
-                read_concern = self.read_concern
-            else:
-                read_concern = None
-
-            # Avoid auto-injecting a session: aggregate() passes a session,
-            # aggregate_raw_batches() passes none.
-            result = sock_info.command(
-                self.name,
-                cmd,
-                slave_ok,
-                self._read_preference_for(session),
-                self.codec_options,
-                parse_write_concern_error=True,
-                read_concern=read_concern,
-                collation=collation,
-                session=session,
-                client=self.client)
-
-            if "cursor" in result:
-                cursor = result["cursor"]
-            else:
-                # Pre-MongoDB 2.6. Fake a cursor.
-                cursor = {
-                    "id": 0,
-                    "firstBatch": result["result"],
-                    "ns": self.full_name,
-                }
-
-            # Construct collection
-            ns = cursor["ns"]
-            _, collname = ns.split(".", 1)
-            aggregation_collection = Collection(
-                self, collname, codec_options=self.codec_options,
-                read_preference=self._read_preference_for(session),
-                write_concern=self.write_concern,
-                read_concern=self.read_concern
-            )
-
-            return cursor_class(
-                aggregation_collection, cursor, sock_info.address,
-                batch_size=batch_size or 0,
-                max_await_time_ms=max_await_time_ms,
-                session=session, explicit_session=explicit_session)
 
     def _command(self, sock_info, command, slave_ok=False, value=1, check=True,
                  allowable_errors=None, read_preference=ReadPreference.PRIMARY,
