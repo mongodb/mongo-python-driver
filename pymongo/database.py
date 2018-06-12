@@ -419,7 +419,6 @@ class Database(common.BaseObject):
     def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
               session=None):
-        #import ipdb as pdb; pdb.set_trace()
         if pipeline is None:
             pipeline = []
         else:

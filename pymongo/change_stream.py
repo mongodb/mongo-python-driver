@@ -90,7 +90,6 @@ class ChangeStream(object):
 
         Raises :exc:`StopIteration` if this ChangeStream is closed.
         """
-        #import ipdb as pdb; pdb.set_trace()
         while True:
             try:
                 change = self._cursor.next()
@@ -134,9 +133,6 @@ class ChangeStreamCollection(ChangeStream):
             self._full_pipeline(), self._session, batchSize=self._batch_size,
             collation=self._collation, maxAwaitTimeMS=self._max_await_time_ms,
         )
-
-    def _default_start_at_operation_time(self):
-       return self._target.database.command('isMaster')['operationTime']
 
     @property
     def _database(self):

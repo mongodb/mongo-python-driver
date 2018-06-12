@@ -2438,7 +2438,6 @@ class Collection(common.BaseObject):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams.rst
         """
-        #import ipdb as pdb; pdb.set_trace()
         if pipeline is None:
             pipeline = []
         else:
