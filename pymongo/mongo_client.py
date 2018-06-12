@@ -50,7 +50,7 @@ from pymongo import (common,
                      periodic_executor,
                      uri_parser,
                      client_session)
-from pymongo.change_stream import ChangeStream
+from pymongo.change_stream import ChangeStreamClient
 from pymongo.client_options import ClientOptions
 from pymongo.collation import validate_collation_or_none
 from pymongo.collection import Collection
@@ -715,9 +715,10 @@ class MongoClient(common.BaseObject):
 
         common.validate_string_or_none('full_document', full_document)
 
-        return ChangeStream(self, pipeline, full_document, resume_after,
-                            max_await_time_ms, batch_size, collation, session,
-                            True)
+        return ChangeStreamClient(
+            self, pipeline, full_document, resume_after, max_await_time_ms,
+            batch_size, collation, session
+        )
 
     def _aggregate(self, pipeline, cursor_class, first_batch_size,
                    session, explicit_session, **kwargs):

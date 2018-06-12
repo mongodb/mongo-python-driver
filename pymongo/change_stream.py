@@ -16,38 +16,57 @@
 
 import copy
 
+from bson.son import SON
+
+from pymongo import common
+from pymongo.collation import validate_collation_or_none
+from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (ConnectionFailure, CursorNotFound,
                             InvalidOperation, PyMongoError)
 
 
 class ChangeStream(object):
-    """A change stream cursor.
+    """The change stream cursor base class.
 
     Should not be called directly by application developers. Use
-    :meth:`~pymongo.collection.Collection.watch` instead.
+    helper methods :meth:`~pymongo.collection.Collection.watch`,
+    :meth:`~pymongo.database.Database.watch`, and
+    :meth:`~pymongo.mongo_client.MongoClient` instead.
 
     .. versionadded: 3.6
     .. mongodoc:: changeStreams
     """
     def __init__(self, target, pipeline, full_document,
                  resume_after=None, max_await_time_ms=None, batch_size=None,
-                 collation=None, session=None, cluster_changes=False):
+                 collation=None, start_at_operation_time=None, session=None):
         self._target = target
         self._pipeline = copy.deepcopy(pipeline)
         self._full_document = full_document
         self._resume_token = copy.deepcopy(resume_after)
-        self._cluster_changes = cluster_changes
         self._max_await_time_ms = max_await_time_ms
         self._batch_size = batch_size
         self._collation = collation
+        self._start_at_operation_time = (
+            start_at_operation_time or self._default_start_at_operation_time()
+        )
         self._session = session
         self._cursor = self._create_cursor()
 
-    def _full_pipeline(self):
+    def _default_start_at_operation_time(self):
+        """
+        Return the current operationTime timestamp from the server.
+        """
+        return self._database.command('isMaster')['operationTime']
+
+    def _create_cursor(self):
+        """
+        Instantiate the cursor corresponding to this ChangeStream.
+        """
+        raise NotImplementedError
+
+    def _full_pipeline(self, options={}):
         """Return the full aggregation pipeline for this ChangeStream."""
-        options = {}
-        if self._cluster_changes is True:
-            options['allChangesForCluster'] = True
+        options['startAtOperationTime'] = self._start_at_operation_time
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
         if self._resume_token is not None:
@@ -55,12 +74,6 @@ class ChangeStream(object):
         full_pipeline = [{'$changeStream': options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
-
-    def _create_cursor(self):
-        """Initialize the cursor or raise a fatal error"""
-        return self._target._cs_aggregate(
-            self._full_pipeline(), self._session, batchSize=self._batch_size,
-            collation=self._collation, maxAwaitTimeMS=self._max_await_time_ms)
 
     def close(self):
         """Close this ChangeStream."""
@@ -105,3 +118,103 @@ class ChangeStream(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    @property
+    def _database(self):
+        """The database against which the aggregation commands for
+        this ChangeStream will be run. """
+        raise NotImplementedError
+
+
+class ChangeStreamCollection(ChangeStream):
+    """ Class for creating a change stream on a collection. """
+
+    def _create_cursor(self):
+        return self._target.aggregate(
+            self._full_pipeline(), self._session, batchSize=self._batch_size,
+            collation=self._collation, maxAwaitTimeMS=self._max_await_time_ms,
+        )
+
+    def _default_start_at_operation_time(self):
+       return self._target.database.command('isMaster')['operationTime']
+
+    @property
+    def _database(self):
+        return self._target.database
+
+
+class ChangeStreamDatabase(ChangeStream):
+    """ Class for creating a change stream on all collections in a database.
+    """
+
+    def _run_aggregation_cmd(self, pipeline, session, explicit_session):
+        """Run the full aggregation pipeline for this ChangeStream and return
+        the corresponding CommandCursor.
+        """
+        common.validate_list('pipeline', pipeline)
+        validate_collation_or_none(self._collation)
+        common.validate_non_negative_integer_or_none(
+            "batchSize", self._batch_size
+        )
+
+        cmd = SON([("aggregate", 1),
+                   ("pipeline", pipeline),
+                   ("cursor", {})])
+
+        with self._database.client._socket_for_reads(self._target._read_preference_for(session)) as (sock_info, slave_ok):
+            # Avoid auto-injecting a session: aggregate() passes a session,
+            # aggregate_raw_batches() passes none.
+            result = sock_info.command(
+                self._database.name,
+                cmd,
+                slave_ok,
+                self._target._read_preference_for(session),
+                self._target.codec_options,
+                parse_write_concern_error=True,
+                read_concern=self._target.read_concern,
+                collation=self._collation,
+                session=session,
+                client=self._database.client)
+
+            cursor = result["cursor"]
+            ns = cursor["ns"]
+            _, collname = ns.split(".", 1)
+            aggregation_collection = self._database.get_collection(
+                collname, codec_options=self._target.codec_options,
+                read_preference=self._target._read_preference_for(session),
+                write_concern=self._target.write_concern,
+                read_concern=self._target.read_concern
+            )
+
+            return CommandCursor(
+                aggregation_collection, cursor, sock_info.address,
+                batch_size=self._batch_size or 0,
+                max_await_time_ms=self._max_await_time_ms,
+                session=session, explicit_session=explicit_session
+            )
+
+    def _create_cursor(self):
+        with self._database.client._tmp_session(self._session, close=False) as s:
+            return self._run_aggregation_cmd(
+                self._full_pipeline(),
+                session=s,
+                explicit_session=self._session is not None
+            )
+
+    @property
+    def _database(self):
+        return self._target
+
+
+class ChangeStreamClient(ChangeStreamDatabase):
+    """ Class for creating a change stream on all collections on a cluster. """
+
+    def _full_pipeline(self, options={}):
+        options["allChangesForCluster"] = True
+        full_pipeline = super(ChangeStreamClient, self)._full_pipeline(options)
+        return full_pipeline
+
+    @property
+    def _database(self):
+        # $changeStream aggregation operations are performed on admin DB.
+        return getattr(self._target, "admin")

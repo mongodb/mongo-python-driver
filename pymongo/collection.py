@@ -33,7 +33,7 @@ from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.common import ORDERED_TYPES
 from pymongo.collation import validate_collation_or_none
-from pymongo.change_stream import ChangeStream
+from pymongo.change_stream import ChangeStreamCollection
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
@@ -2447,8 +2447,10 @@ class Collection(common.BaseObject):
 
         common.validate_string_or_none('full_document', full_document)
 
-        return ChangeStream(self, pipeline, full_document, resume_after,
-                            max_await_time_ms, batch_size, collation, session)
+        return ChangeStreamCollection(
+            self, pipeline, full_document, resume_after, max_await_time_ms,
+            batch_size, collation, session
+        )
 
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.
