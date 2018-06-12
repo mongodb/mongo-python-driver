@@ -271,7 +271,6 @@ class TestCommandMonitoring(PyMongoTestCase):
     def test_find_options(self):
         query = dict(filter={},
                      hint=[('x', 1)],
-                     max_scan=10,
                      max_time_ms=10000,
                      max={'x': 10},
                      min={'x': -10},
@@ -289,7 +288,6 @@ class TestCommandMonitoring(PyMongoTestCase):
                    filter={},
                    hint=SON([('x', 1)]),
                    comment='this is a test',
-                   maxScan=10,
                    maxTimeMS=10000,
                    max={'x': 10},
                    min={'x': -10},
@@ -301,6 +299,10 @@ class TestCommandMonitoring(PyMongoTestCase):
                    batchSize=2,
                    noCursorTimeout=True,
                    allowPartialResults=True)
+
+        if client_context.version < (4, 1, 0, -1):
+            query['max_scan'] = 10
+            cmd['maxScan'] = 10
 
         self._test_find_options(query, cmd)
 
