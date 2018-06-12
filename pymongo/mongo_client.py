@@ -52,8 +52,6 @@ from pymongo import (common,
                      client_session)
 from pymongo.change_stream import ChangeStreamClient
 from pymongo.client_options import ClientOptions
-from pymongo.collation import validate_collation_or_none
-from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
@@ -692,17 +690,9 @@ class MongoClient(common.BaseObject):
 
         return getattr(server.description, attr_name)
 
-    def watch(self, pipeline=None, full_document='default', resume_after=None,
+    def watch(self, pipeline=[], full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
               session=None):
-        if pipeline is None:
-            pipeline = []
-        else:
-            if not isinstance(pipeline, list):
-                raise TypeError("pipeline must be a list")
-
-        common.validate_string_or_none('full_document', full_document)
-
         return ChangeStreamClient(
             self, pipeline, full_document, resume_after, max_await_time_ms,
             batch_size, collation, session

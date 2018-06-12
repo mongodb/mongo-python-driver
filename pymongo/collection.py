@@ -2353,7 +2353,7 @@ class Collection(common.BaseObject):
         return self._aggregate(pipeline, RawBatchCommandCursor, 0,
                                None, False, **kwargs)
 
-    def watch(self, pipeline=None, full_document='default', resume_after=None,
+    def watch(self, pipeline=[], full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
               session=None):
         """Watch changes on this collection.
@@ -2435,14 +2435,6 @@ class Collection(common.BaseObject):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams.rst
         """
-        if pipeline is None:
-            pipeline = []
-        else:
-            if not isinstance(pipeline, list):
-                raise TypeError("pipeline must be a list")
-
-        common.validate_string_or_none('full_document', full_document)
-
         return ChangeStreamCollection(
             self, pipeline, full_document, resume_after, max_await_time_ms,
             batch_size, collation, session

@@ -39,6 +39,12 @@ class ChangeStream(object):
     def __init__(self, target, pipeline, full_document,
                  resume_after=None, max_await_time_ms=None, batch_size=None,
                  collation=None, start_at_operation_time=None, session=None):
+        # Validate inputs
+        if not isinstance(pipeline, list):
+            raise TypeError("pipeline must be a list")
+        common.validate_string_or_none('full_document', full_document)
+
+        # Initialize class
         self._target = target
         self._pipeline = copy.deepcopy(pipeline)
         self._full_document = full_document
