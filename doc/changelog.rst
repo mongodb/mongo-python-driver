@@ -6,21 +6,61 @@ Changes in Version 3.7.0
 
 Version 3.7 adds support for MongoDB 4.0. Highlights include:
 
-- Support for multi-document transactions, see :ref:`transactions-ref`.
-- Support for the SCRAM-SHA-256 authentication mechanism.
+- Support for single replica set multi-document ACID transactions.
+  See :ref:`transactions-ref`.
+- Support for wire protocol compression. See the
+  :meth:`~pymongo.mongo_client.MongoClient` documentation for details.
 - Support for Python 3.7.
-- Support for wire protocol compression. See
-  :meth:`~pymongo.mongo_client.MongoClient` for details.
-- MD5 is now optional in GridFS.
-- If not specified, the authSource for the PLAIN authentication mechanism
-  defaults to $external.
+- New count methods, :meth:`~pymongo.collection.Collection.count_documents`
+  and :meth:`~pymongo.collection.Collection.estimated_document_count`.
+  :meth:`~pymongo.collection.Collection.count_documents` is always
+  accurate when used with MongoDB 3.6+, or when used with older standalone
+  or replica set deployments. With older sharded clusters is it always
+  accurate when used with Primary read preference. It can also be used in
+  a transaction, unlike the now deprecated
+  :meth:`pymongo.collection.Collection.count` and
+  :meth:`pymongo.cursor.Cursor.count` methods.
+- Better support for using PyMongo in a FIPS 140-2 environment. Specifically,
+  the following features and changes allow PyMongo to function when MD5 support
+  is disabled in OpenSSL by the FIPS Object Module:
+
+  - Support for the :ref:`SCRAM-SHA-256 <scram_sha_256>`
+    authentication mechanism. The :ref:`GSSAPI <gssapi>`,
+    :ref:`PLAIN <sasl_plain>`, and :ref:`MONGODB-X509 <mongodb_x509>`
+    mechanisms can also be used to avoid issues with OpenSSL in FIPS
+    environments.
+  - MD5 checksums are now optional in GridFS. See the `disable_md5` option
+    of :class:`~gridfs.GridFS` and :class:`~gridfs.GridFSBucket`.
+  - :class:`~bson.objectid.ObjectId` machine bytes are now hashed using
+    `FNV-1a
+    <https://en.wikipedia.org/wiki/Fowler-Noll-Vo_hash_function>`_
+    instead of MD5.
+
+- The :meth:`~pymongo.database.Database.list_collection_names` and
+  :meth:`~pymongo.database.Database.collection_names` methods use
+  the nameOnly option when supported by MongoDB.
+- SCRAM client and server keys are cached for improved performance, following
+  `RFC 5802 <https://tools.ietf.org/html/rfc5802>`_.
+- If not specified, the authSource for the :ref:`PLAIN <sasl_plain>`
+  authentication mechanism defaults to $external.
 - wtimeoutMS is once again supported as a URI option.
-- Deprecate the snapshot option of :meth:`~pymongo.collection.Collection.find`
+
+Deprecations:
+
+- Deprecated :meth:`pymongo.collection.Collection.count` and
+  :meth:`pymongo.cursor.Cursor.count`. These two methods use the `count`
+  command and `may or may not be accurate
+  <https://docs.mongodb.com/manual/reference/command/count/#behavior>`_,
+  depending on the options used and connected MongoDB topology. Use
+  :meth:`~pymongo.collection.Collection.count_documents` instead.
+- Deprecated the snapshot option of :meth:`~pymongo.collection.Collection.find`
   and :meth:`~pymongo.collection.Collection.find_one`. The option was
   deprecated in MongoDB 3.6 and removed in MongoDB 4.0.
-- Deprecate the max_scan option of :meth:`~pymongo.collection.Collection.find`
+- Deprecated the max_scan option of :meth:`~pymongo.collection.Collection.find`
   and :meth:`~pymongo.collection.Collection.find_one`. The option was
-  deprecated in MongoDB 4.0.
+  deprecated in MongoDB 4.0. Use `maxTimeMS` instead.
+- Deprecated :meth:`~pymongo.mongo_client.MongoClient.close_cursor`. Use
+  :meth:`~pymongo.cursor.Cursor.close` instead.
 
 Unavoidable breaking changes:
 
@@ -30,6 +70,8 @@ Unavoidable breaking changes:
   PrimarySteppedDown, ShutdownInProgress respectively) now always raise
   :class:`~pymongo.errors.NotMasterError` instead of
   :class:`~pymongo.errors.OperationFailure`.
+- :meth:`~pymongo.collection.Collection.parallel_scan` no longer uses an
+  implicit session. Explicit sessions are still supported.
 
 
 Issues Resolved
@@ -1394,7 +1436,7 @@ Version 2.5 includes changes to support new features in MongoDB 2.4.
 
 Important new features:
 
-- Support for :ref:`GSSAPI (Kerberos) authentication <use_kerberos>`.
+- Support for :ref:`GSSAPI (Kerberos) authentication <gssapi>`.
 - Support for SSL certificate validation with hostname matching.
 - Support for delegated and role based authentication.
 - New GEOSPHERE (2dsphere) and HASHED index constants.

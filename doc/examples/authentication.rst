@@ -23,6 +23,8 @@ Python 2, to be used in a MongoDB URI. For example, in Python 3::
   >>> MongoClient('mongodb://%s:%s@127.0.0.1' % (username, password))
   ...
 
+.. _scram_sha_256:
+
 SCRAM-SHA-256 (RFC 7677)
 ------------------------
 .. versionadded:: 3.7
@@ -116,6 +118,8 @@ will be "default_db"::
     >>> print(db.name)
     'default_db'
 
+.. _mongodb_x509:
+
 MONGODB-X509
 ------------
 .. versionadded:: 2.6
@@ -150,7 +154,7 @@ do not have to specify a database in the URI::
 .. versionchanged:: 3.4
   When connected to MongoDB >= 3.4 the username is no longer required.
 
-.. _use_kerberos:
+.. _gssapi:
 
 GSSAPI (Kerberos)
 -----------------
@@ -219,6 +223,8 @@ Two extra ``authMechanismProperties`` are supported on Windows platforms:
 .. _pykerberos: https://pypi.python.org/pypi/pykerberos
 .. _winkerberos: https://pypi.python.org/pypi/winkerberos/
 
+.. _sasl_plain:
+
 SASL PLAIN (RFC 4616)
 ---------------------
 .. versionadded:: 2.6
@@ -229,7 +235,7 @@ to an LDAP server. Using the PLAIN mechanism is very similar to MONGODB-CR.
 These examples use the $external virtual database for LDAP support::
 
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN&authSource=$external"
+  >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN"
   >>> client = MongoClient(uri)
   >>>
 
@@ -239,7 +245,7 @@ the SASL PLAIN mechanism::
 
   >>> import ssl
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN&authSource=$external"
+  >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN"
   >>> client = MongoClient(uri,
   ...                      ssl=True,
   ...                      ssl_certfile='/path/to/client.pem',
