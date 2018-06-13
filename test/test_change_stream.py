@@ -37,7 +37,7 @@ from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 
 from test import client_context, unittest, IntegrationTest
-from test.utils import WhiteListEventListener, rs_or_single_client
+from test.utils import IGNORE, WhiteListEventListener, rs_or_single_client
 
 
 class TestChangeStream(IntegrationTest):
@@ -108,16 +108,20 @@ class TestChangeStream(IntegrationTest):
         coll = client[self.db.name][self.coll.name]
 
         with coll.watch([{'$project': {'foo': 0}}]) as change_stream:
-            self.assertEqual([{'$changeStream': {'fullDocument': 'default'}},
-                              {'$project': {'foo': 0}}],
-                             change_stream._full_pipeline())
+            self.assertEqual([
+                {'$changeStream': {'fullDocument': 'default',
+                                   'startAtOperationTime': IGNORE}},
+                {'$project': {'foo': 0},}
+                ], change_stream._full_pipeline())
 
         self.assertEqual(1, len(results['started']))
         command = results['started'][0]
         self.assertEqual('aggregate', command.command_name)
-        self.assertEqual([{'$changeStream':  {'fullDocument': 'default'}},
-                          {'$project': {'foo': 0}}],
-                         command.command['pipeline'])
+        self.assertEqual([
+            {'$changeStream':  {'fullDocument': 'default',
+                                'startAtOperationTime': IGNORE}},
+            {'$project': {'foo': 0}}
+            ], command.command['pipeline'])
 
     def test_iteration(self):
         with self.coll.watch(batch_size=2) as change_stream:
@@ -361,6 +365,7 @@ class TestChangeStream(IntegrationTest):
 
     def test_document_id_order(self):
         """Test with document _ids that need their order preserved."""
+        #import ipdb as pdb; pdb.set_trace()
         random_keys = random.sample(string.ascii_letters,
                                     len(string.ascii_letters))
         random_doc = {'_id': SON([(key, key) for key in random_keys])}

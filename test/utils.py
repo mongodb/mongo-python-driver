@@ -121,6 +121,18 @@ class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
         self.results.append(event)
 
 
+class _Ignore(object):
+    """Dummy class that always evaluates to True when checked for equality."""
+    def __repr__(self):
+        return "IGNORE"
+
+    def __eq__(self, other):
+        return True
+
+
+IGNORE = _Ignore()
+
+
 def _connection_string(h, p, authenticate):
     if h.startswith("mongodb://"):
         return h

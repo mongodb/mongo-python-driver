@@ -26,15 +26,11 @@ from pymongo.errors import (ConnectionFailure, CursorNotFound,
 
 
 class ChangeStream(object):
-    """The change stream cursor base class.
+    """The change stream cursor abstract base class.
 
-    Should not be called directly by application developers. Use
-    helper methods :meth:`~pymongo.collection.Collection.watch`,
-    :meth:`~pymongo.database.Database.watch`, and
-    :meth:`~pymongo.mongo_client.MongoClient` instead.
-
-    .. versionadded: 3.6
-    .. mongodoc:: changeStreams
+    Defines the interface for change streams. Should be subclassed to
+    implement the `ChangeStream._create_cursor` abstract method and
+    the `ChangeStream._database` abstract property.
     """
     def __init__(self, target, pipeline, full_document,
                  resume_after=None, max_await_time_ms=None, batch_size=None,
@@ -52,15 +48,15 @@ class ChangeStream(object):
         self._max_await_time_ms = max_await_time_ms
         self._batch_size = batch_size
         self._collation = collation
-        self._start_at_operation_time = (
-            start_at_operation_time or self._default_start_at_operation_time()
-        )
+        self._start_at_operation_time = start_at_operation_time
         self._session = session
         self._cursor = self._create_cursor()
 
+    @property
     def _default_start_at_operation_time(self):
         """
-        Return the current operationTime timestamp from the server.
+        Return the current operationTime timestamp from the server. 
+        Returns None if the resumeAfter option has been set.
         """
         return self._database.command('isMaster')['operationTime']
 
@@ -70,13 +66,21 @@ class ChangeStream(object):
         """
         raise NotImplementedError
 
-    def _full_pipeline(self, options={}):
+    def _full_pipeline(self, inject_options=None):
         """Return the full aggregation pipeline for this ChangeStream."""
-        options['startAtOperationTime'] = self._start_at_operation_time
+        options = {}
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
         if self._resume_token is not None:
             options['resumeAfter'] = self._resume_token
+        else:
+            options['startAtOperationTime'] = (
+                self._start_at_operation_time or 
+                self._default_start_at_operation_time
+            )
+
+        if inject_options is not None:
+            options.update(inject_options)
         full_pipeline = [{'$changeStream': options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
@@ -132,7 +136,14 @@ class ChangeStream(object):
 
 
 class ChangeStreamCollection(ChangeStream):
-    """ Class for creating a change stream on a collection. """
+    """ Class for creating a change stream on a collection. 
+
+    Should not be called directly by application developers. Use
+    helper method :meth:`~pymongo.collection.Collection.watch` instead.
+
+    .. versionadded: 3.6
+    .. mongodoc:: changeStreams
+    """
 
     def _create_cursor(self):
         return self._target.aggregate(
@@ -147,6 +158,12 @@ class ChangeStreamCollection(ChangeStream):
 
 class ChangeStreamDatabase(ChangeStream):
     """ Class for creating a change stream on all collections in a database.
+
+    Should not be called directly by application developers. Use
+    helper method :meth:`~pymongo.database.Database.watch` instead.
+
+    .. versionadded: 3.7
+    .. mongodoc:: changeStreams
     """
 
     def _run_aggregation_cmd(self, pipeline, session, explicit_session):
@@ -209,11 +226,22 @@ class ChangeStreamDatabase(ChangeStream):
 
 
 class ChangeStreamClient(ChangeStreamDatabase):
-    """ Class for creating a change stream on all collections on a cluster. """
+    """ Class for creating a change stream on all collections on a cluster. 
+    
+    Should not be called directly by application developers. Use
+    helper method :meth:`~pymongo.mongo_client.MongoClient.watch` instead.
 
-    def _full_pipeline(self, options={}):
-        options["allChangesForCluster"] = True
-        full_pipeline = super(ChangeStreamClient, self)._full_pipeline(options)
+    .. versionadded: 3.7
+    .. mongodoc:: changeStreams
+    """
+
+    def _full_pipeline(self, inject_options=None):
+        options = {"allChangesForCluster": True}
+        if inject_options is not None:
+            options.update(inject_options)
+        full_pipeline = super(ChangeStreamClient, self)._full_pipeline(
+            inject_options=options
+        )
         return full_pipeline
 
     @property

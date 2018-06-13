@@ -2355,7 +2355,7 @@ class Collection(common.BaseObject):
 
     def watch(self, pipeline=[], full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
-              session=None):
+              start_at_operation_time=None, session=None):
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -2437,7 +2437,7 @@ class Collection(common.BaseObject):
         """
         return ChangeStreamCollection(
             self, pipeline, full_document, resume_after, max_await_time_ms,
-            batch_size, collation, session
+            batch_size, collation, start_at_operation_time, session
         )
 
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
