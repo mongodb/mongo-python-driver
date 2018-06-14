@@ -26,7 +26,7 @@ class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
     def __init__(self, message='', error_labels=None):
         super(PyMongoError, self).__init__(message)
-        self._error_labels = tuple(error_labels or [])
+        self._error_labels = set(error_labels or [])
 
     def has_error_label(self, label):
         """Return True if this error contains the given label.
@@ -34,6 +34,14 @@ class PyMongoError(Exception):
         .. versionadded:: 3.7
         """
         return label in self._error_labels
+
+    def _add_error_label(self, label):
+        """Add the given label to this error."""
+        self._error_labels.add(label)
+
+    def _remove_error_label(self, label):
+        """Remove the given label from this error."""
+        self._error_labels.remove(label)
 
 
 class ProtocolError(PyMongoError):
@@ -143,16 +151,6 @@ class OperationFailure(PyMongoError):
         on multiple shards.
         """
         return self.__details
-
-    def has_label(self, label):
-        """Return True if this error contains the given label.
-
-        .. versionadded:: 3.7
-        """
-        if label == "TemporaryTxnFailure":
-            # WriteConflict, TransactionAborted, and NoSuchTransaction.
-            return self.__code in (112, 244, 251)
-        return False
 
 
 class CursorNotFound(OperationFailure):

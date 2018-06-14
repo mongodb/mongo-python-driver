@@ -1097,7 +1097,7 @@ class TestTransactionExamples(IntegrationTest):
             try:
                 run_transaction(session, txn_callback)
             except (OperationFailure, ConnectionFailure) as exc:
-                if exc.has_label("TemporaryTxnFailure"):
+                if exc.has_error_label("TransientTransactionError"):
                     # Retry the entire transaction on temporary transaction
                     # failures.
                     run_transaction(session, txn_callback)

@@ -95,7 +95,9 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
                             OperationFailure,
-                            ServerSelectionTimeoutError)
+                            ServerSelectionTimeoutError,
+                            WriteConcernError,
+                            WTimeoutError)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -226,6 +228,19 @@ class _Transaction(object):
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
 
 
+def _reraise_with_unknown_commit(exc):
+    """Re-raise an exception with the UnknownTransactionCommitResult label."""
+    exc._add_error_label("UnknownTransactionCommitResult")
+    reraise_instance(exc, trace=sys.exc_info()[2])
+
+
+# From the transactions spec, all the retryable writes errors plus
+# WriteConcernFailed.
+_UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset([
+    64,    # WriteConcernFailed
+])
+
+
 class ClientSession(object):
     """A session for ordering sequential operations."""
     def __init__(self, client, server_session, options, authset):
@@ -353,17 +368,22 @@ class ClientSession(object):
             self._finish_transaction_with_retry("commitTransaction")
         except ConnectionFailure as exc:
             # We do not know if the commit was successfully applied on the
-            # server, set the unknown commit error label.
-            exc._error_labels = ("UnknownTransactionCommitResult",)
-            reraise_instance(exc, trace=sys.exc_info()[2])
+            # server or if it satisfied the provided write concern, set the
+            # unknown commit error label.
+            exc._remove_error_label("TransientTransactionError")
+            _reraise_with_unknown_commit(exc)
+        except WTimeoutError as exc:
+            # We do not know if the commit has satisfied the provided write
+            # concern, add the unknown commit error label.
+            _reraise_with_unknown_commit(exc)
         except OperationFailure as exc:
-            if exc.code not in _RETRYABLE_ERROR_CODES:
+            if exc.code not in _UNKNOWN_COMMIT_ERROR_CODES:
                 # The server reports errorLabels in the case.
                 raise
             # We do not know if the commit was successfully applied on the
-            # server, set the unknown commit error label.
-            exc._error_labels = ("UnknownTransactionCommitResult",)
-            reraise_instance(exc, trace=sys.exc_info()[2])
+            # server or if it satisfied the provided write concern, set the
+            # unknown commit error label.
+            _reraise_with_unknown_commit(exc)
         finally:
             self._transaction.state = _TxnState.COMMITTED
 

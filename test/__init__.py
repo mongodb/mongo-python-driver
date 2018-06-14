@@ -559,7 +559,7 @@ class ClientContext(object):
 
         *Might* because this does not test the storage engine or FCV.
         """
-        new_func = self.require_version_min(3, 7, 7)(func)
+        new_func = self.require_version_min(4, 0, 0, -1)(func)
         return self.require_replica_set(new_func)
 
 
