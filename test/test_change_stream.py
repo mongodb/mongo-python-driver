@@ -21,6 +21,9 @@ import threading
 import time
 import uuid
 
+from contextlib import contextmanager
+from itertools import product
+
 sys.path[0:0] = ['']
 
 from bson import BSON, ObjectId, SON
@@ -38,6 +41,111 @@ from pymongo.read_concern import ReadConcern
 
 from test import client_context, unittest, IntegrationTest
 from test.utils import IGNORE, WhiteListEventListener, rs_or_single_client
+
+
+class TestClientChangeStream(IntegrationTest):
+
+    @classmethod
+    @client_context.require_version_min(4, 0, 0, -1)
+    @client_context.require_no_standalone
+    def setUpClass(cls):
+        super(TestClientChangeStream, cls).setUpClass()
+        cls.db = [cls.db, cls.client.pymongo_test_2]
+
+    @classmethod
+    def tearDownClass(cls):
+        for db in cls.db:
+            cls.client.drop_database(db)
+        super(TestClientChangeStream, cls).tearDownClass()
+
+    @contextmanager
+    def change_stream(self, *args, **kwargs):
+        self.db[0].prevent_implicit_database_deletion.insert_one({})
+        with self.client.watch(*args, **kwargs) as change_stream:
+            _ = next(change_stream)
+            yield change_stream
+
+    def generate_unique_collnames(self, numcolls=2):
+        # Generate N collection names unique to a test.
+        collnames = []
+        for idx in range(1, numcolls + 1):
+            collnames.append(self.id() + '_' + str(idx))
+        return collnames
+
+    def insert_and_check(self, change_stream, db, collname, doc):
+        coll = db[collname]
+        coll.insert_one(doc)
+        change = next(change_stream)
+        self.assertEqual(change['operationType'], 'insert')
+        self.assertEqual(change['ns'], {'db': db.name,
+                                        'coll': collname})
+        self.assertEqual(change['fullDocument'], doc)
+
+    def test_simple(self):
+        collnames = self.generate_unique_collnames(3)
+        with self.change_stream() as change_stream:
+            for db, collname in product(self.db, collnames):
+                self.insert_and_check(
+                    change_stream, db, collname, {'_id': collname}
+                )
+
+
+class TestDatabaseChangeStream(IntegrationTest):
+
+    @classmethod
+    @client_context.require_version_min(4, 0, 0, -1)
+    @client_context.require_no_standalone
+    def setUpClass(cls):
+        super(TestDatabaseChangeStream, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestDatabaseChangeStream, cls).tearDownClass()
+
+    @contextmanager
+    def change_stream(self, *args, **kwargs):
+        self.db.prevent_implicit_database_deletion.insert_one({})
+        with self.db.watch(*args, **kwargs) as change_stream:
+            _ = next(change_stream)
+            yield change_stream
+
+    def generate_unique_collnames(self, numcolls=2):
+        # Generate N collection names unique to a test.
+        collnames = []
+        for idx in range(1, numcolls + 1):
+            collnames.append(self.id() + '_' + str(idx))
+        return collnames
+
+    def insert_and_check(self, change_stream, collname, doc):
+        coll = self.db[collname]
+        coll.insert_one(doc)
+        change = next(change_stream)
+        self.assertEqual(change['operationType'], 'insert')
+        self.assertEqual(change['ns'], {'db': self.db.name,
+                                        'coll': collname})
+        self.assertEqual(change['fullDocument'], doc)
+
+    def test_simple(self):
+        collnames = self.generate_unique_collnames(3)
+        with self.change_stream() as change_stream:
+            for collname in collnames:
+                self.insert_and_check(
+                    change_stream, collname, {'_id': uuid.uuid4()}
+                )
+
+    def test_isolation(self):
+        # Ensure inserts to other dbs don't show up in our ChangeStream.
+        other_db = self.client.pymongo_test_temp
+        self.assertNotEqual(
+            other_db, self.db, msg="Isolation must be tested on separate DBs"
+        )
+        collname = self.id()
+        with self.change_stream() as change_stream:
+            other_db[collname].insert_one({'_id': uuid.uuid4()})
+            self.insert_and_check(
+                change_stream, collname, {'_id': uuid.uuid4()}
+            )
+        self.client.drop_database(other_db)
 
 
 class TestChangeStream(IntegrationTest):
