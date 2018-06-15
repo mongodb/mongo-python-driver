@@ -97,6 +97,8 @@ def create_test(scenario_def, test):
         error = None
 
         db = rs_or_single_client(**test['clientOptions']).pymongo_test
+        # Close the client explicitly to avoid having too many threads open.
+        self.addCleanup(db.client.close)
         try:
             result = run_operation(db.test, test)
         except (ConnectionFailure, OperationFailure) as exc:

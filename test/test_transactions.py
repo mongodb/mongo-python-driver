@@ -347,6 +347,8 @@ def create_test(scenario_def, test):
         # with ScenarioDict.
         client = rs_client(event_listeners=[listener],
                            **dict(test['clientOptions']))
+        # Close the client explicitly to avoid having too many threads open.
+        self.addCleanup(client.close)
 
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
