@@ -244,8 +244,3 @@ class ClusterChangeStream(DatabaseChangeStream):
             inject_options=options
         )
         return full_pipeline
-
-    @property
-    def _database(self):
-        # $changeStream aggregation operations are performed on admin DB.
-        return getattr(self._target, "admin")

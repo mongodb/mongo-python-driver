@@ -694,7 +694,7 @@ class MongoClient(common.BaseObject):
               max_await_time_ms=None, batch_size=None, collation=None,
               start_at_operation_time=None, session=None):
         return ClusterChangeStream(
-            self, pipeline, full_document, resume_after, max_await_time_ms,
+            self.admin, pipeline, full_document, resume_after, max_await_time_ms,
             batch_size, collation, start_at_operation_time, session
         )
 
