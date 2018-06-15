@@ -33,7 +33,7 @@ from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.common import ORDERED_TYPES
 from pymongo.collation import validate_collation_or_none
-from pymongo.change_stream import ChangeStreamCollection
+from pymongo.change_stream import CollectionChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
@@ -2353,7 +2353,7 @@ class Collection(common.BaseObject):
         return self._aggregate(pipeline, RawBatchCommandCursor, 0,
                                None, False, **kwargs)
 
-    def watch(self, pipeline=[], full_document='default', resume_after=None,
+    def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
               start_at_operation_time=None, session=None):
         """Watch changes on this collection.
@@ -2435,7 +2435,7 @@ class Collection(common.BaseObject):
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams.rst
         """
-        return ChangeStreamCollection(
+        return CollectionChangeStream(
             self, pipeline, full_document, resume_after, max_await_time_ms,
             batch_size, collation, start_at_operation_time, session
         )

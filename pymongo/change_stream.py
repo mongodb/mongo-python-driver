@@ -32,15 +32,16 @@ class ChangeStream(object):
     implement the `ChangeStream._create_cursor` abstract method and
     the `ChangeStream._database` abstract property.
     """
-    def __init__(self, target, pipeline, full_document,
-                 resume_after=None, max_await_time_ms=None, batch_size=None,
-                 collation=None, start_at_operation_time=None, session=None):
-        # Validate inputs
-        if not isinstance(pipeline, list):
+    def __init__(self, target, pipeline, full_document, resume_after,
+                 max_await_time_ms, batch_size, collation,
+                 start_at_operation_time, session):
+        if pipeline is None:
+            pipeline = []
+        elif not isinstance(pipeline, list):
             raise TypeError("pipeline must be a list")
+
         common.validate_string_or_none('full_document', full_document)
 
-        # Initialize class
         self._target = target
         self._pipeline = copy.deepcopy(pipeline)
         self._full_document = full_document
@@ -135,7 +136,7 @@ class ChangeStream(object):
         raise NotImplementedError
 
 
-class ChangeStreamCollection(ChangeStream):
+class CollectionChangeStream(ChangeStream):
     """ Class for creating a change stream on a collection. 
 
     Should not be called directly by application developers. Use
@@ -156,7 +157,7 @@ class ChangeStreamCollection(ChangeStream):
         return self._target.database
 
 
-class ChangeStreamDatabase(ChangeStream):
+class DatabaseChangeStream(ChangeStream):
     """ Class for creating a change stream on all collections in a database.
 
     Should not be called directly by application developers. Use
@@ -225,7 +226,7 @@ class ChangeStreamDatabase(ChangeStream):
         return self._target
 
 
-class ChangeStreamClient(ChangeStreamDatabase):
+class ClusterChangeStream(DatabaseChangeStream):
     """ Class for creating a change stream on all collections on a cluster. 
     
     Should not be called directly by application developers. Use
@@ -239,7 +240,7 @@ class ChangeStreamClient(ChangeStreamDatabase):
         options = {"allChangesForCluster": True}
         if inject_options is not None:
             options.update(inject_options)
-        full_pipeline = super(ChangeStreamClient, self)._full_pipeline(
+        full_pipeline = super(ClusterChangeStream, self)._full_pipeline(
             inject_options=options
         )
         return full_pipeline

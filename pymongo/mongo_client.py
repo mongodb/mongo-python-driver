@@ -50,7 +50,7 @@ from pymongo import (common,
                      periodic_executor,
                      uri_parser,
                      client_session)
-from pymongo.change_stream import ChangeStreamClient
+from pymongo.change_stream import ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor_manager import CursorManager
@@ -690,12 +690,12 @@ class MongoClient(common.BaseObject):
 
         return getattr(server.description, attr_name)
 
-    def watch(self, pipeline=[], full_document='default', resume_after=None,
+    def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
-              session=None):
-        return ChangeStreamClient(
+              start_at_operation_time=None, session=None):
+        return ClusterChangeStream(
             self, pipeline, full_document, resume_after, max_await_time_ms,
-            batch_size, collation, session
+            batch_size, collation, start_at_operation_time, session
         )
 
     @property
