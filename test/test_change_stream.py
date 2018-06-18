@@ -43,26 +43,24 @@ from test import client_context, unittest, IntegrationTest
 from test.utils import IGNORE, WhiteListEventListener, rs_or_single_client
 
 
-class TestClientChangeStream(IntegrationTest):
+class TestClusterChangeStream(IntegrationTest):
 
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestClientChangeStream, cls).setUpClass()
+        super(TestClusterChangeStream, cls).setUpClass()
         cls.db = [cls.db, cls.client.pymongo_test_2]
 
     @classmethod
     def tearDownClass(cls):
         for db in cls.db:
             cls.client.drop_database(db)
-        super(TestClientChangeStream, cls).tearDownClass()
+        super(TestClusterChangeStream, cls).tearDownClass()
 
     @contextmanager
     def change_stream(self, *args, **kwargs):
-        self.db[0].prevent_implicit_database_deletion.insert_one({})
         with self.client.watch(*args, **kwargs) as change_stream:
-            _ = next(change_stream)
             yield change_stream
 
     def generate_unique_collnames(self, numcolls=2):
@@ -104,9 +102,7 @@ class TestDatabaseChangeStream(IntegrationTest):
 
     @contextmanager
     def change_stream(self, *args, **kwargs):
-        self.db.prevent_implicit_database_deletion.insert_one({})
         with self.db.watch(*args, **kwargs) as change_stream:
-            _ = next(change_stream)
             yield change_stream
 
     def generate_unique_collnames(self, numcolls=2):
@@ -148,13 +144,13 @@ class TestDatabaseChangeStream(IntegrationTest):
         self.client.drop_database(other_db)
 
 
-class TestChangeStream(IntegrationTest):
+class TestCollectionChangeStream(IntegrationTest):
 
     @classmethod
     @client_context.require_version_min(3, 5, 11)
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestChangeStream, cls).setUpClass()
+        super(TestCollectionChangeStream, cls).setUpClass()
         cls.coll = cls.db.change_stream_test
         # SERVER-31885 On a mongos the database must exist in order to create
         # a changeStream cursor. However, WiredTiger drops the database when
@@ -164,7 +160,7 @@ class TestChangeStream(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         cls.db.prevent_implicit_database_deletion.drop()
-        super(TestChangeStream, cls).tearDownClass()
+        super(TestCollectionChangeStream, cls).tearDownClass()
 
     def setUp(self):
         # Use a new collection for each test.
@@ -214,22 +210,21 @@ class TestChangeStream(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name][self.coll.name]
-
+        expected_full_pipeline = [
+            {'$changeStream': {'fullDocument': 'default',
+                               'startAtOperationTime': IGNORE}},
+            {'$project': {'foo': 0},}
+        ]
         with coll.watch([{'$project': {'foo': 0}}]) as change_stream:
-            self.assertEqual([
-                {'$changeStream': {'fullDocument': 'default',
-                                   'startAtOperationTime': IGNORE}},
-                {'$project': {'foo': 0},}
-                ], change_stream._full_pipeline())
+            self.assertEqual(
+                expected_full_pipeline, change_stream._full_pipeline()
+            )
 
         self.assertEqual(1, len(results['started']))
         command = results['started'][0]
+        expected_full_pipeline[0]['$changeStream'].pop('startAtOperationTime')
         self.assertEqual('aggregate', command.command_name)
-        self.assertEqual([
-            {'$changeStream':  {'fullDocument': 'default',
-                                'startAtOperationTime': IGNORE}},
-            {'$project': {'foo': 0}}
-            ], command.command['pipeline'])
+        self.assertEqual(expected_full_pipeline, command.command['pipeline'])
 
     def test_iteration(self):
         with self.coll.watch(batch_size=2) as change_stream:

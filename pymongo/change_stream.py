@@ -41,6 +41,8 @@ class ChangeStream(object):
             raise TypeError("pipeline must be a list")
 
         common.validate_string_or_none('full_document', full_document)
+        validate_collation_or_none(collation)
+        common.validate_non_negative_integer_or_none("batchSize", batch_size)
 
         self._target = target
         self._pipeline = copy.deepcopy(pipeline)
@@ -64,29 +66,33 @@ class ChangeStream(object):
         this ChangeStream will be run. """
         raise NotImplementedError
 
-    @property
-    def _default_start_at_operation_time(self):
-        """
-        Return the current operationTime timestamp from the server. 
-        Returns None if the resumeAfter option has been set.
-        """
-        return self._database.command('isMaster')['operationTime']
+    def _full_pipeline(self, inject_options=None):
+        """Return the full aggregation pipeline for this ChangeStream."""
+        options = {}
 
-    def _run_aggregation_cmd(self, pipeline, session, explicit_session):
+        if self._full_document is not None:
+            options['fullDocument'] = self._full_document
+        if self._resume_token is not None:
+            options['resumeAfter'] = self._resume_token
+        if self._start_at_operation_time is not None:
+            options['startAtOperationTime'] = self._start_at_operation_time
+
+        if inject_options is not None:
+            options.update(inject_options)
+        full_pipeline = [{'$changeStream': options}]
+        full_pipeline.extend(self._pipeline)
+        return full_pipeline
+
+    def _run_aggregation_cmd(self, session, explicit_session):
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
-        common.validate_list('pipeline', pipeline)
-        validate_collation_or_none(self._collation)
-        common.validate_non_negative_integer_or_none(
-            "batchSize", self._batch_size
-        )
-
-        cmd = SON([("aggregate", self._aggregation_target),
-                   ("pipeline", pipeline),
-                   ("cursor", {})])
-
         with self._database.client._socket_for_reads(self._target._read_preference_for(session)) as (sock_info, slave_ok):
+            pipeline = self._full_pipeline()
+            cmd = SON([("aggregate", self._aggregation_target),
+                       ("pipeline", pipeline),
+                       ("cursor", {})])
+
             result = sock_info.command(
                 self._database.name,
                 cmd,
@@ -100,6 +106,13 @@ class ChangeStream(object):
                 client=self._database.client)
 
             cursor = result["cursor"]
+
+            if (self._start_at_operation_time is None and
+                self._resume_token is None and
+                cursor.get("_id", None) is None and
+                sock_info.max_wire_version >= 7):
+                self._start_at_operation_time = result["operationTime"]
+
             ns = cursor["ns"]
             _, collname = ns.split(".", 1)
             aggregation_collection = self._database.get_collection(
@@ -119,29 +132,9 @@ class ChangeStream(object):
     def _create_cursor(self):
         with self._database.client._tmp_session(self._session, close=False) as s:
             return self._run_aggregation_cmd(
-                self._full_pipeline(),
                 session=s,
                 explicit_session=self._session is not None
             )
-
-    def _full_pipeline(self, inject_options=None):
-        """Return the full aggregation pipeline for this ChangeStream."""
-        options = {}
-        if self._full_document is not None:
-            options['fullDocument'] = self._full_document
-        if self._resume_token is not None:
-            options['resumeAfter'] = self._resume_token
-        else:
-            options['startAtOperationTime'] = (
-                self._start_at_operation_time or 
-                self._default_start_at_operation_time
-            )
-
-        if inject_options is not None:
-            options.update(inject_options)
-        full_pipeline = [{'$changeStream': options}]
-        full_pipeline.extend(self._pipeline)
-        return full_pipeline
 
     def close(self):
         """Close this ChangeStream."""
@@ -176,6 +169,7 @@ class ChangeStream(object):
                     "Cannot provide resume functionality when the resume "
                     "token is missing.")
             self._resume_token = copy.copy(resume_token)
+            self._start_at_operation_time = None
             return change
 
     __next__ = next
@@ -188,7 +182,7 @@ class ChangeStream(object):
 
 
 class CollectionChangeStream(ChangeStream):
-    """ Class for creating a change stream on a collection. 
+    """ Class for creating a change stream on a collection.
 
     Should not be called directly by application developers. Use
     helper method :meth:`~pymongo.collection.Collection.watch` instead.
@@ -224,8 +218,8 @@ class DatabaseChangeStream(ChangeStream):
 
 
 class ClusterChangeStream(DatabaseChangeStream):
-    """ Class for creating a change stream on all collections on a cluster. 
-    
+    """ Class for creating a change stream on all collections on a cluster.
+
     Should not be called directly by application developers. Use
     helper method :meth:`~pymongo.mongo_client.MongoClient.watch` instead.
 
