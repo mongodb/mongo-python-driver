@@ -36,11 +36,12 @@ from test.test_replica_set_client import TestReplicaSetClientBase
 from test import (client_context,
                   unittest,
                   IntegrationTest)
-from test.utils import (joinall,
-                        single_client,
+from test.utils import (ignore_deprecations,
+                        joinall,
                         one,
                         rs_client,
-                        rs_or_single_client)
+                        rs_or_single_client,
+                        single_client)
 
 
 class JustWrite(threading.Thread):
@@ -103,13 +104,13 @@ class TestGridfs(IntegrationTest):
     def test_basic(self):
         oid = self.fs.put(b"hello world")
         self.assertEqual(b"hello world", self.fs.get(oid).read())
-        self.assertEqual(1, self.db.fs.files.count())
-        self.assertEqual(1, self.db.fs.chunks.count())
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(1, self.db.fs.chunks.count_documents({}))
 
         self.fs.delete(oid)
         self.assertRaises(NoFile, self.fs.get, oid)
-        self.assertEqual(0, self.db.fs.files.count())
-        self.assertEqual(0, self.db.fs.chunks.count())
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
         self.assertRaises(NoFile, self.fs.get, "foo")
         oid = self.fs.put(b"hello world", _id="foo")
@@ -118,15 +119,15 @@ class TestGridfs(IntegrationTest):
 
     def test_multi_chunk_delete(self):
         self.db.fs.drop()
-        self.assertEqual(0, self.db.fs.files.count())
-        self.assertEqual(0, self.db.fs.chunks.count())
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
         gfs = gridfs.GridFS(self.db)
         oid = gfs.put(b"hello", chunkSize=1)
-        self.assertEqual(1, self.db.fs.files.count())
-        self.assertEqual(5, self.db.fs.chunks.count())
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(5, self.db.fs.chunks.count_documents({}))
         gfs.delete(oid)
-        self.assertEqual(0, self.db.fs.files.count())
-        self.assertEqual(0, self.db.fs.chunks.count())
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
     def test_list(self):
         self.assertEqual([], self.fs.list())
@@ -148,8 +149,8 @@ class TestGridfs(IntegrationTest):
     def test_empty_file(self):
         oid = self.fs.put(b"")
         self.assertEqual(b"", self.fs.get(oid).read())
-        self.assertEqual(1, self.db.fs.files.count())
-        self.assertEqual(0, self.db.fs.chunks.count())
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
         raw = self.db.fs.files.find_one()
         self.assertEqual(0, raw["length"])
@@ -190,13 +191,13 @@ class TestGridfs(IntegrationTest):
     def test_alt_collection(self):
         oid = self.alt.put(b"hello world")
         self.assertEqual(b"hello world", self.alt.get(oid).read())
-        self.assertEqual(1, self.db.alt.files.count())
-        self.assertEqual(1, self.db.alt.chunks.count())
+        self.assertEqual(1, self.db.alt.files.count_documents({}))
+        self.assertEqual(1, self.db.alt.chunks.count_documents({}))
 
         self.alt.delete(oid)
         self.assertRaises(NoFile, self.alt.get, oid)
-        self.assertEqual(0, self.db.alt.files.count())
-        self.assertEqual(0, self.db.alt.chunks.count())
+        self.assertEqual(0, self.db.alt.files.count_documents({}))
+        self.assertEqual(0, self.db.alt.chunks.count_documents({}))
 
         self.assertRaises(NoFile, self.alt.get, "foo")
         oid = self.alt.put(b"hello world", _id="foo")
@@ -240,7 +241,7 @@ class TestGridfs(IntegrationTest):
         # Should have created 100 versions of 'test' file
         self.assertEqual(
             100,
-            self.db.fs.files.find({'filename': 'test'}).count()
+            self.db.fs.files.count_documents({'filename': 'test'})
         )
 
     def test_get_last_version(self):
@@ -328,7 +329,7 @@ class TestGridfs(IntegrationTest):
 
     def test_put_filelike(self):
         oid = self.fs.put(StringIO(b"hello world"), chunk_size=1)
-        self.assertEqual(11, self.db.fs.chunks.count())
+        self.assertEqual(11, self.db.fs.chunks.count_documents({}))
         self.assertEqual(b"hello world", self.fs.get(oid).read())
 
     def test_file_exists(self):
@@ -404,6 +405,7 @@ class TestGridfs(IntegrationTest):
         f = fs.new_file()
         self.assertRaises(ServerSelectionTimeoutError, f.close)
 
+    @ignore_deprecations
     def test_gridfs_find(self):
         self.fs.put(b"test2", filename="two")
         time.sleep(0.01)

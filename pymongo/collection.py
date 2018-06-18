@@ -1578,6 +1578,9 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.7
         """
+        if 'session' in kwargs:
+            raise ConfigurationError(
+                'estimated_document_count does not support sessions')
         cmd = SON([('count', self.__name)])
         cmd.update(kwargs)
         return self._count(cmd)
@@ -1678,6 +1681,8 @@ class Collection(common.BaseObject):
            Support the `collation` option.
 
         """
+        warnings.warn("count is deprecated. Use estimated_document_count or "
+                      "count_documents instead.", DeprecationWarning, stacklevel=2)
         cmd = SON([("count", self.__name)])
         if filter is not None:
             if "query" in kwargs:

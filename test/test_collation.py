@@ -17,18 +17,17 @@
 import functools
 import warnings
 
-from test import unittest, client_context
-from test.utils import EventListener, rs_or_single_client
-
 from pymongo import monitoring
 from pymongo.collation import (
     Collation,
     CollationCaseFirst, CollationStrength, CollationAlternate,
     CollationMaxVariable)
 from pymongo.errors import ConfigurationError
-from pymongo.write_concern import WriteConcern
 from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, ReplaceOne,
                                 UpdateMany, UpdateOne)
+from pymongo.write_concern import WriteConcern
+from test import unittest, client_context
+from test.utils import EventListener, ignore_deprecations, rs_or_single_client
 
 
 class TestCollationObject(unittest.TestCase):
@@ -161,6 +160,7 @@ class TestCollation(unittest.TestCase):
         self.assertCollationInLastCommand()
 
     @raisesConfigurationErrorForOldMongoDB
+    @ignore_deprecations
     def test_count(self):
         self.db.test.count(collation=self.collation)
         self.assertCollationInLastCommand()

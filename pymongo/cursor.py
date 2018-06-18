@@ -746,6 +746,8 @@ class Cursor(object):
         .. versionchanged:: 2.8
            The :meth:`~count` method now supports :meth:`~hint`.
         """
+        warnings.warn("count is deprecated. Use Collection.count_documents "
+                      "instead.", DeprecationWarning, stacklevel=2)
         validate_boolean("with_limit_and_skip", with_limit_and_skip)
         cmd = SON([("count", self.__collection.name),
                    ("query", self.__spec)])

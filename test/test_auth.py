@@ -209,7 +209,7 @@ class TestGSSAPI(unittest.TestCase):
         # multiple sockets from the pool concurrently, proving that
         # auto-authentication works with GSSAPI.
         collection = db.test
-        if collection.count() == 0:
+        if not collection.count_documents({}):
             try:
                 collection.drop()
                 collection.insert_one({'_id': 1})

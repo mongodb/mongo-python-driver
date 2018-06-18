@@ -37,13 +37,18 @@ from pymongo.server_selectors import readable_server_selector, Selection
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
-from test.test_replica_set_client import TestReplicaSetClientBase
 from test import (SkipTest,
                   client_context,
                   unittest,
                   db_user,
                   db_pwd)
-from test.utils import connected, single_client, one, wait_until, rs_client
+from test.test_replica_set_client import TestReplicaSetClientBase
+from test.utils import (connected,
+                        ignore_deprecations,
+                        one,
+                        rs_client,
+                        single_client,
+                        wait_until)
 from test.version import Version
 
 
@@ -156,10 +161,10 @@ class TestSingleSlaveOk(TestReadPreferencesBase):
         # Test some database helpers.
         self.assertIsNotNone(db.collection_names())
         self.assertIsNotNone(db.validate_collection("test"))
-        self.assertIsNotNone(db.command("count", "test"))
+        self.assertIsNotNone(db.command("ping"))
 
         # Test some collection helpers.
-        self.assertEqual(10, coll.count())
+        self.assertEqual(10, coll.count_documents({}))
         self.assertEqual(10, len(coll.distinct("_id")))
         self.assertIsNotNone(coll.aggregate([]))
         self.assertIsNotNone(coll.index_information())
@@ -433,6 +438,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                                'inline_map_reduce',
                                'function() { }', 'function() { }')
 
+    @ignore_deprecations
     def test_count(self):
         self._test_coll_helper(True, self.c.pymongo_test.test, 'count')
 

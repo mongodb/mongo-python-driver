@@ -42,7 +42,7 @@ def _connect(uri):
     # No TLS error
     client.admin.command('ismaster')
     # No auth error
-    client.test.test.count()
+    client.test.test.count_documents({})
 
 
 class TestAtlasConnect(unittest.TestCase):

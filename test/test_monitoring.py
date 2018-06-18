@@ -782,7 +782,7 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertEqual(1, reply.get('ok'))
         self.assertEqual(1, reply.get('n'))
 
-        self.assertEqual(0, coll.count())
+        self.assertEqual(0, coll.count_documents({}))
 
         # write errors
         coll.insert_one({'_id': 1})
@@ -1042,7 +1042,7 @@ class TestCommandMonitoring(PyMongoTestCase):
             self.assertEqual(1, reply.get('ok'))
             self.assertEqual(1, reply.get('n'))
 
-            self.assertEqual(0, coll.count())
+            self.assertEqual(0, coll.count_documents({}))
 
     def test_insert_many(self):
         # This always uses the bulk API.

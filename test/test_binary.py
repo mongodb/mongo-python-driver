@@ -27,8 +27,9 @@ import bson
 from bson.binary import *
 from bson.codec_options import CodecOptions
 from bson.son import SON
-from test import client_context, unittest
 from pymongo.mongo_client import MongoClient
+from test import client_context, unittest
+from test.utils import ignore_deprecations
 
 
 class TestBinary(unittest.TestCase):
@@ -203,7 +204,7 @@ class TestBinary(unittest.TestCase):
             'java_uuid', CodecOptions(uuid_representation=JAVA_LEGACY))
 
         coll.insert_many(docs)
-        self.assertEqual(5, coll.count())
+        self.assertEqual(5, coll.count_documents({}))
         for d in coll.find():
             self.assertEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
@@ -273,7 +274,7 @@ class TestBinary(unittest.TestCase):
             'csharp_uuid', CodecOptions(uuid_representation=CSHARP_LEGACY))
 
         coll.insert_many(docs)
-        self.assertEqual(5, coll.count())
+        self.assertEqual(5, coll.count_documents({}))
         for d in coll.find():
             self.assertEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
@@ -292,6 +293,7 @@ class TestBinary(unittest.TestCase):
             CSHARP_LEGACY)
 
     @client_context.require_connection
+    @ignore_deprecations
     def test_uuid_queries(self):
 
         db = client_context.client.pymongo_test
@@ -300,7 +302,7 @@ class TestBinary(unittest.TestCase):
 
         uu = uuid.uuid4()
         coll.insert_one({'uuid': Binary(uu.bytes, 3)})
-        self.assertEqual(1, coll.count())
+        self.assertEqual(1, coll.count_documents({}))
 
         # Test UUIDLegacy queries.
         coll = db.get_collection("test",
@@ -313,14 +315,16 @@ class TestBinary(unittest.TestCase):
 
         # Test regular UUID queries (using subtype 4).
         coll.insert_one({'uuid': uu})
-        self.assertEqual(2, coll.count())
+        self.assertEqual(2, coll.count_documents({}))
         cur = coll.find({'uuid': uu})
         self.assertEqual(1, cur.count())
         retrieved = next(cur)
         self.assertEqual(uu, retrieved['uuid'])
 
         # Test both.
-        cur = coll.find({'uuid': {'$in': [uu, UUIDLegacy(uu)]}})
+        predicate = {'uuid': {'$in': [uu, UUIDLegacy(uu)]}}
+        self.assertEqual(2, coll.count_documents(predicate))
+        cur = coll.find(predicate)
         self.assertEqual(2, cur.count())
         coll.drop()
 

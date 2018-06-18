@@ -137,7 +137,7 @@ class TestBulk(BulkTestBase):
         result = self.coll.bulk_write([InsertOne({})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.inserted_count)
-        self.assertEqual(1, self.coll.count())
+        self.assertEqual(1, self.coll.count_documents({}))
 
     def test_update_many(self):
 
@@ -260,7 +260,7 @@ class TestBulk(BulkTestBase):
         result = self.coll.bulk_write([DeleteOne({})])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.deleted_count)
-        self.assertEqual(self.coll.count(), 1)
+        self.assertEqual(self.coll.count_documents({}), 1)
 
     def test_upsert(self):
 
@@ -281,7 +281,7 @@ class TestBulk(BulkTestBase):
         self.assertEqual(1, len(result.upserted_ids))
         self.assertTrue(isinstance(result.upserted_ids.get(0), ObjectId))
 
-        self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
+        self.assertEqual(self.coll.count_documents({'foo': 'bar'}), 1)
 
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's 1000-document batch size limit.
@@ -289,13 +289,13 @@ class TestBulk(BulkTestBase):
         requests = [InsertOne({}) for _ in range(n_docs)]
         result = self.coll.bulk_write(requests, ordered=False)
         self.assertEqual(n_docs, result.inserted_count)
-        self.assertEqual(n_docs, self.coll.count())
+        self.assertEqual(n_docs, self.coll.count_documents({}))
 
         # Same with ordered bulk.
         self.coll.drop()
         result = self.coll.bulk_write(requests)
         self.assertEqual(n_docs, result.inserted_count)
-        self.assertEqual(n_docs, self.coll.count())
+        self.assertEqual(n_docs, self.coll.count_documents({}))
 
     def test_generator_insert(self):
         def gen():

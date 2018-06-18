@@ -307,6 +307,7 @@ class TestSession(IntegrationTest):
             (coll.distinct, ['a'], {}),
             (coll.find_one, [], {}),
             (coll.count, [], {}),
+            (coll.count_documents, [{}], {}),
             (coll.create_indexes, [[IndexModel('a')]], {}),
             (coll.create_index, ['a'], {}),
             (coll.drop_index, ['a_1'], {}),
@@ -760,6 +761,8 @@ class TestCausalConsistency(unittest.TestCase):
         self._test_reads(
             lambda coll, session: coll.count(session=session))
         self._test_reads(
+            lambda coll, session: coll.count_documents({}, session=session))
+        self._test_reads(
             lambda coll, session: coll.distinct('foo', session=session))
         self._test_reads(
             lambda coll, session: coll.map_reduce(
@@ -785,6 +788,11 @@ class TestCausalConsistency(unittest.TestCase):
             self._test_reads,
             lambda coll, session: list(
                 coll.find_raw_batches({}, session=session)))
+        self.assertRaises(
+            ConfigurationError,
+            self._test_reads,
+            lambda coll, session: coll.estimated_document_count(
+                session=session))
 
     def _test_writes(self, op):
         coll = self.client.pymongo_test.test

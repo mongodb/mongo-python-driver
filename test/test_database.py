@@ -644,7 +644,7 @@ class TestDatabase(IntegrationTest):
         # Regular user should be able to query its own db, but
         # no other.
         users_db.authenticate('user', 'pass')
-        self.assertEqual(0, users_db.test.count())
+        self.assertEqual(0, users_db.test.count_documents({}))
         self.assertRaises(OperationFailure, other_db.test.find_one)
 
         # Admin read-only user should be able to query any db,
@@ -661,7 +661,7 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(users_db.test.delete_many({}))
 
         # And read from other dbs...
-        self.assertEqual(0, other_db.test.count())
+        self.assertEqual(0, other_db.test.count_documents({}))
 
         # But still not write to other dbs.
         self.assertRaises(OperationFailure,
@@ -828,20 +828,20 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.system.js.delete_many({})
 
-        self.assertEqual(0, db.system.js.count())
+        self.assertEqual(0, db.system.js.count_documents({}))
         db.system_js.add = "function(a, b) { return a + b; }"
         self.assertEqual('add', db.system.js.find_one()['_id'])
-        self.assertEqual(1, db.system.js.count())
+        self.assertEqual(1, db.system.js.count_documents({}))
         self.assertEqual(6, db.system_js.add(1, 5))
         del db.system_js.add
-        self.assertEqual(0, db.system.js.count())
+        self.assertEqual(0, db.system.js.count_documents({}))
 
         db.system_js['add'] = "function(a, b) { return a + b; }"
         self.assertEqual('add', db.system.js.find_one()['_id'])
-        self.assertEqual(1, db.system.js.count())
+        self.assertEqual(1, db.system.js.count_documents({}))
         self.assertEqual(6, db.system_js['add'](1, 5))
         del db.system_js['add']
-        self.assertEqual(0, db.system.js.count())
+        self.assertEqual(0, db.system.js.count_documents({}))
         self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
 
         # TODO right now CodeWScope doesn't work w/ system js

@@ -82,8 +82,8 @@ class TestGridFile(IntegrationTest):
         f = GridIn(self.db.fs, filename="test")
         f.write(b"hello world")
         f.close()
-        self.assertEqual(1, self.db.fs.files.find().count())
-        self.assertEqual(1, self.db.fs.chunks.find().count())
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(1, self.db.fs.chunks.count_documents({}))
 
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(b"hello world", g.read())
@@ -94,8 +94,8 @@ class TestGridFile(IntegrationTest):
 
         f = GridIn(self.db.fs, filename="test")
         f.close()
-        self.assertEqual(2, self.db.fs.files.find().count())
-        self.assertEqual(1, self.db.fs.chunks.find().count())
+        self.assertEqual(2, self.db.fs.files.count_documents({}))
+        self.assertEqual(1, self.db.fs.chunks.count_documents({}))
 
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(b"", g.read())
@@ -117,8 +117,8 @@ class TestGridFile(IntegrationTest):
         f.write(b"hello world")
         f.close()
 
-        self.assertEqual(1, self.db.alt.files.find().count())
-        self.assertEqual(1, self.db.alt.chunks.find().count())
+        self.assertEqual(1, self.db.alt.files.count_documents({}))
+        self.assertEqual(1, self.db.alt.chunks.count_documents({}))
 
         g = GridOut(self.db.alt, f._id)
         self.assertEqual(b"hello world", g.read())
@@ -326,8 +326,8 @@ class TestGridFile(IntegrationTest):
         f.write(random_string)
         f.close()
 
-        self.assertEqual(1, self.db.fs.files.find().count())
-        self.assertEqual(2, self.db.fs.chunks.find().count())
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(2, self.db.fs.chunks.count_documents({}))
 
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(random_string, g.read())
@@ -344,8 +344,8 @@ class TestGridFile(IntegrationTest):
             self.files += 1
             self.chunks += len(data)
 
-            self.assertEqual(self.files, self.db.fs.files.find().count())
-            self.assertEqual(self.chunks, self.db.fs.chunks.find().count())
+            self.assertEqual(self.files, self.db.fs.files.count_documents({}))
+            self.assertEqual(self.chunks, self.db.fs.chunks.count_documents({}))
 
             g = GridOut(self.db.fs, f._id)
             self.assertEqual(data, g.read())

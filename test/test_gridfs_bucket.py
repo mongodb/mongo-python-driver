@@ -35,11 +35,12 @@ from test import (client_context,
                   unittest,
                   IntegrationTest)
 from test.test_replica_set_client import TestReplicaSetClientBase
-from test.utils import (joinall,
-                        single_client,
+from test.utils import (ignore_deprecations,
+                        joinall,
                         one,
                         rs_client,
-                        rs_or_single_client)
+                        rs_or_single_client,
+                        single_client)
 
 
 class JustWrite(threading.Thread):
@@ -94,34 +95,34 @@ class TestGridfs(IntegrationTest):
                                          b"hello world")
         self.assertEqual(b"hello world",
                          self.fs.open_download_stream(oid).read())
-        self.assertEqual(1, self.db.fs.files.count())
-        self.assertEqual(1, self.db.fs.chunks.count())
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(1, self.db.fs.chunks.count_documents({}))
 
         self.fs.delete(oid)
         self.assertRaises(NoFile, self.fs.open_download_stream, oid)
-        self.assertEqual(0, self.db.fs.files.count())
-        self.assertEqual(0, self.db.fs.chunks.count())
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
     def test_multi_chunk_delete(self):
         self.db.fs.drop()
-        self.assertEqual(0, self.db.fs.files.count())
-        self.assertEqual(0, self.db.fs.chunks.count())
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
         gfs = gridfs.GridFSBucket(self.db)
         oid = gfs.upload_from_stream("test_filename",
                                      b"hello",
                                      chunk_size_bytes=1)
-        self.assertEqual(1, self.db.fs.files.count())
-        self.assertEqual(5, self.db.fs.chunks.count())
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(5, self.db.fs.chunks.count_documents({}))
         gfs.delete(oid)
-        self.assertEqual(0, self.db.fs.files.count())
-        self.assertEqual(0, self.db.fs.chunks.count())
+        self.assertEqual(0, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
     def test_empty_file(self):
         oid = self.fs.upload_from_stream("test_filename",
                                          b"")
         self.assertEqual(b"", self.fs.open_download_stream(oid).read())
-        self.assertEqual(1, self.db.fs.files.count())
-        self.assertEqual(0, self.db.fs.chunks.count())
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
         raw = self.db.fs.files.find_one()
         self.assertEqual(0, raw["length"])
@@ -165,13 +166,13 @@ class TestGridfs(IntegrationTest):
                                           b"hello world")
         self.assertEqual(b"hello world",
                          self.alt.open_download_stream(oid).read())
-        self.assertEqual(1, self.db.alt.files.count())
-        self.assertEqual(1, self.db.alt.chunks.count())
+        self.assertEqual(1, self.db.alt.files.count_documents({}))
+        self.assertEqual(1, self.db.alt.chunks.count_documents({}))
 
         self.alt.delete(oid)
         self.assertRaises(NoFile, self.alt.open_download_stream, oid)
-        self.assertEqual(0, self.db.alt.files.count())
-        self.assertEqual(0, self.db.alt.chunks.count())
+        self.assertEqual(0, self.db.alt.files.count_documents({}))
+        self.assertEqual(0, self.db.alt.chunks.count_documents({}))
 
         self.assertRaises(NoFile, self.alt.open_download_stream, "foo")
         self.alt.upload_from_stream("foo",
@@ -217,7 +218,7 @@ class TestGridfs(IntegrationTest):
         # Should have created 100 versions of 'test' file
         self.assertEqual(
             100,
-            self.db.fs.files.find({'filename': 'test'}).count()
+            self.db.fs.files.count_documents({'filename': 'test'})
         )
 
     def test_get_last_version(self):
@@ -273,7 +274,7 @@ class TestGridfs(IntegrationTest):
         oid = self.fs.upload_from_stream("test_file",
                                          StringIO(b"hello world"),
                                          chunk_size_bytes=1)
-        self.assertEqual(11, self.db.fs.chunks.count())
+        self.assertEqual(11, self.db.fs.chunks.count_documents({}))
         self.assertEqual(b"hello world",
                          self.fs.open_download_stream(oid).read())
 
@@ -328,6 +329,7 @@ class TestGridfs(IntegrationTest):
             ServerSelectionTimeoutError,
             gfs.upload_from_stream, "test", b"")  # Still no connection.
 
+    @ignore_deprecations
     def test_gridfs_find(self):
         self.fs.upload_from_stream("two", b"test2")
         time.sleep(0.01)
@@ -384,19 +386,19 @@ class TestGridfs(IntegrationTest):
         gin.write(b"test1")
         gin.write(b"test2")
         gin.write(b"test3")
-        self.assertEqual(3, self.db.fs.chunks.count(
+        self.assertEqual(3, self.db.fs.chunks.count_documents(
             {"files_id": gin._id}))
         gin.abort()
         self.assertTrue(gin.closed)
         self.assertRaises(ValueError, gin.write, b"test4")
-        self.assertEqual(0, self.db.fs.chunks.count(
+        self.assertEqual(0, self.db.fs.chunks.count_documents(
             {"files_id": gin._id}))
 
     def test_download_to_stream(self):
         file1 = StringIO(b"hello world")
         # Test with one chunk.
         oid = self.fs.upload_from_stream("one_chunk", file1)
-        self.assertEqual(1, self.db.fs.chunks.count())
+        self.assertEqual(1, self.db.fs.chunks.count_documents({}))
         file2 = StringIO()
         self.fs.download_to_stream(oid, file2)
         file1.seek(0)
@@ -410,7 +412,7 @@ class TestGridfs(IntegrationTest):
         oid = self.fs.upload_from_stream("many_chunks",
                                          file1,
                                          chunk_size_bytes=1)
-        self.assertEqual(11, self.db.fs.chunks.count())
+        self.assertEqual(11, self.db.fs.chunks.count_documents({}))
         file2 = StringIO()
         self.fs.download_to_stream(oid, file2)
         file1.seek(0)
@@ -421,7 +423,7 @@ class TestGridfs(IntegrationTest):
         file1 = StringIO(b"hello world")
         # Test with one chunk.
         oid = self.fs.upload_from_stream("one_chunk", file1)
-        self.assertEqual(1, self.db.fs.chunks.count())
+        self.assertEqual(1, self.db.fs.chunks.count_documents({}))
         file2 = StringIO()
         self.fs.download_to_stream_by_name("one_chunk", file2)
         file1.seek(0)
@@ -433,7 +435,7 @@ class TestGridfs(IntegrationTest):
         self.db.drop_collection("fs.chunks")
         file1.seek(0)
         self.fs.upload_from_stream("many_chunks", file1, chunk_size_bytes=1)
-        self.assertEqual(11, self.db.fs.chunks.count())
+        self.assertEqual(11, self.db.fs.chunks.count_documents({}))
 
         file2 = StringIO()
         self.fs.download_to_stream_by_name("many_chunks", file2)

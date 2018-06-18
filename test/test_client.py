@@ -598,12 +598,12 @@ class TestClient(IntegrationTest):
         self.client.close()
         self.client.close()
 
-        coll.count()
+        coll.count_documents({})
 
         self.client.close()
         self.client.close()
 
-        coll.count()
+        coll.count_documents({})
 
     def test_close_kills_cursors(self):
         if sys.platform.startswith('java'):
@@ -1077,7 +1077,7 @@ class TestClient(IntegrationTest):
         client = rs_or_single_client(connect=False, w=0)
         client.test_lazy_connect_w0.test.insert_one({})
         wait_until(
-            lambda: client.test_lazy_connect_w0.test.count() == 1,
+            lambda: client.test_lazy_connect_w0.test.count_documents({}) == 1,
             "find one document")
 
         client = rs_or_single_client(connect=False, w=0)
@@ -1089,7 +1089,7 @@ class TestClient(IntegrationTest):
         client = rs_or_single_client(connect=False, w=0)
         client.test_lazy_connect_w0.test.delete_one({})
         wait_until(
-            lambda: client.test_lazy_connect_w0.test.count() == 0,
+            lambda: client.test_lazy_connect_w0.test.count_documents({}) == 0,
             "delete one document")
 
     @client_context.require_no_mongos
@@ -1348,7 +1348,7 @@ class TestExhaustCursor(IntegrationTest):
         sock_info.receive_message = saved
 
         # The socket is returned the pool and it still works.
-        self.assertEqual(200, collection.count())
+        self.assertEqual(200, collection.count_documents({}))
         self.assertIn(sock_info, pool.sockets)
 
     def test_exhaust_query_network_error(self):
@@ -1413,7 +1413,7 @@ class TestClientLazyConnect(IntegrationTest):
             collection.insert_one({})
 
         def test(collection):
-            self.assertEqual(NTHREADS, collection.count())
+            self.assertEqual(NTHREADS, collection.count_documents({}))
 
         lazy_client_trial(reset, insert_one, test, self._get_client)
 
@@ -1440,7 +1440,7 @@ class TestClientLazyConnect(IntegrationTest):
             collection.delete_one({'i': i})
 
         def test(collection):
-            self.assertEqual(0, collection.count())
+            self.assertEqual(0, collection.count_documents({}))
 
         lazy_client_trial(reset, delete_one, test, self._get_client)
 

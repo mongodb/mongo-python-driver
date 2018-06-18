@@ -732,6 +732,7 @@ class TestCursor(IntegrationTest):
             break
         self.assertRaises(InvalidOperation, a.sort, "x", ASCENDING)
 
+    @ignore_deprecations
     def test_count(self):
         db = self.db
         db.test.drop()
@@ -756,6 +757,7 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(0, db.test.acollectionthatdoesntexist.find().count())
 
+    @ignore_deprecations
     def test_count_with_hint(self):
         collection = self.db.test
         collection.drop()
@@ -785,6 +787,7 @@ class TestCursor(IntegrationTest):
             self.assertEqual(2, collection.find().hint("x_1").count())
             self.assertEqual(2, collection.find().hint([("x", 1)]).count())
 
+    @ignore_deprecations
     def test_where(self):
         db = self.db
         db.test.drop()
@@ -954,6 +957,7 @@ class TestCursor(IntegrationTest):
         self.assertTrue(isinstance(cursor2._Cursor__hint, SON))
         self.assertEqual(cursor._Cursor__hint, cursor2._Cursor__hint)
 
+    @ignore_deprecations
     def test_count_with_fields(self):
         self.db.test.drop()
         self.db.test.insert_one({"x": 1})
@@ -1045,6 +1049,7 @@ class TestCursor(IntegrationTest):
         self.assertRaises(IndexError,
                           lambda x: self.db.test.find().skip(50)[x], 50)
 
+    @ignore_deprecations
     def test_count_with_limit_and_skip(self):
         self.assertRaises(TypeError, self.db.test.find().count, "foo")
 
@@ -1122,7 +1127,7 @@ class TestCursor(IntegrationTest):
         # and that the cursor doesn't think it's still alive.
         self.assertFalse(cursor.alive)
 
-        self.assertEqual(3, db.test.count())
+        self.assertEqual(3, db.test.count_documents({}))
 
         # __getitem__(index)
         for cursor in (db.test.find(cursor_type=CursorType.TAILABLE),
@@ -1213,6 +1218,7 @@ class TestCursor(IntegrationTest):
         self.assertTrue(c1.alive)
 
     @client_context.require_no_mongos
+    @ignore_deprecations
     def test_comment(self):
         if client_context.auth_enabled:
             raise SkipTest("SERVER-4754 - This test uses profiling.")

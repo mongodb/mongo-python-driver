@@ -55,21 +55,21 @@ class TestCommon(IntegrationTest):
         self.assertEqual(None, coll.find_one({'uu': uu}))
         self.assertEqual(uu, coll.find_one({'uu': UUIDLegacy(uu)})['uu'])
 
-        # Test Cursor.count
-        self.assertEqual(0, coll.find({'uu': uu}).count())
+        # Test count_documents
+        self.assertEqual(0, coll.count_documents({'uu': uu}))
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        self.assertEqual(1, coll.find({'uu': uu}).count())
+        self.assertEqual(1, coll.count_documents({'uu': uu}))
 
         # Test delete
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=STANDARD))
         coll.delete_one({'uu': uu})
-        self.assertEqual(1, coll.count())
+        self.assertEqual(1, coll.count_documents({}))
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         coll.delete_one({'uu': uu})
-        self.assertEqual(0, coll.count())
+        self.assertEqual(0, coll.count_documents({}))
 
         # Test update_one
         coll.insert_one({'_id': uu, 'i': 1})
@@ -133,7 +133,7 @@ class TestCommon(IntegrationTest):
         self.assertEqual([], result)
 
         result = coll.map_reduce(map, reduce, "results", query=q)
-        self.assertEqual(0, self.db.results.count())
+        self.assertEqual(0, self.db.results.count_documents({}))
 
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
@@ -142,7 +142,7 @@ class TestCommon(IntegrationTest):
         self.assertEqual(2, len(result))
 
         result = coll.map_reduce(map, reduce, "results", query=q)
-        self.assertEqual(2, self.db.results.count())
+        self.assertEqual(2, self.db.results.count_documents({}))
 
         self.db.drop_collection("result")
         coll.drop()

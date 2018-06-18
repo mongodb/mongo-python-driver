@@ -55,7 +55,7 @@ class TestSampleShellCommands(unittest.TestCase):
              "size": {"h": 28, "w": 35.5, "uom": "cm"}})
         # End Example 1
 
-        self.assertEqual(db.inventory.count(), 1)
+        self.assertEqual(db.inventory.count_documents({}), 1)
 
         # Start Example 2
         cursor = db.inventory.find({"item": "canvas"})
@@ -79,7 +79,7 @@ class TestSampleShellCommands(unittest.TestCase):
              "size": {"h": 19, "w": 22.85, "uom": "cm"}}])
         # End Example 3
 
-        self.assertEqual(db.inventory.count(), 4)
+        self.assertEqual(db.inventory.count_documents({}), 4)
 
     def test_query_top_level_fields(self):
         db = client_context.client.pymongo_test
@@ -107,7 +107,7 @@ class TestSampleShellCommands(unittest.TestCase):
              "status": "A"}])
         # End Example 6
 
-        self.assertEqual(db.inventory.count(), 5)
+        self.assertEqual(db.inventory.count_documents({}), 5)
 
         # Start Example 7
         cursor = db.inventory.find({})
@@ -638,25 +638,25 @@ class TestSampleShellCommands(unittest.TestCase):
              "status": "A"}])
         # End Example 55
 
-        self.assertEqual(db.inventory.count(), 5)
+        self.assertEqual(db.inventory.count_documents({}), 5)
 
         # Start Example 57
         db.inventory.delete_many({"status": "A"})
         # End Example 57
 
-        self.assertEqual(db.inventory.count(), 3)
+        self.assertEqual(db.inventory.count_documents({}), 3)
 
         # Start Example 58
         db.inventory.delete_one({"status": "D"})
         # End Example 58
 
-        self.assertEqual(db.inventory.count(), 2)
+        self.assertEqual(db.inventory.count_documents({}), 2)
 
         # Start Example 56
         db.inventory.delete_many({})
         # End Example 56
 
-        self.assertEqual(db.inventory.count(), 0)
+        self.assertEqual(db.inventory.count_documents({}), 0)
 
     @client_context.require_version_min(3, 5, 11)
     @client_context.require_replica_set
