@@ -160,6 +160,7 @@ class TestSingleSlaveOk(TestReadPreferencesBase):
 
         # Test some database helpers.
         self.assertIsNotNone(db.collection_names())
+        self.assertIsNotNone(db.list_collection_names())
         self.assertIsNotNone(db.validate_collection("test"))
         self.assertIsNotNone(db.command("ping"))
 

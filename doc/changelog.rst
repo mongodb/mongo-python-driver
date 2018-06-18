@@ -61,6 +61,10 @@ Deprecations:
   deprecated in MongoDB 4.0. Use `maxTimeMS` instead.
 - Deprecated :meth:`~pymongo.mongo_client.MongoClient.close_cursor`. Use
   :meth:`~pymongo.cursor.Cursor.close` instead.
+- Deprecated :meth:`~pymongo.mongo_client.MongoClient.database_names`. Use
+  :meth:`~pymongo.mongo_client.MongoClient.list_database_names` instead.
+- Deprecated :meth:`~pymongo.database.Database.collection_names`. Use
+  :meth:`~pymongo.database.Database.list_collection_names` instead.
 
 Unavoidable breaking changes:
 

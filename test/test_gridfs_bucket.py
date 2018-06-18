@@ -147,7 +147,7 @@ class TestGridfs(IntegrationTest):
 
     def test_upload_ensures_index(self):
         # setUp has dropped collections.
-        names = self.db.collection_names()
+        names = self.db.list_collection_names()
         self.assertFalse([name for name in names if name.startswith('fs')])
 
         chunks = self.db.fs.chunks

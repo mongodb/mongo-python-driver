@@ -267,7 +267,7 @@ def server_is_master_with_slave(client):
 
 
 def drop_collections(db):
-    for coll in db.collection_names():
+    for coll in db.list_collection_names():
         if not coll.startswith('system'):
             db.drop_collection(coll)
 

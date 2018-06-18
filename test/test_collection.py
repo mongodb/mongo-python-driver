@@ -155,11 +155,13 @@ class TestCollection(IntegrationTest):
         # No Exception.
         db = client_context.client.pymongo_test
         db.create_test_no_wc.drop()
-        wait_until(lambda: 'create_test_no_wc' not in db.collection_names(),
-                 'drop create_test_no_wc collection')
+        wait_until(
+            lambda: 'create_test_no_wc' not in db.list_collection_names(),
+            'drop create_test_no_wc collection')
         Collection(db, name='create_test_no_wc', create=True)
-        wait_until(lambda: 'create_test_no_wc' in db.collection_names(),
-                 'create create_test_no_wc collection')
+        wait_until(
+            lambda: 'create_test_no_wc' in db.list_collection_names(),
+            'create create_test_no_wc collection')
         # SERVER-33317
         if (not client_context.is_mongos or not
                 client_context.version.at_least(3, 7, 0)):
@@ -171,7 +173,7 @@ class TestCollection(IntegrationTest):
 
     def test_drop_nonexistent_collection(self):
         self.db.drop_collection('test')
-        self.assertFalse('test' in self.db.collection_names())
+        self.assertFalse('test' in self.db.list_collection_names())
 
         # No exception
         self.db.drop_collection('test')

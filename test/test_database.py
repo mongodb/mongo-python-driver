@@ -147,13 +147,13 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(InvalidName, db.create_collection, "coll..ection")
 
         test = db.create_collection("test")
-        self.assertTrue(u"test" in db.collection_names())
+        self.assertTrue(u"test" in db.list_collection_names())
         test.insert_one({"hello": u"world"})
         self.assertEqual(db.test.find_one()["hello"], "world")
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
-        self.assertTrue(u"test.foo" in db.collection_names())
+        self.assertTrue(u"test.foo" in db.list_collection_names())
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
     def _test_collection_names(self, meth, test_no_system):
@@ -274,7 +274,7 @@ class TestDatabase(IntegrationTest):
         for i in range(200):
             db.create_collection(str(i))
 
-        db.collection_names()  # Must not hang.
+        db.list_collection_names()  # Must not hang.
         client.drop_database('test_collection_names_single_socket')
 
     def test_drop_collection(self):
@@ -284,24 +284,24 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, db.drop_collection, None)
 
         db.test.insert_one({"dummy": u"object"})
-        self.assertTrue("test" in db.collection_names())
+        self.assertTrue("test" in db.list_collection_names())
         db.drop_collection("test")
-        self.assertFalse("test" in db.collection_names())
+        self.assertFalse("test" in db.list_collection_names())
 
         db.test.insert_one({"dummy": u"object"})
-        self.assertTrue("test" in db.collection_names())
+        self.assertTrue("test" in db.list_collection_names())
         db.drop_collection(u"test")
-        self.assertFalse("test" in db.collection_names())
+        self.assertFalse("test" in db.list_collection_names())
 
         db.test.insert_one({"dummy": u"object"})
-        self.assertTrue("test" in db.collection_names())
+        self.assertTrue("test" in db.list_collection_names())
         db.drop_collection(db.test)
-        self.assertFalse("test" in db.collection_names())
+        self.assertFalse("test" in db.list_collection_names())
 
         db.test.insert_one({"dummy": u"object"})
-        self.assertTrue("test" in db.collection_names())
+        self.assertTrue("test" in db.list_collection_names())
         db.test.drop()
-        self.assertFalse("test" in db.collection_names())
+        self.assertFalse("test" in db.list_collection_names())
         db.test.drop()
 
         db.drop_collection(db.test.doesnotexist)

@@ -254,6 +254,7 @@ class TestSession(IntegrationTest):
             (db.command, ['ping'], {}),
             (db.create_collection, ['collection'], {}),
             (db.collection_names, [], {}),
+            (db.list_collection_names, [], {}),
             (db.validate_collection, ['collection'], {}),
             (db.drop_collection, ['collection'], {}),
             (db.current_op, [], {}),

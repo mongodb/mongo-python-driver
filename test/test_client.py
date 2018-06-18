@@ -574,7 +574,7 @@ class TestClient(IntegrationTest):
 
         self.client.pymongo_test.test.insert_one({"dummy": u"object"})
         self.client.pymongo_test2.test.insert_one({"dummy": u"object"})
-        dbs = self.client.database_names()
+        dbs = self.client.list_database_names()
         self.assertIn("pymongo_test", dbs)
         self.assertIn("pymongo_test2", dbs)
         self.client.drop_database("pymongo_test")
@@ -588,7 +588,7 @@ class TestClient(IntegrationTest):
 
         raise SkipTest("This test often fails due to SERVER-2329")
 
-        dbs = self.client.database_names()
+        dbs = self.client.list_database_names()
         self.assertNotIn("pymongo_test", dbs)
         self.assertNotIn("pymongo_test2", dbs)
 
@@ -762,7 +762,7 @@ class TestClient(IntegrationTest):
         # Confirm we can do operations via the socket.
         client = rs_or_single_client(uri)
         client.pymongo_test.test.insert_one({"dummy": "object"})
-        dbs = client.database_names()
+        dbs = client.list_database_names()
         self.assertTrue("pymongo_test" in dbs)
 
         self.assertTrue(mongodb_socket in repr(client))
@@ -930,7 +930,7 @@ class TestClient(IntegrationTest):
         client.pymongo_test.test.insert_one({"dummy": u"object"})
         client.pymongo_test_bernie.test.insert_one({"dummy": u"object"})
 
-        dbs = client.database_names()
+        dbs = client.list_database_names()
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_bernie" in dbs)
 

@@ -224,7 +224,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         client.pymongo_test.test.insert_one({"dummy": u"object"})
         client.pymongo_test_bernie.test.insert_one({"dummy": u"object"})
 
-        dbs = client.database_names()
+        dbs = client.list_database_names()
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_bernie" in dbs)
         client.close()

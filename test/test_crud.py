@@ -34,6 +34,7 @@ from pymongo.operations import (InsertOne,
                                 UpdateMany)
 
 from test import unittest, client_context, IntegrationTest
+from test.utils import drop_collections
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -161,8 +162,7 @@ def create_test(scenario_def, test):
     def run_scenario(self):
         # Load data.
         assert scenario_def['data'], "tests must have non-empty data"
-        for name in self.db.collection_names(False):
-            self.db.drop_collection(name)
+        drop_collections(self.db)
         self.db.test.insert_many(scenario_def['data'])
 
         result = run_operation(self.db.test, test)

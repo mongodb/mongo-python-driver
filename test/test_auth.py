@@ -170,11 +170,11 @@ class TestGSSAPI(unittest.TestCase):
                                      authMechanism='GSSAPI',
                                      replicaSet=set_name)
 
-                client[GSSAPI_DB].collection_names()
+                client[GSSAPI_DB].list_collection_names()
 
                 uri = uri + '&replicaSet=%s' % (str(set_name),)
                 client = MongoClient(uri)
-                client[GSSAPI_DB].collection_names()
+                client[GSSAPI_DB].list_collection_names()
 
             # With authMechanismProperties
             client = MongoClient(GSSAPI_HOST,
@@ -185,11 +185,11 @@ class TestGSSAPI(unittest.TestCase):
                                  authMechanismProperties=self.mech_properties,
                                  replicaSet=set_name)
 
-            client[GSSAPI_DB].collection_names()
+            client[GSSAPI_DB].list_collection_names()
 
             mech_uri = mech_uri + '&replicaSet=%s' % (str(set_name),)
             client = MongoClient(mech_uri)
-            client[GSSAPI_DB].collection_names()
+            client[GSSAPI_DB].list_collection_names()
 
     @ignore_deprecations
     def test_gssapi_threaded(self):

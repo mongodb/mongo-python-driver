@@ -360,7 +360,7 @@ class Database(common.BaseObject):
            Removed deprecated argument: options
         """
         with self.__client._tmp_session(session) as s:
-            if name in self.collection_names(session=s):
+            if name in self.list_collection_names(session=s):
                 raise CollectionInvalid("collection %s already exists" % name)
 
             return Collection(self, name, True, codec_options,
@@ -609,7 +609,8 @@ class Database(common.BaseObject):
 
     def collection_names(self, include_system_collections=True,
                          session=None):
-        """Get a list of all the collection names in this database.
+        """**DEPRECATED**: Get a list of all the collection names in this
+        database.
 
         :Parameters:
           - `include_system_collections` (optional): if ``False`` list
@@ -617,9 +618,15 @@ class Database(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
+        .. versionchanged:: 3.7
+           Deprecated. Use :meth:`list_collection_names` instead.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
+        warnings.warn("collection_names is deprecated. Use "
+                      "list_collection_names instead.",
+                      DeprecationWarning, stacklevel=2)
         kws = {} if include_system_collections else _SYSTEM_FILTER
         return [result["name"]
                 for result in self.list_collections(session=session,
