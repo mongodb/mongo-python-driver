@@ -610,7 +610,6 @@ def check_event(event, expectation_dict):
 def create_test(scenario_def, test):
     def run_scenario(self):
         # Set up
-        #import ipdb as pdb; pdb.set_trace()
         self.setUpCluster(scenario_def)
         try:
             with get_change_stream(
@@ -681,7 +680,6 @@ def create_tests():
                     test_type.replace("-", "_"),
                     str(test['description'].replace(" ", "_")))
 
-                print(test_name)
                 new_test.__name__ = test_name
                 setattr(TestAllScenarios, new_test.__name__, new_test)
 
