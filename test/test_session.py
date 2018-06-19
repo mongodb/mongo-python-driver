@@ -281,13 +281,10 @@ class TestSession(IntegrationTest):
             (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
             (db.remove_user, ['session-test'], {}))
 
-    def test_collection(self):
-        client = self.client
-        coll = client.pymongo_test.collection
-
-        # Test some collection methods - the rest are in test_cursor.
-        self._test_ops(
-            client,
+    @staticmethod
+    def collection_write_ops(coll):
+        """Generate database write ops for tests."""
+        return [
             (coll.drop, [], {}),
             (coll.bulk_write, [[InsertOne({})]], {}),
             (coll.insert_one, [{}], {}),
@@ -297,27 +294,40 @@ class TestSession(IntegrationTest):
             (coll.update_many, [{}, {'$set': {'a': 1}}], {}),
             (coll.delete_one, [{}], {}),
             (coll.delete_many, [{}], {}),
-            (coll.map_reduce, ['function() {}', 'function() {}', 'output'], {}),
-            (coll.inline_map_reduce, ['function() {}', 'function() {}'], {}),
+            (coll.map_reduce,
+             ['function() {}', 'function() {}', 'output'], {}),
             (coll.find_one_and_replace, [{}, {}], {}),
             (coll.find_one_and_update, [{}, {'$set': {'a': 1}}], {}),
             (coll.find_one_and_delete, [{}, {}], {}),
             (coll.rename, ['collection2'], {}),
             # Drop collection2 between tests of "rename", above.
-            (client.pymongo_test.drop_collection, ['collection2'], {}),
-            (coll.distinct, ['a'], {}),
-            (coll.find_one, [], {}),
-            (coll.count, [], {}),
-            (coll.count_documents, [{}], {}),
+            (coll.database.drop_collection, ['collection2'], {}),
             (coll.create_indexes, [[IndexModel('a')]], {}),
             (coll.create_index, ['a'], {}),
             (coll.drop_index, ['a_1'], {}),
             (coll.drop_indexes, [], {}),
+            (coll.aggregate, [[{"$out": "aggout"}]], {}),
+        ]
+
+    def test_collection(self):
+        client = self.client
+        coll = client.pymongo_test.collection
+
+        # Test some collection methods - the rest are in test_cursor.
+        ops = self.collection_write_ops(coll)
+        ops.extend([
+            (coll.distinct, ['a'], {}),
+            (coll.find_one, [], {}),
+            (coll.count, [], {}),
+            (coll.count_documents, [{}], {}),
+            (coll.inline_map_reduce, ['function() {}', 'function() {}'], {}),
             (coll.reindex, [], {}),
             (coll.list_indexes, [], {}),
             (coll.index_information, [], {}),
             (coll.options, [], {}),
-            (coll.aggregate, [[]], {}))
+            (coll.aggregate, [[]], {}),
+        ])
+        self._test_ops(client, *ops)
 
     @client_context.require_no_mongos
     @client_context.require_version_max(4, 1, 0)
@@ -680,6 +690,68 @@ class TestSession(IntegrationTest):
                                                  session=session),
             lambda cursor: list(cursor))
 
+    def _test_unacknowledged_ops(self, client, *ops):
+        listener = client.event_listeners()[0][0]
+
+        for f, args, kw in ops:
+            with client.start_session() as s:
+                listener.results.clear()
+                # In case "f" modifies its inputs.
+                args = copy.copy(args)
+                kw = copy.copy(kw)
+                kw['session'] = s
+                with self.assertRaises(
+                        ConfigurationError,
+                        msg="%s did not raise ConfigurationError" % (
+                                f.__name__,)):
+                    f(*args, **kw)
+                if f.__name__ == 'create_collection':
+                    # create_collection runs listCollections first.
+                    event = listener.results['started'].pop(0)
+                    self.assertEqual('listCollections', event.command_name)
+                    self.assertIn('lsid', event.command,
+                                  "%s sent no lsid with %s" % (
+                                     f.__name__, event.command_name))
+
+                # Should not run any command before raising an error.
+                self.assertFalse(listener.results['started'],
+                                 "%s sent command" % (f.__name__,))
+
+            self.assertTrue(s.has_ended)
+
+        # Unacknowledged write without a session does not send an lsid.
+        for f, args, kw in ops:
+            listener.results.clear()
+            f(*args, **kw)
+            self.assertGreaterEqual(len(listener.results['started']), 1)
+
+            if f.__name__ == 'create_collection':
+                # create_collection runs listCollections first.
+                event = listener.results['started'].pop(0)
+                self.assertEqual('listCollections', event.command_name)
+                self.assertIn('lsid', event.command,
+                              "%s sent no lsid with %s" % (
+                                  f.__name__, event.command_name))
+
+            for event in listener.results['started']:
+                self.assertNotIn('lsid', event.command,
+                                 "%s sent lsid with %s" % (
+                                     f.__name__, event.command_name))
+
+    def test_unacknowledged_writes(self):
+        # Ensure the collection exists.
+        self.client.pymongo_test.test_unacked_writes.insert_one({})
+        client = rs_or_single_client(w=0, event_listeners=[self.listener])
+        db = client.pymongo_test
+        coll = db.test_unacked_writes
+        ops = [
+            (client.drop_database, [db.name], {}),
+            (db.create_collection, ['collection'], {}),
+            (db.drop_collection, ['collection'], {}),
+        ]
+        ops.extend(self.collection_write_ops(coll))
+        self._test_unacknowledged_ops(client, *ops)
+
 
 class TestCausalConsistency(unittest.TestCase):
 
@@ -977,13 +1049,6 @@ class TestCausalConsistency(unittest.TestCase):
             self.assertIsNotNone(read_concern)
             self.assertEqual(read_concern.get('level'), 'majority')
             self.assertIsNotNone(read_concern.get('afterClusterTime'))
-
-    def test_unacknowledged(self):
-        with self.client.start_session(causal_consistency=True) as s:
-            coll = self.client.pymongo_test.get_collection(
-                'test', write_concern=WriteConcern(w=0))
-            coll.insert_one({}, session=s)
-            self.assertIsNone(s.operation_time)
 
     @client_context.require_no_standalone
     def test_cluster_time_with_server_support(self):

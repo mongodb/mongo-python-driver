@@ -1498,6 +1498,21 @@ class MongoClient(common.BaseObject):
         except Exception:
             helpers._handle_exception()
 
+    def __start_session(self, implicit, **kwargs):
+        # Driver Sessions Spec: "If startSession is called when multiple users
+        # are authenticated drivers MUST raise an error with the error message
+        # 'Cannot call startSession when multiple users are authenticated.'"
+        authset = set(self.__all_credentials.values())
+        if len(authset) > 1:
+            raise InvalidOperation("Cannot call start_session when"
+                                   " multiple users are authenticated")
+
+        # Raises ConfigurationError if sessions are not supported.
+        server_session = self._get_server_session()
+        opts = client_session.SessionOptions(**kwargs)
+        return client_session.ClientSession(
+            self, server_session, opts, authset, implicit)
+
     def start_session(self,
                       causal_consistency=True,
                       default_transaction_options=None):
@@ -1519,21 +1534,10 @@ class MongoClient(common.BaseObject):
 
         .. versionadded:: 3.6
         """
-        # Driver Sessions Spec: "If startSession is called when multiple users
-        # are authenticated drivers MUST raise an error with the error message
-        # 'Cannot call startSession when multiple users are authenticated.'"
-        authset = set(self.__all_credentials.values())
-        if len(authset) > 1:
-            raise InvalidOperation("Cannot call start_session when"
-                                   " multiple users are authenticated")
-
-        # Raises ConfigurationError if sessions are not supported.
-        server_session = self._get_server_session()
-        opts = client_session.SessionOptions(
+        return self.__start_session(
+            False,
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options)
-        return client_session.ClientSession(
-            self, server_session, opts, authset)
 
     def _get_server_session(self):
         """Internal: start or resume a _ServerSession."""
@@ -1549,9 +1553,9 @@ class MongoClient(common.BaseObject):
             return session
 
         try:
-            # Don't make implied sessions causally consistent. Applications
+            # Don't make implicit sessions causally consistent. Applications
             # should always opt-in.
-            return self.start_session(causal_consistency=False)
+            return self.__start_session(True, causal_consistency=False)
         except (ConfigurationError, InvalidOperation):
             # Sessions not supported, or multiple users authenticated.
             return None

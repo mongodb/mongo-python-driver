@@ -2258,10 +2258,6 @@ class Collection(common.BaseObject):
                 if first_batch_size is not None and not dollar_out:
                     kwargs["cursor"]["batchSize"] = first_batch_size
 
-            if (sock_info.max_wire_version >= 5 and dollar_out and
-                    not self.write_concern.is_server_default):
-                cmd['writeConcern'] = self.write_concern.document
-
             cmd.update(kwargs)
             # Apply this Collection's read concern if $out is not in the
             # pipeline.
@@ -2271,6 +2267,10 @@ class Collection(common.BaseObject):
                 read_concern = self.read_concern
             else:
                 read_concern = None
+            if 'writeConcern' not in cmd and dollar_out:
+                write_concern = self.write_concern
+            else:
+                write_concern = None
 
             # Avoid auto-injecting a session: aggregate() passes a session,
             # aggregate_raw_batches() passes none.
@@ -2282,6 +2282,7 @@ class Collection(common.BaseObject):
                 self.codec_options,
                 parse_write_concern_error=True,
                 read_concern=read_concern,
+                write_concern=write_concern,
                 collation=collation,
                 session=session,
                 client=self.__database.client)
@@ -2289,10 +2290,10 @@ class Collection(common.BaseObject):
             if "cursor" in result:
                 cursor = result["cursor"]
             else:
-                # Pre-MongoDB 2.6. Fake a cursor.
+                # Pre-MongoDB 2.6 or unacknowledged write. Fake a cursor.
                 cursor = {
                     "id": 0,
-                    "firstBatch": result["result"],
+                    "firstBatch": result.get("result", []),
                     "ns": self.full_name,
                 }
 
@@ -2586,14 +2587,15 @@ class Collection(common.BaseObject):
 
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
+        cmd.update(kwargs)
+        write_concern = self._write_concern_for_cmd(cmd)
+
         with self._socket_for_writes() as sock_info:
             with self.__database.client._tmp_session(session) as s:
-                if (sock_info.max_wire_version >= 5 and
-                        not self.write_concern.is_server_default):
-                    cmd['writeConcern'] = self.write_concern.document
-                cmd.update(kwargs)
                 return sock_info.command(
-                    'admin', cmd, parse_write_concern_error=True,
+                    'admin', cmd,
+                    write_concern=write_concern,
+                    parse_write_concern_error=True,
                     session=s, client=self.__database.client)
 
     def distinct(self, key, filter=None, session=None, **kwargs):
@@ -2716,20 +2718,20 @@ class Collection(common.BaseObject):
         inline = 'inline' in cmd['out']
         sock_ctx, read_pref = self._socket_for_primary_reads(session)
         with sock_ctx as (sock_info, slave_ok):
-            if (sock_info.max_wire_version >= 5 and
-                    not self.write_concern.is_server_default and
-                    not inline):
-                cmd['writeConcern'] = self.write_concern.document
-            cmd.update(kwargs)
             if (sock_info.max_wire_version >= 4 and 'readConcern' not in cmd and
                     inline):
                 read_concern = self.read_concern
             else:
                 read_concern = None
+            if 'writeConcern' not in cmd and not inline:
+                write_concern = self.write_concern
+            else:
+                write_concern = None
 
             response = self._command(
                 sock_info, cmd, slave_ok, read_pref,
                 read_concern=read_concern,
+                write_concern=write_concern,
                 collation=collation, session=session)
 
         if full_response or not response.get('result'):
@@ -2796,6 +2798,13 @@ class Collection(common.BaseObject):
         else:
             return res.get("results")
 
+    def _write_concern_for_cmd(self, cmd):
+        raw_wc = cmd.get('writeConcern')
+        if raw_wc is not None:
+            return WriteConcern(**raw_wc)
+        else:
+            return self.write_concern
+
     def __find_and_modify(self, filter, projection, sort, upsert=None,
                           return_document=ReturnDocument.BEFORE,
                           array_filters=None, session=None, **kwargs):
@@ -2818,11 +2827,7 @@ class Collection(common.BaseObject):
             common.validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
 
-        write_concern = cmd.get('writeConcern')
-        if write_concern is not None:
-            acknowledged = write_concern.get("w") != 0
-        else:
-            acknowledged = self.write_concern.acknowledged
+        write_concern = self._write_concern_for_cmd(cmd)
 
         def _find_and_modify(session, sock_info, retryable_write):
             if array_filters is not None:
@@ -2835,12 +2840,12 @@ class Collection(common.BaseObject):
                         'arrayFilters is unsupported for unacknowledged '
                         'writes.')
                 cmd["arrayFilters"] = array_filters
-            if sock_info.max_wire_version >= 4 and 'writeConcern' not in cmd:
-                wc_doc = self.write_concern.document
-                if wc_doc:
-                    cmd['writeConcern'] = wc_doc
+            if (sock_info.max_wire_version >= 4 and
+                    not write_concern.is_server_default):
+                cmd['writeConcern'] = write_concern.document
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
+                                write_concern=write_concern,
                                 allowable_errors=[_NO_OBJ_ERROR],
                                 collation=collation, session=session,
                                 retryable_write=retryable_write)
@@ -2848,7 +2853,7 @@ class Collection(common.BaseObject):
             return out.get("value")
 
         return self.__database.client._retryable_write(
-            acknowledged, _find_and_modify, session)
+            write_concern.acknowledged, _find_and_modify, session)
 
     def find_one_and_delete(self, filter,
                             projection=None, sort=None, session=None, **kwargs):
@@ -3245,17 +3250,12 @@ class Collection(common.BaseObject):
         cmd = SON([("findAndModify", self.__name)])
         cmd.update(kwargs)
 
-        write_concern = cmd.get('writeConcern')
-        if write_concern is not None:
-            acknowledged = write_concern.get("w") != 0
-        else:
-            acknowledged = self.write_concern.acknowledged
+        write_concern = self._write_concern_for_cmd(cmd)
 
         def _find_and_modify(session, sock_info, retryable_write):
-            if sock_info.max_wire_version >= 4 and 'writeConcern' not in cmd:
-                wc_doc = self.write_concern.document
-                if wc_doc:
-                    cmd['writeConcern'] = wc_doc
+            if (sock_info.max_wire_version >= 4 and
+                    not write_concern.is_server_default):
+                cmd['writeConcern'] = write_concern.document
             result = self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 allowable_errors=[_NO_OBJ_ERROR], collation=collation,
@@ -3265,7 +3265,7 @@ class Collection(common.BaseObject):
             return result
 
         out = self.__database.client._retryable_write(
-            acknowledged, _find_and_modify, None)
+            write_concern.acknowledged, _find_and_modify, None)
 
         if not out['ok']:
             if out["errmsg"] == _NO_OBJ_ERROR:

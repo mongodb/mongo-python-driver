@@ -23,6 +23,7 @@ from itertools import islice
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (validate_is_mapping,
                             validate_is_document_type,
                             validate_ok_for_replace,
@@ -498,6 +499,7 @@ class _Bulk(object):
         self.executed = True
         write_concern = (WriteConcern(**write_concern) if
                          write_concern else self.collection.write_concern)
+        session = _validate_session_write_concern(session, write_concern)
 
         if self.ordered:
             generator = self.gen_ordered()

@@ -192,6 +192,28 @@ class TransactionOptions(object):
         return self._read_preference
 
 
+def _validate_session_write_concern(session, write_concern):
+    """Validate that an explicit session is not used with an unack'ed write.
+
+    Returns the session to use for the next operation.
+    """
+    if session:
+        if write_concern is not None and not write_concern.acknowledged:
+            # For unacknowledged writes without an explicit session,
+            # drivers SHOULD NOT use an implicit session. If a driver
+            # creates an implicit session for unacknowledged writes
+            # without an explicit session, the driver MUST NOT send the
+            # session ID.
+            if session._implicit:
+                return None
+            else:
+                raise ConfigurationError(
+                    'Explicit sessions are incompatible with '
+                    'unacknowledged write concern: %r' % (
+                        write_concern,))
+    return session
+
+
 class _TransactionContext(object):
     """Internal transaction context manager for start_transaction."""
     def __init__(self, session):
@@ -243,7 +265,7 @@ _UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset([
 
 class ClientSession(object):
     """A session for ordering sequential operations."""
-    def __init__(self, client, server_session, options, authset):
+    def __init__(self, client, server_session, options, authset, implicit):
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client = client
         self._server_session = server_session
@@ -251,6 +273,8 @@ class ClientSession(object):
         self._authset = authset
         self._cluster_time = None
         self._operation_time = None
+        # Is this an implicitly created session?
+        self._implicit = implicit
         self._transaction = _Transaction(None)
 
     def end_session(self):

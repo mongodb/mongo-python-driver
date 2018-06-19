@@ -88,6 +88,13 @@ Unavoidable breaking changes:
   :class:`~pymongo.errors.OperationFailure`.
 - :meth:`~pymongo.collection.Collection.parallel_scan` no longer uses an
   implicit session. Explicit sessions are still supported.
+- Unacknowledged writes (``w=0``) with an explicit ``session`` parameter now
+  raise a client side error. Since PyMongo does not wait for a response for an
+  unacknowledged write, two unacknowledged writes run serially by the client
+  may be executed simultaneously on the server. However, the server requires a
+  single session must not be used simultaneously by more than one operation.
+  Therefore explicit sessions cannot support unacknowledged writes.
+  Unacknowledged writes without a ``session`` parameter are still supported.
 
 
 Issues Resolved

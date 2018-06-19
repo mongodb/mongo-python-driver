@@ -40,6 +40,7 @@ from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import imap, itervalues, _unicode, integer_types
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
+from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (MAX_BSON_SIZE,
                             MAX_MESSAGE_SIZE,
                             MAX_WIRE_VERSION,
@@ -534,6 +535,7 @@ class SocketInfo(object):
           - `publish_events`: Should we publish events for this command?
         """
         self.validate_session(client, session)
+        session = _validate_session_write_concern(session, write_concern)
 
         # Ensure command name remains in first place.
         if not isinstance(spec, ORDERED_TYPES):

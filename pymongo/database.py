@@ -498,11 +498,6 @@ class Database(common.BaseObject):
         if isinstance(command, string_type):
             command = SON([(command, value)])
 
-        if (sock_info.max_wire_version >= 5 and
-                write_concern and
-                not write_concern.is_server_default):
-            command['writeConcern'] = write_concern.document
-
         command.update(kwargs)
         with self.__client._tmp_session(session) as s:
             return sock_info.command(
@@ -513,6 +508,7 @@ class Database(common.BaseObject):
                 codec_options,
                 check,
                 allowable_errors,
+                write_concern=write_concern,
                 parse_write_concern_error=parse_write_concern_error,
                 session=s,
                 client=self.__client)
