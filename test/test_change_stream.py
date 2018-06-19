@@ -14,7 +14,10 @@
 
 """Test the change_stream module."""
 
+import json
 import random
+import os
+import re
 import sys
 import string
 import threading
@@ -26,13 +29,14 @@ from itertools import product
 
 sys.path[0:0] = ['']
 
-from bson import BSON, ObjectId, SON
+from bson import BSON, ObjectId, SON, json_util
 from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          Binary,
                          STANDARD,
                          PYTHON_LEGACY)
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 
+from pymongo import monitoring
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (InvalidOperation, OperationFailure,
                             ServerSelectionTimeoutError)
@@ -40,7 +44,9 @@ from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 
 from test import client_context, unittest, IntegrationTest
-from test.utils import IGNORE, WhiteListEventListener, rs_or_single_client
+from test.utils import (
+    EventListener, IGNORE, WhiteListEventListener, rs_or_single_client
+)
 
 
 class TestClusterChangeStream(IntegrationTest):
@@ -280,7 +286,7 @@ class TestCollectionChangeStream(IntegrationTest):
         # Use a short await time to speed up the test.
         with self.coll.watch(max_await_time_ms=250) as change_stream:
             def iterate_cursor():
-                for change in change_stream:
+                for _ in change_stream:
                     pass
             t = threading.Thread(target=iterate_cursor)
             t.start()
@@ -294,7 +300,7 @@ class TestCollectionChangeStream(IntegrationTest):
         """ChangeStream must continuously track the last seen resumeToken."""
         with self.coll.watch() as change_stream:
             self.assertIsNone(change_stream._resume_token)
-            for i in range(3):
+            for _ in range(3):
                 self.coll.insert_one({})
                 change = next(change_stream)
                 self.assertEqual(change['_id'], change_stream._resume_token)
@@ -497,6 +503,191 @@ class TestCollectionChangeStream(IntegrationTest):
         coll = self.coll.with_options(read_concern=ReadConcern('majority'))
         with coll.watch():
             pass
+
+
+class TestAllScenarios(unittest.TestCase):
+
+    @classmethod
+    @client_context.require_connection
+    def setUpClass(cls):
+        cls.listener = WhiteListEventListener("aggregate")
+        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client
+
+    def setUp(self):
+        self.listener.results.clear()
+
+    def setUpCluster(self, scenario_dict):
+        assets = [
+            (scenario_dict["database_name"], scenario_dict["collection_name"]),
+            (scenario_dict["database2_name"], scenario_dict["collection2_name"]),
+        ]
+        for db, coll in assets:
+            self.client.drop_database(db)
+            self.client[db].create_collection(coll)
+
+    def tearDown(self):
+        self.listener.results.clear()
+
+
+_TEST_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'change_streams'
+)
+
+
+def camel_to_snake(camel):
+    # Regex to convert CamelCase to snake_case.
+    snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
+
+
+@contextmanager
+def get_change_stream(client, scenario_def, test):
+    # Get target namespace on which to instantiate change stream
+    target = test["target"]
+    if target == "collection":
+        db = client.get_database(scenario_def["database_name"])
+        cs_target = db.get_collection(scenario_def["collection_name"])
+    elif target == "database":
+        cs_target = client.get_database(scenario_def["database_name"])
+    elif target == "client":
+        cs_target = client
+    else:
+        raise ValueError("Invalid target in spec")
+
+    # Construct change stream kwargs dict
+    cs_pipeline = test["changeStreamPipeline"]
+    options = test["changeStreamOptions"]
+    cs_options = {}
+    for key, value in options.iteritems():
+        cs_options[camel_to_snake(key)] = value
+    
+    # Create and return change stream
+    with cs_target.watch(pipeline=cs_pipeline, **cs_options) as change_stream:
+        yield change_stream
+
+
+def run_operation(client, operation):
+    # Apply specified operations
+    opname = camel_to_snake(operation["name"])
+    arguments = operation["arguments"]
+    cmd = getattr(client.get_database(
+        operation["database"]).get_collection(
+        operation["collection"]), opname
+    )
+    return cmd(**arguments)
+
+
+def assert_dict_is_subset(superdict, subdict):
+    """Check that subdict is a subset of superdict."""
+    exempt_fields = ["documentKey", "_id"]
+    for key, value in subdict.iteritems():
+        if not superdict.has_key(key):
+            assert False
+        if isinstance(value, dict):
+            assert_dict_is_subset(superdict[key], value)
+            continue
+        if key in exempt_fields:
+            superdict[key] = "42"
+        assert superdict[key] == value
+
+
+def check_event(event, expectation_dict):
+    if event is None:
+        raise AssertionError
+    for key, value in expectation_dict.iteritems():
+        if isinstance(value, dict):
+            assert_dict_is_subset(
+                getattr(event, key), value
+            )
+        else:
+            assert getattr(event, key) == value
+
+
+def create_test(scenario_def, test):
+    def run_scenario(self):
+        # Set up
+        #import ipdb as pdb; pdb.set_trace()
+        self.setUpCluster(scenario_def)
+        try:
+            with get_change_stream(
+                self.client, scenario_def, test
+            ) as change_stream:
+                for operation in test["operations"]:
+                    # Run specified operations
+                    run_operation(self.client, operation)
+                num_expected_changes = len(test["result"]["success"])
+                changes = [
+                    change_stream.next() for _ in range(num_expected_changes)
+                ]
+
+        except OperationFailure as exc:
+            if test["result"].get("error") is None:
+                self.fail("Encountered unexpected error")
+            expected_code = test["result"]["error"]["code"]
+            self.assertEqual(exc.code, expected_code)
+
+        else:
+            # Check for expected output from change streams
+            for change, expected_changes in zip(changes, test["result"]["success"]):
+                assert_dict_is_subset(change, expected_changes)
+        
+        finally:
+            # Check for expected events
+            results = self.listener.results
+            for expectation in test["expectations"]:
+                for idx, (event_type, event_desc) in enumerate(expectation.iteritems()):
+                    results_key = event_type.split("_")[1]
+                    event = results[results_key][idx] if len(results[results_key]) else None
+                    check_event(event, event_desc)
+
+    return run_scenario
+
+
+def create_tests():
+    for dirpath, _, filenames in os.walk(_TEST_PATH):
+        dirname = os.path.split(dirpath)[-1]
+
+        for filename in filenames:
+            with open(os.path.join(dirpath, filename)) as scenario_stream:
+                scenario_def = json_util.loads(scenario_stream.read())
+
+            test_type = os.path.splitext(filename)[0]
+
+            for test in scenario_def['tests']:
+                new_test = create_test(scenario_def, test)
+                if 'minServerVersion' in test:
+                    min_ver = tuple(
+                        int(elt) for
+                        elt in test['minServerVersion'].split('.'))
+                    new_test = client_context.require_version_min(*min_ver)(
+                        new_test)
+                if 'maxServerVersion' in test:
+                    max_ver = tuple(
+                        int(elt) for
+                        elt in test['maxServerVersion'].split('.'))
+                    new_test = client_context.require_version_max(*max_ver)(
+                        new_test)
+
+                topologies = test['topology']
+                new_test = client_context.require_cluster_type(topologies)(
+                    new_test)
+
+                test_name = 'test_%s_%s_%s' % (
+                    dirname,
+                    test_type.replace("-", "_"),
+                    str(test['description'].replace(" ", "_")))
+
+                print(test_name)
+                new_test.__name__ = test_name
+                setattr(TestAllScenarios, new_test.__name__, new_test)
+
+
+create_tests()
+
 
 if __name__ == '__main__':
     unittest.main()
