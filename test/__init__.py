@@ -525,7 +525,7 @@ class ClientContext(object):
             return False
         return self._require(
             _is_valid_topology, 
-            "Cluster type not in {!r}".format(topologies))
+            "Cluster type not in %s" % (topologies))
 
     def require_test_commands(self, func):
         """Run a test only if the server has test commands enabled."""
