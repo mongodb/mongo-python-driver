@@ -33,6 +33,7 @@ from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          Binary,
                          STANDARD,
                          PYTHON_LEGACY)
+from bson.py3compat import iteritems
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 
 from pymongo import monitoring
@@ -546,7 +547,7 @@ def get_change_stream(client, scenario_def, test):
     cs_pipeline = test["changeStreamPipeline"]
     options = test["changeStreamOptions"]
     cs_options = {}
-    for key, value in options.iteritems():
+    for key, value in iteritems(options):
         cs_options[camel_to_snake(key)] = value
     
     # Create and return change stream
@@ -567,7 +568,7 @@ def run_operation(client, operation):
 def assert_dict_is_subset(superdict, subdict):
     """Check that subdict is a subset of superdict."""
     exempt_fields = ["documentKey", "_id"]
-    for key, value in subdict.iteritems():
+    for key, value in iteritems(subdict):
         if not superdict.has_key(key):
             assert False
         if isinstance(value, dict):
@@ -581,7 +582,7 @@ def assert_dict_is_subset(superdict, subdict):
 def check_event(event, expectation_dict):
     if event is None:
         raise AssertionError
-    for key, value in expectation_dict.iteritems():
+    for key, value in iteritems(expectation_dict):
         if isinstance(value, dict):
             assert_dict_is_subset(
                 getattr(event, key), value
@@ -622,7 +623,7 @@ def create_test(scenario_def, test):
             # Check for expected events
             results = self.listener.results
             for expectation in test["expectations"]:
-                for idx, (event_type, event_desc) in enumerate(expectation.iteritems()):
+                for idx, (event_type, event_desc) in enumerate(iteritems(expectation)):
                     results_key = event_type.split("_")[1]
                     event = results[results_key][idx] if len(results[results_key]) > idx else None
                     check_event(event, event_desc)
