@@ -45,7 +45,7 @@ from pymongo.read_concern import ReadConcern
 
 from test import client_context, unittest, IntegrationTest
 from test.utils import (
-    EventListener, IGNORE, WhiteListEventListener, rs_or_single_client
+    EventListener, WhiteListEventListener, rs_or_single_client
 )
 
 
@@ -217,18 +217,14 @@ class TestCollectionChangeStream(IntegrationTest):
         self.addCleanup(client.close)
         coll = client[self.db.name][self.coll.name]
         expected_full_pipeline = [
-            {'$changeStream': {'fullDocument': 'default',
-                               'startAtOperationTime': IGNORE}},
-            {'$project': {'foo': 0},}
+            {'$changeStream': {'fullDocument': 'default'}},
+            {'$project': {'foo': 0}}
         ]
-        with coll.watch([{'$project': {'foo': 0}}]) as change_stream:
-            self.assertEqual(
-                expected_full_pipeline, change_stream._full_pipeline()
-            )
+        with coll.watch([{'$project': {'foo': 0}}]) as _:
+            pass
 
         self.assertEqual(1, len(results['started']))
         command = results['started'][0]
-        expected_full_pipeline[0]['$changeStream'].pop('startAtOperationTime')
         self.assertEqual('aggregate', command.command_name)
         self.assertEqual(expected_full_pipeline, command.command['pipeline'])
 
