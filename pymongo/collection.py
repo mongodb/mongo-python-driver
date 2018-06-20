@@ -2425,14 +2425,18 @@ class Collection(common.BaseObject):
             per batch.
           - `collation` (optional): The :class:`~pymongo.collation.Collation`
             to use for the aggregation.
-          - `start_at_operation_time` (optional): The
-            :class:`~bson.timestamp.Timestamp` at which to start watching
-            changes. 
+          - `start_at_operation_time` (optional): If provided, the resulting
+            change stream will only return changes that occurred at or after
+            the specified :class:`~bson.timestamp.Timestamp`. Requires
+            MongoDB >= 4.0.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
+
+        .. versionchanged:: 3.7
+           Added the ``start_at_operation_time`` parameter.
 
         .. versionadded:: 3.6
 
