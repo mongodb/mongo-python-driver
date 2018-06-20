@@ -66,9 +66,9 @@ class ChangeStream(object):
         this ChangeStream will be run. """
         raise NotImplementedError
 
-    def _full_pipeline(self, inject_options=None):
+    def _full_pipeline(self, options=None):
         """Return the full aggregation pipeline for this ChangeStream."""
-        options = {}
+        options = options or {}
 
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
@@ -77,8 +77,6 @@ class ChangeStream(object):
         if self._start_at_operation_time is not None:
             options['startAtOperationTime'] = self._start_at_operation_time
 
-        if inject_options is not None:
-            options.update(inject_options)
         full_pipeline = [{'$changeStream': options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
@@ -87,7 +85,9 @@ class ChangeStream(object):
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
-        with self._database.client._socket_for_reads(self._target._read_preference_for(session)) as (sock_info, slave_ok):
+        read_preference = self._target._read_preference_for(session)
+        client = self._database.client
+        with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
             pipeline = self._full_pipeline()
             cmd = SON([("aggregate", self._aggregation_target),
                        ("pipeline", pipeline),
@@ -97,7 +97,7 @@ class ChangeStream(object):
                 self._database.name,
                 cmd,
                 slave_ok,
-                self._target._read_preference_for(session),
+                read_preference,
                 self._target.codec_options,
                 parse_write_concern_error=True,
                 read_concern=self._target.read_concern,
@@ -109,7 +109,7 @@ class ChangeStream(object):
 
             if (self._start_at_operation_time is None and
                 self._resume_token is None and
-                cursor.get("_id", None) is None and
+                cursor.get("_id") is None and
                 sock_info.max_wire_version >= 7):
                 self._start_at_operation_time = result["operationTime"]
 
@@ -117,7 +117,7 @@ class ChangeStream(object):
             _, collname = ns.split(".", 1)
             aggregation_collection = self._database.get_collection(
                 collname, codec_options=self._target.codec_options,
-                read_preference=self._target._read_preference_for(session),
+                read_preference=read_preference,
                 write_concern=self._target.write_concern,
                 read_concern=self._target.read_concern
             )
@@ -227,11 +227,10 @@ class ClusterChangeStream(DatabaseChangeStream):
     .. mongodoc:: changeStreams
     """
 
-    def _full_pipeline(self, inject_options=None):
-        options = {"allChangesForCluster": True}
-        if inject_options is not None:
-            options.update(inject_options)
+    def _full_pipeline(self, options=None):
+        options = options or {}
+        options["allChangesForCluster"] = True
         full_pipeline = super(ClusterChangeStream, self)._full_pipeline(
-            inject_options=options
+            options=options
         )
         return full_pipeline
