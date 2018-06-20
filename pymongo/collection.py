@@ -2359,8 +2359,10 @@ class Collection(common.BaseObject):
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
-        stage and returns a :class:`~pymongo.change_stream.ChangeStream`
-        cursor which iterates over changes on this collection.
+        stage and returns a 
+        :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
+        iterates over changes on this collection.
+        
         Introduced in MongoDB 3.6.
 
         .. code-block:: python
@@ -2369,13 +2371,14 @@ class Collection(common.BaseObject):
                for change in stream:
                    print(change)
 
-        The :class:`~pymongo.change_stream.ChangeStream` iterable blocks
-        until the next change document is returned or an error is raised. If
-        the :meth:`~pymongo.change_stream.ChangeStream.next` method encounters
-        a network error when retrieving a batch from the server, it will
-        automatically attempt to recreate the cursor such that no change
-        events are missed. Any error encountered during the resume attempt
-        indicates there may be an outage and will be raised.
+        The :class:`~pymongo.change_stream.CollectionChangeStream` iterable
+        blocks until the next change document is returned or an error is
+        raised. If the 
+        :meth:`~pymongo.change_stream.CollectionChangeStream.next` method
+        encounters a network error when retrieving a batch from the server,
+        it will automatically attempt to recreate the cursor such that no
+        change events are missed. Any error encountered during the resume
+        attempt indicates there may be an outage and will be raised.
 
         .. code-block:: python
 
@@ -2422,18 +2425,21 @@ class Collection(common.BaseObject):
             per batch.
           - `collation` (optional): The :class:`~pymongo.collation.Collation`
             to use for the aggregation.
+          - `start_at_operation_time` (optional): The
+            :class:`~bson.timestamp.Timestamp` after which to start watching
+            changes. 
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
-          A :class:`~pymongo.change_stream.ChangeStream` cursor.
+          A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
 
         .. versionadded:: 3.6
 
         .. mongodoc:: changeStreams
 
         .. _change streams specification:
-            https://github.com/mongodb/specifications/blob/master/source/change-streams.rst
+            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
         """
         return CollectionChangeStream(
             self, pipeline, full_document, resume_after, max_await_time_ms,

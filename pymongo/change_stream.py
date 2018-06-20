@@ -193,7 +193,7 @@ class CollectionChangeStream(ChangeStream):
     """Class for creating a change stream on a collection.
 
     Should not be called directly by application developers. Use
-    helper method :meth:`~pymongo.collection.Collection.watch` instead.
+    helper method :meth:`pymongo.collection.Collection.watch` instead.
 
     .. versionadded: 3.6
     .. mongodoc:: changeStreams
@@ -211,7 +211,7 @@ class DatabaseChangeStream(ChangeStream):
     """Class for creating a change stream on all collections in a database.
 
     Should not be called directly by application developers. Use
-    helper method :meth:`~pymongo.database.Database.watch` instead.
+    helper method :meth:`pymongo.database.Database.watch` instead.
 
     .. versionadded: 3.7
     .. mongodoc:: changeStreams
@@ -229,7 +229,7 @@ class ClusterChangeStream(DatabaseChangeStream):
     """Class for creating a change stream on all collections on a cluster.
 
     Should not be called directly by application developers. Use
-    helper method :meth:`~pymongo.mongo_client.MongoClient.watch` instead.
+    helper method :meth:`pymongo.mongo_client.MongoClient.watch` instead.
 
     .. versionadded: 3.7
     .. mongodoc:: changeStreams
