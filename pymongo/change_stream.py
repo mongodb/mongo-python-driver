@@ -26,11 +26,17 @@ from pymongo.errors import (ConnectionFailure, CursorNotFound,
 
 
 class ChangeStream(object):
-    """The change stream cursor abstract base class.
+    """The internal abstract base class for change stream cursors.
+
+    Should not be called directly by application developers. Use 
+    :meth:pymongo.collection.Collection.watch,
+    :meth:pymongo.database.Database.watch, or
+    :meth:pymongo.mongo_client.MongoClient.watch instead.
 
     Defines the interface for change streams. Should be subclassed to
-    implement the `ChangeStream._create_cursor` abstract method and
-    the `ChangeStream._database` abstract property.
+    implement the `ChangeStream._create_cursor` abstract method, and
+    the `ChangeStream._database`and ChangeStream._aggregation_target`
+    abstract properties.
     """
     def __init__(self, target, pipeline, full_document, resume_after,
                  max_await_time_ms, batch_size, collation,
@@ -66,17 +72,19 @@ class ChangeStream(object):
         this ChangeStream will be run. """
         raise NotImplementedError
 
-    def _full_pipeline(self, options=None):
-        """Return the full aggregation pipeline for this ChangeStream."""
-        options = options or {}
-
+    def _pipeline_options(self):
+        options = {}
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
         if self._resume_token is not None:
             options['resumeAfter'] = self._resume_token
         if self._start_at_operation_time is not None:
             options['startAtOperationTime'] = self._start_at_operation_time
+        return options
 
+    def _full_pipeline(self):
+        """Return the full aggregation pipeline for this ChangeStream."""
+        options = self._pipeline_options()
         full_pipeline = [{'$changeStream': options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
@@ -182,7 +190,7 @@ class ChangeStream(object):
 
 
 class CollectionChangeStream(ChangeStream):
-    """ Class for creating a change stream on a collection.
+    """Class for creating a change stream on a collection.
 
     Should not be called directly by application developers. Use
     helper method :meth:`~pymongo.collection.Collection.watch` instead.
@@ -200,7 +208,7 @@ class CollectionChangeStream(ChangeStream):
 
 
 class DatabaseChangeStream(ChangeStream):
-    """ Class for creating a change stream on all collections in a database.
+    """Class for creating a change stream on all collections in a database.
 
     Should not be called directly by application developers. Use
     helper method :meth:`~pymongo.database.Database.watch` instead.
@@ -218,7 +226,7 @@ class DatabaseChangeStream(ChangeStream):
 
 
 class ClusterChangeStream(DatabaseChangeStream):
-    """ Class for creating a change stream on all collections on a cluster.
+    """Class for creating a change stream on all collections on a cluster.
 
     Should not be called directly by application developers. Use
     helper method :meth:`~pymongo.mongo_client.MongoClient.watch` instead.
@@ -226,11 +234,7 @@ class ClusterChangeStream(DatabaseChangeStream):
     .. versionadded: 3.7
     .. mongodoc:: changeStreams
     """
-
-    def _full_pipeline(self, options=None):
-        options = options or {}
+    def _pipeline_options(self):
+        options = super(ClusterChangeStream, self)._pipeline_options()
         options["allChangesForCluster"] = True
-        full_pipeline = super(ClusterChangeStream, self)._full_pipeline(
-            options=options
-        )
-        return full_pipeline
+        return options

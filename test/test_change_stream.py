@@ -14,7 +14,6 @@
 
 """Test the change_stream module."""
 
-import json
 import random
 import os
 import re
@@ -56,20 +55,18 @@ class TestClusterChangeStream(IntegrationTest):
     @client_context.require_no_standalone
     def setUpClass(cls):
         super(TestClusterChangeStream, cls).setUpClass()
-        cls.db = [cls.db, cls.client.pymongo_test_2]
+        cls.dbs = [cls.db, cls.client.pymongo_test_2]
 
     @classmethod
     def tearDownClass(cls):
-        for db in cls.db:
+        for db in cls.dbs:
             cls.client.drop_database(db)
         super(TestClusterChangeStream, cls).tearDownClass()
 
-    @contextmanager
     def change_stream(self, *args, **kwargs):
-        with self.client.watch(*args, **kwargs) as change_stream:
-            yield change_stream
+        return self.client.watch(*args, **kwargs)
 
-    def generate_unique_collnames(self, numcolls=2):
+    def generate_unique_collnames(self, numcolls):
         # Generate N collection names unique to a test.
         collnames = []
         for idx in range(1, numcolls + 1):
@@ -88,7 +85,7 @@ class TestClusterChangeStream(IntegrationTest):
     def test_simple(self):
         collnames = self.generate_unique_collnames(3)
         with self.change_stream() as change_stream:
-            for db, collname in product(self.db, collnames):
+            for db, collname in product(self.dbs, collnames):
                 self.insert_and_check(
                     change_stream, db, collname, {'_id': collname}
                 )
@@ -102,16 +99,10 @@ class TestDatabaseChangeStream(IntegrationTest):
     def setUpClass(cls):
         super(TestDatabaseChangeStream, cls).setUpClass()
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestDatabaseChangeStream, cls).tearDownClass()
-
-    @contextmanager
     def change_stream(self, *args, **kwargs):
-        with self.db.watch(*args, **kwargs) as change_stream:
-            yield change_stream
+        return self.db.watch(*args, **kwargs)
 
-    def generate_unique_collnames(self, numcolls=2):
+    def generate_unique_collnames(self, numcolls):
         # Generate N collection names unique to a test.
         collnames = []
         for idx in range(1, numcolls + 1):
@@ -216,17 +207,16 @@ class TestCollectionChangeStream(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name][self.coll.name]
-        expected_full_pipeline = [
-            {'$changeStream': {'fullDocument': 'default'}},
-            {'$project': {'foo': 0}}
-        ]
         with coll.watch([{'$project': {'foo': 0}}]) as _:
             pass
 
         self.assertEqual(1, len(results['started']))
         command = results['started'][0]
         self.assertEqual('aggregate', command.command_name)
-        self.assertEqual(expected_full_pipeline, command.command['pipeline'])
+        self.assertEqual([
+            {'$changeStream': {'fullDocument': 'default'}},
+            {'$project': {'foo': 0}}], 
+            command.command['pipeline'])
 
     def test_iteration(self):
         with self.coll.watch(batch_size=2) as change_stream:
@@ -470,7 +460,6 @@ class TestCollectionChangeStream(IntegrationTest):
 
     def test_document_id_order(self):
         """Test with document _ids that need their order preserved."""
-        #import ipdb as pdb; pdb.set_trace()
         random_keys = random.sample(string.ascii_letters,
                                     len(string.ascii_letters))
         random_doc = {'_id': SON([(key, key) for key in random_keys])}
@@ -540,7 +529,6 @@ def camel_to_snake(camel):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
 
 
-@contextmanager
 def get_change_stream(client, scenario_def, test):
     # Get target namespace on which to instantiate change stream
     target = test["target"]
@@ -562,8 +550,7 @@ def get_change_stream(client, scenario_def, test):
         cs_options[camel_to_snake(key)] = value
     
     # Create and return change stream
-    with cs_target.watch(pipeline=cs_pipeline, **cs_options) as change_stream:
-        yield change_stream
+    return cs_target.watch(pipeline=cs_pipeline, **cs_options)
 
 
 def run_operation(client, operation):
@@ -621,7 +608,7 @@ def create_test(scenario_def, test):
 
         except OperationFailure as exc:
             if test["result"].get("error") is None:
-                self.fail("Encountered unexpected error")
+                raise
             expected_code = test["result"]["error"]["code"]
             self.assertEqual(exc.code, expected_code)
 
@@ -629,6 +616,7 @@ def create_test(scenario_def, test):
             # Check for expected output from change streams
             for change, expected_changes in zip(changes, test["result"]["success"]):
                 assert_dict_is_subset(change, expected_changes)
+            self.assertEqual(len(changes), len(test["result"]["success"]))
         
         finally:
             # Check for expected events
@@ -636,7 +624,7 @@ def create_test(scenario_def, test):
             for expectation in test["expectations"]:
                 for idx, (event_type, event_desc) in enumerate(expectation.iteritems()):
                     results_key = event_type.split("_")[1]
-                    event = results[results_key][idx] if len(results[results_key]) else None
+                    event = results[results_key][idx] if len(results[results_key]) > idx else None
                     check_event(event, event_desc)
 
     return run_scenario
