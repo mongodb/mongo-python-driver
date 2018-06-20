@@ -37,6 +37,7 @@ from bson.py3compat import iteritems
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 
 from pymongo import monitoring
+from pymongo.change_stream import _NON_RESUMABLE_GETMORE_ERRORS
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (InvalidOperation, OperationFailure,
                             ServerSelectionTimeoutError)
@@ -317,23 +318,24 @@ class TestCollectionChangeStream(IntegrationTest):
             self.client._close_cursor_now(cursor.cursor_id, address)
             self.insert_and_check(change_stream, {'_id': 2})
 
-    def test_does_not_resume_on_server_error(self):
-        """ChangeStream will not attempt to resume on a server error."""
-        def mock_next(self, *args, **kwargs):
-            self._CommandCursor__killed = True
-            raise OperationFailure('Mock server error')
-
-        original_next = CommandCursor.next
-        CommandCursor.next = mock_next
-        try:
+    def test_does_not_resume_fatal_errors(self):
+        """ChangeStream will not attempt to resume fatal server errors."""
+        for code in _NON_RESUMABLE_GETMORE_ERRORS:
             with self.coll.watch() as change_stream:
+                self.coll.insert_one({})
+
+                def mock_next(*args, **kwargs):
+                    change_stream._cursor.close()
+                    raise OperationFailure('Mock server error', code=code)
+
+                original_next = change_stream._cursor.next
+                change_stream._cursor.next = mock_next
+
                 with self.assertRaises(OperationFailure):
                     next(change_stream)
-                CommandCursor.next = original_next
+                change_stream._cursor.next = original_next
                 with self.assertRaises(StopIteration):
                     next(change_stream)
-        finally:
-            CommandCursor.next = original_next
 
     def test_initial_empty_batch(self):
         """Ensure that a cursor returned from an aggregate command with a

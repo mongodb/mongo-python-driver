@@ -21,8 +21,20 @@ from bson.son import SON
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (ConnectionFailure, CursorNotFound,
-                            InvalidOperation, PyMongoError)
+from pymongo.errors import (ConnectionFailure,
+                            InvalidOperation,
+                            OperationFailure,
+                            PyMongoError)
+
+
+# The change streams spec considers the following server errors from the
+# getMore command non-resumable. All other getMore errors are resumable.
+_NON_RESUMABLE_GETMORE_ERRORS = frozenset([
+    11601,  # Interrupted
+    136,    # CappedPositionLost
+    237,    # CursorKilled
+    None,   # No error code was returned.
+])
 
 
 class ChangeStream(object):
@@ -144,6 +156,14 @@ class ChangeStream(object):
                 explicit_session=self._session is not None
             )
 
+    def _resume(self):
+        """Reestablish this change stream after a resumable error."""
+        try:
+            self._cursor.close()
+        except PyMongoError:
+            pass
+        self._cursor = self._create_cursor()
+
     def close(self):
         """Close this ChangeStream."""
         self._cursor.close()
@@ -162,12 +182,13 @@ class ChangeStream(object):
         while True:
             try:
                 change = self._cursor.next()
-            except (ConnectionFailure, CursorNotFound):
-                try:
-                    self._cursor.close()
-                except PyMongoError:
-                    pass
-                self._cursor = self._create_cursor()
+            except ConnectionFailure:
+                self._resume()
+                continue
+            except OperationFailure as exc:
+                if exc.code in _NON_RESUMABLE_GETMORE_ERRORS:
+                    raise
+                self._resume()
                 continue
             try:
                 resume_token = change['_id']
