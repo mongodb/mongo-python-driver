@@ -45,6 +45,7 @@
       .. automethod:: close_cursor
       .. automethod:: kill_cursors
       .. automethod:: set_cursor_manager
+      .. automethod:: watch
       .. automethod:: fsync
       .. automethod:: unlock
       .. automethod:: get_default_database

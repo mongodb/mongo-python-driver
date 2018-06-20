@@ -468,7 +468,7 @@ class Database(common.BaseObject):
           - `collation` (optional): The :class:`~pymongo.collation.Collation`
             to use for the aggregation.
           - `start_at_operation_time` (optional): The
-            :class:`~bson.timestamp.Timestamp` after which to start watching
+            :class:`~bson.timestamp.Timestamp` at which to start watching
             changes.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
