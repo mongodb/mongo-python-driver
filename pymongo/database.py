@@ -22,6 +22,7 @@ from bson.dbref import DBRef
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
 from pymongo import auth, common
+from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
@@ -402,6 +403,91 @@ class Database(common.BaseObject):
         for manipulator in reversed(self.__outgoing_copying_manipulators):
             son = manipulator.transform_outgoing(son, collection)
         return son
+
+    def watch(self, pipeline=None, full_document='default', resume_after=None,
+              max_await_time_ms=None, batch_size=None, collation=None,
+              start_at_operation_time=None, session=None):
+        """Watch changes on this database.
+
+        Performs an aggregation with an implicit initial ``$changeStream``
+        stage and returns a
+        :class:`~pymongo.change_stream.DatabaseChangeStream` cursor which
+        iterates over changes on all collections in this database.
+
+        Introduced in MongoDB 4.0.
+
+        .. code-block:: python
+
+           with db.watch() as stream:
+               for change in stream:
+                   print(change)
+
+        The :class:`~pymongo.change_stream.DatabaseChangeStream` iterable
+        blocks until the next change document is returned or an error is
+        raised. If the
+        :meth:`~pymongo.change_stream.DatabaseChangeStream.next` method
+        encounters a network error when retrieving a batch from the server,
+        it will automatically attempt to recreate the cursor such that no
+        change events are missed. Any error encountered during the resume
+        attempt indicates there may be an outage and will be raised.
+
+        .. code-block:: python
+
+            try:
+                with db.watch(
+                        [{'$match': {'operationType': 'insert'}}]) as stream:
+                    for insert_change in stream:
+                        print(insert_change)
+            except pymongo.errors.PyMongoError:
+                # The ChangeStream encountered an unrecoverable error or the
+                # resume attempt failed to recreate the cursor.
+                logging.error('...')
+
+        For a precise description of the resume process see the
+        `change streams specification`_.
+
+        :Parameters:
+          - `pipeline` (optional): A list of aggregation pipeline stages to
+            append to an initial ``$changeStream`` stage. Not all
+            pipeline stages are valid after a ``$changeStream`` stage, see the
+            MongoDB documentation on change streams for the supported stages.
+          - `full_document` (optional): The fullDocument to pass as an option
+            to the ``$changeStream`` stage. Allowed values: 'default',
+            'updateLookup'.  Defaults to 'default'.
+            When set to 'updateLookup', the change notification for partial
+            updates will include both a delta describing the changes to the
+            document, as well as a copy of the entire document that was
+            changed from some time after the change occurred.
+          - `resume_after` (optional): The logical starting point for this
+            change stream.
+          - `max_await_time_ms` (optional): The maximum time in milliseconds
+            for the server to wait for changes before responding to a getMore
+            operation.
+          - `batch_size` (optional): The maximum number of documents to return
+            per batch.
+          - `collation` (optional): The :class:`~pymongo.collation.Collation`
+            to use for the aggregation.
+          - `start_at_operation_time` (optional): If provided, the resulting
+            change stream will only return changes that occurred at or after
+            the specified :class:`~bson.timestamp.Timestamp`. Requires
+            MongoDB >= 4.0.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+
+        :Returns:
+          A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
+
+        .. versionadded:: 3.7
+
+        .. mongodoc:: changeStreams
+
+        .. _change streams specification:
+            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
+        """
+        return DatabaseChangeStream(
+            self, pipeline, full_document, resume_after, max_await_time_ms,
+            batch_size, collation, start_at_operation_time, session
+        )
 
     def _command(self, sock_info, command, slave_ok=False, value=1, check=True,
                  allowable_errors=None, read_preference=ReadPreference.PRIMARY,

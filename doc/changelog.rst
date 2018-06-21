@@ -39,6 +39,9 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
 - The :meth:`~pymongo.database.Database.list_collection_names` and
   :meth:`~pymongo.database.Database.collection_names` methods use
   the nameOnly option when supported by MongoDB.
+- The :meth:`pymongo.collection.Collection.watch` method now returns an
+  instance of the :class:`~pymongo.change_stream.CollectionChangeStream`
+  class which is a subclass of :class:`~pymongo.change_stream.ChangeStream`.
 - SCRAM client and server keys are cached for improved performance, following
   `RFC 5802 <https://tools.ietf.org/html/rfc5802>`_.
 - If not specified, the authSource for the :ref:`PLAIN <sasl_plain>`

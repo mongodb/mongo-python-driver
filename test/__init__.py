@@ -511,6 +511,22 @@ class ClientContext(object):
                              "Auth with sharding requires MongoDB >= 2.0.0",
                              func=func)
 
+    def require_cluster_type(self, topologies=[]):
+        """Run a test only if the client is connected to a cluster that
+        conforms to one of the specified topologies. Acceptable topologies
+        are 'single', 'replicaset', and 'sharded'."""
+        def _is_valid_topology():
+            if 'single' in topologies and not (self.is_mongos or self.is_rs):
+                return True
+            if 'replicaset' in topologies and self.is_rs:
+                return True
+            if 'sharded' in topologies and self.is_mongos:
+                return True
+            return False
+        return self._require(
+            _is_valid_topology, 
+            "Cluster type not in %s" % (topologies))
+
     def require_test_commands(self, func):
         """Run a test only if the server has test commands enabled."""
         return self._require(lambda: self.test_commands_enabled,

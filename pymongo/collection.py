@@ -33,7 +33,7 @@ from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.common import ORDERED_TYPES
 from pymongo.collation import validate_collation_or_none
-from pymongo.change_stream import ChangeStream
+from pymongo.change_stream import CollectionChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
@@ -2361,12 +2361,14 @@ class Collection(common.BaseObject):
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
-              session=None):
+              start_at_operation_time=None, session=None):
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
-        stage and returns a :class:`~pymongo.change_stream.ChangeStream`
-        cursor which iterates over changes on this collection.
+        stage and returns a 
+        :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
+        iterates over changes on this collection.
+        
         Introduced in MongoDB 3.6.
 
         .. code-block:: python
@@ -2375,13 +2377,14 @@ class Collection(common.BaseObject):
                for change in stream:
                    print(change)
 
-        The :class:`~pymongo.change_stream.ChangeStream` iterable blocks
-        until the next change document is returned or an error is raised. If
-        the :meth:`~pymongo.change_stream.ChangeStream.next` method encounters
-        a network error when retrieving a batch from the server, it will
-        automatically attempt to recreate the cursor such that no change
-        events are missed. Any error encountered during the resume attempt
-        indicates there may be an outage and will be raised.
+        The :class:`~pymongo.change_stream.CollectionChangeStream` iterable
+        blocks until the next change document is returned or an error is
+        raised. If the 
+        :meth:`~pymongo.change_stream.CollectionChangeStream.next` method
+        encounters a network error when retrieving a batch from the server,
+        it will automatically attempt to recreate the cursor such that no
+        change events are missed. Any error encountered during the resume
+        attempt indicates there may be an outage and will be raised.
 
         .. code-block:: python
 
@@ -2428,29 +2431,30 @@ class Collection(common.BaseObject):
             per batch.
           - `collation` (optional): The :class:`~pymongo.collation.Collation`
             to use for the aggregation.
+          - `start_at_operation_time` (optional): If provided, the resulting
+            change stream will only return changes that occurred at or after
+            the specified :class:`~bson.timestamp.Timestamp`. Requires
+            MongoDB >= 4.0.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
-          A :class:`~pymongo.change_stream.ChangeStream` cursor.
+          A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
+
+        .. versionchanged:: 3.7
+           Added the ``start_at_operation_time`` parameter.
 
         .. versionadded:: 3.6
 
         .. mongodoc:: changeStreams
 
         .. _change streams specification:
-            https://github.com/mongodb/specifications/blob/master/source/change-streams.rst
+            https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
         """
-        if pipeline is None:
-            pipeline = []
-        else:
-            if not isinstance(pipeline, list):
-                raise TypeError("pipeline must be a list")
-
-        common.validate_string_or_none('full_document', full_document)
-
-        return ChangeStream(self, pipeline, full_document, resume_after,
-                            max_await_time_ms, batch_size, collation, session)
+        return CollectionChangeStream(
+            self, pipeline, full_document, resume_after, max_await_time_ms,
+            batch_size, collation, start_at_operation_time, session
+        )
 
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.

@@ -15,21 +15,28 @@
 """Test the change_stream module."""
 
 import random
+import os
+import re
 import sys
 import string
 import threading
 import time
 import uuid
 
+from contextlib import contextmanager
+from itertools import product
+
 sys.path[0:0] = ['']
 
-from bson import BSON, ObjectId, SON
+from bson import BSON, ObjectId, SON, json_util
 from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          Binary,
                          STANDARD,
                          PYTHON_LEGACY)
+from bson.py3compat import iteritems
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 
+from pymongo import monitoring
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (InvalidOperation, OperationFailure,
                             ServerSelectionTimeoutError)
@@ -37,16 +44,111 @@ from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 
 from test import client_context, unittest, IntegrationTest
-from test.utils import WhiteListEventListener, rs_or_single_client
+from test.utils import (
+    EventListener, WhiteListEventListener, rs_or_single_client
+)
 
 
-class TestChangeStream(IntegrationTest):
+class TestClusterChangeStream(IntegrationTest):
+
+    @classmethod
+    @client_context.require_version_min(4, 0, 0, -1)
+    @client_context.require_no_standalone
+    def setUpClass(cls):
+        super(TestClusterChangeStream, cls).setUpClass()
+        cls.dbs = [cls.db, cls.client.pymongo_test_2]
+
+    @classmethod
+    def tearDownClass(cls):
+        for db in cls.dbs:
+            cls.client.drop_database(db)
+        super(TestClusterChangeStream, cls).tearDownClass()
+
+    def change_stream(self, *args, **kwargs):
+        return self.client.watch(*args, **kwargs)
+
+    def generate_unique_collnames(self, numcolls):
+        # Generate N collection names unique to a test.
+        collnames = []
+        for idx in range(1, numcolls + 1):
+            collnames.append(self.id() + '_' + str(idx))
+        return collnames
+
+    def insert_and_check(self, change_stream, db, collname, doc):
+        coll = db[collname]
+        coll.insert_one(doc)
+        change = next(change_stream)
+        self.assertEqual(change['operationType'], 'insert')
+        self.assertEqual(change['ns'], {'db': db.name,
+                                        'coll': collname})
+        self.assertEqual(change['fullDocument'], doc)
+
+    def test_simple(self):
+        collnames = self.generate_unique_collnames(3)
+        with self.change_stream() as change_stream:
+            for db, collname in product(self.dbs, collnames):
+                self.insert_and_check(
+                    change_stream, db, collname, {'_id': collname}
+                )
+
+
+class TestDatabaseChangeStream(IntegrationTest):
+
+    @classmethod
+    @client_context.require_version_min(4, 0, 0, -1)
+    @client_context.require_no_standalone
+    def setUpClass(cls):
+        super(TestDatabaseChangeStream, cls).setUpClass()
+
+    def change_stream(self, *args, **kwargs):
+        return self.db.watch(*args, **kwargs)
+
+    def generate_unique_collnames(self, numcolls):
+        # Generate N collection names unique to a test.
+        collnames = []
+        for idx in range(1, numcolls + 1):
+            collnames.append(self.id() + '_' + str(idx))
+        return collnames
+
+    def insert_and_check(self, change_stream, collname, doc):
+        coll = self.db[collname]
+        coll.insert_one(doc)
+        change = next(change_stream)
+        self.assertEqual(change['operationType'], 'insert')
+        self.assertEqual(change['ns'], {'db': self.db.name,
+                                        'coll': collname})
+        self.assertEqual(change['fullDocument'], doc)
+
+    def test_simple(self):
+        collnames = self.generate_unique_collnames(3)
+        with self.change_stream() as change_stream:
+            for collname in collnames:
+                self.insert_and_check(
+                    change_stream, collname, {'_id': uuid.uuid4()}
+                )
+
+    def test_isolation(self):
+        # Ensure inserts to other dbs don't show up in our ChangeStream.
+        other_db = self.client.pymongo_test_temp
+        self.assertNotEqual(
+            other_db, self.db, msg="Isolation must be tested on separate DBs"
+        )
+        collname = self.id()
+        with self.change_stream() as change_stream:
+            other_db[collname].insert_one({'_id': uuid.uuid4()})
+            self.insert_and_check(
+                change_stream, collname, {'_id': uuid.uuid4()}
+            )
+        self.client.drop_database(other_db)
+
+
+class TestCollectionChangeStream(IntegrationTest):
 
     @classmethod
     @client_context.require_version_min(3, 5, 11)
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestChangeStream, cls).setUpClass()
+        super(TestCollectionChangeStream, cls).setUpClass()
         cls.coll = cls.db.change_stream_test
         # SERVER-31885 On a mongos the database must exist in order to create
         # a changeStream cursor. However, WiredTiger drops the database when
@@ -56,7 +158,7 @@ class TestChangeStream(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         cls.db.prevent_implicit_database_deletion.drop()
-        super(TestChangeStream, cls).tearDownClass()
+        super(TestCollectionChangeStream, cls).tearDownClass()
 
     def setUp(self):
         # Use a new collection for each test.
@@ -106,18 +208,16 @@ class TestChangeStream(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name][self.coll.name]
-
-        with coll.watch([{'$project': {'foo': 0}}]) as change_stream:
-            self.assertEqual([{'$changeStream': {'fullDocument': 'default'}},
-                              {'$project': {'foo': 0}}],
-                             change_stream._full_pipeline())
+        with coll.watch([{'$project': {'foo': 0}}]) as _:
+            pass
 
         self.assertEqual(1, len(results['started']))
         command = results['started'][0]
         self.assertEqual('aggregate', command.command_name)
-        self.assertEqual([{'$changeStream':  {'fullDocument': 'default'}},
-                          {'$project': {'foo': 0}}],
-                         command.command['pipeline'])
+        self.assertEqual([
+            {'$changeStream': {'fullDocument': 'default'}},
+            {'$project': {'foo': 0}}], 
+            command.command['pipeline'])
 
     def test_iteration(self):
         with self.coll.watch(batch_size=2) as change_stream:
@@ -173,7 +273,7 @@ class TestChangeStream(IntegrationTest):
         # Use a short await time to speed up the test.
         with self.coll.watch(max_await_time_ms=250) as change_stream:
             def iterate_cursor():
-                for change in change_stream:
+                for _ in change_stream:
                     pass
             t = threading.Thread(target=iterate_cursor)
             t.start()
@@ -187,7 +287,7 @@ class TestChangeStream(IntegrationTest):
         """ChangeStream must continuously track the last seen resumeToken."""
         with self.coll.watch() as change_stream:
             self.assertIsNone(change_stream._resume_token)
-            for i in range(3):
+            for _ in range(3):
                 self.coll.insert_one({})
                 change = next(change_stream)
                 self.assertEqual(change['_id'], change_stream._resume_token)
@@ -389,6 +489,188 @@ class TestChangeStream(IntegrationTest):
         coll = self.coll.with_options(read_concern=ReadConcern('majority'))
         with coll.watch():
             pass
+
+
+class TestAllScenarios(unittest.TestCase):
+
+    @classmethod
+    @client_context.require_connection
+    def setUpClass(cls):
+        cls.listener = WhiteListEventListener("aggregate")
+        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client
+
+    def setUp(self):
+        self.listener.results.clear()
+
+    def setUpCluster(self, scenario_dict):
+        assets = [
+            (scenario_dict["database_name"], scenario_dict["collection_name"]),
+            (scenario_dict["database2_name"], scenario_dict["collection2_name"]),
+        ]
+        for db, coll in assets:
+            self.client.drop_database(db)
+            self.client[db].create_collection(coll)
+
+    def tearDown(self):
+        self.listener.results.clear()
+
+
+_TEST_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'change_streams'
+)
+
+
+def camel_to_snake(camel):
+    # Regex to convert CamelCase to snake_case.
+    snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
+
+
+def get_change_stream(client, scenario_def, test):
+    # Get target namespace on which to instantiate change stream
+    target = test["target"]
+    if target == "collection":
+        db = client.get_database(scenario_def["database_name"])
+        cs_target = db.get_collection(scenario_def["collection_name"])
+    elif target == "database":
+        cs_target = client.get_database(scenario_def["database_name"])
+    elif target == "client":
+        cs_target = client
+    else:
+        raise ValueError("Invalid target in spec")
+
+    # Construct change stream kwargs dict
+    cs_pipeline = test["changeStreamPipeline"]
+    options = test["changeStreamOptions"]
+    cs_options = {}
+    for key, value in iteritems(options):
+        cs_options[camel_to_snake(key)] = value
+    
+    # Create and return change stream
+    return cs_target.watch(pipeline=cs_pipeline, **cs_options)
+
+
+def run_operation(client, operation):
+    # Apply specified operations
+    opname = camel_to_snake(operation["name"])
+    arguments = operation["arguments"]
+    cmd = getattr(client.get_database(
+        operation["database"]).get_collection(
+        operation["collection"]), opname
+    )
+    return cmd(**arguments)
+
+
+def assert_dict_is_subset(superdict, subdict):
+    """Check that subdict is a subset of superdict."""
+    exempt_fields = ["documentKey", "_id"]
+    for key, value in iteritems(subdict):
+        if key not in superdict:
+            assert False
+        if isinstance(value, dict):
+            assert_dict_is_subset(superdict[key], value)
+            continue
+        if key in exempt_fields:
+            superdict[key] = "42"
+        assert superdict[key] == value
+
+
+def check_event(event, expectation_dict):
+    if event is None:
+        raise AssertionError
+    for key, value in iteritems(expectation_dict):
+        if isinstance(value, dict):
+            assert_dict_is_subset(
+                getattr(event, key), value
+            )
+        else:
+            assert getattr(event, key) == value
+
+
+def create_test(scenario_def, test):
+    def run_scenario(self):
+        # Set up
+        self.setUpCluster(scenario_def)
+        try:
+            with get_change_stream(
+                self.client, scenario_def, test
+            ) as change_stream:
+                for operation in test["operations"]:
+                    # Run specified operations
+                    run_operation(self.client, operation)
+                num_expected_changes = len(test["result"]["success"])
+                changes = [
+                    change_stream.next() for _ in range(num_expected_changes)
+                ]
+
+        except OperationFailure as exc:
+            if test["result"].get("error") is None:
+                raise
+            expected_code = test["result"]["error"]["code"]
+            self.assertEqual(exc.code, expected_code)
+
+        else:
+            # Check for expected output from change streams
+            for change, expected_changes in zip(changes, test["result"]["success"]):
+                assert_dict_is_subset(change, expected_changes)
+            self.assertEqual(len(changes), len(test["result"]["success"]))
+        
+        finally:
+            # Check for expected events
+            results = self.listener.results
+            for expectation in test["expectations"]:
+                for idx, (event_type, event_desc) in enumerate(iteritems(expectation)):
+                    results_key = event_type.split("_")[1]
+                    event = results[results_key][idx] if len(results[results_key]) > idx else None
+                    check_event(event, event_desc)
+
+    return run_scenario
+
+
+def create_tests():
+    for dirpath, _, filenames in os.walk(_TEST_PATH):
+        dirname = os.path.split(dirpath)[-1]
+
+        for filename in filenames:
+            with open(os.path.join(dirpath, filename)) as scenario_stream:
+                scenario_def = json_util.loads(scenario_stream.read())
+
+            test_type = os.path.splitext(filename)[0]
+
+            for test in scenario_def['tests']:
+                new_test = create_test(scenario_def, test)
+                if 'minServerVersion' in test:
+                    min_ver = tuple(
+                        int(elt) for
+                        elt in test['minServerVersion'].split('.'))
+                    new_test = client_context.require_version_min(*min_ver)(
+                        new_test)
+                if 'maxServerVersion' in test:
+                    max_ver = tuple(
+                        int(elt) for
+                        elt in test['maxServerVersion'].split('.'))
+                    new_test = client_context.require_version_max(*max_ver)(
+                        new_test)
+
+                topologies = test['topology']
+                new_test = client_context.require_cluster_type(topologies)(
+                    new_test)
+
+                test_name = 'test_%s_%s_%s' % (
+                    dirname,
+                    test_type.replace("-", "_"),
+                    str(test['description'].replace(" ", "_")))
+
+                new_test.__name__ = test_name
+                setattr(TestAllScenarios, new_test.__name__, new_test)
+
+
+create_tests()
+
 
 if __name__ == '__main__':
     unittest.main()
