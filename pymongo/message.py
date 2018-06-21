@@ -25,7 +25,10 @@ import random
 import struct
 
 import bson
-from bson import CodecOptions, _make_c_string, _dict_to_bson
+from bson import (CodecOptions,
+                  _bson_to_dict,
+                  _dict_to_bson,
+                  _make_c_string)
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import b, StringIO
 from bson.son import SON
@@ -1043,8 +1046,145 @@ def _do_batched_insert(collection_name, docs, check_keys,
 if _use_c:
     _do_batched_insert = _cmessage._do_batched_insert
 
+# OP_MSG -------------------------------------------------------------
 
-def _do_batched_write_command_compressed(
+
+_OP_MSG_MAP = {
+    _INSERT: b'documents\x00',
+    _UPDATE: b'updates\x00',
+    _DELETE: b'deletes\x00',
+}
+
+
+def _batched_op_msg_impl(
+        operation, command, docs, check_keys, ack, opts, ctx, buf):
+    """Create a batched OP_MSG write."""
+    max_bson_size = ctx.max_bson_size
+    max_write_batch_size = ctx.max_write_batch_size
+    max_message_size = ctx.max_message_size
+
+    flags = b"\x00\x00\x00\x00" if ack else b"\x02\x00\x00\x00"
+    # Flags
+    buf.write(flags)
+
+    # Type 0 Section
+    buf.write(b"\x00")
+    buf.write(_dict_to_bson(command, False, opts))
+
+    # Type 1 Section
+    buf.write(b"\x01")
+    size_location = buf.tell()
+    # Save space for size
+    buf.write(b"\x00\x00\x00\x00")
+    try:
+        buf.write(_OP_MSG_MAP[operation])
+    except KeyError:
+        raise InvalidOperation('Unknown command')
+
+    if operation in (_UPDATE, _DELETE):
+        check_keys = False
+
+    to_send = []
+    idx = 0
+    for doc in docs:
+        # Encode the current operation
+        value = _dict_to_bson(doc, check_keys, opts)
+        # Is there enough room to add this document?
+        enough_data = (buf.tell() + len(value)) >= max_message_size
+        enough_documents = (idx >= max_write_batch_size)
+        if enough_data or enough_documents:
+            if not idx:
+                write_op = "insert" if operation == _INSERT else None
+                _raise_document_too_large(
+                    write_op, len(value), max_bson_size)
+            break
+        buf.write(value)
+        to_send.append(doc)
+        idx += 1
+
+    # Write type 1 section size
+    length = buf.tell()
+    buf.seek(size_location)
+    buf.write(_pack_int(length - size_location))
+
+    return to_send, length
+
+
+def _encode_batched_op_msg(
+        operation, command, docs, check_keys, ack, opts, ctx):
+    """Encode the next batched insert, update, or delete operation
+    as OP_MSG.
+    """
+    buf = StringIO()
+
+    to_send, _ = _batched_op_msg_impl(
+        operation, command, docs, check_keys, ack, opts, ctx, buf)
+    return buf.getvalue(), to_send
+if _use_c:
+    _encode_batched_op_message = _cmessage._encode_batched_op_msg
+
+
+def _batched_op_msg_compressed(
+        operation, command, docs, check_keys, ack, opts, ctx):
+    """Create the next batched insert, update, or delete operation
+    with OP_MSG, compressed.
+    """
+    data, to_send = _encode_batched_op_msg(
+        operation, command, docs, check_keys, ack, opts, ctx)
+
+    request_id, msg = _compress(
+        2013,
+        data,
+        ctx.sock_info.compression_context)
+    return request_id, msg, to_send
+
+
+def _batched_op_msg(
+        operation, command, docs, check_keys, ack, opts, ctx):
+    """OP_MSG implementation entry point."""
+    buf = StringIO()
+
+    # Save space for message length and request id
+    buf.write(_ZERO_64)
+    # responseTo, opCode
+    buf.write(b"\x00\x00\x00\x00\xdd\x07\x00\x00")
+
+    to_send, length = _batched_op_msg_impl(
+        operation, command, docs, check_keys, ack, opts, ctx, buf)
+
+    # Header - request id and message length
+    buf.seek(4)
+    request_id = _randint()
+    buf.write(_pack_int(request_id))
+    buf.seek(0)
+    buf.write(_pack_int(length))
+
+    return request_id, buf.getvalue(), to_send
+if _use_c:
+    _batched_op_msg = _cmessage._batched_op_msg
+
+
+def _do_batched_op_msg(
+        namespace, operation, command, docs, check_keys, opts, ctx):
+    """Create the next batched insert, update, or delete operation
+    using OP_MSG.
+    """
+    command['$db'] = namespace.split('.', 1)[0]
+    if 'writeConcern' in command:
+        ack = bool(command['writeConcern'].get('w', 1))
+    else:
+        ack = True
+    if ctx.sock_info.compression_context:
+        return _batched_op_msg_compressed(
+            operation, command, docs, check_keys, ack, opts, ctx)
+    return _batched_op_msg(
+        operation, command, docs, check_keys, ack, opts, ctx)
+
+
+# End OP_MSG -----------------------------------------------------
+
+
+def _batched_write_command_compressed(
         namespace, operation, command, docs, check_keys, opts, ctx):
     """Create the next batched insert, update, or delete command, compressed.
     """
@@ -1064,14 +1204,14 @@ def _encode_batched_write_command(
     """
     buf = StringIO()
 
-    to_send, _ = _batched_write_command(
+    to_send, _ = _batched_write_command_impl(
         namespace, operation, command, docs, check_keys, opts, ctx, buf)
     return buf.getvalue(), to_send
 if _use_c:
     _encode_batched_write_command = _cmessage._encode_batched_write_command
 
 
-def _do_batched_write_command(
+def _batched_write_command(
         namespace, operation, command, docs, check_keys, opts, ctx):
     """Create the next batched insert, update, or delete command.
     """
@@ -1083,22 +1223,42 @@ def _do_batched_write_command(
     buf.write(b"\x00\x00\x00\x00\xd4\x07\x00\x00")
 
     # Write OP_QUERY write command
-    to_send, length = _batched_write_command(
+    to_send, length = _batched_write_command_impl(
         namespace, operation, command, docs, check_keys, opts, ctx, buf)
 
     # Header - request id and message length
     buf.seek(4)
     request_id = _randint()
-    buf.write(struct.pack('<i', request_id))
+    buf.write(_pack_int(request_id))
     buf.seek(0)
-    buf.write(struct.pack('<i', length))
+    buf.write(_pack_int(length))
 
     return request_id, buf.getvalue(), to_send
 if _use_c:
-    _do_batched_write_command = _cmessage._do_batched_write_command
+    _batched_write_command = _cmessage._batched_write_command
 
 
-def _batched_write_command(
+def _do_batched_write_command(
+        namespace, operation, command, docs, check_keys, opts, ctx):
+    """Batched write commands entry point."""
+    if ctx.sock_info.compression_context:
+        return _batched_write_command_compressed(
+            namespace, operation, command, docs, check_keys, opts, ctx)
+    return _batched_write_command(
+        namespace, operation, command, docs, check_keys, opts, ctx)
+
+
+def _do_bulk_write_command(
+        namespace, operation, command, docs, check_keys, opts, ctx):
+    """Bulk write commands entry point."""
+    if ctx.sock_info.max_wire_version > 5:
+        return _do_batched_op_msg(
+            namespace, operation, command, docs, check_keys, opts, ctx)
+    return _do_batched_write_command(
+        namespace, operation, command, docs, check_keys, opts, ctx)
+
+
+def _batched_write_command_impl(
         namespace, operation, command, docs, check_keys, opts, ctx, buf):
     """Create a batched OP_QUERY write command."""
     max_bson_size = ctx.max_bson_size
@@ -1163,9 +1323,9 @@ def _batched_write_command(
     # Write document lengths and request id
     length = buf.tell()
     buf.seek(list_start)
-    buf.write(struct.pack('<i', length - list_start - 1))
+    buf.write(_pack_int(length - list_start - 1))
     buf.seek(command_start)
-    buf.write(struct.pack('<i', length - command_start))
+    buf.write(_pack_int(length - command_start))
 
     return to_send, length
 

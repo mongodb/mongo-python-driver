@@ -440,7 +440,9 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             DeleteOne({'l': large}),
             DeleteOne({'l': large})])
         # Each command should fail and be retried.
-        self.assertEqual(len(self.listener.results['started']), 14)
+        # With OP_MSG 3 inserts are one batch. 2 updates another.
+        # 2 deletes a third.
+        self.assertEqual(len(self.listener.results['started']), 6)
         self.assertEqual(coll.find_one(), {'_id': 1, 'count': 1})
         # Assert the final result
         expected_result = {
@@ -465,7 +467,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         coll.delete_many({})
         self.client.admin.command(SON([
             ('configureFailPoint', 'onPrimaryTransactionalWrite'),
-            ('mode', {'skip': 1}),
+            ('mode', {'skip': 3}),  # The number of _documents_ to skip.
             ('data', {'failBeforeCommitExceptionCode': 1})]))
         self.listener.results.clear()
         with self.client.start_session() as session:
@@ -473,7 +475,8 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             try:
                 coll.bulk_write([InsertOne({'_id': 1, 'l': large}),
                                  InsertOne({'_id': 2, 'l': large}),
-                                 InsertOne({'_id': 3, 'l': large})],
+                                 InsertOne({'_id': 3, 'l': large}),
+                                 InsertOne({'_id': 4, 'l': large})],
                                 session=session)
             except ConnectionFailure:
                 pass

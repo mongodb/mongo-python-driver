@@ -1117,6 +1117,315 @@ insertfail:
 #define _UPDATE 1
 #define _DELETE 2
 
+/* OP_MSG ----------------------------------------------- */
+
+static int
+_batched_op_msg(
+        unsigned char op, unsigned char check_keys, unsigned char ack,
+        PyObject* command, PyObject* docs, PyObject* ctx,
+        PyObject* to_publish, codec_options_t options,
+        buffer_t buffer, struct module_state *state) {
+
+    long max_bson_size;
+    long max_write_batch_size;
+    long max_message_size;
+    int idx = 0;
+    int size_location;
+    int position;
+    int length;
+    PyObject* max_bson_size_obj;
+    PyObject* max_write_batch_size_obj;
+    PyObject* max_message_size_obj;
+    PyObject* doc;
+    PyObject* iterator;
+    char* flags = ack ? "\x00\x00\x00\x00" : "\x02\x00\x00\x00";
+
+    max_bson_size_obj = PyObject_GetAttrString(ctx, "max_bson_size");
+#if PY_MAJOR_VERSION >= 3
+    max_bson_size = PyLong_AsLong(max_bson_size_obj);
+#else
+    max_bson_size = PyInt_AsLong(max_bson_size_obj);
+#endif
+    Py_XDECREF(max_bson_size_obj);
+    if (max_bson_size == -1) {
+        return 0;
+    }
+
+    max_write_batch_size_obj = PyObject_GetAttrString(ctx, "max_write_batch_size");
+#if PY_MAJOR_VERSION >= 3
+    max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
+#else
+    max_write_batch_size = PyInt_AsLong(max_write_batch_size_obj);
+#endif
+    Py_XDECREF(max_write_batch_size_obj);
+    if (max_write_batch_size == -1) {
+        return 0;
+    }
+
+    max_message_size_obj = PyObject_GetAttrString(ctx, "max_message_size");
+#if PY_MAJOR_VERSION >= 3
+    max_message_size = PyLong_AsLong(max_message_size_obj);
+#else
+    max_message_size = PyInt_AsLong(max_message_size_obj);
+#endif
+    Py_XDECREF(max_message_size_obj);
+    if (max_message_size == -1) {
+        return 0;
+    }
+
+    if (!buffer_write_bytes(buffer, flags, 4)) {
+        return 0;
+    }
+    /* Type 0 Section */
+    if (!buffer_write_bytes(buffer, "\x00", 1)) {
+        return 0;
+    }
+    if (!write_dict(state->_cbson, buffer, command, 0,
+                    &options, 0)) {
+        return 0;
+    }
+
+    /* Type 1 Section */
+    if (!buffer_write_bytes(buffer, "\x01", 1)) {
+        return 0;
+    }
+    /* Save space for size */
+    size_location = buffer_save_space(buffer, 4);
+
+    switch (op) {
+    case _INSERT:
+        {
+            if (!buffer_write_bytes(buffer, "documents\x00", 10))
+                goto cmdfail;
+            break;
+        }
+    case _UPDATE:
+        {
+            /* MongoDB does key validation for update. */
+            check_keys = 0;
+            if (!buffer_write_bytes(buffer, "updates\x00", 8))
+                goto cmdfail;
+            break;
+        }
+    case _DELETE:
+        {
+            /* Never check keys in a delete command. */
+            check_keys = 0;
+            if (!buffer_write_bytes(buffer, "deletes\x00", 8))
+                goto cmdfail;
+            break;
+        }
+    default:
+        {
+            PyObject* InvalidOperation = _error("InvalidOperation");
+            if (InvalidOperation) {
+                PyErr_SetString(InvalidOperation, "Unknown command");
+                Py_DECREF(InvalidOperation);
+            }
+            return 0;
+        }
+    }
+
+    iterator = PyObject_GetIter(docs);
+    if (iterator == NULL) {
+        PyObject* InvalidOperation = _error("InvalidOperation");
+        if (InvalidOperation) {
+            PyErr_SetString(InvalidOperation, "input is not iterable");
+            Py_DECREF(InvalidOperation);
+        }
+        return 0;
+    }
+    while ((doc = PyIter_Next(iterator)) != NULL) {
+        int cur_doc_begin = buffer_get_position(buffer);
+        int cur_size;
+        int enough_data = 0;
+        int enough_documents = 0;
+        if (!write_dict(state->_cbson, buffer, doc, check_keys,
+                        &options, 1)) {
+            goto cmditerfail;
+        }
+        /* We have enough data, return this batch. */
+        enough_data = (buffer_get_position(buffer) > max_message_size);
+        enough_documents = (idx >= max_write_batch_size);
+        if (enough_data || enough_documents) {
+            cur_size = buffer_get_position(buffer) - cur_doc_begin;
+
+            /* This single document is too large for the message. */
+            if (!idx) {
+                if (op == _INSERT) {
+                    _set_document_too_large(cur_size, max_bson_size);
+                } else {
+                    PyObject* DocumentTooLarge = _error("DocumentTooLarge");
+                    if (DocumentTooLarge) {
+                        /*
+                         * There's nothing intelligent we can say
+                         * about size for update and remove.
+                         */
+                        PyErr_SetString(DocumentTooLarge,
+                                        "operation document too large");
+                        Py_DECREF(DocumentTooLarge);
+                    }
+                }
+                goto cmditerfail;
+            }
+            /*
+             * Roll the existing buffer back to the beginning
+             * of the last document encoded.
+             */
+            buffer_update_position(buffer, cur_doc_begin);
+            break;
+        }
+        if (PyList_Append(to_publish, doc) < 0) {
+            goto cmditerfail;
+        }
+        Py_CLEAR(doc);
+        idx += 1;
+    }
+    Py_DECREF(iterator);
+
+    if (PyErr_Occurred()) {
+        goto cmdfail;
+    }
+
+    position = buffer_get_position(buffer);
+    length = position - size_location;
+    buffer_write_int32_at_position(buffer, size_location, (int32_t)length);
+    return 1;
+
+cmditerfail:
+    Py_XDECREF(doc);
+    Py_DECREF(iterator);
+cmdfail:
+    return 0;
+}
+
+static PyObject*
+_cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
+    unsigned char op;
+    unsigned char check_keys;
+    unsigned char ack;
+    PyObject* command;
+    PyObject* docs;
+    PyObject* ctx = NULL;
+    PyObject* to_publish = NULL;
+    PyObject* result = NULL;
+    codec_options_t options;
+    buffer_t buffer;
+    struct module_state *state = GETSTATE(self);
+
+    if (!PyArg_ParseTuple(args, "bOObbO&O",
+                          &op, &command, &docs, &check_keys, &ack,
+                          convert_codec_options, &options,
+                          &ctx)) {
+        return NULL;
+    }
+    if (!(buffer = buffer_new())) {
+        PyErr_NoMemory();
+        destroy_codec_options(&options);
+        return NULL;
+    }
+    if (!(to_publish = PyList_New(0))) {
+        goto fail;
+    }
+
+    if (!_batched_op_msg(
+            op,
+            check_keys,
+            ack,
+            command,
+            docs,
+            ctx,
+            to_publish,
+            options,
+            buffer,
+            state)) {
+        goto fail;
+    }
+
+    result = Py_BuildValue(BYTES_FORMAT_STRING "O",
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer),
+                           to_publish);
+fail:
+    destroy_codec_options(&options);
+    buffer_free(buffer);
+    Py_XDECREF(to_publish);
+    return result;
+}
+
+static PyObject*
+_cbson_batched_op_msg(PyObject* self, PyObject* args) {
+    unsigned char op;
+    unsigned char check_keys;
+    unsigned char ack;
+    int request_id;
+    int position;
+    PyObject* command;
+    PyObject* docs;
+    PyObject* ctx = NULL;
+    PyObject* to_publish = NULL;
+    PyObject* result = NULL;
+    codec_options_t options;
+    buffer_t buffer;
+    struct module_state *state = GETSTATE(self);
+
+    if (!PyArg_ParseTuple(args, "bOObbO&O",
+                          &op, &command, &docs, &check_keys, &ack,
+                          convert_codec_options, &options,
+                          &ctx)) {
+        return NULL;
+    }
+    if (!(buffer = buffer_new())) {
+        PyErr_NoMemory();
+        destroy_codec_options(&options);
+        return NULL;
+    }
+    /* Save space for message length and request id */
+    if ((buffer_save_space(buffer, 8)) == -1) {
+        PyErr_NoMemory();
+        goto fail;
+    }
+    if (!buffer_write_bytes(buffer,
+                            "\x00\x00\x00\x00"  /* responseTo */
+                            "\xdd\x07\x00\x00", /* opcode */
+                            8)) {
+        goto fail;
+    }
+    if (!(to_publish = PyList_New(0))) {
+        goto fail;
+    }
+
+    if (!_batched_op_msg(
+            op,
+            check_keys,
+            ack,
+            command,
+            docs,
+            ctx,
+            to_publish,
+            options,
+            buffer,
+            state)) {
+        goto fail;
+    }
+
+    request_id = rand();
+    position = buffer_get_position(buffer);
+    buffer_write_int32_at_position(buffer, 0, (int32_t)position);
+    buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING "O", request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer),
+                           to_publish);
+fail:
+    destroy_codec_options(&options);
+    buffer_free(buffer);
+    Py_XDECREF(to_publish);
+    return result;
+}
+
+/* End OP_MSG -------------------------------------------- */
+
 static int
 _batched_write_command(
         char* ns, int ns_len, unsigned char op, int check_keys,
@@ -1376,7 +1685,7 @@ fail:
 }
 
 static PyObject*
-_cbson_do_batched_write_command(PyObject* self, PyObject* args) {
+_cbson_batched_write_command(PyObject* self, PyObject* args) {
     char *ns = NULL;
     unsigned char op;
     unsigned char check_keys;
@@ -1463,10 +1772,14 @@ static PyMethodDef _CMessageMethods[] = {
      "create an OP_MSG message to be sent to MongoDB"},
     {"_do_batched_insert", _cbson_do_batched_insert, METH_VARARGS,
      "insert a batch of documents, splitting the batch as needed"},
-    {"_do_batched_write_command", _cbson_do_batched_write_command, METH_VARARGS,
+    {"_batched_write_command", _cbson_batched_write_command, METH_VARARGS,
      "Create the next batched insert, update, or delete command"},
     {"_encode_batched_write_command", _cbson_encode_batched_write_command, METH_VARARGS,
      "Encode the next batched insert, update, or delete command"},
+    {"_batched_op_msg", _cbson_batched_op_msg, METH_VARARGS,
+     "Create the next batched insert, update, or delete using OP_MSG"},
+    {"_encode_batched_op_msg", _cbson_encode_batched_op_msg, METH_VARARGS,
+     "Encode the next batched insert, update, or delete using OP_MSG"},
     {NULL, NULL, 0, NULL}
 };
 
