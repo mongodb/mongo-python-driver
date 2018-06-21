@@ -65,6 +65,8 @@ Deprecations:
   :meth:`~pymongo.mongo_client.MongoClient.list_database_names` instead.
 - Deprecated :meth:`~pymongo.database.Database.collection_names`. Use
   :meth:`~pymongo.database.Database.list_collection_names` instead.
+- Deprecated :meth:`~pymongo.collection.Collection.parallel_scan`. MongoDB 4.2
+  will remove the parallelCollectionScan command.
 
 Unavoidable breaking changes:
 

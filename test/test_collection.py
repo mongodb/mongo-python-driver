@@ -1662,6 +1662,8 @@ class TestCollection(IntegrationTest):
             self.assertTrue(cursor.alive)
 
     @client_context.require_no_mongos
+    @client_context.require_version_max(4, 1, 0)
+    @ignore_deprecations
     def test_parallel_scan(self):
         db = self.db
         db.drop_collection("test")
@@ -1688,7 +1690,9 @@ class TestCollection(IntegrationTest):
 
     @client_context.require_no_mongos
     @client_context.require_version_min(3, 3, 10)
+    @client_context.require_version_max(4, 1, 0)
     @client_context.require_test_commands
+    @ignore_deprecations
     def test_parallel_scan_max_time_ms(self):
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",

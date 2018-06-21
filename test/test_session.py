@@ -320,6 +320,8 @@ class TestSession(IntegrationTest):
             (coll.aggregate, [[]], {}))
 
     @client_context.require_no_mongos
+    @client_context.require_version_max(4, 1, 0)
+    @ignore_deprecations
     def test_parallel_collection_scan(self):
         listener = self.listener
         client = self.client
@@ -771,7 +773,8 @@ class TestCausalConsistency(unittest.TestCase):
         self._test_reads(
             lambda coll, session: coll.inline_map_reduce(
                 'function() {}', 'function() {}', session=session))
-        if not client_context.is_mongos:
+        if (not client_context.is_mongos and
+                not client_context.version.at_least(4, 1, 0)):
             def scan(coll, session):
                 cursors = coll.parallel_scan(1, session=session)
                 for cur in cursors:

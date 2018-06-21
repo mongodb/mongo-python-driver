@@ -1450,7 +1450,7 @@ class Collection(common.BaseObject):
         return RawBatchCursor(self, *args, **kwargs)
 
     def parallel_scan(self, num_cursors, session=None, **kwargs):
-        """Scan this entire collection in parallel.
+        """**DEPRECATED**: Scan this entire collection in parallel.
 
         Returns a list of up to ``num_cursors`` cursors that can be iterated
         concurrently. As long as the collection is not modified during
@@ -1492,6 +1492,9 @@ class Collection(common.BaseObject):
 
         .. note:: Requires server version **>= 2.5.5**.
 
+        .. versionchanged:: 3.7
+           Deprecated.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -1504,6 +1507,9 @@ class Collection(common.BaseObject):
            Removed support for arbitrary keyword arguments, since
            the parallelCollectionScan command has no optional arguments.
         """
+        warnings.warn("parallel_scan is deprecated. MongoDB 4.2 will remove "
+                      "the parallelCollectionScan command.",
+                      DeprecationWarning, stacklevel=2)
         cmd = SON([('parallelCollectionScan', self.__name),
                    ('numCursors', num_cursors)])
         cmd.update(kwargs)
