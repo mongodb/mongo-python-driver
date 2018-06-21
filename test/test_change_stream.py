@@ -569,7 +569,7 @@ def assert_dict_is_subset(superdict, subdict):
     """Check that subdict is a subset of superdict."""
     exempt_fields = ["documentKey", "_id"]
     for key, value in iteritems(subdict):
-        if not superdict.has_key(key):
+        if key not in superdict:
             assert False
         if isinstance(value, dict):
             assert_dict_is_subset(superdict[key], value)
