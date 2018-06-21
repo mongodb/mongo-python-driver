@@ -1042,7 +1042,12 @@ class TestLegacy(IntegrationTest):
         collection.save({"i": 1})
 
         collection.update({"i": 1}, {"$set": {"i": 2}}, w=0)
-        self.assertTrue(db.last_status()["updatedExisting"])
+        # updatedExisting is always false on mongos after an OP_MSG
+        # unacknowledged write.
+        if not (client_context.version >= (3, 6) and client_context.is_mongos):
+            self.assertTrue(db.last_status()["updatedExisting"])
+        wait_until(lambda: collection.find_one({"i": 2}),
+                   "found updated w=0 doc")
 
         collection.update({"i": 1}, {"$set": {"i": 500}}, w=0)
         self.assertFalse(db.last_status()["updatedExisting"])

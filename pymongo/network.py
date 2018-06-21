@@ -57,7 +57,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             parse_write_concern_error=False,
             collation=None,
             compression_ctx=None,
-            use_op_msg=False):
+            use_op_msg=False,
+            unacknowledged=False):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -108,9 +109,15 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         compression_ctx = None
 
     if use_op_msg:
-        request_id, msg, size = message._op_msg(
-            0, spec, dbname, read_preference, slave_ok, check_keys,
-            codec_options)
+        flags = 2 if unacknowledged else 0
+        request_id, msg, size, max_doc_size = message._op_msg(
+            flags, spec, dbname, read_preference, slave_ok, check_keys,
+            codec_options, ctx=compression_ctx)
+        # If this is an unacknowledged write then make sure the encoded doc(s)
+        # are small enough, otherwise rely on the server to return an error.
+        if (unacknowledged and max_bson_size is not None and
+                max_doc_size > max_bson_size):
+            message._raise_document_too_large(name, size, max_bson_size)
     else:
         request_id, msg, size = message.query(
             flags, ns, 0, -1, spec, None, codec_options, check_keys,
@@ -128,16 +135,20 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
     try:
         sock.sendall(msg)
-        reply = receive_message(sock, request_id)
-        unpacked_docs = reply.unpack_response(codec_options=codec_options)
+        if use_op_msg and unacknowledged:
+            # Unacknowledged, fake a successful command response.
+            response_doc = {"ok": 1}
+        else:
+            reply = receive_message(sock, request_id)
+            unpacked_docs = reply.unpack_response(codec_options=codec_options)
 
-        response_doc = unpacked_docs[0]
-        if client:
-            client._receive_cluster_time(response_doc, session)
-        if check:
-            helpers._check_command_response(
-                response_doc, None, allowable_errors,
-                parse_write_concern_error=parse_write_concern_error)
+            response_doc = unpacked_docs[0]
+            if client:
+                client._receive_cluster_time(response_doc, session)
+            if check:
+                helpers._check_command_response(
+                    response_doc, None, allowable_errors,
+                    parse_write_concern_error=parse_write_concern_error)
     except Exception as exc:
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration

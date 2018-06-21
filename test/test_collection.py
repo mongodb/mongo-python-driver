@@ -885,8 +885,14 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertEqual(2, result.inserted_id)
 
-        self.assertRaises(OperationFailure, db_w0.test.insert_one,
-                          {"x": 1}, bypass_document_validation=True)
+        if client_context.version < (3, 6):
+            # Uses OP_INSERT which does not support bypass_document_validation.
+            self.assertRaises(OperationFailure, db_w0.test.insert_one,
+                              {"y": 1}, bypass_document_validation=True)
+        else:
+            db_w0.test.insert_one({"y": 1}, bypass_document_validation=True)
+            wait_until(lambda: db_w0.test.find_one({"y": 1}),
+                       "find w:0 inserted document")
 
         # Test insert_many
         docs = [{"_id": i, "x": 100 - i} for i in range(3, 100)]
@@ -952,8 +958,17 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count_documents({"x": 101}))
         self.assertEqual(1, db.test.count_documents({"a": 103}))
 
-        self.assertRaises(OperationFailure, db_w0.test.replace_one, {"y": 1},
-                          {"x": 1}, bypass_document_validation=True)
+        db.test.insert_one({"y": 1}, bypass_document_validation=True)
+        if client_context.version < (3, 6):
+            # Uses OP_UPDATE which does not support bypass_document_validation.
+            self.assertRaises(OperationFailure, db_w0.test.replace_one,
+                              {"y": 1}, {"x": 1},
+                              bypass_document_validation=True)
+        else:
+            db_w0.test.replace_one({"y": 1}, {"x": 1},
+                                   bypass_document_validation=True)
+            wait_until(lambda: db_w0.test.find_one({"x": 1}),
+                       "find w:0 replaced document")
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_update_bypass_document_validation(self):
@@ -994,8 +1009,17 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count_documents({"z": -9}))
         self.assertEqual(1, db.test.count_documents({"z": 0}))
 
-        self.assertRaises(OperationFailure, db_w0.test.update_one, {"y": 1},
-                          {"$inc": {"x": 1}}, bypass_document_validation=True)
+        db.test.insert_one({"y": 1, "x": 0}, bypass_document_validation=True)
+        if client_context.version < (3, 6):
+            # Uses OP_UPDATE which does not support bypass_document_validation.
+            self.assertRaises(OperationFailure, db_w0.test.update_one,
+                              {"y": 1}, {"$inc": {"x": 1}},
+                              bypass_document_validation=True)
+        else:
+            db_w0.test.update_one({"y": 1}, {"$inc": {"x": 1}},
+                                  bypass_document_validation=True)
+            wait_until(lambda: db_w0.test.find_one({"y": 1, "x": 1}),
+                       "find w:0 updated document")
 
         # Test update_many
         db.test.insert_many([{"z": i} for i in range(3, 101)])
@@ -1030,8 +1054,19 @@ class TestCollection(IntegrationTest):
         self.assertEqual(150, db.test.count_documents({"z": {"$gte": 0}}))
         self.assertEqual(0, db.test.count_documents({"z": {"$lt": 0}}))
 
-        self.assertRaises(OperationFailure, db_w0.test.update_many, {"y": 1},
-                          {"$inc": {"x": 1}}, bypass_document_validation=True)
+        db.test.insert_one({"m": 1, "x": 0}, bypass_document_validation=True)
+        db.test.insert_one({"m": 1, "x": 0}, bypass_document_validation=True)
+        if client_context.version < (3, 6):
+            # Uses OP_UPDATE which does not support bypass_document_validation.
+            self.assertRaises(OperationFailure, db_w0.test.update_many,
+                              {"m": 1}, {"$inc": {"x": 1}},
+                              bypass_document_validation=True)
+        else:
+            db_w0.test.update_many({"m": 1}, {"$inc": {"x": 1}},
+                                   bypass_document_validation=True)
+            wait_until(
+                lambda: db_w0.test.count_documents({"m": 1, "x": 1}) == 2,
+                "find w:0 updated documents")
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_bypass_document_validation_bulk_write(self):

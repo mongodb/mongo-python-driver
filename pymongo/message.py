@@ -316,8 +316,11 @@ class _Query(object):
         if use_cmd:
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
-                return _op_msg(0, spec, self.db, self.read_preference,
-                               set_slave_ok, False, self.codec_options)
+                request_id, msg, size, _ = _op_msg(
+                    0, spec, self.db, self.read_preference,
+                    set_slave_ok, False, self.codec_options,
+                    ctx=sock_info.compression_context)
+                return request_id, msg, size
             ns = _UJOIN % (self.db, "$cmd")
             ntoreturn = -1  # All DB commands return 1 document
         else:
@@ -391,8 +394,11 @@ class _GetMore(object):
         if use_cmd:
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
-                return _op_msg(0, spec, self.db, ReadPreference.PRIMARY,
-                               False, False, self.codec_options)
+                request_id, msg, size, _ = _op_msg(
+                    0, spec, self.db, ReadPreference.PRIMARY,
+                    False, False, self.codec_options,
+                    ctx=sock_info.compression_context)
+                return request_id, msg, size
             ns = _UJOIN % (self.db, "$cmd")
             return query(0, ns, 0, -1, spec, None, self.codec_options, ctx=ctx)
 
@@ -613,6 +619,7 @@ def _op_msg_no_header(flags, command, identifier, docs, check_keys, opts):
     encoded = _dict_to_bson(command, False, opts)
     flags_type = _pack_op_msg_flags_type(flags, 0)
     total_size = len(encoded)
+    max_doc_size = 0
     if identifier:
         type_one = _pack_byte(1)
         cstring = _make_c_string(identifier)
@@ -620,28 +627,29 @@ def _op_msg_no_header(flags, command, identifier, docs, check_keys, opts):
         size = len(cstring) + sum(len(doc) for doc in encoded_docs) + 4
         encoded_size = _pack_int(size)
         total_size += size
+        max_doc_size = max(len(doc) for doc in encoded_docs)
         data = ([flags_type, encoded, type_one, encoded_size, cstring] +
                 encoded_docs)
     else:
         data = [flags_type, encoded]
-    return b''.join(data), total_size
+    return b''.join(data), total_size, max_doc_size
 
 
 def _op_msg_compressed(flags, command, identifier, docs, check_keys, opts,
                        ctx):
     """Internal OP_MSG message helper."""
-    msg, max_bson_size = _op_msg_no_header(
+    msg, total_size, max_bson_size = _op_msg_no_header(
         flags, command, identifier, docs, check_keys, opts)
     rid, msg = _compress(2013, msg, ctx)
-    return rid, msg, max_bson_size
+    return rid, msg, total_size, max_bson_size
 
 
 def _op_msg_uncompressed(flags, command, identifier, docs, check_keys, opts):
     """Internal compressed OP_MSG message helper."""
-    data, max_bson_size = _op_msg_no_header(
+    data, total_size, max_bson_size = _op_msg_no_header(
         flags, command, identifier, docs, check_keys, opts)
-    request_id, query_message = __pack_message(2013, data)
-    return request_id, query_message, max_bson_size
+    request_id, op_message = __pack_message(2013, data)
+    return request_id, op_message, total_size, max_bson_size
 if _use_c:
     _op_msg_uncompressed = _cmessage._op_msg
 
@@ -656,15 +664,11 @@ def _op_msg(flags, command, dbname, read_preference, slave_ok, check_keys,
                 ReadPreference.PRIMARY_PREFERRED.document)
         else:
             command["$readPreference"] = read_preference.document
-    if check_keys:
-        name = next(iter(command))
-        try:
-            identifier = _FIELD_MAP.get(name)
-            docs = command.pop(identifier)
-        except KeyError:
-            identifier = ""
-            docs = None
-    else:
+    name = next(iter(command))
+    try:
+        identifier = _FIELD_MAP.get(name)
+        docs = command.pop(identifier)
+    except KeyError:
         identifier = ""
         docs = None
     try:

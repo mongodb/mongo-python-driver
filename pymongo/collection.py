@@ -558,40 +558,41 @@ class Collection(common.BaseObject):
                 doc['_id'] = ObjectId()
             doc = self.__database._apply_incoming_copying_manipulators(doc,
                                                                        self)
-        concern = (write_concern or self.write_concern).document
-        acknowledged = concern.get("w") != 0
+        write_concern = write_concern or self.write_concern
+        acknowledged = write_concern.acknowledged
         command = SON([('insert', self.name),
                        ('ordered', ordered),
                        ('documents', [doc])])
-        if concern:
-            command['writeConcern'] = concern
+        if not write_concern.is_server_default:
+            command['writeConcern'] = write_concern.document
 
-        if acknowledged:
-            def _insert_command(session, sock_info, retryable_write):
-                if bypass_doc_val and sock_info.max_wire_version >= 4:
-                    command['bypassDocumentValidation'] = True
-
-                result = sock_info.command(
-                    self.__database.name,
-                    command,
-                    codec_options=self.__write_response_codec_options,
-                    check_keys=check_keys,
-                    session=session,
-                    client=self.__database.client,
-                    retryable_write=retryable_write)
-
-                _check_write_command_response(result)
-
-            self.__database.client._retryable_write(
-                True, _insert_command, session)
-        else:
-            with self._socket_for_writes() as sock_info:
+        def _insert_command(session, sock_info, retryable_write):
+            if not sock_info.op_msg_enabled and not acknowledged:
                 # Legacy OP_INSERT.
-                self._legacy_write(
+                return self._legacy_write(
                     sock_info, 'insert', command, op_id,
-                    bypass_doc_val, message.insert, self.__full_name, [doc],
-                    check_keys, False, concern, False,
+                    bypass_doc_val, message.insert, self.__full_name,
+                    [doc], check_keys, False, write_concern.document, False,
                     self.__write_response_codec_options)
+
+            if bypass_doc_val and sock_info.max_wire_version >= 4:
+                command['bypassDocumentValidation'] = True
+
+            result = sock_info.command(
+                self.__database.name,
+                command,
+                write_concern=write_concern,
+                codec_options=self.__write_response_codec_options,
+                check_keys=check_keys,
+                session=session,
+                client=self.__database.client,
+                retryable_write=retryable_write)
+
+            _check_write_command_response(result)
+
+        self.__database.client._retryable_write(
+            acknowledged, _insert_command, session)
+
         if not isinstance(doc, RawBSONDocument):
             return doc.get('_id')
 
@@ -758,8 +759,8 @@ class Collection(common.BaseObject):
         if manipulate:
             document = self.__database._fix_incoming(document, self)
         collation = validate_collation_or_none(collation)
-        concern = (write_concern or self.write_concern).document
-        acknowledged = concern.get("w") != 0
+        write_concern = write_concern or self.write_concern
+        acknowledged = write_concern.acknowledged
         update_doc = SON([('q', criteria),
                           ('u', document),
                           ('multi', multi),
@@ -785,41 +786,45 @@ class Collection(common.BaseObject):
         command = SON([('update', self.name),
                        ('ordered', ordered),
                        ('updates', [update_doc])])
-        if concern:
-            command['writeConcern'] = concern
-        if acknowledged:
-            # Update command.
-            if bypass_doc_val and sock_info.max_wire_version >= 4:
-                command['bypassDocumentValidation'] = True
+        if not write_concern.is_server_default:
+            command['writeConcern'] = write_concern.document
 
-            # The command result has to be published for APM unmodified
-            # so we make a shallow copy here before adding updatedExisting.
-            result = sock_info.command(
-                self.__database.name,
-                command,
-                codec_options=self.__write_response_codec_options,
-                session=session,
-                client=self.__database.client,
-                retryable_write=retryable_write).copy()
-            _check_write_command_response(result)
-            # Add the updatedExisting field for compatibility.
-            if result.get('n') and 'upserted' not in result:
-                result['updatedExisting'] = True
-            else:
-                result['updatedExisting'] = False
-                # MongoDB >= 2.6.0 returns the upsert _id in an array
-                # element. Break it out for backward compatibility.
-                if 'upserted' in result:
-                    result['upserted'] = result['upserted'][0]['_id']
-
-            return result
-        else:
+        if not sock_info.op_msg_enabled and not acknowledged:
             # Legacy OP_UPDATE.
             return self._legacy_write(
                 sock_info, 'update', command, op_id,
                 bypass_doc_val, message.update, self.__full_name, upsert,
-                multi, criteria, document, False, concern, check_keys,
-                self.__write_response_codec_options)
+                multi, criteria, document, False, write_concern.document,
+                check_keys, self.__write_response_codec_options)
+
+        # Update command.
+        if bypass_doc_val and sock_info.max_wire_version >= 4:
+            command['bypassDocumentValidation'] = True
+
+        # The command result has to be published for APM unmodified
+        # so we make a shallow copy here before adding updatedExisting.
+        result = sock_info.command(
+            self.__database.name,
+            command,
+            write_concern=write_concern,
+            codec_options=self.__write_response_codec_options,
+            session=session,
+            client=self.__database.client,
+            retryable_write=retryable_write).copy()
+        _check_write_command_response(result)
+        # Add the updatedExisting field for compatibility.
+        if result.get('n') and 'upserted' not in result:
+            result['updatedExisting'] = True
+        else:
+            result['updatedExisting'] = False
+            # MongoDB >= 2.6.0 returns the upsert _id in an array
+            # element. Break it out for backward compatibility.
+            if 'upserted' in result:
+                result['upserted'] = result['upserted'][0]['_id']
+
+        if not acknowledged:
+            return None
+        return result
 
     def _update_retryable(
             self, criteria, document, upsert=False,
@@ -1082,8 +1087,8 @@ class Collection(common.BaseObject):
             collation=None, session=None, retryable_write=False):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
-        concern = (write_concern or self.write_concern).document
-        acknowledged = concern.get("w") != 0
+        write_concern = write_concern or self.write_concern
+        acknowledged = write_concern.acknowledged
         delete_doc = SON([('q', criteria),
                           ('limit', int(not multi))])
         collation = validate_collation_or_none(collation)
@@ -1099,27 +1104,28 @@ class Collection(common.BaseObject):
         command = SON([('delete', self.name),
                        ('ordered', ordered),
                        ('deletes', [delete_doc])])
-        if concern:
-            command['writeConcern'] = concern
+        if not write_concern.is_server_default:
+            command['writeConcern'] = write_concern.document
 
-        if acknowledged:
-            # Delete command.
-            result = sock_info.command(
-                self.__database.name,
-                command,
-                codec_options=self.__write_response_codec_options,
-                session=session,
-                client=self.__database.client,
-                retryable_write=retryable_write)
-            _check_write_command_response(result)
-            return result
-        else:
+        if not sock_info.op_msg_enabled and not acknowledged:
             # Legacy OP_DELETE.
             return self._legacy_write(
                 sock_info, 'delete', command, op_id,
                 False, message.delete, self.__full_name, criteria,
-                False, concern, self.__write_response_codec_options,
+                False, write_concern.document,
+                self.__write_response_codec_options,
                 int(not multi))
+        # Delete command.
+        result = sock_info.command(
+            self.__database.name,
+            command,
+            write_concern=write_concern,
+            codec_options=self.__write_response_codec_options,
+            session=session,
+            client=self.__database.client,
+            retryable_write=retryable_write)
+        _check_write_command_response(result)
+        return result
 
     def _delete_retryable(
             self, criteria, multi,

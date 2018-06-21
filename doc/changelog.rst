@@ -47,6 +47,13 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
 - If not specified, the authSource for the :ref:`PLAIN <sasl_plain>`
   authentication mechanism defaults to $external.
 - wtimeoutMS is once again supported as a URI option.
+- When using unacknowledged write concern and connected to MongoDB server
+  version 3.6 or greater, the `bypass_document_validation` option is now
+  supported in the following write helpers:
+  :meth:`~pymongo.collection.Collection.insert_one`,
+  :meth:`~pymongo.collection.Collection.replace_one`,
+  :meth:`~pymongo.collection.Collection.update_one`,
+  :meth:`~pymongo.collection.Collection.update_many`.
 
 Deprecations:
 

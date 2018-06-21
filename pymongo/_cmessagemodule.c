@@ -665,7 +665,9 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     unsigned char check_keys = 0;
     codec_options_t options;
     buffer_t buffer;
-    int length_location, message_length, total_size;
+    int length_location, message_length;
+    int total_size = 0;
+    int max_doc_size = 0;
     PyObject* result = NULL;
     PyObject* iterator = NULL;
 
@@ -727,10 +729,15 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
             goto encodefail;
         }
         while ((doc = PyIter_Next(iterator)) != NULL) {
-            if (!write_dict(state->_cbson, buffer, doc, check_keys,
-                            &options, 1)) {
+            int encoded_doc_size = write_dict(
+                      state->_cbson, buffer, doc, check_keys,
+                      &options, 1);
+            if (!encoded_doc_size) {
                 Py_CLEAR(doc);
                 goto encodefail;
+            }
+            if (encoded_doc_size > max_doc_size) {
+                max_doc_size = encoded_doc_size;
             }
             Py_CLEAR(doc);
         }
@@ -746,10 +753,11 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
         buffer, length_location, (int32_t)message_length);
 
     /* objectify buffer */
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING "ii", request_id,
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer),
-                           total_size);
+                           total_size,
+                           max_doc_size);
 encodefail:
     Py_XDECREF(iterator);
     buffer_free(buffer);

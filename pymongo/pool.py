@@ -561,6 +561,9 @@ class SocketInfo(object):
             session._apply_to(spec, retryable_write, read_preference)
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
+        unacknowledged = write_concern and not write_concern.acknowledged
+        if self.op_msg_enabled:
+            self._raise_if_not_writable(unacknowledged)
         try:
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
@@ -570,7 +573,8 @@ class SocketInfo(object):
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation,
                            compression_ctx=self.compression_context,
-                           use_op_msg=self.op_msg_enabled)
+                           use_op_msg=self.op_msg_enabled,
+                           unacknowledged=unacknowledged)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
@@ -605,6 +609,14 @@ class SocketInfo(object):
         except BaseException as error:
             self._raise_connection_failure(error)
 
+    def _raise_if_not_writable(self, unacknowledged):
+        """Raise NotMasterError on unacknowledged write if this socket is not
+        writable.
+        """
+        if unacknowledged and not self.is_writable:
+            # Write won't succeed, bail as if we'd received a not master error.
+            raise NotMasterError("not master")
+
     def legacy_write(self, request_id, msg, max_doc_size, with_last_error):
         """Send OP_INSERT, etc., optionally returning response as a dict.
 
@@ -617,9 +629,7 @@ class SocketInfo(object):
           - `max_doc_size`: size in bytes of the largest document in `msg`.
           - `with_last_error`: True if a getlasterror command is appended.
         """
-        if not with_last_error and not self.is_writable:
-            # Write won't succeed, bail as if we'd done a getlasterror.
-            raise NotMasterError("not master")
+        self._raise_if_not_writable(not with_last_error)
 
         self.send_message(msg, max_doc_size)
         if with_last_error:
