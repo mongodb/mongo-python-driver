@@ -957,8 +957,8 @@ def _raise_document_too_large(operation, doc_size, max_size):
                                " bytes." % (doc_size, max_size))
     else:
         # There's nothing intelligent we can say
-        # about size for update and remove
-        raise DocumentTooLarge("command document too large")
+        # about size for update and delete
+        raise DocumentTooLarge("%r command document too large" % (operation,))
 
 
 def _do_batched_insert(collection_name, docs, check_keys,
@@ -1089,18 +1089,29 @@ def _batched_op_msg_impl(
     for doc in docs:
         # Encode the current operation
         value = _dict_to_bson(doc, check_keys, opts)
-        # Is there enough room to add this document?
-        enough_data = (buf.tell() + len(value)) >= max_message_size
-        enough_documents = (idx >= max_write_batch_size)
-        if enough_data or enough_documents:
-            if not idx:
-                write_op = "insert" if operation == _INSERT else None
-                _raise_document_too_large(
-                    write_op, len(value), max_bson_size)
+        doc_length = len(value)
+        new_message_size = buf.tell() + doc_length
+        # Does first document exceed max_message_size?
+        doc_too_large = (idx == 0 and (new_message_size > max_message_size))
+        # When OP_MSG is used unacknowleged we have to check
+        # document size client side or applications won't be notified.
+        # Otherwise we let the server deal with documents that are too large
+        # since ordered=False causes those documents to be skipped instead of
+        # halting the bulk write operation.
+        unacked_doc_too_large = (not ack and (doc_length > max_bson_size))
+        if doc_too_large or unacked_doc_too_large:
+            write_op = list(_FIELD_MAP.keys())[operation]
+            _raise_document_too_large(
+                write_op, len(value), max_bson_size)
+        # We have enough data, return this batch.
+        if new_message_size > max_message_size:
             break
         buf.write(value)
         to_send.append(doc)
         idx += 1
+        # We have enough documents, return this batch.
+        if idx == max_write_batch_size:
+            break
 
     # Write type 1 section size
     length = buf.tell()
@@ -1305,7 +1316,7 @@ def _batched_write_command_impl(
         enough_documents = (idx >= max_write_batch_size)
         if enough_data or enough_documents:
             if not idx:
-                write_op = "insert" if operation == _INSERT else None
+                write_op = list(_FIELD_MAP.keys())[operation]
                 _raise_document_too_large(
                     write_op, len(value), max_bson_size)
             break
@@ -1434,7 +1445,7 @@ class _OpMsg(object):
         self.payload_document = payload_document
 
     def raw_response(self, cursor_id=None):
-        raise NotImplemented
+        raise NotImplementedError
 
     def unpack_response(self, cursor_id=None,
                         codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):

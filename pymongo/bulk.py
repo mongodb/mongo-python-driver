@@ -358,6 +358,68 @@ class _Bulk(object):
             self.collection.full_name, run.ops, True, acknowledged, concern,
             not self.ordered, self.collection.codec_options, bwc)
 
+    def execute_op_msg_no_results(self, sock_info, generator):
+        """Execute write commands with OP_MSG and w=0 writeConcern, unordered.
+        """
+        db_name = self.collection.database.name
+        client = self.collection.database.client
+        listeners = client._event_listeners
+        op_id = _randint()
+
+        if not self.current_run:
+            self.current_run = next(generator)
+        run = self.current_run
+
+        while run:
+            cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
+                       ('ordered', False),
+                       ('writeConcern', {'w': 0})])
+            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
+                                    listeners, None)
+
+            while run.idx_offset < len(run.ops):
+                check_keys = run.op_type == _INSERT
+                ops = islice(run.ops, run.idx_offset, None)
+                # Run as many ops as possible.
+                request_id, msg, to_send = _do_bulk_write_command(
+                    self.namespace, run.op_type, cmd, ops, check_keys,
+                    self.collection.codec_options, bwc)
+                if not to_send:
+                    raise InvalidOperation("cannot do an empty bulk write")
+                run.idx_offset += len(to_send)
+                # Though this isn't strictly a "legacy" write, the helper
+                # handles publishing commands and sending our message
+                # without receiving a result. Send 0 for max_doc_size
+                # to disable size checking. Size checking is handled while
+                # the documents are encoded to BSON.
+                bwc.legacy_write(request_id, msg, 0, False, to_send)
+            self.current_run = run = next(generator, None)
+
+    def execute_command_no_results(self, sock_info, generator):
+        """Execute write commands with OP_MSG and w=0 WriteConcern, ordered.
+        """
+        full_result = {
+            "writeErrors": [],
+            "writeConcernErrors": [],
+            "nInserted": 0,
+            "nUpserted": 0,
+            "nMatched": 0,
+            "nModified": 0,
+            "nRemoved": 0,
+            "upserted": [],
+        }
+        # Ordered bulk writes have to be acknowledged so that we stop
+        # processing at the first error, even when the application
+        # specified unacknowledged writeConcern.
+        write_concern = WriteConcern()
+        op_id = _randint()
+        try:
+            self._execute_command(
+                generator, write_concern, None,
+                sock_info, op_id, False, full_result)
+        except OperationFailure:
+            pass
+
     def execute_no_results(self, sock_info, generator):
         """Execute all operations, returning no results (w=0).
         """
@@ -367,10 +429,17 @@ class _Bulk(object):
         if self.uses_array_filters:
             raise ConfigurationError(
                 'arrayFilters is unsupported for unacknowledged writes.')
-        # Cannot have both unacknowledged write and bypass document validation.
+        # Cannot have both unacknowledged writes and bypass document validation.
         if self.bypass_doc_val and sock_info.max_wire_version >= 4:
             raise OperationFailure("Cannot set bypass_document_validation with"
                                    " unacknowledged write concern")
+
+        # OP_MSG
+        if sock_info.max_wire_version > 5:
+            if self.ordered:
+                return self.execute_command_no_results(sock_info, generator)
+            return self.execute_op_msg_no_results(sock_info, generator)
+
         coll = self.collection
         # If ordered is True we have to send GLE or use write
         # commands so we can abort on the first error.

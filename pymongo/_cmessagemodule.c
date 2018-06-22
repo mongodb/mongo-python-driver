@@ -1238,36 +1238,44 @@ _batched_op_msg(
     while ((doc = PyIter_Next(iterator)) != NULL) {
         int cur_doc_begin = buffer_get_position(buffer);
         int cur_size;
-        int enough_data = 0;
-        int enough_documents = 0;
+        int doc_too_large = 0;
+        int unacked_doc_too_large = 0;
         if (!write_dict(state->_cbson, buffer, doc, check_keys,
                         &options, 1)) {
             goto cmditerfail;
         }
-        /* We have enough data, return this batch. */
-        enough_data = (buffer_get_position(buffer) > max_message_size);
-        enough_documents = (idx >= max_write_batch_size);
-        if (enough_data || enough_documents) {
-            cur_size = buffer_get_position(buffer) - cur_doc_begin;
+        cur_size = buffer_get_position(buffer) - cur_doc_begin;
 
-            /* This single document is too large for the message. */
-            if (!idx) {
-                if (op == _INSERT) {
-                    _set_document_too_large(cur_size, max_bson_size);
-                } else {
-                    PyObject* DocumentTooLarge = _error("DocumentTooLarge");
-                    if (DocumentTooLarge) {
-                        /*
-                         * There's nothing intelligent we can say
-                         * about size for update and remove.
-                         */
-                        PyErr_SetString(DocumentTooLarge,
-                                        "operation document too large");
-                        Py_DECREF(DocumentTooLarge);
-                    }
+        /* Does the first document exceed max_message_size? */
+        doc_too_large = (idx == 0 && (buffer_get_position(buffer) > max_message_size));
+        /* When OP_MSG is used unacknowledged we have to check
+         * document size client side or applications won't be notified.
+         * Otherwise we let the server deal with documents that are too large
+         * since ordered=False causes those documents to be skipped instead of
+         * halting the bulk write operation.
+         * */
+        unacked_doc_too_large = (!ack && cur_size > max_bson_size);
+        if (doc_too_large || unacked_doc_too_large) {
+            if (op == _INSERT) {
+                _set_document_too_large(cur_size, max_bson_size);
+            } else {
+                PyObject* DocumentTooLarge = _error("DocumentTooLarge");
+                if (DocumentTooLarge) {
+                    /*
+                     * There's nothing intelligent we can say
+                     * about size for update and delete.
+                     */
+                    PyErr_Format(
+                        DocumentTooLarge,
+                        "%s command document too large",
+                        (op == _UPDATE) ? "update": "delete");
+                    Py_DECREF(DocumentTooLarge);
                 }
-                goto cmditerfail;
             }
+            goto cmditerfail;
+        }
+        /* We have enough data, return this batch. */
+        if (buffer_get_position(buffer) > max_message_size) {
             /*
              * Roll the existing buffer back to the beginning
              * of the last document encoded.
@@ -1280,6 +1288,10 @@ _batched_op_msg(
         }
         Py_CLEAR(doc);
         idx += 1;
+        /* We have enough documents, return this batch. */
+        if (idx == max_write_batch_size) {
+            break;
+        }
     }
     Py_DECREF(iterator);
 
@@ -1580,10 +1592,12 @@ _batched_write_command(
                     if (DocumentTooLarge) {
                         /*
                          * There's nothing intelligent we can say
-                         * about size for update and remove.
+                         * about size for update and delete.
                          */
-                        PyErr_SetString(DocumentTooLarge,
-                                        "command document too large");
+                        PyErr_Format(
+                            DocumentTooLarge,
+                            "%s command document too large",
+                            (op == _UPDATE) ? "update": "delete");
                         Py_DECREF(DocumentTooLarge);
                     }
                 }
