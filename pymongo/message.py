@@ -1121,7 +1121,7 @@ def _encode_batched_op_msg(
         operation, command, docs, check_keys, ack, opts, ctx, buf)
     return buf.getvalue(), to_send
 if _use_c:
-    _encode_batched_op_message = _cmessage._encode_batched_op_msg
+    _encode_batched_op_msg = _cmessage._encode_batched_op_msg
 
 
 def _batched_op_msg_compressed(
