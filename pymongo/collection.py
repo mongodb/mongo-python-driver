@@ -1621,6 +1621,21 @@ class Collection(common.BaseObject):
         The :meth:`count_documents` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
 
+        .. note:: When migrating from :meth:`count` to :meth:`count_documents`
+           the following query operators must be replaced:
+
+           +-------------+-------------------------------------+
+           | Operator    | Replacement                         |
+           +=============+=====================================+
+           | $where      | `$expr`_                            |
+           +-------------+-------------------------------------+
+           | $near       | `$geoWithin`_ with `$center`_       |
+           +-------------+-------------------------------------+
+           | $nearSphere | `$geoWithin`_ with `$centerSphere`_ |
+           +-------------+-------------------------------------+
+
+           $expr requires MongoDB 3.6+
+
         :Parameters:
           - `filter` (required): A query document that selects which documents
             to count in the collection. Can be an empty document to count all
@@ -1630,6 +1645,11 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): See list of options above.
 
         .. versionadded:: 3.7
+
+        .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
+        .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
+        .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
+        .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
         """
         pipeline = [{'$match': filter}]
         if 'skip' in kwargs:
@@ -1676,6 +1696,21 @@ class Collection(common.BaseObject):
         The :meth:`count` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
 
+        .. note:: When migrating from :meth:`count` to :meth:`count_documents`
+           the following query operators must be replaced:
+
+           +-------------+-------------------------------------+
+           | Operator    | Replacement                         |
+           +=============+=====================================+
+           | $where      | `$expr`_                            |
+           +-------------+-------------------------------------+
+           | $near       | `$geoWithin`_ with `$center`_       |
+           +-------------+-------------------------------------+
+           | $nearSphere | `$geoWithin`_ with `$centerSphere`_ |
+           +-------------+-------------------------------------+
+
+           $expr requires MongoDB 3.6+
+
         :Parameters:
           - `filter` (optional): A query document that selects which documents
             to count in the collection.
@@ -1692,9 +1727,17 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.4
            Support the `collation` option.
 
+        .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
+        .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
+        .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
+        .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
         """
         warnings.warn("count is deprecated. Use estimated_document_count or "
-                      "count_documents instead.", DeprecationWarning, stacklevel=2)
+                      "count_documents instead. Please note that $where must "
+                      "be replaced by $expr, $near must be replaced by "
+                      "$geoWithin with $center, and $nearSphere must be "
+                      "replaced by $geoWithin with $centerSphere",
+                      DeprecationWarning, stacklevel=2)
         cmd = SON([("count", self.__name)])
         if filter is not None:
             if "query" in kwargs:
