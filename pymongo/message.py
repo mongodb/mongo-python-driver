@@ -179,7 +179,7 @@ _MODIFIERS = SON([
 
 
 def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
-                      read_concern, collation=None):
+                      read_concern, collation=None, session=None):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
@@ -202,7 +202,7 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
             cmd['singleBatch'] = True
     if batch_size:
         cmd['batchSize'] = batch_size
-    if read_concern.level:
+    if read_concern.level and not (session and session._in_transaction):
         cmd['readConcern'] = read_concern.document
     if collation:
         cmd['collation'] = collation
@@ -284,7 +284,7 @@ class _Query(object):
         cmd = _gen_find_command(
             self.coll, self.spec, self.fields, self.ntoskip,
             self.limit, self.batch_size, self.flags, self.read_concern,
-            self.collation)
+            self.collation, self.session)
         if explain:
             self.name = 'explain'
             cmd = SON([('explain', cmd)])

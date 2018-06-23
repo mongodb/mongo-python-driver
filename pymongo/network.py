@@ -90,12 +90,11 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     orig = spec
     if is_mongos and not use_op_msg:
         spec = message._maybe_add_read_preference(spec, read_preference)
-    if read_concern:
+    if read_concern and not (session and session._in_transaction):
         if read_concern.level:
             spec['readConcern'] = read_concern.document
         if (session and session.options.causal_consistency
-                and session.operation_time is not None
-                and not session._in_transaction):
+                and session.operation_time is not None):
             spec.setdefault(
                 'readConcern', {})['afterClusterTime'] = session.operation_time
     if collation is not None:
