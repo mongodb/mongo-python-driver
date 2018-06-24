@@ -74,8 +74,8 @@ A session may only have a single active transaction at a time, multiple
 transactions on the same session can be executed in sequence.
 
 .. versionadded:: 3.7
-.. seealso:: The MongoDB beta documentation for
-   `transactions <https://docs-beta-transactions.mongodb.com/transactions/>`_
+
+.. mongodoc:: transactions
 
 Classes
 =======
