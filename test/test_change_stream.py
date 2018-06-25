@@ -54,6 +54,7 @@ class TestClusterChangeStream(IntegrationTest):
 
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
+    @client_context.require_storage_engine("wiredTiger")
     @client_context.require_no_standalone
     def setUpClass(cls):
         super(TestClusterChangeStream, cls).setUpClass()
@@ -97,6 +98,7 @@ class TestDatabaseChangeStream(IntegrationTest):
 
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
+    @client_context.require_storage_engine("wiredTiger")
     @client_context.require_no_standalone
     def setUpClass(cls):
         super(TestDatabaseChangeStream, cls).setUpClass()
@@ -147,6 +149,7 @@ class TestCollectionChangeStream(IntegrationTest):
 
     @classmethod
     @client_context.require_version_min(3, 5, 11)
+    @client_context.require_storage_engine("wiredTiger")
     @client_context.require_no_standalone
     def setUpClass(cls):
         super(TestCollectionChangeStream, cls).setUpClass()
@@ -645,6 +648,9 @@ def create_tests():
 
             for test in scenario_def['tests']:
                 new_test = create_test(scenario_def, test)
+                new_test = client_context.require_storage_engine(
+                    "wiredTiger")(new_test)
+
                 if 'minServerVersion' in test:
                     min_ver = tuple(
                         int(elt) for

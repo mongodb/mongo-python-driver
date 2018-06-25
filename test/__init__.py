@@ -162,6 +162,7 @@ class ClientContext(object):
         self.nodes = set()
         self.replica_set_name = None
         self.cmd_line = None
+        self.server_status = None
         self.version = Version(-1)  # Needs to be comparable with Version
         self.auth_enabled = False
         self.test_commands_enabled = False
@@ -225,6 +226,7 @@ class ClientContext(object):
 
             try:
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
+                self.server_status = self.client.admin.command('serverStatus')
             except pymongo.errors.OperationFailure as e:
                 msg = e.details.get('errmsg', '')
                 if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
@@ -247,6 +249,7 @@ class ClientContext(object):
 
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
+                self.server_status = self.client.admin.command('serverStatus')
 
             self.ismaster = ismaster = self.client.admin.command('isMaster')
             self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
@@ -423,6 +426,15 @@ class ClientContext(object):
             lambda: True,  # _require checks if we're connected
             "Cannot connect to MongoDB on %s" % (self.pair,),
             func=func)
+
+    def require_storage_engine(self, engine):
+        """Run a test only if the server is running the specified storage
+        engine (as determined by the `db.serverStatus` command)."""
+        #server_status = self.client.admin.command("serverStatus")
+        #current_engine = server_status["storageEngine"]["name"]
+        return self._require(
+            lambda: engine == self.server_status["storageEngine"]["name"],
+            "Storage engine must be %s" % str(engine))
 
     def require_version_min(self, *ver):
         """Run a test only if the server version is at least ``version``."""
