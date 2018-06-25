@@ -254,7 +254,7 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                write_concern=self.write_concern,
+                write_concern=self._write_concern_for(session),
                 collation=collation, session=session)
 
     def __getattr__(self, name):
@@ -493,7 +493,8 @@ class Collection(common.BaseObject):
             except AttributeError:
                 raise TypeError("%r is not a valid request" % (request,))
 
-        bulk_api_result = blk.execute(self.write_concern.document, session)
+        write_concern = self._write_concern_for(session)
+        bulk_api_result = blk.execute(write_concern, session)
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
@@ -633,11 +634,11 @@ class Collection(common.BaseObject):
                         ids.append(doc.get('_id'))
                     yield doc
 
-        concern = (write_concern or self.write_concern).document
+        write_concern = write_concern or self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_doc_val)
         blk.ops = [(message._INSERT, doc) for doc in gen()]
         try:
-            blk.execute(concern, session=session)
+            blk.execute(write_concern, session=session)
         except BulkWriteError as bwe:
             _raise_last_error(bwe.details)
         return ids
@@ -684,11 +685,13 @@ class Collection(common.BaseObject):
         if not (isinstance(document, RawBSONDocument) or "_id" in document):
             document["_id"] = ObjectId()
 
+        write_concern = self._write_concern_for(session)
         return InsertOneResult(
             self._insert(document,
+                         write_concern=write_concern,
                          bypass_doc_val=bypass_document_validation,
                          session=session),
-            self.write_concern.acknowledged)
+            write_concern.acknowledged)
 
     def insert_many(self, documents, ordered=True,
                     bypass_document_validation=False, session=None):
@@ -744,10 +747,11 @@ class Collection(common.BaseObject):
                     inserted_ids.append(document["_id"])
                 yield (message._INSERT, document)
 
+        write_concern = self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_document_validation)
         blk.ops = [doc for doc in gen()]
-        blk.execute(self.write_concern.document, session=session)
-        return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
+        blk.execute(write_concern, session=session)
+        return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     def _update(self, sock_info, criteria, document, upsert=False,
                 check_keys=True, multi=False, manipulate=False,
@@ -912,12 +916,14 @@ class Collection(common.BaseObject):
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_replace(replacement)
 
+        write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
                 filter, replacement, upsert,
+                write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, session=session),
-            self.write_concern.acknowledged)
+            write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
@@ -979,13 +985,15 @@ class Collection(common.BaseObject):
         common.validate_ok_for_update(update)
         common.validate_list_or_none('array_filters', array_filters)
 
+        write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
                 filter, update, upsert, check_keys=False,
+                write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
                 session=session),
-            self.write_concern.acknowledged)
+            write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False, array_filters=None,
                     bypass_document_validation=False, collation=None,
@@ -1047,13 +1055,15 @@ class Collection(common.BaseObject):
         common.validate_ok_for_update(update)
         common.validate_list_or_none('array_filters', array_filters)
 
+        write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
                 filter, update, upsert, check_keys=False, multi=True,
+                write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
                 session=session),
-            self.write_concern.acknowledged)
+            write_concern.acknowledged)
 
     def drop(self, session=None):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -1173,10 +1183,13 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
+        write_concern = self._write_concern_for(session)
         return DeleteResult(
             self._delete_retryable(
-                filter, False, collation=collation, session=session),
-            self.write_concern.acknowledged)
+                filter, False,
+                write_concern=write_concern,
+                collation=collation, session=session),
+            write_concern.acknowledged)
 
     def delete_many(self, filter, collation=None, session=None):
         """Delete one or more documents matching the filter.
@@ -1208,10 +1221,13 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
+        write_concern = self._write_concern_for(session)
         return DeleteResult(
             self._delete_retryable(
-                filter, True, collation=collation, session=session),
-            self.write_concern.acknowledged)
+                filter, True,
+                write_concern=write_concern,
+                collation=collation, session=session),
+            write_concern.acknowledged)
 
     def find_one(self, filter=None, *args, **kwargs):
         """Get a single document from the database.
@@ -1809,7 +1825,7 @@ class Collection(common.BaseObject):
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
-                write_concern=self.write_concern,
+                write_concern=self._write_concern_for(session),
                 session=session)
         return names
 
@@ -1840,7 +1856,7 @@ class Collection(common.BaseObject):
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
-                write_concern=self.write_concern,
+                write_concern=self._write_concern_for(session),
                 session=session)
 
     def create_index(self, keys, session=None, **kwargs):
@@ -2059,7 +2075,7 @@ class Collection(common.BaseObject):
                           cmd,
                           read_preference=ReadPreference.PRIMARY,
                           allowable_errors=["ns not found"],
-                          write_concern=self.write_concern,
+                          write_concern=self._write_concern_for(session),
                           session=session)
 
     def reindex(self, session=None, **kwargs):
@@ -2268,7 +2284,7 @@ class Collection(common.BaseObject):
             else:
                 read_concern = None
             if 'writeConcern' not in cmd and dollar_out:
-                write_concern = self.write_concern
+                write_concern = self._write_concern_for(session)
             else:
                 write_concern = None
 
@@ -2588,7 +2604,7 @@ class Collection(common.BaseObject):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
-        write_concern = self._write_concern_for_cmd(cmd)
+        write_concern = self._write_concern_for_cmd(cmd, session)
 
         with self._socket_for_writes() as sock_info:
             with self.__database.client._tmp_session(session) as s:
@@ -2724,7 +2740,7 @@ class Collection(common.BaseObject):
             else:
                 read_concern = None
             if 'writeConcern' not in cmd and not inline:
-                write_concern = self.write_concern
+                write_concern = self._write_concern_for(session)
             else:
                 write_concern = None
 
@@ -2798,12 +2814,12 @@ class Collection(common.BaseObject):
         else:
             return res.get("results")
 
-    def _write_concern_for_cmd(self, cmd):
+    def _write_concern_for_cmd(self, cmd, session):
         raw_wc = cmd.get('writeConcern')
         if raw_wc is not None:
             return WriteConcern(**raw_wc)
         else:
-            return self.write_concern
+            return self._write_concern_for(session)
 
     def __find_and_modify(self, filter, projection, sort, upsert=None,
                           return_document=ReturnDocument.BEFORE,
@@ -2827,7 +2843,7 @@ class Collection(common.BaseObject):
             common.validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
 
-        write_concern = self._write_concern_for_cmd(cmd)
+        write_concern = self._write_concern_for_cmd(cmd, session)
 
         def _find_and_modify(session, sock_info, retryable_write):
             if array_filters is not None:
@@ -2835,7 +2851,7 @@ class Collection(common.BaseObject):
                     raise ConfigurationError(
                         'Must be connected to MongoDB 3.6+ to use '
                         'arrayFilters.')
-                if not self.write_concern.acknowledged:
+                if not write_concern.acknowledged:
                     raise ConfigurationError(
                         'arrayFilters is unsupported for unacknowledged '
                         'writes.')
@@ -3250,7 +3266,7 @@ class Collection(common.BaseObject):
         cmd = SON([("findAndModify", self.__name)])
         cmd.update(kwargs)
 
-        write_concern = self._write_concern_for_cmd(cmd)
+        write_concern = self._write_concern_for_cmd(cmd, None)
 
         def _find_and_modify(session, sock_info, retryable_write):
             if (sock_info.max_wire_version >= 4 and

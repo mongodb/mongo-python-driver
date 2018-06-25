@@ -497,8 +497,7 @@ class _Bulk(object):
             raise InvalidOperation('Bulk operations can '
                                    'only be executed once.')
         self.executed = True
-        write_concern = (WriteConcern(**write_concern) if
-                         write_concern else self.collection.write_concern)
+        write_concern = write_concern or self.collection.write_concern
         session = _validate_session_write_concern(session, write_concern)
 
         if self.ordered:
@@ -690,5 +689,5 @@ class BulkOperationBuilder(object):
             execution.
         """
         if write_concern is not None:
-            validate_is_mapping("write_concern", write_concern)
+            write_concern = WriteConcern(**write_concern)
         return self.__bulk.execute(write_concern, session=None)

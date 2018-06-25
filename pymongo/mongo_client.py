@@ -71,7 +71,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.settings import TopologySettings
-from pymongo.write_concern import WriteConcern
+from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
 class MongoClient(common.BaseObject):
@@ -1716,7 +1716,7 @@ class MongoClient(common.BaseObject):
                 sock_info,
                 "dropDatabase",
                 read_preference=ReadPreference.PRIMARY,
-                write_concern=self.write_concern,
+                write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
                 session=session)
 
@@ -1802,7 +1802,7 @@ class MongoClient(common.BaseObject):
         return self.get_database(
             name, codec_options=DEFAULT_CODEC_OPTIONS,
             read_preference=ReadPreference.PRIMARY,
-            write_concern=WriteConcern())
+            write_concern=DEFAULT_WRITE_CONCERN)
 
     @property
     def is_locked(self):

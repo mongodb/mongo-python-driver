@@ -33,7 +33,7 @@ from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.ssl_support import validate_cert_reqs
-from pymongo.write_concern import WriteConcern
+from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 try:
     from collections import OrderedDict
@@ -678,6 +678,14 @@ class BaseObject(object):
           The :attr:`write_concern` attribute is now read only.
         """
         return self.__write_concern
+
+    def _write_concern_for(self, session):
+        """Read only access to the write concern of this instance or session.
+        """
+        # Override this operation's write concern with the transaction's.
+        if session and session._in_transaction:
+            return DEFAULT_WRITE_CONCERN
+        return self.write_concern
 
     @property
     def read_preference(self):

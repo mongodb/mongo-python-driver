@@ -32,6 +32,7 @@ from pymongo.cursor import Cursor
 from pymongo.errors import (ConfigurationError,
                             OperationFailure,
                             PyMongoError)
+from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import _WriteResult, BulkWriteResult
@@ -105,6 +106,57 @@ class TestTransactions(IntegrationTest):
         with self.assertRaisesRegex(
                 TypeError, "is not valid for read_preference"):
             TransactionOptions(read_preference={})
+
+    @client_context.require_transactions
+    def test_transaction_write_concern_override(self):
+        """Test txn overrides Client/Database/Collection write_concern."""
+        client = rs_client(w=0)
+        db = client.test
+        coll = db.test
+        coll.insert_one({})
+        with client.start_session() as s:
+            with s.start_transaction(write_concern=WriteConcern(w=1)):
+                self.assertTrue(coll.insert_one({}, session=s).acknowledged)
+                self.assertTrue(coll.insert_many(
+                    [{}, {}], session=s).acknowledged)
+                self.assertTrue(coll.bulk_write(
+                    [InsertOne({})], session=s).acknowledged)
+                self.assertTrue(coll.replace_one(
+                    {}, {}, session=s).acknowledged)
+                self.assertTrue(coll.update_one(
+                    {}, {"$set": {"a": 1}}, session=s).acknowledged)
+                self.assertTrue(coll.update_many(
+                    {}, {"$set": {"a": 1}}, session=s).acknowledged)
+                self.assertTrue(coll.delete_one({}, session=s).acknowledged)
+                self.assertTrue(coll.delete_many({}, session=s).acknowledged)
+                coll.find_one_and_delete({}, session=s)
+                coll.find_one_and_replace({}, {}, session=s)
+                coll.find_one_and_update({}, {"$set": {"a": 1}}, session=s)
+
+        unsupported_txn_writes = [
+            (client.drop_database, [db.name], {}),
+            (db.create_collection, ['collection'], {}),
+            (db.drop_collection, ['collection'], {}),
+            (coll.drop, [], {}),
+            (coll.map_reduce,
+             ['function() {}', 'function() {}', 'output'], {}),
+            (coll.rename, ['collection2'], {}),
+            # Drop collection2 between tests of "rename", above.
+            (coll.database.drop_collection, ['collection2'], {}),
+            (coll.create_indexes, [[IndexModel('a')]], {}),
+            (coll.create_index, ['a'], {}),
+            (coll.drop_index, ['a_1'], {}),
+            (coll.drop_indexes, [], {}),
+            (coll.aggregate, [[{"$out": "aggout"}]], {}),
+        ]
+        for op in unsupported_txn_writes:
+            op, args, kwargs = op
+            with client.start_session() as s:
+                kwargs['session'] = s
+                s.start_transaction(write_concern=WriteConcern(w=1))
+                with self.assertRaises(OperationFailure):
+                    op(*args, **kwargs)
+                s.abort_transaction()
 
     def check_command_result(self, expected_result, result):
         # Only compare the keys in the expected result.

@@ -32,7 +32,7 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
-from pymongo.write_concern import WriteConcern
+from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
 _INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
@@ -749,7 +749,7 @@ class Database(common.BaseObject):
             return self._command(
                 sock_info, 'drop', value=_unicode(name),
                 allowable_errors=['ns not found'],
-                write_concern=self.write_concern,
+                write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
                 session=session)
 
@@ -1362,7 +1362,7 @@ class SystemJS(object):
 
         if not database.write_concern.acknowledged:
             database = database.client.get_database(
-                database.name, write_concern=WriteConcern())
+                database.name, write_concern=DEFAULT_WRITE_CONCERN)
         # can't just assign it since we've overridden __setattr__
         object.__setattr__(self, "_db", database)
 

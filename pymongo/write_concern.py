@@ -117,3 +117,6 @@ class WriteConcern(object):
 
     def __ne__(self, other):
         return self.__document != other.document
+
+
+DEFAULT_WRITE_CONCERN = WriteConcern()
