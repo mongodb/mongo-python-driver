@@ -20,6 +20,12 @@ Version 3.7 adds support for MongoDB 4.0. Highlights include:
   a transaction, unlike the now deprecated
   :meth:`pymongo.collection.Collection.count` and
   :meth:`pymongo.cursor.Cursor.count` methods.
+- Support for watching changes on all collections in a database using the
+  new :meth:`pymongo.database.Database.watch` method.
+- Support for watching changes on all collections in all databases using the
+  new :meth:`pymongo.mongo_client.MongoClient.watch` method.
+- Support for watching changes starting at a user provided timestamp using the
+  new ``start_at_operation_time`` parameter for the ``watch()`` helpers.
 - Better support for using PyMongo in a FIPS 140-2 environment. Specifically,
   the following features and changes allow PyMongo to function when MD5 support
   is disabled in OpenSSL by the FIPS Object Module:

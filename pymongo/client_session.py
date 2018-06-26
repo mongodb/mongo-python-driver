@@ -144,10 +144,10 @@ class TransactionOptions(object):
     """Options for :meth:`ClientSession.start_transaction`.
     
     :Parameters:
-      - `read_concern`: The :class:`~read_concern.ReadConcern` to use for this 
-        transaction.
-      - `write_concern`: The :class:`~write_concern.WriteConcern` to use for 
-        this transaction.
+      - `read_concern`: The :class:`~pymongo.read_concern.ReadConcern` to use
+        for this transaction.
+      - `write_concern`: The :class:`~pymongo.write_concern.WriteConcern` to
+        use for this transaction.
 
     .. versionadded:: 3.7
     """
@@ -178,17 +178,18 @@ class TransactionOptions(object):
 
     @property
     def read_concern(self):
-        """This transaction's :class:`~read_concern.ReadConcern`."""
+        """This transaction's :class:`~pymongo.read_concern.ReadConcern`."""
         return self._read_concern
 
     @property
     def write_concern(self):
-        """This transaction's :class:`~write_concern.WriteConcern`."""
+        """This transaction's :class:`~pymongo.write_concern.WriteConcern`."""
         return self._write_concern
 
     @property
     def read_preference(self):
-        """This transaction's :class:`~read_preference.ReadPreference`."""
+        """This transaction's :class:`~pymongo.read_preferences.ReadPreference`.
+        """
         return self._read_preference
 
 
