@@ -1,0 +1,27 @@
+environment:
+
+  matrix:
+
+    # For Python versions available on Appveyor, see
+    # http://www.appveyor.com/docs/installed-software#python
+
+    # Though we support Python 3.4 we're not testing it here.
+    # Testing it requires extra work that doesn't seem necessary
+    # since we already test it in Evergreen.
+    # See https://packaging.python.org/guides/supporting-windows-using-appveyor/#support-script
+
+    # Test both 32 and 64bit builds.
+
+    - PYTHON: "C:\\Python27"
+    - PYTHON: "C:\\Python35"
+    - PYTHON: "C:\\Python36"
+    - PYTHON: "C:\\Python27-x64"
+    - PYTHON: "C:\\Python35-x64"
+    - PYTHON: "C:\\Python36-x64"
+
+build: off
+
+test_script:
+  # We just want to test C extension builds for pull requests.
+  # No need for a running MongoDB instance.
+  - "%PYTHON%\\python.exe setup.py test"
