@@ -1199,6 +1199,10 @@ _batched_op_msg(
     }
     /* Save space for size */
     size_location = buffer_save_space(buffer, 4);
+    if (size_location == -1) {
+        PyErr_NoMemory();
+        return 0;
+    }
 
     switch (op) {
     case _INSERT:
