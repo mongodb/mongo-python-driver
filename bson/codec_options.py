@@ -39,7 +39,42 @@ _options_base = namedtuple(
 
 
 class CodecOptions(_options_base):
-    """Encapsulates BSON options used in CRUD operations.
+    """Encapsulates options used encoding and / or decoding BSON.
+
+    The `document_class` option is used to define a custom type for use
+    decoding BSON documents. Access to the underlying raw BSON bytes for
+    a document is available using the :class:`~bson.raw_bson.RawBSONDocument`
+    type::
+
+      >>> from bson.raw_bson import RawBSONDocument
+      >>> from bson.codec_options import CodecOptions
+      >>> codec_options = CodecOptions(document_class=RawBSONDocument)
+      >>> coll = db.get_collection('test', codec_options=codec_options)
+      >>> doc = coll.find_one()
+      >>> doc.raw
+      '\\x16\\x00\\x00\\x00\\x07_id\\x00[0\\x165\\x91\\x10\\xea\\x14\\xe8\\xc5\\x8b\\x93\\x00'
+
+    The document class can be any type that inherits from
+    :class:`~collections.MutableMapping`::
+
+      >>> class AttributeDict(dict):
+      ...     # A dict that supports attribute access.
+      ...     def __getattr__(self, key):
+      ...         return self[key]
+      ...     def __setattr__(self, key, value):
+      ...         self[key] = value
+      ...
+      >>> codec_options = CodecOptions(document_class=AttributeDict)
+      >>> coll = db.get_collection('test', codec_options=codec_options)
+      >>> doc = coll.find_one()
+      >>> doc._id
+      ObjectId('5b3016359110ea14e8c58b93')
+
+    See :doc:`/examples/datetimes` for examples using the `tz_aware` and
+    `tzinfo` options.
+
+    See :class:`~bson.binary.UUIDLegacy` for examples using the
+    `uuid_representation` option.
 
     :Parameters:
       - `document_class`: BSON documents returned in queries will be decoded
@@ -51,9 +86,10 @@ class CodecOptions(_options_base):
       - `uuid_representation`: The BSON representation to use when encoding
         and decoding instances of :class:`~uuid.UUID`. Defaults to
         :data:`~bson.binary.PYTHON_LEGACY`.
-      - `unicode_decode_error_handler`: The error handler to use when decoding
-        an invalid BSON string. Valid options include 'strict', 'replace', and
-        'ignore'. Defaults to 'strict'.
+      - `unicode_decode_error_handler`: The error handler to apply when
+        a Unicode-related error occurs during BSON decoding that would
+        otherwise raise :exc:`UnicodeDecodeError`. Valid options include
+        'strict', 'replace', and 'ignore'. Defaults to 'strict'.
       - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
         timezone to/from which :class:`~datetime.datetime` objects should be
         encoded/decoded.
