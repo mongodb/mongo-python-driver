@@ -20,16 +20,6 @@ from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
 
 
-def _total_seconds(delta):
-    """Total seconds in the duration."""
-    if hasattr(delta, 'total_seconds'):
-        return delta.total_seconds()
-
-    # Python 2.6.
-    return ((delta.days * 86400 + delta.seconds) * 10 ** 6 +
-            delta.microseconds) / 10.0 ** 6
-
-
 class ServerDescription(object):
     """Immutable representation of one server.
 
@@ -82,7 +72,7 @@ class ServerDescription(object):
         if ismaster.last_write_date:
             # Convert from datetime to seconds.
             delta = ismaster.last_write_date - EPOCH_NAIVE
-            self._last_write_date = _total_seconds(delta)
+            self._last_write_date = delta.total_seconds()
         else:
             self._last_write_date = None
 

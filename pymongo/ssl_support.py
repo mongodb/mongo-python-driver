@@ -123,7 +123,7 @@ if HAVE_SSL:
             # up to date versions of MongoDB 2.4 and above already disable
             # SSLv2 and SSLv3, python disables SSLv2 by default in >= 2.7.7
             # and >= 3.3.4 and SSLv3 in >= 3.4.3. There is no way for us to do
-            # any of this explicitly for python 2.6 or 2.7 before 2.7.9.
+            # any of this explicitly for python 2.7 before 2.7.9.
             ctx.options |= getattr(ssl, "OP_NO_SSLv2", 0)
             ctx.options |= getattr(ssl, "OP_NO_SSLv3", 0)
             # OpenSSL >= 1.0.0

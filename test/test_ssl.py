@@ -257,9 +257,7 @@ class TestSSL(IntegrationTest):
 
         self.assertClientWorks(client)
 
-        # Python 2.6 often can't read SANs from the peer cert.
-        # http://bugs.python.org/issue13034
-        if HAVE_IPADDRESS and sys.version_info[:2] > (2, 6):
+        if HAVE_IPADDRESS:
             client = MongoClient('127.0.0.1',
                                  ssl=True,
                                  ssl_certfile=CLIENT_PEM,

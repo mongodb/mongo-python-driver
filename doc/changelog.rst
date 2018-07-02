@@ -1,6 +1,23 @@
 Changelog
 =========
 
+Changes in Version 3.8.0
+------------------------
+
+.. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
+  Python 2.7 or newer from `Red Hat Software Collections
+  <https://www.softwarecollections.org>`_. CentOS 6 users should install Python
+  2.7 or newer from `SCL
+  <https://wiki.centos.org/AdditionalResources/Repositories/SCL>`_
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.8 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=19904
+
 Changes in Version 3.7.0
 ------------------------
 

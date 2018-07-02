@@ -196,9 +196,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
     @client_context.require_ipv6
     def test_ipv6(self):
         if client_context.ssl:
-            # http://bugs.python.org/issue13034
-            if sys.version_info[:2] == (2, 6):
-                raise SkipTest("Python 2.6 can't parse SANs")
             if not HAVE_IPADDRESS:
                 raise SkipTest("Need the ipaddress module to test with SSL")
 

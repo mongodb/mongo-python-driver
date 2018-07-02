@@ -25,7 +25,7 @@ class SSLContext(object):
 
     This implements an API similar to ssl.SSLContext from python 3.2
     but does not implement methods or properties that would be
-    incompatible with ssl.wrap_socket from python 2.6.
+    incompatible with ssl.wrap_socket from python 2.7 < 2.7.9.
 
     You must pass protocol which must be one of the PROTOCOL_* constants
     defined in the ssl module. ssl.PROTOCOL_SSLv23 is recommended for maximum

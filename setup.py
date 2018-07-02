@@ -97,21 +97,16 @@ class test(Command):
         if self.distribution.tests_require:
             self.distribution.fetch_build_eggs(self.distribution.tests_require)
         if self.xunit_output:
-            if sys.version_info[:2] == (2, 6):
-                self.distribution.fetch_build_eggs(
-                    ["unittest-xml-reporting>=1.14.0,<2.0.0a0"])
-            else:
-                self.distribution.fetch_build_eggs(["unittest-xml-reporting"])
+            self.distribution.fetch_build_eggs(["unittest-xml-reporting"])
         self.run_command('egg_info')
         build_ext_cmd = self.reinitialize_command('build_ext')
         build_ext_cmd.inplace = 1
         self.run_command('build_ext')
 
         # Construct a TextTestRunner directly from the unittest imported from
-        # test (this will be unittest2 under Python 2.6), which creates a
-        # TestResult that supports the 'addSkip' method. setuptools will by
-        # default create a TextTestRunner that uses the old TestResult class,
-        # resulting in DeprecationWarnings instead of skipping tests under 2.6.
+        # test, which creates a TestResult that supports the 'addSkip' method.
+        # setuptools will by default create a TextTestRunner that uses the old
+        # TestResult class.
         from test import unittest, PymongoTestRunner, test_cases
         if self.test_suite is None:
             all_tests = unittest.defaultTestLoader.discover(self.test_module)
@@ -223,8 +218,8 @@ class doc(Command):
                          "   %s/\n" % (mode, path))
 
 
-if sys.platform == 'win32' and sys.version_info > (2, 6):
-    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
+if sys.platform == 'win32':
+    # distutils.msvc9compiler can raise an IOError when failing to
     # find the compiler
     build_errors = (CCompilerError, DistutilsExecError,
                     DistutilsPlatformError, IOError)
@@ -294,7 +289,7 @@ http://api.mongodb.org/python/current/installation.html#osx
 
     def build_extension(self, ext):
         name = ext.name
-        if sys.version_info[:3] >= (2, 6, 0):
+        if sys.version_info[:3] >= (2, 7, 0):
             try:
                 build_ext.build_extension(self, ext)
             except build_errors:
@@ -310,7 +305,7 @@ http://api.mongodb.org/python/current/installation.html#osx
             warnings.warn(self.warning_message % ("The %s extension "
                                                   "module" % (name,),
                                                   "PyMongo supports python "
-                                                  ">= 2.6."))
+                                                  ">= 2.7."))
 
 ext_modules = [Extension('bson._cbson',
                          include_dirs=['bson'],
@@ -343,15 +338,6 @@ else:
 extra_opts = {
     "packages": ["bson", "pymongo", "gridfs"]
 }
-if sys.version_info[:2] == (2, 6):
-    try:
-        import unittest2
-    except ImportError:
-        # The setuptools version on Solaris 11 is incapable
-        # of recognizing if unittest2 is already installed.
-        # It's also incapable of installing any version of
-        # unittest2 newer than 0.8.0
-        extra_opts['tests_require'] = "unittest2<=0.8.0"
 
 if "--no_ext" in sys.argv:
     sys.argv.remove("--no_ext")
@@ -388,7 +374,6 @@ setup(
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX",
         "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.4",

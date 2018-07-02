@@ -20,6 +20,7 @@ import socket
 import sys
 import threading
 import time
+import unittest
 import warnings
 
 try:
@@ -28,14 +29,8 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 
-if sys.version_info[:2] == (2, 6):
-    import unittest2 as unittest
-    from unittest2 import SkipTest
-else:
-    import unittest
-    from unittest import SkipTest
-
 from functools import wraps
+from unittest import SkipTest
 
 import pymongo
 import pymongo.errors

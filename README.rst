@@ -88,7 +88,7 @@ is incompatible with PyMongo.
 Dependencies
 ============
 
-PyMongo supports CPython 2.6, 2.7, 3.4+, PyPy, and PyPy3.
+PyMongo supports CPython 2.7, 3.4+, PyPy, and PyPy3.
 
 Optional dependencies:
 
@@ -136,7 +136,6 @@ Other optional packages:
 Additional dependencies are:
 
 - (to generate documentation) sphinx_
-- (to run the tests under Python 2.6) unittest2_
 
 Examples
 ========
@@ -188,8 +187,7 @@ Testing
 =======
 
 The easiest way to run the tests is to run **python setup.py test** in
-the root of the distribution. Note that you will need unittest2_ to
-run the tests under Python 2.6.
+the root of the distribution.
 
 To verify that PyMongo works with Gevent's monkey-patching::
 
@@ -200,4 +198,3 @@ Or with Eventlet's::
     $ python green_framework_test.py eventlet
 
 .. _sphinx: http://sphinx.pocoo.org/
-.. _unittest2: https://pypi.python.org/pypi/unittest2

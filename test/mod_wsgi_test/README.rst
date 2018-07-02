@@ -38,7 +38,7 @@ Compile mod_wsgi
 ................
 
 Compile mod_wsgi for each combination for Python and mod_wsgi version in the
-test matrix. For example, to compile mod_wsgi 3.4 for Python 2.6 on a
+test matrix. For example, to compile mod_wsgi 3.4 for Python 2.7 on a
 RedHat-like Linux::
 
     sudo yum install -y httpd httpd-devel

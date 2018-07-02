@@ -101,7 +101,7 @@ except ImportError:
                     # ':' is not a valid character for a hostname. If we get
                     # here a few things have to be true:
                     #   - We're on a recent version of python 2.7 (2.7.9+).
-                    #     2.6 and older 2.7 versions don't support SNI.
+                    #     Older 2.7 versions don't support SNI.
                     #   - We're on Windows XP or some unusual Unix that doesn't
                     #     have inet_pton.
                     #   - The application is using IPv6 literals with TLS, which
@@ -272,7 +272,7 @@ def _raise_connection_failure(address, error, msg_prefix=None):
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg)
     elif isinstance(error, SSLError) and 'timed out' in str(error):
-        # CPython 2.6, 2.7, PyPy 2.x, and PyPy3 do not distinguish network
+        # CPython 2.7, PyPy 2.x, and PyPy3 do not distinguish network
         # timeouts from other SSLErrors (https://bugs.python.org/issue10272).
         # Luckily, we can work around this limitation because the phrase
         # 'timed out' appears in all the timeout related SSLErrors raised
@@ -766,7 +766,7 @@ def _create_connection(address, options):
 
     Can raise socket.error.
 
-    This is a modified version of create_connection from CPython >= 2.6.
+    This is a modified version of create_connection from CPython >= 2.7.
     """
     host, port = address
 

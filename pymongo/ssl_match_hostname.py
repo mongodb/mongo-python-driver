@@ -1,11 +1,11 @@
 # Backport of the match_hostname logic from python 3.5, with small
-# changes to support IP address matching on python 2.6, 2.7, 3.3, and 3.4.
+# changes to support IP address matching on python 2.7 and 3.4.
 
 import re
 import sys
 
 try:
-    # Python 3.3+, or the ipaddress module from pypi.
+    # Python 3.4+, or the ipaddress module from pypi.
     from ipaddress import ip_address
 except ImportError:
     ip_address = lambda address: None

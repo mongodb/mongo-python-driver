@@ -45,7 +45,7 @@ To upgrade do::
 Dependencies
 ------------
 
-PyMongo supports CPython 2.6, 2.7, 3.4+, PyPy, and PyPy3.
+PyMongo supports CPython 2.7, 3.4+, PyPy, and PyPy3.
 
 Optional dependencies:
 
@@ -135,13 +135,12 @@ OSX and Xcode versions.
 **Snow Leopard (10.6)** - Xcode 3 with 'UNIX Development Support'.
 
 **Snow Leopard Xcode 4**: The Python versions shipped with OSX 10.6.x
-are universal binaries. They support i386, PPC, and (in the case of python2.6)
-x86_64. Xcode 4 removed support for PPC, causing the distutils version shipped
-with Apple's builds of Python to fail to build the C extensions if you have
-Xcode 4 installed. There is a workaround::
+are universal binaries. They support i386, PPC, and x86_64. Xcode 4 removed
+support for PPC, causing the distutils version shipped with Apple's builds of
+Python to fail to build the C extensions if you have Xcode 4 installed. There
+is a workaround::
 
-  # For Apple-supplied Python2.6 (installed at /usr/bin/python2.6) and
-  # some builds from python.org
+  # For some Python builds from python.org
   $ env ARCHFLAGS='-arch i386 -arch x86_64' python -m easy_install pymongo
 
 See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
@@ -185,8 +184,8 @@ requirements apply to both CPython and ActiveState's ActivePython:
 For Python 3.5 and newer install Visual Studio 2015. For Python 3.4
 install Visual Studio 2010. You must use the full version of Visual Studio
 2010 as Visual C++ Express does not provide 64-bit compilers. Make sure that
-you check the "x64 Compilers and Tools" option under Visual C++. For Python 2.6
-and 2.7 install the `Microsoft Visual C++ Compiler for Python 2.7`_.
+you check the "x64 Compilers and Tools" option under Visual C++. For Python 2.7
+install the `Microsoft Visual C++ Compiler for Python 2.7`_.
 
 32-bit Windows
 ~~~~~~~~~~~~~~
@@ -195,7 +194,7 @@ For Python 3.5 and newer install Visual Studio 2015.
 
 For Python 3.4 install Visual C++ 2010 Express.
 
-For Python 2.6 and 2.7 install the `Microsoft Visual C++ Compiler for Python 2.7`_
+For Python 2.7 install the `Microsoft Visual C++ Compiler for Python 2.7`_
 
 .. _`Microsoft Visual C++ Compiler for Python 2.7`: https://www.microsoft.com/en-us/download/details.aspx?id=44266
 

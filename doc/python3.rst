@@ -97,8 +97,8 @@ Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
 If you need to pickle ObjectIds using Python 3 and unpickle them using Python 2
 you must use ``protocol <= 2``::
 
-  Python 3.6.1 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
-  [GCC 4.9.3] on linux
+  Python 3.6.5 (default, Jun 21 2018, 15:09:09)
+  [GCC 7.3.0] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle
   >>> from bson.objectid import ObjectId
@@ -108,8 +108,8 @@ you must use ``protocol <= 2``::
   >>> pickle.dumps(oid, protocol=2)
   b'\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c_codecs\nencode\...'
 
-  Python 2.6.9 (unknown, Feb 26 2014, 12:39:10)
-  [GCC 4.7.3] on linux2
+  Python 2.7.15 (default, Jun 21 2018, 15:00:48)
+  [GCC 7.3.0] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle
   >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c_codecs\nencode\...')

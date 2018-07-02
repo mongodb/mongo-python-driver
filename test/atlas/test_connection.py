@@ -17,13 +17,7 @@
 import os
 import ssl
 import sys
-
-# Don't drag in PyMongo's entire test suite
-# just to get the right unittest module.
-if sys.version_info[:2] == (2, 6):
-    import unittest2 as unittest
-else:
-    import unittest
+import unittest
 
 sys.path[0:0] = [""]
 

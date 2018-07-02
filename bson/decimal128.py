@@ -35,21 +35,6 @@ else:
         "An implementation of int.from_bytes for python 2.x."
         return _int(_hexlify(value), 16)
 
-if sys.version_info[:2] == (2, 6):
-    def _bit_length(num):
-        """bit_length for python 2.6"""
-        if num:
-            # bin() was new in 2.6. Note that this won't work
-            # for values less than 0, which we never have here.
-            return len(bin(num)) - 2
-        # bit_length(0) is 0, but len(bin(0)) - 2 is 1
-        return 0
-else:
-    def _bit_length(num):
-        """bit_length for python >= 2.7"""
-        # num could be int or long in python 2.7
-        return num.bit_length()
-
 
 _PACK_64 = struct.Struct("<Q").pack
 _UNPACK_64 = struct.Struct("<Q").unpack
@@ -126,7 +111,7 @@ def _decimal_to_128(value):
         return _NNAN if value.is_signed() else _PNAN
 
     significand = int("".join([str(digit) for digit in digits]))
-    bit_length = _bit_length(significand)
+    bit_length = significand.bit_length()
 
     high = 0
     low = 0
@@ -298,10 +283,9 @@ class Decimal128(object):
         mask = 0x0001000000000000
         arr[0] = (high & mask) >> 48
 
-        # Have to convert bytearray to bytes for python 2.6.
         # cdecimal only accepts a tuple for digits.
         digits = tuple(
-            int(digit) for digit in str(_from_bytes(bytes(arr), 'big')))
+            int(digit) for digit in str(_from_bytes(arr, 'big')))
 
         with decimal.localcontext(_DEC128_CTX) as ctx:
             return ctx.create_decimal((sign, digits, exponent))

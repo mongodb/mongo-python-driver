@@ -31,9 +31,9 @@ that changes the major version number.
 Doing a Release
 ---------------
 
-1. Test releases on Python 2.6-2.7 and 3.4+ on Windows, Linux and OSX,
+1. Test releases on Python 2.7 and 3.4+ on Windows, Linux and OSX,
    with and without the C extensions. It's generally enough to just run the
-   tests on 2.6, 2.7, 3.4 and the latest 3.x version with and without the
+   tests on 2.7, 3.4 and the latest 3.x version with and without the
    extensions on a single platform, and then just test any version on the
    other platforms as a sanity check. `python setup.py test` will build the
    extensions and test. `python tools/clean.py` will remove the extensions,

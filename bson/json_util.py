@@ -107,20 +107,11 @@ but it will be faster as there is less recursion.
 
 import base64
 import datetime
+import json
 import math
 import re
 import sys
 import uuid
-
-if sys.version_info[:2] == (2, 6):
-    # In Python 2.6, json does not include object_pairs_hook. Use simplejson
-    # instead.
-    try:
-        import simplejson as json
-    except ImportError:
-        import json
-else:
-    import json
 
 from pymongo.errors import ConfigurationError
 
@@ -141,13 +132,6 @@ from bson.py3compat import (PY3, iteritems, integer_types, string_type,
 from bson.regex import Regex
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
-
-
-try:
-    json.loads("{}", object_pairs_hook=dict)
-    _HAS_OBJECT_PAIRS_HOOK = True
-except TypeError:
-    _HAS_OBJECT_PAIRS_HOOK = False
 
 
 _RE_OPT_TABLE = {
@@ -245,10 +229,6 @@ class JSONMode:
 class JSONOptions(CodecOptions):
     """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
-    Raises :exc:`~pymongo.errors.ConfigurationError` on Python 2.6 if
-    `simplejson >= 2.1.0 <https://pypi.python.org/pypi/simplejson>`_ is not
-    installed and document_class is not the default (:class:`dict`).
-
     :Parameters:
       - `strict_number_long`: If ``True``, :class:`~bson.int64.Int64` objects
         are encoded to MongoDB Extended JSON's *Strict mode* type
@@ -301,11 +281,6 @@ class JSONOptions(CodecOptions):
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation.")
         self = super(JSONOptions, cls).__new__(cls, *args, **kwargs)
-        if not _HAS_OBJECT_PAIRS_HOOK and self.document_class != dict:
-            raise ConfigurationError(
-                "Support for JSONOptions.document_class on Python 2.6 "
-                "requires simplejson >= 2.1.0"
-                "(https://pypi.python.org/pypi/simplejson) to be installed.")
         if json_mode not in (JSONMode.LEGACY,
                              JSONMode.RELAXED,
                              JSONMode.CANONICAL):
@@ -430,11 +405,8 @@ def loads(s, *args, **kwargs):
        Accepts optional parameter `json_options`. See :class:`JSONOptions`.
     """
     json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
-    if _HAS_OBJECT_PAIRS_HOOK:
-        kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(
-            pairs, json_options)
-    else:
-        kwargs["object_hook"] = lambda obj: object_hook(obj, json_options)
+    kwargs["object_pairs_hook"] = lambda pairs: object_pairs_hook(
+        pairs, json_options)
     return json.loads(s, *args, **kwargs)
 
 

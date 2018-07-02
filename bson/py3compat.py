@@ -36,7 +36,7 @@ if PY3:
     def b(s):
         # BSON and socket operations deal in binary data. In
         # python 3 that means instances of `bytes`. In python
-        # 2.6 and 2.7 you can create an alias for `bytes` using
+        # 2.7 you can create an alias for `bytes` using
         # the b prefix (e.g. b'foo').
         # See http://python3porting.com/problems.html#nicer-solutions
         return codecs.latin_1_encode(s)[0]

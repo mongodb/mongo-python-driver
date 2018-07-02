@@ -131,11 +131,9 @@ def run_operation(collection, test):
     else:
         for arg_name in list(arguments):
             c2s = camel_to_snake(arg_name)
-            # PyMongo accepts sort as list of tuples. Asserting len=1
-            # because ordering dicts from JSON in 2.6 is unwieldy.
+            # PyMongo accepts sort as list of tuples.
             if arg_name == "sort":
                 sort_dict = arguments[arg_name]
-                assert len(sort_dict) == 1, 'test can only have 1 sort key'
                 arguments[arg_name] = list(iteritems(sort_dict))
             # Named "key" instead not fieldName.
             if arg_name == "fieldName":

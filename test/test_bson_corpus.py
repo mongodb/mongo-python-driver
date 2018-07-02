@@ -18,18 +18,11 @@ import binascii
 import codecs
 import functools
 import glob
+import json
 import os
 import sys
 
 from decimal import DecimalException
-
-if sys.version_info[:2] == (2, 6):
-    try:
-        import simplejson as json
-    except ImportError:
-        import json
-else:
-    import json
 
 sys.path[0:0] = [""]
 
@@ -92,17 +85,11 @@ to_bson_uuid_04 = functools.partial(BSON.encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(BSON.encode, codec_options=codec_options)
 decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
-if json_util._HAS_OBJECT_PAIRS_HOOK:
-    decode_extjson = functools.partial(
-        json_util.loads,
-        json_options=json_util.JSONOptions(json_mode=JSONMode.CANONICAL,
-                                           document_class=SON))
-    loads = functools.partial(json.loads, object_pairs_hook=SON)
-else:
-    decode_extjson = functools.partial(
-        json_util.loads,
-        json_options=json_util.CANONICAL_JSON_OPTIONS)
-    loads = json.loads
+decode_extjson = functools.partial(
+    json_util.loads,
+    json_options=json_util.JSONOptions(json_mode=JSONMode.CANONICAL,
+                                       document_class=SON))
+loads = functools.partial(json.loads, object_pairs_hook=SON)
 
 
 class TestBSONCorpus(unittest.TestCase):
@@ -177,7 +164,7 @@ def create_test(case_spec):
             # Test round-tripping canonical extended json.
             decoded_json = decode_extjson(cEJ)
             self.assertJsonEqual(encode_extjson(decoded_json), cEJ)
-            if not lossy and json_util._HAS_OBJECT_PAIRS_HOOK:
+            if not lossy:
                 self.assertEqual(encode_bson(decoded_json), cB)
 
             # Test round-tripping degenerate bson.
@@ -190,9 +177,6 @@ def create_test(case_spec):
                 decoded_json = decode_extjson(dEJ)
                 self.assertJsonEqual(encode_extjson(decoded_json), cEJ)
                 if not lossy:
-                    # We don't need to check json_util._HAS_OBJECT_PAIRS_HOOK
-                    # because degenerate_extjson is always a single key so
-                    # the order cannot be changed.
                     self.assertEqual(encode_bson(decoded_json), cB)
 
             # Test round-tripping relaxed extended json.

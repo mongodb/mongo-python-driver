@@ -44,10 +44,7 @@ if [ -z "$PYTHON_BINARY" ]; then
             exit 1
         fi
     else
-        # wheel and pip are dropping support for Python 2.6. Avoid virtualenv
-        # automatically upgrading its bundled versions to new versions that
-        # might fail in 2.6.
-        $VIRTUALENV --no-download pymongotestvenv || $VIRTUALENV pymongotestvenv
+        $VIRTUALENV pymongotestvenv
         . pymongotestvenv/bin/activate
         PYTHON=python
         trap "deactivate; rm -rf pymongotestvenv" EXIT HUP
