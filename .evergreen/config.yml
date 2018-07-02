@@ -1061,18 +1061,18 @@ axes:
   - id: mod-wsgi-version
     display_name: "mod_wsgi version"
     values:
-      - id: "2.8"
+      - id: "2"
         display_name: "mod_wsgi 2.8"
         variables:
-          MOD_WSGI_VERSION: "2.8"
-      - id: "3.5"
+          MOD_WSGI_VERSION: "2"
+      - id: "3"
         display_name: "mod_wsgi 3.5"
         variables:
-          MOD_WSGI_VERSION: "3.5"
-      - id: "4.5.20"
-        display_name: "mod_wsgi 4.5.20"
+          MOD_WSGI_VERSION: "3"
+      - id: "4"
+        display_name: "mod_wsgi 4.x"
         variables:
-          MOD_WSGI_VERSION: "4.5.20"
+          MOD_WSGI_VERSION: "4"
   - id: green-framework
     display_name: "Green Framework"
     values:
@@ -1457,7 +1457,7 @@ buildvariants:
   exclude_spec:
     # mod_wsgi 2.8 segfaults with the toolchain python 2.7, regardless of distro
     python-version: ["2.7", "3.4", "3.6"]
-    mod-wsgi-version: ["2.8"]
+    mod-wsgi-version: ["2"]
   display_name: "${mod-wsgi-version} ${python-version}"
   run_on: rhel62-small
   tasks:
