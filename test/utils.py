@@ -480,7 +480,7 @@ def run_threads(collection, target):
         t.start()
 
     for t in threads:
-        t.join(30)
+        t.join(60)
         assert not t.isAlive()
 
 

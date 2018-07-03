@@ -871,9 +871,18 @@ axes:
         run_on: rhel70-small
         batchtime: 10080  # 7 days
 
+  # OSes that support versions of MongoDB>=2.6 and <4.0 with SSL.
+  - id: os-no-40-plus
+    display_name: OS
+    values:
       - id: debian71-test
         display_name: "Debian 7.1"
         run_on: debian71-test
+        batchtime: 10080  # 7 days
+
+      - id: ubuntu-12.04
+        display_name: "Ubuntu 12.04"
+        run_on: ubuntu1204-test
         batchtime: 10080  # 7 days
 
   # OSes that support versions of MongoDB without SSL.
@@ -1147,6 +1156,16 @@ buildvariants:
   tasks:
      - ".latest"
      - ".4.0"
+     - ".3.6"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
+
+- matrix_name: "tests-no-40-plus"
+  matrix_spec: {"os-no-40-plus": "*", auth-ssl: "*"}
+  display_name: "${os-no-40-plus} ${auth-ssl}"
+  tasks:
      - ".3.6"
      - ".3.4"
      - ".3.2"
