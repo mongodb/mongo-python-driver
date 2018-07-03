@@ -27,7 +27,6 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure)
 from pymongo.monotonic import time as _time
 from pymongo.read_concern import ReadConcern
-from pymongo.write_concern import WriteConcern
 from test import IntegrationTest, client_context, db_user, db_pwd, unittest, SkipTest
 from test.utils import ignore_deprecations, rs_or_single_client, EventListener
 
@@ -321,12 +320,15 @@ class TestSession(IntegrationTest):
             (coll.count, [], {}),
             (coll.count_documents, [{}], {}),
             (coll.inline_map_reduce, ['function() {}', 'function() {}'], {}),
-            (coll.reindex, [], {}),
             (coll.list_indexes, [], {}),
             (coll.index_information, [], {}),
             (coll.options, [], {}),
             (coll.aggregate, [[]], {}),
         ])
+
+        if client_context.supports_reindex:
+            ops.append((coll.reindex, [], {}))
+
         self._test_ops(client, *ops)
 
     @client_context.require_no_mongos
@@ -922,8 +924,10 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.drop_index("foo_1", session=session))
         self._test_writes(
             lambda coll, session: coll.drop_indexes(session=session))
-        self._test_writes(
-            lambda coll, session: coll.reindex(session=session))
+
+        if client_context.supports_reindex:
+            self._test_writes(
+                lambda coll, session: coll.reindex(session=session))
 
     def _test_no_read_concern(self, op):
         coll = self.client.pymongo_test.test
@@ -978,8 +982,6 @@ class TestCausalConsistency(unittest.TestCase):
         self._test_no_read_concern(
             lambda coll, session: coll.drop_indexes(session=session))
         self._test_no_read_concern(
-            lambda coll, session: coll.reindex(session=session))
-        self._test_no_read_concern(
                 lambda coll, session: list(
                     coll.aggregate([{"$out": "aggout"}], session=session)))
         self._test_no_read_concern(
@@ -992,6 +994,10 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.database.current_op(session=session))
         self._test_no_read_concern(
             lambda coll, session: coll.find({}, session=session).explain())
+
+        if client_context.supports_reindex:
+            self._test_no_read_concern(
+                lambda coll, session: coll.reindex(session=session))
 
     @client_context.require_no_standalone
     def test_get_more_does_not_include_read_concern(self):
