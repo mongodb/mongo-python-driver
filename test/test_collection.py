@@ -332,6 +332,9 @@ class TestCollection(IntegrationTest):
                                       mode="off")
 
     def test_reindex(self):
+        if not client_context.supports_reindex:
+            raise unittest.SkipTest(
+                "reindex is no longer supported by mongos 4.1+")
         db = self.db
         db.drop_collection("test")
         db.test.insert_one({"foo": "bar", "who": "what", "when": "how"})

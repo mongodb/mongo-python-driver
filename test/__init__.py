@@ -594,6 +594,13 @@ class ClientContext(object):
         new_func = self.require_version_min(4, 0, 0, -1)(func)
         return self.require_replica_set(new_func)
 
+    @property
+    def supports_reindex(self):
+        """Does the connected server support reindex?"""
+        return not (
+            self.version.at_least(4, 1, 0) and
+            self.is_mongos)
+
 
 # Reusable client context
 client_context = ClientContext()
