@@ -151,11 +151,9 @@ def create_test(case_spec):
                                           _DEPRECATED_BSON_TYPES[bson_type])
                 continue
 
-            # PyPy3 and Jython can't handle NaN with a payload from
+            # Jython can't handle NaN with a payload from
             # struct.(un)pack if endianness is specified in the format string.
-            if not ((('PyPy' in sys.version and
-                      sys.version_info[:2] < (3, 3)) or
-                    sys.platform.startswith("java")) and
+            if not (sys.platform.startswith("java") and
                     description == 'NaN with payload'):
                 # Test round-tripping canonical bson.
                 self.assertEqual(encode_bson(decoded_bson), cB)

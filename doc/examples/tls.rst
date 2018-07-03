@@ -28,10 +28,6 @@ When using CPython < 2.7.9 or PyPy < 2.5.1:
 - On Windows, the `wincertstore`_ module is required.
 - On all other platforms, the `certifi`_ module is required.
 
-Python 3.x
-``````````
-On Windows, the `wincertstore`_ module is required when using PyPy3 < 3.5.
-
 .. _ipaddress: https://pypi.python.org/pypi/ipaddress
 .. _wincertstore: https://pypi.python.org/pypi/wincertstore
 .. _certifi: https://pypi.python.org/pypi/certifi
@@ -185,7 +181,7 @@ root certificates::
 
   open "/Applications/Python <YOUR PYTHON VERSION>/Install Certificates.command"
 
-Users of older PyPy and PyPy3 portable versions may have to `set an environment
+Users of older PyPy portable versions may have to `set an environment
 variable <https://github.com/squeaky-pl/portable-pypy/issues/15>`_ to tell
 OpenSSL where to find root certificates. This is easily done using the `certifi
 module <https://pypi.org/project/certifi/>`_ from pypi::

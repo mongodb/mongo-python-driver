@@ -48,7 +48,7 @@ _PY37PLUS = sys.version_info[:2] >= (3, 7)
 
 if HAVE_SSL:
     try:
-        # Python 2.7.9+, 3.2+, PyPy 2.5.1+, etc.
+        # Python 2.7.9+, PyPy 2.5.1+, etc.
         from ssl import SSLContext
     except ImportError:
         from pymongo.ssl_context import SSLContext

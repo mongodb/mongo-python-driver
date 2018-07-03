@@ -19,7 +19,7 @@ that might not be of interest or that has already been addressed.
 Supported Interpreters
 ----------------------
 
-PyMongo supports CPython 2.7, 3.4+, PyPy, and PyPy3. Language
+PyMongo supports CPython 2.7, 3.4+, PyPy, and PyPy3.5+. Language
 features not supported by all interpreters can not be used.
 
 Style Guide

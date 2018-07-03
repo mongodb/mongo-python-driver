@@ -10,6 +10,9 @@ Changes in Version 3.8.0
   2.7 or newer from `SCL
   <https://wiki.centos.org/AdditionalResources/Repositories/SCL>`_
 
+.. warning:: PyMongo no longer supports PyPy3 versions older than 3.5. Users
+  must upgrade to PyPy3.5+.
+
 Issues Resolved
 ...............
 

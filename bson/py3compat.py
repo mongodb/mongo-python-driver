@@ -20,14 +20,9 @@ PY3 = sys.version_info[0] == 3
 
 if PY3:
     import codecs
+    import collections.abc as abc
     import _thread as thread
     from io import BytesIO as StringIO
-
-    try:
-        import collections.abc as abc
-    except ImportError:
-        # PyPy3 (based on CPython 3.2)
-        import collections as abc
 
     MAXSIZE = sys.maxsize
 

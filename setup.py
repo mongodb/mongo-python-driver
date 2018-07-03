@@ -328,11 +328,11 @@ else:
         {'tls': [], 'srv': ["dnspython>=1.13.0,<2.0.0"]})
 if sys.platform == 'win32':
     extras_require['gssapi'] = ["winkerberos>=0.5.0"]
-    if vi[0] == 2 and vi < (2, 7, 9) or vi[0] == 3 and vi < (3, 4):
+    if vi < (2, 7, 9):
         extras_require['tls'].append("wincertstore>=0.2")
 else:
     extras_require['gssapi'] = ["pykerberos"]
-    if vi[0] == 2 and vi < (2, 7, 9):
+    if vi < (2, 7, 9):
         extras_require['tls'].append("certifi")
 
 extra_opts = {
