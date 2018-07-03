@@ -721,6 +721,7 @@ class TestDatabase(IntegrationTest):
                                         projection={"_id": False}))
 
     @client_context.require_no_auth
+    @client_context.require_version_max(4, 1, 0)
     def test_eval(self):
         db = self.client.pymongo_test
         db.test.drop()
@@ -824,6 +825,7 @@ class TestDatabase(IntegrationTest):
         self.assertFalse(db.test.find_one())
 
     @client_context.require_no_auth
+    @client_context.require_version_max(4, 1, 0)
     def test_system_js(self):
         db = self.client.pymongo_test
         db.system.js.delete_many({})
