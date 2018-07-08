@@ -2431,10 +2431,10 @@ class Collection(common.BaseObject):
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
-        stage and returns a 
+        stage and returns a
         :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
         iterates over changes on this collection.
-        
+
         Introduced in MongoDB 3.6.
 
         .. code-block:: python
@@ -2445,7 +2445,7 @@ class Collection(common.BaseObject):
 
         The :class:`~pymongo.change_stream.CollectionChangeStream` iterable
         blocks until the next change document is returned or an error is
-        raised. If the 
+        raised. If the
         :meth:`~pymongo.change_stream.CollectionChangeStream.next` method
         encounters a network error when retrieving a batch from the server,
         it will automatically attempt to recreate the cursor such that no
