@@ -3030,6 +3030,9 @@ class Collection(common.BaseObject):
           ...     return_document=ReturnDocument.AFTER)
           {u'_id': u'userid', u'seq': 1}
 
+        Regardless the value of **return_document**, if no document matches
+        the filter, the return value is ``None``.
+
         You can limit the fields returned with the *projection* option.
 
           >>> db.example.find_one_and_update(
@@ -3080,8 +3083,7 @@ class Collection(common.BaseObject):
             document matches the query. Defaults to ``False``.
           - `return_document`: If
             :attr:`ReturnDocument.BEFORE` (the default),
-            returns the original document before it was updated, or ``None``
-            if no document matches. If
+            returns the original document before it was updated. If
             :attr:`ReturnDocument.AFTER`, returns the updated
             or inserted document.
           - `array_filters` (optional): A list of filters specifying which
