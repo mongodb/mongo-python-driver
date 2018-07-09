@@ -77,6 +77,31 @@ class AutoAuthenticateThread(threading.Thread):
         self.success = True
 
 
+class DBAuthenticateThread(threading.Thread):
+    """Used in testing threaded authentication.
+
+    This does db.test.find_one() with a 1-second delay to ensure it must
+    check out and authenticate multiple sockets from the pool concurrently.
+
+    :Parameters:
+      `db`: An auth-protected db with a 'test' collection containing one
+      document.
+    """
+
+    def __init__(self, db, username, password):
+        super(DBAuthenticateThread, self).__init__()
+        self.db = db
+        self.username = username
+        self.password = password
+        self.success = False
+
+    def run(self):
+        self.db.authenticate(self.username, self.password)
+        assert self.db.test.find_one({'$where': delay(1)}) is not None
+        self.success = True
+
+
+
 class TestGSSAPI(unittest.TestCase):
 
     @classmethod
@@ -589,6 +614,38 @@ class TestSCRAM(unittest.TestCase):
         threads = []
         for _ in range(4):
             threads.append(AutoAuthenticateThread(coll))
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+            self.assertTrue(thread.success)
+
+class TestThreadedAuth(unittest.TestCase):
+
+    @client_context.require_auth
+    def test_db_authenticate_threaded(self):
+
+        db = client_context.client.db
+        coll = db.test
+        coll.drop()
+        coll.insert_one({'_id': 1})
+
+        client_context.create_user(
+            'db',
+            'user',
+            'pass',
+            roles=['dbOwner'])
+        self.addCleanup(db.command, 'dropUser', 'user')
+
+        db = rs_or_single_client_noauth().db
+        db.authenticate('user', 'pass')
+        # No error.
+        db.authenticate('user', 'pass')
+
+        db = rs_or_single_client_noauth().db
+        threads = []
+        for _ in range(4):
+            threads.append(DBAuthenticateThread(db, 'user', 'pass'))
         for thread in threads:
             thread.start()
         for thread in threads:
