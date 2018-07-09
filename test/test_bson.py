@@ -474,6 +474,13 @@ class TestBSON(unittest.TestCase):
         dt2 = BSON.encode({"date": dt1}).decode()["date"]
         self.assertEqual(dt1, dt2)
 
+    def test_large_datetime_truncation(self):
+        # Ensure that a large datetime is truncated correctly.
+        dt1 = datetime.datetime(9999, 1, 1, 1, 1, 1, 999999)
+        dt2 = BSON.encode({"date": dt1}).decode()["date"]
+        self.assertEqual(dt2.microsecond, 999000)
+        self.assertEqual(dt2.second, dt1.second)
+
     def test_aware_datetime(self):
         aware = datetime.datetime(1993, 4, 4, 2,
                                   tzinfo=FixedOffset(555, "SomeZone"))
