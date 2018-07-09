@@ -837,7 +837,7 @@ def _datetime_to_millis(dtm):
     if dtm.utcoffset() is not None:
         dtm = dtm - dtm.utcoffset()
     return int(calendar.timegm(dtm.timetuple()) * 1000 +
-               dtm.microsecond / 1000)
+               dtm.microsecond // 1000)
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError(
