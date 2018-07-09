@@ -61,8 +61,25 @@ MECHANISMS = frozenset(
 class _Cache(object):
     __slots__ = ("data",)
 
+    _hash_val = hash('_Cache')
+
     def __init__(self):
         self.data = None
+
+    def __eq__(self, other):
+        # Two instances must always compare equal.
+        if isinstance(other, _Cache):
+            return True
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, _Cache):
+            return False
+        return NotImplemented
+
+    def __hash__(self):
+        return self._hash_val
+
 
 
 MongoCredential = namedtuple(
