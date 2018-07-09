@@ -3020,8 +3020,10 @@ class Collection(common.BaseObject):
           {u'_id': 665, u'done': False, u'count': 25}}
 
         By default :meth:`find_one_and_update` returns the original version of
-        the document before the update was applied. To return the updated
-        version of the document instead, use the *return_document* option.
+        the document before the update was applied, or ``None`` if no document
+        matches the filter. To return the updated (or inserted in the case of
+        *upsert*), version of the document instead, use the *return_document*
+        option.
 
           >>> from pymongo import ReturnDocument
           >>> db.example.find_one_and_update(
@@ -3029,9 +3031,6 @@ class Collection(common.BaseObject):
           ...     {'$inc': {'seq': 1}},
           ...     return_document=ReturnDocument.AFTER)
           {u'_id': u'userid', u'seq': 1}
-
-        Regardless the value of **return_document**, if no document matches
-        the filter, the return value is ``None``.
 
         You can limit the fields returned with the *projection* option.
 
