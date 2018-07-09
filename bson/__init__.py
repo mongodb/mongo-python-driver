@@ -819,7 +819,7 @@ if _USE_C:
 def _millis_to_datetime(millis, opts):
     """Convert milliseconds since epoch UTC to datetime."""
     diff = ((millis % 1000) + 1000) % 1000
-    seconds = (millis - diff) / 1000
+    seconds = (millis - diff) // 1000
     micros = diff * 1000
     if opts.tz_aware:
         dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds,
