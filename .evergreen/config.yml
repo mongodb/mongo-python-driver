@@ -45,7 +45,7 @@ functions:
               CURRENT_VERSION=latest
            fi
 
-           export DRIVERS_TOOLS="$(pwd)/../drivers-tools"
+           export DRIVERS_TOOLS="$(dirname $(pwd))/drivers-tools"
            export PROJECT_DIRECTORY="$(pwd)"
 
            # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
@@ -182,7 +182,7 @@ functions:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file:  ${PROJECT_DIRECTORY}/doc/html/index.html
+        local_file:  src/doc/html/index.html
         remote_file: ${UPLOAD_BUCKET}/docs/${CURRENT_VERSION}/index.html
         bucket: mciuploads
         permissions: public-read
@@ -194,7 +194,7 @@ functions:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file:  ${PROJECT_DIRECTORY}/.coverage
+        local_file:  src/.coverage
         optional: true
         # Upload the coverage report for all tasks in a single build to the same directory.
         remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/coverage/coverage.${build_variant}.${task_name}
@@ -238,7 +238,7 @@ functions:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file:  ${PROJECT_DIRECTORY}/htmlcov/index.html
+        local_file:  src/htmlcov/index.html
         remote_file: ${UPLOAD_BUCKET}/coverage/${revision}/${version_id}/htmlcov/index.html
         bucket: mciuploads
         permissions: public-read
@@ -267,7 +267,7 @@ functions:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file:  ${PROJECT_DIRECTORY}/scan.html
+        local_file:  src/scan.html
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/scan/index.html
         bucket: mciuploads
         permissions: public-read
@@ -294,7 +294,7 @@ functions:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file: ${DRIVERS_TOOLS}/.evergreen/orchestration/server.log
+        local_file: drivers-tools/.evergreen/orchestration/server.log
         remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
         bucket: mciuploads
         permissions: public-read
