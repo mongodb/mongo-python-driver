@@ -584,11 +584,14 @@ class TestSCRAM(unittest.TestCase):
         credentials = all_credentials.get('admin')
         cache = credentials.cache
         self.assertIsNotNone(cache)
-        keys = cache.data
-        self.assertIsNotNone(keys)
-        self.assertEqual(len(keys), 2)
-        for elt in keys:
-            self.assertIsInstance(elt, bytes)
+        data = cache.data
+        self.assertIsNotNone(data)
+        self.assertEqual(len(data), 4)
+        ckey, skey, salt, iterations = data
+        self.assertIsInstance(ckey, bytes)
+        self.assertIsInstance(skey, bytes)
+        self.assertIsInstance(salt, bytes)
+        self.assertIsInstance(iterations, int)
 
         pool = next(iter(client._topology._servers.values()))._pool
         with pool.get_socket(all_credentials) as sock_info:
@@ -601,7 +604,7 @@ class TestSCRAM(unittest.TestCase):
         sock_credentials = next(iter(authset))
         sock_cache = sock_credentials.cache
         self.assertIsNotNone(sock_cache)
-        self.assertEqual(sock_cache.data, keys)
+        self.assertEqual(sock_cache.data, data)
 
     def test_scram_threaded(self):
 

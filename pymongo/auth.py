@@ -272,15 +272,19 @@ def _authenticate_scram(credentials, sock_info, mechanism):
         raise OperationFailure("Server returned an invalid nonce.")
 
     without_proof = b"c=biws,r=" + rnonce
-    keys = cache.data
-    if keys:
-        client_key, server_key = keys
+    if cache.data:
+        client_key, server_key, csalt, citerations = cache.data
     else:
+        client_key, server_key, csalt, citerations = None, None, None, None
+
+    # Salt and / or iterations could change for a number of different
+    # reasons. Either changing invalidates the cache.
+    if not client_key or salt != csalt or iterations != citerations:
         salted_pass = _hi(
             digest, data, standard_b64decode(salt), iterations)
         client_key = _hmac(salted_pass, b"Client Key", digestmod).digest()
         server_key = _hmac(salted_pass, b"Server Key", digestmod).digest()
-        cache.data = (client_key, server_key)
+        cache.data = (client_key, server_key, salt, iterations)
     stored_key = digestmod(client_key).digest()
     auth_msg = b",".join((first_bare, server_first, without_proof))
     client_sig = _hmac(stored_key, auth_msg, digestmod).digest()
