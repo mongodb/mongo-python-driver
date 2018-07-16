@@ -1,6 +1,26 @@
 Changelog
 =========
 
+Changes in Version 3.7.1
+------------------------
+
+Version 3.7.1 fixes a few issues discovered since the release of 3.7.0.
+
+- Calling :meth:`~pymongo.database.Database.authenticate` more than once
+  with the same credentials results in OperationFailure.
+- Authentication fails when SCRAM-SHA-1 is used to authenticate users with
+  only MONGODB-CR credentials.
+- A millisecond rounding problem when decoding datetimes in the pure Python
+  BSON decoder on 32 bit systems and AWS lambda.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.7.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.7.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=21096
+
 Changes in Version 3.7.0
 ------------------------
 
