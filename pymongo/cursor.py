@@ -827,9 +827,9 @@ class Cursor(object):
         Judicious use of hints can greatly improve query
         performance. When doing a query on multiple fields (at least
         one of which is indexed) pass the indexed field as a hint to
-        the query. Hinting will not do anything if the corresponding
-        index does not exist. Raises
-        :class:`~pymongo.errors.InvalidOperation` if this cursor has
+        the query. Raises :class:`~pymongo.errors.OperationFailure` if the
+        provided hint requires an index that does not exist on this collection,
+        and raises :class:`~pymongo.errors.InvalidOperation` if this cursor has
         already been used.
 
         `index` should be an index as passed to
