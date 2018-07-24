@@ -3022,7 +3022,7 @@ class Collection(common.BaseObject):
         By default :meth:`find_one_and_update` returns the original version of
         the document before the update was applied, or ``None`` if no document
         matches the filter. To return the updated (or inserted in the case of
-        *upsert*), version of the document instead, use the *return_document*
+        *upsert*) version of the document instead, use the *return_document*
         option.
 
           >>> from pymongo import ReturnDocument
