@@ -636,7 +636,7 @@ class MongoClient(common.BaseObject):
         expire = datetime.timedelta(seconds=cache_for) + now
 
         with self.__index_cache_lock:
-            if database not in self.__index_cache:
+            if dbname not in self.__index_cache:
                 self.__index_cache[dbname] = {}
                 self.__index_cache[dbname][collection] = {}
                 self.__index_cache[dbname][collection][index] = expire
