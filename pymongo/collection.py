@@ -3019,9 +3019,14 @@ class Collection(common.BaseObject):
           ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
           {u'_id': 665, u'done': False, u'count': 25}}
 
-        By default :meth:`find_one_and_update` returns the original version of
-        the document before the update was applied, or ``None`` if no document
-        matches the filter. To return the updated (or inserted in the case of
+        Returns ``None`` if no document matches the filter.
+
+          >>> db.test.find_one_and_update(
+          ...    {'_exists': False}, {'$inc': {'count': 1}})
+
+        When the filter matches, by default :meth:`find_one_and_update`
+        returns the original version of the document before the update was
+        applied. To return the updated (or inserted in the case of
         *upsert*) version of the document instead, use the *return_document*
         option.
 
