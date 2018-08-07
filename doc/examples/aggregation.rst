@@ -73,6 +73,8 @@ capabilities to reshape the returned data. Using projections and aggregation,
 you can add computed fields, create new virtual sub-objects, and extract
 sub-fields into the top-level of results.
 
+.. note:: We can also run **aggregate** command without **explain** option. MongoDB 3.6 or higher, removes the use of aggregate command without the cursor option unless the command includes the explain option.
+
 .. seealso:: The full documentation for MongoDB's `aggregation framework
     <http://docs.mongodb.org/manual/applications/aggregation>`_
 
