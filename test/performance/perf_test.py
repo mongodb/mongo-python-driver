@@ -68,6 +68,11 @@ class Timer(object):
 
 
 class PerformanceTest(object):
+
+    @classmethod
+    def setUpClass(cls):
+        client_context.init()
+
     def setUp(self):
         pass
 
