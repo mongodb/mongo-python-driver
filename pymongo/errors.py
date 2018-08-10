@@ -126,8 +126,13 @@ class OperationFailure(PyMongoError):
     """
 
     def __init__(self, error, code=None, details=None):
+        """
+
+        :param details: The complete error document returned by the server.
+        Error labels are expected to be provided with errorLabels key.
+        """
         error_labels = None
-        if details is not None:
+        if details is not None and isinstance(details, dict):
             error_labels = details.get('errorLabels')
         super(OperationFailure, self).__init__(
             error, error_labels=error_labels)
@@ -206,6 +211,11 @@ class BulkWriteError(OperationFailure):
     .. versionadded:: 2.7
     """
     def __init__(self, results):
+        """
+
+        :param results: The complete error document returned by the server.
+        Error labels are expected to be provided with errorLabels key.
+        """
         super(BulkWriteError, self).__init__(
             "batch op errors occurred", 65, results)
 

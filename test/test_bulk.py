@@ -22,7 +22,8 @@ from bson.objectid import ObjectId
 from pymongo.operations import *
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
-                            OperationFailure)
+                            OperationFailure,
+                            BulkWriteError)
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   unittest,
@@ -384,6 +385,25 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
         ]
         self.assertRaises(OperationFailure, coll.bulk_write, requests)
         self.assertEqual(set([1, 2]), set(self.coll.distinct('x')))
+
+
+class BulkWriteErrorTest(unittest.TestCase):
+
+    def test_details_without_error_labels_in_results(self):
+        error = BulkWriteError({'key': 'test_value'})
+        self.assertEqual({'key': 'test_value'}, error.details)
+
+    def test_details_with_error_labels_in_results(self):
+        error = BulkWriteError({'key': 'test_value', 'errorLabels': ['first', 'second']})
+        self.assertEqual({'errorLabels': ['first', 'second'], 'key': 'test_value'}, error.details)
+
+    def test_error_labels_are_extracted_from_error_labels_in_results(self):
+        error = BulkWriteError({'key': 'test_value', 'errorLabels': ['first', 'second']})
+        self.assertEqual(True, error.has_error_label('first'))
+
+    def test_details_with_results_as_string(self):
+        error = BulkWriteError('test value')
+        self.assertEqual('test value', error.details)
 
 if __name__ == "__main__":
     unittest.main()
