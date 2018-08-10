@@ -8,7 +8,7 @@ Geospatial Indexing Example
   client.drop_database('geo_example')
 
 This example shows how to create and use a :data:`~pymongo.GEO2D`
-index in PyMongo.
+index in PyMongo. To create a spherical (earth-like) geospatial index use :data:`~pymongo.GEOSPHERE` instead.
 
 .. mongodoc:: geo
 
@@ -40,6 +40,8 @@ insert a couple of example locations:
   >>> result.inserted_ids
   [ObjectId('...'), ObjectId('...'), ObjectId('...'), ObjectId('...')]
 
+.. note:: If specifying latitude and longitude coordinates in :data:`~pymongo.GEOSPHERE`, list the **longitude** first and then **latitude**.
+
 Querying
 --------
 
@@ -54,6 +56,8 @@ Using the geospatial index we can find documents near another point:
   {u'_id': ObjectId('...'), u'loc': [2, 5]}
   {u'_id': ObjectId('...'), u'loc': [4, 4]}
   {u'_id': ObjectId('...'), u'loc': [1, 2]}
+
+.. note:: If using :data:`pymongo.GEOSPHERE`, using $nearSphere is recommended.
 
 The $maxDistance operator requires the use of :class:`~bson.son.SON`:
 
@@ -96,3 +100,9 @@ geoNear queries are also supported using :class:`~bson.son.SON`::
   >>> from bson.son import SON
   >>> db.command(SON([('geoNear', 'places'), ('near', [1, 2])]))
   {u'ok': 1.0, u'stats': ...}
+
+.. warning:: Starting in MongoDB version 4.0, MongoDB deprecates the **geoNear** command. Use one of the following operations instead.
+
+  * $geoNear - aggregation stage.
+  * $near - query operator.
+  * $nearSphere - query operator.
