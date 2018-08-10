@@ -692,12 +692,8 @@ class TestSampleShellCommands(unittest.TestCase):
 
             # Start Changestream Example 4
             pipeline = [
-                {"$match": {
-                    "$or": [
-                        {"fullDocument.username": "alice"},
-                        {"operationType": {"$in": ["delete"]}}]
-                    }
-                }
+                {'$match': {'fullDocument.username': 'alice'}},
+                {'$addFields': {'newField': 'this is an added field!'}}
             ]
             cursor = db.inventory.watch(pipeline=pipeline)
             document = next(cursor)
