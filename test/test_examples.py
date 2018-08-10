@@ -14,15 +14,18 @@
 
 """MongoDB documentation examples in Python."""
 
-import threading
+import datetime
 import sys
+import threading
 
 sys.path[0:0] = [""]
 
 import pymongo
 from pymongo.errors import ConnectionFailure, OperationFailure
 from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
+
 from test import client_context, unittest, IntegrationTest
 from test.utils import rs_or_single_client
 
@@ -1112,6 +1115,42 @@ class TestTransactionExamples(IntegrationTest):
         with client.start_session() as session:
             run_transaction_with_retry(session, shipment_transaction)
         # End Beta Transaction Example 3
+
+
+class TestCausalConsistencyExamples(IntegrationTest):
+    @client_context.require_version_min(3, 6, 0)
+    @client_context.require_secondaries_count(1)
+    def test_causal_consistency(self):
+        # Causal consistency examples
+        client = self.client
+        self.addCleanup(client.drop_database, 'test')
+        client.test.drop_collection('items')
+        client.test.items.insert_one({
+            'sku': "111", 'name': 'Peanuts',
+            'start':datetime.datetime.today()})
+
+        # Start Causal Consistency Example 1
+        with client.start_session(causal_consistency=True) as s1:
+            current_date = datetime.datetime.today()
+            items = client.get_database('test').items
+            items.update_one(
+                {'sku': "111", 'end': None},
+                {'$set': {'end': current_date}}, session=s1)
+            items.insert_one(
+                {'sku': "nuts-111", 'name': "Pecans",
+                 'start': current_date}, session=s1)
+        # End Causal Consistency Example 1
+
+        # Start Causal Consistency Example 2
+        with client.start_session(causal_consistency=True) as s2:
+            s2.advance_cluster_time(s1.cluster_time)
+            s2.advance_operation_time(s1.operation_time)
+
+            items = client.get_database(
+                'test', read_preference=ReadPreference.SECONDARY).items
+            for item in items.find({'end': None}, session=s2):
+                print(item)
+        # End Causal Consistency Example 2
 
 
 if __name__ == "__main__":
