@@ -17,6 +17,8 @@
 import os
 import sys
 
+from pymongo import MongoClient
+
 sys.path[0:0] = [""]
 
 from test import unittest
@@ -31,6 +33,16 @@ _TEST_PATH = os.path.join(
 
 class TestAllScenarios(create_selection_tests(_TEST_PATH)):
     pass
+
+
+class TestCustomServerSelectorFunction(unittest.TestCase):
+    def test_invalid_server_selector(self):
+        _bad_server_selector = 1
+        with self.assertRaisesRegex(ValueError, "must be a callable"):
+            _ = MongoClient(
+                connect=False, serverSelector=list()
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
