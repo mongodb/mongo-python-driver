@@ -219,13 +219,9 @@ class Topology(object):
                       server_selection_timeout=None,
                       address=None):
         """Like select_servers, but choose a random server if several match."""
-        user_server_selector = self._settings._server_selector
-        if user_server_selector is None:
-            final_selector = selector
-        else:
-            final_selector = chain_selectors([selector, user_server_selector])
-        return random.choice(self.select_servers(
-            final_selector, server_selection_timeout, address))
+        return random.choice(self.select_servers(chain_selectors(
+            [selector, self._settings._server_selector]),
+            server_selection_timeout, address))
 
     def select_server_by_address(self, address,
                                  server_selection_timeout=None):
