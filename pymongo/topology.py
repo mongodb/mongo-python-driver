@@ -35,7 +35,7 @@ from pymongo.topology_description import (updated_topology_description,
 from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
-from pymongo.server_selectors import (any_server_selector,
+from pymongo.server_selectors import (any_server_selector, chain_selectors,
                                       arbiter_server_selector,
                                       secondary_server_selector,
                                       readable_server_selector,
@@ -214,25 +214,18 @@ class Topology(object):
         self._description.check_compatible()
         return server_descriptions
 
-    def get_full_server_selector(self, selector):
-        custom_selector = self._settings._server_selector
-        if custom_selector is None:
-            return selector
-
-        def full_selector(servers):
-            servers = selector(servers)
-            return custom_selector(servers)
-
-        return full_selector
-
     def select_server(self,
                       selector,
                       server_selection_timeout=None,
                       address=None):
         """Like select_servers, but choose a random server if several match."""
-        full_selector = self.get_full_server_selector(selector)
+        user_server_selector = self._settings._server_selector
+        if user_server_selector is None:
+            final_selector = selector
+        else:
+            final_selector = chain_selectors([selector, user_server_selector])
         return random.choice(self.select_servers(
-            full_selector, server_selection_timeout, address))
+            final_selector, server_selection_timeout, address))
 
     def select_server_by_address(self, address,
                                  server_selection_timeout=None):
