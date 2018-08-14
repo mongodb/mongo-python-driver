@@ -563,6 +563,7 @@ class MongoClient(common.BaseObject):
             condition_class=condition_class,
             local_threshold_ms=options.local_threshold_ms,
             server_selection_timeout=options.server_selection_timeout,
+            server_selector=options.server_selector,
             heartbeat_frequency=options.heartbeat_frequency)
 
         self._topology = Topology(self._topology_settings)

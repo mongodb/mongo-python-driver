@@ -163,6 +163,7 @@ class ClientOptions(object):
         self.__heartbeat_frequency = options.get(
             'heartbeatfrequencyms', common.HEARTBEAT_FREQUENCY)
         self.__retry_writes = options.get('retrywrites', common.RETRY_WRITES)
+        self.__server_selector = options.get('serverselector', None)
 
     @property
     def _options(self):
@@ -193,6 +194,10 @@ class ClientOptions(object):
     def server_selection_timeout(self):
         """The server selection timeout for this instance in seconds."""
         return self.__server_selection_timeout
+
+    @property
+    def server_selector(self):
+        return self.__server_selector
 
     @property
     def heartbeat_frequency(self):

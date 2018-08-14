@@ -214,14 +214,25 @@ class Topology(object):
         self._description.check_compatible()
         return server_descriptions
 
+    def get_full_server_selector(self, selector):
+        custom_selector = self._settings._server_selector
+        if custom_selector is None:
+            return selector
+
+        def full_selector(servers):
+            servers = selector(servers)
+            return custom_selector(servers)
+
+        return full_selector
+
     def select_server(self,
                       selector,
                       server_selection_timeout=None,
                       address=None):
         """Like select_servers, but choose a random server if several match."""
-        return random.choice(self.select_servers(selector,
-                                                 server_selection_timeout,
-                                                 address))
+        full_selector = self.get_full_server_selector(selector)
+        return random.choice(self.select_servers(
+            full_selector, server_selection_timeout, address))
 
     def select_server_by_address(self, address,
                                  server_selection_timeout=None):
