@@ -94,6 +94,10 @@ class TopologySettings(object):
         return self._server_selection_timeout
 
     @property
+    def server_selector(self):
+        return self._server_selector
+
+    @property
     def heartbeat_frequency(self):
         return self._heartbeat_frequency
 

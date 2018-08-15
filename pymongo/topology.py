@@ -220,7 +220,7 @@ class Topology(object):
                       address=None):
         """Like select_servers, but choose a random server if several match."""
         return random.choice(self.select_servers(chain_selectors(
-            [selector, self._settings._server_selector]),
+            [selector, self._settings.server_selector]),
             server_selection_timeout, address))
 
     def select_server_by_address(self, address,
