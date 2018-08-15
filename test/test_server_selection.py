@@ -43,9 +43,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         def custom_selector(selection):
             if not selection:
                 return selection.with_server_descriptions([])
-            ports = [
-                s.address[1] for s in selection.server_descriptions
-            ]
+            ports = [s.address[1] for s in selection.server_descriptions]
             idx = ports.index(max(ports))
             return selection.with_server_descriptions(
                 [selection.server_descriptions[idx]]
@@ -54,9 +52,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         # Initialize client with appropriate listeners.
         listener = EventListener()
         client = rs_or_single_client(
-            serverSelector=custom_selector,
-            event_listeners=[listener]
-        )
+            serverSelector=custom_selector, event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client.get_database(
             'testdb', read_preference=ReadPreference.NEAREST).coll
@@ -79,18 +75,16 @@ class TestCustomServerSelectorFunction(IntegrationTest):
                     command.connection_id[1], expected_port)
 
     def test_invalid_server_selector(self):
-        _bad_server_selector = 1
-        with self.assertRaisesRegex(ValueError, "must be a callable"):
-            _ = MongoClient(
-                connect=False, serverSelector=list()
-            )
+        # Test appropriate validation of serverSelector kwarg.
+        for selector_candidate in [list(), 10, 'string', {}]:
+            with self.assertRaisesRegex(ValueError, "must be a callable"):
+                MongoClient(connect=False, serverSelector=selector_candidate)
 
     def test_selector_called(self):
-        # Special selector that keeps track of how many times it is called.
+        # No-op selector that keeps track of how many times it is called.
         class _Selector(object):
             def __init__(self):
                 self.call_count = 0
-
             def __call__(self, selection):
                 self.call_count += 1
                 return selection
