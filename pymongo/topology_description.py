@@ -252,6 +252,51 @@ class TopologyDescription(object):
             return apply_local_threshold(
                 selector(Selection.from_topology_description(self)))
 
+    def apply_selectors(self, selectors, address):
+
+        def apply_local_threshold(selection):
+            if not selection:
+                return []
+
+            settings = self._topology_settings
+
+            # Round trip time in seconds.
+            fastest = min(
+                s.round_trip_time for s in selection.server_descriptions)
+            threshold = settings.local_threshold_ms / 1000.0
+            return [s for s in selection.server_descriptions
+                    if (s.round_trip_time - fastest) <= threshold]
+
+        for selector in selectors:
+            if getattr(selector, 'min_wire_version', 0):
+                common_wv = self.common_wire_version
+                if common_wv and common_wv < selector.min_wire_version:
+                    raise ConfigurationError(
+                        "%s requires min wire version %d, but topology's min"
+                        " wire version is %d" % (selector,
+                                                 selector.min_wire_version,
+                                                 common_wv))
+
+        if self.topology_type == TOPOLOGY_TYPE.Single:
+            # Ignore the selectors.
+            return self.known_servers
+        elif address:
+            description = self.server_descriptions().get(address)
+            return [description] if description else []
+        elif self.topology_type == TOPOLOGY_TYPE.Sharded:
+            # Ignore the read preference (first selector), but apply custom
+            # serverSelector.
+            selectors_to_apply = selectors[1:]
+        else:
+            # Apply all selectors.
+            selectors_to_apply = selectors
+
+        # Iteratively apply selectors, followed by localThresholdMS.
+        _selection = Selection.from_topology_description(self)
+        for selector in selectors_to_apply:
+            _selection = selector(_selection)
+        return apply_local_threshold(_selection)
+
     def has_readable_server(self, read_preference=ReadPreference.PRIMARY):
         """Does this topology have any readable servers available matching the
         given read preference?

@@ -187,16 +187,18 @@ class Topology(object):
 
     def _select_servers_loop(self, selector, timeout, address):
         """select_servers() guts. Hold the lock when calling this."""
+        selectors = [selector, self._settings.server_selector]
+
         now = _time()
         end_time = now + timeout
-        server_descriptions = self._description.apply_selector(
-            selector, address)
+        server_descriptions = self._description.apply_selectors(
+            selectors, address)
 
         while not server_descriptions:
             # No suitable servers.
             if timeout == 0 or now > end_time:
                 raise ServerSelectionTimeoutError(
-                    self._error_message(selector))
+                    self._error_message(selectors))
 
             self._ensure_opened()
             self._request_check_all()
@@ -208,8 +210,8 @@ class Topology(object):
             self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
             self._description.check_compatible()
             now = _time()
-            server_descriptions = self._description.apply_selector(
-                selector, address)
+            server_descriptions = self._description.apply_selectors(
+                selectors, address)
 
         self._description.check_compatible()
         return server_descriptions
@@ -219,9 +221,8 @@ class Topology(object):
                       server_selection_timeout=None,
                       address=None):
         """Like select_servers, but choose a random server if several match."""
-        return random.choice(self.select_servers(chain_selectors(
-            [selector, self._settings.server_selector]),
-            server_selection_timeout, address))
+        return random.choice(self.select_servers(
+            selector, server_selection_timeout, address))
 
     def select_server_by_address(self, address,
                                  server_selection_timeout=None):

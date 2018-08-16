@@ -101,7 +101,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         test_collection.insert_one({'age': 31, 'name': 'Jane'})
         test_collection.update_one({'name': 'Jane'}, {'$set': {'age': 21}})
         test_collection.find_one({'name': 'Roe'})
-        self.assertEqual(_selector.call_count, 4)
+        self.assertGreaterEqual(_selector.call_count, 4)
 
 
 if __name__ == "__main__":
