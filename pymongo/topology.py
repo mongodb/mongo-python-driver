@@ -558,7 +558,7 @@ class Topology(object):
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)
 
-    def _error_message(self, selector):
+    def _error_message(self, selectors):
         """Format an error message if server selection fails.
 
         Hold the lock when calling this.
@@ -576,13 +576,13 @@ class Topology(object):
 
         if self._description.known_servers:
             # We've connected, but no servers match the selector.
-            if selector is writable_server_selector:
+            if writable_server_selector in selectors:
                 if is_replica_set:
                     return 'No primary available for writes'
                 else:
                     return 'No %s available for writes' % server_plural
             else:
-                return 'No %s match selector "%s"' % (server_plural, selector)
+                return 'No %s match selectors "%s"' % (server_plural, selectors)
         else:
             addresses = list(self._description.server_descriptions())
             servers = list(self._description.server_descriptions().values())

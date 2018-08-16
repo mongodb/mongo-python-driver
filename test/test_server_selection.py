@@ -22,7 +22,7 @@ from pymongo import ReadPreference
 
 sys.path[0:0] = [""]
 
-from test import unittest, IntegrationTest
+from test import client_context, unittest, IntegrationTest
 from test.utils import rs_or_single_client, EventListener
 from test.utils_selection_tests import create_selection_tests
 
@@ -80,6 +80,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             with self.assertRaisesRegex(ValueError, "must be a callable"):
                 MongoClient(connect=False, serverSelector=selector_candidate)
 
+    @client_context.require_replica_set
     def test_selector_called(self):
         # No-op selector that keeps track of how many times it is called.
         class _Selector(object):
