@@ -238,24 +238,23 @@ class TopologyDescription(object):
                                              selector.min_wire_version,
                                              common_wv))
 
-        selection = Selection.from_topology_description(self)
-        if self.topology_type == TOPOLOGY_TYPE.Single or self.topology_type == TOPOLOGY_TYPE.Sharded:
-            # If single, ignore the selector.
-            # If sharded, ignore the read preference.
-            servers = selection
+        if self.topology_type == TOPOLOGY_TYPE.Single:
+            # Ignore selectors for standalone.
+            return self.known_servers
         elif address:
+            # Ignore selectors when explicit address is requested.
             description = self.server_descriptions().get(address)
-            servers = selection.with_server_descriptions(
-                [description] if description else []
-            )
+            return [description] if description else []
+        elif self.topology_type == TOPOLOGY_TYPE.Sharded:
+            # Ignore read preference.
+            servers = Selection.from_topology_description(self)
         else:
-            # Apply the selector.
             servers = selector(Selection.from_topology_description(self))
 
-        custom_selector = custom_selector or (lambda x: x)
-        servers = servers.with_server_descriptions(custom_selector(servers.server_descriptions))
-
-        # Apply localThresholdMS and return.
+        # Apply custom selector followed by localThresholdMS.
+        if custom_selector is not None:
+            servers = servers.with_server_descriptions(
+                custom_selector(servers.server_descriptions))
         return apply_local_threshold(servers)
 
     def has_readable_server(self, read_preference=ReadPreference.PRIMARY):
