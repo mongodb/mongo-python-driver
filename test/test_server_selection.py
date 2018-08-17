@@ -39,6 +39,7 @@ class TestAllScenarios(create_selection_tests(_TEST_PATH)):
 
 
 class TestCustomServerSelectorFunction(IntegrationTest):
+    @client_context.require_replica_set
     def test_functional_select_max_port_number_host(self):
         # Selector that returns server with highest port number.
         def custom_selector(servers):
@@ -59,10 +60,13 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
         # Wait the node list to be fully populated.
         def all_hosts_started():
-            isMaster = IsMaster(client.admin.command('isMaster'))
-            return len(isMaster.all_hosts) == len(client.nodes)
+            return (len(client.admin.command('isMaster')['hosts']) ==
+                    len(client._topology._description.readable_servers))
+
         wait_until(all_hosts_started, 'receive heartbeat from all hosts')
-        expected_port = max([n[1] for n in client.nodes])
+        expected_port = max([
+            n.address[1]
+            for n in client._topology._description.readable_servers])
 
         # Insert 1 record and access it 10 times.
         coll.insert_one({'name': 'John Doe'})
