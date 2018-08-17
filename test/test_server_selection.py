@@ -19,11 +19,12 @@ import sys
 
 from pymongo import MongoClient
 from pymongo import ReadPreference
+from pymongo.ismaster import IsMaster
 
 sys.path[0:0] = [""]
 
 from test import client_context, unittest, IntegrationTest
-from test.utils import rs_or_single_client, EventListener
+from test.utils import rs_or_single_client, wait_until, EventListener
 from test.utils_selection_tests import create_selection_tests
 
 
@@ -56,9 +57,11 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             'testdb', read_preference=ReadPreference.NEAREST).coll
         self.addCleanup(client.drop_database, 'testdb')
 
-        # Hack to wait long enough for server to populate node list.
-        from time import sleep
-        sleep(1)
+        # Wait the node list to be fully populated.
+        def all_hosts_started():
+            isMaster = IsMaster(client.admin.command('isMaster'))
+            return len(isMaster.all_hosts) == len(client.nodes)
+        wait_until(all_hosts_started, 'receive heartbeat from all hosts')
         expected_port = max([n[1] for n in client.nodes])
 
         # Insert 1 record and access it 10 times.
