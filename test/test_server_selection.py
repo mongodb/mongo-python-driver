@@ -40,14 +40,12 @@ class TestAllScenarios(create_selection_tests(_TEST_PATH)):
 class TestCustomServerSelectorFunction(IntegrationTest):
     def test_functional_select_max_port_number_host(self):
         # Selector that returns server with highest port number.
-        def custom_selector(selection):
-            if not selection:
-                return selection.with_server_descriptions([])
-            ports = [s.address[1] for s in selection.server_descriptions]
+        def custom_selector(servers):
+            if not servers:
+                return []
+            ports = [s.address[1] for s in servers]
             idx = ports.index(max(ports))
-            return selection.with_server_descriptions(
-                [selection.server_descriptions[idx]]
-            )
+            return [servers[idx]]
 
         # Initialize client with appropriate listeners.
         listener = EventListener()
@@ -86,9 +84,11 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         class _Selector(object):
             def __init__(self):
                 self.call_count = 0
+
             def __call__(self, selection):
                 self.call_count += 1
                 return selection
+
         _selector = _Selector()
 
         # Client setup.
