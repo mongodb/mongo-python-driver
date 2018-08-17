@@ -740,10 +740,6 @@ class TestServerSelectionErrors(TopologyTest):
 
         self.assertEqual(message, str(context.exception))
 
-    def assertRegex(self, message, topology, selector=any_server_selector):
-        with self.assertRaisesRegex(ConnectionFailure, message):
-            topology.select_server(selector, server_selection_timeout=0)
-
     def test_no_primary(self):
         t = create_mock_topology(replica_set_name='rs')
         got_ismaster(t, address, {
@@ -753,8 +749,8 @@ class TestServerSelectionErrors(TopologyTest):
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertRegex('No replica set members match selectors',
-                         t, ReadPreference.PRIMARY)
+        self.assertMessage('No replica set members match selector "Primary()"',
+                           t, ReadPreference.PRIMARY)
 
         self.assertMessage('No primary available for writes',
                            t, writable_server_selector)
@@ -767,12 +763,14 @@ class TestServerSelectionErrors(TopologyTest):
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertRegex(
-            'No replica set members match selectors',
+        self.assertMessage(
+            'No replica set members match selector'
+            ' "Secondary(tag_sets=None, max_staleness=-1)"',
             t, ReadPreference.SECONDARY)
 
-        self.assertRegex(
-            'No replica set members match selectors',
+        self.assertMessage(
+            "No replica set members match selector"
+            " \"Secondary(tag_sets=[{'dc': 'ny'}], max_staleness=-1)\"",
             t, Secondary(tag_sets=[{'dc': 'ny'}]))
 
     def test_bad_replica_set_name(self):

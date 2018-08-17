@@ -23,7 +23,6 @@ from pymongo.errors import ConfigurationError
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.pool import PoolOptions
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import any_server_selector
 
 
 class TopologySettings(object):
@@ -37,7 +36,7 @@ class TopologySettings(object):
                  local_threshold_ms=LOCAL_THRESHOLD_MS,
                  server_selection_timeout=SERVER_SELECTION_TIMEOUT,
                  heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
-                 server_selector=any_server_selector):
+                 server_selector=None):
         """Represent MongoClient's configuration.
 
         Take a list of (host, port) pairs and optional replica set name.

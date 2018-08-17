@@ -35,7 +35,7 @@ from pymongo.topology_description import (updated_topology_description,
 from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
-from pymongo.server_selectors import (any_server_selector, chain_selectors,
+from pymongo.server_selectors import (any_server_selector,
                                       arbiter_server_selector,
                                       secondary_server_selector,
                                       readable_server_selector,
@@ -187,18 +187,16 @@ class Topology(object):
 
     def _select_servers_loop(self, selector, timeout, address):
         """select_servers() guts. Hold the lock when calling this."""
-        selectors = [selector, self._settings.server_selector]
-
         now = _time()
         end_time = now + timeout
-        server_descriptions = self._description.apply_selectors(
-            selectors, address)
+        server_descriptions = self._description.apply_selector(
+            selector, address, custom_selector=self._settings.server_selector)
 
         while not server_descriptions:
             # No suitable servers.
             if timeout == 0 or now > end_time:
                 raise ServerSelectionTimeoutError(
-                    self._error_message(selectors))
+                    self._error_message(selector))
 
             self._ensure_opened()
             self._request_check_all()
@@ -210,8 +208,9 @@ class Topology(object):
             self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
             self._description.check_compatible()
             now = _time()
-            server_descriptions = self._description.apply_selectors(
-                selectors, address)
+            server_descriptions = self._description.apply_selector(
+                selector, address,
+                custom_selector=self._settings.server_selector)
 
         self._description.check_compatible()
         return server_descriptions
@@ -221,8 +220,9 @@ class Topology(object):
                       server_selection_timeout=None,
                       address=None):
         """Like select_servers, but choose a random server if several match."""
-        return random.choice(self.select_servers(
-            selector, server_selection_timeout, address))
+        return random.choice(self.select_servers(selector,
+                                                 server_selection_timeout,
+                                                 address))
 
     def select_server_by_address(self, address,
                                  server_selection_timeout=None):
@@ -558,7 +558,7 @@ class Topology(object):
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)
 
-    def _error_message(self, selectors):
+    def _error_message(self, selector):
         """Format an error message if server selection fails.
 
         Hold the lock when calling this.
@@ -576,13 +576,13 @@ class Topology(object):
 
         if self._description.known_servers:
             # We've connected, but no servers match the selector.
-            if writable_server_selector in selectors:
+            if selector is writable_server_selector:
                 if is_replica_set:
                     return 'No primary available for writes'
                 else:
                     return 'No %s available for writes' % server_plural
             else:
-                return 'No %s match selectors "%s"' % (server_plural, selectors)
+                return 'No %s match selector "%s"' % (server_plural, selector)
         else:
             addresses = list(self._description.server_descriptions())
             servers = list(self._description.server_descriptions().values())

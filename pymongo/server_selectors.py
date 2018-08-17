@@ -110,16 +110,6 @@ def writable_preferred_server_selector(selection):
             secondary_server_selector(selection))
 
 
-def chain_selectors(selectors):
-    """Returns a new selector that iteratively applies each selector in the
-    given iterable."""
-    def _selector(selection):
-        for selector in selectors:
-            selection = selector(selection)
-        return selection
-    return _selector
-
-
 def apply_single_tag_set(tag_set, selection):
     """All servers matching one tag set.
 
