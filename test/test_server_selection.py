@@ -19,13 +19,16 @@ import sys
 
 from pymongo import MongoClient
 from pymongo import ReadPreference
-from pymongo.ismaster import IsMaster
+from pymongo.topology import Topology
+from pymongo.settings import TopologySettings
 
 sys.path[0:0] = [""]
 
 from test import client_context, unittest, IntegrationTest
 from test.utils import rs_or_single_client, wait_until, EventListener
-from test.utils_selection_tests import create_selection_tests
+from test.utils_selection_tests import (
+    create_selection_tests, get_addresses, get_topology_settings_dict,
+    make_server_description)
 
 
 # Location of JSON test specifications.
@@ -110,6 +113,62 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         test_collection.update_one({'name': 'Jane'}, {'$set': {'age': 21}})
         test_collection.find_one({'name': 'Roe'})
         self.assertGreaterEqual(_selector.call_count, 4)
+
+    @client_context.require_replica_set
+    def test_latency_threshold_application(self):
+        # No-op selector that keeps track of what was passed to it.
+        class _Selector(object):
+            def __init__(self):
+                self.selection = None
+
+            def __call__(self, selection):
+                self.selection = selection
+                return selection
+
+        _selector = _Selector()
+
+        scenario_def = {
+            'topology_description': {
+                'type': 'ReplicaSetWithPrimary', 'servers': [
+                    {'address': 'b:27017',
+                     'avg_rtt_ms': 10000,
+                     'type': 'RSSecondary',
+                     'tag': {}},
+                    {'address': 'c:27017',
+                     'avg_rtt_ms': 20000,
+                     'type': 'RSSecondary',
+                     'tag': {}},
+                    {'address': 'a:27017',
+                     'avg_rtt_ms': 30000,
+                     'type': 'RSPrimary',
+                     'tag': {}},
+                ]}}
+
+        # Create & populate Topology such that all but one server is too slow.
+        rtt_times = [srv['avg_rtt_ms'] for srv in
+                     scenario_def['topology_description']['servers']]
+        min_rtt_idx = rtt_times.index(min(rtt_times))
+        seeds, hosts = get_addresses(
+            scenario_def["topology_description"]["servers"])
+        settings = get_topology_settings_dict(
+            heartbeat_frequency=1, local_threshold_ms=1, seeds=seeds,
+            server_selector=_selector)
+        topology = Topology(TopologySettings(**settings))
+        topology.open()
+        for server in scenario_def['topology_description']['servers']:
+            server_description = make_server_description(server, hosts)
+            topology.on_change(server_description)
+
+        # Invoke server selection and assert no filtering based on latency
+        # prior to custom server selection logic kicking in.
+        server = topology.select_server(ReadPreference.NEAREST)
+        self.assertEqual(
+            len(_selector.selection),
+            len(topology.description.server_descriptions()))
+
+        # Ensure proper filtering based on latency after custom selection.
+        self.assertEqual(
+            server.description.address, seeds[min_rtt_idx])
 
 
 if __name__ == "__main__":
