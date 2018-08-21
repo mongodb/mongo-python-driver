@@ -321,6 +321,14 @@ class MongoClient(common.BaseObject):
             Defaults to ``-1``, meaning no maximum. If maxStalenessSeconds
             is set, it must be a positive integer greater than or equal to
             90 seconds.
+          - `serverSelector`: (callable) Optional, user-provided function that
+            augments server selection rules. The function should accept as an
+            argument a list of
+            :class:`~pymongo.server_description.ServerDescription` objects and
+            return a list of server descriptions that should be considered
+            suitable for the desired operation.
+
+          .. seealso:: :doc:`/examples/server_selection`
 
           | **Authentication:**
 
