@@ -95,9 +95,9 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             def __init__(self):
                 self.call_count = 0
 
-            def __call__(self, selection):
+            def __call__(self, servers):
                 self.call_count += 1
-                return selection
+                return servers
 
         _selector = _Selector()
 
@@ -107,7 +107,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         self.addCleanup(mongo_client.drop_database, 'testdb')
         self.addCleanup(mongo_client.close)
 
-        # Do N operations and test selector is called all N times.
+        # Do N operations and test selector is called at least N times.
         test_collection.insert_one({'age': 20, 'name': 'John'})
         test_collection.insert_one({'age': 31, 'name': 'Jane'})
         test_collection.update_one({'name': 'Jane'}, {'$set': {'age': 21}})

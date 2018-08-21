@@ -247,15 +247,15 @@ class TopologyDescription(object):
             return [description] if description else []
         elif self.topology_type == TOPOLOGY_TYPE.Sharded:
             # Ignore read preference.
-            servers = Selection.from_topology_description(self)
+            selection = Selection.from_topology_description(self)
         else:
-            servers = selector(Selection.from_topology_description(self))
+            selection = selector(Selection.from_topology_description(self))
 
         # Apply custom selector followed by localThresholdMS.
         if custom_selector is not None:
-            servers = servers.with_server_descriptions(
-                custom_selector(servers.server_descriptions))
-        return apply_local_threshold(servers)
+            selection = selection.with_server_descriptions(
+                custom_selector(selection.server_descriptions))
+        return apply_local_threshold(selection)
 
     def has_readable_server(self, read_preference=ReadPreference.PRIMARY):
         """Does this topology have any readable servers available matching the

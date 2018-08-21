@@ -139,13 +139,11 @@ def get_topology_type_name(scenario_def):
         return name
 
 
-def get_topology_settings_dict(
-        monitor_class=MockMonitor, heartbeat_frequency=HEARTBEAT_FREQUENCY,
-        pool_class=MockPool, **kwargs):
+def get_topology_settings_dict(**kwargs):
     settings = dict(
-        monitor_class=monitor_class,
-        heartbeat_frequency=heartbeat_frequency,
-        pool_class=pool_class
+        monitor_class=MockMonitor,
+        heartbeat_frequency=HEARTBEAT_FREQUENCY,
+        pool_class=MockPool
     )
     settings.update(kwargs)
     return settings
