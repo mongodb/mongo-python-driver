@@ -52,8 +52,8 @@ selctor function:
 
    >>> def server_selector(server_descriptions):
    ...     servers = [
-   ...         server if server.address[0] == 'localhost'
-   ...         for server in server_descriptions
+   ...         server for server in server_descriptions
+   ...         if server.address[0] == 'localhost'
    ...     ]
    ...     if not servers:
    ...         return server_descriptions
