@@ -13,12 +13,6 @@ to prefer servers running on ``localhost``.
    custom server selectors can have unintended consequences such as degraded
    read/write performance.
 
-.. note::
-
-   Directing queries to servers running on ``localhost`` can be desirable
-   when using a sharded cluster with multiple ``mongos``, as locally run
-   queries are likely to see lower latency and higher throughput.
-
 
 .. testsetup::
 
