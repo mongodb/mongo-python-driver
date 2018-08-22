@@ -75,6 +75,8 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
 class MongoClient(common.BaseObject):
+    """Class that provides a full featured client for a MongoDB
+    instance, a replica set, or a set of mongoses."""
     HOST = "localhost"
     PORT = 27017
     # Define order to retrieve options from ClientOptions for __repr__.
