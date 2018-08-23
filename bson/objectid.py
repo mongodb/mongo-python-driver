@@ -41,7 +41,7 @@ def _raise_invalid_id(oid):
 
 def _random_bytes():
     """Get the 5-byte random field of an ObjectId."""
-    return struct.pack(">q", SystemRandom().randint(0, 0xFFFFFFFFFF))[3:]
+    return struct.pack(">Q", SystemRandom().randint(0, 0xFFFFFFFFFF))[3:]
 
 
 class ObjectId(object):
