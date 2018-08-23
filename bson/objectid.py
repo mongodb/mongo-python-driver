@@ -165,7 +165,7 @@ class ObjectId(object):
 
         # 3 bytes inc
         with ObjectId._inc_lock:
-            oid += struct.pack(">i", ObjectId._inc)[1:4]
+            oid += struct.pack(">I", ObjectId._inc)[1:4]
             ObjectId._inc = (ObjectId._inc + 1) % (_MAX_COUNTER_VALUE + 1)
 
         self.__id = oid
