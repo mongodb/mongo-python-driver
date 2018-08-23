@@ -19,14 +19,18 @@
 import binascii
 import calendar
 import datetime
-import random
 import struct
 import threading
 import time
 
+from random import SystemRandom
+
 from bson.errors import InvalidId
 from bson.py3compat import PY3, bytes_from_hex, string_type, text_type
 from bson.tz_util import utc
+
+
+_MAX_COUNTER_VALUE = 0xFFFFFF
 
 
 def _raise_invalid_id(oid):
@@ -36,20 +40,20 @@ def _raise_invalid_id(oid):
 
 
 def _random_bytes():
-    """Get the random portion of an ObjectId."""
-    return struct.pack(">q", random.randint(0, 0xFFFFFFFFFF))[3:]
+    """Get the 5-byte random field of an ObjectId."""
+    return struct.pack(">q", SystemRandom().randint(0, 0xFFFFFFFFFF))[3:]
 
 
 class ObjectId(object):
     """A MongoDB ObjectId.
     """
 
-    _inc = random.randint(0, 0xFFFFFF)
+    _inc = SystemRandom().randint(0, _MAX_COUNTER_VALUE)
     _inc_lock = threading.Lock()
 
     _random = _random_bytes()
 
-    __slots__ = ('__id')
+    __slots__ = ('__id',)
 
     _type_marker = 7
 
@@ -162,7 +166,7 @@ class ObjectId(object):
         # 3 bytes inc
         with ObjectId._inc_lock:
             oid += struct.pack(">i", ObjectId._inc)[1:4]
-            ObjectId._inc = (ObjectId._inc + 1) % 0xFFFFFF
+            ObjectId._inc = (ObjectId._inc + 1) % (_MAX_COUNTER_VALUE + 1)
 
         self.__id = oid
 
@@ -207,7 +211,7 @@ class ObjectId(object):
         represents the generation time in UTC. It is precise to the
         second.
         """
-        timestamp = struct.unpack(">i", self.__id[0:4])[0]
+        timestamp = struct.unpack(">I", self.__id[0:4])[0]
         return datetime.datetime.fromtimestamp(timestamp, utc)
 
     def __getstate__(self):

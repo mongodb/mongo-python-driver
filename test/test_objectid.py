@@ -22,7 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.errors import InvalidId
-from bson.objectid import ObjectId
+from bson.objectid import ObjectId, _MAX_COUNTER_VALUE
 from bson.py3compat import PY3, _unicode
 from bson.tz_util import (FixedOffset,
                           utc)
@@ -161,6 +161,33 @@ class TestObjectId(unittest.TestCase):
 
         self.assertTrue(ObjectId.is_valid(b"123456789012"))
         self.assertTrue(ObjectId.is_valid("123456789012123456789012"))
+
+    def test_counter_overflow(self):
+        # Spec-test to check counter overflows from max value to 0.
+        ObjectId._inc = _MAX_COUNTER_VALUE
+        ObjectId()
+        self.assertEqual(ObjectId._inc, 0)
+
+    def test_timestamp_values(self):
+        # Spec-test to check timestamp field is interpreted correctly.
+        TEST_DATA = {
+            0x00000000: (1970, 1, 1, 0, 0, 0),
+            0x7FFFFFFF: (2038, 1, 19, 3, 14, 7),
+            0x80000000: (2038, 1, 19, 3, 14, 8),
+            0xFFFFFFFF: (2106, 2, 7, 6, 28, 15),
+        }
+
+        def generate_objectid_with_timestamp(timestamp):
+            oid = ObjectId()
+            _, trailing_bytes = struct.unpack(">IQ", oid.binary)
+            new_oid = struct.pack(">IQ", timestamp, trailing_bytes)
+            return ObjectId(new_oid)
+
+        for tstamp, exp_datetime_args in TEST_DATA.items():
+            oid = generate_objectid_with_timestamp(tstamp)
+            self.assertEqual(
+                oid.generation_time,
+                datetime.datetime(*exp_datetime_args, tzinfo=utc))
 
 
 if __name__ == "__main__":
