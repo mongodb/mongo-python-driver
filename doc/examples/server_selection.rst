@@ -40,17 +40,11 @@ throughput. Please note, however, that it is highly dependent on the
 application if preferring ``localhost`` is beneficial or not.
 
 In addition to comparing the hostname with ``localhost``, our server selector
-function accounts for the following edge cases:
-
-* The list of server descriptions passed to the server selector is empty. This
-  can happen if the server selection process starts before the client has
-  received successful heartbeats from any of the ``mongod`` or ``mongos``.
-
-* No servers are running on ``localhost``. In this case, we allow the default
-  server selection logic to prevail by passing through all server descriptions
-  received by the server selector. Failure to do so would render the client
-  unable to communicate with MongoDB in the event that no servers were running
-  on ``localhost``.
+function accounts for the edge case when no servers are running on
+``localhost``. In this case, we allow the default server selection logic to
+prevail by passing through the received server description list unchanged.
+Failure to do this would render the client unable to communicate with MongoDB
+in the event that no servers were running on ``localhost``.
 
 
 The described server selection logic is implemented in the following server
@@ -92,7 +86,9 @@ during the selection process:
   this is the primary, while for a sharded cluster this can be an arbitrary
   number of ``mongos``
 
-* Apply the user-defined server selector function.
+* Apply the user-defined server selector function. Note that the custom server
+  selector is **not** called if there are no servers left from the previous
+  filtering stage.
 
 * Apply the ``localThresholdMS`` setting to the list of remaining hosts. This
   whittles the host list down to only contain servers whose latency is at most
@@ -102,22 +98,12 @@ during the selection process:
   operation is then performed against the selected server.
 
 
-For the case of **reads** the process is similar:
-
-* Select all servers matching the user's
-  :class:`~pymongo.read_preferences.ReadPreference` from the list of all known
-  hosts. For a 3-member replica set with a read preference of
-  :class:`~pymongo.read_preferences.Secondary`, this step would select all
-  available secondaries.
-
-* Apply the user-defined server selector function.
-
-* Apply the ``localThresholdMS`` setting to the list of remaining hosts. This
-  whittles the host list down to only contain servers whose latency is at most
-  ``localThresholdMS`` milliseconds higher than the lowest observed latency.
-
-* Select a server at random from the remaining host list. The desired
-  operation is then performed against the selected server.
+For the case of **reads** the process is identical except for the first step.
+Here, instead of selecting all writeable servers, we select all servers
+matching the user's :class:`~pymongo.read_preferences.ReadPreference` from the
+list of known hosts. As an example, for a 3-member replica set with a
+:class:`~pymongo.read_preferences.Secondary` read preference, we would select
+all available secondaries.
 
 
 In both cases, the user-defined server selector function is applied
