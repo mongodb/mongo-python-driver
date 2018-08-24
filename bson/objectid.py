@@ -19,6 +19,7 @@
 import binascii
 import calendar
 import datetime
+import os
 import struct
 import threading
 import time
@@ -48,10 +49,12 @@ class ObjectId(object):
     """A MongoDB ObjectId.
     """
 
+    _pid = os.getpid()
+
     _inc = SystemRandom().randint(0, _MAX_COUNTER_VALUE)
     _inc_lock = threading.Lock()
 
-    _random = _random_bytes()
+    __random = _random_bytes()
 
     __slots__ = ('__id',)
 
@@ -153,6 +156,16 @@ class ObjectId(object):
         except (InvalidId, TypeError):
             return False
 
+    @classmethod
+    def _random(cls):
+        """Generate a 5-byte random number once per process.
+        """
+        pid = os.getpid()
+        if pid != cls._pid:
+            cls._pid = pid
+            cls.__random = _random_bytes()
+        return cls.__random
+
     def __generate(self):
         """Generate a new value for this ObjectId.
         """
@@ -161,7 +174,7 @@ class ObjectId(object):
         oid = struct.pack(">I", int(time.time()))
 
         # 5 bytes random
-        oid += ObjectId._random
+        oid += ObjectId._random()
 
         # 3 bytes inc
         with ObjectId._inc_lock:

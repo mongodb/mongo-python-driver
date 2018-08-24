@@ -27,6 +27,7 @@ import warnings
 from collections import defaultdict
 from functools import partial
 
+from bson.objectid import ObjectId
 from pymongo import MongoClient, monitoring
 from pymongo.errors import AutoReconnect, OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS
@@ -186,10 +187,11 @@ def one(s):
     return next(iter(s))
 
 
-def oid_generated_on_client(oid):
-    """Is this process's PID in this ObjectId?"""
-    pid_from_doc = struct.unpack(">H", oid.binary[7:9])[0]
-    return (os.getpid() % 0xFFFF) == pid_from_doc
+def oid_generated_on_process(oid):
+    """Makes a determination as to whether the given ObjectId was generated
+    by the current process, based on the 5-byte random number in the ObjectId.
+    """
+    return ObjectId._random() == oid.binary[4:9]
 
 
 def delay(sec):

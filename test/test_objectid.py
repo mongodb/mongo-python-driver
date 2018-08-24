@@ -27,6 +27,7 @@ from bson.py3compat import PY3, _unicode
 from bson.tz_util import (FixedOffset,
                           utc)
 from test import SkipTest, unittest
+from test.utils import oid_generated_on_process
 
 
 def oid(x):
@@ -149,6 +150,9 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(oid_1_9, ObjectId("4d9a66561376c00b88000000"))
         self.assertEqual(oid_1_9, oid_1_10)
 
+    def test_random_bytes(self):
+        self.assertTrue(oid_generated_on_process(ObjectId()))
+
     def test_is_valid(self):
         self.assertFalse(ObjectId.is_valid(None))
         self.assertFalse(ObjectId.is_valid(4))
@@ -188,6 +192,14 @@ class TestObjectId(unittest.TestCase):
             self.assertEqual(
                 oid.generation_time,
                 datetime.datetime(*exp_datetime_args, tzinfo=utc))
+
+    def test_random_regenerated_on_pid_change(self):
+        # Test that change of pid triggers new random number generation.
+        random_original = ObjectId._random()
+        ObjectId._pid += 1
+        random_new = ObjectId._random()
+        self.assertNotEqual(random_original, random_new)
+        ObjectId._pid -= 1
 
 
 if __name__ == "__main__":
