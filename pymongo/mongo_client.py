@@ -75,6 +75,15 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
 class MongoClient(common.BaseObject):
+    """
+    A client-side representation of a MongoDB cluster.
+
+    Instances can represent either a standalone MongoDB server, a replica
+    set, or a sharded cluster. Instances of this class are responsible for
+    maintaining up-to-date state of the cluster, and possibly cache
+    resources related to this, including background threads for monitoring,
+    and connection pools.
+    """
     HOST = "localhost"
     PORT = 27017
     # Define order to retrieve options from ClientOptions for __repr__.
