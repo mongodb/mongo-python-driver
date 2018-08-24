@@ -252,7 +252,7 @@ class TopologyDescription(object):
             selection = selector(Selection.from_topology_description(self))
 
         # Apply custom selector followed by localThresholdMS.
-        if custom_selector is not None:
+        if custom_selector is not None and selection:
             selection = selection.with_server_descriptions(
                 custom_selector(selection.server_descriptions))
         return apply_local_threshold(selection)

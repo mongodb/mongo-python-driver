@@ -46,8 +46,6 @@ class TestCustomServerSelectorFunction(IntegrationTest):
     def test_functional_select_max_port_number_host(self):
         # Selector that returns server with highest port number.
         def custom_selector(servers):
-            if not servers:
-                return []
             ports = [s.address[1] for s in servers]
             idx = ports.index(max(ports))
             return [servers[idx]]
