@@ -199,7 +199,6 @@ class TestObjectId(unittest.TestCase):
         ObjectId._pid += 1
         random_new = ObjectId._random()
         self.assertNotEqual(random_original, random_new)
-        ObjectId._pid -= 1
 
 
 if __name__ == "__main__":
