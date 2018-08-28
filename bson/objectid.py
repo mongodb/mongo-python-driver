@@ -66,7 +66,7 @@ class ObjectId(object):
         An ObjectId is a 12-byte unique identifier consisting of:
 
           - a 4-byte value representing the seconds since the Unix epoch,
-          - a 5-byte random number,
+          - a 5-byte random value,
           - a 3-byte counter, starting with a random value.
 
         By default, ``ObjectId()`` creates a new unique identifier. The
@@ -95,6 +95,12 @@ class ObjectId(object):
           - `oid` (optional): a valid ObjectId.
 
         .. mongodoc:: objectids
+
+        .. versionchanged:: 3.8
+           :class:`~bson.objectid.ObjectId` now implements the `ObjectID
+           specification version 0.2
+           <https://github.com/mongodb/specifications/blob/master/source/
+           objectid.rst>`_.
         """
         if oid is None:
             self.__generate()
