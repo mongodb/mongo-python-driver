@@ -1128,7 +1128,9 @@ class TestCausalConsistencyExamples(IntegrationTest):
         # Start Causal Consistency Example 1
         with client.start_session(causal_consistency=True) as s1:
             current_date = datetime.datetime.today()
-            items = client.get_database('test').items
+            items = client.get_database(
+                'test', read_concern=ReadConcern('majority'),
+                write_concern=WriteConcern('majority', wtimeout=1000)).items
             items.update_one(
                 {'sku': "111", 'end': None},
                 {'$set': {'end': current_date}}, session=s1)
@@ -1143,7 +1145,9 @@ class TestCausalConsistencyExamples(IntegrationTest):
             s2.advance_operation_time(s1.operation_time)
 
             items = client.get_database(
-                'test', read_preference=ReadPreference.SECONDARY).items
+                'test', read_preference=ReadPreference.SECONDARY,
+                read_concern=ReadConcern('majority'),
+                write_concern=WriteConcern('majority', wtimeout=1000)).items
             for item in items.find({'end': None}, session=s2):
                 print(item)
         # End Causal Consistency Example 2
