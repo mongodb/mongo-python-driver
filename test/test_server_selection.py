@@ -76,7 +76,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         # Initialize client with appropriate listeners.
         listener = EventListener()
         client = rs_or_single_client(
-            serverSelector=custom_selector, event_listeners=[listener])
+            server_selector=custom_selector, event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client.get_database(
             'testdb', read_preference=ReadPreference.NEAREST).coll
@@ -104,17 +104,17 @@ class TestCustomServerSelectorFunction(IntegrationTest):
                     command.connection_id[1], expected_port)
 
     def test_invalid_server_selector(self):
-        # Test appropriate validation of serverSelector kwarg.
+        # Test appropriate validation of server_selector kwarg.
         for selector_candidate in [list(), 10, 'string', {}]:
             with self.assertRaisesRegex(ValueError, "must be a callable"):
-                MongoClient(connect=False, serverSelector=selector_candidate)
+                MongoClient(connect=False, server_selector=selector_candidate)
 
     @client_context.require_replica_set
     def test_selector_called(self):
         selector = CallCountSelector()
 
         # Client setup.
-        mongo_client = rs_or_single_client(serverSelector=selector)
+        mongo_client = rs_or_single_client(server_selector=selector)
         test_collection = mongo_client.testdb.test_collection
         self.addCleanup(mongo_client.drop_database, 'testdb')
         self.addCleanup(mongo_client.close)

@@ -2,7 +2,7 @@ Server Selector Example
 =======================
 
 Users can exert fine-grained control over the `server selection algorithm`_
-by setting the `serverSelector` option on the :class:`~pymongo.MongoClient`
+by setting the `server_selector` option on the :class:`~pymongo.MongoClient`
 to an appropriate callable. This example shows how to use this functionality
 to prefer servers running on ``localhost``.
 
@@ -70,7 +70,7 @@ server selector.
 
 .. doctest::
 
-   >>> client = MongoClient(serverSelector=server_selector)
+   >>> client = MongoClient(server_selector=server_selector)
 
 
 

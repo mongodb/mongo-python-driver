@@ -165,7 +165,7 @@ class ClientOptions(object):
             'heartbeatfrequencyms', common.HEARTBEAT_FREQUENCY)
         self.__retry_writes = options.get('retrywrites', common.RETRY_WRITES)
         self.__server_selector = options.get(
-            'serverselector', any_server_selector)
+            'server_selector', any_server_selector)
 
     @property
     def _options(self):

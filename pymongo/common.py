@@ -579,7 +579,7 @@ KW_VALIDATORS = {
     'tzinfo': validate_tzinfo,
     'username': validate_string_or_none,
     'password': validate_string_or_none,
-    'serverselector': validate_is_callable,
+    'server_selector': validate_is_callable,
 }
 
 URI_VALIDATORS.update(TIMEOUT_VALIDATORS)
