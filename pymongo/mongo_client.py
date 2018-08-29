@@ -206,6 +206,12 @@ class MongoClient(common.BaseObject):
             milliseconds) the driver will wait during server monitoring when
             connecting a new socket to a server before concluding the server
             is unavailable. Defaults to ``20000`` (20 seconds).
+          - `server_selector`: (callable or None) Optional, user-provided
+            function that augments server selection rules. The function should
+            accept as an argument a list of
+            :class:`~pymongo.server_description.ServerDescription` objects and
+            return a list of server descriptions that should be considered
+            suitable for the desired operation.
           - `serverSelectionTimeoutMS`: (integer) Controls how long (in
             milliseconds) the driver will wait to find an available,
             appropriate server to carry out a database operation; while it is
@@ -321,12 +327,6 @@ class MongoClient(common.BaseObject):
             Defaults to ``-1``, meaning no maximum. If maxStalenessSeconds
             is set, it must be a positive integer greater than or equal to
             90 seconds.
-          - `server_selector`: (callable) Optional, user-provided function that
-            augments server selection rules. The function should accept as an
-            argument a list of
-            :class:`~pymongo.server_description.ServerDescription` objects and
-            return a list of server descriptions that should be considered
-            suitable for the desired operation.
 
           .. seealso:: :doc:`/examples/server_selection`
 
