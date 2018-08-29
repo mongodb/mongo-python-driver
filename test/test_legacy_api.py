@@ -26,7 +26,6 @@ sys.path[0:0] = [""]
 from bson.binary import PYTHON_LEGACY, STANDARD
 from bson.code import Code
 from bson.codec_options import CodecOptions
-from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import string_type
 from bson.son import SON
@@ -54,8 +53,7 @@ from test.test_client import IntegrationTest
 from test.test_bulk import BulkTestBase, BulkAuthorizationTestBase
 from test.utils import (DeprecationFilter,
                         joinall,
-                        oid_generated_on_client,
-                        remove_all_users,
+                        oid_generated_on_process,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
                         single_client,
@@ -1514,7 +1512,7 @@ class TestLegacyBulk(BulkTestBase):
 
         self.assertEqual(1, self.coll.count())
         doc = self.coll.find_one()
-        self.assertTrue(oid_generated_on_client(doc['_id']))
+        self.assertTrue(oid_generated_on_process(doc['_id']))
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.insert({})

@@ -20,45 +20,18 @@ import binascii
 import calendar
 import datetime
 import os
-import random
-import socket
 import struct
 import threading
 import time
+
+from random import SystemRandom
 
 from bson.errors import InvalidId
 from bson.py3compat import PY3, bytes_from_hex, string_type, text_type
 from bson.tz_util import utc
 
-if PY3:
-    _ord = lambda x: x
-else:
-    _ord = ord
 
-
-# http://isthe.com/chongo/tech/comp/fnv/index.html#FNV-1a
-def _fnv_1a_24(data, _ord=_ord):
-    """FNV-1a 24 bit hash"""
-    # http://www.isthe.com/chongo/tech/comp/fnv/index.html#xor-fold
-    # Start with FNV-1a 32 bit.
-    hash_size = 2 ** 32
-    fnv_32_prime = 16777619
-    fnv_1a_hash = 2166136261  # 32-bit FNV-1 offset basis
-    for elt in data:
-        fnv_1a_hash = fnv_1a_hash ^ _ord(elt)
-        fnv_1a_hash = (fnv_1a_hash * fnv_32_prime) % hash_size
-
-    # xor-fold the result to 24 bit.
-    return (fnv_1a_hash >> 24) ^ (fnv_1a_hash & 0xffffff)
-
-
-def _machine_bytes():
-    """Get the machine portion of an ObjectId.
-    """
-    # gethostname() returns a unicode string in python 3.x
-    # We only need 3 bytes, and _fnv_1a_24 returns a 24 bit integer.
-    # Remove the padding byte.
-    return struct.pack("<I", _fnv_1a_24(socket.gethostname().encode()))[:3]
+_MAX_COUNTER_VALUE = 0xFFFFFF
 
 
 def _raise_invalid_id(oid):
@@ -67,16 +40,23 @@ def _raise_invalid_id(oid):
         " or a 24-character hex string" % oid)
 
 
+def _random_bytes():
+    """Get the 5-byte random field of an ObjectId."""
+    return struct.pack(">Q", SystemRandom().randint(0, 0xFFFFFFFFFF))[3:]
+
+
 class ObjectId(object):
     """A MongoDB ObjectId.
     """
 
-    _inc = random.randint(0, 0xFFFFFF)
+    _pid = os.getpid()
+
+    _inc = SystemRandom().randint(0, _MAX_COUNTER_VALUE)
     _inc_lock = threading.Lock()
 
-    _machine_bytes = _machine_bytes()
+    __random = _random_bytes()
 
-    __slots__ = ('__id')
+    __slots__ = ('__id',)
 
     _type_marker = 7
 
@@ -86,8 +66,7 @@ class ObjectId(object):
         An ObjectId is a 12-byte unique identifier consisting of:
 
           - a 4-byte value representing the seconds since the Unix epoch,
-          - a 3-byte machine identifier,
-          - a 2-byte process id, and
+          - a 5-byte random value,
           - a 3-byte counter, starting with a random value.
 
         By default, ``ObjectId()`` creates a new unique identifier. The
@@ -116,6 +95,12 @@ class ObjectId(object):
           - `oid` (optional): a valid ObjectId.
 
         .. mongodoc:: objectids
+
+        .. versionchanged:: 3.8
+           :class:`~bson.objectid.ObjectId` now implements the `ObjectID
+           specification version 0.2
+           <https://github.com/mongodb/specifications/blob/master/source/
+           objectid.rst>`_.
         """
         if oid is None:
             self.__generate()
@@ -156,7 +141,7 @@ class ObjectId(object):
             generation_time = generation_time - generation_time.utcoffset()
         timestamp = calendar.timegm(generation_time.timetuple())
         oid = struct.pack(
-            ">i", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
+            ">I", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
         return cls(oid)
 
     @classmethod
@@ -177,23 +162,30 @@ class ObjectId(object):
         except (InvalidId, TypeError):
             return False
 
+    @classmethod
+    def _random(cls):
+        """Generate a 5-byte random number once per process.
+        """
+        pid = os.getpid()
+        if pid != cls._pid:
+            cls._pid = pid
+            cls.__random = _random_bytes()
+        return cls.__random
+
     def __generate(self):
         """Generate a new value for this ObjectId.
         """
 
         # 4 bytes current time
-        oid = struct.pack(">i", int(time.time()))
+        oid = struct.pack(">I", int(time.time()))
 
-        # 3 bytes machine
-        oid += ObjectId._machine_bytes
-
-        # 2 bytes pid
-        oid += struct.pack(">H", os.getpid() % 0xFFFF)
+        # 5 bytes random
+        oid += ObjectId._random()
 
         # 3 bytes inc
         with ObjectId._inc_lock:
-            oid += struct.pack(">i", ObjectId._inc)[1:4]
-            ObjectId._inc = (ObjectId._inc + 1) % 0xFFFFFF
+            oid += struct.pack(">I", ObjectId._inc)[1:4]
+            ObjectId._inc = (ObjectId._inc + 1) % (_MAX_COUNTER_VALUE + 1)
 
         self.__id = oid
 
@@ -238,7 +230,7 @@ class ObjectId(object):
         represents the generation time in UTC. It is precise to the
         second.
         """
-        timestamp = struct.unpack(">i", self.__id[0:4])[0]
+        timestamp = struct.unpack(">I", self.__id[0:4])[0]
         return datetime.datetime.fromtimestamp(timestamp, utc)
 
     def __getstate__(self):

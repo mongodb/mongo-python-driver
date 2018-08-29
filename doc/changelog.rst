@@ -13,6 +13,9 @@ Changes in Version 3.8.0
 .. warning:: PyMongo no longer supports PyPy3 versions older than 3.5. Users
   must upgrade to PyPy3.5+.
 
+- :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
+  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/objectid.rst>`_.
+
 Issues Resolved
 ...............
 
