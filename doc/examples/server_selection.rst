@@ -78,37 +78,31 @@ Server Selection Process
 ------------------------
 
 This section dives deeper into the server selection process for reads and
-writes. Let's first consider the case of **writes**. Assuming it is connected to a
-reachable database, the driver performs the following operations (in order)
-during the selection process:
-
-* Select all writeable servers from the list of known hosts. For a replica set
-  this is the primary, while for a sharded cluster this can be an arbitrary
-  number of ``mongos``
-
-* Apply the user-defined server selector function. Note that the custom server
-  selector is **not** called if there are no servers left from the previous
-  filtering stage.
-
-* Apply the ``localThresholdMS`` setting to the list of remaining hosts. This
-  whittles the host list down to only contain servers whose latency is at most
-  ``localThresholdMS`` milliseconds higher than the lowest observed latency.
-
-* Select a server at random from the remaining host list. The desired
-  operation is then performed against the selected server.
+writes. In the case of a write, the driver performs the following operations
+(in order) during the selection process:
 
 
-For the case of **reads** the process is identical except for the first step.
+#. Select all writeable servers from the list of known hosts. For a replica set
+   this is the primary, while for a sharded cluster this is all the known mongoses.
+
+#. Apply the user-defined server selector function. Note that the custom server
+   selector is **not** called if there are no servers left from the previous
+   filtering stage.
+
+#. Apply the ``localThresholdMS`` setting to the list of remaining hosts. This
+   whittles the host list down to only contain servers whose latency is at most
+   ``localThresholdMS`` milliseconds higher than the lowest observed latency.
+
+#. Select a server at random from the remaining host list. The desired
+   operation is then performed against the selected server.
+
+
+In the case of **reads** the process is identical except for the first step.
 Here, instead of selecting all writeable servers, we select all servers
 matching the user's :class:`~pymongo.read_preferences.ReadPreference` from the
 list of known hosts. As an example, for a 3-member replica set with a
 :class:`~pymongo.read_preferences.Secondary` read preference, we would select
 all available secondaries.
 
-
-In both cases, the user-defined server selector function is applied
-to host pool *after* accounting for the
-:class:`~pymongo.read_preferences.ReadPreference`, but *before* applying the
-latency window specified by ``localThresholdMS``.
 
 .. _server selection algorithm: https://docs.mongodb.com/manual/core/read-preference-mechanics/
