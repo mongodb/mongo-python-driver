@@ -249,6 +249,27 @@ class GridFS(object):
         self.__files.delete_one({"_id": file_id}, session=session)
         self.__chunks.delete_many({"files_id": file_id}, session=session)
 
+    def delete_many(self, filter, session=None):
+        """Delete files from GridFS.
+
+        Deletes all data belonging to files matching the `query`.
+
+        .. warning:: Any processes/threads reading from the files while
+           this method is executing will likely see an invalid/corrupt
+           file. Care should be taken to avoid concurrent reads to a file
+           while it is being deleted.
+
+        :Parameters:
+          - `filter` (optional): a dictionary specifying
+            the query to be performing in the file collection.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`
+        """
+        file_ids = [f['_id'] for f in self.__files.find(filter, session=session)]
+        res = self.__files.delete_many({"_id": {"$in": file_ids}}, session=session)
+        self.__chunks.delete_many({"files_id": {"$in": file_ids}}, session=session)
+        return res
+
     def list(self, session=None):
         """List the names of all files stored in this instance of
         :class:`GridFS`.
