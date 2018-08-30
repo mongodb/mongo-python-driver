@@ -410,12 +410,15 @@ class MongoClient(common.BaseObject):
 
         .. mongodoc:: connections
 
-        .. versionchanged:: 3.6
-           Added support for mongodb+srv:// URIs.
-           Added the ``retryWrites`` keyword argument and URI option.
+        .. versionchanged:: 3.8
+           Added the ``server_selector`` keyword argument.
 
         .. versionchanged:: 3.7
            Added the ``driver`` keyword argument.
+
+        .. versionchanged:: 3.6
+           Added support for mongodb+srv:// URIs.
+           Added the ``retryWrites`` keyword argument and URI option.
 
         .. versionchanged:: 3.5
            Add ``username`` and ``password`` options. Document the
