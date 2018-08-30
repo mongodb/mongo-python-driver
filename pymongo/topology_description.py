@@ -214,7 +214,7 @@ class TopologyDescription(object):
     def heartbeat_frequency(self):
         return self._topology_settings.heartbeat_frequency
 
-    def apply_selector(self, selector, address):
+    def apply_selector(self, selector, address, custom_selector=None):
 
         def apply_local_threshold(selection):
             if not selection:
@@ -239,18 +239,23 @@ class TopologyDescription(object):
                                              common_wv))
 
         if self.topology_type == TOPOLOGY_TYPE.Single:
-            # Ignore the selector.
+            # Ignore selectors for standalone.
             return self.known_servers
         elif address:
+            # Ignore selectors when explicit address is requested.
             description = self.server_descriptions().get(address)
             return [description] if description else []
         elif self.topology_type == TOPOLOGY_TYPE.Sharded:
-            # Ignore the read preference, but apply localThresholdMS.
-            return apply_local_threshold(
-                Selection.from_topology_description(self))
+            # Ignore read preference.
+            selection = Selection.from_topology_description(self)
         else:
-            return apply_local_threshold(
-                selector(Selection.from_topology_description(self)))
+            selection = selector(Selection.from_topology_description(self))
+
+        # Apply custom selector followed by localThresholdMS.
+        if custom_selector is not None and selection:
+            selection = selection.with_server_descriptions(
+                custom_selector(selection.server_descriptions))
+        return apply_local_threshold(selection)
 
     def has_readable_server(self, read_preference=ReadPreference.PRIMARY):
         """Does this topology have any readable servers available matching the

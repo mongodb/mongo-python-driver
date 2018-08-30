@@ -190,7 +190,7 @@ class Topology(object):
         now = _time()
         end_time = now + timeout
         server_descriptions = self._description.apply_selector(
-            selector, address)
+            selector, address, custom_selector=self._settings.server_selector)
 
         while not server_descriptions:
             # No suitable servers.
@@ -209,7 +209,8 @@ class Topology(object):
             self._description.check_compatible()
             now = _time()
             server_descriptions = self._description.apply_selector(
-                selector, address)
+                selector, address,
+                custom_selector=self._settings.server_selector)
 
         self._description.check_compatible()
         return server_descriptions

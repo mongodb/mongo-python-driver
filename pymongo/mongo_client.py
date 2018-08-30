@@ -215,6 +215,12 @@ class MongoClient(common.BaseObject):
             milliseconds) the driver will wait during server monitoring when
             connecting a new socket to a server before concluding the server
             is unavailable. Defaults to ``20000`` (20 seconds).
+          - `server_selector`: (callable or None) Optional, user-provided
+            function that augments server selection rules. The function should
+            accept as an argument a list of
+            :class:`~pymongo.server_description.ServerDescription` objects and
+            return a list of server descriptions that should be considered
+            suitable for the desired operation.
           - `serverSelectionTimeoutMS`: (integer) Controls how long (in
             milliseconds) the driver will wait to find an available,
             appropriate server to carry out a database operation; while it is
@@ -331,6 +337,8 @@ class MongoClient(common.BaseObject):
             is set, it must be a positive integer greater than or equal to
             90 seconds.
 
+          .. seealso:: :doc:`/examples/server_selection`
+
           | **Authentication:**
 
           - `username`: A string.
@@ -411,12 +419,15 @@ class MongoClient(common.BaseObject):
 
         .. mongodoc:: connections
 
-        .. versionchanged:: 3.6
-           Added support for mongodb+srv:// URIs.
-           Added the ``retryWrites`` keyword argument and URI option.
+        .. versionchanged:: 3.8
+           Added the ``server_selector`` keyword argument.
 
         .. versionchanged:: 3.7
            Added the ``driver`` keyword argument.
+
+        .. versionchanged:: 3.6
+           Added support for mongodb+srv:// URIs.
+           Added the ``retryWrites`` keyword argument and URI option.
 
         .. versionchanged:: 3.5
            Add ``username`` and ``password`` options. Document the
@@ -572,6 +583,7 @@ class MongoClient(common.BaseObject):
             condition_class=condition_class,
             local_threshold_ms=options.local_threshold_ms,
             server_selection_timeout=options.server_selection_timeout,
+            server_selector=options.server_selector,
             heartbeat_frequency=options.heartbeat_frequency)
 
         self._topology = Topology(self._topology_settings)

@@ -139,6 +139,16 @@ def get_topology_type_name(scenario_def):
         return name
 
 
+def get_topology_settings_dict(**kwargs):
+    settings = dict(
+        monitor_class=MockMonitor,
+        heartbeat_frequency=HEARTBEAT_FREQUENCY,
+        pool_class=MockPool
+    )
+    settings.update(kwargs)
+    return settings
+
+
 def create_test(scenario_def):
     def run_scenario(self):
         # Initialize topologies.
@@ -147,13 +157,13 @@ def create_test(scenario_def):
         else:
             frequency = HEARTBEAT_FREQUENCY
 
-        settings = dict(
-            monitor_class=MockMonitor,
-            heartbeat_frequency=frequency,
-            pool_class=MockPool)
-
-        settings['seeds'], hosts = get_addresses(
+        seeds, hosts = get_addresses(
             scenario_def['topology_description']['servers'])
+
+        settings = get_topology_settings_dict(
+            heartbeat_frequency=frequency,
+            seeds=seeds
+        )
 
         # "Eligible servers" is defined in the server selection spec as
         # the set of servers matching both the ReadPreference's mode

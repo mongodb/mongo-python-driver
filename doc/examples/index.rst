@@ -27,5 +27,6 @@ MongoDB, you can start it like so:
    gridfs
    high_availability
    mod_wsgi
+   server_selection
    tailable
    tls

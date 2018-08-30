@@ -25,6 +25,7 @@ from pymongo.pool import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name)
+from pymongo.server_selectors import any_server_selector
 from pymongo.ssl_support import get_ssl_context
 from pymongo.write_concern import WriteConcern
 
@@ -163,6 +164,8 @@ class ClientOptions(object):
         self.__heartbeat_frequency = options.get(
             'heartbeatfrequencyms', common.HEARTBEAT_FREQUENCY)
         self.__retry_writes = options.get('retrywrites', common.RETRY_WRITES)
+        self.__server_selector = options.get(
+            'server_selector', any_server_selector)
 
     @property
     def _options(self):
@@ -193,6 +196,10 @@ class ClientOptions(object):
     def server_selection_timeout(self):
         """The server selection timeout for this instance in seconds."""
         return self.__server_selection_timeout
+
+    @property
+    def server_selector(self):
+        return self.__server_selector
 
     @property
     def heartbeat_frequency(self):

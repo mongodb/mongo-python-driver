@@ -473,6 +473,15 @@ def validate_driver_or_none(option, value):
     return value
 
 
+def validate_is_callable_or_none(option, value):
+    """Validates that 'value' is a callable."""
+    if value is None:
+        return value
+    if not callable(value):
+        raise ValueError("%s must be a callable" % (option,))
+    return value
+
+
 def validate_ok_for_replace(replacement):
     """Validate a replacement document."""
     validate_is_mapping("replacement", replacement)
@@ -552,7 +561,7 @@ URI_VALIDATORS = {
     'unicode_decode_error_handler': validate_unicode_decode_error_handler,
     'retrywrites': validate_boolean_or_string,
     'compressors': validate_compressors,
-    'zlibcompressionlevel': validate_zlib_compression_level
+    'zlibcompressionlevel': validate_zlib_compression_level,
 }
 
 TIMEOUT_VALIDATORS = {
@@ -572,6 +581,7 @@ KW_VALIDATORS = {
     'tzinfo': validate_tzinfo,
     'username': validate_string_or_none,
     'password': validate_string_or_none,
+    'server_selector': validate_is_callable_or_none,
 }
 
 URI_VALIDATORS.update(TIMEOUT_VALIDATORS)
