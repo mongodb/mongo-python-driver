@@ -104,10 +104,13 @@ class TestCustomServerSelectorFunction(IntegrationTest):
                     command.connection_id[1], expected_port)
 
     def test_invalid_server_selector(self):
-        # Test appropriate validation of server_selector kwarg.
+        # Client initialization must fail if server_selector is not callable.
         for selector_candidate in [list(), 10, 'string', {}]:
             with self.assertRaisesRegex(ValueError, "must be a callable"):
                 MongoClient(connect=False, server_selector=selector_candidate)
+
+        # None value for server_selector is OK.
+        MongoClient(connect=False, server_selector=None)
 
     @client_context.require_replica_set
     def test_selector_called(self):

@@ -473,8 +473,10 @@ def validate_driver_or_none(option, value):
     return value
 
 
-def validate_is_callable(option, value):
+def validate_is_callable_or_none(option, value):
     """Validates that 'value' is a callable."""
+    if value is None:
+        return value
     if not callable(value):
         raise ValueError("%s must be a callable" % (option,))
     return value
@@ -579,7 +581,7 @@ KW_VALIDATORS = {
     'tzinfo': validate_tzinfo,
     'username': validate_string_or_none,
     'password': validate_string_or_none,
-    'server_selector': validate_is_callable,
+    'server_selector': validate_is_callable_or_none,
 }
 
 URI_VALIDATORS.update(TIMEOUT_VALIDATORS)
