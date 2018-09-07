@@ -816,6 +816,116 @@ if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson
 
 
+from collections import deque
+from io import BytesIO
+
+
+class BSONDocumentWriter(object):
+    def __init__(self):
+        self.reinit()
+
+    def reinit(self):
+        # Bytestream in which to place BSON encoded bytes.
+        # Deque used to track streams for nested documents.
+        self.__streams = deque()
+
+        # Size of document in bytes.
+        # Deque used to track sizes for nested documents.
+        self.__sizes = deque()
+
+    @property
+    def _level(self):
+        # Nesting level of document currently being populated.
+        # Top level document is level 1.
+        return len(self.__sizes)
+
+    @property
+    def _stream(self):
+        # Bytestream corresponding to current document.
+        return self.__streams[-1]
+
+    @property
+    def _size(self):
+        # Size of current document.
+        return self.__sizes[-1]
+
+    @_size.setter
+    def _size(self, value):
+        self.__sizes[-1] = value
+
+    def _insert_bytes(self, b):
+        self._size += self._stream.write(b)
+
+    def _finalize(self):
+        # Insert null byte to mark document end.
+        self._insert_bytes(b"\x00")
+
+        # Update size bytes.
+        self._stream.seek(0)
+        self._insert_bytes(_PACK_INT(self._size))
+
+    def _render_nested(self):
+        # Render document.
+        bstream = self._stream.getvalue()
+
+        # Drop size and stream corresponding to rendered document.
+        self.__streams.pop()
+        self.__sizes.pop()
+
+        # Insert rendered document into higher-level document.
+        self._insert_bytes(bstream)
+
+    def start_document(self, name=None):
+        if name is None and self._level >= 1:
+            raise RuntimeError("Must provide key name for nested documents.")
+
+        if name:
+            self._insert_bytes(b"\x03" + _make_name(name))
+
+        # Create stream for new document level.
+        self.__streams.append(BytesIO())
+
+        # Create size counter for new document level.
+        self.__sizes.append(0)
+
+        # Placeholder for document size.
+        self._insert_bytes(_PACK_INT(0))
+
+    def end_document(self):
+        # Finalize end current document.
+        self._finalize()
+
+        # If not top-level document, concatenate to higher-level document.
+        if self._level > 1:
+            self._render_nested()
+
+    def as_bytes(self):
+        if self._level != 1:
+            raise RuntimeError("Incomplete document definition")
+        return self._stream.getvalue()
+
+
+def _dict_to_bson_buffered(doc, check_keys, opts, top_level=True):
+    """Encode a document to BSON using a buffered interface."""
+    if _raw_document_class(doc):
+        return doc.raw
+    try:
+        writer = BSONDocumentWriter()
+        writer.start_document()
+        if top_level and "_id" in doc:
+            writer._insert_bytes(_element_to_bson('_id', doc['id'], check_keys, opts))
+        for (key, value) in iteritems(doc):
+            if not top_level or key != "_id":
+                    writer._insert_bytes(_element_to_bson(
+                        key, value, check_keys, opts))
+    except AttributeError:
+        raise TypeError("encoder expected a mapping type but got: %r" % (doc,))
+    else:
+        writer.end_document()
+
+    return writer.as_bytes()
+
+
 def _millis_to_datetime(millis, opts):
     """Convert milliseconds since epoch UTC to datetime."""
     diff = ((millis % 1000) + 1000) % 1000
@@ -1025,6 +1135,11 @@ class BSON(bytes):
             raise _CODEC_OPTIONS_TYPE_ERROR
 
         return cls(_dict_to_bson(document, check_keys, codec_options))
+
+    @classmethod
+    def encode_buffered(cls, document, check_keys=False,
+                        codec_options=DEFAULT_CODEC_OPTIONS):
+        return cls(_dict_to_bson_buffered(document, check_keys, codec_options))
 
     def decode(self, codec_options=DEFAULT_CODEC_OPTIONS):
         """Decode this BSON data.
