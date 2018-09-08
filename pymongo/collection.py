@@ -647,7 +647,7 @@ class Collection(common.BaseObject):
                    session=None):
         """Insert a single document.
 
-          >>> db.test.count({'x': 1})
+          >>> db.test.count_documents({'x': 1})
           0
           >>> result = db.test.insert_one({'x': 1})
           >>> result.inserted_id
@@ -697,12 +697,12 @@ class Collection(common.BaseObject):
                     bypass_document_validation=False, session=None):
         """Insert an iterable of documents.
 
-          >>> db.test.count()
+          >>> db.test.count_documents({})
           0
           >>> result = db.test.insert_many([{'x': i} for i in range(2)])
           >>> result.inserted_ids
           [ObjectId('54f113fffba522406c9cc20e'), ObjectId('54f113fffba522406c9cc20f')]
-          >>> db.test.count()
+          >>> db.test.count_documents({})
           2
 
         :Parameters:
@@ -1156,12 +1156,12 @@ class Collection(common.BaseObject):
     def delete_one(self, filter, collation=None, session=None):
         """Delete a single document matching the filter.
 
-          >>> db.test.count({'x': 1})
+          >>> db.test.count_documents({'x': 1})
           3
           >>> result = db.test.delete_one({'x': 1})
           >>> result.deleted_count
           1
-          >>> db.test.count({'x': 1})
+          >>> db.test.count_documents({'x': 1})
           2
 
         :Parameters:
@@ -1194,12 +1194,12 @@ class Collection(common.BaseObject):
     def delete_many(self, filter, collation=None, session=None):
         """Delete one or more documents matching the filter.
 
-          >>> db.test.count({'x': 1})
+          >>> db.test.count_documents({'x': 1})
           3
           >>> result = db.test.delete_many({'x': 1})
           >>> result.deleted_count
           3
-          >>> db.test.count({'x': 1})
+          >>> db.test.count_documents({'x': 1})
           0
 
         :Parameters:
@@ -2434,7 +2434,7 @@ class Collection(common.BaseObject):
         stage and returns a 
         :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
         iterates over changes on this collection.
-        
+
         Introduced in MongoDB 3.6.
 
         .. code-block:: python
@@ -2875,11 +2875,11 @@ class Collection(common.BaseObject):
                             projection=None, sort=None, session=None, **kwargs):
         """Finds a single document and deletes it, returning the document.
 
-          >>> db.test.count({'x': 1})
+          >>> db.test.count_documents({'x': 1})
           2
           >>> db.test.find_one_and_delete({'x': 1})
           {u'x': 1, u'_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
-          >>> db.test.count({'x': 1})
+          >>> db.test.count_documents({'x': 1})
           1
 
         If multiple documents match *filter*, a *sort* can be applied.

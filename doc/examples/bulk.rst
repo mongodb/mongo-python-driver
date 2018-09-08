@@ -29,7 +29,7 @@ bulk insert operations.
   >>> db = pymongo.MongoClient().bulk_example
   >>> db.test.insert_many([{'i': i} for i in range(10000)]).inserted_ids
   [...]
-  >>> db.test.count()
+  >>> db.test.count_documents({})
   10000
 
 Mixed Bulk Write Operations
