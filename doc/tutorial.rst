@@ -333,20 +333,20 @@ author is "Mike":
 Counting
 --------
 If we just want to know how many documents match a query we can
-perform a :meth:`~pymongo.cursor.Cursor.count` operation instead of a
-full query. We can get a count of all of the documents in a
-collection:
+perform a :meth:`~pymongo.collection.Collection.count_documents` operation
+instead of a full query. We can get a count of all of the documents
+in a collection:
 
 .. doctest::
 
-  >>> posts.count()
+  >>> posts.count_documents({})
   3
 
 or just of those documents that match a specific query:
 
 .. doctest::
 
-  >>> posts.find({"author": "Mike"}).count()
+  >>> posts.count_documents({"author": "Mike"})
   2
 
 Range Queries
