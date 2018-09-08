@@ -198,9 +198,9 @@ class UUIDLegacy(Binary):
       ...                          CodecOptions(uuid_representation=STANDARD))
       >>> coll.insert_one({'uuid': Binary(my_uuid.bytes, 3)}).inserted_id
       ObjectId('...')
-      >>> coll.find({'uuid': my_uuid}).count()
+      >>> coll.count_documents({'uuid': my_uuid})
       0
-      >>> coll.find({'uuid': UUIDLegacy(my_uuid)}).count()
+      >>> coll.count_documents({'uuid': UUIDLegacy(my_uuid)})
       1
       >>> coll.find({'uuid': UUIDLegacy(my_uuid)})[0]['uuid']
       UUID('...')
@@ -209,9 +209,9 @@ class UUIDLegacy(Binary):
       >>> doc = coll.find_one({'uuid': UUIDLegacy(my_uuid)})
       >>> coll.replace_one({"_id": doc["_id"]}, doc).matched_count
       1
-      >>> coll.find({'uuid': UUIDLegacy(my_uuid)}).count()
+      >>> coll.count_documents({'uuid': UUIDLegacy(my_uuid)})
       0
-      >>> coll.find({'uuid': {'$in': [UUIDLegacy(my_uuid), my_uuid]}}).count()
+      >>> coll.count_documents({'uuid': {'$in': [UUIDLegacy(my_uuid), my_uuid]}})
       1
       >>> coll.find_one({'uuid': my_uuid})['uuid']
       UUID('...')
