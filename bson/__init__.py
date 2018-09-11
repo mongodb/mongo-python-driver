@@ -817,7 +817,100 @@ if _USE_C:
 
 
 from collections import deque
+from contextlib import contextmanager
 from io import BytesIO
+
+
+class BSONDocumentReader(object):
+    def __init__(self, bstream, codec_options=DEFAULT_CODEC_OPTIONS):
+        self._data = None
+        self._size = None
+        self._position = None
+        self._current_name = None
+        self._current_type = None
+        self._codec_options = codec_options
+        self.reinit(bstream)
+
+    def reinit(self, bstream):
+        # Store the provided bytestream.
+        self._data = bstream
+
+    def start_document(self):
+        # Compute and store document size.
+        try:
+            size = _UNPACK_INT(self._data[:4])[0]
+        except struct.error as exc:
+            raise InvalidBSON(str(exc))
+        else:
+            self._size = size
+
+        # Validate
+        self._validate()
+
+        # Initialize read position counter.
+        self._position = 4
+
+    def end_document(self):
+        assert self._position == self._size - 1
+
+    def _validate(self):
+        if self._size != len(self._data):
+            raise InvalidBSON("invalid object size")
+        if self._data[self._size - 1:] != b"\x00":
+            raise InvalidBSON("bad eoo")
+
+    def _read_bytes(self, nbytes):
+        rbytes = self._data[self._position:self._position + nbytes]
+        self._position += nbytes
+        return rbytes
+
+    def _read_name(self):
+        # Read & store type information.
+        self._current_type = self._read_bytes(1)
+
+        # Read, interpret & store name information.
+        end_idx = self._data.index(b"\x00", self._position,)
+        name_length = end_idx - self._position
+        self._current_name = _utf_8_decode(
+            self._read_bytes(name_length),
+            self._codec_options.unicode_decode_error_handler, True)[0]
+
+        # Discard terminating null on name field.
+        self._read_bytes(1)
+        return self._current_name
+
+    def _read_element(self):
+        value, position = _ELEMENT_GETTER[self._current_type](
+            self._data, self._position, self._size - 1, self._codec_options,
+            self._current_name)
+        self._position = position
+        return value
+
+    def iterate_elements(self):
+        while self._position < self._size - 1:
+            key = self._read_name()
+            value = self._read_element()
+            yield key, value
+
+
+def _bson_to_dict_buffered(data, opts):
+    """Decode a BSON string to document_class."""
+    try:
+        if _raw_document_class(opts.document_class):
+            return opts.document_class(data, opts)
+        result = opts.document_class()
+        reader = BSONDocumentReader(data)
+        reader.start_document()
+        for key, value in reader.iterate_elements():
+            result[key] = value
+        reader.end_document()
+        return result
+    except InvalidBSON:
+        raise
+    except Exception:
+        # Change exception type to InvalidBSON but preserve traceback.
+        _, exc_value, exc_tb = sys.exc_info()
+        reraise(InvalidBSON, exc_value, exc_tb)
 
 
 class BSONDocumentWriter(object):
@@ -874,6 +967,12 @@ class BSONDocumentWriter(object):
 
         # Insert rendered document into higher-level document.
         self._insert_bytes(bstream)
+
+    @contextmanager
+    def document(self, name=None):
+        self.start_document(name)
+        yield
+        self.end_document()
 
     def start_document(self, name=None):
         if name is None and self._level >= 1:
@@ -1185,6 +1284,12 @@ class BSON(bytes):
             raise _CODEC_OPTIONS_TYPE_ERROR
 
         return _bson_to_dict(self, codec_options)
+
+    def decode_buffered(self, codec_options=DEFAULT_CODEC_OPTIONS):
+        if not isinstance(codec_options, CodecOptions):
+            raise _CODEC_OPTIONS_TYPE_ERROR
+
+        return _bson_to_dict_buffered(self, codec_options)
 
 
 def has_c():

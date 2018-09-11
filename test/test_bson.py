@@ -25,7 +25,7 @@ import uuid
 sys.path[0:0] = [""]
 
 import bson
-from bson import (BSON, BSONDocumentWriter,
+from bson import (BSON, BSONDocumentWriter, BSONDocumentReader,
                   decode_all,
                   decode_file_iter,
                   decode_iter,
@@ -112,6 +112,31 @@ class DSTAwareTimezone(datetime.tzinfo):
         return self.__name
 
 
+class TestBSONDocumentReader(unittest.TestCase):
+    def test_buffered_decoding_equivalent(self):
+        doc = BSON.encode({"a": 1, "b": "randomtxt", })
+        self.assertEqual(BSON.decode(doc), BSON.decode_buffered(doc))
+
+    def test_buffered_decoding_equivalent_nested(self):
+        doc = BSON.encode({"a": 1, "b": "randomtxt", "c": {"d": {"e": 6}}})
+        self.assertEqual(BSON.decode(doc), BSON.decode_buffered(doc))
+
+    def test_incremental(self):
+        doc = BSON.encode({"a": 1, "b": "randomtxt", })
+        expected_doc = BSON.decode(doc)
+
+        reader = BSONDocumentReader(doc)
+        result = reader._codec_options.document_class()
+        reader.start_document()
+        key = reader._read_name()
+        result[key] = reader._read_element()
+        key = reader._read_name()
+        result[key] = reader._read_element()
+        reader.end_document()
+
+        self.assertEqual(expected_doc, result)
+
+
 class TestBSONDocumentWriter(unittest.TestCase):
     def test_buffered_encoding_equivalent(self):
         doc = {"a": 1, "b": "randomtxt",}
@@ -144,6 +169,29 @@ class TestBSONDocumentWriter(unittest.TestCase):
         writer._insert_bytes(bson._element_to_bson('c', 3, False, bson.DEFAULT_CODEC_OPTIONS))
         writer.end_document()
         writer.end_document()
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+    def test_incremental_context_manager(self):
+        doc = {"a": 1, "b": "randomtxt", }
+        expected_bytes = BSON.encode(doc)
+
+        writer = BSONDocumentWriter()
+        with writer.document():
+            writer._insert_bytes(bson._element_to_bson('a', 1, False, bson.DEFAULT_CODEC_OPTIONS))
+            writer._insert_bytes(bson._element_to_bson('b', 'randomtxt', False, bson.DEFAULT_CODEC_OPTIONS))
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+    def test_incremental_context_manager_nested(self):
+        doc = {"a": 1, "b": {"c": 3}}
+        expected_bytes = BSON.encode(doc)
+
+        writer = BSONDocumentWriter()
+        with writer.document():
+            writer._insert_bytes(bson._element_to_bson('a', 1, False, bson.DEFAULT_CODEC_OPTIONS))
+            with writer.document("b"):
+                writer._insert_bytes(bson._element_to_bson('c', 3, False, bson.DEFAULT_CODEC_OPTIONS))
 
         self.assertEqual(expected_bytes, writer.as_bytes())
 
