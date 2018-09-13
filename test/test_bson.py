@@ -25,16 +25,12 @@ import uuid
 sys.path[0:0] = [""]
 
 import bson
-from bson import (BSON, BSONDocumentWriter, BSONDocumentReader,
-                  decode_all,
-                  decode_file_iter,
-                  decode_iter,
-                  EPOCH_AWARE,
-                  is_valid,
-                  Regex)
+from bson import (BSON, BSONDocumentWriter, BSONDocumentReader, BSONCodecABC,
+                  decode_all, decode_file_iter, decode_iter, EPOCH_AWARE,
+                  is_valid, Regex)
 from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
-from bson.codec_options import CodecOptions
+from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
@@ -152,8 +148,8 @@ class TestBSONDocumentWriter(unittest.TestCase):
 
         writer = BSONDocumentWriter()
         writer.start_document()
-        writer._insert_bytes(bson._element_to_bson('a', 1, False, bson.DEFAULT_CODEC_OPTIONS))
-        writer._insert_bytes(bson._element_to_bson('b', 'randomtxt', False, bson.DEFAULT_CODEC_OPTIONS))
+        writer.write_int('a', 1)
+        writer.write_string('b', 'randomtxt')
         writer.end_document()
 
         self.assertEqual(expected_bytes, writer.as_bytes())
@@ -164,9 +160,9 @@ class TestBSONDocumentWriter(unittest.TestCase):
 
         writer = BSONDocumentWriter()
         writer.start_document()
-        writer._insert_bytes(bson._element_to_bson('a', 1, False, bson.DEFAULT_CODEC_OPTIONS))
+        writer.write_int('a', 1)
         writer.start_document("b")
-        writer._insert_bytes(bson._element_to_bson('c', 3, False, bson.DEFAULT_CODEC_OPTIONS))
+        writer.write_int('c', 3)
         writer.end_document()
         writer.end_document()
 
@@ -178,8 +174,8 @@ class TestBSONDocumentWriter(unittest.TestCase):
 
         writer = BSONDocumentWriter()
         with writer.document():
-            writer._insert_bytes(bson._element_to_bson('a', 1, False, bson.DEFAULT_CODEC_OPTIONS))
-            writer._insert_bytes(bson._element_to_bson('b', 'randomtxt', False, bson.DEFAULT_CODEC_OPTIONS))
+            writer.write_int('a', 1)
+            writer.write_string('b', 'randomtxt')
 
         self.assertEqual(expected_bytes, writer.as_bytes())
 
@@ -189,11 +185,212 @@ class TestBSONDocumentWriter(unittest.TestCase):
 
         writer = BSONDocumentWriter()
         with writer.document():
-            writer._insert_bytes(bson._element_to_bson('a', 1, False, bson.DEFAULT_CODEC_OPTIONS))
+            writer.write_int('a', 1)
             with writer.document("b"):
-                writer._insert_bytes(bson._element_to_bson('c', 3, False, bson.DEFAULT_CODEC_OPTIONS))
+                writer.write_int('c', 3)
 
         self.assertEqual(expected_bytes, writer.as_bytes())
+
+    def test_buffered_encoding_equivalent_array(self):
+        doc = {"a": 1, "b": "randomtxt", "c": [0, Int64(101), {'b': 2},]}
+        self.assertEqual(BSON.encode(doc), BSON.encode_buffered(doc))
+
+    def test_incremental_array(self):
+        doc = {"a": 1, "b": "randomtxt", "c": ['hello', Int64(10001), {'d': 1.2}]}
+        expected_bytes = BSON.encode(doc)
+
+        writer = BSONDocumentWriter()
+        writer.start_document()
+        writer.write_int('a', 1)
+        writer.write_string('b', 'randomtxt')
+        writer.start_array("c")
+        writer.write_string('hello')
+        writer.write_long(10001)
+
+        writer.start_document()
+        writer.write_float('d', 1.2)
+        writer.end_document()
+
+        writer.end_array()
+        writer.end_document()
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+    def test_incremental_array_2(self):
+        doc = {"c": ['hello', Int64(10001), {'d': 1.2, 'e': [True, {'a': 1}]}]}
+        expected_bytes = BSON.encode(doc)
+
+        writer = BSONDocumentWriter()
+        writer.start_document()
+        writer.start_array("c")
+        writer.write_string('hello')
+        writer.write_long(10001)
+        writer.start_document()
+        writer.write_float('d', 1.2)
+        writer.start_array('e')
+        writer.write_bool(True)
+        writer.start_document()
+        writer.write_int('a', 1)
+        writer.end_document()
+        writer.end_array()
+        writer.end_document()
+
+        writer.end_array()
+        writer.end_document()
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+
+class Address(object):
+    def __init__(self, street, city, zip):
+        self.street = street
+        self.city = city
+        self.zip = zip
+
+    def my_method(self):
+        # Some custom user-defined behaviour
+        pass
+
+
+class AddressFieldCodec(BSONCodecABC):
+    @staticmethod
+    def encode(key, value, writer, codec_options=DEFAULT_CODEC_OPTIONS):
+        writer.start_document(key)
+        writer.write_string('street', value.street)
+        writer.write_string('city', value.city)
+        writer.write_string('ZIP', value.zip)
+        writer.end_document()
+
+
+class PhoneNumber(object):
+    def __init__(self, number):
+        self.number = number
+
+    def my_method(self):
+        # Custom behavior
+        pass
+
+
+class PhoneNumberCodec(BSONCodecABC):
+    @staticmethod
+    def encode(key, value, writer, codec_options=DEFAULT_CODEC_OPTIONS):
+        writer.write_string(key, text_type(value.number))
+
+
+class Person(object):
+    def __init__(self, name, address, phone_number):
+        self.name = name
+        self.address = address
+        self.phone_number = phone_number
+
+    def my_method(self):
+        # Some custom user-defined behavior
+        pass
+
+
+class PersonFieldCodec(BSONCodecABC):
+    @staticmethod
+    def encode(key, value, writer, codec_options=DEFAULT_CODEC_OPTIONS):
+        writer.start_document(key)
+        writer.write_string('name', value.name)
+        AddressFieldCodec.encode(
+            'address', value.address, writer, codec_options)
+        PhoneNumberCodec.encode(
+            'phone_number', value.phone_number, writer, codec_options)
+        writer.end_document()
+
+
+class PersonFieldCodec2(BSONCodecABC):
+    @staticmethod
+    def encode(key, value, writer, codec_options=DEFAULT_CODEC_OPTIONS):
+        writer.start_document(key)
+        writer.write_string('name', value.name)
+        writer._write_custom_type('address', value.address)
+        writer._write_custom_type('phone_number', value.phone_number)
+        writer.end_document()
+
+
+
+class AddressDocumentCodec(BSONCodecABC):
+    @staticmethod
+    def encode(value, writer, codec_options=DEFAULT_CODEC_OPTIONS):
+        writer.start_document()
+        writer.write_string('street', value.street)
+        writer.write_string('city', value.city)
+        writer.write_string('ZIP', value.zip)
+        writer.end_document()
+
+
+class TestEndToEndCustomCodecWorkflow(unittest.TestCase):
+    def test_encoding_custom_field(self):
+        args = ("100 Forest Ave.", "Palo Alto", "95136")
+        address = Address(*args)
+        codec = CodecOptions()
+        codec.register_codec(Address, AddressFieldCodec)
+        encoded_doc = BSON.encode_buffered(
+            {'address': address}, check_keys=False, codec_options=codec)
+
+        expected_document = {'address': {
+            'street': args[0], 'city': args[1], 'ZIP': args[2]}}
+
+        self.assertEqual(expected_document, BSON.decode(encoded_doc))
+
+    def test_encoding_custom_document(self):
+        args = ("100 Forest Ave.", "Palo Alto", "95136")
+        address = Address(*args)
+        codec = CodecOptions()
+        codec.register_codec(Address, AddressDocumentCodec)
+        encoded_doc = BSON.encode_buffered(
+            address, check_keys=False, codec_options=codec)
+
+        expected_document = {
+            'street': args[0], 'city': args[1], 'ZIP': args[2]}
+
+        self.assertEqual(expected_document, BSON.decode(encoded_doc))
+
+    def test_enconding_custom_fields_nested(self):
+        address_args = ("100 Forest Ave.", "Palo Alto", "95136")
+        address = Address(*address_args)
+
+        _phone_number = 1234567890
+        phone_number = PhoneNumber(_phone_number)
+
+        person_args = ('MongoDB', address, phone_number)
+        person = Person(*person_args)
+
+        codec = CodecOptions()
+        codec.register_codec(Person, PersonFieldCodec)
+        encoded_doc = BSON.encode_buffered(
+            {'person': person,}, check_keys=False, codec_options=codec)
+
+        expected_document = {'person': {'name': person_args[0], 'address': {
+            'street': address_args[0], 'city': address_args[1],
+            'ZIP': address_args[2]}, 'phone_number': str(_phone_number)}}
+
+        self.assertEqual(expected_document, BSON.decode(encoded_doc))
+
+    def test_enconding_custom_fields_nested_simplified(self):
+        address_args = ("100 Forest Ave.", "Palo Alto", "95136")
+        address = Address(*address_args)
+
+        _phone_number = 1234567890
+        phone_number = PhoneNumber(_phone_number)
+
+        person_args = ('MongoDB', address, phone_number)
+        person = Person(*person_args)
+
+        codec = CodecOptions()
+        codec.register_codec(Person, PersonFieldCodec2)
+        codec.register_codec(Address, AddressFieldCodec)
+        codec.register_codec(PhoneNumber, PhoneNumberCodec)
+        encoded_doc = BSON.encode_buffered(
+            {'person': person}, check_keys=False, codec_options=codec)
+
+        expected_document = {'person': {'name': person_args[0], 'address': {
+            'street': address_args[0], 'city': address_args[1],
+            'ZIP': address_args[2]}, 'phone_number': str(_phone_number)}}
+
+        self.assertEqual(expected_document, BSON.decode(encoded_doc))
 
 
 class TestBSON(unittest.TestCase):

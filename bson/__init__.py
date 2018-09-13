@@ -818,7 +818,13 @@ if _USE_C:
 
 from collections import deque
 from contextlib import contextmanager
+from enum import Enum
 from io import BytesIO
+
+
+class _BSONContainerTypes(Enum):
+    DOCUMENT = b"\x03"
+    ARRAY = b"\x04"
 
 
 class BSONDocumentReader(object):
@@ -914,17 +920,28 @@ def _bson_to_dict_buffered(data, opts):
 
 
 class BSONDocumentWriter(object):
-    def __init__(self):
+    def __init__(self, check_keys=False, codec_options=DEFAULT_CODEC_OPTIONS):
+        self._check_keys = check_keys
+        self._codec_options = codec_options
         self.reinit()
 
     def reinit(self):
         # Bytestream in which to place BSON encoded bytes.
-        # Deque used to track streams for nested documents.
+        # Deque used to track streams for nested entities.
         self.__streams = deque()
 
         # Size of document in bytes.
-        # Deque used to track sizes for nested documents.
+        # Deque used to track sizes for nested entities.
         self.__sizes = deque()
+
+        # Container type to which we are currently writing.
+        # Can be a document or an array.
+        # Deque used to track nesting of containers.
+        self.__containers = deque()
+
+        # Array index at which we are currently writing.
+        # Deque used to track nesting of arrays.
+        self.__array_indices = deque()
 
     @property
     def _level(self):
@@ -942,12 +959,172 @@ class BSONDocumentWriter(object):
         # Size of current document.
         return self.__sizes[-1]
 
-    @_size.setter
-    def _size(self, value):
-        self.__sizes[-1] = value
+    @property
+    def _current_index(self):
+        return self.__array_indices[-1]
+
+    @property
+    def _current_container(self):
+        return self.__containers[-1]
 
     def _insert_bytes(self, b):
-        self._size += self._stream.write(b)
+        self.__sizes[-1] += self._stream.write(b)
+
+    def _key_name(self, key):
+        if key is not None:
+            return _make_name(key)
+
+        # Top level document has no name.
+        if self._level <= 1:
+            return
+
+        # Generate array index names or error if not in array.
+        if self._current_container != _BSONContainerTypes.ARRAY:
+            raise RuntimeError("field name not provided for non-array element")
+        key = text_type(self._current_index)
+        self.__array_indices[-1] += 1
+        return _make_name(key)
+
+    def _unpack_args(self, args):
+        nargs = len(args)
+        if nargs == 0:
+            raise RuntimeError("field value not provided")
+        elif nargs == 1:
+            key, value = None, args[0]
+        else:
+            key, value = args[0], args[1]
+        return self._key_name(key), value
+
+    def write_bool(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_bool(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_datetime(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_datetime(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_float(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_float(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_int(self, *args):
+        # FIXME: this will still encode to Int64 if value is too large.
+        # TODO: what should proper behavior be in this case?
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_int(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_long(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_long(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_string(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_text(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_none(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_none(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_binary(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_binary(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_code(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_code(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_dbref(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_dbref(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_maxkey(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_maxkey(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_minkey(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_minkey(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_objectid(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_objectid(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_regex(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_regex(
+            key, value, self._check_keys, self._codec_options))
+
+    # def write_mapping(self, *args):
+    #     key, value = self._unpack_args(args)
+    #     self._insert_bytes(_encode_mapping(
+    #         key, value, self._check_keys, self._codec_options))
+
+    def write_timestamp(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_timestamp(
+            key, value, self._check_keys, self._codec_options))
+
+    def write_decimal128(self, *args):
+        key, value = self._unpack_args(args)
+        self._insert_bytes(_encode_decimal128(
+            key, value, self._check_keys, self._codec_options))
+
+    def _write_custom_type(self, key, value):
+        #codec = self._codec_options.custom_codec_map[type(value)]
+        codec = self._codec_options.get_codec_for_type(type(value))
+        codec.encode(key, value, self, self._codec_options)
+
+    def _write_custom_document(self, value, codec):
+        self.reinit()
+        codec.encode(value, self, self._codec_options)
+
+    def _write_start_container(self, name_bytes, container_type):
+        # Insert element name and type marker.
+        if name_bytes is not None:
+            self._insert_bytes(container_type.value + name_bytes)
+
+        # Create stream for new container.
+        self.__streams.append(BytesIO())
+
+        # Create size counter for new container.
+        self.__sizes.append(0)
+
+        # Update container tracking.
+        self.__containers.append(container_type)
+
+        # Placeholder for size.
+        self._insert_bytes(_PACK_INT(0))
+
+    def _write_end_container(self):
+        # End current container.
+        self._finalize()
+
+        # If not at the top-level document, render this container
+        # and concatenate it to the higher-level container.
+        if self._level > 1:
+            # Render document.
+            bstream = self._stream.getvalue()
+
+            # Drop size, stream and container info for rendered document.
+            self.__containers.pop()
+            self.__sizes.pop()
+            self.__streams.pop()
+
+            # Insert rendered document into higher-level document.
+            self._insert_bytes(bstream)
 
     def _finalize(self):
         # Insert null byte to mark document end.
@@ -957,17 +1134,6 @@ class BSONDocumentWriter(object):
         self._stream.seek(0)
         self._insert_bytes(_PACK_INT(self._size))
 
-    def _render_nested(self):
-        # Render document.
-        bstream = self._stream.getvalue()
-
-        # Drop size and stream corresponding to rendered document.
-        self.__streams.pop()
-        self.__sizes.pop()
-
-        # Insert rendered document into higher-level document.
-        self._insert_bytes(bstream)
-
     @contextmanager
     def document(self, name=None):
         self.start_document(name)
@@ -975,28 +1141,24 @@ class BSONDocumentWriter(object):
         self.end_document()
 
     def start_document(self, name=None):
-        if name is None and self._level >= 1:
+        # Embedded documents must have a name provided unless in an array.
+        if (name is None and self._level >= 1 and
+                self._current_container != _BSONContainerTypes.ARRAY):
             raise RuntimeError("Must provide key name for nested documents.")
-
-        if name:
-            self._insert_bytes(b"\x03" + _make_name(name))
-
-        # Create stream for new document level.
-        self.__streams.append(BytesIO())
-
-        # Create size counter for new document level.
-        self.__sizes.append(0)
-
-        # Placeholder for document size.
-        self._insert_bytes(_PACK_INT(0))
+        self._write_start_container(
+            self._key_name(name), _BSONContainerTypes.DOCUMENT)
 
     def end_document(self):
-        # Finalize end current document.
-        self._finalize()
+        self._write_end_container()
 
-        # If not top-level document, concatenate to higher-level document.
-        if self._level > 1:
-            self._render_nested()
+    def start_array(self, name):
+        self._write_start_container(
+            self._key_name(name), _BSONContainerTypes.ARRAY)
+        self.__array_indices.append(0)
+
+    def end_array(self):
+        self._write_end_container()
+        self.__array_indices.pop()
 
     def as_bytes(self):
         if self._level != 1:
@@ -1004,19 +1166,43 @@ class BSONDocumentWriter(object):
         return self._stream.getvalue()
 
 
+class BSONCodecABC(object):
+
+    CLS_ENCODED = None
+
+    @staticmethod
+    def encode(value, writer, codec_options=DEFAULT_CODEC_OPTIONS):
+        raise NotImplementedError
+
+    @staticmethod
+    def decode(value, reader, codec_options=DEFAULT_CODEC_OPTIONS):
+        raise NotImplementedError
+
+
 def _dict_to_bson_buffered(doc, check_keys, opts, top_level=True):
     """Encode a document to BSON using a buffered interface."""
     if _raw_document_class(doc):
         return doc.raw
     try:
-        writer = BSONDocumentWriter()
+        writer = BSONDocumentWriter(codec_options=opts)
         writer.start_document()
         if top_level and "_id" in doc:
             writer._insert_bytes(_element_to_bson('_id', doc['id'], check_keys, opts))
         for (key, value) in iteritems(doc):
             if not top_level or key != "_id":
+                try:
                     writer._insert_bytes(_element_to_bson(
                         key, value, check_keys, opts))
+                except InvalidDocument:
+                    writer._write_custom_type(key, value,)
+    except TypeError:
+        # We can end up here if the entire document needs custom encoding, as
+        # opposed to only some fields in the document needing it.
+        for base in opts.custom_codec_map:
+            if isinstance(doc, base):
+                writer._write_custom_document(doc, opts.custom_codec_map[base])
+                return writer.as_bytes()
+        raise TypeError("no custom encodings registered for: %r" % (doc,))
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % (doc,))
     else:

@@ -35,7 +35,7 @@ def _raw_document_class(document_class):
 _options_base = namedtuple(
     'CodecOptions',
     ('document_class', 'tz_aware', 'uuid_representation',
-     'unicode_decode_error_handler', 'tzinfo'))
+     'unicode_decode_error_handler', 'tzinfo', 'custom_codec_map'))
 
 
 class CodecOptions(_options_base):
@@ -104,7 +104,7 @@ class CodecOptions(_options_base):
     def __new__(cls, document_class=dict,
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
                 unicode_decode_error_handler="strict",
-                tzinfo=None):
+                tzinfo=None, custom_codec_map={}):
         if not (issubclass(document_class, abc.MutableMapping) or
                 _raw_document_class(document_class)):
             raise TypeError("document_class must be dict, bson.son.SON, "
@@ -128,7 +128,7 @@ class CodecOptions(_options_base):
 
         return tuple.__new__(
             cls, (document_class, tz_aware, uuid_representation,
-                  unicode_decode_error_handler, tzinfo))
+                  unicode_decode_error_handler, tzinfo, custom_codec_map))
 
     def _arguments_repr(self):
         """Representation of the arguments used to create this object."""
@@ -166,6 +166,21 @@ class CodecOptions(_options_base):
             kwargs.get('unicode_decode_error_handler',
                        self.unicode_decode_error_handler),
             kwargs.get('tzinfo', self.tzinfo))
+
+    def register_codec(self, type_to_encode, codec):
+        self.custom_codec_map[type_to_encode] = codec
+
+    def get_codec_for_type(self, type_to_encode):
+        codec = self.custom_codec_map.get(type_to_encode)
+        if codec is not None:
+            return codec
+        for base in self.custom_codec_map:
+            if isinstance(type_to_encode, base):
+                codec = self.custom_codec_map[base]
+                self.custom_codec_map[type_to_encode] = codec
+                return codec
+        raise TypeError("no known codec for type {!r}".format(
+            type(type_to_encode)))
 
 
 DEFAULT_CODEC_OPTIONS = CodecOptions()
