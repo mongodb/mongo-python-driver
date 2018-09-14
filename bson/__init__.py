@@ -1025,7 +1025,7 @@ class BSONDocumentWriter(object):
             return
 
         # Generate array index names or error if not in array.
-        if self._current_container != _BSONContainerTypes.ARRAY:
+        if self._current_container != _BSONTypes.ARRAY:
             raise RuntimeError("field name not provided for non-array element")
         key = text_type(self._current_index)
         self.__array_indices[-1] += 1
@@ -1189,17 +1189,17 @@ class BSONDocumentWriter(object):
     def start_document(self, name=None):
         # Embedded documents must have a name provided unless in an array.
         if (name is None and self._level >= 1 and
-                self._current_container != _BSONContainerTypes.ARRAY):
+                self._current_container != _BSONTypes.ARRAY):
             raise RuntimeError("Must provide key name for nested documents.")
         self._write_start_container(
-            self._key_name(name), _BSONContainerTypes.DOCUMENT)
+            self._key_name(name), _BSONTypes.DOCUMENT)
 
     def end_document(self):
         self._write_end_container()
 
     def start_array(self, name):
         self._write_start_container(
-            self._key_name(name), _BSONContainerTypes.ARRAY)
+            self._key_name(name), _BSONTypes.ARRAY)
         self.__array_indices.append(0)
 
     def end_array(self):
