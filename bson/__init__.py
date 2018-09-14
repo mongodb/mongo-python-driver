@@ -822,9 +822,28 @@ from enum import Enum
 from io import BytesIO
 
 
-class _BSONContainerTypes(Enum):
+class _BSONTypes(Enum):
+    X00 = b"\x00"
+    FLOAT = b"\x01"
+    STRING = b"\x02"
     DOCUMENT = b"\x03"
     ARRAY = b"\x04"
+    BINARY = b"\x05"
+    UNDEFINED = b"\x06"
+    OBJECT_ID = b"\x07"
+    BOOLEAN_FALSE = b"\x08"
+    BOOLEAN_TRUE = b"\x09"
+    NULL = b"\x0A"
+
+
+class _BSONReaderState(Enum):
+    INITIAL = 1
+    TYPE = 2
+    NAME = 3
+    VALUE = 4
+    END_ARRAY = 5
+    END_DOC = 6
+    END = 7
 
 
 class BSONDocumentReader(object):
@@ -834,41 +853,68 @@ class BSONDocumentReader(object):
         self._position = None
         self._current_name = None
         self._current_type = None
+        self._state = None
         self._codec_options = codec_options
         self.reinit(bstream)
 
-    def reinit(self, bstream):
-        # Store the provided bytestream.
-        self._data = bstream
+    def _read_bytes(self, nbytes, final_state):
+        rbytes = self._data[self._position:self._position + nbytes]
+        self._position += nbytes
+        self._state = final_state
+        return rbytes
 
-    def start_document(self):
-        # Compute and store document size.
+    def _advance_next(self, final_state):
+        if self._state == final_state:
+            return
+
+
+    def _read_int(self, final_state):
+        """ Read a BSON Int32 type."""
         try:
-            size = _UNPACK_INT(self._data[:4])[0]
+            return _UNPACK_INT(self._read_bytes(4, final_state))[0]
         except struct.error as exc:
             raise InvalidBSON(str(exc))
-        else:
-            self._size = size
 
-        # Validate
-        self._validate()
-
-        # Initialize read position counter.
-        self._position = 4
-
-    def end_document(self):
-        assert self._position == self._size - 1
-
-    def _validate(self):
+    def _validate_document(self):
         if self._size != len(self._data):
             raise InvalidBSON("invalid object size")
         if self._data[self._size - 1:] != b"\x00":
             raise InvalidBSON("bad eoo")
 
-    def _read_bytes(self, nbytes):
-        rbytes = self._data[self._position:self._position + nbytes]
-        self._position += nbytes
-        return rbytes
+    def reinit(self, bstream):
+        # Store the provided bytestream.
+        self._data = bstream
+        self._position = 0
+        self._state = _BSONReaderState.INITIAL
+
+    def start_document(self):
+        # Compute size and validate document.
+        self._size = self._read_int(_BSONReaderState.TYPE)
+        self._validate_document()
+
+    def end_document(self):
+        assert self._position == self._size - 1
+
+    def read_bson_type(self):
+        if self._state != _BSONReaderState.TYPE:
+            self._advance_next(_BSONReaderState.TYPE)
+        # TODO: should this return a type instead of a byte?
+        self._current_type = self._read_bytes(1, _BSONReaderState.NAME)
+        self._current_name = None
+        return self._current_type
+
+    def read_name(self):
+        if self._state != _BSONReaderState.NAME:
+            self._advance_next(_BSONReaderState.NAME)
+        end_idx = self._data.index(b"\x00", self._position,)
+        name_length = end_idx - self._position
+        name_bytes = self._read_bytes(
+            name_length + 1, _BSONReaderState.VALUE)[:-1]
+        self._current_name = _utf_8_decode(
+            name_bytes, self._codec_options.unicode_decode_error_handler,
+            True)[0]
+        self._read_bytes(1)
+        return self._current_name
 
     def _read_name(self):
         # Read & store type information.
