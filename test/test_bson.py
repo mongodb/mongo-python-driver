@@ -124,10 +124,13 @@ class TestBSONDocumentReader(unittest.TestCase):
         reader = BSONDocumentReader(doc)
         result = reader._codec_options.document_class()
         reader.start_document()
-        key = reader._read_name()
-        result[key] = reader._read_element()
-        key = reader._read_name()
-        result[key] = reader._read_element()
+        key = reader.read_name()
+        if key == 'custom_encoded_key':
+            elt = reader.read_element()
+            # Do something with elt here.
+            result[key] = elt
+        else:
+            result[key] = reader.read_element()
         reader.end_document()
 
         self.assertEqual(expected_doc, result)

@@ -831,118 +831,170 @@ class _BSONTypes(Enum):
     BINARY = b"\x05"
     UNDEFINED = b"\x06"
     OBJECT_ID = b"\x07"
-    BOOLEAN_FALSE = b"\x08"
-    BOOLEAN_TRUE = b"\x09"
+    BOOLEAN = b"\x08"
+    UTCDATETIME = b"\x09"
     NULL = b"\x0A"
+    INT = b"\x10"
+    TIMESTAMP = b"\x11"
+    LONG = b"\x12"
+    DECIMAL128 = b"\x13"
 
 
 class _BSONReaderState(Enum):
-    INITIAL = 1
-    TYPE = 2
-    NAME = 3
-    VALUE = 4
-    END_ARRAY = 5
-    END_DOC = 6
-    END = 7
+    TOP_LEVEL = 1
+    DOCUMENT = 2
+    ARRAY = 3
+
+
+def _read_int32_from_bstream(bstream, start):
+    try:
+        return _UNPACK_INT(bstream[start:start + 4])[0]
+    except struct.error as exc:
+        raise InvalidBSON(str(exc))
+
+
+def _get_string_size(bstream, start):
+    return 4 + _read_int32_from_bstream(bstream, start)
+
+
+def _get_document_size(bstream, start):
+    return _read_int32_from_bstream(bstream, start)
+
+
+def _get_array_size(bstream, start):
+    return _read_int32_from_bstream(bstream, start)
+
+
+TYPE_SIZE_MAP = {
+    _BSONTypes.FLOAT: 8,
+    _BSONTypes.STRING: _get_string_size,
+    _BSONTypes.DOCUMENT: _get_document_size,
+    _BSONTypes.ARRAY: _get_array_size,
+    _BSONTypes.BOOLEAN: 1,
+    _BSONTypes.INT: 4,
+    _BSONTypes.LONG: 8,
+    _BSONTypes.DECIMAL128: 16
+}
+
+
+class _BSONEntry(object):
+    def __init__(self, bstream, head, codec_options=DEFAULT_CODEC_OPTIONS):
+        self._bstream = bstream
+        self._codec_options = codec_options
+        self.reinit(head)
+
+    def reinit(self, head):
+        # Byte-position where this entry begins
+        self._head = head
+        self._type = None
+        self._name = None
+        self._name_size = None
+        self._value = None
+        self._value_size = None
+
+    @property
+    def name_start(self):
+        return self._head + 1
+
+    @property
+    def name_size(self):
+        if self._name_size is None:
+            end_idx = self._bstream.index(b"\x00", self.name_start)
+            self._name_size = end_idx - self.name_start
+        return self._name_size
+
+    @property
+    def name(self):
+        if self._name is None:
+            name_slc = slice(self.name_start, self.name_start + self.name_size)
+            name = _utf_8_decode(
+                self._bstream[name_slc],
+                self._codec_options.unicode_decode_error_handler, True)[0]
+            self._name = name
+        return self._name
+
+    @property
+    def type(self):
+        if self._type is None:
+            self._type = _BSONTypes(self._bstream[self._head:self._head + 1])
+        return self._type
+
+    @property
+    def value_start(self):
+        return self._head + 1 + self.name_size + 1
+
+    @property
+    def value_size(self):
+        if self._value_size is None:
+            size = size_getter = TYPE_SIZE_MAP[self.type]
+            if callable(size_getter):
+                size = size_getter(self._bstream, self.value_start)
+            self._value_size = size
+        return self._value_size
+
+    @property
+    def value(self):
+        if self._value is None:
+            self._value, position = _ELEMENT_GETTER[self.type.value](
+                self._bstream, self.value_start, self._head + self.size,
+                self._codec_options, self.name)
+            assert position == self._head + self.size
+        return self._value
+
+    @property
+    def size(self):
+        # Type byte + c-string name size + arbitrary value size
+        return 1 + self.name_size + 1 + self.value_size
 
 
 class BSONDocumentReader(object):
-    def __init__(self, bstream, codec_options=DEFAULT_CODEC_OPTIONS):
-        self._data = None
-        self._size = None
-        self._position = None
-        self._current_name = None
-        self._current_type = None
-        self._state = None
+    def __init__(self, bstream, state=_BSONReaderState.TOP_LEVEL,
+                 parent = None, codec_options=DEFAULT_CODEC_OPTIONS):
+        if state != _BSONReaderState.TOP_LEVEL and parent is None:
+            raise InvalidBSON("must specify parent if not top-level")
+        self._bstream = bstream
         self._codec_options = codec_options
-        self.reinit(bstream)
-
-    def _read_bytes(self, nbytes, final_state):
-        rbytes = self._data[self._position:self._position + nbytes]
-        self._position += nbytes
-        self._state = final_state
-        return rbytes
-
-    def _advance_next(self, final_state):
-        if self._state == final_state:
-            return
-
-
-    def _read_int(self, final_state):
-        """ Read a BSON Int32 type."""
-        try:
-            return _UNPACK_INT(self._read_bytes(4, final_state))[0]
-        except struct.error as exc:
-            raise InvalidBSON(str(exc))
+        self._state = state
+        self._parent = parent
+        self._size = None
+        self._current_head = None
+        self._current_entry = None
 
     def _validate_document(self):
-        if self._size != len(self._data):
+        if self._size != len(self._bstream):
             raise InvalidBSON("invalid object size")
-        if self._data[self._size - 1:] != b"\x00":
+        if self._bstream[self._size - 1:] != b"\x00":
             raise InvalidBSON("bad eoo")
 
-    def reinit(self, bstream):
-        # Store the provided bytestream.
-        self._data = bstream
-        self._position = 0
-        self._state = _BSONReaderState.INITIAL
-
     def start_document(self):
-        # Compute size and validate document.
-        self._size = self._read_int(_BSONReaderState.TYPE)
-        self._validate_document()
+        if self._current_entry is None:
+            self._size = _read_int32_from_bstream(self._bstream, 0)
+            self._validate_document()
+            self._current_head = 4
+            self._current_entry = _BSONEntry(
+                self._bstream, self._current_head, self._codec_options)
 
     def end_document(self):
-        assert self._position == self._size - 1
+        assert self._current_head == self._size - 1
 
     def read_bson_type(self):
-        if self._state != _BSONReaderState.TYPE:
-            self._advance_next(_BSONReaderState.TYPE)
-        # TODO: should this return a type instead of a byte?
-        self._current_type = self._read_bytes(1, _BSONReaderState.NAME)
-        self._current_name = None
-        return self._current_type
+        return self._current_entry.type
 
     def read_name(self):
-        if self._state != _BSONReaderState.NAME:
-            self._advance_next(_BSONReaderState.NAME)
-        end_idx = self._data.index(b"\x00", self._position,)
-        name_length = end_idx - self._position
-        name_bytes = self._read_bytes(
-            name_length + 1, _BSONReaderState.VALUE)[:-1]
-        self._current_name = _utf_8_decode(
-            name_bytes, self._codec_options.unicode_decode_error_handler,
-            True)[0]
-        self._read_bytes(1)
-        return self._current_name
+        return self._current_entry.name
 
-    def _read_name(self):
-        # Read & store type information.
-        self._current_type = self._read_bytes(1)
+    def read_element(self):
+        return self._current_entry.value
 
-        # Read, interpret & store name information.
-        end_idx = self._data.index(b"\x00", self._position,)
-        name_length = end_idx - self._position
-        self._current_name = _utf_8_decode(
-            self._read_bytes(name_length),
-            self._codec_options.unicode_decode_error_handler, True)[0]
+    def advance_next(self):
+        self._current_head += self._current_entry.size
+        self._current_entry.reinit(self._current_head)
 
-        # Discard terminating null on name field.
-        self._read_bytes(1)
-        return self._current_name
-
-    def _read_element(self):
-        value, position = _ELEMENT_GETTER[self._current_type](
-            self._data, self._position, self._size - 1, self._codec_options,
-            self._current_name)
-        self._position = position
-        return value
-
-    def iterate_elements(self):
-        while self._position < self._size - 1:
-            key = self._read_name()
-            value = self._read_element()
-            yield key, value
+    def __iter__(self):
+        while self._current_head < self._size - 1:
+            name = self.read_name()
+            yield name
+            self.advance_next()
 
 
 def _bson_to_dict_buffered(data, opts):
@@ -953,8 +1005,8 @@ def _bson_to_dict_buffered(data, opts):
         result = opts.document_class()
         reader = BSONDocumentReader(data)
         reader.start_document()
-        for key, value in reader.iterate_elements():
-            result[key] = value
+        for key in reader:
+            result[key] = reader.read_element()
         reader.end_document()
         return result
     except InvalidBSON:
@@ -1112,11 +1164,6 @@ class BSONDocumentWriter(object):
         key, value = self._unpack_args(args)
         self._insert_bytes(_encode_regex(
             key, value, self._check_keys, self._codec_options))
-
-    # def write_mapping(self, *args):
-    #     key, value = self._unpack_args(args)
-    #     self._insert_bytes(_encode_mapping(
-    #         key, value, self._check_keys, self._codec_options))
 
     def write_timestamp(self, *args):
         key, value = self._unpack_args(args)
