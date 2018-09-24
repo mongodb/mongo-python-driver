@@ -841,9 +841,11 @@ class _BSONTypes(Enum):
 
 
 class _BSONReaderState(Enum):
+    INITIAL = 0
     TOP_LEVEL = 1
     DOCUMENT = 2
     ARRAY = 3
+    END = 4
 
 
 def _read_int32_from_bstream(bstream, start):
@@ -873,7 +875,8 @@ TYPE_SIZE_MAP = {
     _BSONTypes.BOOLEAN: 1,
     _BSONTypes.INT: 4,
     _BSONTypes.LONG: 8,
-    _BSONTypes.DECIMAL128: 16
+    _BSONTypes.DECIMAL128: 16,
+    _BSONTypes.NULL: 0
 }
 
 
@@ -948,34 +951,102 @@ class _BSONEntry(object):
 
 
 class BSONDocumentReader(object):
-    def __init__(self, bstream, state=_BSONReaderState.TOP_LEVEL,
-                 parent = None, codec_options=DEFAULT_CODEC_OPTIONS):
-        if state != _BSONReaderState.TOP_LEVEL and parent is None:
-            raise InvalidBSON("must specify parent if not top-level")
+    def __init__(self, bstream, codec_options=DEFAULT_CODEC_OPTIONS):
         self._bstream = bstream
         self._codec_options = codec_options
-        self._state = state
-        self._parent = parent
-        self._size = None
-        self._current_head = None
-        self._current_entry = None
+        self._ends = deque()
+        self._heads = deque()
+        self._entries = deque()
+        self._states = deque()
+        self._states.append(_BSONReaderState.INITIAL)
+
+    @property
+    def _current_head(self):
+        return self._heads[-1]
+
+    @_current_head.setter
+    def _current_head(self, value):
+        self._heads[-1] = value
+
+    @property
+    def _current_entry(self):
+        return self._entries[-1]
+
+    @_current_entry.setter
+    def _current_entry(self, value):
+        self._entries[-1] = value
+
+    @property
+    def _current_end(self):
+        return self._ends[-1]
+
+    @property
+    def _current_state(self):
+        return self._states[-1]
+
+    @_current_state.setter
+    def _current_state(self, value):
+        self._states[-1] = value
 
     def _validate_document(self):
-        if self._size != len(self._bstream):
+        # Validates top-level document only.
+        # Current end must be properly initialized.
+        if self._current_end != len(self._bstream):
             raise InvalidBSON("invalid object size")
-        if self._bstream[self._size - 1:] != b"\x00":
+        if self._bstream[self._current_end - 1:] != b"\x00":
             raise InvalidBSON("bad eoo")
 
     def start_document(self):
-        if self._current_entry is None:
-            self._size = _read_int32_from_bstream(self._bstream, 0)
+        if self._current_state == _BSONReaderState.INITIAL:
+            self._current_state = _BSONReaderState.TOP_LEVEL
+            self._ends.append(_read_int32_from_bstream(self._bstream, 0))
+            self._heads.append(4)
             self._validate_document()
-            self._current_head = 4
-            self._current_entry = _BSONEntry(
-                self._bstream, self._current_head, self._codec_options)
+        else:
+            if self._current_entry.type != _BSONTypes.DOCUMENT:
+                raise InvalidBSON("not a document")
+            self._states.append(_BSONReaderState.DOCUMENT)
+            doc_start = self._current_entry.value_start
+            self._ends.append(doc_start + _read_int32_from_bstream(
+                self._bstream, doc_start))
+            self._heads.append(doc_start + 4)
+        # Finally.
+        self._entries.append(_BSONEntry(
+            self._bstream, self._current_head, self._codec_options))
 
     def end_document(self):
-        assert self._current_head == self._size - 1
+        # Jump out of current document.
+        if (self._current_state != _BSONReaderState.TOP_LEVEL and
+                self._current_state != _BSONReaderState.DOCUMENT):
+            raise InvalidBSON("not in a document")
+        if self._current_state == _BSONReaderState.TOP_LEVEL:
+            self._current_state = _BSONReaderState.END
+            # Add other cleanup here.
+        # Else its a nested doc.
+        self._states.pop()
+        self._entries.pop()
+        self._heads.pop()
+        self._ends.pop()
+
+    def start_array(self):
+        if self._current_entry.type != _BSONTypes.ARRAY:
+            raise InvalidBSON("not an array")
+        self._states.append(_BSONReaderState.ARRAY)
+        arr_start = self._current_entry.value_start
+        self._ends.append(arr_start + _read_int32_from_bstream(
+            self._bstream, arr_start))
+        self._heads.append(arr_start + 4)
+        self._entries.append(_BSONEntry(
+            self._bstream, self._current_head, self._codec_options))
+
+    def end_array(self):
+        # Jump out of current array.
+        if self._current_state != _BSONReaderState.ARRAY:
+            raise InvalidBSON("not an array")
+        self._states.pop()
+        self._entries.pop()
+        self._heads.pop()
+        self._ends.pop()
 
     def read_bson_type(self):
         return self._current_entry.type
@@ -986,15 +1057,15 @@ class BSONDocumentReader(object):
     def read_element(self):
         return self._current_entry.value
 
-    def advance_next(self):
-        self._current_head += self._current_entry.size
-        self._current_entry.reinit(self._current_head)
-
     def __iter__(self):
-        while self._current_head < self._size - 1:
-            name = self.read_name()
-            yield name
-            self.advance_next()
+        while (self._current_head < self._current_end - 1 and
+               self._current_state != _BSONReaderState.END):
+            self._current_entry.reinit(self._current_head)
+            if self._current_state == _BSONReaderState.ARRAY:
+                yield self.read_element()
+            else:
+                yield self.read_name()
+            self._current_head += self._current_entry.size
 
 
 def _bson_to_dict_buffered(data, opts):

@@ -117,20 +117,66 @@ class TestBSONDocumentReader(unittest.TestCase):
         doc = BSON.encode({"a": 1, "b": "randomtxt", "c": {"d": {"e": 6}}})
         self.assertEqual(BSON.decode(doc), BSON.decode_buffered(doc))
 
-    def test_incremental(self):
-        doc = BSON.encode({"a": 1, "b": "randomtxt", })
-        expected_doc = BSON.decode(doc)
+    def test_incremental_simple(self):
+        doc = BSON.encode({"a": 1, "b": "randomtxt", 'custom': 2})
+        expected_doc = {"a": 1, "b": "randomtxt", 'custom': '2'}
 
         reader = BSONDocumentReader(doc)
         result = reader._codec_options.document_class()
         reader.start_document()
-        key = reader.read_name()
-        if key == 'custom_encoded_key':
-            elt = reader.read_element()
-            # Do something with elt here.
-            result[key] = elt
-        else:
-            result[key] = reader.read_element()
+        for key in reader:
+            if key == 'custom':
+                elt = reader.read_element()
+                result[key] = str(elt)
+            else:
+                result[key] = reader.read_element()
+        reader.end_document()
+
+        self.assertEqual(expected_doc, result)
+
+    def test_incremental_nested_docs(self):
+        doc = BSON.encode({"a": 1, "custom": {"b": 2, "c": 3}})
+        expected_doc = {"a": 1, "b": '2'}
+
+        reader = BSONDocumentReader(doc)
+        result = reader._codec_options.document_class()
+        reader.start_document()
+        for key in reader:
+            if key == 'custom':
+                reader.start_document()
+                for skey in reader:
+                    if skey == 'b':
+                        result[skey] = str(reader.read_element())
+                        reader.end_document()
+            else:
+                result[key] = reader.read_element()
+        reader.end_document()
+
+        self.assertEqual(expected_doc, result)
+
+    def test_incremental_nested_array(self):
+        doc = BSON.encode({"a": [0, 1, {"_a1": 2, "_a2": 3}, 4], "b": None})
+        expected_doc = {"a": [0, 1, 2, 3, 4], "b": None}
+
+        reader = BSONDocumentReader(doc)
+        result = reader._codec_options.document_class()
+        reader.start_document()
+        for key in reader:
+            if key == 'a':
+                _op = []
+                reader.start_array()
+                for idx, sval in enumerate(reader):
+                    if idx == 2:
+                        reader.start_document()
+                        for _ in reader:
+                            _op.append(reader.read_element())
+                        reader.end_document()
+                    else:
+                        _op.append(reader.read_element())
+                reader.end_array()
+                result[key] = _op
+            else:
+                result[key] = reader.read_element()
         reader.end_document()
 
         self.assertEqual(expected_doc, result)
