@@ -1124,6 +1124,10 @@ axes:
         display_name: "Python 3.6"
         variables:
            PYTHON_BINARY: "/cygdrive/c/python/Python36/python.exe"
+      - id: "3.7"
+        display_name: "Python 3.7"
+        variables:
+           PYTHON_BINARY: "/cygdrive/c/python/Python37/python.exe"
   - id: coverage
     display_name: "Coverage"
     values:
