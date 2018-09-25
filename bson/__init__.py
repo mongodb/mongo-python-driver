@@ -1061,10 +1061,7 @@ class BSONDocumentReader(object):
         while (self._current_head < self._current_end - 1 and
                self._current_state != _BSONReaderState.END):
             self._current_entry.reinit(self._current_head)
-            if self._current_state == _BSONReaderState.ARRAY:
-                yield self.read_element()
-            else:
-                yield self.read_name()
+            yield self._current_entry
             self._current_head += self._current_entry.size
 
 
@@ -1076,8 +1073,8 @@ def _bson_to_dict_buffered(data, opts):
         result = opts.document_class()
         reader = BSONDocumentReader(data)
         reader.start_document()
-        for key in reader:
-            result[key] = reader.read_element()
+        for elt in reader:
+            result[elt.name] = elt.value
         reader.end_document()
         return result
     except InvalidBSON:

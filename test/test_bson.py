@@ -27,7 +27,7 @@ sys.path[0:0] = [""]
 import bson
 from bson import (BSON, BSONDocumentWriter, BSONDocumentReader, BSONCodecABC,
                   decode_all, decode_file_iter, decode_iter, EPOCH_AWARE,
-                  is_valid, Regex)
+                  is_valid, Regex, _BSONTypes)
 from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
 from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
@@ -124,12 +124,11 @@ class TestBSONDocumentReader(unittest.TestCase):
         reader = BSONDocumentReader(doc)
         result = reader._codec_options.document_class()
         reader.start_document()
-        for key in reader:
-            if key == 'custom':
-                elt = reader.read_element()
-                result[key] = str(elt)
+        for elt in reader:
+            if elt.name == 'custom':
+                result[elt.name] = str(elt.value)
             else:
-                result[key] = reader.read_element()
+                result[elt.name] = elt.value
         reader.end_document()
 
         self.assertEqual(expected_doc, result)
@@ -141,15 +140,15 @@ class TestBSONDocumentReader(unittest.TestCase):
         reader = BSONDocumentReader(doc)
         result = reader._codec_options.document_class()
         reader.start_document()
-        for key in reader:
-            if key == 'custom':
+        for elt in reader:
+            if elt.name == 'custom':
                 reader.start_document()
-                for skey in reader:
-                    if skey == 'b':
-                        result[skey] = str(reader.read_element())
+                for selt in reader:
+                    if selt.name == 'b':
+                        result[selt.name] = str(selt.value)
                         reader.end_document()
             else:
-                result[key] = reader.read_element()
+                result[elt.name] = elt.value
         reader.end_document()
 
         self.assertEqual(expected_doc, result)
@@ -161,22 +160,21 @@ class TestBSONDocumentReader(unittest.TestCase):
         reader = BSONDocumentReader(doc)
         result = reader._codec_options.document_class()
         reader.start_document()
-        for key in reader:
-            if key == 'a':
-                _op = []
+        for elt in reader:
+            if elt.name == 'a':
+                result[elt.name] = []
                 reader.start_array()
-                for idx, sval in enumerate(reader):
-                    if idx == 2:
+                for selt in reader:
+                    if selt.type == _BSONTypes.DOCUMENT:
                         reader.start_document()
-                        for _ in reader:
-                            _op.append(reader.read_element())
+                        for sselt in reader:
+                            result[elt.name].append(sselt.value)
                         reader.end_document()
                     else:
-                        _op.append(reader.read_element())
+                        result[elt.name].append(selt.value)
                 reader.end_array()
-                result[key] = _op
             else:
-                result[key] = reader.read_element()
+                result[elt.name] = elt.value
         reader.end_document()
 
         self.assertEqual(expected_doc, result)
