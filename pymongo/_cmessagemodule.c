@@ -762,6 +762,7 @@ encodefail:
     Py_XDECREF(iterator);
     buffer_free(buffer);
 bufferfail:
+    PyMem_Free(identifier);
     destroy_codec_options(&options);
     return result;
 }
