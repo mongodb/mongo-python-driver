@@ -1070,8 +1070,10 @@ def _bson_to_dict_buffered(data, opts):
     try:
         if _raw_document_class(opts.document_class):
             return opts.document_class(data, opts)
-        result = opts.document_class()
         reader = BSONDocumentReader(data)
+        if opts.document_class_codec is not None:
+            return opts.document_class_codec.from_bson(reader)
+        result = opts.document_class()
         reader.start_document()
         for elt in reader:
             result[elt.name] = elt.value
@@ -1248,9 +1250,8 @@ class BSONDocumentWriter(object):
         codec = self._codec_options.get_codec_for_type(type(value))
         codec.encode(key, value, self, self._codec_options)
 
-    def _write_custom_document(self, value, codec):
-        self.reinit()
-        codec.encode(value, self, self._codec_options)
+    def _write_custom_document(self, value):
+        self._codec_options.document_class_codec.to_bson(value, self)
 
     def _write_start_container(self, name_bytes, container_type):
         # Insert element name and type marker.
@@ -1340,6 +1341,14 @@ class BSONCodecABC(object):
         raise NotImplementedError
 
 
+class CustomDocumentClassCodecBase(object):
+
+    DOCUMENT_CLASS = None
+
+    def __init__(self, doc_cls):
+        self.DOCUMENT_CLASS = doc_cls
+
+
 def _dict_to_bson_buffered(doc, check_keys, opts, top_level=True):
     """Encode a document to BSON using a buffered interface."""
     if _raw_document_class(doc):
@@ -1359,10 +1368,10 @@ def _dict_to_bson_buffered(doc, check_keys, opts, top_level=True):
     except TypeError:
         # We can end up here if the entire document needs custom encoding, as
         # opposed to only some fields in the document needing it.
-        for base in opts.custom_codec_map:
-            if isinstance(doc, base):
-                writer._write_custom_document(doc, opts.custom_codec_map[base])
-                return writer.as_bytes()
+        if isinstance(doc, opts.document_class):
+            writer.reinit()
+            writer._write_custom_document(doc)
+            return writer.as_bytes()
         raise TypeError("no custom encodings registered for: %r" % (doc,))
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % (doc,))

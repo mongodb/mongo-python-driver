@@ -26,8 +26,8 @@ sys.path[0:0] = [""]
 
 import bson
 from bson import (BSON, BSONDocumentWriter, BSONDocumentReader, BSONCodecABC,
-                  decode_all, decode_file_iter, decode_iter, EPOCH_AWARE,
-                  is_valid, Regex, _BSONTypes)
+                  CustomDocumentClassCodecBase, decode_all, decode_file_iter,
+                  decode_iter, EPOCH_AWARE, is_valid, Regex, _BSONTypes)
 from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
 from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
@@ -309,6 +309,52 @@ class AddressFieldCodec(BSONCodecABC):
         writer.end_document()
 
 
+class AddressDocumentClassCodec(CustomDocumentClassCodecBase):
+    DOCUMENT_CLASS = Address
+
+    @classmethod
+    def to_bson(cls, value, writer):
+        assert isinstance(value, cls.DOCUMENT_CLASS)
+        writer.start_document()
+        writer.write_string('street', value.street)
+        writer.write_string('city', value.city)
+        writer.write_string('ZIP', value.zip)
+        writer.end_document()
+
+    @classmethod
+    def from_bson(cls, reader):
+        kwargs = {}
+        reader.start_document()
+        for entry in reader:
+            kwargs[entry.name.lower()] = entry.value
+        reader.end_document()
+        return cls.DOCUMENT_CLASS(**kwargs)
+
+
+class TestEndToEndCustomDocClsCodecWorkflow(unittest.TestCase):
+    def test_encoding_decoding_roundtrip_custom_field(self):
+        args = ("100 Forest Ave.", "Palo Alto", "95136")
+        address = Address(*args)
+        codec = CodecOptions(
+            document_class=Address,
+            document_class_codec=AddressDocumentClassCodec)
+        encoded_doc = BSON.encode_buffered(
+            address, check_keys=False, codec_options=codec)
+
+        expected_document = {
+            'street': args[0], 'city': args[1], 'ZIP': args[2]}
+
+        # Encoding
+        self.assertEqual(encoded_doc, BSON.encode(expected_document))
+
+        # Decoding
+        decoded_doc = BSON.decode_buffered(encoded_doc, codec_options=codec)
+        for attr in ('street', 'city', 'zip'):
+            self.assertEqual(
+                getattr(decoded_doc, attr), getattr(address, attr))
+        self.assertIsInstance(decoded_doc, Address)
+
+
 class PhoneNumber(object):
     def __init__(self, number):
         self.number = number
@@ -379,19 +425,6 @@ class TestEndToEndCustomCodecWorkflow(unittest.TestCase):
 
         expected_document = {'address': {
             'street': args[0], 'city': args[1], 'ZIP': args[2]}}
-
-        self.assertEqual(expected_document, BSON.decode(encoded_doc))
-
-    def test_encoding_custom_document(self):
-        args = ("100 Forest Ave.", "Palo Alto", "95136")
-        address = Address(*args)
-        codec = CodecOptions()
-        codec.register_codec(Address, AddressDocumentCodec)
-        encoded_doc = BSON.encode_buffered(
-            address, check_keys=False, codec_options=codec)
-
-        expected_document = {
-            'street': args[0], 'city': args[1], 'ZIP': args[2]}
 
         self.assertEqual(expected_document, BSON.decode(encoded_doc))
 

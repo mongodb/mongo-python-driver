@@ -36,7 +36,7 @@ _options_base = namedtuple(
     'CodecOptions',
     ('document_class', 'tz_aware', 'uuid_representation',
      'unicode_decode_error_handler', 'tzinfo', 'custom_codec_map',
-     'custom_document_class'))
+     'document_class_codec'))
 
 
 class CodecOptions(_options_base):
@@ -104,13 +104,14 @@ class CodecOptions(_options_base):
 
     def __new__(cls, document_class=dict,
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
-                unicode_decode_error_handler="strict",
-                tzinfo=None, custom_codec_map={}, custom_document_class=None):
+                unicode_decode_error_handler="strict", custom_codec_map=None,
+                tzinfo=None, document_class_codec=None):
         if not (issubclass(document_class, abc.MutableMapping) or
                 _raw_document_class(document_class)):
-            raise TypeError("document_class must be dict, bson.son.SON, "
-                            "bson.raw_bson.RawBSONDocument, or a "
-                            "sublass of collections.MutableMapping")
+            if document_class_codec is None:
+                raise TypeError("document_class must be dict, bson.son.SON, "
+                                "bson.raw_bson.RawBSONDocument, or a "
+                                "sublass of collections.MutableMapping")
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
@@ -127,10 +128,13 @@ class CodecOptions(_options_base):
                 raise ValueError(
                     "cannot specify tzinfo without also setting tz_aware=True")
 
+        if custom_codec_map is None:
+            custom_codec_map = {}
+
         return tuple.__new__(
             cls, (document_class, tz_aware, uuid_representation,
                   unicode_decode_error_handler, tzinfo, custom_codec_map,
-                  custom_document_class))
+                  document_class_codec))
 
     def _arguments_repr(self):
         """Representation of the arguments used to create this object."""
@@ -184,15 +188,9 @@ class CodecOptions(_options_base):
         raise TypeError("no known codec for type {!r}".format(
             type(type_to_encode)))
 
-    def use_custom_document_class(self):
-        return self.custom_document_class is not None
-
-    def get_codec_for_custom_document_class(self):
-        try:
-            return self.custom_codec_map[self.custom_document_class]
-        except KeyError:
-            raise TypeError("no known codec for document class {!r}".format(
-                type(self.custom_document_class)))
+    def set_custom_document_class(self, doc_cls, doc_cls_codec):
+        self.document_class = doc_cls
+        self.document_class_codec = doc_cls_codec(doc_cls)
 
 
 DEFAULT_CODEC_OPTIONS = CodecOptions()
