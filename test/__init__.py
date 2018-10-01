@@ -162,6 +162,7 @@ class ClientContext(object):
         self.auth_enabled = False
         self.test_commands_enabled = False
         self.is_mongos = False
+        self.mongoses = []
         self.is_rs = False
         self.has_ipv6 = False
         self.ssl = False
@@ -295,6 +296,17 @@ class ClientContext(object):
 
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
             self.has_ipv6 = self._server_started_with_ipv6()
+            if self.is_mongos:
+                # Check for another mongos on the next port.
+                address = self.client.address
+                next_address = address[0], address[1] + 1
+                self.mongoses.append(address)
+                mongos_client = self._connect(*next_address,
+                                              **self.default_client_options)
+                if mongos_client:
+                    ismaster = mongos_client.admin.command('ismaster')
+                    if ismaster.get('msg') == 'isdbgrid':
+                        self.mongoses.append(next_address)
 
     def init(self):
         with self.conn_lock:
@@ -507,6 +519,13 @@ class ClientContext(object):
                              "Must be connected to a mongos",
                              func=func)
 
+    def require_multiple_mongoses(self, func):
+        """Run a test only if the client is connected to a sharded cluster
+        that has 2 mongos nodes."""
+        return self._require(lambda: len(self.mongoses) > 1,
+                             "Must have multiple mongoses available",
+                             func=func)
+
     def require_standalone(self, func):
         """Run a test only if the client is connected to a standalone."""
         return self._require(lambda: not (self.is_mongos or self.is_rs),
@@ -586,13 +605,25 @@ class ClientContext(object):
                              "Sessions not supported",
                              func=func)
 
+    def supports_transactions(self):
+        if self.version.at_least(4, 1, 6):
+            return self.is_mongos or self.is_rs
+
+        if self.version.at_least(4, 0):
+            return self.is_rs
+        return False
+
     def require_transactions(self, func):
         """Run a test only if the deployment might support transactions.
 
         *Might* because this does not test the storage engine or FCV.
         """
-        new_func = self.require_version_min(4, 0, 0, -1)(func)
-        return self.require_replica_set(new_func)
+        return self._require(self.supports_transactions,
+                             "Transactions are not supported",
+                             func=func)
+
+    def mongos_seeds(self):
+        return ','.join('%s:%s' % address for address in self.mongoses)
 
     @property
     def supports_reindex(self):

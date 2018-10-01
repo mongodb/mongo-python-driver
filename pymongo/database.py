@@ -608,7 +608,7 @@ class Database(common.BaseObject):
             read_preference = ((session and session._txn_read_preference())
                                or ReadPreference.PRIMARY)
         with self.__client._socket_for_reads(
-                read_preference) as (sock_info, slave_ok):
+                read_preference, session) as (sock_info, slave_ok):
             return self._command(sock_info, command, slave_ok, value,
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
@@ -671,7 +671,7 @@ class Database(common.BaseObject):
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
         with self.__client._socket_for_reads(
-                read_pref) as (sock_info, slave_okay):
+                read_pref, session) as (sock_info, slave_okay):
             return self._list_collections(
                 sock_info, slave_okay, session, read_preference=read_pref,
                 **kwargs)
@@ -745,7 +745,7 @@ class Database(common.BaseObject):
 
         self.__client._purge_index(self.__name, name)
 
-        with self.__client._socket_for_writes() as sock_info:
+        with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
                 sock_info, 'drop', value=_unicode(name),
                 allowable_errors=['ns not found'],
@@ -826,7 +826,7 @@ class Database(common.BaseObject):
            Added ``session`` parameter.
         """
         cmd = SON([("currentOp", 1), ("$all", include_all)])
-        with self.__client._socket_for_writes() as sock_info:
+        with self.__client._socket_for_writes(session) as sock_info:
             if sock_info.max_wire_version >= 4:
                 with self.__client._tmp_session(session) as s:
                     return sock_info.command("admin", cmd, session=s,

@@ -107,7 +107,8 @@ class ChangeStream(object):
         """
         read_preference = self._target._read_preference_for(session)
         client = self._database.client
-        with client._socket_for_reads(read_preference) as (sock_info, slave_ok):
+        with client._socket_for_reads(
+                read_preference, session) as (sock_info, slave_ok):
             pipeline = self._full_pipeline()
             cmd = SON([("aggregate", self._aggregation_target),
                        ("pipeline", pipeline),

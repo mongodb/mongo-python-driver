@@ -318,9 +318,9 @@ class ReadPrefTester(MongoClient):
         super(ReadPrefTester, self).__init__(*args, **client_options)
 
     @contextlib.contextmanager
-    def _socket_for_reads(self, read_preference):
+    def _socket_for_reads(self, read_preference, session):
         context = super(ReadPrefTester, self)._socket_for_reads(
-            read_preference)
+            read_preference, session)
         with context as (sock_info, slave_ok):
             self.record_a_read(sock_info.address)
             yield sock_info, slave_ok

@@ -188,6 +188,10 @@ class ServerDescription(object):
         return self._is_readable
 
     @property
+    def mongos(self):
+        return self._server_type == SERVER_TYPE.Mongos
+
+    @property
     def is_server_type_known(self):
         return self.server_type != SERVER_TYPE.Unknown
 
