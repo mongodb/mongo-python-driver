@@ -1211,7 +1211,7 @@ class MongoClient(common.BaseObject):
                             # not support sessions raise the last error.
                             raise last_error
                         retryable = False
-                    if is_retrying():
+                    if session and is_retrying():
                         # Reset the transaction id and retry the operation.
                         session._retry_transaction_id()
                     return func(session, sock_info, retryable)

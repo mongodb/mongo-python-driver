@@ -396,7 +396,7 @@ def read_from_which_host(
     if isinstance(tag_sets, dict):
         tag_sets = [tag_sets]
     if tag_sets:
-        tags = tag_sets or pref.tag_sets
+        tags = list(set(tag_sets + pref.tag_sets))
         pref = pref.__class__(tags)
 
     db.read_preference = pref

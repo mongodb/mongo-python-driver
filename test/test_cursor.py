@@ -357,7 +357,7 @@ class TestCursor(IntegrationTest):
         self.assertTrue(coll.find().explain())
         started = listener.results['started']
         self.assertEqual(len(started), 1)
-        self.assertNotIn("readConern", started[0].command)
+        self.assertNotIn("readConcern", started[0].command)
 
     def test_hint(self):
         db = self.db
