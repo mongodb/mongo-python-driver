@@ -1031,7 +1031,7 @@ class Database(common.BaseObject):
 
             opts["roles"] = [self._default_role(read_only)]
 
-        elif read_only:
+        if read_only:
             warnings.warn("The read_only option is deprecated in MongoDB "
                           ">= 2.6, use 'roles' instead", DeprecationWarning)
 
