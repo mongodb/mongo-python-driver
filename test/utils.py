@@ -122,13 +122,13 @@ class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
         self.results.append(event)
 
 
-def _connection_string(h, p, authenticate):
+def _connection_string(h, authenticate):
     if h.startswith("mongodb://"):
         return h
     elif client_context.auth_enabled and authenticate:
-        return "mongodb://%s:%s@%s:%d" % (db_user, db_pwd, str(h), p)
+        return "mongodb://%s:%s@%s" % (db_user, db_pwd, str(h))
     else:
-        return "mongodb://%s:%d" % (str(h), p)
+        return "mongodb://%s" % (str(h),)
 
 
 def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
@@ -140,7 +140,7 @@ def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
         client_options['replicaSet'] = client_context.replica_set_name
     client_options.update(kwargs)
 
-    client = MongoClient(_connection_string(host, port, authenticate), port,
+    client = MongoClient(_connection_string(host, authenticate), port,
                          **client_options)
 
     return client

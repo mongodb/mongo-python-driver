@@ -246,6 +246,7 @@ class _Transaction(object):
         self.opts = opts
         self.state = _TxnState.NONE
         self.transaction_id = 0
+        self.pinned_address = None
 
     def active(self):
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -369,6 +370,7 @@ class ClientSession(object):
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
         self._transaction.transaction_id = self._server_session.transaction_id
+        self._transaction.pinned_address = None
         return _TransactionContext(self)
 
     def commit_transaction(self):
@@ -388,6 +390,10 @@ class ClientSession(object):
         elif state is _TxnState.ABORTED:
             raise InvalidOperation(
                 "Cannot call commitTransaction after calling abortTransaction")
+        elif state is _TxnState.COMMITTED:
+            # We're rerunning the commit, move the state back to "in progress"
+            # so that _in_transaction returns true.
+            self._transaction.state = _TxnState.IN_PROGRESS
 
         try:
             self._finish_transaction_with_retry("commitTransaction")
@@ -441,12 +447,10 @@ class ClientSession(object):
             self._transaction.state = _TxnState.ABORTED
 
     def _finish_transaction(self, command_name):
-        with self._client._socket_for_writes() as sock_info:
+        with self._client._socket_for_writes(self) as sock_info:
             return self._client.admin._command(
                 sock_info,
                 command_name,
-                txnNumber=self._transaction.transaction_id,
-                autocommit=False,
                 session=self,
                 write_concern=self._transaction.opts.write_concern,
                 parse_write_concern_error=True)
@@ -528,6 +532,17 @@ class ClientSession(object):
         """True if this session has an active multi-statement transaction."""
         return self._transaction.active()
 
+    @property
+    def _pinned_address(self):
+        """The mongos address this transaction was created on."""
+        if self._transaction.active():
+            return self._transaction.pinned_address
+        return None
+
+    def _pin_mongos(self, server):
+        """Pin this session to the given mongos Server."""
+        self._transaction.pinned_address = server.description.address
+
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""
         if self._in_transaction:
@@ -542,6 +557,7 @@ class ClientSession(object):
 
         if not self._in_transaction:
             self._transaction.state = _TxnState.NONE
+            self._transaction.pinned_address = None
 
         if is_retryable:
             command['txnNumber'] = self._server_session.transaction_id

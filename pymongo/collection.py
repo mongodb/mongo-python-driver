@@ -185,15 +185,16 @@ class Collection(common.BaseObject):
 
     def _socket_for_reads(self, session):
         return self.__database.client._socket_for_reads(
-            self._read_preference_for(session))
+            self._read_preference_for(session), session)
 
     def _socket_for_primary_reads(self, session):
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
-        return self.__database.client._socket_for_reads(read_pref), read_pref
+        return self.__database.client._socket_for_reads(
+            read_pref, session), read_pref
 
-    def _socket_for_writes(self):
-        return self.__database.client._socket_for_writes()
+    def _socket_for_writes(self, session):
+        return self.__database.client._socket_for_writes(session)
 
     def _command(self, sock_info, command, slave_ok=False,
                  read_preference=None,
@@ -251,7 +252,7 @@ class Collection(common.BaseObject):
             if "size" in options:
                 options["size"] = float(options["size"])
             cmd.update(options)
-        with self._socket_for_writes() as sock_info:
+        with self._socket_for_writes(session) as sock_info:
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 write_concern=self._write_concern_for(session),
@@ -1804,7 +1805,7 @@ class Collection(common.BaseObject):
         """
         common.validate_list('indexes', indexes)
         names = []
-        with self._socket_for_writes() as sock_info:
+        with self._socket_for_writes(session) as sock_info:
             supports_collations = sock_info.max_wire_version >= 5
             def gen_indexes():
                 for index in indexes:
@@ -1844,7 +1845,7 @@ class Collection(common.BaseObject):
             index_options.pop('collation', None))
         index.update(index_options)
 
-        with self._socket_for_writes() as sock_info:
+        with self._socket_for_writes(session) as sock_info:
             if collation is not None:
                 if sock_info.max_wire_version < 5:
                     raise ConfigurationError(
@@ -2070,7 +2071,7 @@ class Collection(common.BaseObject):
             self.__database.name, self.__name, name)
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         cmd.update(kwargs)
-        with self._socket_for_writes() as sock_info:
+        with self._socket_for_writes(session) as sock_info:
             self._command(sock_info,
                           cmd,
                           read_preference=ReadPreference.PRIMARY,
@@ -2106,7 +2107,7 @@ class Collection(common.BaseObject):
         """
         cmd = SON([("reIndex", self.__name)])
         cmd.update(kwargs)
-        with self._socket_for_writes() as sock_info:
+        with self._socket_for_writes(session) as sock_info:
             return self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 session=session)
@@ -2606,7 +2607,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
         write_concern = self._write_concern_for_cmd(cmd, session)
 
-        with self._socket_for_writes() as sock_info:
+        with self._socket_for_writes(session) as sock_info:
             with self.__database.client._tmp_session(session) as s:
                 return sock_info.command(
                     'admin', cmd,
