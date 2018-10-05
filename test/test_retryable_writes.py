@@ -14,6 +14,7 @@
 
 """Test retryable writes."""
 
+import copy
 import json
 import os
 import sys
@@ -169,7 +170,7 @@ def create_tests():
 create_tests()
 
 
-def retryable_single_statement_ops(coll):
+def _retryable_single_statement_ops(coll):
     return [
         (coll.bulk_write, [[InsertOne({}), InsertOne({})]], {}),
         (coll.bulk_write, [[InsertOne({}),
@@ -188,6 +189,11 @@ def retryable_single_statement_ops(coll):
         (coll.find_one_and_replace, [{}, {'a': 3}], {}),
         (coll.find_one_and_update, [{}, {'$set': {'a': 1}}], {}),
         (coll.find_one_and_delete, [{}, {}], {}),
+    ]
+
+
+def retryable_single_statement_ops(coll):
+    return _retryable_single_statement_ops(coll) + [
         # Deprecated methods.
         # Insert with single or multiple documents.
         (coll.insert, [{}], {}),
@@ -498,6 +504,47 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             final_txn = session._server_session._transaction_id
             self.assertEqual(final_txn, expected_txn)
         self.assertEqual(coll.find_one(projection={'_id': True}), {'_id': 1})
+
+
+# TODO: Make this a real integration test where we stepdown the primary.
+class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
+    @client_context.require_version_min(3, 6)
+    @client_context.require_replica_set
+    def test_increment_transaction_id_without_sending_command(self):
+        """Test that the txnNumber field is properly incremented, even when
+        the first attempt fails before sending the command.
+        """
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
+            retryWrites=True, event_listeners=[listener])
+        topology = client._topology
+        select_server = topology.select_server
+
+        def raise_connection_err_select_server(*args, **kwargs):
+            # Raise ConnectionFailure on the first attempt and perform
+            # normal selection on the retry attempt.
+            topology.select_server = select_server
+            raise ConnectionFailure('Connection refused')
+
+        for method, args, kwargs in _retryable_single_statement_ops(
+                client.db.retryable_write_test):
+            listener.results.clear()
+            topology.select_server = raise_connection_err_select_server
+            with client.start_session() as session:
+                kwargs = copy.deepcopy(kwargs)
+                kwargs['session'] = session
+                msg = '%s(*%r, **%r)' % (method.__name__, args, kwargs)
+                initial_txn_id = session._server_session.transaction_id
+
+                # Each operation should fail on the first attempt and succeed
+                # on the second.
+                method(*args, **kwargs)
+                self.assertEqual(len(listener.results['started']), 1, msg)
+                retry_cmd = listener.results['started'][0].command
+                sent_txn_id = retry_cmd['txnNumber']
+                final_txn_id = session._server_session.transaction_id
+                self.assertEqual(Int64(initial_txn_id + 1), sent_txn_id, msg)
+                self.assertEqual(sent_txn_id, final_txn_id, msg)
 
 
 if __name__ == '__main__':

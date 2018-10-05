@@ -367,7 +367,7 @@ class ClientSession(object):
         self._transaction.opts = TransactionOptions(
             read_concern, write_concern, read_preference)
         self._transaction.state = _TxnState.STARTING
-        self._server_session._transaction_id += 1
+        self._start_retryable_write()
         self._transaction.transaction_id = self._server_session.transaction_id
         return _TransactionContext(self)
 
@@ -544,7 +544,6 @@ class ClientSession(object):
             self._transaction.state = _TxnState.NONE
 
         if is_retryable:
-            self._server_session._transaction_id += 1
             command['txnNumber'] = self._server_session.transaction_id
             return
 
@@ -574,9 +573,9 @@ class ClientSession(object):
             command['txnNumber'] = self._server_session.transaction_id
             command['autocommit'] = False
 
-    def _retry_transaction_id(self):
+    def _start_retryable_write(self):
         self._check_ended()
-        self._server_session.retry_transaction_id()
+        self._server_session.inc_transaction_id()
 
 
 class _ServerSession(object):
@@ -597,8 +596,8 @@ class _ServerSession(object):
         """Positive 64-bit integer."""
         return Int64(self._transaction_id)
 
-    def retry_transaction_id(self):
-        self._transaction_id -= 1
+    def inc_transaction_id(self):
+        self._transaction_id += 1
 
 
 class _ServerSessionPool(collections.deque):
