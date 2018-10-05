@@ -160,6 +160,7 @@ class _Bulk(object):
         self.uses_array_filters = False
         self.is_retryable = True
         self.retrying = False
+        self.started_retryable_write = False
         # Extra state so that we know where to pick up on a retry attempt.
         self.current_run = None
 
@@ -275,6 +276,11 @@ class _Bulk(object):
 
             while run.idx_offset < len(run.ops):
                 if session:
+                    # Start a new retryable write unless one was already
+                    # started for this command.
+                    if retryable and not self.started_retryable_write:
+                        session._start_retryable_write()
+                        self.started_retryable_write = True
                     session._apply_to(cmd, retryable, ReadPreference.PRIMARY)
                 sock_info.send_cluster_time(cmd, session, client)
                 check_keys = run.op_type == _INSERT
@@ -300,6 +306,8 @@ class _Bulk(object):
                 _merge_command(run, full_result, run.idx_offset, result)
                 # We're no longer in a retry once a command succeeds.
                 self.retrying = False
+                self.started_retryable_write = False
+
                 if self.ordered and "writeErrors" in result:
                     break
                 run.idx_offset += len(to_send)

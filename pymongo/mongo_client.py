@@ -1176,6 +1176,14 @@ class MongoClient(common.BaseObject):
 
         def is_retrying():
             return bulk.retrying if bulk else retrying
+        # Increment the transaction id up front to ensure any retry attempt
+        # will use the proper txnNumber, even if server or socket selection
+        # fails before the command can be sent.
+        if retryable:
+            session._start_retryable_write()
+            if bulk:
+                bulk.started_retryable_write = True
+
         while True:
             try:
                 server = self._get_topology().select_server(
@@ -1190,9 +1198,6 @@ class MongoClient(common.BaseObject):
                             # not support sessions raise the last error.
                             raise last_error
                         retryable = False
-                    if is_retrying():
-                        # Reset the transaction id and retry the operation.
-                        session._retry_transaction_id()
                     return func(session, sock_info, retryable)
             except ServerSelectionTimeoutError:
                 if is_retrying():
