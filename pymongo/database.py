@@ -505,7 +505,7 @@ class Database(common.BaseObject):
                 command,
                 slave_ok,
                 read_preference,
-                codec_options,
+                codec_options, codec_options,
                 check,
                 allowable_errors,
                 write_concern=write_concern,

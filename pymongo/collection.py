@@ -181,7 +181,7 @@ class Collection(common.BaseObject):
 
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler='replace',
-            document_class=dict)
+            document_class=dict, document_class_codec=None)
 
     def _socket_for_reads(self, session):
         return self.__database.client._socket_for_reads(
@@ -583,7 +583,8 @@ class Collection(common.BaseObject):
                 self.__database.name,
                 command,
                 write_concern=write_concern,
-                codec_options=self.__write_response_codec_options,
+                send_codec_options=self.codec_options,
+                recv_codec_options=self.__write_response_codec_options,
                 check_keys=check_keys,
                 session=session,
                 client=self.__database.client,
@@ -595,13 +596,18 @@ class Collection(common.BaseObject):
             acknowledged, _insert_command, session)
 
         if not isinstance(doc, RawBSONDocument):
-            return doc.get('_id')
+            if isinstance(doc, self.codec_options.document_class):
+                return doc.zip
+            else:
+                return doc.get('_id')
+
 
     def _insert(self, docs, ordered=True, check_keys=True,
                 manipulate=False, write_concern=None, op_id=None,
                 bypass_doc_val=False, session=None):
         """Internal insert helper."""
-        if isinstance(docs, abc.Mapping):
+        if (isinstance(docs, abc.Mapping) or
+                isinstance(docs, self.codec_options.document_class)):
             return self._insert_one(
                 docs, ordered, check_keys, manipulate, write_concern, op_id,
                 bypass_doc_val, session)
@@ -681,9 +687,15 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        common.validate_is_document_type("document", document)
-        if not (isinstance(document, RawBSONDocument) or "_id" in document):
-            document["_id"] = ObjectId()
+        common.validate_is_document_type_new(
+            "document", document, self.codec_options)
+
+        try:
+            if not (isinstance(document, RawBSONDocument) or "_id" in document):
+                document["_id"] = ObjectId()
+        except TypeError:
+            if not self.codec_options.document_class_codec.has_id(document):
+                self.codec_options.document_class_codec.set_id(document)
 
         write_concern = self._write_concern_for(session)
         return InsertOneResult(

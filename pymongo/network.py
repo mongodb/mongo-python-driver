@@ -50,7 +50,8 @@ _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
 def command(sock, dbname, spec, slave_ok, is_mongos,
-            read_preference, codec_options, session, client, check=True,
+            read_preference, send_codec_options, recv_codec_options, session,
+            client, check=True,
             allowable_errors=None, address=None,
             check_keys=False, listeners=None, max_bson_size=None,
             read_concern=None,
@@ -111,7 +112,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         flags = 2 if unacknowledged else 0
         request_id, msg, size, max_doc_size = message._op_msg(
             flags, spec, dbname, read_preference, slave_ok, check_keys,
-            codec_options, ctx=compression_ctx)
+            send_codec_options, ctx=compression_ctx)
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
         if (unacknowledged and max_bson_size is not None and
@@ -119,7 +120,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             message._raise_document_too_large(name, size, max_bson_size)
     else:
         request_id, msg, size = message.query(
-            flags, ns, 0, -1, spec, None, codec_options, check_keys,
+            flags, ns, 0, -1, spec, None, send_codec_options, check_keys,
             compression_ctx)
 
     if (max_bson_size is not None
@@ -139,7 +140,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             response_doc = {"ok": 1}
         else:
             reply = receive_message(sock, request_id)
-            unpacked_docs = reply.unpack_response(codec_options=codec_options)
+            unpacked_docs = reply.unpack_response(
+                codec_options=recv_codec_options)
 
             response_doc = unpacked_docs[0]
             if client:

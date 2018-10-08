@@ -502,8 +502,9 @@ class SocketInfo(object):
 
     def command(self, dbname, spec, slave_ok=False,
                 read_preference=ReadPreference.PRIMARY,
-                codec_options=DEFAULT_CODEC_OPTIONS, check=True,
-                allowable_errors=None, check_keys=False,
+                send_codec_options=DEFAULT_CODEC_OPTIONS,
+                recv_codec_options=DEFAULT_CODEC_OPTIONS,
+                check=True, allowable_errors=None, check_keys=False,
                 read_concern=None,
                 write_concern=None,
                 parse_write_concern_error=False,
@@ -567,7 +568,8 @@ class SocketInfo(object):
             self._raise_if_not_writable(unacknowledged)
         try:
             return command(self.sock, dbname, spec, slave_ok,
-                           self.is_mongos, read_preference, codec_options,
+                           self.is_mongos, read_preference,
+                           send_codec_options, recv_codec_options,
                            session, client, check, allowable_errors,
                            self.address, check_keys, listeners,
                            self.max_bson_size, read_concern,

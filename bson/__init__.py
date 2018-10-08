@@ -402,12 +402,76 @@ def _iterate_elements(data, position, obj_end, opts):
 
 def _elements_to_dict(data, position, obj_end, opts):
     """Decode a BSON document."""
+    if opts.document_class_codec is not None:
+        reader = BSONDocumentReader(data[position-4:obj_end+1])
+        return opts.document_class_codec.from_bson(reader)
     result = opts.document_class()
     pos = position
     for key, value, pos in _iterate_elements(data, position, obj_end, opts):
         result[key] = value
     if pos != obj_end:
         raise InvalidBSON('bad object or element length')
+    return result
+
+
+def _get_namespace_from_entry(current_namespace, entry):
+    """entry is a BSONEntry object."""
+    if current_namespace:
+        return ".".join([current_namespace, entry.name])
+    else:
+        return entry.name
+
+
+def _data_namespaces_to_dict(ctx_namespace, bson_reader, data_namespaces,
+                       default_opts, user_opts):
+    if (bson_reader._current_state == _BSONReaderState.INITIAL or
+            bson_reader._current_entry.type == _BSONTypes.DOCUMENT):
+        if ctx_namespace in data_namespaces:
+            return user_opts.document_class_codec.from_bson(bson_reader)
+        # Else
+        result = default_opts.document_class()
+        bson_reader.start_document()
+        for entry in bson_reader:
+            result[entry.name] = _data_namespaces_to_dict(
+                _get_namespace_from_entry(ctx_namespace, entry), bson_reader,
+                data_namespaces, default_opts, user_opts
+            )
+        bson_reader.end_document()
+        return result
+
+    if bson_reader._current_entry.type == _BSONTypes.ARRAY:
+        if ctx_namespace in data_namespaces:
+            result = []
+            bson_reader.start_array()
+            for entry in bson_reader:
+                result.append(
+                    user_opts.document_class_codec.from_bson(bson_reader))
+            bson_reader.end_array()
+            return result
+        # Else
+        return bson_reader._current_entry.value
+
+    # If primitive type to be interpreted in a 'custom' sense.
+    # Currently unsupported.
+
+    # Everything else is a normally interpreted primitive type.
+    return bson_reader._current_entry.value
+
+
+def _response_elements_to_dict(data, position, obj_end, opts,
+                               data_namespaces=None):
+    """Decode a BSON document. The paths in namespaces will be treated with
+    the user-provided codec options. This does not extend to elements within
+    arrays (at least for now)."""
+    if opts.document_class_codec is None or data_namespaces is None:
+        return _elements_to_dict(data, position, obj_end, opts)
+
+    # Otherwise return a default doc cls with the datakey fields appropriately decoded.
+    def_opts = DEFAULT_CODEC_OPTIONS
+    reader = BSONDocumentReader(data)
+
+    # Populate result appropriately.
+    result = _data_namespaces_to_dict('', reader, data_namespaces, def_opts, opts)
     return result
 
 
@@ -866,17 +930,23 @@ def _get_document_size(bstream, start):
 def _get_array_size(bstream, start):
     return _read_int32_from_bstream(bstream, start)
 
+def _get_binary_size(bstream, start):
+    return 5 + _read_int32_from_bstream(bstream, start)
+
 
 TYPE_SIZE_MAP = {
     _BSONTypes.FLOAT: 8,
     _BSONTypes.STRING: _get_string_size,
     _BSONTypes.DOCUMENT: _get_document_size,
     _BSONTypes.ARRAY: _get_array_size,
+    _BSONTypes.BINARY: _get_binary_size,
     _BSONTypes.BOOLEAN: 1,
     _BSONTypes.INT: 4,
     _BSONTypes.LONG: 8,
     _BSONTypes.DECIMAL128: 16,
-    _BSONTypes.NULL: 0
+    _BSONTypes.NULL: 0,
+    _BSONTypes.OBJECT_ID: 12,
+    _BSONTypes.TIMESTAMP: 8
 }
 
 
@@ -894,6 +964,9 @@ class _BSONEntry(object):
         self._name_size = None
         self._value = None
         self._value_size = None
+
+    def with_options(self, codec_options):
+        return _BSONEntry(self._bstream, self._head, codec_options)
 
     @property
     def name_start(self):
@@ -1357,7 +1430,7 @@ def _dict_to_bson_buffered(doc, check_keys, opts, top_level=True):
         writer = BSONDocumentWriter(codec_options=opts)
         writer.start_document()
         if top_level and "_id" in doc:
-            writer._insert_bytes(_element_to_bson('_id', doc['id'], check_keys, opts))
+            writer._insert_bytes(_element_to_bson('_id', doc['_id'], check_keys, opts))
         for (key, value) in iteritems(doc):
             if not top_level or key != "_id":
                 try:
@@ -1407,6 +1480,44 @@ def _datetime_to_millis(dtm):
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError(
     "codec_options must be an instance of CodecOptions")
+
+
+def decode_cursor_response(data, codec_options=DEFAULT_CODEC_OPTIONS):
+    if not isinstance(codec_options, CodecOptions):
+        raise _CODEC_OPTIONS_TYPE_ERROR
+
+    docs = []
+    position = 0
+    end = len(data) - 1
+    use_raw = _raw_document_class(codec_options.document_class)
+    try:
+        while position < end:
+            obj_size = _UNPACK_INT(data[position:position + 4])[0]
+            if len(data) - position < obj_size:
+                raise InvalidBSON("invalid object size")
+            obj_end = position + obj_size - 1
+            if data[obj_end:position + obj_size] != b"\x00":
+                raise InvalidBSON("bad eoo")
+            if use_raw:
+                docs.append(
+                    codec_options.document_class(
+                        data[position:obj_end + 1], codec_options))
+            else:
+                docs.append(_response_elements_to_dict(
+                    data,
+                    position + 4,
+                    obj_end,
+                    codec_options,
+                    ['cursor.firstBatch', 'cursor.nextBatch'],
+                ))
+            position += obj_size
+        return docs
+    except InvalidBSON:
+        raise
+    except Exception:
+        # Change exception type to InvalidBSON but preserve traceback.
+        _, exc_value, exc_tb = sys.exc_info()
+        reraise(InvalidBSON, exc_value, exc_tb)
 
 
 def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
@@ -1507,6 +1618,7 @@ def decode_iter(data, codec_options=DEFAULT_CODEC_OPTIONS):
         position += obj_size
 
         yield _bson_to_dict(elements, codec_options)
+        # yield _bson_to_dict_buffered(elements, codec_options)
 
 
 def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):

@@ -453,6 +453,13 @@ def validate_is_document_type(option, value):
                         "collections.MutableMapping" % (option,))
 
 
+def validate_is_document_type_new(option, value, codec_options):
+    """Validate the type of method arguments that expect a MongoDB document."""
+    if not isinstance(value, (abc.MutableMapping, RawBSONDocument,
+                              codec_options.document_class)):
+        raise TypeError("%s not valid" % (option,))
+
+
 def validate_appname_or_none(option, value):
     """Validate the appname option."""
     if value is None:

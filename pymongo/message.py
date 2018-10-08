@@ -28,6 +28,7 @@ import bson
 from bson import (CodecOptions,
                   _bson_to_dict,
                   _dict_to_bson,
+                  _dict_to_bson_buffered,
                   _make_c_string)
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import b, StringIO
@@ -623,7 +624,8 @@ def _op_msg_no_header(flags, command, identifier, docs, check_keys, opts):
     if identifier:
         type_one = _pack_byte(1)
         cstring = _make_c_string(identifier)
-        encoded_docs = [_dict_to_bson(doc, check_keys, opts) for doc in docs]
+        encoded_docs = [_dict_to_bson_buffered(
+            doc, check_keys, opts) for doc in docs]
         size = len(cstring) + sum(len(doc) for doc in encoded_docs) + 4
         encoded_size = _pack_int(size)
         total_size += size
@@ -1418,6 +1420,10 @@ class _OpReply(object):
         self.raw_response(cursor_id)
         return bson.decode_all(self.documents, codec_options)
 
+    # def cursor_command_response(self, cursor_id=None,
+    #                             codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
+    #     self.
+
     def command_response(self):
         """Unpack a command response."""
         docs = self.unpack_response()
@@ -1460,11 +1466,16 @@ class _OpMsg(object):
           - `codec_options` (optional): an instance of
             :class:`~bson.codec_options.CodecOptions`
         """
-        return bson.decode_all(self.payload_document, codec_options)
+        return bson.decode_cursor_response(self.payload_document, codec_options)
 
     def command_response(self):
         """Unpack a command response."""
         return self.unpack_response()[0]
+
+    def unpack_cursor_response(self, cursor_id=None,
+                               codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
+        return bson.decode_cursor_response(
+            self.payload_document, codec_options)
 
     @classmethod
     def unpack(cls, msg):
