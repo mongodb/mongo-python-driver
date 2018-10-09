@@ -113,10 +113,14 @@ class WriteConcern(object):
             ", ".join("%s=%s" % kvt for kvt in self.__document.items()),))
 
     def __eq__(self, other):
-        return self.__document == other.document
+        if isinstance(other, WriteConcern):
+            return self.__document == other.document
+        return NotImplemented
 
     def __ne__(self, other):
-        return self.__document != other.document
+        if isinstance(other, WriteConcern):
+            return self.__document != other.document
+        return NotImplemented
 
 
 DEFAULT_WRITE_CONCERN = WriteConcern()
