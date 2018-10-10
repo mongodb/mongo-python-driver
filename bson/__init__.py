@@ -72,6 +72,11 @@ import struct
 import sys
 import uuid
 
+from collections import deque
+from contextlib import contextmanager
+from enum import Enum
+from io import BytesIO
+
 from codecs import (utf_8_decode as _utf_8_decode,
                     utf_8_encode as _utf_8_encode)
 
@@ -402,9 +407,6 @@ def _iterate_elements(data, position, obj_end, opts):
 
 def _elements_to_dict(data, position, obj_end, opts):
     """Decode a BSON document."""
-    if opts.document_class_codec is not None:
-        reader = BSONDocumentReader(data[position-4:obj_end+1])
-        return opts.document_class_codec.from_bson(reader)
     result = opts.document_class()
     pos = position
     for key, value, pos in _iterate_elements(data, position, obj_end, opts):
@@ -425,7 +427,7 @@ def _get_namespace_from_entry(current_namespace, entry):
 def _data_namespaces_to_dict(ctx_namespace, bson_reader, data_namespaces,
                        default_opts, user_opts):
     if (bson_reader._current_state == _BSONReaderState.INITIAL or
-            bson_reader._current_entry.type == _BSONTypes.DOCUMENT):
+            bson_reader._current_entry.type == BSONTypes.DOCUMENT):
         if ctx_namespace in data_namespaces:
             return user_opts.document_class_codec.from_bson(bson_reader)
         # Else
@@ -439,7 +441,7 @@ def _data_namespaces_to_dict(ctx_namespace, bson_reader, data_namespaces,
         bson_reader.end_document()
         return result
 
-    if bson_reader._current_entry.type == _BSONTypes.ARRAY:
+    if bson_reader._current_entry.type == BSONTypes.ARRAY:
         if ctx_namespace in data_namespaces:
             result = []
             bson_reader.start_array()
@@ -880,13 +882,7 @@ if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson
 
 
-from collections import deque
-from contextlib import contextmanager
-from enum import Enum
-from io import BytesIO
-
-
-class _BSONTypes(Enum):
+class BSONTypes(Enum):
     X00 = b"\x00"
     FLOAT = b"\x01"
     STRING = b"\x02"
@@ -935,18 +931,18 @@ def _get_binary_size(bstream, start):
 
 
 TYPE_SIZE_MAP = {
-    _BSONTypes.FLOAT: 8,
-    _BSONTypes.STRING: _get_string_size,
-    _BSONTypes.DOCUMENT: _get_document_size,
-    _BSONTypes.ARRAY: _get_array_size,
-    _BSONTypes.BINARY: _get_binary_size,
-    _BSONTypes.BOOLEAN: 1,
-    _BSONTypes.INT: 4,
-    _BSONTypes.LONG: 8,
-    _BSONTypes.DECIMAL128: 16,
-    _BSONTypes.NULL: 0,
-    _BSONTypes.OBJECT_ID: 12,
-    _BSONTypes.TIMESTAMP: 8
+    BSONTypes.FLOAT: 8,
+    BSONTypes.STRING: _get_string_size,
+    BSONTypes.DOCUMENT: _get_document_size,
+    BSONTypes.ARRAY: _get_array_size,
+    BSONTypes.BINARY: _get_binary_size,
+    BSONTypes.BOOLEAN: 1,
+    BSONTypes.INT: 4,
+    BSONTypes.LONG: 8,
+    BSONTypes.DECIMAL128: 16,
+    BSONTypes.NULL: 0,
+    BSONTypes.OBJECT_ID: 12,
+    BSONTypes.TIMESTAMP: 8
 }
 
 
@@ -992,7 +988,7 @@ class _BSONEntry(object):
     @property
     def type(self):
         if self._type is None:
-            self._type = _BSONTypes(self._bstream[self._head:self._head + 1])
+            self._type = BSONTypes(self._bstream[self._head:self._head + 1])
         return self._type
 
     @property
@@ -1076,7 +1072,7 @@ class BSONDocumentReader(object):
             self._heads.append(4)
             self._validate_document()
         else:
-            if self._current_entry.type != _BSONTypes.DOCUMENT:
+            if self._current_entry.type != BSONTypes.DOCUMENT:
                 raise InvalidBSON("not a document")
             self._states.append(_BSONReaderState.DOCUMENT)
             doc_start = self._current_entry.value_start
@@ -1102,7 +1098,7 @@ class BSONDocumentReader(object):
         self._ends.pop()
 
     def start_array(self):
-        if self._current_entry.type != _BSONTypes.ARRAY:
+        if self._current_entry.type != BSONTypes.ARRAY:
             raise InvalidBSON("not an array")
         self._states.append(_BSONReaderState.ARRAY)
         arr_start = self._current_entry.value_start
@@ -1220,7 +1216,7 @@ class BSONDocumentWriter(object):
             return
 
         # Generate array index names or error if not in array.
-        if self._current_container != _BSONTypes.ARRAY:
+        if self._current_container != BSONTypes.ARRAY:
             raise RuntimeError("field name not provided for non-array element")
         key = text_type(self._current_index)
         self.__array_indices[-1] += 1
@@ -1378,17 +1374,17 @@ class BSONDocumentWriter(object):
     def start_document(self, name=None):
         # Embedded documents must have a name provided unless in an array.
         if (name is None and self._level >= 1 and
-                self._current_container != _BSONTypes.ARRAY):
+                self._current_container != BSONTypes.ARRAY):
             raise RuntimeError("Must provide key name for nested documents.")
         self._write_start_container(
-            self._key_name(name), _BSONTypes.DOCUMENT)
+            self._key_name(name), BSONTypes.DOCUMENT)
 
     def end_document(self):
         self._write_end_container()
 
     def start_array(self, name):
         self._write_start_container(
-            self._key_name(name), _BSONTypes.ARRAY)
+            self._key_name(name), BSONTypes.ARRAY)
         self.__array_indices.append(0)
 
     def end_array(self):
@@ -1618,7 +1614,6 @@ def decode_iter(data, codec_options=DEFAULT_CODEC_OPTIONS):
         position += obj_size
 
         yield _bson_to_dict(elements, codec_options)
-        # yield _bson_to_dict_buffered(elements, codec_options)
 
 
 def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):

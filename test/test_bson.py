@@ -27,7 +27,7 @@ sys.path[0:0] = [""]
 import bson
 from bson import (BSON, BSONDocumentWriter, BSONDocumentReader, BSONCodecABC,
                   CustomDocumentClassCodecBase, decode_all, decode_file_iter,
-                  decode_iter, EPOCH_AWARE, is_valid, Regex, _BSONTypes)
+                  decode_iter, EPOCH_AWARE, is_valid, Regex, BSONTypes)
 from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
 from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
@@ -165,7 +165,7 @@ class TestBSONDocumentReader(unittest.TestCase):
                 result[elt.name] = []
                 reader.start_array()
                 for selt in reader:
-                    if selt.type == _BSONTypes.DOCUMENT:
+                    if selt.type == BSONTypes.DOCUMENT:
                         reader.start_document()
                         for sselt in reader:
                             result[elt.name].append(sselt.value)
