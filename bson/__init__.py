@@ -451,8 +451,8 @@ def _data_namespaces_to_dict(ctx_namespace, bson_reader, data_namespaces,
         # Else
         return bson_reader._current_entry.value
 
-    # If primitive type to be interpreted in a 'custom' sense.
-    # Currently unsupported.
+    # If primitive type is to be interpreted in a 'custom' sense, do that here.
+    # This is currently unsupported.
 
     # Everything else is a normally interpreted primitive type.
     return bson_reader._current_entry.value
