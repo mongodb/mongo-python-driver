@@ -946,7 +946,7 @@ TYPE_SIZE_MAP = {
 }
 
 
-class _BSONEntry(object):
+class BSONEntry(object):
     def __init__(self, bstream, head, codec_options=DEFAULT_CODEC_OPTIONS):
         self._bstream = bstream
         self._codec_options = codec_options
@@ -962,7 +962,7 @@ class _BSONEntry(object):
         self._value_size = None
 
     def with_options(self, codec_options):
-        return _BSONEntry(self._bstream, self._head, codec_options)
+        return BSONEntry(self._bstream, self._head, codec_options)
 
     @property
     def name_start(self):
@@ -1080,7 +1080,7 @@ class BSONDocumentReader(object):
                 self._bstream, doc_start))
             self._heads.append(doc_start + 4)
         # Finally.
-        self._entries.append(_BSONEntry(
+        self._entries.append(BSONEntry(
             self._bstream, self._current_head, self._codec_options))
 
     def end_document(self):
@@ -1105,7 +1105,7 @@ class BSONDocumentReader(object):
         self._ends.append(arr_start + _read_int32_from_bstream(
             self._bstream, arr_start))
         self._heads.append(arr_start + 4)
-        self._entries.append(_BSONEntry(
+        self._entries.append(BSONEntry(
             self._bstream, self._current_head, self._codec_options))
 
     def end_array(self):
