@@ -26,7 +26,6 @@ import struct
 
 import bson
 from bson import (CodecOptions,
-                  _bson_to_dict,
                   _dict_to_bson,
                   _make_c_string)
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
