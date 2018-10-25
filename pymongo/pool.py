@@ -1034,13 +1034,13 @@ class Pool:
                 with self.lock:
                     # Can raise ConnectionFailure.
                     sock_info = self.sockets.popleft()
-            except KeyError:
+            except IndexError:
                 # Can raise ConnectionFailure or CertificateError.
                 sock_info = self.connect()
             else:
                 # Can raise ConnectionFailure.
                 sock_info = self._check(sock_info)
-        except:
+        except Exception:
             self._socket_semaphore.release()
             with self.lock:
                 self.active_sockets -= 1
