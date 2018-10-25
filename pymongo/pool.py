@@ -19,6 +19,7 @@ import platform
 import socket
 import sys
 import threading
+import collections
 
 try:
     import ssl
@@ -894,7 +895,7 @@ class Pool:
         # Can override for testing: 0 to always check, None to never check.
         self._check_interval_seconds = 1
 
-        self.sockets = set()
+        self.sockets = collections.deque()
         self.lock = threading.Lock()
         self.active_sockets = 0
 
@@ -921,7 +922,7 @@ class Pool:
         with self.lock:
             self.pool_id += 1
             self.pid = os.getpid()
-            sockets, self.sockets = self.sockets, set()
+            sockets, self.sockets = self.sockets, collections.deque()
             self.active_sockets = 0
 
         for sock_info in sockets:
@@ -931,12 +932,10 @@ class Pool:
         """Removes stale sockets then adds new ones if pool is too small."""
         if self.opts.max_idle_time_seconds is not None:
             with self.lock:
-                for sock_info in self.sockets.copy():
-                    if (sock_info.idle_time_seconds() >
-                            self.opts.max_idle_time_seconds):
-                        self.sockets.remove(sock_info)
-                        sock_info.close()
-
+                while (self.sockets and
+                       self.sockets[-1].idle_time_seconds() > self.opts.max_idle_time_seconds):
+                    sock_info = self.sockets.pop()
+                    sock_info.close()
         while True:
             with self.lock:
                 if (len(self.sockets) + self.active_sockets >=
@@ -950,7 +949,7 @@ class Pool:
             try:
                 sock_info = self.connect()
                 with self.lock:
-                    self.sockets.add(sock_info)
+                    self.sockets.appendleft(sock_info)
             finally:
                 self._socket_semaphore.release()
 
@@ -1034,7 +1033,7 @@ class Pool:
                 # http://bugs.jython.org/issue1854
                 with self.lock:
                     # Can raise ConnectionFailure.
-                    sock_info = self.sockets.pop()
+                    sock_info = self.sockets.popleft()
             except KeyError:
                 # Can raise ConnectionFailure or CertificateError.
                 sock_info = self.connect()
@@ -1059,7 +1058,7 @@ class Pool:
             elif not sock_info.closed:
                 sock_info.update_last_checkin_time()
                 with self.lock:
-                    self.sockets.add(sock_info)
+                    self.sockets.appendleft(sock_info)
 
         self._socket_semaphore.release()
         with self.lock:
