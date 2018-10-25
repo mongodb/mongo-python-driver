@@ -894,7 +894,9 @@ class Pool:
         # Check a socket's health with socket_closed() every once in a while.
         # Can override for testing: 0 to always check, None to never check.
         self._check_interval_seconds = 1
-
+        # LIFO pool. Sockets are ordered on idle time. Sockets claimed
+        # and returned to pool from the left side. Stale sockets removed
+        # from the right side.
         self.sockets = collections.deque()
         self.lock = threading.Lock()
         self.active_sockets = 0
