@@ -2431,7 +2431,7 @@ class Collection(common.BaseObject):
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
-        stage and returns a 
+        stage and returns a
         :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
         iterates over changes on this collection.
 
@@ -2445,7 +2445,7 @@ class Collection(common.BaseObject):
 
         The :class:`~pymongo.change_stream.CollectionChangeStream` iterable
         blocks until the next change document is returned or an error is
-        raised. If the 
+        raised. If the
         :meth:`~pymongo.change_stream.CollectionChangeStream.next` method
         encounters a network error when retrieving a batch from the server,
         it will automatically attempt to recreate the cursor such that no
@@ -3019,9 +3019,16 @@ class Collection(common.BaseObject):
           ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
           {u'_id': 665, u'done': False, u'count': 25}}
 
-        By default :meth:`find_one_and_update` returns the original version of
-        the document before the update was applied. To return the updated
-        version of the document instead, use the *return_document* option.
+        Returns ``None`` if no document matches the filter.
+
+          >>> db.test.find_one_and_update(
+          ...    {'_exists': False}, {'$inc': {'count': 1}})
+
+        When the filter matches, by default :meth:`find_one_and_update`
+        returns the original version of the document before the update was
+        applied. To return the updated (or inserted in the case of
+        *upsert*) version of the document instead, use the *return_document*
+        option.
 
           >>> from pymongo import ReturnDocument
           >>> db.example.find_one_and_update(
@@ -3080,8 +3087,7 @@ class Collection(common.BaseObject):
             document matches the query. Defaults to ``False``.
           - `return_document`: If
             :attr:`ReturnDocument.BEFORE` (the default),
-            returns the original document before it was updated, or ``None``
-            if no document matches. If
+            returns the original document before it was updated. If
             :attr:`ReturnDocument.AFTER`, returns the updated
             or inserted document.
           - `array_filters` (optional): A list of filters specifying which
