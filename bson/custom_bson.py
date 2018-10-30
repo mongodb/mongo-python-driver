@@ -12,46 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for specifying BSON codec options."""
-
-import datetime
-
-from collections import namedtuple
-
-from bson.py3compat import abc, string_type
-from bson.binary import (ALL_UUID_REPRESENTATIONS,
-                         PYTHON_LEGACY,
-                         UUID_REPRESENTATION_NAMES)
-
-
-class DocumentWranglerABC(object):
-    """Abstract class to define a standard interface for dealing with docs."""
-    cls = None
-
-
-class MappingDocumentWrangler(DocumentWranglerABC):
-    """Wrangler implementation for mappings."""
-    def get_id(self, doc):
-        return doc["_id"]
-
-    def set_id(self, doc, _id):
-        doc['_id'] = _id
-
-    def has_id(self, doc):
-        return '_id' in doc
-
-
-class RawBSONDocumentWrangler(DocumentWranglerABC):
-    """Wrangler implementation for RawBSONDocument."""
-    def get_id(self, doc):
-        raise RuntimeError("unsupported for raw docs")
-
-    def set_id(self, doc, _id):
-        raise RuntimeError("unsupported for raw docs")
-
-    def has_id(self, doc):
-        return True
-
 
 class CustomBSONTypeABC(object):
     def to_bson(self, key, writer):
