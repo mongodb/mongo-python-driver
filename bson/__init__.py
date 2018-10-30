@@ -424,12 +424,20 @@ def _get_namespace_from_entry(current_namespace, entry):
         return entry.name
 
 
+def _instantiate_doc(opts, reader):
+    from bson.custom_bson import CustomDocumentClassABC
+    if isinstance(opts.document_class, CustomDocumentClassABC):
+        return opts.document_class.from_bson(reader)
+    else:
+        pass
+
+
 def _data_namespaces_to_dict(ctx_namespace, bson_reader, data_namespaces,
                        default_opts, user_opts):
     if (bson_reader._current_state == _BSONReaderState.INITIAL or
             bson_reader._current_entry.type == BSONTypes.DOCUMENT):
         if ctx_namespace in data_namespaces:
-            return user_opts.document_class_codec.from_bson(bson_reader)
+            return user_opts.document_class.from_bson(bson_reader)
         # Else
         result = default_opts.document_class()
         bson_reader.start_document()
@@ -446,8 +454,10 @@ def _data_namespaces_to_dict(ctx_namespace, bson_reader, data_namespaces,
             result = []
             bson_reader.start_array()
             for entry in bson_reader:
+                # result.append(
+                #     user_opts.document_class_codec.from_bson(bson_reader))
                 result.append(
-                    user_opts.document_class_codec.from_bson(bson_reader))
+                    user_opts.document_class.from_bson(bson_reader))
             bson_reader.end_array()
             return result
         # Else
@@ -465,8 +475,10 @@ def _response_elements_to_dict(data, position, obj_end, opts,
     """Decode a BSON document. The paths in namespaces will be treated with
     the user-provided codec options. This does not extend to elements within
     arrays (at least for now)."""
-    if opts.document_class_codec is None or data_namespaces is None:
-        return _elements_to_dict(data, position, obj_end, opts)
+    if (issubclass(opts.document_class, abc.MutableMapping) or
+            data_namespaces is None):
+        return _elements_to_dict(
+            data, position, obj_end, DEFAULT_CODEC_OPTIONS)
 
     # Otherwise return a default doc cls with the datakey fields appropriately decoded.
     def_opts = DEFAULT_CODEC_OPTIONS
@@ -812,7 +824,7 @@ if not PY3:
     _ENCODERS[long] = _encode_long
 
 
-def _name_value_to_bson(name, value, check_keys, opts):
+def _name_value_to_bson(name, value, check_keys, opts, writer=None):
     """Encode a single name, value pair."""
 
     # First see if the type is already cached. KeyError will only ever
@@ -841,11 +853,15 @@ def _name_value_to_bson(name, value, check_keys, opts):
             _ENCODERS[type(value)] = func
             return func(name, value, check_keys, opts)
 
+    # HACK
+    if writer is None:
+        writer._write_custom_type(name, value,)
+
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))
 
 
-def _element_to_bson(key, value, check_keys, opts):
+def _element_to_bson(key, value, check_keys, opts, writer=None):
     """Encode a single key, value pair."""
     if not isinstance(key, string_type):
         raise InvalidDocument("documents must have only string keys, "
@@ -857,7 +873,7 @@ def _element_to_bson(key, value, check_keys, opts):
             raise InvalidDocument("key %r must not contain '.'" % (key,))
 
     name = _make_name(key)
-    return _name_value_to_bson(name, value, check_keys, opts)
+    return _name_value_to_bson(name, value, check_keys, opts, writer)
 
 
 def _dict_to_bson(doc, check_keys, opts, top_level=True):
@@ -942,7 +958,8 @@ TYPE_SIZE_MAP = {
     BSONTypes.DECIMAL128: 16,
     BSONTypes.NULL: 0,
     BSONTypes.OBJECT_ID: 12,
-    BSONTypes.TIMESTAMP: 8
+    BSONTypes.TIMESTAMP: 8,
+    BSONTypes.UTCDATETIME: 8,
 }
 
 
@@ -1316,11 +1333,16 @@ class BSONDocumentWriter(object):
 
     def _write_custom_type(self, key, value):
         #codec = self._codec_options.custom_codec_map[type(value)]
-        codec = self._codec_options.get_codec_for_type(type(value))
-        codec.encode(key, value, self, self._codec_options)
+        #codec = self._codec_options.get_codec_for_type(type(value))
+        #codec.encode(key, value, self)
+        from bson.custom_bson import CustomBSONTypeABC
+        assert isinstance(value, CustomBSONTypeABC)
+        value.to_bson(key, self)
 
     def _write_custom_document(self, value):
-        self._codec_options.document_class_codec.to_bson(value, self)
+        value.to_bson(self)
+        # self._codec_options.outgoing_codec.to_bson(value, self)
+        # self._codec_options.document_class_codec.to_bson(value, self)
 
     def _write_start_container(self, name_bytes, container_type):
         # Insert element name and type marker.
@@ -1431,7 +1453,7 @@ def _dict_to_bson_buffered(doc, check_keys, opts, top_level=True):
             if not top_level or key != "_id":
                 try:
                     writer._insert_bytes(_element_to_bson(
-                        key, value, check_keys, opts))
+                        key, value, check_keys, opts, writer))
                 except InvalidDocument:
                     writer._write_custom_type(key, value,)
     except TypeError:

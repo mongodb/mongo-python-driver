@@ -596,11 +596,10 @@ class Collection(common.BaseObject):
             acknowledged, _insert_command, session)
 
         if not isinstance(doc, RawBSONDocument):
-            if isinstance(doc, self.codec_options.document_class):
-                return doc.zip
+            if isinstance(doc, abc.MutableMapping):
+                return doc["_id"]
             else:
-                return doc.get('_id')
-
+                return doc.get_pk()
 
     def _insert(self, docs, ordered=True, check_keys=True,
                 manipulate=False, write_concern=None, op_id=None,
@@ -690,12 +689,11 @@ class Collection(common.BaseObject):
         common.validate_is_document_type_new(
             "document", document, self.codec_options)
 
-        try:
-            if not (isinstance(document, RawBSONDocument) or "_id" in document):
+        if not isinstance(document, RawBSONDocument):
+            if isinstance(document, abc.MutableMapping) and "_id" not in document:
                 document["_id"] = ObjectId()
-        except TypeError:
-            if not self.codec_options.document_class_codec.has_id(document):
-                self.codec_options.document_class_codec.set_id(document)
+            elif isinstance(document, self.codec_options.document_class) and not document.get_pk():
+                document.set_pk(ObjectId())
 
         write_concern = self._write_concern_for(session)
         return InsertOneResult(

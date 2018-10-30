@@ -413,9 +413,11 @@ def validate_auth_mechanism_properties(option, value):
     return props
 
 
+from bson.custom_bson import CustomDocumentClassABC
+
 def validate_document_class(option, value):
     """Validate the document_class option."""
-    if not issubclass(value, (abc.MutableMapping, RawBSONDocument)):
+    if not issubclass(value, (abc.MutableMapping, RawBSONDocument, CustomDocumentClassABC)):
         raise TypeError("%s must be dict, bson.son.SON, "
                         "bson.raw_bson.RawBSONDocument, or a "
                         "sublass of collections.MutableMapping" % (option,))
@@ -457,7 +459,8 @@ def validate_is_document_type_new(option, value, codec_options):
     """Validate the type of method arguments that expect a MongoDB document."""
     if not isinstance(value, (abc.MutableMapping, RawBSONDocument,
                               codec_options.document_class)):
-        raise TypeError("%s not valid" % (option,))
+        if codec_options.outgoing_codec is None:
+            raise TypeError("%s not valid" % (option,))
 
 
 def validate_appname_or_none(option, value):
