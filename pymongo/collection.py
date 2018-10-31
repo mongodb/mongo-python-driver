@@ -181,7 +181,7 @@ class Collection(common.BaseObject):
 
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler='replace',
-            document_class=dict, document_class_codec=None)
+            document_class=dict,)
 
     def _socket_for_reads(self, session):
         return self.__database.client._socket_for_reads(

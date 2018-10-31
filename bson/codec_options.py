@@ -22,7 +22,7 @@ from bson.py3compat import abc, string_type
 from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          PYTHON_LEGACY,
                          UUID_REPRESENTATION_NAMES)
-from bson.custom_bson import MappingDocumentWrangler, RawBSONDocumentWrangler, CustomDocumentClassABC
+from bson.custom_bson import CustomDocumentClassABC
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
@@ -36,9 +36,7 @@ def _raw_document_class(document_class):
 _options_base = namedtuple(
     'CodecOptions',
     ('document_class', 'tz_aware', 'uuid_representation',
-     'unicode_decode_error_handler', 'tzinfo', 'custom_codec_map',
-     'document_wrangler', 'outgoing_codec', 'incoming_codec',
-     'document_class_codec'))
+     'unicode_decode_error_handler', 'tzinfo', 'custom_codec_map',))
 
 
 class CodecOptions(_options_base):
@@ -107,14 +105,12 @@ class CodecOptions(_options_base):
     def __new__(cls, document_class=dict,
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
                 unicode_decode_error_handler="strict", custom_codec_map=None,
-                tzinfo=None, document_wrangler=None, outgoing_codec=None,
-                incoming_codec=None, document_class_codec=None,):
+                tzinfo=None,):
         if not (issubclass(document_class, (abc.MutableMapping, CustomDocumentClassABC)) or
                 _raw_document_class(document_class)):
-            if document_class_codec is None and document_wrangler is None:
-                raise TypeError("document_class must be dict, bson.son.SON, "
-                                "bson.raw_bson.RawBSONDocument, or a "
-                                "sublass of collections.MutableMapping")
+            raise TypeError("document_class must be dict, bson.son.SON, "
+                            "bson.raw_bson.RawBSONDocument, or a "
+                            "sublass of collections.MutableMapping")
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
@@ -134,16 +130,9 @@ class CodecOptions(_options_base):
         if custom_codec_map is None:
             custom_codec_map = {}
 
-        if document_wrangler is None and issubclass(document_class, abc.MutableMapping):
-            document_wrangler = MappingDocumentWrangler()
-        elif document_wrangler is None and _raw_document_class(document_class):
-            document_wrangler = RawBSONDocumentWrangler()
-
         return tuple.__new__(
             cls, (document_class, tz_aware, uuid_representation,
-                  unicode_decode_error_handler, tzinfo, custom_codec_map,
-                  document_wrangler, outgoing_codec, incoming_codec,
-                  document_class_codec))
+                  unicode_decode_error_handler, tzinfo, custom_codec_map,))
 
     def _arguments_repr(self):
         """Representation of the arguments used to create this object."""
