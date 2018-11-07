@@ -49,10 +49,10 @@ class BSONTypes(Enum):
 
 class _BSONWriterState(Enum):
     INITIAL = 0
-    TOP_LEVEL = b"\x03"
-    DOCUMENT = b"\x03"
-    ARRAY = b"\x04"
-    END = 1
+    TOP_LEVEL = 1
+    DOCUMENT = 2
+    ARRAY = 3
+    END = 4
 
 
 class BSONWriter(object):
@@ -174,7 +174,7 @@ class BSONWriter(object):
 
         # If not at top level document, render this container
         # and concatenate it to the higher level container.
-        if self._nesting_level > 1:
+        if self._state != _BSONWriterState.TOP_LEVEL:
             bstream = self._stream.getvalue()
             self._containers.pop()
             self._sizes.pop()
@@ -183,37 +183,42 @@ class BSONWriter(object):
 
     def start_document(self, name=None):
         if self._state == _BSONWriterState.INITIAL:
-            self._states[-1] = _BSONWriterState.TOP_LEVEL
             self._write_start_container(None, BSONTypes.DOCUMENT)
+            self._states[-1] = _BSONWriterState.TOP_LEVEL
         else:
             name = name or self._name
-            self._states.append(_BSONWriterState.DOCUMENT)
             self._write_start_container(_make_name(name), BSONTypes.DOCUMENT)
+            self._states.append(_BSONWriterState.DOCUMENT)
 
     def end_document(self):
-        # old_state = self._state
-        #
-        # if old_state == _BSONWriterState.TOP_LEVEL:
-        #     self._states[-1] = _BSONWriterState.END
-        #     self._write_end_container()
-        # elif old_state == _BSONWriterState.DOCUMENT:
-        #     self._states.pop()
-        #     self._write_end_container()
-        # else:
-        #     # TODO: decide whether to raise an exception or just do nothing.
-        #     pass
-        self._write_end_container()
+        if self._state == _BSONWriterState.TOP_LEVEL:
+            self._write_end_container()
+            self._states[-1] = _BSONWriterState.END
+            return
+
+        if self._state == _BSONWriterState.DOCUMENT:
+            self._write_end_container()
+            self._states.pop()
+            return
+
+        raise BSONWriterException("cannot end non-document or finished document.")
 
     def start_array(self, name=None):
         name = name or self._name
         if name is None:
             raise BSONWriterException("cannot create unnamed array")
         self._write_start_container(_make_name(name), BSONTypes.ARRAY)
+        self._states.append(_BSONWriterState.ARRAY)
         self._array_indices.append(0)
 
     def end_array(self):
-        self._write_end_container()
-        self._array_indices.pop()
+        if self._state == _BSONWriterState.ARRAY:
+            self._write_end_container()
+            self._states.pop()
+            self._array_indices.pop()
+            return
+
+        raise BSONWriterException("cannot end non-array.")
 
     def write_name(self, name):
         self._name = name

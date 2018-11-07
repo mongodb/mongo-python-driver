@@ -129,7 +129,6 @@ class TestBSONWriter(unittest.TestCase):
         #   - docs in arrays
 
         # Scenario 1: documents nested in documents
-        # pdb.set_trace()
         test_doc = {"a": {"b": {"c": 1}}}
         expected_bytes = BSON.encode(test_doc)
 
@@ -145,6 +144,59 @@ class TestBSONWriter(unittest.TestCase):
 
         self.assertEqual(expected_bytes, writer.as_bytes())
 
+        # Scenario 2: arrays nested in documents
+        test_doc = {"a": {"b": [0.0, "1.0", 2]}}
+        expected_bytes = BSON.encode(test_doc)
+
+        writer = BSONWriter()
+        writer.start_document()
+        writer.start_document("a")
+        writer.start_array("b")
+        writer.write_value(0.0)
+        writer.write_value("1.0")
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+        writer.end_document()
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+        # Scenario 3: arrays nested in arrays
+        test_doc = {"a": [0, ["a", "b", ], 1, 2]}
+        expected_bytes = BSON.encode(test_doc)
+
+        writer = BSONWriter()
+        writer.start_document()
+        writer.start_array("a")
+        writer.write_value(0)
+        writer.start_array()
+        writer.write_value("a")
+        writer.write_value("b")
+        writer.end_array()
+        writer.write_value(1)
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+        # Scenario 4: documents nested in arrays
+        test_doc = {"a": [0, {"b": "hello world", }, 1, 2]}
+        expected_bytes = BSON.encode(test_doc)
+
+        writer = BSONWriter()
+        writer.start_document()
+        writer.start_array("a")
+        writer.write_value(0)
+        writer.start_document()
+        writer.write_name_value("b", "hello world")
+        writer.end_document()
+        writer.write_value(1)
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
 
     @unittest.skip("implicit_id is not yet implemented")
     def test_implicit_id(self):
