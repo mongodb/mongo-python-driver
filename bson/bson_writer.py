@@ -47,6 +47,9 @@ class BSONTypes(Enum):
     DECIMAL128 = b"\x13"
 
 
+ID_FIELD_NAME_BYTES = _make_name('_id')
+
+
 class _BSONWriterState(Enum):
     INITIAL = 0
     TOP_LEVEL = 1
@@ -95,24 +98,18 @@ class BSONWriter(object):
             name = text_type(self._get_array_index())
             self._advance_array_index()
             return name
-        elif self.__name is not None:
-            return self.__name
-        else:
-            return None
+        return self.__name
 
     @_name.setter
     def _name(self, new_name):
+        if (self._current_container == BSONTypes.ARRAY and
+                new_name is not None):
+            raise BSONWriterException("cannot set name for array elements")
         self.__name = new_name
 
     @property
     def _state(self):
         return self._states[-1]
-
-    @property
-    def _nesting_level(self):
-        # Nesting level of document currently being populated.
-        # Top level document is level 1.
-        return len(self._sizes)
 
     @property
     def _stream(self):
@@ -148,13 +145,13 @@ class BSONWriter(object):
         self._stream.seek(0)
         self._insert_bytes(_PACK_INT(self._size))
 
-    def _write_start_container(self, name_bytes, container_context):
+    def _write_start_container(self, name_bytes, container_type):
         # TODO: Some container context validation?
         # ...
 
         # Insert element type marker and name.
         if name_bytes is not None:
-            self._insert_bytes(container_context.value + name_bytes)
+            self._insert_bytes(container_type.value + name_bytes)
 
         # Create stream for new container.
         self._streams.append(BytesIO())
@@ -163,7 +160,7 @@ class BSONWriter(object):
         self._sizes.append(0)
 
         # Update container tracking.
-        self._containers.append(container_context)
+        self._containers.append(container_type)
 
         # Add a placeholder for size.
         self._insert_bytes(_PACK_INT(0))
@@ -228,10 +225,50 @@ class BSONWriter(object):
         if name is None:
             raise BSONWriterException("no cached name and none provided")
         self._insert_bytes(_name_value_to_bson(
-            _make_name(name), value, self._check_keys,
-            self._codec_options))
+            _make_name(name), value, self._check_keys, self._codec_options))
         self._name = None
 
     def write_name_value(self, name, value):
-        self._insert_bytes(_name_value_to_bson(
-            _make_name(name), value, self._check_keys, self._codec_options))
+        self.write_name(name)
+        self.write_value(value)
+
+
+class ImplicitIDBSONWriter(BSONWriter):
+    def __init__(self, implicit_id=True, id_generator=None, check_keys=False,
+                 codec_options=None):
+        if implicit_id and id_generator is None:
+            raise BSONWriterException("must supply id generator callable")
+        if not callable(id_generator):
+            raise BSONWriterException("provided id generator is not callable")
+        self._implicit_id = implicit_id
+        self._id_generator = id_generator
+        super(ImplicitIDBSONWriter, self).__init__(check_keys, codec_options)
+
+    def initialize(self):
+        # Flag that tracks whether we have written the `_id`.
+        self._id_written = None
+        super(ImplicitIDBSONWriter, self).initialize()
+
+    def _insert_bytes(self, b):
+        if self._state != _BSONWriterState.TOP_LEVEL:
+            return super(ImplicitIDBSONWriter, self)._insert_bytes(b)
+
+        # Error out if attempting to write a second `_id` field.
+        # if self._id_written and
+
+        # We are in the top-level document. If we are writing the first
+        # key, value pair, we must set the `_id` appropriately.
+
+
+
+    def write_name(self, name):
+        # Error out if re-writing `_id` in the top-level doc.
+        if (name == "_id" and self._id_written and
+                self._state == _BSONWriterState.TOP_LEVEL):
+            raise BSONWriterException("_id must be first entry in document")
+        super(ImplicitIDBSONWriter, self).write_name(name)
+
+    def start_document(self, name=None):
+        if self._state == _BSONWriterState.INITIAL:
+            self._id_written = False
+        super(ImplicitIDBSONWriter, self).start_document(name)

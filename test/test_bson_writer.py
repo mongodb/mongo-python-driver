@@ -21,7 +21,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson import BSON
-from bson.bson_writer import BSONWriter
+from bson.bson_writer import BSONWriter, ImplicitIDBSONWriter
 
 from test import unittest
 
@@ -198,9 +198,11 @@ class TestBSONWriter(unittest.TestCase):
 
         self.assertEqual(expected_bytes, writer.as_bytes())
 
+
+class TestImplicitIDBSONWriter(unittest.TestCase):
     @unittest.skip("implicit_id is not yet implemented")
     def test_implicit_id(self):
-        writer = BSONWriter(implicit_id=True)
+        writer = ImplicitIDBSONWriter(implicit_id=True)
         writer.start_document()
         writer.write_name_value("a", 1)
         writer.write_name("b")
