@@ -122,11 +122,20 @@ class BSONWriter(object):
         return self._sizes[-1]
 
     def _get_array_index(self):
-        # Index of current array element.
-        return self._array_indices[-1]
-
-    def _advance_array_index(self):
+        idx = self._array_indices[-1]
         self._array_indices[-1] += 1
+        return idx
+
+    def _set_field_name(self, name):
+        self.__next_name = name
+
+    def _get_field_name(self):
+        if self._state == _BSONWriterState.ARRAY:
+            name = text_type(self._get_array_index())
+            return name
+        name = self.__next_name
+        self.__next_name = None
+        return name
 
     @property
     def _current_container(self):
@@ -145,13 +154,14 @@ class BSONWriter(object):
         self._stream.seek(0)
         self._insert_bytes(_PACK_INT(self._size))
 
-    def _write_start_container(self, name_bytes, container_type):
+    def _write_start_container(self, container_type):
         # TODO: Some container context validation?
         # ...
 
         # Insert element type marker and name.
-        if name_bytes is not None:
-            self._insert_bytes(container_type.value + name_bytes)
+        if self._state != _BSONWriterState.INITIAL:
+            name = self._get_field_name()
+            self._insert_bytes(container_type.value + _make_name(name))
 
         # Create stream for new container.
         self._streams.append(BytesIO())
