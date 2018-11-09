@@ -47,15 +47,12 @@ class BSONTypes(Enum):
     DECIMAL128 = b"\x13"
 
 
-ID_FIELD_NAME_BYTES = _make_name('_id')
-
-
 class _BSONWriterState(Enum):
     INITIAL = 0
     TOP_LEVEL = 1
     DOCUMENT = 2
     ARRAY = 3
-    END = 4
+    FINAL = 4
 
 
 class BSONWriter(object):
@@ -65,7 +62,7 @@ class BSONWriter(object):
         self.initialize()
 
     def initialize(self):
-        # Writer state tracker. Starts with INITIAL. Ends with INITIAL, END.
+        # Writer state tracker.
         self._states = deque()
         self._states.append(_BSONWriterState.INITIAL)
 
@@ -77,35 +74,17 @@ class BSONWriter(object):
         # Deque used to track sizes for nested entities.
         self._sizes = deque()
 
-        # Container type to which we are currently writing.
-        # Can be a document or an array.
-        # Deque used to track nesting of containers.
-        self._containers = deque()
-
         # Array index at which we are currently writing.
         # Deque used to track nesting of arrays.
         self._array_indices = deque()
 
-        # Cached element name.
-        self.__name = None
+        # Initialize element name tracking.
+        self._next_name = None
 
     def as_bytes(self):
-        return self._stream.getvalue()
-
-    @property
-    def _name(self):
-        if self._current_container == BSONTypes.ARRAY:
-            name = text_type(self._get_array_index())
-            self._advance_array_index()
-            return name
-        return self.__name
-
-    @_name.setter
-    def _name(self, new_name):
-        if (self._current_container == BSONTypes.ARRAY and
-                new_name is not None):
-            raise BSONWriterException("cannot set name for array elements")
-        self.__name = new_name
+        if self._state == _BSONWriterState.FINAL:
+            return self._stream.getvalue()
+        raise BSONWriterException("cannot render incomplete document")
 
     @property
     def _state(self):
@@ -127,20 +106,17 @@ class BSONWriter(object):
         return idx
 
     def _set_field_name(self, name):
-        self.__next_name = name
+        self._next_name = name or self._next_name
 
     def _get_field_name(self):
         if self._state == _BSONWriterState.ARRAY:
             name = text_type(self._get_array_index())
-            return name
-        name = self.__next_name
-        self.__next_name = None
+        else:
+            name = self._next_name
+            self._next_name = None
+        if name is None:
+            raise BSONWriterException("no cached name and none provided")
         return name
-
-    @property
-    def _current_container(self):
-        # Pointer to container (document/array) being currently written to.
-        return self._containers[-1]
 
     def _insert_bytes(self, b):
         # Insert given bytes into current document.
@@ -155,9 +131,6 @@ class BSONWriter(object):
         self._insert_bytes(_PACK_INT(self._size))
 
     def _write_start_container(self, container_type):
-        # TODO: Some container context validation?
-        # ...
-
         # Insert element type marker and name.
         if self._state != _BSONWriterState.INITIAL:
             name = self._get_field_name()
@@ -168,9 +141,6 @@ class BSONWriter(object):
 
         # Create size counter for new container.
         self._sizes.append(0)
-
-        # Update container tracking.
-        self._containers.append(container_type)
 
         # Add a placeholder for size.
         self._insert_bytes(_PACK_INT(0))
@@ -183,24 +153,23 @@ class BSONWriter(object):
         # and concatenate it to the higher level container.
         if self._state != _BSONWriterState.TOP_LEVEL:
             bstream = self._stream.getvalue()
-            self._containers.pop()
             self._sizes.pop()
             self._streams.pop()
             self._insert_bytes(bstream)
 
     def start_document(self, name=None):
         if self._state == _BSONWriterState.INITIAL:
-            self._write_start_container(None, BSONTypes.DOCUMENT)
+            self._write_start_container(BSONTypes.DOCUMENT)
             self._states[-1] = _BSONWriterState.TOP_LEVEL
         else:
-            name = name or self._name
-            self._write_start_container(_make_name(name), BSONTypes.DOCUMENT)
+            self._set_field_name(name)
+            self._write_start_container(BSONTypes.DOCUMENT)
             self._states.append(_BSONWriterState.DOCUMENT)
 
     def end_document(self):
         if self._state == _BSONWriterState.TOP_LEVEL:
             self._write_end_container()
-            self._states[-1] = _BSONWriterState.END
+            self._states[-1] = _BSONWriterState.FINAL
             return
 
         if self._state == _BSONWriterState.DOCUMENT:
@@ -211,10 +180,8 @@ class BSONWriter(object):
         raise BSONWriterException("cannot end non-document or finished document.")
 
     def start_array(self, name=None):
-        name = name or self._name
-        if name is None:
-            raise BSONWriterException("cannot create unnamed array")
-        self._write_start_container(_make_name(name), BSONTypes.ARRAY)
+        self._set_field_name(name)
+        self._write_start_container(BSONTypes.ARRAY)
         self._states.append(_BSONWriterState.ARRAY)
         self._array_indices.append(0)
 
@@ -228,15 +195,12 @@ class BSONWriter(object):
         raise BSONWriterException("cannot end non-array.")
 
     def write_name(self, name):
-        self._name = name
+        self._set_field_name(name)
 
     def write_value(self, value):
-        name = self._name
-        if name is None:
-            raise BSONWriterException("no cached name and none provided")
+        name = self._get_field_name()
         self._insert_bytes(_name_value_to_bson(
             _make_name(name), value, self._check_keys, self._codec_options))
-        self._name = None
 
     def write_name_value(self, name, value):
         self.write_name(name)
