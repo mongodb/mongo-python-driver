@@ -200,9 +200,8 @@ class TestBSONWriter(unittest.TestCase):
 
 
 class TestImplicitIDBSONWriter(unittest.TestCase):
-    @unittest.skip("implicit_id is not yet implemented")
     def test_implicit_id(self):
-        writer = ImplicitIDBSONWriter(implicit_id=True)
+        writer = ImplicitIDBSONWriter()
         writer.start_document()
         writer.write_name_value("a", 1)
         writer.write_name("b")

@@ -65,7 +65,7 @@ class BSONWriter(object):
     def initialize(self):
         # Writer state tracker.
         self._states = deque()
-        self._states.append(_BSONWriterState.INITIAL)
+        self._update_state(_BSONWriterState.INITIAL)
 
         # Bytestream in which to place BSON encoded bytes.
         # Deque used to track streams for nested entities.
@@ -86,6 +86,15 @@ class BSONWriter(object):
         if self._state == _BSONWriterState.FINAL:
             return self._stream.getvalue()
         raise BSONWriterException("cannot render incomplete document")
+
+    def _update_state(self, new_state):
+        if new_state is None:
+            self._states.pop()
+        elif (new_state == _BSONWriterState.TOP_LEVEL or
+                new_state == _BSONWriterState.FINAL):
+            self._states[-1] = new_state
+        else:
+            self._states.append(new_state)
 
     @property
     def _state(self):
@@ -123,14 +132,6 @@ class BSONWriter(object):
         # Insert given bytes into current document.
         self._sizes[-1] += self._stream.write(b)
 
-    def _finalize(self):
-        # Insert null to mark document end.
-        self._insert_bytes(b"\x00")
-
-        # Update the corresponding size bytes.
-        self._stream.seek(0)
-        self._insert_bytes(_PACK_INT(self._size))
-
     def _write_start_container(self, container_type):
         # Insert element type marker and name.
         if self._state != _BSONWriterState.INITIAL:
@@ -147,8 +148,12 @@ class BSONWriter(object):
         self._insert_bytes(_PACK_INT(0))
 
     def _write_end_container(self):
-        # End current container.
-        self._finalize()
+        # Insert null to mark document end.
+        self._insert_bytes(b"\x00")
+
+        # Update the corresponding size bytes.
+        self._stream.seek(0)
+        self._insert_bytes(_PACK_INT(self._size))
 
         # If not at top level document, render this container
         # and concatenate it to the higher level container.
@@ -160,37 +165,35 @@ class BSONWriter(object):
 
     def start_document(self, name=None):
         if self._state == _BSONWriterState.INITIAL:
-            self._write_start_container(BSONTypes.DOCUMENT)
-            self._states[-1] = _BSONWriterState.TOP_LEVEL
+            new_state = _BSONWriterState.TOP_LEVEL
         else:
-            self._set_field_name(name)
-            self._write_start_container(BSONTypes.DOCUMENT)
-            self._states.append(_BSONWriterState.DOCUMENT)
+            new_state = _BSONWriterState.DOCUMENT
+        self._set_field_name(name)
+        self._write_start_container(BSONTypes.DOCUMENT)
+        self._update_state(new_state)
 
     def end_document(self):
         if self._state == _BSONWriterState.DOCUMENT:
-            self._write_end_container()
-            self._states.pop()
-            return
+            new_state = None
         elif self._state == _BSONWriterState.TOP_LEVEL:
-            self._write_end_container()
-            self._states[-1] = _BSONWriterState.FINAL
-            return
+            new_state = _BSONWriterState.FINAL
+        else:
+            raise BSONWriterException(
+                "cannot end non-document or finished document.")
 
-        # No other writer state admits an `end_document()` call.
-        raise BSONWriterException(
-            "cannot end non-document or finished document.")
+        self._write_end_container()
+        self._update_state(new_state)
 
     def start_array(self, name=None):
         self._set_field_name(name)
         self._write_start_container(BSONTypes.ARRAY)
-        self._states.append(_BSONWriterState.ARRAY)
+        self._update_state(_BSONWriterState.ARRAY)
         self._array_indices.append(0)
 
     def end_array(self):
         if self._state == _BSONWriterState.ARRAY:
             self._write_end_container()
-            self._states.pop()
+            self._update_state(None)
             self._array_indices.pop()
             return
 
@@ -219,8 +222,23 @@ class ImplicitIDBSONWriter(BSONWriter):
     def initialize(self):
         # Flag that tracks whether we have written the `_id`.
         self._id_written = False
+
+        # Field to store the `_id` value.
+        self._id = None
+
+        # Initialize basic BSONWriter.
         super(ImplicitIDBSONWriter, self).initialize()
+
+    def get_id(self):
+        return self._id
 
     def _get_field_name(self):
         name = super(ImplicitIDBSONWriter, self)._get_field_name()
-        if not self._id_written
+        if self._state == _BSONWriterState.TOP_LEVEL:
+            if self._id_written and name == '_id':
+                raise BSONWriterException("cannot rewrite _id field")
+            elif not self._id_written and name != '_id':
+                self._id = self._id_generator()
+                self.write_name_value('_id', self._id)
+                self._id_written = True
+        return name
