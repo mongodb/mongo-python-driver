@@ -22,6 +22,7 @@ from io import BytesIO
 
 from bson import _encode_int, _make_name, _name_value_to_bson, _PACK_INT
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.objectid import ObjectId
 from bson.py3compat import text_type
 
 
@@ -167,17 +168,18 @@ class BSONWriter(object):
             self._states.append(_BSONWriterState.DOCUMENT)
 
     def end_document(self):
-        if self._state == _BSONWriterState.TOP_LEVEL:
-            self._write_end_container()
-            self._states[-1] = _BSONWriterState.FINAL
-            return
-
         if self._state == _BSONWriterState.DOCUMENT:
             self._write_end_container()
             self._states.pop()
             return
+        elif self._state == _BSONWriterState.TOP_LEVEL:
+            self._write_end_container()
+            self._states[-1] = _BSONWriterState.FINAL
+            return
 
-        raise BSONWriterException("cannot end non-document or finished document.")
+        # No other writer state admits an `end_document()` call.
+        raise BSONWriterException(
+            "cannot end non-document or finished document.")
 
     def start_array(self, name=None):
         self._set_field_name(name)
@@ -208,41 +210,17 @@ class BSONWriter(object):
 
 
 class ImplicitIDBSONWriter(BSONWriter):
-    def __init__(self, implicit_id=True, id_generator=None, check_keys=False,
-                 codec_options=None):
-        if implicit_id and id_generator is None:
+    def __init__(self, id_generator=ObjectId, *args, **kwargs):
+        if not id_generator or not callable(id_generator):
             raise BSONWriterException("must supply id generator callable")
-        if not callable(id_generator):
-            raise BSONWriterException("provided id generator is not callable")
-        self._implicit_id = implicit_id
         self._id_generator = id_generator
-        super(ImplicitIDBSONWriter, self).__init__(check_keys, codec_options)
+        super(ImplicitIDBSONWriter, self).__init__(*args, **kwargs)
 
     def initialize(self):
         # Flag that tracks whether we have written the `_id`.
-        self._id_written = None
+        self._id_written = False
         super(ImplicitIDBSONWriter, self).initialize()
 
-    def _insert_bytes(self, b):
-        if self._state != _BSONWriterState.TOP_LEVEL:
-            return super(ImplicitIDBSONWriter, self)._insert_bytes(b)
-
-        # Error out if attempting to write a second `_id` field.
-        # if self._id_written and
-
-        # We are in the top-level document. If we are writing the first
-        # key, value pair, we must set the `_id` appropriately.
-
-
-
-    def write_name(self, name):
-        # Error out if re-writing `_id` in the top-level doc.
-        if (name == "_id" and self._id_written and
-                self._state == _BSONWriterState.TOP_LEVEL):
-            raise BSONWriterException("_id must be first entry in document")
-        super(ImplicitIDBSONWriter, self).write_name(name)
-
-    def start_document(self, name=None):
-        if self._state == _BSONWriterState.INITIAL:
-            self._id_written = False
-        super(ImplicitIDBSONWriter, self).start_document(name)
+    def _get_field_name(self):
+        name = super(ImplicitIDBSONWriter, self)._get_field_name()
+        if not self._id_written
