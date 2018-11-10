@@ -21,11 +21,9 @@ import sys
 sys.path[0:0] = [""]
 
 from bson import BSON
-from bson.bson_writer import BSONWriter, ImplicitIDBSONWriter
+from bson.bson_writer import BSONWriter, BSONDocumentWriter
 
 from test import unittest
-
-import ipdb as pdb
 
 
 class TestBSONWriter(unittest.TestCase):
@@ -122,12 +120,6 @@ class TestBSONWriter(unittest.TestCase):
         self.assertEqual(expected_bytes, writer.as_bytes())
 
     def test_nested_containers(self):
-        # Need to test 4 scenarios:
-        #   - docs in docs
-        #   - arrays in docs
-        #   - arrays in arrays
-        #   - docs in arrays
-
         # Scenario 1: documents nested in documents
         test_doc = {"a": {"b": {"c": 1}}}
         expected_bytes = BSON.encode(test_doc)
@@ -148,7 +140,7 @@ class TestBSONWriter(unittest.TestCase):
         test_doc = {"a": {"b": [0.0, "1.0", 2]}}
         expected_bytes = BSON.encode(test_doc)
 
-        writer = BSONWriter()
+        writer.initialize()
         writer.start_document()
         writer.start_document("a")
         writer.start_array("b")
@@ -165,7 +157,7 @@ class TestBSONWriter(unittest.TestCase):
         test_doc = {"a": [0, ["a", "b", ], 1, 2]}
         expected_bytes = BSON.encode(test_doc)
 
-        writer = BSONWriter()
+        writer.initialize()
         writer.start_document()
         writer.start_array("a")
         writer.write_value(0)
@@ -184,7 +176,7 @@ class TestBSONWriter(unittest.TestCase):
         test_doc = {"a": [0, {"b": "hello world", }, 1, 2]}
         expected_bytes = BSON.encode(test_doc)
 
-        writer = BSONWriter()
+        writer.initialize()
         writer.start_document()
         writer.start_array("a")
         writer.write_value(0)
@@ -199,16 +191,181 @@ class TestBSONWriter(unittest.TestCase):
         self.assertEqual(expected_bytes, writer.as_bytes())
 
 
-class TestImplicitIDBSONWriter(unittest.TestCase):
-    def test_implicit_id(self):
-        writer = ImplicitIDBSONWriter()
+class TestBSONDocumentWriter(unittest.TestCase):
+    def test_implicit_id_basic(self):
+        writer = BSONDocumentWriter()
         writer.start_document()
         writer.write_name_value("a", 1)
         writer.write_name("b")
         writer.write_value("some text")
         writer.end_document()
 
-        test_doc = {"_id": writer.get_id(), "a": 1, "b": "some text", }
+        test_doc = {"_id": writer.get_document_id(), "a": 1, "b": "some text"}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+    def test_explicit_id_basic(self):
+        writer = BSONDocumentWriter()
+        writer.start_document()
+        writer.write_name_value("_id", 12345)
+        writer.write_name_value("a", 1)
+        writer.write_name("b")
+        writer.write_value("some text")
+        writer.end_document()
+
+        test_doc = {"_id": writer.get_document_id(), "a": 1, "b": "some text"}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+        self.assertEqual(12345, writer.get_document_id())
+
+    def test_implicit_id_nested_containers(self):
+        # Scenario 1: documents nested in documents
+        writer = BSONDocumentWriter()
+        writer.start_document()
+        writer.start_document("a")
+        writer.start_document("b")
+        writer.write_name("c")
+        writer.write_value(1)
+        writer.end_document()
+        writer.end_document()
+        writer.end_document()
+
+        test_doc = {"_id": writer.get_document_id(), "a": {"b": {"c": 1}}}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+        # Scenario 2: arrays nested in documents
+        writer.initialize()
+        writer.start_document()
+        writer.start_document("a")
+        writer.start_array("b")
+        writer.write_value(0.0)
+        writer.write_value("1.0")
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+        writer.end_document()
+
+        test_doc = {
+            "_id": writer.get_document_id(), "a": {"b": [0.0, "1.0", 2]}}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+        # Scenario 3: arrays nested in arrays
+        writer.initialize()
+        writer.start_document()
+        writer.start_array("a")
+        writer.write_value(0)
+        writer.start_array()
+        writer.write_value("a")
+        writer.write_value("b")
+        writer.end_array()
+        writer.write_value(1)
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+
+        test_doc = {
+            "_id": writer.get_document_id(), "a": [0, ["a", "b", ], 1, 2]}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+        # Scenario 4: documents nested in arrays
+        writer.initialize()
+        writer.start_document()
+        writer.start_array("a")
+        writer.write_value(0)
+        writer.start_document()
+        writer.write_name_value("b", "hello world")
+        writer.end_document()
+        writer.write_value(1)
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+
+        test_doc = {
+            "_id": writer.get_document_id(),
+            "a": [0, {"b": "hello world", }, 1, 2]}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+    def test_explicit_id_nested_containers(self):
+        # Scenario 1: documents nested in documents
+        writer = BSONDocumentWriter()
+        writer.start_document()
+        writer.write_name_value("_id", 12345)
+        writer.start_document("a")
+        writer.start_document("b")
+        writer.write_name("c")
+        writer.write_value(1)
+        writer.end_document()
+        writer.end_document()
+        writer.end_document()
+
+        test_doc = {"_id": 12345, "a": {"b": {"c": 1}}}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+        # Scenario 2: arrays nested in documents
+        writer.initialize()
+        writer.start_document()
+        writer.write_name_value("_id", 12345)
+        writer.start_document("a")
+        writer.start_array("b")
+        writer.write_value(0.0)
+        writer.write_value("1.0")
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+        writer.end_document()
+
+        test_doc = {"_id": 12345, "a": {"b": [0.0, "1.0", 2]}}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+        # Scenario 3: arrays nested in arrays
+        writer.initialize()
+        writer.start_document()
+        writer.write_name_value("_id", 12345)
+        writer.start_array("a")
+        writer.write_value(0)
+        writer.start_array()
+        writer.write_value("a")
+        writer.write_value("b")
+        writer.end_array()
+        writer.write_value(1)
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+
+        test_doc = {"_id": 12345, "a": [0, ["a", "b", ], 1, 2]}
+        expected_bytes = BSON.encode(test_doc)
+
+        self.assertEqual(expected_bytes, writer.as_bytes())
+
+        # Scenario 4: documents nested in arrays
+        writer.initialize()
+        writer.start_document()
+        writer.write_name_value("_id", 12345)
+        writer.start_array("a")
+        writer.write_value(0)
+        writer.start_document()
+        writer.write_name_value("b", "hello world")
+        writer.end_document()
+        writer.write_value(1)
+        writer.write_value(2)
+        writer.end_array()
+        writer.end_document()
+
+        test_doc = {"_id": 12345, "a": [0, {"b": "hello world", }, 1, 2]}
         expected_bytes = BSON.encode(test_doc)
 
         self.assertEqual(expected_bytes, writer.as_bytes())

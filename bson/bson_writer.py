@@ -20,7 +20,7 @@ from collections import deque
 from enum import Enum
 from io import BytesIO
 
-from bson import _encode_int, _make_name, _name_value_to_bson, _PACK_INT
+from bson import _make_name, _name_value_to_bson, _PACK_INT
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
 from bson.py3compat import text_type
@@ -212,12 +212,12 @@ class BSONWriter(object):
         self.write_value(value)
 
 
-class ImplicitIDBSONWriter(BSONWriter):
+class BSONDocumentWriter(BSONWriter):
     def __init__(self, id_generator=ObjectId, *args, **kwargs):
         if not id_generator or not callable(id_generator):
             raise BSONWriterException("must supply id generator callable")
         self._id_generator = id_generator
-        super(ImplicitIDBSONWriter, self).__init__(*args, **kwargs)
+        super(BSONDocumentWriter, self).__init__(*args, **kwargs)
 
     def initialize(self):
         # Flag that tracks whether we have written the `_id`.
@@ -227,13 +227,16 @@ class ImplicitIDBSONWriter(BSONWriter):
         self._id = None
 
         # Initialize basic BSONWriter.
-        super(ImplicitIDBSONWriter, self).initialize()
+        super(BSONDocumentWriter, self).initialize()
 
-    def get_id(self):
+    def get_document_id(self):
         return self._id
 
+    def set_document_id(self, id):
+        self._id = id
+
     def _get_field_name(self):
-        name = super(ImplicitIDBSONWriter, self)._get_field_name()
+        name = super(BSONDocumentWriter, self)._get_field_name()
         if self._state == _BSONWriterState.TOP_LEVEL:
             if self._id_written and name == '_id':
                 raise BSONWriterException("cannot rewrite _id field")
@@ -242,3 +245,11 @@ class ImplicitIDBSONWriter(BSONWriter):
                 self.write_name_value('_id', self._id)
                 self._id_written = True
         return name
+
+    def write_value(self, value):
+        name = self._get_field_name()
+        if name == "_id" and self._state == _BSONWriterState.TOP_LEVEL:
+            self._id_written = True
+            self.set_document_id(value)
+        self._insert_bytes(_name_value_to_bson(
+            _make_name(name), value, self._check_keys, self._codec_options))
