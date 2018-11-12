@@ -14,6 +14,8 @@
 
 """Exceptions raised by PyMongo."""
 
+import sys
+
 from bson.errors import *
 
 try:
@@ -26,6 +28,7 @@ class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
     def __init__(self, message='', error_labels=None):
         super(PyMongoError, self).__init__(message)
+        self._message = message
         self._error_labels = set(error_labels or [])
 
     def has_error_label(self, label):
@@ -42,6 +45,11 @@ class PyMongoError(Exception):
     def _remove_error_label(self, label):
         """Remove the given label from this error."""
         self._error_labels.remove(label)
+
+    def __str__(self):
+        if sys.version_info[0] == 2 and isinstance(self._message, unicode):
+            return self._message.encode('utf-8', errors='replace')
+        return str(self._message)
 
 
 class ProtocolError(PyMongoError):

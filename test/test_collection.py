@@ -1316,6 +1316,21 @@ class TestCollection(IntegrationTest):
                           db.test.insert_many,
                           [{"text": text}])
 
+    def test_write_error_unicode(self):
+        coll = self.db.test
+        self.addCleanup(coll.drop)
+
+        coll.create_index('a', unique=True)
+        coll.insert_one({'a': u'unicode \U0001f40d'})
+        with self.assertRaisesRegex(
+                DuplicateKeyError,
+                'E11000 duplicate key error') as ctx:
+            coll.insert_one({'a': u'unicode \U0001f40d'})
+
+        # Once more for good measure.
+        self.assertIn('E11000 duplicate key error',
+                      str(ctx.exception))
+
     def test_wtimeout(self):
         # Ensure setting wtimeout doesn't disable write concern altogether.
         # See SERVER-12596.
