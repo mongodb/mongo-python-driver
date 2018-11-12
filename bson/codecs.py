@@ -16,11 +16,6 @@
 
 """Tools for specifying BSON codecs for custom types."""
 
-import datetime
-
-from collections import namedtuple
-
-from bson.py3compat import abc, string_type
 from bson.objectid import ObjectId
 
 
