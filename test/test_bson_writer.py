@@ -21,7 +21,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson import BSON
-from bson.bson_writer import BSONWriter, BSONDocumentWriter
+from bson.flexible_bson import BSONWriter, BSONDocumentWriter
 
 from test import unittest
 

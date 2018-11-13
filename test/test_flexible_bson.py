@@ -20,13 +20,11 @@ import sys
 
 sys.path[0:0] = [""]
 
-from bson.codecs import BSONCodecBase
+from bson.flexible_bson import BSONCodecBase
 from bson.codec_options import CodecOptions
 
 from test import unittest
 from test.utils import rs_or_single_client
-
-import ipdb as pdb
 
 
 class MyAddressTypeNoID(object):
@@ -53,7 +51,6 @@ class MyAddressTypeNoIDCodec(BSONCodecBase):
 
 class TestEncodingCustomFields(unittest.TestCase):
     def test_basic(self):
-        #pdb.set_trace()
         doc = {
             'name': 'Jane Doe',
             'address': MyAddressTypeNoID(
