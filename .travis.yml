@@ -11,7 +11,5 @@ python:
 services:
   - mongodb
 
-install: python setup.py install --no-ext
-
-script: PYMONGO_MUST_CONNECT=1 python setup.py test
+script: PYMONGO_MUST_CONNECT=1 python setup.py test --no_ext
 
