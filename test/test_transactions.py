@@ -561,10 +561,10 @@ def create_tests():
 
                 new_test = create_test(scenario_def, test)
                 new_test = client_context.require_transactions(new_test)
-                new_test = client_context._require(
-                    lambda: not test.get('skipReason'),
-                    test.get('skipReason'),
-                    new_test)
+                skip_reason = test.get('skipReason')
+                if skip_reason:
+                    new_test = client_context._require(
+                        lambda: False, skip_reason, new_test)
 
                 if 'secondary' in test_name:
                     new_test = client_context._require(
