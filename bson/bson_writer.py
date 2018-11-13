@@ -56,6 +56,9 @@ class _BSONWriterState(Enum):
     FINAL = 4
 
 
+_ID_FIELD_C_NAME = _make_name("_id")
+
+
 class BSONWriter(object):
     def __init__(self, check_keys=False, codec_options=None):
         self._check_keys = check_keys
@@ -128,6 +131,10 @@ class BSONWriter(object):
             raise BSONWriterException("no cached name and none provided")
         return name
 
+    def _get_c_field_name(self):
+        name = self._get_field_name()
+        return _make_name(name)
+
     def _insert_bytes(self, b):
         # Insert given bytes into current document.
         self._sizes[-1] += self._stream.write(b)
@@ -135,8 +142,8 @@ class BSONWriter(object):
     def _write_start_container(self, container_type):
         # Insert element type marker and name.
         if self._state != _BSONWriterState.INITIAL:
-            name = self._get_field_name()
-            self._insert_bytes(container_type.value + _make_name(name))
+            c_name = self._get_c_field_name()
+            self._insert_bytes(container_type.value + c_name)
 
         # Create stream for new container.
         self._streams.append(BytesIO())
@@ -203,13 +210,36 @@ class BSONWriter(object):
         self._set_field_name(name)
 
     def write_value(self, value):
-        name = self._get_field_name()
+        c_name = self._get_c_field_name()
         self._insert_bytes(_name_value_to_bson(
-            _make_name(name), value, self._check_keys, self._codec_options))
+            c_name, value, self._check_keys, self._codec_options))
 
     def write_name_value(self, name, value):
         self.write_name(name)
         self.write_value(value)
+
+
+class BSONFieldWriter(BSONWriter):
+    def __init__(self, field_name=None, *args, **kwargs):
+        # field_name is a c-string
+        if field_name is None:
+            raise BSONWriterException("must provide field name")
+        self._field_name = field_name
+        super(BSONFieldWriter, self).__init__(*args, **kwargs)
+
+    def _get_c_field_name(self):
+        if self._field_name is not None:
+            c_name = self._field_name
+            self._field_name = None
+            return c_name
+        return super(BSONFieldWriter, self)._get_c_field_name()
+
+    def as_bytes(self):
+        bstream = super(BSONFieldWriter, self).as_bytes()
+
+        # Drop 4 bytes for int32 size at the beginning.
+        # Drop 1 byte for '\x00' delimiter at the end.
+        return bstream[4:-1]
 
 
 class BSONDocumentWriter(BSONWriter):
@@ -238,18 +268,21 @@ class BSONDocumentWriter(BSONWriter):
     def _get_field_name(self):
         name = super(BSONDocumentWriter, self)._get_field_name()
         if self._state == _BSONWriterState.TOP_LEVEL:
-            if self._id_written and name == '_id':
-                raise BSONWriterException("cannot rewrite _id field")
-            elif not self._id_written and name != '_id':
+            if name == '_id':
+                if self._id_written:
+                    raise BSONWriterException("cannot rewrite _id field")
+                else:
+                    self._id_written = True
+            elif not self._id_written:
                 self._id = self._id_generator()
                 self.write_name_value('_id', self._id)
-                self._id_written = True
         return name
 
     def write_value(self, value):
-        name = self._get_field_name()
-        if name == "_id" and self._state == _BSONWriterState.TOP_LEVEL:
+        c_name = self._get_c_field_name()
+        if (c_name == _ID_FIELD_C_NAME and
+                self._state == _BSONWriterState.TOP_LEVEL):
             self._id_written = True
             self.set_document_id(value)
         self._insert_bytes(_name_value_to_bson(
-            _make_name(name), value, self._check_keys, self._codec_options))
+            c_name, value, self._check_keys, self._codec_options))

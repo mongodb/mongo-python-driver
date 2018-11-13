@@ -775,6 +775,16 @@ def _name_value_to_bson(name, value, check_keys, opts):
             _ENCODERS[type(value)] = func
             return func(name, value, check_keys, opts)
 
+    # Finally, try to encode the object with registered codec.
+    codec = opts.custom_codec_map.get(type(value))
+    if codec is not None:
+        from bson.bson_writer import BSONFieldWriter
+        writer = BSONFieldWriter(name)
+        writer.start_document()
+        codec.to_bson(value, writer)
+        writer.end_document()
+        return writer.as_bytes()
+
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))
 
