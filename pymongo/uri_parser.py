@@ -41,39 +41,6 @@ SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
 
-# def _partition(entity, sep):
-#     """Python2.4 doesn't have a partition method so we provide
-#     our own that mimics str.partition from later releases.
-#
-#     Split the string at the first occurrence of sep, and return a
-#     3-tuple containing the part before the separator, the separator
-#     itself, and the part after the separator. If the separator is not
-#     found, return a 3-tuple containing the string itself, followed
-#     by two empty strings.
-#     """
-#     parts = entity.split(sep, 1)
-#     if len(parts) == 2:
-#         return parts[0], sep, parts[1]
-#     else:
-#         return entity, '', ''
-#
-#
-# def _rpartition(entity, sep):
-#     """Python2.4 doesn't have an rpartition method so we provide
-#     our own that mimics str.rpartition from later releases.
-#
-#     Split the string at the last occurrence of sep, and return a
-#     3-tuple containing the part before the separator, the separator
-#     itself, and the part after the separator. If the separator is not
-#     found, return a 3-tuple containing two empty strings, followed
-#     by the string itself.
-#     """
-#     idx = entity.rfind(sep)
-#     if idx == -1:
-#         return '', '', entity
-#     return entity[:idx], sep, entity[idx + 1:]
-
-
 def parse_userinfo(userinfo):
     """Validates the format of user information in a MongoDB URI.
     Reserved characters like ':', '/', '+' and '@' must be escaped
