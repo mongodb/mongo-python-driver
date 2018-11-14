@@ -41,37 +41,37 @@ SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
 
-def _partition(entity, sep):
-    """Python2.4 doesn't have a partition method so we provide
-    our own that mimics str.partition from later releases.
-
-    Split the string at the first occurrence of sep, and return a
-    3-tuple containing the part before the separator, the separator
-    itself, and the part after the separator. If the separator is not
-    found, return a 3-tuple containing the string itself, followed
-    by two empty strings.
-    """
-    parts = entity.split(sep, 1)
-    if len(parts) == 2:
-        return parts[0], sep, parts[1]
-    else:
-        return entity, '', ''
-
-
-def _rpartition(entity, sep):
-    """Python2.4 doesn't have an rpartition method so we provide
-    our own that mimics str.rpartition from later releases.
-
-    Split the string at the last occurrence of sep, and return a
-    3-tuple containing the part before the separator, the separator
-    itself, and the part after the separator. If the separator is not
-    found, return a 3-tuple containing two empty strings, followed
-    by the string itself.
-    """
-    idx = entity.rfind(sep)
-    if idx == -1:
-        return '', '', entity
-    return entity[:idx], sep, entity[idx + 1:]
+# def _partition(entity, sep):
+#     """Python2.4 doesn't have a partition method so we provide
+#     our own that mimics str.partition from later releases.
+#
+#     Split the string at the first occurrence of sep, and return a
+#     3-tuple containing the part before the separator, the separator
+#     itself, and the part after the separator. If the separator is not
+#     found, return a 3-tuple containing the string itself, followed
+#     by two empty strings.
+#     """
+#     parts = entity.split(sep, 1)
+#     if len(parts) == 2:
+#         return parts[0], sep, parts[1]
+#     else:
+#         return entity, '', ''
+#
+#
+# def _rpartition(entity, sep):
+#     """Python2.4 doesn't have an rpartition method so we provide
+#     our own that mimics str.rpartition from later releases.
+#
+#     Split the string at the last occurrence of sep, and return a
+#     3-tuple containing the part before the separator, the separator
+#     itself, and the part after the separator. If the separator is not
+#     found, return a 3-tuple containing two empty strings, followed
+#     by the string itself.
+#     """
+#     idx = entity.rfind(sep)
+#     if idx == -1:
+#         return '', '', entity
+#     return entity[:idx], sep, entity[idx + 1:]
 
 
 def parse_userinfo(userinfo):
@@ -95,7 +95,7 @@ def parse_userinfo(userinfo):
             quote_fn = "urllib.quote_plus"
         raise InvalidURI("Username and password must be escaped according to "
                          "RFC 3986, use %s()." % quote_fn)
-    user, _, passwd = _partition(userinfo, ":")
+    user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
         raise InvalidURI("The empty string is not valid username.")
@@ -365,7 +365,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
     collection = None
     options = {}
 
-    host_part, _, path_part = _partition(scheme_free, '/')
+    host_part, _, path_part = scheme_free.partition('/')
     if not host_part:
         host_part = path_part
         path_part = ""
@@ -375,7 +375,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
                          "the host list and any options.")
 
     if '@' in host_part:
-        userinfo, _, hosts = _rpartition(host_part, '@')
+        userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
     else:
         hosts = host_part
@@ -427,7 +427,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
         if path_part[0] == '?':
             opts = unquote_plus(path_part[1:])
         else:
-            dbase, _, opts = map(unquote_plus, _partition(path_part, '?'))
+            dbase, _, opts = map(unquote_plus, path_part.partition('?'))
             if '.' in dbase:
                 dbase, collection = dbase.split('.', 1)
 
