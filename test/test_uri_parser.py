@@ -20,9 +20,7 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from pymongo.uri_parser import (_partition,
-                                _rpartition,
-                                parse_userinfo,
+from pymongo.uri_parser import (parse_userinfo,
                                 split_hosts,
                                 split_options,
                                 parse_uri)
@@ -34,14 +32,6 @@ from test import unittest
 
 
 class TestURI(unittest.TestCase):
-
-    def test_partition(self):
-        self.assertEqual(('foo', ':', 'bar'), _partition('foo:bar', ':'))
-        self.assertEqual(('foobar', '', ''), _partition('foobar', ':'))
-
-    def test_rpartition(self):
-        self.assertEqual(('fo:o:', ':', 'bar'), _rpartition('fo:o::bar', ':'))
-        self.assertEqual(('', '', 'foobar'), _rpartition('foobar', ':'))
 
     def test_validate_userinfo(self):
         self.assertRaises(InvalidURI, parse_userinfo,
