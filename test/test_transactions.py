@@ -391,6 +391,9 @@ def end_sessions(sessions):
 
 def create_test(scenario_def, test):
     def run_scenario(self):
+        if test.get('skipReason'):
+            raise unittest.SkipTest(test.get('skipReason'))
+
         listener = OvertCommandListener()
         # New client, to avoid interference from pooled sessions.
         # Convert test['clientOptions'] to dict to avoid a Jython bug using "**"
@@ -561,10 +564,6 @@ def create_tests():
 
                 new_test = create_test(scenario_def, test)
                 new_test = client_context.require_transactions(new_test)
-                skip_reason = test.get('skipReason')
-                if skip_reason:
-                    new_test = client_context._require(
-                        lambda: False, skip_reason, new_test)
 
                 if 'secondary' in test_name:
                     new_test = client_context._require(
