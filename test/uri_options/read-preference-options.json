@@ -1,0 +1,65 @@
+{
+  "tests": [
+    {
+      "description": "Valid connection and timeout options are parsed correctly",
+      "uri": "mongodb://example.com/?readPreference=primaryPreferred&readPreferenceTags=dc:ny,rack:1&maxStalenessSeconds=120&readPreferenceTags=dc:ny",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "readPreference": "primaryPreferred",
+        "readPreferenceTags": [
+          "dc:ny,rack",
+          "dc:ny"
+        ],
+        "maxStalenessSeconds": "120"
+      }
+    },
+    {
+      "description": "Arbitrary string read preference does not cause a warning",
+      "uri": "mongodb://example.com/?readPreference=arbitraryButStillValid",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "readPreference": "arbitraryButStillValid"
+      }
+    },
+    {
+      "description": "Invalid readPreferenceTags causes a warning",
+      "uri": "mongodb://example.com/?readPreferenceTags=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    },
+    {
+      "description": "Invalid maxStalenessSeconds causes a warning",
+      "uri": "mongodb://example.com/?maxStalenessSeconds=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    }
+  ]
+}

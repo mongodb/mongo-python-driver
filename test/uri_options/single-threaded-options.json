@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "description": "Valid options specific to single-threaded drivers are parsed correctly",
+      "uri": "mongodb://example.com/?serverSelectionTryOnce=false",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "serverSelectionTryOnce": "false"
+      }
+    }
+  ]
+}

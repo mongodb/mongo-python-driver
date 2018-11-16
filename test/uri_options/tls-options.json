@@ -1,0 +1,82 @@
+{
+  "tests": [
+    {
+      "description": "Valid required tls options are parsed correctly",
+      "uri": "mongodb://example.com/?tls=true&tlsCAFilePath=ca.pem&tlsClientCertFilePath=cert.pem&tlsClientKeyPassword=hunter2",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "tls": "true",
+        "tlsCAFilePath": "ca.pem",
+        "tlsClientCertFilePath": "cert.pem",
+        "tlsClientKeyPassword": "hunter2"
+      }
+    },
+    {
+      "description": "tlsAllowInvalidCertificates is parsed correctly",
+      "uri": "mongodb://example.com/?tlsAllowInvalidCertificates=true",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "tlsAllowInvalidCertificates": "true"
+      }
+    },
+    {
+      "description": "tlsAllowInvalidHostnames is parsed correctly",
+      "uri": "mongodb://example.com/?tlsAllowInvalidHostnames=true",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "tlsAllowInvalidHostnames": "true"
+      }
+    },
+    {
+      "description": "tlsInsecure is parsed correctly",
+      "uri": "mongodb://example.com/?tlsInsecure=true",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "tlsInsecure": "true"
+      }
+    },
+    {
+      "description": "tlsClientKeyFilePath is parsed correctly",
+      "uri": "mongodb://example.com/?tlsClientKeyFilePath=client.pem",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "tlsClientKeyFilePath": "client.pem"
+      }
+    }
+  ]
+}

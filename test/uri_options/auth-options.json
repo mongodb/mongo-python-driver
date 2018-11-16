@@ -1,0 +1,37 @@
+{
+  "tests": [
+    {
+      "description": "Valid auth options are parsed correctly",
+      "uri": "mongodb://example.com/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:other,CANONICALIZE_HOST_NAME:true&authSource=$external",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "authmechanism": "GSSAPI",
+        "authMechanismProperties": {
+          "SERVICE_NAME": "other",
+          "CANONICALIZE_HOST_NAME": "true"
+        },
+        "authSource": "$external"
+      }
+    },
+    {
+      "description": "Invalid auth mechanism causes warning",
+      "uri": "mongodb://example.com/?authMechanism=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    }
+  ]
+}

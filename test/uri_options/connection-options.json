@@ -1,0 +1,105 @@
+{
+  "tests": [
+    {
+      "description": "Valid connection and timeout options are parsed correctly",
+      "uri": "mongodb://example.com/?appname=URI-OPTIONS-SPEC-TEST&connectTimeoutMS=20000&heartbeatFrequencyMS=5000&localThresholdMS=3000&maxIdleTimeMS=50000&replicaSet=uri-options-spec&retryWrites=true&serverSelectionTimeoutMS=15000&socketTimeoutMS=7500",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "appname": "URI-OPTIONS-SPEC-TEST",
+        "connectTimeoutMS": "20000",
+        "heartbeatFrequencyMS": "5000",
+        "localThresholdMS": "3000",
+        "maxIdleTimeMS": "50000",
+        "replicaSet": "uri-options-spec",
+        "retryWrites": "true",
+        "serverSelectionTimeoutMS": "15000",
+        "socketTimeoutMS": "7500"
+      }
+    },
+    {
+      "description": "Invalid connectTimeoutMS causes a warning",
+      "uri": "mongodb://example.com/?connectTimeoutMS=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    },
+    {
+      "description": "Invalid heartbeatFrequencyMS causes a warning",
+      "uri": "mongodb://example.com/?heartbeatFrequencyMS=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    },
+    {
+      "description": "Invalid localThresholdMS causes a warning",
+      "uri": "mongodb://example.com/?localThresholdMS=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    },
+    {
+      "description": "Invalid maxIdleTimeMS causes a warning",
+      "uri": "mongodb://example.com/?maxIdleTimeMS=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    },
+    {
+      "description": "Invalid serverSelectionTimeoutMS causes a warning",
+      "uri": "mongodb://example.com/?serverSelectionTimeoutMS=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    },
+    {
+      "description": "Invalid socketTimeoutMS causes a warning",
+      "uri": "mongodb://example.com/?socketTimeoutMS=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    }
+  ]
+}

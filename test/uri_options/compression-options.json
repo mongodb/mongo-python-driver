@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "description": "Valid compression options are parsed correctly",
+      "uri": "mongodb://example.com/?compressors=zlib&zlibCompressionLevel=9",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {
+        "compressors": "zlib",
+        "zlibCompressionLevel": "9"
+      }
+    },
+    {
+      "description": "Invalid compressors cause a warning",
+      "uri": "mongodb://example.com/?compressors=jpeg",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    },
+    {
+      "description": "Invalid zlibCompressionLevel causes a warning",
+      "uri": "mongodb://example.com/?compressors=zlib&zlibCompressionLevel=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": {
+        "username": null,
+        "password": null,
+        "db": null
+      },
+      "options": {}
+    }
+  ]
+}
