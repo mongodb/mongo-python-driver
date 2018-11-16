@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the pymongo uri_parser module is up to spec."""
+"""Test that the pymongo.uri_parser module is compliant with the connection
+string and uri options specifications."""
+
 import json
 import os
 import sys

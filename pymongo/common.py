@@ -524,54 +524,61 @@ def validate_tzinfo(dummy, value):
     return value
 
 
-# journal is an alias for j,
-# wtimeoutms is an alias for wtimeout,
+VALIDATOR_ALIASES = {
+    'journal': ['j', ],
+    'wtimeoutms': ['wtimeout', ],
+    'tls': ['ssl', ],
+    'tlscrlfile': ['ssl_crlfile', ],
+    'tlscafilepath': ['ssl_ca_certs', ],
+    'tlsclientcertfilepath': ['ssl_certfile', ],
+    'tlsclientkeypassword': ['ssl_pem_passphrase', ],
+    'tlsclientkeyfilepath': ['ssl_keyfile', ],
+}
+
 URI_VALIDATORS = {
-    'replicaset': validate_string_or_none,
-    'w': validate_non_negative_int_or_basestring,
-    'wtimeout': validate_non_negative_integer,
-    'wtimeoutms': validate_non_negative_integer,
-    'fsync': validate_boolean_or_string,
-    'j': validate_boolean_or_string,
+    'appname': validate_appname_or_none,
+    'authmechanism': validate_auth_mechanism,
+    'authmechanismproperties': validate_auth_mechanism_properties,
+    'authsource': validate_string,
+    'compressors': validate_compressors,
+    'connecttimeoutms': validate_timeout_or_none,
+    'heartbeatfrequencyms': validate_timeout_or_none,
     'journal': validate_boolean_or_string,
+    'localthresholdms': validate_positive_float_or_zero,
+    'maxidletimems': validate_timeout_or_none,
     'maxpoolsize': validate_positive_integer_or_none,
-    'socketkeepalive': validate_boolean_or_string,
-    'waitqueuemultiple': validate_non_negative_integer_or_none,
-    'ssl': validate_boolean_or_string,
-    'ssl_keyfile': validate_readable,
-    'ssl_certfile': validate_readable,
-    'ssl_pem_passphrase': validate_string_or_none,
-    'ssl_cert_reqs': validate_cert_reqs,
-    'ssl_ca_certs': validate_readable,
-    'ssl_match_hostname': validate_boolean_or_string,
-    'ssl_crlfile': validate_readable,
+    'maxstalenessseconds': validate_max_staleness,
     'readconcernlevel': validate_string_or_none,
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
-    'localthresholdms': validate_positive_float_or_zero,
-    'authmechanism': validate_auth_mechanism,
-    'authsource': validate_string,
-    'authmechanismproperties': validate_auth_mechanism_properties,
-    'tz_aware': validate_boolean_or_string,
-    'uuidrepresentation': validate_uuid_representation,
-    'connect': validate_boolean_or_string,
-    'minpoolsize': validate_non_negative_integer,
-    'appname': validate_appname_or_none,
-    'driver': validate_driver_or_none,
-    'unicode_decode_error_handler': validate_unicode_decode_error_handler,
+    'replicaset': validate_string_or_none,
     'retrywrites': validate_boolean_or_string,
-    'compressors': validate_compressors,
+    'serverselectiontimeoutms': validate_timeout_or_zero,
+    'sockettimeoutms': validate_timeout_or_none,
+    'tls': validate_boolean_or_string,
+    'tlsallowinvalidcertificates': validate_boolean, 'ssl_cert_reqs': validate_cert_reqs,
+    'tlsallowinvalidhostnames': validate_boolean, 'ssl_match_hostname': validate_boolean_or_string,
+    'tlscafilepath': validate_readable,
+    'tlsclientcertfilepath': validate_readable,
+    'tlsclientkeypassword': validate_string_or_none,
+    'tlsclientkeyfilepath': validate_readable,
+    'w': validate_non_negative_int_or_basestring,
+    'wtimeoutms': validate_non_negative_integer,
     'zlibcompressionlevel': validate_zlib_compression_level,
 }
 
-TIMEOUT_VALIDATORS = {
-    'connecttimeoutms': validate_timeout_or_none,
-    'sockettimeoutms': validate_timeout_or_none,
+NONSPEC_VALIDATORS = {
+    'connect': validate_boolean_or_string,
+    'driver': validate_driver_or_none,
+    'fsync': validate_boolean_or_string,
+    'minpoolsize': validate_non_negative_integer,
+    'socketkeepalive': validate_boolean_or_string,
+    'tlscrlfile': validate_readable,
+    'tz_aware': validate_boolean_or_string,
+    'unicode_decode_error_handler': validate_unicode_decode_error_handler,
+    'uuidrepresentation': validate_uuid_representation,
+    'waitqueuemultiple': validate_non_negative_integer_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,
-    'serverselectiontimeoutms': validate_timeout_or_zero,
-    'heartbeatfrequencyms': validate_timeout_or_none,
-    'maxidletimems': validate_timeout_or_none,
-    'maxstalenessseconds': validate_max_staleness,
 }
 
 KW_VALIDATORS = {
@@ -584,9 +591,24 @@ KW_VALIDATORS = {
     'server_selector': validate_is_callable_or_none,
 }
 
-URI_VALIDATORS.update(TIMEOUT_VALIDATORS)
+# Add non-spec and aliased options to URI_VALIDATORS.
+URI_VALIDATORS.update(NONSPEC_VALIDATORS)
+for optname, aliases in iteritems(VALIDATOR_ALIASES):
+    for alias in aliases:
+        URI_VALIDATORS[alias] = URI_VALIDATORS[optname]
+
 VALIDATORS = URI_VALIDATORS.copy()
 VALIDATORS.update(KW_VALIDATORS)
+
+TIMEOUT_OPTIONS = [
+    'connecttimeoutms',
+    'heartbeatfrequencyms',
+    'maxidletimems',
+    'maxstalenessseconds',
+    'serverselectiontimeoutms',
+    'sockettimeoutms',
+    'waitqueuetimeoutms',
+]
 
 
 _AUTH_OPTIONS = frozenset(['authmechanismproperties'])
