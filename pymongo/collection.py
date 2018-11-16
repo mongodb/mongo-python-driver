@@ -68,6 +68,24 @@ class ReturnDocument(object):
     """Return the updated/replaced or inserted document."""
 
 
+def ensure_valid_collection_name(collection_name):
+    """Ensure that provided collection name is valid.
+    :raises InvalidName if not.
+    """
+    if not collection_name or ".." in collection_name:
+        raise InvalidName("collection names cannot be empty")
+    if "$" in collection_name and not (collection_name.startswith("oplog.$main") or
+                                       collection_name.startswith("$cmd")):
+        raise InvalidName("collection names must not "
+                          "contain '$': %r" % collection_name)
+    if collection_name[0] == "." or collection_name[-1] == ".":
+        raise InvalidName("collection names must not start "
+                          "or end with '.': %r" % collection_name)
+    if "\x00" in collection_name:
+        raise InvalidName("collection names must not contain the "
+                          "null character")
+
+
 class Collection(common.BaseObject):
     """A Mongo collection.
     """
@@ -159,18 +177,7 @@ class Collection(common.BaseObject):
             raise TypeError("name must be an instance "
                             "of %s" % (string_type.__name__,))
 
-        if not name or ".." in name:
-            raise InvalidName("collection names cannot be empty")
-        if "$" in name and not (name.startswith("oplog.$main") or
-                                name.startswith("$cmd")):
-            raise InvalidName("collection names must not "
-                              "contain '$': %r" % name)
-        if name[0] == "." or name[-1] == ".":
-            raise InvalidName("collection names must not start "
-                              "or end with '.': %r" % name)
-        if "\x00" in name:
-            raise InvalidName("collection names must not contain the "
-                              "null character")
+        ensure_valid_collection_name(name)
         collation = validate_collation_or_none(kwargs.pop('collation', None))
 
         self.__database = database
