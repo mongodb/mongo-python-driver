@@ -23,14 +23,22 @@ sys.path[0:0] = [""]
 from pymongo.uri_parser import parse_uri
 from test import unittest
 
-# Location of JSON test specifications.
-_TEST_PATH = os.path.join(
+
+CONN_STRING_TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     os.path.join('connection_string', 'test'))
+
+URI_OPTIONS_TEST_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'uri_options')
 
 
 class TestAllScenarios(unittest.TestCase):
     pass
+
+
+def get_error_message_template(expected, artefact):
+    return "%s %s for test '%s'" % (
+        "Expected" if expected else "Unexpected", artefact, "%s")
 
 
 def create_test(scenario_def):
@@ -39,28 +47,31 @@ def create_test(scenario_def):
         for test in scenario_def['tests']:
             dsc = test['description']
 
-            warned = False
-            error = False
+            valid = True
+            warning = False
 
             with warnings.catch_warnings():
                 warnings.filterwarnings('error')
                 try:
                     options = parse_uri(test['uri'], warn=True)
                 except Warning:
-                    warned = True
+                    warning = True
                 except Exception:
-                    error = True
+                    valid = False
 
-            self.assertEqual(not error, test['valid'],
-                             "Test failure '%s'" % dsc)
+            expected_valid = test.get('valid', True)
+            self.assertEqual(
+                valid, expected_valid, get_error_message_template(
+                    not expected_valid, "error") % dsc)
 
-            if test.get("warning", False):
-                self.assertTrue(warned,
-                                "Expected warning for test '%s'"
-                                % (dsc,))
+            if expected_valid:
+                expected_warning = test.get('warning', False)
+                self.assertEqual(
+                    warning, expected_warning, get_error_message_template(
+                        expected_warning, "warning") % dsc)
 
             # Redo in the case there were warnings that were not expected.
-            if warned:
+            if warning:
                 options = parse_uri(test['uri'], warn=True)
 
             # Compare hosts and port.
@@ -105,8 +116,8 @@ def create_test(scenario_def):
     return run_scenario
 
 
-def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
+def create_tests(test_path):
+    for dirpath, _, filenames in os.walk(test_path):
         dirname = os.path.split(dirpath)
         dirname = os.path.split(dirname[-2])[-1] + '_' + dirname[-1]
 
@@ -121,7 +132,9 @@ def create_tests():
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
-create_tests()
+for test_path in [CONN_STRING_TEST_PATH, URI_OPTIONS_TEST_PATH]:
+    create_tests(test_path)
+
 
 if __name__ == "__main__":
     unittest.main()
