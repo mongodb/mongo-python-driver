@@ -19,19 +19,6 @@
         },
         "authSource": "$external"
       }
-    },
-    {
-      "description": "Invalid auth mechanism causes warning",
-      "uri": "mongodb://example.com/?authMechanism=invalid",
-      "valid": true,
-      "warning": true,
-      "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
-      "options": {}
     }
   ]
 }

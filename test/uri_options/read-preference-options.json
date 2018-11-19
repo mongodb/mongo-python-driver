@@ -21,21 +21,6 @@
       }
     },
     {
-      "description": "Arbitrary string read preference does not cause a warning",
-      "uri": "mongodb://example.com/?readPreference=arbitraryButStillValid",
-      "valid": true,
-      "warning": false,
-      "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
-      "options": {
-        "readPreference": "arbitraryButStillValid"
-      }
-    },
-    {
       "description": "Invalid readPreferenceTags causes a warning",
       "uri": "mongodb://example.com/?readPreferenceTags=invalid",
       "valid": true,

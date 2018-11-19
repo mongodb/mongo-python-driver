@@ -33,6 +33,10 @@ CONN_STRING_TEST_PATH = os.path.join(
 URI_OPTIONS_TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'uri_options')
 
+TEST_DESC_SKIP_LIST = [
+    "Valid options specific to single-threaded drivers are parsed correctly",
+    "tlsInsecure is parsed correctly"]
+
 
 class TestAllScenarios(unittest.TestCase):
     pass
@@ -43,11 +47,26 @@ def get_error_message_template(expected, artefact):
         "Expected" if expected else "Unexpected", artefact, "%s")
 
 
-def create_test(scenario_def):
+def run_scenario_in_dir(target_workdir):
+    def workdir_context_decorator(func):
+        def modified_test_scenario(*args, **kwargs):
+            original_workdir = os.getcwd()
+            os.chdir(target_workdir)
+            func(*args, **kwargs)
+            os.chdir(original_workdir)
+        return modified_test_scenario
+    return workdir_context_decorator
+
+
+def create_test(scenario_def, test_workdir):
     def run_scenario(self):
         self.assertTrue(scenario_def['tests'], "tests cannot be empty")
         for test in scenario_def['tests']:
             dsc = test['description']
+
+            if dsc in TEST_DESC_SKIP_LIST:
+                print("Skipping test '%s'" % dsc)
+                continue
 
             valid = True
             warning = False
@@ -115,7 +134,7 @@ def create_test(scenario_def):
                             % (opt, options[opt],
                                test['options'][opt]))
 
-    return run_scenario
+    return run_scenario_in_dir(test_workdir)(run_scenario)
 
 
 def create_tests(test_path):
@@ -124,10 +143,13 @@ def create_tests(test_path):
         dirname = os.path.split(dirname[-2])[-1] + '_' + dirname[-1]
 
         for filename in filenames:
+            if not filename.endswith('.json'):
+                # skip everything that is not a test specification
+                continue
             with open(os.path.join(dirpath, filename)) as scenario_stream:
                 scenario_def = json.load(scenario_stream)
             # Construct test from scenario.
-            new_test = create_test(scenario_def)
+            new_test = create_test(scenario_def, dirpath)
             test_name = 'test_%s_%s' % (
                 dirname, os.path.splitext(filename)[0])
             new_test.__name__ = test_name
