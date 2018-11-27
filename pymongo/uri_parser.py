@@ -32,7 +32,7 @@ else:
 
 from pymongo.common import (
     get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
-    URI_OPTIONS_DEPRECATION_MAP, URI_OPTIONS_TRANSFORMER_MAP)
+    URI_OPTIONS_DEPRECATION_MAP)
 from pymongo.errors import ConfigurationError, InvalidURI
 
 

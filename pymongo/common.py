@@ -32,7 +32,8 @@ from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
-from pymongo.ssl_support import validate_cert_reqs
+from pymongo.ssl_support import (validate_cert_reqs,
+                                 validate_allow_invalid_certs)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 try:
@@ -543,8 +544,7 @@ URI_OPTIONS_ALIAS_MAP = {
 # Dictionary where keys are the names of URI options, and values
 # are functions that validate user-input values for that option. If an option
 # alias uses a different validator than its public counterpart, it should be
-# included here it as a key, value pair, and a corresponding entry should be
-# added to the URI_OPTIONS_TRANSFORMER_MAP.
+# included here as a key, value pair.
 URI_OPTIONS_VALIDATOR_MAP = {
     'appname': validate_appname_or_none,
     'authmechanism': validate_auth_mechanism,
@@ -566,7 +566,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'sockettimeoutms': validate_timeout_or_none,
     'tls': validate_boolean_or_string,
-    'tlsallowinvalidcertificates': validate_boolean_or_string,
+    'tlsallowinvalidcertificates': validate_allow_invalid_certs,
     'ssl_cert_reqs': validate_cert_reqs,
     'tlsallowinvalidhostnames': validate_boolean_or_string,
     'tlscafilepath': validate_readable,
@@ -576,12 +576,6 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'w': validate_non_negative_int_or_basestring,
     'wtimeoutms': validate_non_negative_integer,
     'zlibcompressionlevel': validate_zlib_compression_level,
-}
-
-# docstring
-URI_OPTIONS_TRANSFORMER_MAP = {
-    'tlsAllowInvalidCertificates': (
-        lambda x: 'CERT_NONE' if x else 'CERT_REQUIRED')
 }
 
 # Dictionary where keys are the names of URI options specific to pymongo,
@@ -648,9 +642,9 @@ URI_OPTIONS_DEPRECATION_MAP = {
 URI_OPTIONS_VALIDATOR_MAP.update(NONSPEC_OPTIONS_VALIDATOR_MAP)
 for optname, aliases in iteritems(URI_OPTIONS_ALIAS_MAP):
     for alias in aliases:
-        if alias in URI_OPTIONS_ALIAS_MAP:
-            continue
-        URI_OPTIONS_VALIDATOR_MAP[alias] = URI_OPTIONS_VALIDATOR_MAP[optname]
+        if alias not in URI_OPTIONS_VALIDATOR_MAP:
+            URI_OPTIONS_VALIDATOR_MAP[alias] = (
+                URI_OPTIONS_VALIDATOR_MAP[optname])
 
 # Map containing all URI option and keyword argument validators.
 VALIDATORS = URI_OPTIONS_VALIDATOR_MAP.copy()
