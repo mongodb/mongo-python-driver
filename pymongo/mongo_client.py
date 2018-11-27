@@ -511,7 +511,8 @@ class MongoClient(common.BaseObject):
         opts = {}
         for entity in host:
             if "://" in entity:
-                res = uri_parser.parse_uri(entity, port, warn=True)
+                res = uri_parser.parse_uri(
+                    entity, port, validate=True, warn=True)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password

@@ -23,14 +23,16 @@ try:
 except ImportError:
     _HAVE_DNSPYTHON = False
 
-from bson.py3compat import PY3, string_type
+from bson.py3compat import PY3, iteritems, string_type
 
 if PY3:
     from urllib.parse import unquote_plus
 else:
     from urllib import unquote_plus
 
-from pymongo.common import get_validated_options
+from pymongo.common import (
+    get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
+    URI_OPTIONS_DEPRECATION_MAP, URI_OPTIONS_TRANSFORMER_MAP)
 from pymongo.errors import ConfigurationError, InvalidURI
 
 
@@ -145,34 +147,64 @@ def validate_options(opts, warn=False):
     return get_validated_options(opts, warn)
 
 
+def _tokenize_option_string(opts, delim):
+    """Convert the string of URI options into a dictionary. Also handles the
+    creation of a list for readPreferenceTags. If an option is provided
+    more than once, the value of its last occurrence is preserved."""
+    options = {}
+    for opt in opts.split(delim):
+        key, value = opt.split("=")
+        optname = str(key).lower()
+        if optname == 'readpreferencetags':
+            options.setdefault(optname, []).append(value)
+        else:
+            if key in options:
+                warnings.warn("Duplicate URI option '%s'." % (str(key),))
+            options[str(key)] = unquote_plus(value)
+    return options
+
+
+def _handle_option_deprecations(options):
+    """Appropriately handle presence of deprecated options in the options
+    dictionary. Removes deprecated option key, value pairs if the renamed
+    option is also provided."""
+    undeprecated_options = {}
+    for key, value in iteritems(options):
+        optname = str(key).lower()
+        if optname in URI_OPTIONS_DEPRECATION_MAP:
+            renamed_key = URI_OPTIONS_DEPRECATION_MAP[optname]
+            if renamed_key in options:
+                warnings.warn("Deprecated option '%s' ignored in favor of "
+                              "'%s'." % (str(key), renamed_key))
+                continue
+            warnings.warn("Option '%s' is deprecated, use '%s' instead." % (
+                          str(key), renamed_key))
+        undeprecated_options[str(key)] = value
+    return undeprecated_options
+
+
+def _normalize_option_dictionary(options):
+    """Renames keys in the options dictionary to their internally-used
+    names. This method should be called after validating the options dictionary
+    as it does not preserve option name and case information."""
+    normalized_options = {}
+    for key, value in iteritems(options):
+        optname = str(key).lower()
+        intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, optname)
+        normalized_options[intname] = options[key]
+    return normalized_options
+
+
 def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion."""
-    options = {}
-    for opt in opts.split(delim):
-        key, val = opt.split("=")
-        if key.lower() == 'readpreferencetags':
-            options.setdefault('readpreferencetags', []).append(val)
-        else:
-            # str(option) to ensure that a unicode URI results in plain 'str'
-            # option names. 'normalized' is then suitable to be passed as
-            # kwargs in all Python versions.
-            if str(key) in options:
-                warnings.warn("Duplicate URI option %s" % (str(key),))
-            options[str(key)] = unquote_plus(val)
-
-    # Special case for deprecated options
-    if "wtimeout" in options:
-        if "wtimeoutMS" in options:
-            options.pop("wtimeout")
-        warnings.warn("Option wtimeout is deprecated, use 'wtimeoutMS'"
-                      " instead")
-
+    options = _tokenize_option_string(opts, delim)
+    options = _handle_option_deprecations(options)
     return options
 
 
-def split_options(opts, validate=True, warn=False):
+def split_options(opts, validate=True, warn=False, normalize=True):
     """Takes the options portion of a MongoDB URI, validates each option
     and returns the options in a dictionary.
 
@@ -198,7 +230,11 @@ def split_options(opts, validate=True, warn=False):
         raise InvalidURI("MongoDB URI options are key=value pairs.")
 
     if validate:
-        return validate_options(options, warn)
+        options = validate_options(options, warn)
+
+    if normalize:
+        options = _normalize_option_dictionary(options)
+
     return options
 
 

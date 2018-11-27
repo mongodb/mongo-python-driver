@@ -524,18 +524,28 @@ def validate_tzinfo(dummy, value):
     return value
 
 
-VALIDATOR_ALIASES = {
+# Dictionary where keys are the names of public URI options, and values
+# are lists of aliases for that option. Aliases of option names are assumed
+# to have been deprecated.
+URI_OPTIONS_ALIAS_MAP = {
     'journal': ['j', ],
     'wtimeoutms': ['wtimeout', ],
     'tls': ['ssl', ],
-    'tlscrlfile': ['ssl_crlfile', ],
+    'tlsallowinvalidcertificates': ['ssl_cert_reqs', ],
+    'tlsallowinvalidhostnames': ['ssl_match_hostname', ],
+    'tlscrlfilepath': ['ssl_crlfile', ],
     'tlscafilepath': ['ssl_ca_certs', ],
     'tlsclientcertfilepath': ['ssl_certfile', ],
     'tlsclientkeypassword': ['ssl_pem_passphrase', ],
     'tlsclientkeyfilepath': ['ssl_keyfile', ],
 }
 
-URI_VALIDATORS = {
+# Dictionary where keys are the names of URI options, and values
+# are functions that validate user-input values for that option. If an option
+# alias uses a different validator than its public counterpart, it should be
+# included here it as a key, value pair, and a corresponding entry should be
+# added to the URI_OPTIONS_TRANSFORMER_MAP.
+URI_OPTIONS_VALIDATOR_MAP = {
     'appname': validate_appname_or_none,
     'authmechanism': validate_auth_mechanism,
     'authmechanismproperties': validate_auth_mechanism_properties,
@@ -556,8 +566,9 @@ URI_VALIDATORS = {
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'sockettimeoutms': validate_timeout_or_none,
     'tls': validate_boolean_or_string,
-    'tlsallowinvalidcertificates': validate_boolean_or_string, 'ssl_cert_reqs': validate_cert_reqs,
-    'tlsallowinvalidhostnames': validate_boolean_or_string, 'ssl_match_hostname': validate_boolean_or_string,
+    'tlsallowinvalidcertificates': validate_boolean_or_string,
+    'ssl_cert_reqs': validate_cert_reqs,
+    'tlsallowinvalidhostnames': validate_boolean_or_string,
     'tlscafilepath': validate_readable,
     'tlsclientcertfilepath': validate_readable,
     'tlsclientkeypassword': validate_string_or_none,
@@ -567,13 +578,21 @@ URI_VALIDATORS = {
     'zlibcompressionlevel': validate_zlib_compression_level,
 }
 
-NONSPEC_VALIDATORS = {
+# docstring
+URI_OPTIONS_TRANSFORMER_MAP = {
+    'tlsAllowInvalidCertificates': (
+        lambda x: 'CERT_NONE' if x else 'CERT_REQUIRED')
+}
+
+# Dictionary where keys are the names of URI options specific to pymongo,
+# and values are functions that validate user-input values for those options.
+NONSPEC_OPTIONS_VALIDATOR_MAP = {
     'connect': validate_boolean_or_string,
     'driver': validate_driver_or_none,
     'fsync': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
     'socketkeepalive': validate_boolean_or_string,
-    'tlscrlfile': validate_readable,
+    'tlscrlfilepath': validate_readable,
     'tz_aware': validate_boolean_or_string,
     'unicode_decode_error_handler': validate_unicode_decode_error_handler,
     'uuidrepresentation': validate_uuid_representation,
@@ -581,6 +600,8 @@ NONSPEC_VALIDATORS = {
     'waitqueuetimeoutms': validate_timeout_or_none,
 }
 
+# Dictionary where keys are the names of keyword-only options for pymongo,
+# and values are functions that validate user-input values for those options.
 KW_VALIDATORS = {
     'document_class': validate_document_class,
     'read_preference': validate_read_preference,
@@ -591,15 +612,51 @@ KW_VALIDATORS = {
     'server_selector': validate_is_callable_or_none,
 }
 
-# Add non-spec and aliased options to URI_VALIDATORS.
-URI_VALIDATORS.update(NONSPEC_VALIDATORS)
-for optname, aliases in iteritems(VALIDATOR_ALIASES):
-    for alias in aliases:
-        URI_VALIDATORS[alias] = URI_VALIDATORS[optname]
+# Dictionary where keys are any URI option name, and values are the
+# internally-used names of that URI option. Options with only one name
+# variant need not be included here. Options whose public and internal
+# names are the same need not be included here.
+INTERNAL_URI_OPTION_NAME_MAP = {
+    'j': 'journal',
+    'wtimeout': 'wtimeoutms',
+    'tls': 'ssl',
+    'tlsallowinvalidcertificates': 'ssl_cert_reqs',
+    'tlsallowinvalidhostnames': 'ssl_match_hostname',
+    'tlscrlfile': 'ssl_crlfile',
+    'tlscafilepath': 'ssl_ca_certs',
+    'tlsclientcertfilepath': 'ssl_certfile',
+    'tlsclientkeypassword': 'ssl_pem_passphrase',
+    'tlsclientkeyfilepath': 'ssl_keyfile',
+}
 
-VALIDATORS = URI_VALIDATORS.copy()
+# Map from deprecated URI option names to the updated option names.
+# Case is preserved for updated option names as they are part of user warnings.
+URI_OPTIONS_DEPRECATION_MAP = {
+    'j': 'journal',
+    'wtimeout': 'wTimeoutMS',
+    'ssl': 'tls',
+    'ssl_cert_reqs': 'tlsAllowInvalidCertificates',
+    'ssl_match_hostname': 'tlsAllowInvalidHostnames',
+    'ssl_crlfile': 'tlsCRLFilePath',
+    'ssl_ca_certs': 'tlsCAFilePath',
+    'ssl_certfile': 'tlsClientCertFilePath',
+    'ssl_pem_passphrase': 'tlsClientKeyPassword',
+    'ssl_keyfile': 'tlsClientKeyFilePath',
+}
+
+# Augment the option validator map with pymongo-specific option information.
+URI_OPTIONS_VALIDATOR_MAP.update(NONSPEC_OPTIONS_VALIDATOR_MAP)
+for optname, aliases in iteritems(URI_OPTIONS_ALIAS_MAP):
+    for alias in aliases:
+        if alias in URI_OPTIONS_ALIAS_MAP:
+            continue
+        URI_OPTIONS_VALIDATOR_MAP[alias] = URI_OPTIONS_VALIDATOR_MAP[optname]
+
+# Map containing all URI option and keyword argument validators.
+VALIDATORS = URI_OPTIONS_VALIDATOR_MAP.copy()
 VALIDATORS.update(KW_VALIDATORS)
 
+# List of timeout-related options.
 TIMEOUT_OPTIONS = [
     'connecttimeoutms',
     'heartbeatfrequencyms',
@@ -641,9 +698,10 @@ def get_validated_options(options, warn=True):
     for opt, value in iteritems(options):
         lower = opt.lower()
         try:
-            validator = URI_VALIDATORS.get(lower, raise_config_error)
+            validator = URI_OPTIONS_VALIDATOR_MAP.get(
+                lower, raise_config_error)
             value = validator(opt, value)
-        except (ValueError, ConfigurationError) as exc:
+        except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
                 warnings.warn(str(exc))
             else:
@@ -653,6 +711,7 @@ def get_validated_options(options, warn=True):
     return validated_options
 
 
+# List of write-concern-related options.
 WRITE_CONCERN_OPTIONS = frozenset([
     'w',
     'wtimeout',
