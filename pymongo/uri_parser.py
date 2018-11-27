@@ -31,7 +31,7 @@ else:
     from urllib import unquote_plus
 
 from pymongo.common import (
-    get_validated_uri_options, normalize_options, URI_OPTIONS_DEPRECATION_MAP)
+    get_validated_uri_options, handle_option_deprecations, normalize_options)
 from pymongo.errors import ConfigurationError, InvalidURI
 
 
@@ -147,31 +147,12 @@ def _tokenize_option_string(opts, delim):
     return options
 
 
-def _handle_option_deprecations(options):
-    """Appropriately handle presence of deprecated options in the options
-    dictionary. Removes deprecated option key, value pairs if the renamed
-    option is also provided."""
-    undeprecated_options = {}
-    for key, value in iteritems(options):
-        optname = str(key).lower()
-        if optname in URI_OPTIONS_DEPRECATION_MAP:
-            renamed_key = URI_OPTIONS_DEPRECATION_MAP[optname]
-            if renamed_key in options:
-                warnings.warn("Deprecated option '%s' ignored in favor of "
-                              "'%s'." % (str(key), renamed_key))
-                continue
-            warnings.warn("Option '%s' is deprecated, use '%s' instead." % (
-                          str(key), renamed_key))
-        undeprecated_options[str(key)] = value
-    return undeprecated_options
-
-
 def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion."""
     options = _tokenize_option_string(opts, delim)
-    options = _handle_option_deprecations(options)
+    options = handle_option_deprecations(options)
     return options
 
 

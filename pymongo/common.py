@@ -728,6 +728,25 @@ def get_validated_uri_options(options, warn=True):
     return validated_options
 
 
+def handle_option_deprecations(options):
+    """Appropriately handle presence of deprecated options in the options
+    dictionary. Removes deprecated option key, value pairs if the renamed
+    option is also provided."""
+    undeprecated_options = {}
+    for key, value in iteritems(options):
+        optname = str(key).lower()
+        if optname in URI_OPTIONS_DEPRECATION_MAP:
+            renamed_key = URI_OPTIONS_DEPRECATION_MAP[optname]
+            if any(renamed_key.lower() == n.lower() for n in options):
+                warnings.warn("Deprecated option '%s' ignored in favor of "
+                              "'%s'." % (str(key), renamed_key))
+                continue
+            warnings.warn("Option '%s' is deprecated, use '%s' instead." % (
+                          str(key), renamed_key))
+        undeprecated_options[str(key)] = value
+    return undeprecated_options
+
+
 def normalize_options(options):
     """Renames keys in the options dictionary to their internally-used
     names. This method should be called after validating the options dictionary
