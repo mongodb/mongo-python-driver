@@ -538,8 +538,9 @@ class MongoClient(common.BaseObject):
         keyword_opts['tz_aware'] = tz_aware
         keyword_opts['connect'] = connect
         # Validate all keyword options.
-        keyword_opts = dict(common.validate(k, v)
-                            for k, v in keyword_opts.items())
+        keyword_opts = common.get_validated_options(keyword_opts)
+        # Change option names to those used internally.
+        keyword_opts = common.normalize_options(keyword_opts)
         opts.update(keyword_opts)
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)

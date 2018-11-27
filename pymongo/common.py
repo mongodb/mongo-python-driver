@@ -684,9 +684,32 @@ def validate(option, value):
     return lower, value
 
 
-def get_validated_options(options, warn=True):
-    """Validate each entry in options and raise a warning if it is not valid.
-    Returns a copy of options with invalid entries removed
+def get_validated_options(options):
+    """Validates and normalizes an options dictionary defined by the user as
+    a list of keyword arguments.
+
+    Returns a new dictionary of validated and normalized options. Errors will
+    be thrown for invalid options.
+
+    :Parameters:
+        - `opts`: A dict of MongoDB options.
+    """
+    return dict(validate(k, v) for k, v in iteritems(options))
+
+
+def get_validated_uri_options(options, warn=True):
+    """Validates and normalizes an options dictionary constructed by parsing
+    a MongoDB URI.
+
+    Returns a new dictionary of validated and normalized options. If warn is
+    False then errors will be thrown for invalid options, otherwise they will
+    be ignored and a warning will be issued.
+
+    :Parameters:
+        - `opts`: A dict of MongoDB URI options.
+        - `warn` (optional): If ``True`` then warnigns will be logged and
+          invalid options will be ignored. Otherwise invalid options will
+          cause errors.
     """
     validated_options = {}
     for opt, value in iteritems(options):
@@ -703,6 +726,18 @@ def get_validated_options(options, warn=True):
         else:
             validated_options[lower] = value
     return validated_options
+
+
+def normalize_options(options):
+    """Renames keys in the options dictionary to their internally-used
+    names. This method should be called after validating the options dictionary
+    as it does not preserve option name and case information."""
+    normalized_options = {}
+    for key, value in iteritems(options):
+        optname = str(key).lower()
+        intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, optname)
+        normalized_options[intname] = options[key]
+    return normalized_options
 
 
 # List of write-concern-related options.

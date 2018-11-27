@@ -31,8 +31,7 @@ else:
     from urllib import unquote_plus
 
 from pymongo.common import (
-    get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
-    URI_OPTIONS_DEPRECATION_MAP)
+    get_validated_uri_options, normalize_options, URI_OPTIONS_DEPRECATION_MAP)
 from pymongo.errors import ConfigurationError, InvalidURI
 
 
@@ -131,22 +130,6 @@ def parse_host(entity, default_port=DEFAULT_PORT):
     return host.lower(), port
 
 
-def validate_options(opts, warn=False):
-    """Validates and normalizes options passed in a MongoDB URI.
-
-    Returns a new dictionary of validated and normalized options. If warn is
-    False then errors will be thrown for invalid options, otherwise they will
-    be ignored and a warning will be issued.
-
-    :Parameters:
-        - `opts`: A dict of MongoDB URI options.
-        - `warn` (optional): If ``True`` then warnigns will be logged and
-          invalid options will be ignored. Otherwise invalid options will
-          cause errors.
-    """
-    return get_validated_options(opts, warn)
-
-
 def _tokenize_option_string(opts, delim):
     """Convert the string of URI options into a dictionary. Also handles the
     creation of a list for readPreferenceTags. If an option is provided
@@ -181,18 +164,6 @@ def _handle_option_deprecations(options):
                           str(key), renamed_key))
         undeprecated_options[str(key)] = value
     return undeprecated_options
-
-
-def _normalize_option_dictionary(options):
-    """Renames keys in the options dictionary to their internally-used
-    names. This method should be called after validating the options dictionary
-    as it does not preserve option name and case information."""
-    normalized_options = {}
-    for key, value in iteritems(options):
-        optname = str(key).lower()
-        intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, optname)
-        normalized_options[intname] = options[key]
-    return normalized_options
 
 
 def _parse_options(opts, delim):
@@ -230,10 +201,10 @@ def split_options(opts, validate=True, warn=False, normalize=True):
         raise InvalidURI("MongoDB URI options are key=value pairs.")
 
     if validate:
-        options = validate_options(options, warn)
+        options = get_validated_uri_options(options, warn)
 
     if normalize:
-        options = _normalize_option_dictionary(options)
+        options = normalize_options(options)
 
     return options
 
