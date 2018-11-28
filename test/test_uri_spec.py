@@ -152,7 +152,7 @@ def create_tests(test_path):
                 testmethod = create_test(testcase, dirpath)
                 testname = 'test_%s_%s_%s' % (
                     dirname, os.path.splitext(filename)[0],
-                    dsc.replace(' ', '_'))
+                    str(dsc).replace(' ', '_'))
                 testmethod.__name__ = testname
                 setattr(TestAllScenarios, testmethod.__name__, testmethod)
 
