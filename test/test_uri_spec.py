@@ -72,7 +72,8 @@ def create_test(scenario_def, test_workdir):
             warning = False
 
             with warnings.catch_warnings():
-                warnings.filterwarnings('error')
+                warnings.resetwarnings()
+                warnings.simplefilter('error')
                 try:
                     options = parse_uri(test['uri'], warn=True)
                 except Warning:
