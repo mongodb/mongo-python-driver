@@ -749,12 +749,11 @@ def handle_option_deprecations(options):
 
 def normalize_options(options):
     """Renames keys in the options dictionary to their internally-used
-    names. This method should be called after validating the options dictionary
-    as it does not preserve option name and case information."""
+    names."""
     normalized_options = {}
     for key, value in iteritems(options):
         optname = str(key).lower()
-        intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, optname)
+        intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, key)
         normalized_options[intname] = options[key]
     return normalized_options
 
