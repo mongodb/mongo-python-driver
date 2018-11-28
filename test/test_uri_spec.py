@@ -58,82 +58,74 @@ def run_scenario_in_dir(target_workdir):
     return workdir_context_decorator
 
 
-def create_test(scenario_def, test_workdir):
+def create_test(test, test_workdir):
     def run_scenario(self):
-        self.assertTrue(scenario_def['tests'], "tests cannot be empty")
-        for test in scenario_def['tests']:
-            dsc = test['description']
+        valid = True
+        warning = False
 
-            if dsc in TEST_DESC_SKIP_LIST:
-                print("Skipping test '%s'" % dsc)
-                continue
-
-            valid = True
-            warning = False
-
-            with warnings.catch_warnings():
-                warnings.resetwarnings()
-                warnings.simplefilter('error')
-                try:
-                    options = parse_uri(test['uri'], warn=True)
-                except Warning:
-                    warning = True
-                except Exception:
-                    valid = False
-
-            expected_valid = test.get('valid', True)
-            self.assertEqual(
-                valid, expected_valid, get_error_message_template(
-                    not expected_valid, "error") % dsc)
-
-            if expected_valid:
-                expected_warning = test.get('warning', False)
-                self.assertEqual(
-                    warning, expected_warning, get_error_message_template(
-                        expected_warning, "warning") % dsc)
-
-            # Redo in the case there were warnings that were not expected.
-            if warning:
+        with warnings.catch_warnings():
+            warnings.resetwarnings()
+            warnings.simplefilter('error')
+            try:
                 options = parse_uri(test['uri'], warn=True)
+            except Warning:
+                warning = True
+            except Exception:
+                valid = False
 
-            # Compare hosts and port.
-            if test['hosts'] is not None:
-                self.assertEqual(
-                    len(test['hosts']), len(options['nodelist']),
-                    "Incorrect number of hosts parsed from URI")
+        expected_valid = test.get('valid', True)
+        self.assertEqual(
+            valid, expected_valid, get_error_message_template(
+                not expected_valid, "error") % test['description'])
 
-                for exp, actual in zip(test['hosts'],
-                                       options['nodelist']):
-                    self.assertEqual(exp['host'], actual[0],
-                                     "Expected host %s but got %s"
-                                     % (exp['host'], actual[0]))
-                    if exp['port'] is not None:
-                        self.assertEqual(exp['port'], actual[1],
-                                         "Expected port %s but got %s"
-                                         % (exp['port'], actual))
+        if expected_valid:
+            expected_warning = test.get('warning', False)
+            self.assertEqual(
+                warning, expected_warning, get_error_message_template(
+                    expected_warning, "warning") % test['description'])
 
-            # Compare auth options.
-            auth = test['auth']
-            if auth is not None:
-                auth['database'] = auth.pop('db')  # db == database
-                # Special case for PyMongo's collection parsing.
-                if options.get('collection') is not None:
-                    options['database'] += "." + options['collection']
-                for elm in auth:
-                    if auth[elm] is not None:
-                        self.assertEqual(auth[elm], options[elm],
-                                         "Expected %s but got %s"
-                                         % (auth[elm], options[elm]))
+        # Redo in the case there were warnings that were not expected.
+        if warning:
+            options = parse_uri(test['uri'], warn=True)
 
-            # Compare URI options.
-            if test['options'] is not None:
-                for opt in test['options']:
-                    if options.get(opt) is not None:
-                        self.assertEqual(
-                            options[opt], test['options'][opt],
-                            "For option %s expected %s but got %s"
-                            % (opt, options[opt],
-                               test['options'][opt]))
+        # Compare hosts and port.
+        if test['hosts'] is not None:
+            self.assertEqual(
+                len(test['hosts']), len(options['nodelist']),
+                "Incorrect number of hosts parsed from URI")
+
+            for exp, actual in zip(test['hosts'],
+                                   options['nodelist']):
+                self.assertEqual(exp['host'], actual[0],
+                                 "Expected host %s but got %s"
+                                 % (exp['host'], actual[0]))
+                if exp['port'] is not None:
+                    self.assertEqual(exp['port'], actual[1],
+                                     "Expected port %s but got %s"
+                                     % (exp['port'], actual))
+
+        # Compare auth options.
+        auth = test['auth']
+        if auth is not None:
+            auth['database'] = auth.pop('db')  # db == database
+            # Special case for PyMongo's collection parsing.
+            if options.get('collection') is not None:
+                options['database'] += "." + options['collection']
+            for elm in auth:
+                if auth[elm] is not None:
+                    self.assertEqual(auth[elm], options[elm],
+                                     "Expected %s but got %s"
+                                     % (auth[elm], options[elm]))
+
+        # Compare URI options.
+        if test['options'] is not None:
+            for opt in test['options']:
+                if options.get(opt) is not None:
+                    self.assertEqual(
+                        options[opt], test['options'][opt],
+                        "For option %s expected %s but got %s"
+                        % (opt, options[opt],
+                           test['options'][opt]))
 
     return run_scenario_in_dir(test_workdir)(run_scenario)
 
@@ -149,12 +141,20 @@ def create_tests(test_path):
                 continue
             with open(os.path.join(dirpath, filename)) as scenario_stream:
                 scenario_def = json.load(scenario_stream)
-            # Construct test from scenario.
-            new_test = create_test(scenario_def, dirpath)
-            test_name = 'test_%s_%s' % (
-                dirname, os.path.splitext(filename)[0])
-            new_test.__name__ = test_name
-            setattr(TestAllScenarios, new_test.__name__, new_test)
+
+            for testcase in scenario_def['tests']:
+                dsc = testcase['description']
+
+                if dsc in TEST_DESC_SKIP_LIST:
+                    print("Skipping test '%s'" % dsc)
+                    continue
+
+                testmethod = create_test(testcase, dirpath)
+                testname = 'test_%s_%s_%s' % (
+                    dirname, os.path.splitext(filename)[0],
+                    dsc.replace(' ', '_'))
+                testmethod.__name__ = testname
+                setattr(TestAllScenarios, testmethod.__name__, testmethod)
 
 
 for test_path in [CONN_STRING_TEST_PATH, URI_OPTIONS_TEST_PATH]:
