@@ -36,7 +36,6 @@ import pymongo
 import pymongo.errors
 
 from bson.son import SON
-from bson.py3compat import _unicode
 from pymongo import common, message
 from pymongo.common import partition_node
 from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
@@ -749,3 +748,10 @@ def test_cases(suite):
             # unittest.TestSuite
             for case in test_cases(suite_or_case):
                 yield case
+
+
+def clear_warning_registry():
+    """Clear the __warningregistry__ for all modules."""
+    for name, module in list(sys.modules.items()):
+        if hasattr(module, "__warningregistry__"):
+            setattr(module, "__warningregistry__", {})

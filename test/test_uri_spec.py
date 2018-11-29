@@ -23,7 +23,7 @@ import warnings
 sys.path[0:0] = [""]
 
 from pymongo.uri_parser import parse_uri
-from test import unittest
+from test import clear_warning_registry, unittest
 
 
 CONN_STRING_TEST_PATH = os.path.join(
@@ -39,7 +39,8 @@ TEST_DESC_SKIP_LIST = [
 
 
 class TestAllScenarios(unittest.TestCase):
-    pass
+    def setUp(self):
+        clear_warning_registry()
 
 
 def get_error_message_template(expected, artefact):
@@ -63,15 +64,14 @@ def create_test(test, test_workdir):
         valid = True
         warning = False
 
-        with warnings.catch_warnings():
-            warnings.resetwarnings()
-            warnings.simplefilter('error')
+        with warnings.catch_warnings(record=True) as ctx:
+            warnings.simplefilter('always')
             try:
                 options = parse_uri(test['uri'], warn=True)
-            except Warning:
-                warning = True
             except Exception:
                 valid = False
+            else:
+                warning = len(ctx) > 0
 
         expected_valid = test.get('valid', True)
         self.assertEqual(
@@ -83,10 +83,6 @@ def create_test(test, test_workdir):
             self.assertEqual(
                 warning, expected_warning, get_error_message_template(
                     expected_warning, "warning") % test['description'])
-
-        # Redo in the case there were warnings that were not expected.
-        if warning:
-            options = parse_uri(test['uri'], warn=True)
 
         # Compare hosts and port.
         if test['hosts'] is not None:
