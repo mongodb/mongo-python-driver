@@ -512,9 +512,11 @@ def create_test(scenario_def, test):
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')
         if expected_c is not None:
-            # Read from the primary to ensure causal consistency.
+            # Read from the primary with local read concern to ensure causal
+            # consistency.
             primary_coll = collection.with_options(
-                read_preference=ReadPreference.PRIMARY)
+                read_preference=ReadPreference.PRIMARY,
+                read_concern=ReadConcern('local'))
             self.assertEqual(list(primary_coll.find()), expected_c['data'])
 
     return run_scenario
