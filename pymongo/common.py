@@ -534,11 +534,11 @@ URI_OPTIONS_ALIAS_MAP = {
     'tls': ['ssl', ],
     'tlsallowinvalidcertificates': ['ssl_cert_reqs', ],
     'tlsallowinvalidhostnames': ['ssl_match_hostname', ],
-    'tlscrlfilepath': ['ssl_crlfile', ],
-    'tlscafilepath': ['ssl_ca_certs', ],
-    'tlsclientcertfilepath': ['ssl_certfile', ],
+    'tlscrlfile': ['ssl_crlfile', ],
+    'tlscafile': ['ssl_ca_certs', ],
+    'tlsclientcertfile': ['ssl_certfile', ],
     'tlsclientkeypassword': ['ssl_pem_passphrase', ],
-    'tlsclientkeyfilepath': ['ssl_keyfile', ],
+    'tlsclientkeyfile': ['ssl_keyfile', ],
 }
 
 # Dictionary where keys are the names of URI options, and values
@@ -569,10 +569,10 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'tlsallowinvalidcertificates': validate_allow_invalid_certs,
     'ssl_cert_reqs': validate_cert_reqs,
     'tlsallowinvalidhostnames': validate_boolean_or_string,
-    'tlscafilepath': validate_readable,
-    'tlsclientcertfilepath': validate_readable,
+    'tlscafile': validate_readable,
+    'tlsclientcertfile': validate_readable,
     'tlsclientkeypassword': validate_string_or_none,
-    'tlsclientkeyfilepath': validate_readable,
+    'tlsclientkeyfile': validate_readable,
     'w': validate_non_negative_int_or_basestring,
     'wtimeoutms': validate_non_negative_integer,
     'zlibcompressionlevel': validate_zlib_compression_level,
@@ -586,7 +586,7 @@ NONSPEC_OPTIONS_VALIDATOR_MAP = {
     'fsync': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
     'socketkeepalive': validate_boolean_or_string,
-    'tlscrlfilepath': validate_readable,
+    'tlscrlfile': validate_readable,
     'tz_aware': validate_boolean_or_string,
     'unicode_decode_error_handler': validate_unicode_decode_error_handler,
     'uuidrepresentation': validate_uuid_representation,
@@ -617,10 +617,10 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'tlsallowinvalidcertificates': 'ssl_cert_reqs',
     'tlsallowinvalidhostnames': 'ssl_match_hostname',
     'tlscrlfile': 'ssl_crlfile',
-    'tlscafilepath': 'ssl_ca_certs',
-    'tlsclientcertfilepath': 'ssl_certfile',
+    'tlscafile': 'ssl_ca_certs',
+    'tlsclientcertfile': 'ssl_certfile',
     'tlsclientkeypassword': 'ssl_pem_passphrase',
-    'tlsclientkeyfilepath': 'ssl_keyfile',
+    'tlsclientkeyfile': 'ssl_keyfile',
 }
 
 # Map from deprecated URI option names to the updated option names.
@@ -631,11 +631,11 @@ URI_OPTIONS_DEPRECATION_MAP = {
     'ssl': 'tls',
     'ssl_cert_reqs': 'tlsAllowInvalidCertificates',
     'ssl_match_hostname': 'tlsAllowInvalidHostnames',
-    'ssl_crlfile': 'tlsCRLFilePath',
-    'ssl_ca_certs': 'tlsCAFilePath',
-    'ssl_certfile': 'tlsClientCertFilePath',
+    'ssl_crlfile': 'tlsCRLFile',
+    'ssl_ca_certs': 'tlsCAFile',
+    'ssl_certfile': 'tlsClientCertFile',
     'ssl_pem_passphrase': 'tlsClientKeyPassword',
-    'ssl_keyfile': 'tlsClientKeyFilePath',
+    'ssl_keyfile': 'tlsClientKeyFile',
 }
 
 # Augment the option validator map with pymongo-specific option information.
