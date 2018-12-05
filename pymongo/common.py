@@ -594,8 +594,9 @@ NONSPEC_OPTIONS_VALIDATOR_MAP = {
     'waitqueuetimeoutms': validate_timeout_or_none,
 }
 
-# Dictionary where keys are the names of keyword-only options for pymongo,
-# and values are functions that validate user-input values for those options.
+# Dictionary where keys are the names of keyword-only options for the
+# MongoClient constructor, and values are functions that validate user-input
+# values for those options.
 KW_VALIDATORS = {
     'document_class': validate_document_class,
     'read_preference': validate_read_preference,
