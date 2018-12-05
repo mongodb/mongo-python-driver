@@ -529,16 +529,16 @@ def validate_tzinfo(dummy, value):
 # are lists of aliases for that option. Aliases of option names are assumed
 # to have been deprecated.
 URI_OPTIONS_ALIAS_MAP = {
-    'journal': ['j', ],
-    'wtimeoutms': ['wtimeout', ],
-    'tls': ['ssl', ],
-    'tlsallowinvalidcertificates': ['ssl_cert_reqs', ],
-    'tlsallowinvalidhostnames': ['ssl_match_hostname', ],
-    'tlscrlfile': ['ssl_crlfile', ],
-    'tlscafile': ['ssl_ca_certs', ],
-    'tlsclientcertfile': ['ssl_certfile', ],
-    'tlsclientkeypassword': ['ssl_pem_passphrase', ],
-    'tlsclientkeyfile': ['ssl_keyfile', ],
+    'journal': ['j'],
+    'wtimeoutms': ['wtimeout'],
+    'tls': ['ssl'],
+    'tlsallowinvalidcertificates': ['ssl_cert_reqs'],
+    'tlsallowinvalidhostnames': ['ssl_match_hostname'],
+    'tlscrlfile': ['ssl_crlfile'],
+    'tlscafile': ['ssl_ca_certs'],
+    'tlsclientcertfile': ['ssl_certfile'],
+    'tlsclientkeypassword': ['ssl_pem_passphrase'],
+    'tlsclientkeyfile': ['ssl_keyfile'],
 }
 
 # Dictionary where keys are the names of URI options, and values
