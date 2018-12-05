@@ -750,6 +750,7 @@ def test_cases(suite):
                 yield case
 
 
+# Helper method to workaround https://bugs.python.org/issue21724
 def clear_warning_registry():
     """Clear the __warningregistry__ for all modules."""
     for name, module in list(sys.modules.items()):
