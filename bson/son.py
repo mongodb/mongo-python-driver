@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for creating and manipulating SON, the Serialized Ocument Notation.
+"""Tools for creating and manipulating SON, the Serialized Document Notation.
 
 Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
