@@ -38,7 +38,10 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.results import _WriteResult, BulkWriteResult
 
 from test import unittest, client_context, IntegrationTest
-from test.utils import OvertCommandListener, rs_client, single_client
+from test.utils import (OvertCommandListener,
+                        rs_client,
+                        single_client,
+                        wait_until)
 from test.utils_selection_tests import parse_read_preference
 
 # Location of JSON test specifications.
@@ -49,8 +52,9 @@ _TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
 
 # Max number of operations to perform after a transaction to prove unpinning
 # occurs. Chosen so that there's a low false positive rate. With 2 mongoses,
-# 20 attempts yields a 1 in 1048576 chance of a false positive (1/(0.5^20)).
-UNPIN_TEST_MAX_ATTEMPTS = 20
+# 50 attempts yields a one in a quadrillion chance of a false positive
+# (1/(0.5^50)).
+UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
 # TODO: factor the following functions with test_crud.py.
@@ -187,17 +191,24 @@ class TestTransactions(IntegrationTest):
     @client_context.require_transactions
     @client_context.require_multiple_mongoses
     def test_unpin_for_next_transaction(self):
-        client = rs_client(client_context.mongos_seeds())
+        # Increase localThresholdMS and wait until both nodes are discovered
+        # to avoid false positives.
+        client = rs_client(client_context.mongos_seeds(),
+                           localThresholdMS=1000)
+        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
+        coll = client.test.test
+        # Create the collection.
+        coll.insert_one({})
         self.addCleanup(client.close)
         with client.start_session() as s:
             # Session is pinned to Mongos.
             with s.start_transaction():
-                client.test.test.insert_one({}, session=s)
+                coll.insert_one({}, session=s)
 
             addresses = set()
             for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
                 with s.start_transaction():
-                    cursor = client.test.test.find({}, session=s)
+                    cursor = coll.find({}, session=s)
                     self.assertTrue(next(cursor))
                     addresses.add(cursor.address)
                 # Break early if we can.
@@ -209,16 +220,23 @@ class TestTransactions(IntegrationTest):
     @client_context.require_transactions
     @client_context.require_multiple_mongoses
     def test_unpin_for_non_transaction_operation(self):
-        client = rs_client(client_context.mongos_seeds())
+        # Increase localThresholdMS and wait until both nodes are discovered
+        # to avoid false positives.
+        client = rs_client(client_context.mongos_seeds(),
+                           localThresholdMS=1000)
+        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
+        coll = client.test.test
+        # Create the collection.
+        coll.insert_one({})
         self.addCleanup(client.close)
         with client.start_session() as s:
             # Session is pinned to Mongos.
             with s.start_transaction():
-                client.test.test.insert_one({}, session=s)
+                coll.insert_one({}, session=s)
 
             addresses = set()
             for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
-                cursor = client.test.test.find({}, session=s)
+                cursor = coll.find({}, session=s)
                 self.assertTrue(next(cursor))
                 addresses.add(cursor.address)
                 # Break early if we can.
