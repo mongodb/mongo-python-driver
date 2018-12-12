@@ -640,6 +640,23 @@ class TestClient(IntegrationTest):
         self.client._process_periodic_tasks()
         self.assertFalse(self.client._topology._opened)
 
+    def test_close_stops_kill_cursors_thread(self):
+        client = rs_client()
+        client.test.test.find_one()
+        self.assertFalse(client._kill_cursors_executor._stopped)
+
+        # Closing the client should stop the thread.
+        client.close()
+        self.assertTrue(client._kill_cursors_executor._stopped)
+
+        # Reusing the closed client should restart the thread.
+        client.admin.command('isMaster')
+        self.assertFalse(client._kill_cursors_executor._stopped)
+
+        # Again, closing the client should stop the thread.
+        client.close()
+        self.assertTrue(client._kill_cursors_executor._stopped)
+
     def test_bad_uri(self):
         with self.assertRaises(InvalidURI):
             MongoClient("http://localhost")
