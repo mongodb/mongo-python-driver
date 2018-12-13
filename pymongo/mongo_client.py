@@ -1139,10 +1139,6 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
-        with self.__lock:
-            # If needed, restart kill-cursors thread after a fork.
-            self._kill_cursors_executor.open()
-
         topology = self._get_topology()
         if address:
             server = topology.select_server_by_address(address)
