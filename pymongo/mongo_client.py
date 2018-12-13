@@ -1030,8 +1030,9 @@ class MongoClient(common.BaseObject):
         session_ids = self._topology.pop_all_sessions()
         if session_ids:
             self._end_sessions(session_ids)
-        # Run _process_periodic_tasks to send pending killCursor requests
-        # before closing the topology.
+        # Stop the periodic task thread and then run _process_periodic_tasks
+        # to send pending killCursor requests before closing the topology.
+        self._kill_cursors_executor.close()
         self._process_periodic_tasks()
         self._topology.close()
 
@@ -1071,6 +1072,8 @@ class MongoClient(common.BaseObject):
         launches the connection process in the background.
         """
         self._topology.open()
+        with self.__lock:
+            self._kill_cursors_executor.open()
         return self._topology
 
     @contextlib.contextmanager
@@ -1136,10 +1139,6 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
-        with self.__lock:
-            # If needed, restart kill-cursors thread after a fork.
-            self._kill_cursors_executor.open()
-
         topology = self._get_topology()
         if address:
             server = topology.select_server_by_address(address)
