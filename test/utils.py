@@ -17,8 +17,6 @@
 
 import contextlib
 import functools
-import os
-import struct
 import sys
 import threading
 import time
@@ -29,7 +27,7 @@ from functools import partial
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient, monitoring
-from pymongo.errors import AutoReconnect, OperationFailure
+from pymongo.errors import OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
@@ -375,78 +373,6 @@ class DeprecationFilter(object):
         """Stop filtering deprecations."""
         self.warn_context.__exit__()
         self.warn_context = None
-
-
-def read_from_which_host(
-        client,
-        pref,
-        tag_sets=None,
-):
-    """Read from a client with the given Read Preference.
-
-    Return the 'host:port' which was read from.
-
-    :Parameters:
-      - `client`: A MongoClient
-      - `mode`: A ReadPreference
-      - `tag_sets`: List of dicts of tags for data-center-aware reads
-    """
-    db = client.pymongo_test
-
-    if isinstance(tag_sets, dict):
-        tag_sets = [tag_sets]
-    if tag_sets:
-        tags = tag_sets or pref.tag_sets
-        pref = pref.__class__(tags)
-
-    db.read_preference = pref
-
-    cursor = db.test.find()
-    try:
-        try:
-            next(cursor)
-        except StopIteration:
-            # No documents in collection, that's fine
-            pass
-
-        return cursor.address
-    except AutoReconnect:
-        return None
-
-
-def assertReadFrom(testcase, client, member, *args, **kwargs):
-    """Check that a query with the given mode and tag_sets reads from
-    the expected replica-set member.
-
-    :Parameters:
-      - `testcase`: A unittest.TestCase
-      - `client`: A MongoClient
-      - `member`: A host:port expected to be used
-      - `mode`: A ReadPreference
-      - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
-    """
-    for _ in range(10):
-        testcase.assertEqual(member,
-                             read_from_which_host(client, *args, **kwargs))
-
-
-def assertReadFromAll(testcase, client, members, *args, **kwargs):
-    """Check that a query with the given mode and tag_sets reads from all
-    members in a set, and only members in that set.
-
-    :Parameters:
-      - `testcase`: A unittest.TestCase
-      - `client`: A MongoClient
-      - `members`: Sequence of host:port expected to be used
-      - `mode`: A ReadPreference
-      - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
-    """
-    members = set(members)
-    used = set()
-    for _ in range(100):
-        used.add(read_from_which_host(client, *args, **kwargs))
-
-    testcase.assertEqual(members, used)
 
 
 def get_pool(client):

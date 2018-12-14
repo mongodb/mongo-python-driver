@@ -207,7 +207,9 @@ except ImportError:
         def _xor_bytes(a, b, _ord=ord):
             return _ord(a) ^ _ord(b)
 
-    # Python 2.x < 2.7.7 and Python 3.x < 3.3
+    # Python 2.x < 2.7.7
+    # Note: This method is intentionally obtuse to prevent timing attacks. Do
+    # not refactor it!
     # References:
     #  - http://bugs.python.org/issue14532
     #  - http://bugs.python.org/issue14955
