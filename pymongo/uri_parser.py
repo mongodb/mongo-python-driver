@@ -130,10 +130,27 @@ def parse_host(entity, default_port=DEFAULT_PORT):
     return host.lower(), port
 
 
-def _tokenize_option_string(opts, delim):
-    """Convert the string of URI options into a dictionary. Also handles the
-    creation of a list for readPreferenceTags. If an option is provided
-    more than once, the value of its last occurrence is preserved."""
+# def _tokenize_option_string(opts, delim):
+#     """Convert the string of URI options into a dictionary. Also handles the
+#     creation of a list for readPreferenceTags. If an option is provided
+#     more than once, the value of its last occurrence is preserved."""
+#     options = {}
+#     for opt in opts.split(delim):
+#         key, value = opt.split("=")
+#         optname = str(key).lower()
+#         if optname == 'readpreferencetags':
+#             options.setdefault(optname, []).append(value)
+#         else:
+#             if key in options:
+#                 warnings.warn("Duplicate URI option '%s'." % (str(key),))
+#             options[str(key)] = unquote_plus(value)
+#     return options
+
+
+def _parse_options(opts, delim):
+    """Helper method for split_options which creates the options dict.
+    Also handles the creation of a list for the URI tag_sets/
+    readpreferencetags portion."""
     options = {}
     for opt in opts.split(delim):
         key, value = opt.split("=")
@@ -144,15 +161,6 @@ def _tokenize_option_string(opts, delim):
             if key in options:
                 warnings.warn("Duplicate URI option '%s'." % (str(key),))
             options[str(key)] = unquote_plus(value)
-    return options
-
-
-def _parse_options(opts, delim):
-    """Helper method for split_options which creates the options dict.
-    Also handles the creation of a list for the URI tag_sets/
-    readpreferencetags portion."""
-    options = _tokenize_option_string(opts, delim)
-    options = _handle_option_deprecations(options)
     return options
 
 
@@ -198,6 +206,8 @@ def split_options(opts, validate=True, warn=False, normalize=True):
             raise ValueError
     except ValueError:
         raise InvalidURI("MongoDB URI options are key=value pairs.")
+
+    options = _handle_option_deprecations(options)
 
     if validate:
         options = validate_options(options, warn)
