@@ -31,7 +31,7 @@ else:
     from urllib import unquote_plus
 
 from pymongo.common import (
-    get_validated_uri_options, handle_option_deprecations, normalize_options)
+    get_validated_options, _handle_option_deprecations, _normalize_options)
 from pymongo.errors import ConfigurationError, InvalidURI
 
 
@@ -152,8 +152,22 @@ def _parse_options(opts, delim):
     Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion."""
     options = _tokenize_option_string(opts, delim)
-    options = handle_option_deprecations(options)
+    options = _handle_option_deprecations(options)
     return options
+
+
+def validate_options(opts, warn=False):
+    """Validates and normalizes options passed in a MongoDB URI.
+    Returns a new dictionary of validated and normalized options. If warn is
+    False then errors will be thrown for invalid options, otherwise they will
+    be ignored and a warning will be issued.
+    :Parameters:
+        - `opts`: A dict of MongoDB URI options.
+        - `warn` (optional): If ``True`` then warnings will be logged and
+          invalid options will be ignored. Otherwise invalid options will
+          cause errors.
+    """
+    return get_validated_options(opts, warn)
 
 
 def split_options(opts, validate=True, warn=False, normalize=True):
@@ -164,6 +178,10 @@ def split_options(opts, validate=True, warn=False, normalize=True):
         - `opt`: A string representing MongoDB URI options.
         - `validate`: If ``True`` (the default), validate and normalize all
           options.
+        - `warn`: If ``False`` (the default), suppress all warnings raised
+          during validation of options.
+        - `normalize`: If ``True`` (the default), renames all options to their
+          internally-used names.
     """
     and_idx = opts.find("&")
     semi_idx = opts.find(";")
@@ -182,10 +200,10 @@ def split_options(opts, validate=True, warn=False, normalize=True):
         raise InvalidURI("MongoDB URI options are key=value pairs.")
 
     if validate:
-        options = get_validated_uri_options(options, warn)
+        options = validate_options(options, warn)
 
     if normalize:
-        options = normalize_options(options)
+        options = _normalize_options(options)
 
     return options
 

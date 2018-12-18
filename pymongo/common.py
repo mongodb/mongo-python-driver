@@ -685,20 +685,7 @@ def validate(option, value):
     return lower, value
 
 
-def get_validated_options(options):
-    """Validates and normalizes an options dictionary defined by the user as
-    a list of keyword arguments.
-
-    Returns a new dictionary of validated and normalized options. Errors will
-    be thrown for invalid options.
-
-    :Parameters:
-        - `opts`: A dict of MongoDB options.
-    """
-    return dict(validate(k, v) for k, v in iteritems(options))
-
-
-def get_validated_uri_options(options, warn=True):
+def get_validated_options(options, warn=True):
     """Validates and normalizes an options dictionary constructed by parsing
     a MongoDB URI.
 
@@ -729,7 +716,7 @@ def get_validated_uri_options(options, warn=True):
     return validated_options
 
 
-def handle_option_deprecations(options):
+def _handle_option_deprecations(options):
     """Appropriately handle presence of deprecated options in the options
     dictionary. Removes deprecated option key, value pairs if the renamed
     option is also provided."""
@@ -748,7 +735,7 @@ def handle_option_deprecations(options):
     return undeprecated_options
 
 
-def normalize_options(options):
+def _normalize_options(options):
     """Renames keys in the options dictionary to their internally-used
     names."""
     normalized_options = {}

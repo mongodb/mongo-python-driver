@@ -537,12 +537,14 @@ class MongoClient(common.BaseObject):
             connect = opts.get('connect', True)
         keyword_opts['tz_aware'] = tz_aware
         keyword_opts['connect'] = connect
+
+        # Validate kwargs options.
+        keyword_opts = dict(common.validate(k, v)
+                            for k, v in keyword_opts.items())
         # Handle deprecated options in kwarg list.
-        keyword_opts = common.handle_option_deprecations(keyword_opts)
-        # Validate all kwarg options.
-        keyword_opts = common.get_validated_options(keyword_opts)
+        keyword_opts = common._handle_option_deprecations(keyword_opts)
         # Change kwarg option names to those used internally.
-        keyword_opts = common.normalize_options(keyword_opts)
+        keyword_opts = common._normalize_options(keyword_opts)
         # Augment URI options with kwarg options, overriding the former.
         opts.update(keyword_opts)
         # Username and password passed as kwargs override user info in URI.
