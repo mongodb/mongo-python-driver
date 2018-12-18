@@ -536,9 +536,8 @@ URI_OPTIONS_ALIAS_MAP = {
     'tlsallowinvalidhostnames': ['ssl_match_hostname'],
     'tlscrlfile': ['ssl_crlfile'],
     'tlscafile': ['ssl_ca_certs'],
-    'tlsclientcertfile': ['ssl_certfile'],
-    'tlsclientkeypassword': ['ssl_pem_passphrase'],
-    'tlsclientkeyfile': ['ssl_keyfile'],
+    'tlscertificatekeyfile': ['ssl_certfile'],
+    'tlscertificatekeyfilepassword': ['ssl_pem_passphrase'],
 }
 
 # Dictionary where keys are the names of URI options, and values
@@ -565,14 +564,16 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'retrywrites': validate_boolean_or_string,
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'sockettimeoutms': validate_timeout_or_none,
+    'ssl_keyfile': validate_readable,
     'tls': validate_boolean_or_string,
     'tlsallowinvalidcertificates': validate_allow_invalid_certs,
     'ssl_cert_reqs': validate_cert_reqs,
-    'tlsallowinvalidhostnames': validate_boolean_or_string,
+    'tlsallowinvalidhostnames': lambda *x: not validate_boolean_or_string(*x),
+    'ssl_match_hostname': validate_boolean_or_string,
     'tlscafile': validate_readable,
-    'tlsclientcertfile': validate_readable,
-    'tlsclientkeypassword': validate_string_or_none,
-    'tlsclientkeyfile': validate_readable,
+    'tlscertificatekeyfile': validate_readable,
+    'tlscertificatekeyfilepassword': validate_string_or_none,
+    'tlsinsecure': validate_boolean_or_string,
     'w': validate_non_negative_int_or_basestring,
     'wtimeoutms': validate_non_negative_integer,
     'zlibcompressionlevel': validate_zlib_compression_level,
@@ -619,9 +620,8 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'tlsallowinvalidhostnames': 'ssl_match_hostname',
     'tlscrlfile': 'ssl_crlfile',
     'tlscafile': 'ssl_ca_certs',
-    'tlsclientcertfile': 'ssl_certfile',
-    'tlsclientkeypassword': 'ssl_pem_passphrase',
-    'tlsclientkeyfile': 'ssl_keyfile',
+    'tlscertificatekeyfile': 'ssl_certfile',
+    'tlscertificatekeyfilepassword': 'ssl_pem_passphrase',
 }
 
 # Map from deprecated URI option names to the updated option names.
@@ -629,14 +629,13 @@ INTERNAL_URI_OPTION_NAME_MAP = {
 URI_OPTIONS_DEPRECATION_MAP = {
     'j': 'journal',
     'wtimeout': 'wTimeoutMS',
-    'ssl': 'tls',
     'ssl_cert_reqs': 'tlsAllowInvalidCertificates',
     'ssl_match_hostname': 'tlsAllowInvalidHostnames',
     'ssl_crlfile': 'tlsCRLFile',
     'ssl_ca_certs': 'tlsCAFile',
-    'ssl_certfile': 'tlsClientCertFile',
-    'ssl_pem_passphrase': 'tlsClientKeyPassword',
-    'ssl_keyfile': 'tlsClientKeyFile',
+    'ssl_certfile': 'tlsCertificateKeyFile',
+    'ssl_pem_passphrase': 'tlsCertificateKeyFilePassword',
+    'ssl_keyfile': 'tlsCertificateKeyFile',
 }
 
 # Augment the option validator map with pymongo-specific option information.
@@ -717,9 +716,9 @@ def get_validated_options(options, warn=True):
 
 
 def _handle_option_deprecations(options):
-    """Appropriately handle presence of deprecated options in the options
-    dictionary. Removes deprecated option key, value pairs if the renamed
-    option is also provided."""
+    """Issue appropriate warnings when deprecated options are present in the
+    options dictionary. Also removes deprecated option key, value pairs if the
+    options dictionary is found to also have the renamed option."""
     undeprecated_options = {}
     for key, value in iteritems(options):
         optname = str(key).lower()

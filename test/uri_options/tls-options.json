@@ -2,7 +2,7 @@
   "tests": [
     {
       "description": "Valid required tls options are parsed correctly",
-      "uri": "mongodb://example.com/?tls=true&tlsCAFile=ca.pem&tlsCertificateKeyFile=cert.pem&tlsCertificateKeyPassword=hunter2",
+      "uri": "mongodb://example.com/?tls=true&tlsCAFile=ca.pem&tlsCertificateKeyFile=cert.pem&tlsCertificateKeyFilePassword=hunter2",
       "valid": true,
       "warning": false,
       "hosts": null,
