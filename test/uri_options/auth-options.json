@@ -6,11 +6,7 @@
       "valid": true,
       "warning": false,
       "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
+      "auth": null,
       "options": {
         "authmechanism": "GSSAPI",
         "authMechanismProperties": {

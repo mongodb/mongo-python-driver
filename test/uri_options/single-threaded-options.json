@@ -6,14 +6,19 @@
       "valid": true,
       "warning": false,
       "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
+      "auth": null,
       "options": {
-        "serverSelectionTryOnce": "false"
+        "serverSelectionTryOnce": false
       }
+    },
+    {
+      "description": "Invalid serverSelectionTryOnce causes a warning",
+      "uri": "mongodb://example.com/?serverSelectionTryOnce=invalid",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": null,
+      "options": null
     }
   ]
 }

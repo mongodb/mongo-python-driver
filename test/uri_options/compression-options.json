@@ -6,14 +6,10 @@
       "valid": true,
       "warning": false,
       "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
+      "auth": null,
       "options": {
         "compressors": "zlib",
-        "zlibCompressionLevel": "9"
+        "zlibCompressionLevel": 9
       }
     },
     {
@@ -22,24 +18,34 @@
       "valid": true,
       "warning": true,
       "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
+      "auth": null,
       "options": {}
     },
     {
-      "description": "Invalid zlibCompressionLevel causes a warning",
+      "description": "Non-numeric zlibCompressionLevel causes a warning",
       "uri": "mongodb://example.com/?compressors=zlib&zlibCompressionLevel=invalid",
       "valid": true,
       "warning": true,
       "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
+      "auth": null,
+      "options": {}
+    },
+    {
+      "description": "Too low zlibCompressionLevel causes a warning",
+      "uri": "mongodb://example.com/?compressors=zlib&zlibCompressionLevel=-2",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": null,
+      "options": {}
+    },
+    {
+      "description": "Too high zlibCompressionLevel causes a warning",
+      "uri": "mongodb://example.com/?compressors=zlib&zlibCompressionLevel=10",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": null,
       "options": {}
     }
   ]

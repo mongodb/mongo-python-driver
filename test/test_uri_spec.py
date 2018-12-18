@@ -35,7 +35,7 @@ URI_OPTIONS_TEST_PATH = os.path.join(
 
 TEST_DESC_SKIP_LIST = [
     "Valid options specific to single-threaded drivers are parsed correctly",
-    "tlsInsecure is parsed correctly"]
+    "Invalid serverSelectionTryOnce causes a warning"]
 
 
 class TestAllScenarios(unittest.TestCase):
@@ -63,6 +63,10 @@ def create_test(test, test_workdir):
     def run_scenario(self):
         valid = True
         warning = False
+
+        if test["description"] == "Too low connectTimeoutMS causes a warning":
+            #import ipdb; ipdb.set_trace()
+            pass
 
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter('always')

@@ -1,23 +1,19 @@
 {
   "tests": [
     {
-      "description": "Valid connection and timeout options are parsed correctly",
+      "description": "Valid read preference options are parsed correctly",
       "uri": "mongodb://example.com/?readPreference=primaryPreferred&readPreferenceTags=dc:ny,rack:1&maxStalenessSeconds=120&readPreferenceTags=dc:ny",
       "valid": true,
       "warning": false,
       "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
+      "auth": null,
       "options": {
         "readPreference": "primaryPreferred",
         "readPreferenceTags": [
           "dc:ny,rack",
           "dc:ny"
         ],
-        "maxStalenessSeconds": "120"
+        "maxStalenessSeconds": 120
       }
     },
     {
@@ -26,24 +22,25 @@
       "valid": true,
       "warning": true,
       "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
+      "auth": null,
       "options": {}
     },
     {
-      "description": "Invalid maxStalenessSeconds causes a warning",
+      "description": "Non-numeric maxStalenessSeconds causes a warning",
       "uri": "mongodb://example.com/?maxStalenessSeconds=invalid",
       "valid": true,
       "warning": true,
       "hosts": null,
-      "auth": {
-        "username": null,
-        "password": null,
-        "db": null
-      },
+      "auth": null,
+      "options": {}
+    },
+    {
+      "description": "Too low maxStalenessSeconds causes a warning",
+      "uri": "mongodb://example.com/?maxStalenessSeconds=-2",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": null,
       "options": {}
     }
   ]
