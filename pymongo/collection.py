@@ -1613,7 +1613,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
         return self._count(cmd)
 
-    def count_documents(self, filter, session=None, **kwargs):
+    def count_documents(self, filter={}, session=None, **kwargs):
         """Count the number of documents in this collection.
 
         The :meth:`count_documents` method is supported in a transaction.
@@ -1653,8 +1653,8 @@ class Collection(common.BaseObject):
            $expr requires MongoDB 3.6+
 
         :Parameters:
-          - `filter` (required): A query document that selects which documents
-            to count in the collection. Can be an empty document to count all
+          - `filter` (optional): A query document that selects which documents
+            to count in the collection. It defaults to an empty document to count all
             documents.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
