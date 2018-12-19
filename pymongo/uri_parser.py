@@ -23,7 +23,7 @@ try:
 except ImportError:
     _HAVE_DNSPYTHON = False
 
-from bson.py3compat import PY3, iteritems, string_type
+from bson.py3compat import PY3, string_type
 
 if PY3:
     from urllib.parse import unquote_plus
@@ -150,7 +150,7 @@ def parse_host(entity, default_port=DEFAULT_PORT):
 def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
-    readpreferencetags portion."""
+    readpreferencetags portion and the use of the tlsInsecure option."""
     options = {}
     for opt in opts.split(delim):
         key, value = opt.split("=")
@@ -158,6 +158,9 @@ def _parse_options(opts, delim):
         if optname == 'readpreferencetags':
             options.setdefault(optname, []).append(value)
         else:
+            if optname == 'tlsinsecure':
+                options['tlsAllowInvalidCertificates'] = value
+                options['tlsAllowInvalidHostnames'] = value
             if key in options:
                 warnings.warn("Duplicate URI option '%s'." % (str(key),))
             options[str(key)] = unquote_plus(value)

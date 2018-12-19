@@ -717,7 +717,7 @@ def get_validated_options(options, warn=True):
 
 def _handle_option_deprecations(options):
     """Issue appropriate warnings when deprecated options are present in the
-    options dictionary. Also removes deprecated option key, value pairs if the
+    options dictionary. Removes deprecated option key, value pairs if the
     options dictionary is found to also have the renamed option."""
     undeprecated_options = {}
     for key, value in iteritems(options):

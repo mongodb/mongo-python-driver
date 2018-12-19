@@ -64,10 +64,6 @@ def create_test(test, test_workdir):
         valid = True
         warning = False
 
-        if test["description"] == "Too low connectTimeoutMS causes a warning":
-            #import ipdb; ipdb.set_trace()
-            pass
-
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter('always')
             try:
