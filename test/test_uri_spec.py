@@ -22,6 +22,7 @@ import warnings
 
 sys.path[0:0] = [""]
 
+from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, validate
 from pymongo.uri_parser import parse_uri
 from test import clear_warning_registry, unittest
 
@@ -114,14 +115,24 @@ def create_test(test, test_workdir):
                                      % (auth[elm], options[elm]))
 
         # Compare URI options.
+        err_msg = "For option %s expected %s but got %s"
         if test['options'] is not None:
+            opts = options['options']
             for opt in test['options']:
-                if options.get(opt) is not None:
+                lopt = opt.lower()
+                optname = INTERNAL_URI_OPTION_NAME_MAP.get(lopt, lopt)
+                if opts.get(optname) is not None:
+                    if opts[optname] == test['options'][opt]:
+                        expected_value = test['options'][opt]
+                    else:
+                        expected_value = validate(
+                            lopt, test['options'][opt])[1]
                     self.assertEqual(
-                        options[opt], test['options'][opt],
-                        "For option %s expected %s but got %s"
-                        % (opt, options[opt],
-                           test['options'][opt]))
+                        opts[optname], expected_value,
+                        err_msg % (opt, expected_value, opts[optname],))
+                else:
+                    self.fail(
+                        "Missing expected option %s" % (opt,))
 
     return run_scenario_in_dir(test_workdir)(run_scenario)
 

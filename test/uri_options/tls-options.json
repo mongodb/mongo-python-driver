@@ -11,7 +11,7 @@
         "tls": true,
         "tlsCAFile": "ca.pem",
         "tlsCertificateKeyFile": "cert.pem",
-        "tlsCertificateKeyPassword": "hunter2"
+        "tlsCertificateKeyFilePassword": "hunter2"
       }
     },
     {
