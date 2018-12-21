@@ -130,23 +130,6 @@ def parse_host(entity, default_port=DEFAULT_PORT):
     return host.lower(), port
 
 
-# def _tokenize_option_string(opts, delim):
-#     """Convert the string of URI options into a dictionary. Also handles the
-#     creation of a list for readPreferenceTags. If an option is provided
-#     more than once, the value of its last occurrence is preserved."""
-#     options = {}
-#     for opt in opts.split(delim):
-#         key, value = opt.split("=")
-#         optname = str(key).lower()
-#         if optname == 'readpreferencetags':
-#             options.setdefault(optname, []).append(value)
-#         else:
-#             if key in options:
-#                 warnings.warn("Duplicate URI option '%s'." % (str(key),))
-#             options[str(key)] = unquote_plus(value)
-#     return options
-
-
 def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
@@ -169,9 +152,11 @@ def _parse_options(opts, delim):
 
 def validate_options(opts, warn=False):
     """Validates and normalizes options passed in a MongoDB URI.
+
     Returns a new dictionary of validated and normalized options. If warn is
     False then errors will be thrown for invalid options, otherwise they will
     be ignored and a warning will be issued.
+
     :Parameters:
         - `opts`: A dict of MongoDB URI options.
         - `warn` (optional): If ``True`` then warnings will be logged and

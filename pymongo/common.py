@@ -685,17 +685,13 @@ def validate(option, value):
 
 
 def get_validated_options(options, warn=True):
-    """Validates and normalizes an options dictionary constructed by parsing
-    a MongoDB URI.
-
-    Returns a new dictionary of validated and normalized options. If warn is
-    False then errors will be thrown for invalid options, otherwise they will
-    be ignored and a warning will be issued.
+    """Validate each entry in options and raise a warning if it is not valid.
+    Returns a copy of options with invalid entries removed.
 
     :Parameters:
         - `opts`: A dict of MongoDB URI options.
         - `warn` (optional): If ``True`` then warnigns will be logged and
-          invalid options will be ignored. Otherwise invalid options will
+          invalid options will be ignored. Otherwise, invalid options will
           cause errors.
     """
     validated_options = {}
