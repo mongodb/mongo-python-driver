@@ -151,7 +151,7 @@ class MongoClient(common.BaseObject):
         <https://github.com/mongodb/specifications/blob/master/source/
         initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
         for more details. Note that the use of SRV URIs implicitly enables
-        TLS support. Pass ssl=false in the URI to override.
+        TLS support. Pass tls=false in the URI to override.
 
         .. note:: MongoClient creation will block waiting for answers from
           DNS when mongodb+srv:// URIs are used.
@@ -297,16 +297,17 @@ class MongoClient(common.BaseObject):
             primary (e.g. w=3 means write to the primary and wait until
             replicated to **two** secondaries). Passing w=0 **disables write
             acknowledgement** and all other write concern options.
-          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
+          - `wTimeoutMS`: (integer) Used in conjunction with `w`. Specify a value
             in milliseconds to control how long to wait for write propagation
             to complete. If replication does not complete in the given
-            timeframe, a timeout exception is raised.
-          - `j`: If ``True`` block until write operations have been committed
-            to the journal. Cannot be used in combination with `fsync`. Prior
-            to MongoDB 2.6 this option was ignored if the server was running
-            without journaling. Starting with MongoDB 2.6 write operations will
-            fail with an exception if this option is used when the server is
-            running without journaling.
+            timeframe, a timeout exception is raised. Passing wTimeoutMS=0
+            will cause **write operations to wait indefinitely**.
+          - `journal`: If ``True`` block until write operations have been
+            committed to the journal. Cannot be used in combination with
+            `fsync`. Prior to MongoDB 2.6 this option was ignored if the server
+            was running without journaling. Starting with MongoDB 2.6 write
+            operations will fail with an exception if this option is used when
+            the server is running without journaling.
           - `fsync`: If ``True`` and the server is running without journaling,
             blocks until the server has synced all data files to disk. If the
             server is running with journaling, this acts the same as the `j`
@@ -368,45 +369,57 @@ class MongoClient(common.BaseObject):
 
           | **SSL configuration:**
 
-          - `ssl`: If ``True``, create the connection to the server using SSL.
-            Defaults to ``False``.
-          - `ssl_certfile`: The certificate file used to identify the local
-            connection against mongod. Implies ``ssl=True``. Defaults to
-            ``None``.
-          - `ssl_keyfile`: The private keyfile used to identify the local
-            connection against mongod.  If included with the ``certfile`` then
-            only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
-            Defaults to ``None``.
-          - `ssl_pem_passphrase`: The password or passphrase for decrypting
-            the private key in ``ssl_certfile`` or ``ssl_keyfile``. Only
-            necessary if the private key is encrypted. Only supported by python
-            2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults to ``None``.
-          - `ssl_cert_reqs`: Specifies whether a certificate is required from
-            the other side of the connection, and whether it will be validated
-            if provided. It must be one of the three values ``ssl.CERT_NONE``
-            (certificates ignored), ``ssl.CERT_REQUIRED`` (certificates
-            required and validated), or ``ssl.CERT_OPTIONAL`` (the same as
-            CERT_REQUIRED, unless the server was configured to use anonymous
-            ciphers). If the value of this parameter is not ``ssl.CERT_NONE``
-            and a value is not provided for ``ssl_ca_certs`` PyMongo will
-            attempt to load system provided CA certificates. If the python
-            version in use does not support loading system CA certificates
-            then the ``ssl_ca_certs`` parameter must point to a file of CA
-            certificates. Implies ``ssl=True``. Defaults to
-            ``ssl.CERT_REQUIRED`` if not provided and ``ssl=True``.
-          - `ssl_ca_certs`: The ca_certs file contains a set of concatenated
+          - `tls`: (boolean) If ``True``, create the connection to the server
+            using TLS. Defaults to ``False``.
+          - `ssl`: (boolean) Alias for ``tls``.
+          - `tlsInsecure`: (boolean) Specify whether TLS constraints should be
+            relaxed as much as possible. Setting ``tlsInsecure=True`` implies
+            ``tlsAllowInvalidCertificates=False`` and
+            ``tlsAllowInvalidHostnames=False``. Defaults to ``False``. Think
+            very carefully before setting this to ``True`` as it could allow
+            malicious third-parties to exploit TLS vulnerabilities to attack
+            your application.
+          - `tlsAllowInvalidCertificates`: (boolean) Specifies whether a
+            certificate is required from the other side of the connection, and
+            whether it will be validated if provided. Certificates are ignored
+            if ``tlsAllowInvalidCertificates=True``. Certificates are required
+            and validated if ``tlsAllowInvalidCertificates=False``. If the
+            value of this parameter is ``False`` and a value is not provided
+            for ``tlsCAFile``, PyMongo will attempt to load system provided CA
+            certificates. If the python version in use does not support loading
+            system CA certificates then the ``tlsCAFile`` parameter must point
+            to a file of CA certificates. ``tlsAllowInvalidCertificates=False``
+            implies ``tls=True``. Defaults to ``False``.
+          - `tlsAllowInvalidHostnames`: (boolean) If ``False`` and
+            `tlsAllowInvalidCertificates` is ``False``, enables hostname
+            verification using the :func:`~ssl.match_hostname` function from
+            python's :mod:`~ssl` module. ``tlsAllowInvalidHostnames=False``
+            implies ``tls=True``. Defaults to ``False``. Think very carefully
+            before setting this to ``True`` as that could make your application
+            vulnerable to man-in-the-middle attacks.
+          - `tlsCAFile`: The file containing a single or a bundle of
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
-            Implies ``ssl=True``. Defaults to ``None``.
+            Implies ``tls=True``. Defaults to ``None``.
+          - `tlsCertificateKeyFile`: The client certificate file or the client
+            private key file used to identify the local connection against
+            mongod. In the case that they are both needed, the files can either
+            be concatenated and passed to this option, or they can be passed
+            separately using the ``tlsCertificateKeyFile`` and ``ssl_keyfile``
+            options respectively. Implies ``tls=True``. Defaults to ``None``.
+          - `ssl_certfile`: Alias for ``tlsCertificateKeyFile``.
+          - `ssl_keyfile`: The private keyfile used to identify the local
+            connection against mongod. Can be omitted if the keyfile is
+            included with the ``tlsCertificateKeyFile``. Implies ``tls=True``.
+            Defaults to ``None``.
+          - `tlsCertificateKeyFilePassword`: The password or passph rase for
+            decrypting the private key in ``tlsCertificateKeyFile`` or
+            ``ssl_keyfile``. Only necessary if the private key is encrypted.
+            Only supported by python 2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults
+            to ``None``.
           - `ssl_crlfile`: The path to a PEM or DER formatted certificate
             revocation list. Only supported by python 2.7.9+ (pypy 2.5.1+)
             and 3.4+. Defaults to ``None``.
-          - `ssl_match_hostname`: If ``True`` (the default), and
-            `ssl_cert_reqs` is not ``ssl.CERT_NONE``, enables hostname
-            verification using the :func:`~ssl.match_hostname` function from
-            python's :mod:`~ssl` module. Think very carefully before setting
-            this to ``False`` as that could make your application vulnerable to
-            man-in-the-middle attacks.
 
           | **Read Concern options:**
           | (If not set explicitly, this will use the server default)
@@ -418,6 +431,22 @@ class MongoClient(common.BaseObject):
             level is left unspecified, the server default will be used.
 
         .. mongodoc:: connections
+
+        .. versionchanged:: 4.0
+           Added the ``tlsInsecure`` keyword argument and URI option.
+           The following keyword arguments and URI options were deprecated:
+
+             - ``wTimeout`` was deprecated in favor of ``wTimeoutMS``.
+             - ``j`` was deprecated in favor of ``journal``.
+             - ``ssl_cert_reqs`` was deprecated in favor of
+               ``tlsAllowInvalidCertificates``.
+             - ``ssl_match_hostname`` was deprecated in favor of
+               ``tlsAllowInvalidHostnames``.
+             - ``ssl_ca_certs`` was deprecated in favor of ``tlsCAFile``.
+             - ``ssl_certfile`` was deprecated in favor of
+               ``tlsCertificateKeyFile``.
+             - ``ssl_pem_passphrase`` was deprecated in favor of
+               ``tlsCertificateKeyFilePassword``.
 
         .. versionchanged:: 3.8
            Added the ``server_selector`` keyword argument.
@@ -433,8 +462,8 @@ class MongoClient(common.BaseObject):
            Add ``username`` and ``password`` options. Document the
            ``authSource``, ``authMechanism``, and ``authMechanismProperties ``
            options.
-           Deprecated the `socketKeepAlive` keyword argument and URI option.
-           `socketKeepAlive` now defaults to ``True``.
+           Deprecated the ``socketKeepAlive`` keyword argument and URI option.
+           ``socketKeepAlive`` now defaults to ``True``.
 
         .. versionchanged:: 3.0
            :class:`~pymongo.mongo_client.MongoClient` is now the one and only
