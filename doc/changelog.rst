@@ -38,7 +38,7 @@ Changes in Version 3.8.0
     - ``ssl_pem_passphrase`` has been deprecated in favor of ``tlsCertificateKeyFilePassword``.
 
 
-.. _`URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst`
+.. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst`
 
 
 Issues Resolved
