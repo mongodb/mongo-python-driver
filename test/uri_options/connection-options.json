@@ -2,7 +2,7 @@
   "tests": [
     {
       "description": "Valid connection and timeout options are parsed correctly",
-      "uri": "mongodb://example.com/?appname=URI-OPTIONS-SPEC-TEST&connectTimeoutMS=20000&heartbeatFrequencyMS=5000&localThresholdMS=3000&replicaSet=uri-options-spec&retryWrites=true&serverSelectionTimeoutMS=15000&socketTimeoutMS=7500",
+      "uri": "mongodb://example.com/?appname=URI-OPTIONS-SPEC-TEST&connectTimeoutMS=20000&heartbeatFrequencyMS=5000&localThresholdMS=3000&maxIdleTimeMS=50000&replicaSet=uri-options-spec&retryWrites=true&serverSelectionTimeoutMS=15000&socketTimeoutMS=7500",
       "valid": true,
       "warning": false,
       "hosts": null,
@@ -12,6 +12,7 @@
         "connectTimeoutMS": 20000,
         "heartbeatFrequencyMS": 5000,
         "localThresholdMS": 3000,
+        "maxIdleTimeMS": 50000,
         "replicaSet": "uri-options-spec",
         "retryWrites": true,
         "serverSelectionTimeoutMS": 15000,
