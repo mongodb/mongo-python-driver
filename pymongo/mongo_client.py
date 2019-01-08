@@ -367,59 +367,56 @@ class MongoClient(common.BaseObject):
 
           .. seealso:: :doc:`/examples/authentication`
 
-          | **SSL configuration:**
+          | **TLS/SSL configuration:**
 
           - `tls`: (boolean) If ``True``, create the connection to the server
             using TLS. Defaults to ``False``.
-          - `ssl`: (boolean) Alias for ``tls``.
           - `tlsInsecure`: (boolean) Specify whether TLS constraints should be
             relaxed as much as possible. Setting ``tlsInsecure=True`` implies
-            ``tlsAllowInvalidCertificates=False`` and
-            ``tlsAllowInvalidHostnames=False``. Defaults to ``False``. Think
-            very carefully before setting this to ``True`` as it could allow
-            malicious third-parties to exploit TLS vulnerabilities to attack
-            your application.
-          - `tlsAllowInvalidCertificates`: (boolean) Specifies whether a
-            certificate is required from the other side of the connection, and
-            whether it will be validated if provided. Certificates are ignored
-            if ``tlsAllowInvalidCertificates=True``. Certificates are required
-            and validated if ``tlsAllowInvalidCertificates=False``. If the
-            value of this parameter is ``False`` and a value is not provided
-            for ``tlsCAFile``, PyMongo will attempt to load system provided CA
-            certificates. If the python version in use does not support loading
-            system CA certificates then the ``tlsCAFile`` parameter must point
-            to a file of CA certificates. ``tlsAllowInvalidCertificates=False``
-            implies ``tls=True``. Defaults to ``False``.
-          - `tlsAllowInvalidHostnames`: (boolean) If ``False`` and
-            `tlsAllowInvalidCertificates` is ``False``, enables hostname
-            verification using the :func:`~ssl.match_hostname` function from
-            python's :mod:`~ssl` module. ``tlsAllowInvalidHostnames=False``
-            implies ``tls=True``. Defaults to ``False``. Think very carefully
-            before setting this to ``True`` as that could make your application
+            ``tlsAllowInvalidCertificates=True`` and
+            ``tlsAllowInvalidHostnames=True``. Defaults to ``False``. Think
+            very carefully before setting this to ``True`` as it dramatically
+            reduces the security of TLS.
+          - `tlsAllowInvalidCertificates`: (boolean) If ``True``, continues
+            the TLS handshake regardless of the outcome of the certificate
+            verification process. If this is ``False``, and a value is not
+            provided for ``tlsCAFile``, PyMongo will attempt to load system
+            provided CA certificates. If the python version in use does not
+            support loading system CA certificates then the ``tlsCAFile``
+            parameter must point to a file of CA certificates.
+            ``tlsAllowInvalidCertificates=False`` implies ``tls=True``.
+            Defaults to ``False``. Think very carefully before setting this
+            to ``True`` as that could make your application vulnerable to
+            man-in-the-middle attacks.
+          - `tlsAllowInvalidHostnames`: (boolean) If ``True``, disables TLS
+            hostname verification. ``tlsAllowInvalidHostnames=False`` implies
+            ``tls=True``. Defaults to ``False``. Think very carefully before
+            setting this to ``True`` as that could make your application
             vulnerable to man-in-the-middle attacks.
           - `tlsCAFile`: The file containing a single or a bundle of
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``tls=True``. Defaults to ``None``.
-          - `tlsCertificateKeyFile`: The client certificate file or the client
-            private key file used to identify the local connection against
-            mongod. In the case that they are both needed, the files can either
-            be concatenated and passed to this option, or they can be passed
-            separately using the ``tlsCertificateKeyFile`` and ``ssl_keyfile``
-            options respectively. Implies ``tls=True``. Defaults to ``None``.
-          - `ssl_certfile`: Alias for ``tlsCertificateKeyFile``.
-          - `ssl_keyfile`: The private keyfile used to identify the local
-            connection against mongod. Can be omitted if the keyfile is
-            included with the ``tlsCertificateKeyFile``. Implies ``tls=True``.
-            Defaults to ``None``.
-          - `tlsCertificateKeyFilePassword`: The password or passph rase for
+          - `tlsCertificateKeyFile`: The file containing the client certificate
+            and private key. If you want to pass the certificate and private
+            key as separate files, use the ``ssl_certfile`` and ``ssl_keyfile``
+            options instead. Implies ``tls=True``. Defaults to ``None``.
+          - `tlsCRLFile`: The file containing a PEM or DER formatted
+            certificate revocation list. Only supported by python 2.7.9+
+            (pypy 2.5.1+) and 3.4+. Implies ``tls=True``. Defaults to ``None``.
+          - `tlsCertificateKeyFilePassword`: The password or passphrase for
             decrypting the private key in ``tlsCertificateKeyFile`` or
             ``ssl_keyfile``. Only necessary if the private key is encrypted.
             Only supported by python 2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults
             to ``None``.
-          - `ssl_crlfile`: The path to a PEM or DER formatted certificate
-            revocation list. Only supported by python 2.7.9+ (pypy 2.5.1+)
-            and 3.4+. Defaults to ``None``.
+          - `ssl`: (boolean) Alias for ``tls``.
+          - `ssl_certfile`: The certificate file used to identify the local
+            connection against mongod. Implies ``tls=True``. Defaults to
+            ``None``.
+          - `ssl_keyfile`: The private keyfile used to identify the local
+            connection against mongod. Can be omitted if the keyfile is
+            included with the ``tlsCertificateKeyFile``. Implies ``tls=True``.
+            Defaults to ``None``.
 
           | **Read Concern options:**
           | (If not set explicitly, this will use the server default)
