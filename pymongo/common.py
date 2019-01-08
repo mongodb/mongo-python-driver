@@ -690,7 +690,7 @@ def get_validated_options(options, warn=True):
 
     :Parameters:
         - `opts`: A dict of MongoDB URI options.
-        - `warn` (optional): If ``True`` then warnigns will be logged and
+        - `warn` (optional): If ``True`` then warnings will be logged and
           invalid options will be ignored. Otherwise, invalid options will
           cause errors.
     """
@@ -716,11 +716,12 @@ def _handle_option_deprecations(options):
     options dictionary. Removes deprecated option key, value pairs if the
     options dictionary is found to also have the renamed option."""
     undeprecated_options = {}
+    lc_optnames = [n.lower() for n in options]
     for key, value in iteritems(options):
         optname = str(key).lower()
         if optname in URI_OPTIONS_DEPRECATION_MAP:
             renamed_key = URI_OPTIONS_DEPRECATION_MAP[optname]
-            if any(renamed_key.lower() == n.lower() for n in options):
+            if renamed_key.lower() in lc_optnames:
                 warnings.warn("Deprecated option '%s' ignored in favor of "
                               "'%s'." % (str(key), renamed_key))
                 continue
