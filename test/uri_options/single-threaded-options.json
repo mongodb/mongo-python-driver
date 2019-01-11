@@ -15,10 +15,10 @@
       "description": "Invalid serverSelectionTryOnce causes a warning",
       "uri": "mongodb://example.com/?serverSelectionTryOnce=invalid",
       "valid": true,
-      "warning": false,
+      "warning": true,
       "hosts": null,
       "auth": null,
-      "options": null
+      "options": {}
     }
   ]
 }

@@ -10,8 +10,13 @@
       "options": {
         "readPreference": "primaryPreferred",
         "readPreferenceTags": [
-          "dc:ny,rack:1",
-          "dc:ny"
+          {
+            "dc": "ny",
+            "rack": "1"
+          },
+          {
+            "dc": "ny"
+          }
         ],
         "maxStalenessSeconds": 120
       }

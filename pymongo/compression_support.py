@@ -28,6 +28,7 @@ except ImportError:
     # Python built without zlib support.
     _HAVE_ZLIB = False
 
+from bson.py3compat import text_type
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 
 _SUPPORTED_COMPRESSORS = set(["snappy", "zlib"])
@@ -36,7 +37,12 @@ _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
 
 
 def validate_compressors(dummy, value):
-    compressors = value.split(",")
+    if isinstance(value, text_type):
+        compressors = value.split(",")
+    else:
+        # Compressors is an iterable of strings.
+        compressors = value
+
     for compressor in compressors[:]:
         if compressor not in _SUPPORTED_COMPRESSORS:
             compressors.remove(compressor)

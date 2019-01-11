@@ -21,7 +21,7 @@
       "warning": true,
       "hosts": null,
       "auth": null,
-      "options": null
+      "options": {}
     },
     {
       "description": "tlsAllowInvalidCertificates is parsed correctly",
@@ -41,7 +41,7 @@
       "warning": true,
       "hosts": null,
       "auth": null,
-      "options": null
+      "options": {}
     },
     {
       "description": "tlsAllowInvalidHostnames is parsed correctly",
@@ -61,7 +61,7 @@
       "warning": true,
       "hosts": null,
       "auth": null,
-      "options": null
+      "options": {}
     },
     {
       "description": "tlsInsecure is parsed correctly",
@@ -81,7 +81,7 @@
       "warning": true,
       "hosts": null,
       "auth": null,
-      "options": null
+      "options": {}
     },
     {
       "description": "tlsInsecure=true and tlsAllowInvalidCertificates=false warns",
@@ -90,7 +90,7 @@
       "warning": true,
       "hosts": null,
       "auth": null,
-      "options": null
+      "options": {}
     },
     {
       "description": "tlsInsecure=true and tlsAllowInvalidHostnames=false warns",
@@ -99,7 +99,7 @@
       "warning": true,
       "hosts": null,
       "auth": null,
-      "options": null
+      "options": {}
     }
   ]
 }
