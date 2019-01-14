@@ -71,6 +71,9 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.settings import TopologySettings
+from pymongo.uri_parser import (CaseInsensitiveDictionary,
+                                _handle_option_deprecations,
+                                _normalize_options)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
@@ -565,12 +568,12 @@ class MongoClient(common.BaseObject):
         keyword_opts['connect'] = connect
 
         # Validate kwargs options.
-        keyword_opts = dict(common.validate(k, v)
-                            for k, v in keyword_opts.items())
+        keyword_opts = CaseInsensitiveDictionary(
+            dict(common.validate(k, v) for k, v in keyword_opts.items()))
         # Handle deprecated options in kwarg list.
-        keyword_opts = common._handle_option_deprecations(keyword_opts)
+        keyword_opts = _handle_option_deprecations(keyword_opts)
         # Change kwarg option names to those used internally.
-        keyword_opts = common._normalize_options(keyword_opts)
+        keyword_opts = _normalize_options(keyword_opts)
         # Augment URI options with kwarg options, overriding the former.
         opts.update(keyword_opts)
         # Username and password passed as kwargs override user info in URI.

@@ -711,37 +711,6 @@ def get_validated_options(options, warn=True):
     return validated_options
 
 
-def _handle_option_deprecations(options):
-    """Issue appropriate warnings when deprecated options are present in the
-    options dictionary. Removes deprecated option key, value pairs if the
-    options dictionary is found to also have the renamed option."""
-    undeprecated_options = {}
-    lc_optnames = [n.lower() for n in options]
-    for key, value in iteritems(options):
-        optname = str(key).lower()
-        if optname in URI_OPTIONS_DEPRECATION_MAP:
-            renamed_key = URI_OPTIONS_DEPRECATION_MAP[optname]
-            if renamed_key.lower() in lc_optnames:
-                warnings.warn("Deprecated option '%s' ignored in favor of "
-                              "'%s'." % (str(key), renamed_key))
-                continue
-            warnings.warn("Option '%s' is deprecated, use '%s' instead." % (
-                          str(key), renamed_key))
-        undeprecated_options[str(key)] = value
-    return undeprecated_options
-
-
-def _normalize_options(options):
-    """Renames keys in the options dictionary to their internally-used
-    names."""
-    normalized_options = {}
-    for key, value in iteritems(options):
-        optname = str(key).lower()
-        intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, key)
-        normalized_options[intname] = options[key]
-    return normalized_options
-
-
 # List of write-concern-related options.
 WRITE_CONCERN_OPTIONS = frozenset([
     'w',
