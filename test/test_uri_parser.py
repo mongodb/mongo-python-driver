@@ -496,10 +496,10 @@ class TestURI(unittest.TestCase):
             self.assertEqual(res, parse_uri(uri)["options"])
         for warning in ctx:
             self.assertRegexpMatches(
-                warning.message[0],
+                warning.message.args[0],
                 ".*tlsAllowInvalid.*overrides.*tlsInsecure.*")
-
         clear_warning_registry()
+
         # tlsInsecure option warns and overrides tlsAllow* values.
         uri = ("mongodb://example.com/"
                "?tlsAllowInvalidCertificates=false"
@@ -513,7 +513,7 @@ class TestURI(unittest.TestCase):
             self.assertEqual(res, parse_uri(uri)["options"])
         for warning in ctx:
             self.assertRegexpMatches(
-                warning.message[0],
+                warning.message.args[0],
                 ".*tlsInsecure.*overrides.*tlsAllowInvalid.*")
 
 
