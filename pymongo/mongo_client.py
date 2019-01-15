@@ -445,6 +445,7 @@ class MongoClient(common.BaseObject):
              - ``ssl_ca_certs`` was deprecated in favor of ``tlsCAFile``.
              - ``ssl_certfile`` was deprecated in favor of
                ``tlsCertificateKeyFile``.
+             - ``ssl_crlfile`` was deprecated in favor of ``tlsCRLFile``.
              - ``ssl_pem_passphrase`` was deprecated in favor of
                ``tlsCertificateKeyFilePassword``.
 
