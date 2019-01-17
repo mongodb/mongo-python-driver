@@ -71,7 +71,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.settings import TopologySettings
-from pymongo.uri_parser import (CaseInsensitiveDictionary,
+from pymongo.uri_parser import (_CaseInsensitiveDictionary,
                                 _handle_option_deprecations,
                                 _normalize_options)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN
@@ -406,7 +406,7 @@ class MongoClient(common.BaseObject):
             options instead. Implies ``tls=True``. Defaults to ``None``.
           - `tlsCRLFile`: A file containing a PEM or DER formatted
             certificate revocation list. Only supported by python 2.7.9+
-            (pypy 2.5.1+) and 3.4+. Implies ``tls=True``. Defaults to ``None``.
+            (pypy 2.5.1+). Implies ``tls=True``. Defaults to ``None``.
           - `tlsCertificateKeyFilePassword`: The password or passphrase for
             decrypting the private key in ``tlsCertificateKeyFile`` or
             ``ssl_keyfile``. Only necessary if the private key is encrypted.
@@ -569,7 +569,7 @@ class MongoClient(common.BaseObject):
         keyword_opts['connect'] = connect
 
         # Validate kwargs options.
-        keyword_opts = CaseInsensitiveDictionary(
+        keyword_opts = _CaseInsensitiveDictionary(
             dict(common.validate(k, v) for k, v in keyword_opts.items()))
         # Handle deprecated options in kwarg list.
         keyword_opts = _handle_option_deprecations(keyword_opts)

@@ -42,7 +42,7 @@ SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
 
-class CaseInsensitiveDictionary(abc.MutableMapping):
+class _CaseInsensitiveDictionary(abc.MutableMapping):
     def __init__(self, *args, **kwargs):
         self.__casedkeys = {}
         self.__data = {}
@@ -212,7 +212,7 @@ def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion and the use of the tlsInsecure option."""
-    options = CaseInsensitiveDictionary()
+    options = _CaseInsensitiveDictionary()
     for opt in opts.split(delim):
         cased_key, value = opt.split("=")
         cased_key = str(cased_key)
@@ -248,7 +248,7 @@ def _handle_option_deprecations(options):
     """Issue appropriate warnings when deprecated options are present in the
     options dictionary. Removes deprecated option key, value pairs if the
     options dictionary is found to also have the renamed option."""
-    undeprecated_options = CaseInsensitiveDictionary()
+    undeprecated_options = _CaseInsensitiveDictionary()
     for key, value in iteritems(options):
         optname = str(key).lower()
         if optname in URI_OPTIONS_DEPRECATION_MAP:
