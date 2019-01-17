@@ -213,33 +213,23 @@ def _parse_options(opts, delim):
     Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion and the use of the tlsInsecure option."""
     options = _CaseInsensitiveDictionary()
-    for opt in opts.split(delim):
-        cased_key, value = opt.split("=")
-        cased_key = str(cased_key)
-        lc_key = cased_key.lower()
-        if lc_key == 'readpreferencetags':
-            options.setdefault(cased_key, []).append(value)
+    for uriopt in opts.split(delim):
+        key, value = uriopt.split("=")
+        if key.lower() == 'readpreferencetags':
+            options.setdefault(key, []).append(value)
         else:
-            if cased_key in options:
-                warnings.warn("Duplicate URI option '%s'." % (cased_key,))
-            options[cased_key] = unquote_plus(value)
-            if (lc_key in _IMPLICIT_TLSINSECURE_OPTS and
-                    'tlsinsecure' in options):
-                warn_msg = "URI option '%s' overrides value implied by '%s'."
-                warnings.warn(warn_msg % (
-                    cased_key, options.cased_key('tlsinsecure')))
-            if lc_key == 'tlsinsecure':
-                for implicit_option in _IMPLICIT_TLSINSECURE_OPTS:
-                    if implicit_option in options:
-                        warn_msg = "URI option '%s' implicitly overrides '%s'."
-                        warnings.warn(warn_msg % (
-                            cased_key, options.cased_key(implicit_option)))
-                        options.pop(implicit_option)
+            if key in options:
+                warnings.warn("Duplicate URI option '%s'." % (key,))
+            options[key] = unquote_plus(value)
 
-    tls_insecure = options.get('tlsinsecure')
-    if tls_insecure is not None:
+    if 'tlsInsecure' in options:
         for implicit_option in _IMPLICIT_TLSINSECURE_OPTS:
-            options.setdefault(implicit_option, tls_insecure)
+            if implicit_option in options:
+                warn_msg = "URI option '%s' overrides value implied by '%s'."
+                warnings.warn(warn_msg % (options.cased_key(implicit_option),
+                                          options.cased_key('tlsInsecure')))
+                continue
+            options[implicit_option] = options['tlsInsecure']
 
     return options
 

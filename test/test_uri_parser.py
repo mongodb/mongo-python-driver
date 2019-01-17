@@ -484,6 +484,7 @@ class TestURI(unittest.TestCase):
              "tlsinsecure": True}, warn=False)
         self.assertEqual(res, parse_uri(uri)["options"])
 
+        # tlsAllow* specified AFTER tlsInsecure.
         # tlsAllow* options warns and overrides values implied by tlsInsecure.
         uri = ("mongodb://example.com/?tlsInsecure=true"
                "&tlsAllowInvalidCertificates=false"
@@ -500,13 +501,14 @@ class TestURI(unittest.TestCase):
                 ".*tlsAllowInvalid.*overrides.*tlsInsecure.*")
         clear_warning_registry()
 
-        # tlsInsecure option warns and overrides tlsAllow* values.
+        # tlsAllow* specified BEFORE tlsInsecure.
+        # tlsAllow* options warns and overrides values implied by tlsInsecure.
         uri = ("mongodb://example.com/"
                "?tlsAllowInvalidCertificates=false"
                "&tlsAllowInvalidHostnames=false"
                "&tlsInsecure=true")
         res = get_validated_options(
-            {"ssl_match_hostname": False, "ssl_cert_reqs": ssl.CERT_NONE,
+            {"ssl_match_hostname": True, "ssl_cert_reqs": ssl.CERT_REQUIRED,
              "tlsinsecure": True}, warn=False)
         with warnings.catch_warnings(record=True) as ctx:
             warnings.simplefilter('always')
@@ -514,7 +516,7 @@ class TestURI(unittest.TestCase):
         for warning in ctx:
             self.assertRegexpMatches(
                 warning.message.args[0],
-                ".*tlsInsecure.*overrides.*tlsAllowInvalid.*")
+                ".*tlsAllowInvalid.*overrides.*tlsInsecure.*")
 
 
 
