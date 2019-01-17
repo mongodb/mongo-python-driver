@@ -633,9 +633,7 @@ URI_OPTIONS_DEPRECATION_MAP = {
     'ssl_match_hostname': 'tlsAllowInvalidHostnames',
     'ssl_crlfile': 'tlsCRLFile',
     'ssl_ca_certs': 'tlsCAFile',
-    'ssl_certfile': 'tlsCertificateKeyFile',
     'ssl_pem_passphrase': 'tlsCertificateKeyFilePassword',
-    'ssl_keyfile': 'tlsCertificateKeyFile',
 }
 
 # Augment the option validator map with pymongo-specific option information.
