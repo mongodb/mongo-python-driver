@@ -396,15 +396,15 @@ class MongoClient(common.BaseObject):
             ``tls=True``. Defaults to ``False``. Think very carefully before
             setting this to ``True`` as that could make your application
             vulnerable to man-in-the-middle attacks.
-          - `tlsCAFile`: The file containing a single or a bundle of
+          - `tlsCAFile`: A file containing a single or a bundle of
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``tls=True``. Defaults to ``None``.
-          - `tlsCertificateKeyFile`: The file containing the client certificate
+          - `tlsCertificateKeyFile`: A file containing the client certificate
             and private key. If you want to pass the certificate and private
             key as separate files, use the ``ssl_certfile`` and ``ssl_keyfile``
             options instead. Implies ``tls=True``. Defaults to ``None``.
-          - `tlsCRLFile`: The file containing a PEM or DER formatted
+          - `tlsCRLFile`: A file containing a PEM or DER formatted
             certificate revocation list. Only supported by python 2.7.9+
             (pypy 2.5.1+) and 3.4+. Implies ``tls=True``. Defaults to ``None``.
           - `tlsCertificateKeyFilePassword`: The password or passphrase for
