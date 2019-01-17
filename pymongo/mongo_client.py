@@ -373,7 +373,7 @@ class MongoClient(common.BaseObject):
           | **TLS/SSL configuration:**
 
           - `tls`: (boolean) If ``True``, create the connection to the server
-            using TLS. Defaults to ``False``.
+            using transport layer security. Defaults to ``False``.
           - `tlsInsecure`: (boolean) Specify whether TLS constraints should be
             relaxed as much as possible. Setting ``tlsInsecure=True`` implies
             ``tlsAllowInvalidCertificates=True`` and
