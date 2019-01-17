@@ -36,7 +36,13 @@ _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
 
 
 def validate_compressors(dummy, value):
-    compressors = value.split(",")
+    try:
+        # `value` is string.
+        compressors = value.split(",")
+    except AttributeError:
+        # `value` is an iterable.
+        compressors = list(value)
+
     for compressor in compressors[:]:
         if compressor not in _SUPPORTED_COMPRESSORS:
             compressors.remove(compressor)

@@ -69,6 +69,15 @@ if HAVE_SSL:
                          "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
                          "`ssl.CERT_REQUIRED`" % (option,))
 
+    def validate_allow_invalid_certs(option, value):
+        """Validate the option to allow invalid certificates is valid."""
+        # Avoid circular import.
+        from pymongo.common import validate_boolean_or_string
+        boolean_cert_reqs = validate_boolean_or_string(option, value)
+        if boolean_cert_reqs:
+            return ssl.CERT_NONE
+        return ssl.CERT_REQUIRED
+
     def _load_wincerts():
         """Set _WINCERTS to an instance of wincertstore.Certfile."""
         global _WINCERTS
@@ -183,6 +192,10 @@ else:
         raise ConfigurationError("The value of %s is set but can't be "
                                  "validated. The ssl module is not available"
                                  % (option,))
+
+    def validate_allow_invalid_certs(option, dummy):
+        """No ssl module, raise ConfigurationError."""
+        return validate_cert_reqs(option, dummy)
 
     def get_ssl_context(*dummy):
         """No ssl module, raise ConfigurationError."""

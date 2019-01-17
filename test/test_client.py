@@ -899,8 +899,8 @@ class TestClient(IntegrationTest):
             with warnings.catch_warnings(record=True) as ctx:
                 warnings.simplefilter("always")
                 client = rs_or_single_client(socketKeepAlive=socketKeepAlive)
-                self.assertIn("The socketKeepAlive option is deprecated",
-                              str(ctx[0]))
+                self.assertTrue(any("The socketKeepAlive option is deprecated"
+                                    in str(k) for k in ctx))
                 pool = get_pool(client)
                 self.assertEqual(socketKeepAlive,
                                  pool.opts.socket_keepalive)

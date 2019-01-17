@@ -71,6 +71,9 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.settings import TopologySettings
+from pymongo.uri_parser import (_CaseInsensitiveDictionary,
+                                _handle_option_deprecations,
+                                _normalize_options)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
@@ -151,7 +154,7 @@ class MongoClient(common.BaseObject):
         <https://github.com/mongodb/specifications/blob/master/source/
         initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
         for more details. Note that the use of SRV URIs implicitly enables
-        TLS support. Pass ssl=false in the URI to override.
+        TLS support. Pass tls=false in the URI to override.
 
         .. note:: MongoClient creation will block waiting for answers from
           DNS when mongodb+srv:// URIs are used.
@@ -297,16 +300,17 @@ class MongoClient(common.BaseObject):
             primary (e.g. w=3 means write to the primary and wait until
             replicated to **two** secondaries). Passing w=0 **disables write
             acknowledgement** and all other write concern options.
-          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
+          - `wTimeoutMS`: (integer) Used in conjunction with `w`. Specify a value
             in milliseconds to control how long to wait for write propagation
             to complete. If replication does not complete in the given
-            timeframe, a timeout exception is raised.
-          - `j`: If ``True`` block until write operations have been committed
-            to the journal. Cannot be used in combination with `fsync`. Prior
-            to MongoDB 2.6 this option was ignored if the server was running
-            without journaling. Starting with MongoDB 2.6 write operations will
-            fail with an exception if this option is used when the server is
-            running without journaling.
+            timeframe, a timeout exception is raised. Passing wTimeoutMS=0
+            will cause **write operations to wait indefinitely**.
+          - `journal`: If ``True`` block until write operations have been
+            committed to the journal. Cannot be used in combination with
+            `fsync`. Prior to MongoDB 2.6 this option was ignored if the server
+            was running without journaling. Starting with MongoDB 2.6 write
+            operations will fail with an exception if this option is used when
+            the server is running without journaling.
           - `fsync`: If ``True`` and the server is running without journaling,
             blocks until the server has synced all data files to disk. If the
             server is running with journaling, this acts the same as the `j`
@@ -366,47 +370,56 @@ class MongoClient(common.BaseObject):
 
           .. seealso:: :doc:`/examples/authentication`
 
-          | **SSL configuration:**
+          | **TLS/SSL configuration:**
 
-          - `ssl`: If ``True``, create the connection to the server using SSL.
-            Defaults to ``False``.
-          - `ssl_certfile`: The certificate file used to identify the local
-            connection against mongod. Implies ``ssl=True``. Defaults to
-            ``None``.
-          - `ssl_keyfile`: The private keyfile used to identify the local
-            connection against mongod.  If included with the ``certfile`` then
-            only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
-            Defaults to ``None``.
-          - `ssl_pem_passphrase`: The password or passphrase for decrypting
-            the private key in ``ssl_certfile`` or ``ssl_keyfile``. Only
-            necessary if the private key is encrypted. Only supported by python
-            2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults to ``None``.
-          - `ssl_cert_reqs`: Specifies whether a certificate is required from
-            the other side of the connection, and whether it will be validated
-            if provided. It must be one of the three values ``ssl.CERT_NONE``
-            (certificates ignored), ``ssl.CERT_REQUIRED`` (certificates
-            required and validated), or ``ssl.CERT_OPTIONAL`` (the same as
-            CERT_REQUIRED, unless the server was configured to use anonymous
-            ciphers). If the value of this parameter is not ``ssl.CERT_NONE``
-            and a value is not provided for ``ssl_ca_certs`` PyMongo will
-            attempt to load system provided CA certificates. If the python
-            version in use does not support loading system CA certificates
-            then the ``ssl_ca_certs`` parameter must point to a file of CA
-            certificates. Implies ``ssl=True``. Defaults to
-            ``ssl.CERT_REQUIRED`` if not provided and ``ssl=True``.
-          - `ssl_ca_certs`: The ca_certs file contains a set of concatenated
+          - `tls`: (boolean) If ``True``, create the connection to the server
+            using transport layer security. Defaults to ``False``.
+          - `tlsInsecure`: (boolean) Specify whether TLS constraints should be
+            relaxed as much as possible. Setting ``tlsInsecure=True`` implies
+            ``tlsAllowInvalidCertificates=True`` and
+            ``tlsAllowInvalidHostnames=True``. Defaults to ``False``. Think
+            very carefully before setting this to ``True`` as it dramatically
+            reduces the security of TLS.
+          - `tlsAllowInvalidCertificates`: (boolean) If ``True``, continues
+            the TLS handshake regardless of the outcome of the certificate
+            verification process. If this is ``False``, and a value is not
+            provided for ``tlsCAFile``, PyMongo will attempt to load system
+            provided CA certificates. If the python version in use does not
+            support loading system CA certificates then the ``tlsCAFile``
+            parameter must point to a file of CA certificates.
+            ``tlsAllowInvalidCertificates=False`` implies ``tls=True``.
+            Defaults to ``False``. Think very carefully before setting this
+            to ``True`` as that could make your application vulnerable to
+            man-in-the-middle attacks.
+          - `tlsAllowInvalidHostnames`: (boolean) If ``True``, disables TLS
+            hostname verification. ``tlsAllowInvalidHostnames=False`` implies
+            ``tls=True``. Defaults to ``False``. Think very carefully before
+            setting this to ``True`` as that could make your application
+            vulnerable to man-in-the-middle attacks.
+          - `tlsCAFile`: A file containing a single or a bundle of
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
-            Implies ``ssl=True``. Defaults to ``None``.
-          - `ssl_crlfile`: The path to a PEM or DER formatted certificate
-            revocation list. Only supported by python 2.7.9+ (pypy 2.5.1+)
-            and 3.4+. Defaults to ``None``.
-          - `ssl_match_hostname`: If ``True`` (the default), and
-            `ssl_cert_reqs` is not ``ssl.CERT_NONE``, enables hostname
-            verification using the :func:`~ssl.match_hostname` function from
-            python's :mod:`~ssl` module. Think very carefully before setting
-            this to ``False`` as that could make your application vulnerable to
-            man-in-the-middle attacks.
+            Implies ``tls=True``. Defaults to ``None``.
+          - `tlsCertificateKeyFile`: A file containing the client certificate
+            and private key. If you want to pass the certificate and private
+            key as separate files, use the ``ssl_certfile`` and ``ssl_keyfile``
+            options instead. Implies ``tls=True``. Defaults to ``None``.
+          - `tlsCRLFile`: A file containing a PEM or DER formatted
+            certificate revocation list. Only supported by python 2.7.9+
+            (pypy 2.5.1+). Implies ``tls=True``. Defaults to ``None``.
+          - `tlsCertificateKeyFilePassword`: The password or passphrase for
+            decrypting the private key in ``tlsCertificateKeyFile`` or
+            ``ssl_keyfile``. Only necessary if the private key is encrypted.
+            Only supported by python 2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults
+            to ``None``.
+          - `ssl`: (boolean) Alias for ``tls``.
+          - `ssl_certfile`: The certificate file used to identify the local
+            connection against mongod. Implies ``tls=True``. Defaults to
+            ``None``.
+          - `ssl_keyfile`: The private keyfile used to identify the local
+            connection against mongod. Can be omitted if the keyfile is
+            included with the ``tlsCertificateKeyFile``. Implies ``tls=True``.
+            Defaults to ``None``.
 
           | **Read Concern options:**
           | (If not set explicitly, this will use the server default)
@@ -418,6 +431,23 @@ class MongoClient(common.BaseObject):
             level is left unspecified, the server default will be used.
 
         .. mongodoc:: connections
+
+        .. versionchanged:: 4.0
+           Added the ``tlsInsecure`` keyword argument and URI option.
+           The following keyword arguments and URI options were deprecated:
+
+             - ``wTimeout`` was deprecated in favor of ``wTimeoutMS``.
+             - ``j`` was deprecated in favor of ``journal``.
+             - ``ssl_cert_reqs`` was deprecated in favor of
+               ``tlsAllowInvalidCertificates``.
+             - ``ssl_match_hostname`` was deprecated in favor of
+               ``tlsAllowInvalidHostnames``.
+             - ``ssl_ca_certs`` was deprecated in favor of ``tlsCAFile``.
+             - ``ssl_certfile`` was deprecated in favor of
+               ``tlsCertificateKeyFile``.
+             - ``ssl_crlfile`` was deprecated in favor of ``tlsCRLFile``.
+             - ``ssl_pem_passphrase`` was deprecated in favor of
+               ``tlsCertificateKeyFilePassword``.
 
         .. versionchanged:: 3.8
            Added the ``server_selector`` keyword argument.
@@ -433,8 +463,8 @@ class MongoClient(common.BaseObject):
            Add ``username`` and ``password`` options. Document the
            ``authSource``, ``authMechanism``, and ``authMechanismProperties ``
            options.
-           Deprecated the `socketKeepAlive` keyword argument and URI option.
-           `socketKeepAlive` now defaults to ``True``.
+           Deprecated the ``socketKeepAlive`` keyword argument and URI option.
+           ``socketKeepAlive`` now defaults to ``True``.
 
         .. versionchanged:: 3.0
            :class:`~pymongo.mongo_client.MongoClient` is now the one and only
@@ -511,7 +541,8 @@ class MongoClient(common.BaseObject):
         opts = {}
         for entity in host:
             if "://" in entity:
-                res = uri_parser.parse_uri(entity, port, warn=True)
+                res = uri_parser.parse_uri(
+                    entity, port, validate=True, warn=True)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
@@ -536,9 +567,15 @@ class MongoClient(common.BaseObject):
             connect = opts.get('connect', True)
         keyword_opts['tz_aware'] = tz_aware
         keyword_opts['connect'] = connect
-        # Validate all keyword options.
-        keyword_opts = dict(common.validate(k, v)
-                            for k, v in keyword_opts.items())
+
+        # Validate kwargs options.
+        keyword_opts = _CaseInsensitiveDictionary(
+            dict(common.validate(k, v) for k, v in keyword_opts.items()))
+        # Handle deprecated options in kwarg list.
+        keyword_opts = _handle_option_deprecations(keyword_opts)
+        # Change kwarg option names to those used internally.
+        keyword_opts = _normalize_options(keyword_opts)
+        # Augment URI options with kwarg options, overriding the former.
         opts.update(keyword_opts)
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
@@ -1315,7 +1352,7 @@ class MongoClient(common.BaseObject):
                 else:
                     return 'document_class=%s.%s' % (value.__module__,
                                                      value.__name__)
-            if option in common.TIMEOUT_VALIDATORS and value is not None:
+            if option in common.TIMEOUT_OPTIONS and value is not None:
                 return "%s=%s" % (option, int(value * 1000))
 
             return '%s=%r' % (option, value)

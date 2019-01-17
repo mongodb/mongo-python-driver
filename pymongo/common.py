@@ -32,7 +32,8 @@ from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
-from pymongo.ssl_support import validate_cert_reqs
+from pymongo.ssl_support import (validate_cert_reqs,
+                                 validate_allow_invalid_certs)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 try:
@@ -524,56 +525,79 @@ def validate_tzinfo(dummy, value):
     return value
 
 
-# journal is an alias for j,
-# wtimeoutms is an alias for wtimeout,
-URI_VALIDATORS = {
-    'replicaset': validate_string_or_none,
-    'w': validate_non_negative_int_or_basestring,
-    'wtimeout': validate_non_negative_integer,
-    'wtimeoutms': validate_non_negative_integer,
-    'fsync': validate_boolean_or_string,
-    'j': validate_boolean_or_string,
+# Dictionary where keys are the names of public URI options, and values
+# are lists of aliases for that option. Aliases of option names are assumed
+# to have been deprecated.
+URI_OPTIONS_ALIAS_MAP = {
+    'journal': ['j'],
+    'wtimeoutms': ['wtimeout'],
+    'tls': ['ssl'],
+    'tlsallowinvalidcertificates': ['ssl_cert_reqs'],
+    'tlsallowinvalidhostnames': ['ssl_match_hostname'],
+    'tlscrlfile': ['ssl_crlfile'],
+    'tlscafile': ['ssl_ca_certs'],
+    'tlscertificatekeyfile': ['ssl_certfile'],
+    'tlscertificatekeyfilepassword': ['ssl_pem_passphrase'],
+}
+
+# Dictionary where keys are the names of URI options, and values
+# are functions that validate user-input values for that option. If an option
+# alias uses a different validator than its public counterpart, it should be
+# included here as a key, value pair.
+URI_OPTIONS_VALIDATOR_MAP = {
+    'appname': validate_appname_or_none,
+    'authmechanism': validate_auth_mechanism,
+    'authmechanismproperties': validate_auth_mechanism_properties,
+    'authsource': validate_string,
+    'compressors': validate_compressors,
+    'connecttimeoutms': validate_timeout_or_none,
+    'heartbeatfrequencyms': validate_timeout_or_none,
     'journal': validate_boolean_or_string,
+    'localthresholdms': validate_positive_float_or_zero,
+    'maxidletimems': validate_timeout_or_none,
     'maxpoolsize': validate_positive_integer_or_none,
-    'socketkeepalive': validate_boolean_or_string,
-    'waitqueuemultiple': validate_non_negative_integer_or_none,
-    'ssl': validate_boolean_or_string,
-    'ssl_keyfile': validate_readable,
-    'ssl_certfile': validate_readable,
-    'ssl_pem_passphrase': validate_string_or_none,
-    'ssl_cert_reqs': validate_cert_reqs,
-    'ssl_ca_certs': validate_readable,
-    'ssl_match_hostname': validate_boolean_or_string,
-    'ssl_crlfile': validate_readable,
+    'maxstalenessseconds': validate_max_staleness,
     'readconcernlevel': validate_string_or_none,
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
-    'localthresholdms': validate_positive_float_or_zero,
-    'authmechanism': validate_auth_mechanism,
-    'authsource': validate_string,
-    'authmechanismproperties': validate_auth_mechanism_properties,
-    'tz_aware': validate_boolean_or_string,
-    'uuidrepresentation': validate_uuid_representation,
-    'connect': validate_boolean_or_string,
-    'minpoolsize': validate_non_negative_integer,
-    'appname': validate_appname_or_none,
-    'driver': validate_driver_or_none,
-    'unicode_decode_error_handler': validate_unicode_decode_error_handler,
+    'replicaset': validate_string_or_none,
     'retrywrites': validate_boolean_or_string,
-    'compressors': validate_compressors,
+    'serverselectiontimeoutms': validate_timeout_or_zero,
+    'sockettimeoutms': validate_timeout_or_none,
+    'ssl_keyfile': validate_readable,
+    'tls': validate_boolean_or_string,
+    'tlsallowinvalidcertificates': validate_allow_invalid_certs,
+    'ssl_cert_reqs': validate_cert_reqs,
+    'tlsallowinvalidhostnames': lambda *x: not validate_boolean_or_string(*x),
+    'ssl_match_hostname': validate_boolean_or_string,
+    'tlscafile': validate_readable,
+    'tlscertificatekeyfile': validate_readable,
+    'tlscertificatekeyfilepassword': validate_string_or_none,
+    'tlsinsecure': validate_boolean_or_string,
+    'w': validate_non_negative_int_or_basestring,
+    'wtimeoutms': validate_non_negative_integer,
     'zlibcompressionlevel': validate_zlib_compression_level,
 }
 
-TIMEOUT_VALIDATORS = {
-    'connecttimeoutms': validate_timeout_or_none,
-    'sockettimeoutms': validate_timeout_or_none,
+# Dictionary where keys are the names of URI options specific to pymongo,
+# and values are functions that validate user-input values for those options.
+NONSPEC_OPTIONS_VALIDATOR_MAP = {
+    'connect': validate_boolean_or_string,
+    'driver': validate_driver_or_none,
+    'fsync': validate_boolean_or_string,
+    'minpoolsize': validate_non_negative_integer,
+    'socketkeepalive': validate_boolean_or_string,
+    'tlscrlfile': validate_readable,
+    'tz_aware': validate_boolean_or_string,
+    'unicode_decode_error_handler': validate_unicode_decode_error_handler,
+    'uuidrepresentation': validate_uuid_representation,
+    'waitqueuemultiple': validate_non_negative_integer_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,
-    'serverselectiontimeoutms': validate_timeout_or_zero,
-    'heartbeatfrequencyms': validate_timeout_or_none,
-    'maxidletimems': validate_timeout_or_none,
-    'maxstalenessseconds': validate_max_staleness,
 }
 
+# Dictionary where keys are the names of keyword-only options for the
+# MongoClient constructor, and values are functions that validate user-input
+# values for those options.
 KW_VALIDATORS = {
     'document_class': validate_document_class,
     'read_preference': validate_read_preference,
@@ -584,9 +608,56 @@ KW_VALIDATORS = {
     'server_selector': validate_is_callable_or_none,
 }
 
-URI_VALIDATORS.update(TIMEOUT_VALIDATORS)
-VALIDATORS = URI_VALIDATORS.copy()
+# Dictionary where keys are any URI option name, and values are the
+# internally-used names of that URI option. Options with only one name
+# variant need not be included here. Options whose public and internal
+# names are the same need not be included here.
+INTERNAL_URI_OPTION_NAME_MAP = {
+    'j': 'journal',
+    'wtimeout': 'wtimeoutms',
+    'tls': 'ssl',
+    'tlsallowinvalidcertificates': 'ssl_cert_reqs',
+    'tlsallowinvalidhostnames': 'ssl_match_hostname',
+    'tlscrlfile': 'ssl_crlfile',
+    'tlscafile': 'ssl_ca_certs',
+    'tlscertificatekeyfile': 'ssl_certfile',
+    'tlscertificatekeyfilepassword': 'ssl_pem_passphrase',
+}
+
+# Map from deprecated URI option names to the updated option names.
+# Case is preserved for updated option names as they are part of user warnings.
+URI_OPTIONS_DEPRECATION_MAP = {
+    'j': 'journal',
+    'wtimeout': 'wTimeoutMS',
+    'ssl_cert_reqs': 'tlsAllowInvalidCertificates',
+    'ssl_match_hostname': 'tlsAllowInvalidHostnames',
+    'ssl_crlfile': 'tlsCRLFile',
+    'ssl_ca_certs': 'tlsCAFile',
+    'ssl_pem_passphrase': 'tlsCertificateKeyFilePassword',
+}
+
+# Augment the option validator map with pymongo-specific option information.
+URI_OPTIONS_VALIDATOR_MAP.update(NONSPEC_OPTIONS_VALIDATOR_MAP)
+for optname, aliases in iteritems(URI_OPTIONS_ALIAS_MAP):
+    for alias in aliases:
+        if alias not in URI_OPTIONS_VALIDATOR_MAP:
+            URI_OPTIONS_VALIDATOR_MAP[alias] = (
+                URI_OPTIONS_VALIDATOR_MAP[optname])
+
+# Map containing all URI option and keyword argument validators.
+VALIDATORS = URI_OPTIONS_VALIDATOR_MAP.copy()
 VALIDATORS.update(KW_VALIDATORS)
+
+# List of timeout-related options.
+TIMEOUT_OPTIONS = [
+    'connecttimeoutms',
+    'heartbeatfrequencyms',
+    'maxidletimems',
+    'maxstalenessseconds',
+    'serverselectiontimeoutms',
+    'sockettimeoutms',
+    'waitqueuetimeoutms',
+]
 
 
 _AUTH_OPTIONS = frozenset(['authmechanismproperties'])
@@ -613,15 +684,22 @@ def validate(option, value):
 
 def get_validated_options(options, warn=True):
     """Validate each entry in options and raise a warning if it is not valid.
-    Returns a copy of options with invalid entries removed
+    Returns a copy of options with invalid entries removed.
+
+    :Parameters:
+        - `opts`: A dict of MongoDB URI options.
+        - `warn` (optional): If ``True`` then warnings will be logged and
+          invalid options will be ignored. Otherwise, invalid options will
+          cause errors.
     """
     validated_options = {}
     for opt, value in iteritems(options):
         lower = opt.lower()
         try:
-            validator = URI_VALIDATORS.get(lower, raise_config_error)
+            validator = URI_OPTIONS_VALIDATOR_MAP.get(
+                lower, raise_config_error)
             value = validator(opt, value)
-        except (ValueError, ConfigurationError) as exc:
+        except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
                 warnings.warn(str(exc))
             else:
@@ -631,6 +709,7 @@ def get_validated_options(options, warn=True):
     return validated_options
 
 
+# List of write-concern-related options.
 WRITE_CONCERN_OPTIONS = frozenset([
     'w',
     'wtimeout',
