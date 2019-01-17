@@ -24,11 +24,13 @@ from pymongo.uri_parser import (parse_userinfo,
                                 split_hosts,
                                 split_options,
                                 parse_uri)
+from pymongo.common import get_validated_options
 from pymongo.errors import ConfigurationError, InvalidURI
+from pymongo.ssl_support import ssl
 from pymongo import ReadPreference
 from bson.binary import JAVA_LEGACY
 from bson.py3compat import string_type, _unicode
-from test import unittest
+from test import clear_warning_registry, unittest
 
 
 class TestURI(unittest.TestCase):
@@ -473,6 +475,51 @@ class TestURI(unittest.TestCase):
             parse_uri(
                 'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?ssl_certfile=a/b',
                 validate=False))
+
+    def test_parse_tls_insecure_options(self):
+        # tlsInsecure is expanded correctly.
+        uri = "mongodb://example.com/?tlsInsecure=true"
+        res = get_validated_options(
+            {"ssl_match_hostname": False, "ssl_cert_reqs": ssl.CERT_NONE,
+             "tlsinsecure": True}, warn=False)
+        self.assertEqual(res, parse_uri(uri)["options"])
+
+        # tlsAllow* specified AFTER tlsInsecure.
+        # tlsAllow* options warns and overrides values implied by tlsInsecure.
+        uri = ("mongodb://example.com/?tlsInsecure=true"
+               "&tlsAllowInvalidCertificates=false"
+               "&tlsAllowInvalidHostnames=false")
+        res = get_validated_options(
+            {"ssl_match_hostname": True, "ssl_cert_reqs": ssl.CERT_REQUIRED,
+             "tlsinsecure": True}, warn=False)
+        with warnings.catch_warnings(record=True) as ctx:
+            warnings.simplefilter('always')
+            self.assertEqual(res, parse_uri(uri)["options"])
+        for warning in ctx:
+            self.assertRegexpMatches(
+                warning.message.args[0],
+                ".*tlsAllowInvalid.*overrides.*tlsInsecure.*")
+        clear_warning_registry()
+
+        # tlsAllow* specified BEFORE tlsInsecure.
+        # tlsAllow* options warns and overrides values implied by tlsInsecure.
+        uri = ("mongodb://example.com/"
+               "?tlsAllowInvalidCertificates=false"
+               "&tlsAllowInvalidHostnames=false"
+               "&tlsInsecure=true")
+        res = get_validated_options(
+            {"ssl_match_hostname": True, "ssl_cert_reqs": ssl.CERT_REQUIRED,
+             "tlsinsecure": True}, warn=False)
+        with warnings.catch_warnings(record=True) as ctx:
+            warnings.simplefilter('always')
+            self.assertEqual(res, parse_uri(uri)["options"])
+        for warning in ctx:
+            self.assertRegexpMatches(
+                warning.message.args[0],
+                ".*tlsAllowInvalid.*overrides.*tlsInsecure.*")
+
+
+
 
 
 if __name__ == "__main__":

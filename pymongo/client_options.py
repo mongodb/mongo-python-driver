@@ -55,8 +55,8 @@ def _parse_read_preference(options):
 def _parse_write_concern(options):
     """Parse write concern options."""
     concern = options.get('w')
-    wtimeout = options.get('wtimeout', options.get('wtimeoutms'))
-    j = options.get('j', options.get('journal'))
+    wtimeout = options.get('wtimeoutms')
+    j = options.get('journal')
     fsync = options.get('fsync')
     return WriteConcern(concern, wtimeout, j, fsync)
 

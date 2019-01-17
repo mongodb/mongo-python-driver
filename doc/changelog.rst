@@ -16,6 +16,31 @@ Changes in Version 3.8.0
 - :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
   version 0.2 <https://github.com/mongodb/specifications/blob/master/source/objectid.rst>`_.
 
+
+- Version 3.8.0 implements the `URI options specification`_ in the
+  :meth:`~pymongo.mongo_client.MongoClient` constructor. Consequently, there are
+  a number of changes in connection options:
+
+    - The ``tlsInsecure`` option has been added.
+    - The ``tls`` option has been added. The older ``ssl`` option has been retained
+      as an alias to the new ``tls`` option.
+    - ``wTimeout`` has been deprecated in favor of ``wTimeoutMS``.
+    - ``wTimeoutMS`` now overrides ``wTimeout`` if the user provides both.
+    - ``j`` has been deprecated in favor of ``journal``.
+    - ``journal`` now overrides ``j`` if the user provides both.
+    - ``ssl_cert_reqs`` has been deprecated in favor of ``tlsAllowInvalidCertificates``.
+      Instead of ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL`` and ``ssl.CERT_REQUIRED``, the
+      new option expects a boolean value - ``True`` is equivalent to ``ssl.CERT_NONE``,
+      while ``False`` is equivalent to ``ssl.CERT_REQUIRED``.
+    - ``ssl_match_hostname`` has been deprecated in favor of ``tlsAllowInvalidHostnames``.
+    - ``ssl_ca_certs`` has been deprecated in favor of ``tlsCAFile``.
+    - ``ssl_certfile`` has been deprecated in favor of ``tlsCertificateKeyFile``.
+    - ``ssl_pem_passphrase`` has been deprecated in favor of ``tlsCertificateKeyFilePassword``.
+
+
+.. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst`
+
+
 Issues Resolved
 ...............
 
