@@ -457,12 +457,13 @@ int convert_codec_options(PyObject* options_obj, void* p) {
     codec_options_t* options = (codec_options_t*)p;
     long type_marker;
     options->unicode_decode_error_handler = NULL;
-    if (!PyArg_ParseTuple(options_obj, "ObbzO",
+    if (!PyArg_ParseTuple(options_obj, "ObbzOO",
                           &options->document_class,
                           &options->tz_aware,
                           &options->uuid_rep,
                           &options->unicode_decode_error_handler,
-                          &options->tzinfo)) {
+                          &options->tzinfo,
+                          &options->custom_codec_map)) {
         return 0;
     }
 
