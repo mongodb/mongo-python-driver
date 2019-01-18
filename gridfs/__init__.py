@@ -715,9 +715,9 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        gout = self.open_download_stream(file_id, session=session)
-        for chunk in gout:
-            destination.write(chunk)
+        with self.open_download_stream(file_id, session=session) as gout:
+            for chunk in gout:
+                destination.write(chunk)
 
     def delete(self, file_id, session=None):
         """Given an file_id, delete this stored file's files collection document
@@ -890,10 +890,10 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        gout = self.open_download_stream_by_name(
-            filename, revision, session=session)
-        for chunk in gout:
-            destination.write(chunk)
+        with self.open_download_stream_by_name(
+                filename, revision, session=session) as gout:
+            for chunk in gout:
+                destination.write(chunk)
 
     def rename(self, file_id, new_filename, session=None):
         """Renames the stored file with the specified file_id.

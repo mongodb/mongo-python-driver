@@ -33,10 +33,11 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
 from gridfs.errors import NoFile
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
+from pymongo.message import _CursorAddress
 from test import (IntegrationTest,
                   unittest,
                   qcheck)
-from test.utils import rs_or_single_client
+from test.utils import rs_or_single_client, EventListener
 
 
 class TestGridFileNoConnect(unittest.TestCase):
@@ -615,6 +616,33 @@ Bye"""))
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
             GridIn(rs_or_single_client(w=0).pymongo_test.fs)
+
+    def test_survive_cursor_not_found(self):
+        # By default the find command returns 101 documents in the first batch.
+        # Use 102 batches to cause a single getMore.
+        chunk_size = 1024
+        data = b'd' * (102 * chunk_size)
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        db = client.pymongo_test
+        with GridIn(db.fs, chunk_size=chunk_size) as infile:
+            infile.write(data)
+
+        with GridOut(db.fs, infile._id) as outfile:
+            self.assertEqual(len(outfile.readchunk()), chunk_size)
+
+            # Kill the cursor to simulate the cursor timing out on the server
+            # when an application spends a long time between two calls to
+            # readchunk().
+            client._close_cursor_now(
+                outfile._GridOut__chunk_iter._cursor.cursor_id,
+                _CursorAddress(client.address, db.fs.chunks.full_name))
+
+            # Read the rest of the file without error.
+            self.assertEqual(len(outfile.read()), len(data) - chunk_size)
+
+        # Paranoid, ensure that a getMore was actually sent.
+        self.assertIn("getMore", listener.started_command_names())
 
 
 if __name__ == "__main__":
