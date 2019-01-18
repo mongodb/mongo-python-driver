@@ -571,8 +571,11 @@ class TestSession(IntegrationTest):
             for f in files:
                 f.read()
 
-        with self.assertRaisesRegex(InvalidOperation, "ended session"):
-            files[0].read()
+        for f in files:
+            # Attempt to read the file again.
+            f.seek(0)
+            with self.assertRaisesRegex(InvalidOperation, "ended session"):
+                f.read()
 
     def test_aggregate(self):
         client = self.client

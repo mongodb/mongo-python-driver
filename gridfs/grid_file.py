@@ -434,6 +434,7 @@ class GridOut(object):
         self.__files = root_collection.files
         self.__file_id = file_id
         self.__buffer = EMPTY
+        self.__chunk_iter = None
         self.__position = 0
         self._file = file_document
         self._session = session
@@ -477,11 +478,14 @@ class GridOut(object):
             chunk_data = self.__buffer
         elif self.__position < int(self.length):
             chunk_number = int((received + self.__position) / chunk_size)
-            chunk = self.__chunks.find_one({"files_id": self._id,
-                                            "n": chunk_number},
-                                           session=self._session)
-            if not chunk:
-                raise CorruptGridFile("no chunk #%d" % chunk_number)
+            if self.__chunk_iter is None:
+                self.__chunk_iter = _GridOutChunkIterator(
+                    self, self.__chunks, self._session, chunk_number)
+
+            try:
+                chunk = self.__chunk_iter.next()
+            except StopIteration:
+                raise CorruptGridFile("truncated chunk")
 
             chunk_data = chunk["data"][self.__position % chunk_size:]
 
@@ -504,12 +508,12 @@ class GridOut(object):
         """
         self._ensure_file()
 
-        if size == 0:
-            return EMPTY
-
         remainder = int(self.length) - self.__position
         if size < 0 or size > remainder:
             size = remainder
+
+        if size == 0:
+            return EMPTY
 
         received = 0
         data = StringIO()
@@ -518,11 +522,20 @@ class GridOut(object):
             received += len(chunk_data)
             data.write(chunk_data)
 
+        # TODO: Great, but why do we do this on EVERY call to read()?
         # Detect extra chunks.
         max_chunk_n = math.ceil(self.length / float(self.chunk_size))
-        chunk = self.__chunks.find_one({"files_id": self._id,
-                                        "n": {"$gte": max_chunk_n}},
-                                       session=self._session)
+        if size == remainder and self.__chunk_iter:
+            # Optimization: Reading the rest of the file so we can reuse the
+            # cursor to find extra chunks
+            try:
+                chunk = self.__chunk_iter.next()
+            except StopIteration:
+                chunk = None
+        else:
+            chunk = self.__chunks.find_one({"files_id": self._id,
+                                            "n": {"$gte": max_chunk_n}},
+                                           session=self._session)
         # According to spec, ignore extra chunks if they are empty.
         if chunk is not None and len(chunk['data']):
             raise CorruptGridFile(
@@ -543,12 +556,12 @@ class GridOut(object):
         :Parameters:
          - `size` (optional): the maximum number of bytes to read
         """
-        if size == 0:
-            return b''
-
         remainder = int(self.length) - self.__position
         if size < 0 or size > remainder:
             size = remainder
+
+        if size == 0:
+            return EMPTY
 
         received = 0
         data = StringIO()
@@ -600,8 +613,15 @@ class GridOut(object):
         if new_pos < 0:
             raise IOError(22, "Invalid value for `pos` - must be positive")
 
+        # Optimization.
+        if new_pos == self.__position:
+            return
+
         self.__position = new_pos
         self.__buffer = EMPTY
+        if self.__chunk_iter:
+            self.__chunk_iter.close()
+            self.__chunk_iter = None
 
     def __iter__(self):
         """Return an iterator over all of this file's data.
@@ -615,7 +635,9 @@ class GridOut(object):
 
     def close(self):
         """Make GridOut more generically file-like."""
-        pass
+        if self.__chunk_iter:
+            self.__chunk_iter.close()
+            self.__chunk_iter = None
 
     def __enter__(self):
         """Makes it possible to use :class:`GridOut` files
@@ -627,30 +649,72 @@ class GridOut(object):
         """Makes it possible to use :class:`GridOut` files
         with the context manager protocol.
         """
+        self.close()
         return False
 
 
-class GridOutIterator(object):
-    def __init__(self, grid_out, chunks, session):
+class _GridOutChunkIterator(object):
+    def __init__(self, grid_out, chunks, session, next_chunk):
         self.__id = grid_out._id
         self.__chunks = chunks
         self.__session = session
-        self.__current_chunk = 0
+        self.__next_chunk = next_chunk
         self.__max_chunk = math.ceil(float(grid_out.length) /
                                      grid_out.chunk_size)
+        self.__cursor = None
+
+    @property
+    def next_chunk(self):
+        return self.__next_chunk
+
+    @property
+    def max_chunk(self):
+        return self.__max_chunk
 
     def __iter__(self):
         return self
 
     def next(self):
-        if self.__current_chunk >= self.__max_chunk:
+        if self.__cursor is None:
+            filter = {"files_id": self.__id}
+            if self.__next_chunk > 0:
+                filter["n"] = {"$gte": self.__next_chunk}
+            self.__cursor = self.__chunks.find(filter, sort=[("n", 1)],
+                                               session=self.__session)
+        try:
+            chunk = next(self.__cursor)
+        except StopIteration:
+            if self.__next_chunk >= self.__max_chunk:
+                raise
+            raise CorruptGridFile("no chunk #%d" % self.__next_chunk)
+
+        if chunk["n"] != self.__next_chunk:
+            raise CorruptGridFile(
+                "Missing chunk: expected chunk #%d but found "
+                "chunk with n=%i" % (self.__next_chunk, chunk["n"]))
+
+        self.__next_chunk += 1
+        return chunk
+
+    __next__ = next
+
+    def close(self):
+        if self.__cursor:
+            self.__cursor.close()
+            self.__cursor = None
+
+
+class GridOutIterator(object):
+    def __init__(self, grid_out, chunks, session):
+        self.__chunk_iter = _GridOutChunkIterator(grid_out, chunks, session, 0)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.__chunk_iter.next_chunk >= self.__chunk_iter.max_chunk:
             raise StopIteration
-        chunk = self.__chunks.find_one({"files_id": self.__id,
-                                        "n": self.__current_chunk},
-                                       session=self.__session)
-        if not chunk:
-            raise CorruptGridFile("no chunk #%d" % self.__current_chunk)
-        self.__current_chunk += 1
+        chunk = self.__chunk_iter.next()
         return bytes(chunk["data"])
 
     __next__ = next
