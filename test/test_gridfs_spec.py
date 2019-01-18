@@ -163,8 +163,8 @@ def create_test(scenario_def):
 
             if test['assert'].get("error", False):
                 self.assertIsNotNone(error)
-                self.assertTrue(isinstance(error,
-                                           errors[test['assert']['error']]))
+                self.assertIsInstance(error, errors[test['assert']['error']],
+                                      test['description'])
             else:
                 self.assertIsNone(error)
 
