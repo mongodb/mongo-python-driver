@@ -154,7 +154,7 @@ class CommandCursor(object):
                                          self.__collection.codec_options)
             if from_command:
                 first = docs[0]
-                client._receive_cluster_time(first, self.__session)
+                client._process_response(first, self.__session)
                 helpers._check_command_response(first)
 
         except OperationFailure as exc:

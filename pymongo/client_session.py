@@ -88,6 +88,7 @@ import uuid
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.py3compat import abc, reraise_instance
+from bson.son import SON
 from bson.timestamp import Timestamp
 
 from pymongo import monotonic
@@ -247,6 +248,7 @@ class _Transaction(object):
         self.state = _TxnState.NONE
         self.transaction_id = 0
         self.pinned_address = None
+        self.recovery_token = None
 
     def active(self):
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -487,10 +489,13 @@ class ClientSession(object):
             wc_doc["w"] = "majority"
             wc_doc.setdefault("wtimeout", 10000)
             wc = WriteConcern(**wc_doc)
+        cmd = SON([(command_name, 1)])
+        if self._transaction.recovery_token:
+            cmd['recoveryToken'] = self._transaction.recovery_token
         with self._client._socket_for_writes(self) as sock_info:
             return self._client.admin._command(
                 sock_info,
-                command_name,
+                cmd,
                 session=self,
                 write_concern=wc,
                 parse_write_concern_error=True)
@@ -538,6 +543,14 @@ class ClientSession(object):
             raise TypeError("operation_time must be an instance "
                             "of bson.timestamp.Timestamp")
         self._advance_operation_time(operation_time)
+
+    def _process_response(self, reply):
+        """Process a response to a command that was run with this session."""
+        self._advance_cluster_time(reply.get('$clusterTime'))
+        self._advance_operation_time(reply.get("operationTime"))
+        recovery_token = reply.get('recoveryToken')
+        if recovery_token and self._in_transaction:
+            self._transaction.recovery_token = recovery_token
 
     @property
     def has_ended(self):
