@@ -75,6 +75,19 @@ transactions on the same session can be executed in sequence.
 
 .. versionadded:: 3.7
 
+Sharded Transactions
+^^^^^^^^^^^^^^^^^^^^
+
+PyMongo 3.9 adds support for transactions on sharded clusters running MongoDB
+4.2. Sharded transactions have the same API as replica set transactions.
+When running a transaction against a sharded cluster, the session is
+pinned to the mongos server selected for the first operation in the
+transaction. All subsequent operations that are part of the same transaction
+are routed to the same mongos server. When the transaction is completed, by
+running either commitTransaction or abortTransaction, the session is unpinned.
+
+.. versionadded:: 3.9
+
 .. mongodoc:: transactions
 
 Classes
@@ -88,6 +101,7 @@ import uuid
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.py3compat import abc, reraise_instance
+from bson.son import SON
 from bson.timestamp import Timestamp
 
 from pymongo import monotonic
@@ -245,11 +259,18 @@ class _Transaction(object):
     def __init__(self, opts):
         self.opts = opts
         self.state = _TxnState.NONE
-        self.transaction_id = 0
+        self.sharded = False
         self.pinned_address = None
+        self.recovery_token = None
 
     def active(self):
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
+
+    def reset(self):
+        self.state = _TxnState.NONE
+        self.sharded = False
+        self.pinned_address = None
+        self.recovery_token = None
 
 
 def _reraise_with_unknown_commit(exc):
@@ -367,10 +388,9 @@ class ClientSession(object):
 
         self._transaction.opts = TransactionOptions(
             read_concern, write_concern, read_preference)
+        self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
-        self._transaction.transaction_id = self._server_session.transaction_id
-        self._transaction.pinned_address = None
         return _TransactionContext(self)
 
     def commit_transaction(self):
@@ -482,15 +502,19 @@ class ClientSession(object):
         # subsequent commitTransaction commands should be upgraded to use
         # w:"majority" and set a default value of 10 seconds for wtimeout.
         wc = self._transaction.opts.write_concern
-        if retrying and command_name == "commitTransaction":
+        is_commit = command_name == "commitTransaction"
+        if retrying and is_commit:
             wc_doc = wc.document
             wc_doc["w"] = "majority"
             wc_doc.setdefault("wtimeout", 10000)
             wc = WriteConcern(**wc_doc)
+        cmd = SON([(command_name, 1)])
+        if self._transaction.recovery_token and is_commit:
+            cmd['recoveryToken'] = self._transaction.recovery_token
         with self._client._socket_for_writes(self) as sock_info:
             return self._client.admin._command(
                 sock_info,
-                command_name,
+                cmd,
                 session=self,
                 write_concern=wc,
                 parse_write_concern_error=True)
@@ -539,6 +563,15 @@ class ClientSession(object):
                             "of bson.timestamp.Timestamp")
         self._advance_operation_time(operation_time)
 
+    def _process_response(self, reply):
+        """Process a response to a command that was run with this session."""
+        self._advance_cluster_time(reply.get('$clusterTime'))
+        self._advance_operation_time(reply.get('operationTime'))
+        if self._in_transaction and self._transaction.sharded:
+            recovery_token = reply.get('recoveryToken')
+            if recovery_token:
+                self._transaction.recovery_token = recovery_token
+
     @property
     def has_ended(self):
         """True if this session is finished."""
@@ -558,7 +591,12 @@ class ClientSession(object):
 
     def _pin_mongos(self, server):
         """Pin this session to the given mongos Server."""
+        self._transaction.sharded = True
         self._transaction.pinned_address = server.description.address
+
+    def _unpin_mongos(self):
+        """Unpin this session from any pinned mongos address."""
+        self._transaction.pinned_address = None
 
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""
@@ -573,8 +611,7 @@ class ClientSession(object):
         command['lsid'] = self._server_session.session_id
 
         if not self._in_transaction:
-            self._transaction.state = _TxnState.NONE
-            self._transaction.pinned_address = None
+            self._transaction.reset()
 
         if is_retryable:
             command['txnNumber'] = self._server_session.transaction_id

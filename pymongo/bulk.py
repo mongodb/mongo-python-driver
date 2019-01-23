@@ -292,7 +292,7 @@ class _Bulk(object):
                 if not to_send:
                     raise InvalidOperation("cannot do an empty bulk write")
                 result = bwc.write_command(request_id, msg, to_send)
-                client._receive_cluster_time(result, session)
+                client._process_response(result, session)
 
                 # Retryable writeConcernErrors halt the execution of this run.
                 wce = result.get('writeConcernError', {})
