@@ -23,6 +23,7 @@ import warnings
 sys.path[0:0] = [""]
 
 from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, validate
+from pymongo.compression_support import _HAVE_SNAPPY
 from pymongo.uri_parser import parse_uri
 from test import clear_warning_registry, unittest
 
@@ -62,6 +63,11 @@ def run_scenario_in_dir(target_workdir):
 
 def create_test(test, test_workdir):
     def run_scenario(self):
+        compressors = test['options'].get('compressors')
+        if compressors is not None:
+            if 'snappy' in compressors and not _HAVE_SNAPPY:
+                self.skipTest('This test needs the snappy module.')
+
         valid = True
         warning = False
 
