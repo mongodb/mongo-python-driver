@@ -1115,8 +1115,8 @@ class MongoClient(common.BaseObject):
         return self._topology
 
     @contextlib.contextmanager
-    def _get_socket(self, server):
-        with self._reset_on_error(server.description.address):
+    def _get_socket(self, server, session):
+        with self._reset_on_error(server.description.address, session):
             with server.get_socket(self.__all_credentials) as sock_info:
                 yield sock_info
 
@@ -1131,26 +1131,31 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Address when sending a message
             to a specific server, used for getMore.
         """
-        topology = self._get_topology()
-        address = address or (session and session._pinned_address)
-        if address:
-            # We're running a getMore or this session is pinned to a mongos.
-            server = topology.select_server_by_address(address)
-            if not server:
-                raise AutoReconnect('server %s:%d no longer available'
-                                    % address)
-        else:
-            server = topology.select_server(server_selector)
-            # Pin this session to the selected server if it's performing a
-            # sharded transaction.
-            if server.description.mongos and (session and
-                                              session._in_transaction):
-                session._pin_mongos(server)
-        return server
+        try:
+            topology = self._get_topology()
+            address = address or (session and session._pinned_address)
+            if address:
+                # We're running a getMore or this session is pinned to a mongos.
+                server = topology.select_server_by_address(address)
+                if not server:
+                    raise AutoReconnect('server %s:%d no longer available'
+                                        % address)
+            else:
+                server = topology.select_server(server_selector)
+                # Pin this session to the selected server if it's performing a
+                # sharded transaction.
+                if server.description.mongos and (session and
+                                                  session._in_transaction):
+                    session._pin_mongos(server)
+            return server
+        except PyMongoError as exc:
+            if session and exc.has_error_label("TransientTransactionError"):
+                session._unpin_mongos()
+            raise
 
     def _socket_for_writes(self, session):
         server = self._select_server(writable_server_selector, session)
-        return self._get_socket(server)
+        return self._get_socket(server, session)
 
     @contextlib.contextmanager
     def _socket_for_reads(self, read_preference, session):
@@ -1165,7 +1170,7 @@ class MongoClient(common.BaseObject):
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
         server = self._select_server(read_preference, session)
 
-        with self._get_socket(server) as sock_info:
+        with self._get_socket(server, session) as sock_info:
             slave_ok = (single and not sock_info.is_mongos) or (
                 read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
@@ -1193,7 +1198,8 @@ class MongoClient(common.BaseObject):
             and server.description.server_type != SERVER_TYPE.Mongos) or (
                 operation.read_preference != ReadPreference.PRIMARY)
 
-        with self._reset_on_error(server.description.address):
+        with self._reset_on_error(server.description.address,
+                                  operation.session):
             return server.send_message_with_response(
                 operation,
                 set_slave_ok,
@@ -1202,14 +1208,20 @@ class MongoClient(common.BaseObject):
                 exhaust)
 
     @contextlib.contextmanager
-    def _reset_on_error(self, server_address):
+    def _reset_on_error(self, server_address, session):
         """On "not master" or "node is recovering" errors reset the server
         according to the SDAM spec.
 
         Unpin the session on transient transaction errors.
         """
         try:
-            yield
+            try:
+                yield
+            except PyMongoError as exc:
+                if session and exc.has_error_label(
+                        "TransientTransactionError"):
+                    session._unpin_mongos()
+                raise
         except NetworkTimeout:
             # The socket has been closed. Don't reset the server.
             # Server Discovery And Monitoring Spec: "When an application
@@ -1263,7 +1275,7 @@ class MongoClient(common.BaseObject):
                 supports_session = (
                     session is not None and
                     server.description.retryable_writes_supported)
-                with self._get_socket(server) as sock_info:
+                with self._get_socket(server, session) as sock_info:
                     if retryable and not supports_session:
                         if is_retrying():
                             # A retry is not possible because this server does
@@ -1673,12 +1685,10 @@ class MongoClient(common.BaseObject):
         if cluster_time:
             command['$clusterTime'] = cluster_time
 
-    def _receive_cluster_time(self, reply, session):
-        cluster_time = reply.get('$clusterTime')
-        self._topology.receive_cluster_time(cluster_time)
+    def _process_response(self, reply, session):
+        self._topology.receive_cluster_time(reply.get('$clusterTime'))
         if session is not None:
-            session._advance_cluster_time(cluster_time)
-            session._advance_operation_time(reply.get("operationTime"))
+            session._process_response(reply)
 
     def server_info(self, session=None):
         """Get information about the MongoDB server we're connected to.

@@ -33,10 +33,11 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import _WriteResult, BulkWriteResult
 
-from test import unittest, client_context, IntegrationTest
+from test import unittest, client_context, IntegrationTest, client_knobs
 from test.utils import (camel_to_snake, camel_to_upper_camel,
                         camel_to_snake_args, rs_client, single_client,
-                        wait_until, OvertCommandListener, TestCreator)
+                        wait_until, CompareType, OvertCommandListener,
+                        TestCreator)
 from test.utils_selection_tests import parse_read_preference
 
 # Location of JSON test specifications.
@@ -56,10 +57,18 @@ class TestTransactions(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         super(TestTransactions, cls).setUpClass()
+        # Speed up tests by reducing SDAM waiting time after a network error.
+        cls.knobs = client_knobs(min_heartbeat_interval=0.1)
+        cls.knobs.enable()
         cls.mongos_clients = []
         if client_context.supports_transactions():
             for address in client_context.mongoses:
                 cls.mongos_clients.append(single_client('%s:%s' % address))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.knobs.disable()
+        super(TestTransactions, cls).tearDownClass()
 
     def transaction_test_debug(self, msg):
         if _TXN_TESTS_DEBUG:
@@ -75,21 +84,45 @@ class TestTransactions(IntegrationTest):
                 exc.has_error_label(label),
                 msg='error labels should not contain %s' % (label,))
 
+    def _set_fail_point(self, client, command_args):
+        cmd = SON([('configureFailPoint', 'failCommand')])
+        cmd.update(command_args)
+        client.admin.command(cmd)
+
     def set_fail_point(self, command_args):
         cmd = SON([('configureFailPoint', 'failCommand')])
         cmd.update(command_args)
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
-            client.admin.command(cmd)
+            self._set_fail_point(client, cmd)
+
+    def targeted_fail_point(self, session, fail_point):
+        """Run the targetedFailPoint test operation.
+
+        Enable the fail point on the session's pinned mongos.
+        """
+        clients = {c.address: c for c in self.mongos_clients}
+        client = clients[session._pinned_address]
+        self._set_fail_point(client, fail_point)
+
+    def assert_session_pinned(self, session):
+        """Assert that the given session is pinned."""
+        self.assertIsNotNone(session._transaction.pinned_address)
+
+    def assert_session_unpinned(self, session):
+        """Assert that the given session is not pinned."""
+        self.assertIsNone(session._pinned_address)
+        self.assertIsNone(session._transaction.pinned_address)
 
     def kill_all_sessions(self):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
-            # Run killAllSessions without an implicit session to work
-            # around SERVER-38335.
-            with client._socket_for_writes(None) as sock_info:
-                spec = SON([('killAllSessions', [])])
-                sock_info.command('admin', spec, client=client)
+            try:
+                client.admin.command('killAllSessions', [])
+            except OperationFailure:
+                # "operation was interrupted" by killing the command's
+                # own session.
+                pass
 
     @client_context.require_transactions
     def test_transaction_options_validation(self):
@@ -297,7 +330,11 @@ class TestTransactions(IntegrationTest):
             collection = collection.with_options(
                 **dict(parse_options(operation['collectionOptions'])))
 
-        objects = {'database': database, 'collection': collection}
+        objects = {
+            'database': database,
+            'collection': collection,
+            'testRunner': self
+        }
         objects.update(sessions)
         obj = objects[operation['object']]
 
@@ -385,6 +422,9 @@ class TestTransactions(IntegrationTest):
                         'readConcern', {}).get('afterClusterTime')
                     if actual_time is not None:
                         expected_read_concern['afterClusterTime'] = actual_time
+            recovery_token = expected_cmd.get('recoveryToken')
+            if recovery_token == 42:
+                expected_cmd['recoveryToken'] = CompareType(dict)
 
             # Replace lsid with a name like "session0" to match test.
             if 'lsid' in event.command:
@@ -454,6 +494,8 @@ def end_sessions(sessions):
 
 def create_test(scenario_def, test, name):
     @client_context.require_transactions
+    @client_context.require_cluster_type(
+        scenario_def.get('topology', ['single', 'replicaset', 'sharded']))
     def run_scenario(self):
         if test.get('skipReason'):
             raise unittest.SkipTest(test.get('skipReason'))
@@ -463,7 +505,8 @@ def create_test(scenario_def, test, name):
         # Convert test['clientOptions'] to dict to avoid a Jython bug using
         # "**" with ScenarioDict.
         client_options = dict(test['clientOptions'])
-        if client_context.is_mongos:
+        use_multi_mongos = test['useMultipleMongoses']
+        if client_context.is_mongos and use_multi_mongos:
             client = rs_client(client_context.mongos_seeds(),
                                event_listeners=[listener], **client_options)
         else:
@@ -571,9 +614,8 @@ def create_test(scenario_def, test, name):
         self.check_events(test, listener, session_ids)
 
         # Disable fail points.
-        if 'failPoint' in test:
-            self.set_fail_point({
-                'configureFailPoint': 'failCommand', 'mode': 'off'})
+        self.set_fail_point({
+            'configureFailPoint': 'failCommand', 'mode': 'off'})
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')
@@ -587,7 +629,8 @@ def create_test(scenario_def, test, name):
 
     if 'secondary' in name:
         run_scenario = client_context._require(
-            lambda: client_context.has_secondaries, 'No secondaries',
+            lambda: client_context.has_secondaries or client_context.is_mongos,
+            'No secondaries',
             run_scenario)
 
     return run_scenario

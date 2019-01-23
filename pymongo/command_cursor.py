@@ -149,13 +149,13 @@ class CommandCursor(object):
         reply = response.data
 
         try:
-            with client._reset_on_error(self.__address):
+            with client._reset_on_error(self.__address, self.__session):
                 docs = self._unpack_response(reply,
                                              self.__id,
                                              self.__collection.codec_options)
                 if from_command:
                     first = docs[0]
-                    client._receive_cluster_time(first, self.__session)
+                    client._process_response(first, self.__session)
                     helpers._check_command_response(first)
 
         except OperationFailure as exc:
