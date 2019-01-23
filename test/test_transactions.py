@@ -33,7 +33,7 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import _WriteResult, BulkWriteResult
 
-from test import unittest, client_context, IntegrationTest
+from test import unittest, client_context, IntegrationTest, client_knobs
 from test.utils import (camel_to_snake, camel_to_upper_camel,
                         camel_to_snake_args, rs_client, single_client,
                         wait_until, OvertCommandListener, TestCreator)
@@ -56,10 +56,18 @@ class TestTransactions(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         super(TestTransactions, cls).setUpClass()
+        # Speed up tests by reducing SDAM waiting time after a network error.
+        cls.knobs = client_knobs(min_heartbeat_interval=0.05)
+        cls.knobs.enable()
         cls.mongos_clients = []
         if client_context.supports_transactions():
             for address in client_context.mongoses:
                 cls.mongos_clients.append(single_client('%s:%s' % address))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.knobs.disable()
+        super(TestTransactions, cls).tearDownClass()
 
     def transaction_test_debug(self, msg):
         if _TXN_TESTS_DEBUG:
