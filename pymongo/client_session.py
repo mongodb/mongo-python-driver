@@ -372,7 +372,7 @@ class ClientSession(object):
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
         self._transaction.transaction_id = self._server_session.transaction_id
-        self._transaction.pinned_address = None
+        self._unpin_mongos()
         return _TransactionContext(self)
 
     def commit_transaction(self):
@@ -463,6 +463,7 @@ class ClientSession(object):
         except ServerSelectionTimeoutError:
             raise
         except ConnectionFailure as exc:
+            self._unpin_mongos()
             try:
                 return self._finish_transaction(command_name, True)
             except ServerSelectionTimeoutError:
@@ -472,12 +473,15 @@ class ClientSession(object):
         except OperationFailure as exc:
             if exc.code not in _RETRYABLE_ERROR_CODES:
                 raise
+            self._unpin_mongos()
             try:
                 return self._finish_transaction(command_name, True)
             except ServerSelectionTimeoutError:
                 # Raise the original error so the application can infer that
                 # an attempt was made.
                 raise exc
+        finally:
+            self._unpin_mongos()
 
     def _finish_transaction(self, command_name, retrying):
         # Transaction spec says that after the initial commit attempt,
@@ -573,6 +577,10 @@ class ClientSession(object):
         """Pin this session to the given mongos Server."""
         self._transaction.pinned_address = server.description.address
 
+    def _unpin_mongos(self):
+        """Unpin this session from any pinned mongos address."""
+        self._transaction.pinned_address = None
+
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""
         if self._in_transaction:
@@ -587,7 +595,7 @@ class ClientSession(object):
 
         if not self._in_transaction:
             self._transaction.state = _TxnState.NONE
-            self._transaction.pinned_address = None
+            self._unpin_mongos()
 
         if is_retryable:
             command['txnNumber'] = self._server_session.transaction_id
