@@ -28,6 +28,13 @@ float                                    number (real)  both
 string                                   string         py -> bson
 unicode                                  string         both
 list                                     array          both
+set                                      array          py -> bson
+frozenset                                array          py -> bson
+dict_keys                                array          py -> bson
+dict_values                              array          py -> bson
+dict_items                               array          py -> bson
+xrange (Python 2)                        array          py -> bson
+range (Python 3)                         array          py -> bson
 dict / `SON`                             object         both
 datetime.datetime [#dt]_ [#dt2]_         date           both
 `bson.regex.Regex`                       regex          both
@@ -40,12 +47,13 @@ unicode                                  code           bson -> py
 `bson.code.Code`                         code           py -> bson
 unicode                                  symbol         bson -> py
 bytes (Python 3) [#bytes]_               binary         both
+bytearray [#bytes]_                      binary         py -> bson
 =======================================  =============  ===================
 
 Note that, when using Python 2.x, to save binary data it must be wrapped as
-an instance of `bson.binary.Binary`. Otherwise it will be saved as a BSON
-string and retrieved as unicode. Users of Python 3.x can use the Python bytes
-type.
+an instance of `bson.binary.Binary` or be a `bytearray`. Otherwise it will be
+saved as a BSON string and retrieved as unicode. Users of Python 3.x can use
+the Python bytes type.
 
 .. [#int] A Python int will be saved as a BSON int32 or BSON int64 depending
    on its size. A BSON int32 will always decode to a Python int. A BSON
@@ -58,10 +66,10 @@ type.
    objects from ``re.compile()`` are both saved as BSON regular expressions.
    BSON regular expressions are decoded as :class:`~bson.regex.Regex`
    instances.
-.. [#bytes] The bytes type from Python 3.x is encoded as BSON binary with
-   subtype 0. In Python 3.x it will be decoded back to bytes. In Python 2.x
-   it will be decoded to an instance of :class:`~bson.binary.Binary` with
-   subtype 0.
+.. [#bytes] The bytes type from Python 3.x and the bytearray type are encoded
+   as BSON binary with subtype 0. In Python 3.x it will be decoded back to
+   bytes.  In Python 2.x it will be decoded to an instance of
+   :class:`~bson.binary.Binary` with subtype 0.
 """
 
 import calendar
@@ -524,6 +532,14 @@ else:
         return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"
 
 
+def _encode_bytearray(name, value, dummy0, dummy1):
+    """Encode a python bytearray."""
+    # Store as BSON binary subtype 0.
+    if not PY3:
+        value = str(value)
+    return b"\x05" + name + _PACK_INT(len(value)) + b"\x00" + value
+
+
 def _encode_mapping(name, value, check_keys, opts):
     """Encode a mapping type."""
     if _raw_document_class(value):
@@ -553,8 +569,8 @@ def _encode_dbref(name, value, check_keys, opts):
     return bytes(buf)
 
 
-def _encode_list(name, value, check_keys, opts):
-    """Encode a list/tuple."""
+def _encode_iterable(name, value, check_keys, opts):
+    """Encode an iterable."""
     lname = gen_list_name()
     data = b"".join([_name_value_to_bson(next(lname), item,
                                          check_keys, opts)
@@ -702,14 +718,17 @@ def _encode_maxkey(name, dummy0, dummy1, dummy2):
 _ENCODERS = {
     bool: _encode_bool,
     bytes: _encode_bytes,
+    bytearray: _encode_bytearray,
     datetime.datetime: _encode_datetime,
     dict: _encode_mapping,
     float: _encode_float,
     int: _encode_int,
-    list: _encode_list,
+    list: _encode_iterable,
+    set: _encode_iterable,
+    frozenset: _encode_iterable,
     # unicode in py2, str in py3
     text_type: _encode_text,
-    tuple: _encode_list,
+    tuple: _encode_iterable,
     type(None): _encode_none,
     uuid.UUID: _encode_uuid,
     Binary: _encode_binary,
@@ -725,7 +744,10 @@ _ENCODERS = {
     Timestamp: _encode_timestamp,
     UUIDLegacy: _encode_binary,
     Decimal128: _encode_decimal128,
-    # Special case. This will never be looked up directly.
+    # Special cases. These will never be looked up directly.
+    abc.KeysView: _encode_iterable,
+    abc.ValuesView: _encode_iterable,
+    abc.ItemsView: _encode_iterable,
     abc.Mapping: _encode_mapping,
 }
 
@@ -744,6 +766,9 @@ _MARKERS = {
 
 if not PY3:
     _ENCODERS[long] = _encode_long
+    _ENCODERS[xrange] = _encode_iterable
+else:
+    _ENCODERS[range] = _encode_iterable
 
 
 def _name_value_to_bson(name, value, check_keys, opts):

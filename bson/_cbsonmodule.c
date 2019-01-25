@@ -60,6 +60,14 @@ struct module_state {
 #define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
 #endif
 
+/* Helpers that treat bytes and bytearray as a similar type */
+#if PY_MAJOR_VERSION >= 3
+#define BSONPyBytesOrByteArray_Check(ob) (PyBytes_Check(ob) || PyByteArray_Check(ob))
+#else
+#define BSONPyBytesOrByteArray_Check(ob) PyByteArray_Check(ob)
+#endif
+#define BSONPyBytesOrByteArray_AS_STRING(ob) (PyBytes_Check(ob) ? PyBytes_AS_STRING(ob) : PyByteArray_AS_STRING(ob))
+
 #if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 #else
@@ -1107,15 +1115,81 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         buffer_write_int32_at_position(
             buffer, length_location, (int32_t)length);
         return 1;
-#if PY_MAJOR_VERSION >= 3
-    /* Python3 special case. Store bytes as BSON binary subtype 0. */
-    } else if (PyBytes_Check(value)) {
+    } else if (PyAnySet_Check(value) || PyDictKeys_Check(value) ||
+               PyDictValues_Check(value) || PyDictItems_Check(value) ||
+               PyRange_Check(value)) {
+        Py_ssize_t items, i;
+        PyObject *iterator, *item_value;
+        int start_position,
+            length_location,
+            length;
+        char zero = 0;
+
+        *(buffer_get_buffer(buffer) + type_byte) = 0x04;
+        start_position = buffer_get_position(buffer);
+
+        /* save space for length */
+        length_location = buffer_save_space(buffer, 4);
+        if (length_location == -1) {
+            PyErr_NoMemory();
+            return 0;
+        }
+
+        if ((items = PySequence_Size(value)) > BSON_MAX_SIZE) {
+            PyObject* BSONError = _error("BSONError");
+            if (BSONError) {
+                PyErr_SetString(BSONError,
+                                "Too many items to serialize.");
+                Py_DECREF(BSONError);
+            }
+            return 0;
+        }
+
+        iterator = PyObject_GetIter(value);
+        for(i = 0; i < items; i++) {
+            int list_type_byte = buffer_save_space(buffer, 1);
+            char name[16];
+
+            if (list_type_byte == -1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            INT2STRING(name, (int)i);
+            if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
+                Py_DECREF(iterator);
+                return 0;
+            }
+
+            if (!(item_value = PyIter_Next(iterator))) {
+                Py_DECREF(iterator);
+                return 0;
+            }
+            if (!write_element_to_buffer(self, buffer, list_type_byte,
+                                         item_value, check_keys, options)) {
+                Py_DECREF(item_value);
+                Py_DECREF(iterator);
+                return 0;
+            }
+            Py_DECREF(item_value);
+        }
+        Py_DECREF(iterator);
+
+        /* write null byte and fill in length */
+        if (!buffer_write_bytes(buffer, &zero, 1)) {
+            return 0;
+        }
+        length = buffer_get_position(buffer) - start_position;
+        buffer_write_int32_at_position(
+            buffer, length_location, (int32_t)length);
+        return 1;
+    /* Store bytearray and Python 3 bytes as BSON binary subtype 0. */
+    } else if (BSONPyBytesOrByteArray_Check(value)) {
         char subtype = 0;
         int size;
-        const char* data = PyBytes_AS_STRING(value);
+        const char* data = BSONPyBytesOrByteArray_AS_STRING(value);
         if (!data)
             return 0;
-        if ((size = _downcast_and_check(PyBytes_GET_SIZE(value), 0)) == -1)
+        if ((size = _downcast_and_check(Py_SIZE(value), 0)) == -1)
             return 0;
         *(buffer_get_buffer(buffer) + type_byte) = 0x05;
         if (!buffer_write_int32(buffer, (int32_t)size)) {
@@ -1128,7 +1202,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             return 0;
         }
         return 1;
-#else
+#if PY_MAJOR_VERSION < 3
     /* PyString_Check only works in Python 2.x. */
     } else if (PyString_Check(value)) {
         result_t status;

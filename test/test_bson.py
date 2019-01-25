@@ -173,6 +173,33 @@ class TestBSON(unittest.TestCase):
         BSON.encode(dct)
         self.assertEqual(dct, collections.defaultdict(dict, [('foo', 'bar')]))
 
+    def test_encoding_set(self):
+        lst = ['bar', 'foo']
+        for typ in (set, frozenset):
+            encoded_set = BSON.encode({'test': typ(lst)})
+            decoded_set = sorted(BSON.decode(encoded_set)['test'])
+            self.assertEqual(decoded_set, lst)
+
+    @unittest.skipIf(not PY3, 'Dictionary views are only available in Python 3')
+    def test_encoding_dict_views(self):
+        dct = {'a': 'foo', 'b': 'bar'}
+        for meth in ('keys', 'values', 'items'):
+            encoded_view = BSON.encode({'test': getattr(dct, meth)()})
+            encoded_list = BSON.encode({'test': list(getattr(dct, meth)())})
+            self.assertEqual(encoded_view, encoded_list)
+
+    def test_encoding_bytearray(self):
+        binary_data = Binary(b'\x01\x02\x03')
+        encoded_bytearray = BSON.encode({'test': bytearray(binary_data)})
+        encoded_bytes = BSON.encode({'test': binary_data})
+        self.assertEqual(encoded_bytearray, encoded_bytes)
+
+    def test_encoding_range(self):
+        range_func = range if PY3 else xrange
+        encoded_range = BSON.encode({'test': range_func(0, 10)})
+        encoded_list = BSON.encode({'test': list(range_func(0, 10))})
+        self.assertEqual(encoded_range, encoded_list)
+
     def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
         self.assertRaises(TypeError, is_valid, u"test")
