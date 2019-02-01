@@ -391,23 +391,27 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
 
     @client_context.require_no_mongos
+    @ignore_deprecations
     def test_errors(self):
-        with ignore_deprecations():
-            # We must call getlasterror, etc. on same socket as last operation.
-            db = rs_or_single_client(maxPoolSize=1).pymongo_test
-            db.reset_error_history()
-            self.assertEqual(None, db.error())
+        # We must call getlasterror, etc. on same socket as last operation.
+        db = rs_or_single_client(maxPoolSize=1).pymongo_test
+        db.reset_error_history()
+        self.assertEqual(None, db.error())
+        if client_context.supports_getpreverror:
             self.assertEqual(None, db.previous_error())
 
-            db.test.insert_one({"_id": 1})
-            unacked = db.test.with_options(write_concern=WriteConcern(w=0))
+        db.test.insert_one({"_id": 1})
+        unacked = db.test.with_options(write_concern=WriteConcern(w=0))
 
-            unacked.insert_one({"_id": 1})
-            self.assertTrue(db.error())
+        unacked.insert_one({"_id": 1})
+        self.assertTrue(db.error())
+        if client_context.supports_getpreverror:
             self.assertTrue(db.previous_error())
 
-            unacked.insert_one({"_id": 1})
-            self.assertTrue(db.error())
+        unacked.insert_one({"_id": 1})
+        self.assertTrue(db.error())
+
+        if client_context.supports_getpreverror:
             prev_error = db.previous_error()
             self.assertEqual(prev_error["nPrev"], 1)
             del prev_error["nPrev"]
@@ -419,13 +423,15 @@ class TestDatabase(IntegrationTest):
             error.pop("connectionId", None)
             self.assertEqualReply(error, prev_error)
 
-            db.test.find_one()
-            self.assertEqual(None, db.error())
+        db.test.find_one()
+        self.assertEqual(None, db.error())
+        if client_context.supports_getpreverror:
             self.assertTrue(db.previous_error())
             self.assertEqual(db.previous_error()["nPrev"], 2)
 
-            db.reset_error_history()
-            self.assertEqual(None, db.error())
+        db.reset_error_history()
+        self.assertEqual(None, db.error())
+        if client_context.supports_getpreverror:
             self.assertEqual(None, db.previous_error())
 
     def test_command(self):
