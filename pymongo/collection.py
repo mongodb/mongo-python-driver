@@ -682,7 +682,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_is_document_type("document", document)
-        if not (isinstance(document, RawBSONDocument) or "_id" in document):
+        if "_id" not in document:
             document["_id"] = ObjectId()
 
         write_concern = self._write_concern_for(session)
@@ -741,10 +741,9 @@ class Collection(common.BaseObject):
             """A generator that validates documents and handles _ids."""
             for document in documents:
                 common.validate_is_document_type("document", document)
-                if not isinstance(document, RawBSONDocument):
-                    if "_id" not in document:
-                        document["_id"] = ObjectId()
-                    inserted_ids.append(document["_id"])
+                if "_id" not in document:
+                    document["_id"] = ObjectId()
+                inserted_ids.append(document["_id"])
                 yield (message._INSERT, document)
 
         write_concern = self._write_concern_for(session)
@@ -3138,7 +3137,7 @@ class Collection(common.BaseObject):
         if kwargs:
             write_concern = WriteConcern(**kwargs)
 
-        if not (isinstance(to_save, RawBSONDocument) or "_id" in to_save):
+        if "_id" not in to_save:
             return self._insert(
                 to_save, True, check_keys, manipulate, write_concern)
         else:

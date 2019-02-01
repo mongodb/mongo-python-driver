@@ -169,7 +169,7 @@ class _Bulk(object):
         """
         validate_is_document_type("document", document)
         # Generate ObjectId client side.
-        if not (isinstance(document, RawBSONDocument) or '_id' in document):
+        if '_id' not in document:
             document['_id'] = ObjectId()
         self.ops.append((_INSERT, document))
 
