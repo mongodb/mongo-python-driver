@@ -4,6 +4,11 @@ import re
 import sys
 import warnings
 
+
+if sys.version_info[:2] < (2, 7):
+    raise RuntimeError("Python version >= 2.7 required.")
+
+
 # Hack to silence atexit traceback in some Python versions
 try:
     import multiprocessing
@@ -289,23 +294,17 @@ http://api.mongodb.org/python/current/installation.html#osx
 
     def build_extension(self, ext):
         name = ext.name
-        if sys.version_info[:3] >= (2, 7, 0):
-            try:
-                build_ext.build_extension(self, ext)
-            except build_errors:
-                e = sys.exc_info()[1]
-                sys.stdout.write('%s\n' % str(e))
-                warnings.warn(self.warning_message % ("The %s extension "
-                                                      "module" % (name,),
-                                                      "The output above "
-                                                      "this warning shows how "
-                                                      "the compilation "
-                                                      "failed."))
-        else:
+        try:
+            build_ext.build_extension(self, ext)
+        except build_errors:
+            e = sys.exc_info()[1]
+            sys.stdout.write('%s\n' % str(e))
             warnings.warn(self.warning_message % ("The %s extension "
                                                   "module" % (name,),
-                                                  "PyMongo supports python "
-                                                  ">= 2.7."))
+                                                  "The output above "
+                                                  "this warning shows how "
+                                                  "the compilation "
+                                                  "failed."))
 
 ext_modules = [Extension('bson._cbson',
                          include_dirs=['bson'],
