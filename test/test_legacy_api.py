@@ -1263,6 +1263,7 @@ class TestLegacy(IntegrationTest):
         # Clean up indexes for later tests
         db.test.drop_indexes()
 
+    @client_context.require_version_max(4, 1)  # PYTHON-1734
     def test_ensure_index_threaded(self):
         coll = self.db.threaded_index_creation
         index_docs = []
@@ -1323,6 +1324,7 @@ class TestLegacy(IntegrationTest):
         finally:
             coll.drop()
 
+    @client_context.require_version_max(4, 1)  # PYTHON-1734
     def test_ensure_unique_index_threaded(self):
         coll = self.db.test_unique_threaded
         coll.drop()
