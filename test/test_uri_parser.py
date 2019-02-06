@@ -113,16 +113,10 @@ class TestURI(unittest.TestCase):
                               'connect=foo', warn=True)
             self.assertRaises(Warning, split_options,
                               'ssl_match_hostname=foo', warn=True)
-
-            # On most platforms float('inf') and float('-inf') represent
-            # +/- infinity, although on Python 2.4 and 2.5 on Windows those
-            # expressions are invalid
-            if not (sys.platform == "win32" and sys.version_info <= (2, 5)):
-                self.assertRaises(Warning, split_options,
-                                  'connectTimeoutMS=inf', warn=True)
-                self.assertRaises(Warning, split_options,
-                                  'connectTimeoutMS=-inf', warn=True)
-
+            self.assertRaises(Warning, split_options,
+                              'connectTimeoutMS=inf', warn=True)
+            self.assertRaises(Warning, split_options,
+                              'connectTimeoutMS=-inf', warn=True)
             self.assertRaises(Warning, split_options, 'wtimeoutms=foo',
                               warn=True)
             self.assertRaises(Warning, split_options, 'wtimeoutms=5.5',
@@ -148,11 +142,8 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ValueError, split_options, 'ssl=foo')
         self.assertRaises(ValueError, split_options, 'connect=foo')
         self.assertRaises(ValueError, split_options, 'ssl_match_hostname=foo')
-        if not (sys.platform == "win32" and sys.version_info <= (2, 5)):
-            self.assertRaises(ValueError, split_options,
-                              'connectTimeoutMS=inf')
-            self.assertRaises(ValueError, split_options,
-                              'connectTimeoutMS=-inf')
+        self.assertRaises(ValueError, split_options, 'connectTimeoutMS=inf')
+        self.assertRaises(ValueError, split_options, 'connectTimeoutMS=-inf')
         self.assertRaises(ValueError, split_options, 'wtimeoutms=foo')
         self.assertRaises(ValueError, split_options, 'wtimeoutms=5.5')
         self.assertRaises(ValueError, split_options, 'fsync=foo')

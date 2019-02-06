@@ -19,15 +19,6 @@
 #ifndef _CBSONMODULE_H
 #define _CBSONMODULE_H
 
-/* Py_ssize_t was new in python 2.5. See conversion
- * guidlines in http://www.python.org/dev/peps/pep-0353
- * */
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-#endif
-
 #if defined(WIN32) || defined(_MSC_VER)
 /*
  * This macro is basically an implementation of asprintf for win32
