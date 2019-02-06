@@ -486,6 +486,8 @@ def end_sessions(sessions):
 
 def create_test(scenario_def, test, name):
     @client_context.require_transactions
+    @client_context.require_cluster_type(
+        test.get('topology', ['single', 'replicaset', 'sharded']))
     def run_scenario(self):
         if test.get('skipReason'):
             raise unittest.SkipTest(test.get('skipReason'))
