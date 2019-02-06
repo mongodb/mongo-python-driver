@@ -107,11 +107,12 @@ class TestTransactions(IntegrationTest):
     def kill_all_sessions(self):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
-            # Run killAllSessions without an implicit session to work
-            # around SERVER-38335.
-            with client._socket_for_writes(None) as sock_info:
-                spec = SON([('killAllSessions', [])])
-                sock_info.command('admin', spec, client=client)
+            try:
+                client.admin.command('killAllSessions', [])
+            except OperationFailure:
+                # "operation was interrupted" by killing the command's
+                # own session.
+                pass
 
     @client_context.require_transactions
     def test_transaction_options_validation(self):
