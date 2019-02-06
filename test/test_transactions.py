@@ -52,6 +52,15 @@ _TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
+class CompareTrue(object):
+    """Class that compares equal to any object."""
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+
 class TestTransactions(IntegrationTest):
     @classmethod
     def setUpClass(cls):
@@ -405,6 +414,9 @@ class TestTransactions(IntegrationTest):
                         'readConcern', {}).get('afterClusterTime')
                     if actual_time is not None:
                         expected_read_concern['afterClusterTime'] = actual_time
+            recovery_token = expected_cmd.get('recoveryToken')
+            if recovery_token == 42:
+                expected_cmd['recoveryToken'] = CompareTrue()
 
             # Replace lsid with a name like "session0" to match test.
             if 'lsid' in event.command:

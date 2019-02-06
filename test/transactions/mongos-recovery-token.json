@@ -79,7 +79,8 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": null,
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -98,7 +99,8 @@
               "writeConcern": {
                 "w": "majority",
                 "wtimeout": 10000
-              }
+              },
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -117,7 +119,8 @@
               "writeConcern": {
                 "w": "majority",
                 "wtimeout": 10000
-              }
+              },
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -136,7 +139,8 @@
               "writeConcern": {
                 "w": "majority",
                 "wtimeout": 10000
-              }
+              },
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -155,7 +159,8 @@
               "writeConcern": {
                 "w": "majority",
                 "wtimeout": 10000
-              }
+              },
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -259,7 +264,8 @@
               "autocommit": false,
               "writeConcern": {
                 "w": "majority"
-              }
+              },
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -278,7 +284,8 @@
               "writeConcern": {
                 "w": "majority",
                 "wtimeout": 10000
-              }
+              },
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -379,7 +386,8 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": null,
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -398,7 +406,8 @@
               "writeConcern": {
                 "w": "majority",
                 "wtimeout": 10000
-              }
+              },
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -486,7 +495,8 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": null,
+              "recoveryToken": 42
             },
             "command_name": "abortTransaction",
             "database_name": "admin"
@@ -502,7 +512,8 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": null,
+              "recoveryToken": 42
             },
             "command_name": "abortTransaction",
             "database_name": "admin"
