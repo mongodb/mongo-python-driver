@@ -1,5 +1,4 @@
 {
-  "require_multiple_mongoses": true,
   "database_name": "transaction-tests",
   "collection_name": "test",
   "data": [
@@ -13,6 +12,9 @@
   "tests": [
     {
       "description": "countDocuments",
+      "clientOptions": {
+        "useMultipleMongoses": true
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -126,6 +128,9 @@
     },
     {
       "description": "distinct",
+      "clientOptions": {
+        "useMultipleMongoses": true
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -247,6 +252,9 @@
     },
     {
       "description": "find",
+      "clientOptions": {
+        "useMultipleMongoses": true
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -392,6 +400,9 @@
     },
     {
       "description": "insertOne",
+      "clientOptions": {
+        "useMultipleMongoses": true
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -545,6 +556,9 @@
     },
     {
       "description": "mixed read write operations",
+      "clientOptions": {
+        "useMultipleMongoses": true
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -705,6 +719,9 @@
     },
     {
       "description": "multiple commits",
+      "clientOptions": {
+        "useMultipleMongoses": true
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -793,6 +810,12 @@
     },
     {
       "description": "remain pinned after errors within a transaction and commit",
+      "topology": [
+        "sharded"
+      ],
+      "clientOptions": {
+        "useMultipleMongoses": true
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -907,7 +930,8 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": null,
+              "recoveryToken": 42
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -932,6 +956,12 @@
     },
     {
       "description": "remain pinned after errors within a transaction and abort",
+      "topology": [
+        "sharded"
+      ],
+      "clientOptions": {
+        "useMultipleMongoses": true
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -1046,7 +1076,8 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": null,
+              "recoveryToken": 42
             },
             "command_name": "abortTransaction",
             "database_name": "admin"
