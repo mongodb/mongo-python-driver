@@ -57,7 +57,7 @@ class TestTransactions(IntegrationTest):
     def setUpClass(cls):
         super(TestTransactions, cls).setUpClass()
         # Speed up tests by reducing SDAM waiting time after a network error.
-        cls.knobs = client_knobs(min_heartbeat_interval=0.05)
+        cls.knobs = client_knobs(min_heartbeat_interval=0.1)
         cls.knobs.enable()
         cls.mongos_clients = []
         if client_context.supports_transactions():
@@ -83,12 +83,17 @@ class TestTransactions(IntegrationTest):
                 exc.has_error_label(label),
                 msg='error labels should not contain %s' % (label,))
 
+    def _set_fail_point(self, client, command_args):
+        cmd = SON([('configureFailPoint', 'failCommand')])
+        cmd.update(command_args)
+        client.admin.command(cmd)
+
     def set_fail_point(self, command_args):
         cmd = SON([('configureFailPoint', 'failCommand')])
         cmd.update(command_args)
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
-            client.admin.command(cmd)
+            self._set_fail_point(client, cmd)
 
     def kill_all_sessions(self):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
@@ -281,6 +286,13 @@ class TestTransactions(IntegrationTest):
 
     def run_operation(self, sessions, collection, operation):
         name = camel_to_snake(operation['name'])
+        if name == 'fail_point':
+            # Enable the fail point on session's pinned mongos.
+            clients = {c.address: c for c in self.mongos_clients}
+            session = sessions[operation['session']]
+            client = clients[session._pinned_address]
+            self._set_fail_point(client, operation['failPoint'])
+            return
         if name == 'run_command':
             name = 'command'
         self.transaction_test_debug(name)
@@ -471,7 +483,7 @@ def create_test(scenario_def, test, name):
         # Convert test['clientOptions'] to dict to avoid a Jython bug using
         # "**" with ScenarioDict.
         client_options = dict(test['clientOptions'])
-        if client_context.is_mongos:
+        if client_context.is_mongos and scenario_def['require_multiple_mongoses']:
             client = rs_client(client_context.mongos_seeds(),
                                event_listeners=[listener], **client_options)
         else:
@@ -595,7 +607,8 @@ def create_test(scenario_def, test, name):
 
     if 'secondary' in name:
         run_scenario = client_context._require(
-            lambda: client_context.has_secondaries, 'No secondaries',
+            lambda: client_context.has_secondaries or client_context.is_mongos,
+            'No secondaries',
             run_scenario)
 
     return run_scenario

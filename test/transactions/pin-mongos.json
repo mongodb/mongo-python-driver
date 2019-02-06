@@ -1,4 +1,5 @@
 {
+  "require_multiple_mongoses": true,
   "database_name": "transaction-tests",
   "collection_name": "test",
   "data": [
