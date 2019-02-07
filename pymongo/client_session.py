@@ -391,8 +391,8 @@ class ClientSession(object):
             raise InvalidOperation(
                 "Cannot call commitTransaction after calling abortTransaction")
         elif state is _TxnState.COMMITTED:
-            # We're rerunning the commit, move the state back to "in progress"
-            # so that _in_transaction returns true.
+            # We're explicitly retrying the commit, move the state back to
+            # "in progress" so that _in_transaction returns true.
             self._transaction.state = _TxnState.IN_PROGRESS
             retry = True
 
