@@ -296,13 +296,16 @@ class TestCollectionChangeStream(IntegrationTest):
                 change = next(change_stream)
                 self.assertEqual(change['_id'], change_stream._resume_token)
 
+    @client_context.require_no_mongos  # PYTHON-1739
     def test_raises_error_on_missing_id(self):
         """ChangeStream will raise an exception if the server response is
         missing the resume token.
         """
         with self.coll.watch([{'$project': {'_id': 0}}]) as change_stream:
             self.coll.insert_one({})
-            with self.assertRaises(InvalidOperation):
+            # Server returns an error after SERVER-37786, otherwise pymongo
+            # raises an error.
+            with self.assertRaises((InvalidOperation, OperationFailure)):
                 next(change_stream)
             # The cursor should now be closed.
             with self.assertRaises(StopIteration):
