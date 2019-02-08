@@ -379,7 +379,7 @@ class ClientSession(object):
         .. versionadded:: 3.7
         """
         self._check_ended()
-
+        retry = False
         state = self._transaction.state
         if state is _TxnState.NONE:
             raise InvalidOperation("No transaction started")
@@ -391,12 +391,13 @@ class ClientSession(object):
             raise InvalidOperation(
                 "Cannot call commitTransaction after calling abortTransaction")
         elif state is _TxnState.COMMITTED:
-            # We're rerunning the commit, move the state back to "in progress"
-            # so that _in_transaction returns true.
+            # We're explicitly retrying the commit, move the state back to
+            # "in progress" so that _in_transaction returns true.
             self._transaction.state = _TxnState.IN_PROGRESS
+            retry = True
 
         try:
-            self._finish_transaction_with_retry("commitTransaction")
+            self._finish_transaction_with_retry("commitTransaction", retry)
         except ConnectionFailure as exc:
             # We do not know if the commit was successfully applied on the
             # server or if it satisfied the provided write concern, set the
@@ -439,31 +440,29 @@ class ClientSession(object):
                 "Cannot call abortTransaction after calling commitTransaction")
 
         try:
-            self._finish_transaction_with_retry("abortTransaction")
+            self._finish_transaction_with_retry("abortTransaction", False)
         except (OperationFailure, ConnectionFailure):
             # The transactions spec says to ignore abortTransaction errors.
             pass
         finally:
             self._transaction.state = _TxnState.ABORTED
 
-    def _finish_transaction(self, command_name):
-        with self._client._socket_for_writes(self) as sock_info:
-            return self._client.admin._command(
-                sock_info,
-                command_name,
-                session=self,
-                write_concern=self._transaction.opts.write_concern,
-                parse_write_concern_error=True)
+    def _finish_transaction_with_retry(self, command_name, explict_retry):
+        """Run commit or abort with one retry after any retryable error.
 
-    def _finish_transaction_with_retry(self, command_name):
+        :Parameters:
+          - `command_name`: Either "commitTransaction" or "abortTransaction".
+          - `explict_retry`: True when this is an explict commit retry attempt,
+            ie the application called session.commit_transaction() twice.
+        """
         # This can be refactored with MongoClient._retry_with_session.
         try:
-            return self._finish_transaction(command_name)
+            return self._finish_transaction(command_name, explict_retry)
         except ServerSelectionTimeoutError:
             raise
         except ConnectionFailure as exc:
             try:
-                return self._finish_transaction(command_name)
+                return self._finish_transaction(command_name, True)
             except ServerSelectionTimeoutError:
                 # Raise the original error so the application can infer that
                 # an attempt was made.
@@ -472,11 +471,29 @@ class ClientSession(object):
             if exc.code not in _RETRYABLE_ERROR_CODES:
                 raise
             try:
-                return self._finish_transaction(command_name)
+                return self._finish_transaction(command_name, True)
             except ServerSelectionTimeoutError:
                 # Raise the original error so the application can infer that
                 # an attempt was made.
                 raise exc
+
+    def _finish_transaction(self, command_name, retrying):
+        # Transaction spec says that after the initial commit attempt,
+        # subsequent commitTransaction commands should be upgraded to use
+        # w:"majority" and set a default value of 10 seconds for wtimeout.
+        wc = self._transaction.opts.write_concern
+        if retrying and command_name == "commitTransaction":
+            wc_doc = wc.document
+            wc_doc["w"] = "majority"
+            wc_doc.setdefault("wtimeout", 10000)
+            wc = WriteConcern(**wc_doc)
+        with self._client._socket_for_writes(self) as sock_info:
+            return self._client.admin._command(
+                sock_info,
+                command_name,
+                session=self,
+                write_concern=wc,
+                parse_write_concern_error=True)
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""

@@ -746,7 +746,10 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": {
+                "w": "majority",
+                "wtimeout": 10000
+              }
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -762,7 +765,10 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": {
+                "w": "majority",
+                "wtimeout": 10000
+              }
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -878,7 +884,10 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": {
+                "w": "majority",
+                "wtimeout": 10000
+              }
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -894,7 +903,10 @@
               },
               "startTransaction": null,
               "autocommit": false,
-              "writeConcern": null
+              "writeConcern": {
+                "w": "majority",
+                "wtimeout": 10000
+              }
             },
             "command_name": "commitTransaction",
             "database_name": "admin"
@@ -1023,7 +1035,8 @@
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": {
-                "w": "majority"
+                "w": "majority",
+                "wtimeout": 10000
               }
             },
             "command_name": "commitTransaction",
@@ -1041,7 +1054,8 @@
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": {
-                "w": "majority"
+                "w": "majority",
+                "wtimeout": 10000
               }
             },
             "command_name": "commitTransaction",
@@ -1171,7 +1185,8 @@
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": {
-                "w": "majority"
+                "w": "majority",
+                "wtimeout": 10000
               }
             },
             "command_name": "commitTransaction",
@@ -1305,7 +1320,8 @@
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": {
-                "w": "majority"
+                "w": "majority",
+                "wtimeout": 10000
               }
             },
             "command_name": "commitTransaction",
