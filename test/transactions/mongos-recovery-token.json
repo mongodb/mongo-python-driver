@@ -4,7 +4,7 @@
   "data": [],
   "tests": [
     {
-      "description": "commitTransaction explicit retries succeed on new mongos",
+      "description": "commitTransaction explicit retries succeed",
       "topology": [
         "sharded"
       ],
@@ -216,20 +216,23 @@
           }
         },
         {
-          "name": "failPoint",
-          "session": "session0",
-          "failPoint": {
-            "configureFailPoint": "failCommand",
-            "mode": {
-              "times": 1
-            },
-            "data": {
-              "failCommands": [
-                "commitTransaction"
-              ],
-              "writeConcernError": {
-                "code": 91,
-                "errmsg": "Replication is being shut down"
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "commitTransaction"
+                ],
+                "writeConcernError": {
+                  "code": 91,
+                  "errmsg": "Replication is being shut down"
+                }
               }
             }
           }
@@ -319,7 +322,8 @@
         "sharded"
       ],
       "clientOptions": {
-        "useMultipleMongoses": true
+        "useMultipleMongoses": true,
+        "heartbeatFrequencyMS": 5000
       },
       "operations": [
         {
@@ -340,18 +344,22 @@
           }
         },
         {
-          "name": "failPoint",
-          "session": "session0",
-          "failPoint": {
-            "configureFailPoint": "failCommand",
-            "mode": {
-              "times": 1
-            },
-            "data": {
-              "failCommands": [
-                "commitTransaction"
-              ],
-              "closeConnection": true
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 7
+              },
+              "data": {
+                "failCommands": [
+                  "commitTransaction",
+                  "isMaster"
+                ],
+                "closeConnection": true
+              }
             }
           }
         },
@@ -464,18 +472,21 @@
           }
         },
         {
-          "name": "failPoint",
-          "session": "session0",
-          "failPoint": {
-            "configureFailPoint": "failCommand",
-            "mode": {
-              "times": 1
-            },
-            "data": {
-              "failCommands": [
-                "abortTransaction"
-              ],
-              "closeConnection": true
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "abortTransaction"
+                ],
+                "closeConnection": true
+              }
             }
           }
         },

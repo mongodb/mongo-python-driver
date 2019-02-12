@@ -104,6 +104,15 @@ class TestTransactions(IntegrationTest):
         for client in clients:
             self._set_fail_point(client, cmd)
 
+    def targeted_fail_point(self, session, fail_point):
+        """Run the targetedFailPoint test operation.
+
+        Enable the fail point on the session's pinned mongos.
+        """
+        clients = {c.address: c for c in self.mongos_clients}
+        client = clients[session._pinned_address]
+        self._set_fail_point(client, fail_point)
+
     def kill_all_sessions(self):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
@@ -296,13 +305,6 @@ class TestTransactions(IntegrationTest):
 
     def run_operation(self, sessions, collection, operation):
         name = camel_to_snake(operation['name'])
-        if name == 'fail_point':
-            # Enable the fail point on session's pinned mongos.
-            clients = {c.address: c for c in self.mongos_clients}
-            session = sessions[operation['session']]
-            client = clients[session._pinned_address]
-            self._set_fail_point(client, operation['failPoint'])
-            return
         if name == 'run_command':
             name = 'command'
         self.transaction_test_debug(name)
@@ -327,7 +329,11 @@ class TestTransactions(IntegrationTest):
             collection = collection.with_options(
                 **dict(parse_options(operation['collectionOptions'])))
 
-        objects = {'database': database, 'collection': collection}
+        objects = {
+            'database': database,
+            'collection': collection,
+            'testRunner': self
+        }
         objects.update(sessions)
         obj = objects[operation['object']]
 
@@ -607,9 +613,8 @@ def create_test(scenario_def, test, name):
         self.check_events(test, listener, session_ids)
 
         # Disable fail points.
-        if 'failPoint' in test:
-            self.set_fail_point({
-                'configureFailPoint': 'failCommand', 'mode': 'off'})
+        self.set_fail_point({
+            'configureFailPoint': 'failCommand', 'mode': 'off'})
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')

@@ -809,7 +809,7 @@
       }
     },
     {
-      "description": "remain pinned after errors within a transaction and commit",
+      "description": "remain pinned after errors within a transaction",
       "topology": [
         "sharded"
       ],
@@ -835,18 +835,21 @@
           }
         },
         {
-          "name": "failPoint",
-          "session": "session0",
-          "failPoint": {
-            "configureFailPoint": "failCommand",
-            "mode": {
-              "times": 1
-            },
-            "data": {
-              "failCommands": [
-                "insert"
-              ],
-              "closeConnection": true
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "closeConnection": true
+              }
             }
           }
         },
@@ -981,18 +984,21 @@
           }
         },
         {
-          "name": "failPoint",
-          "session": "session0",
-          "failPoint": {
-            "configureFailPoint": "failCommand",
-            "mode": {
-              "times": 1
-            },
-            "data": {
-              "failCommands": [
-                "insert"
-              ],
-              "closeConnection": true
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "closeConnection": true
+              }
             }
           }
         },
