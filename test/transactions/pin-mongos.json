@@ -1,4 +1,7 @@
 {
+  "topology": [
+    "sharded"
+  ],
   "database_name": "transaction-tests",
   "collection_name": "test",
   "data": [
@@ -810,9 +813,6 @@
     },
     {
       "description": "remain pinned after errors within a transaction",
-      "topology": [
-        "sharded"
-      ],
       "clientOptions": {
         "useMultipleMongoses": true
       },
@@ -959,9 +959,6 @@
     },
     {
       "description": "remain pinned after errors within a transaction and abort",
-      "topology": [
-        "sharded"
-      ],
       "clientOptions": {
         "useMultipleMongoses": true
       },
