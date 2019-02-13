@@ -57,7 +57,7 @@ _TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-# TODO: factor the following functions with test_crud.py.
+# TODO: factor the following functions with CRUD v2 test runner.
 def camel_to_snake(camel):
     # Regex to convert CamelCase to snake_case.
     snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
@@ -255,7 +255,7 @@ class TestTransactions(IntegrationTest):
                 pass
         self.assertEqual(filtered_result, expected_result)
 
-    # TODO: factor the following function with test_crud.py.
+    # TODO: factor the following function with CRUD v2 test runner.
     def check_result(self, expected_result, result):
         if isinstance(result, _WriteResult):
             for res in expected_result:

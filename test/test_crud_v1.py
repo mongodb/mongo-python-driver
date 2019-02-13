@@ -38,7 +38,7 @@ from test.utils import drop_collections
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'crud')
+    os.path.dirname(os.path.realpath(__file__)), 'crud', 'v1')
 
 
 class TestAllScenarios(IntegrationTest):
