@@ -25,6 +25,7 @@ from bson.py3compat import iteritems
 from pymongo import operations
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
+from pymongo.errors import PyMongoError
 from pymongo.results import _WriteResult, BulkWriteResult
 from pymongo.operations import (InsertOne,
                                 DeleteOne,
@@ -96,7 +97,7 @@ def check_result(expected_result, result):
                 return False
         return True
     else:
-        if not expected_result:
+        if expected_result is None:
             return result is None
         else:
             return result == expected_result
@@ -158,12 +159,21 @@ def run_operation(collection, test):
 
 def create_test(scenario_def, test):
     def run_scenario(self):
-        # Load data.
-        assert scenario_def['data'], "tests must have non-empty data"
+        # Cleanup state and load data (if provided).
         drop_collections(self.db)
-        self.db.test.insert_many(scenario_def['data'])
+        data = scenario_def.get('data')
+        if data:
+            self.db.test.insert_many(scenario_def['data'])
 
-        result = run_operation(self.db.test, test)
+        # Run operations and check results or errors.
+        expected_result = test.get('outcome', {}).get('result')
+        expected_error = test.get('outcome', {}).get('error')
+        if expected_error is True:
+            with self.assertRaises(PyMongoError):
+                run_operation(self.db.test, test)
+        else:
+            result = run_operation(self.db.test, test)
+            self.assertTrue(check_result(expected_result, result))
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')
@@ -174,8 +184,6 @@ def create_test(scenario_def, test):
             else:
                 db_coll = self.db.test
             self.assertEqual(list(db_coll.find()), expected_c['data'])
-        expected_result = test['outcome'].get('result')
-        self.assertTrue(check_result(expected_result, result))
 
     return run_scenario
 
