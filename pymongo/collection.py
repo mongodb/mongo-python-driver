@@ -2280,10 +2280,10 @@ class Collection(common.BaseObject):
             # - running MongoDB >= 4.2
             # - pipeline does not have an $out stage on MongoDB >= 3.2
             # - read concern has not been specified as a kwarg
-            if 'readConcern' not in cmd:
-                if ((sock_info.max_wire_version >= 4 and not dollar_out) or
-                        (sock_info.max_wire_version >= 8)):
-                    read_concern = self.read_concern
+            if (('readConcern' not in cmd) and
+                    ((sock_info.max_wire_version >= 4 and not dollar_out) or
+                     (sock_info.max_wire_version >= 8))):
+                read_concern = self.read_concern
             else:
                 read_concern = None
             if 'writeConcern' not in cmd and dollar_out:
