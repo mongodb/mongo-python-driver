@@ -15,9 +15,7 @@
   "tests": [
     {
       "description": "countDocuments",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -131,9 +129,7 @@
     },
     {
       "description": "distinct",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -255,9 +251,7 @@
     },
     {
       "description": "find",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -403,9 +397,7 @@
     },
     {
       "description": "insertOne",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -559,9 +551,7 @@
     },
     {
       "description": "mixed read write operations",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -722,9 +712,7 @@
     },
     {
       "description": "multiple commits",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -813,9 +801,7 @@
     },
     {
       "description": "remain pinned after errors within a transaction",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -959,9 +945,7 @@
     },
     {
       "description": "remain pinned after errors within a transaction and abort",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",

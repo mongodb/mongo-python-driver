@@ -8,9 +8,7 @@
   "tests": [
     {
       "description": "commitTransaction explicit retries succeed",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -184,9 +182,7 @@
     },
     {
       "description": "commitTransaction retry succeeds on new mongos",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",
@@ -315,8 +311,8 @@
     },
     {
       "description": "commitTransaction retry fails on new mongos",
+      "useMultipleMongoses": true,
       "clientOptions": {
-        "useMultipleMongoses": true,
         "heartbeatFrequencyMS": 5000
       },
       "operations": [
@@ -441,9 +437,7 @@
     },
     {
       "description": "abortTransaction sends recoveryToken",
-      "clientOptions": {
-        "useMultipleMongoses": true
-      },
+      "useMultipleMongoses": true,
       "operations": [
         {
           "name": "startTransaction",

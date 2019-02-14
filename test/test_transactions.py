@@ -504,7 +504,7 @@ def create_test(scenario_def, test, name):
         # Convert test['clientOptions'] to dict to avoid a Jython bug using
         # "**" with ScenarioDict.
         client_options = dict(test['clientOptions'])
-        use_multi_mongos = client_options.pop('useMultipleMongoses', False)
+        use_multi_mongos = test['useMultipleMongoses']
         if client_context.is_mongos and use_multi_mongos:
             client = rs_client(client_context.mongos_seeds(),
                                event_listeners=[listener], **client_options)
