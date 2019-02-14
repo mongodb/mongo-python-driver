@@ -149,13 +149,14 @@ class CommandCursor(object):
         reply = response.data
 
         try:
-            docs = self._unpack_response(reply,
-                                         self.__id,
-                                         self.__collection.codec_options)
-            if from_command:
-                first = docs[0]
-                client._receive_cluster_time(first, self.__session)
-                helpers._check_command_response(first)
+            with client._reset_on_error(self.__address):
+                docs = self._unpack_response(reply,
+                                             self.__id,
+                                             self.__collection.codec_options)
+                if from_command:
+                    first = docs[0]
+                    client._receive_cluster_time(first, self.__session)
+                    helpers._check_command_response(first)
 
         except OperationFailure as exc:
             kill()
@@ -174,7 +175,6 @@ class CommandCursor(object):
                 listeners.publish_command_failure(
                     duration(), exc.details, "getMore", rqst_id, self.__address)
 
-            client._reset_server_and_request_check(self.address)
             raise
         except Exception as exc:
             if publish:

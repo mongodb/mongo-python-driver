@@ -1116,32 +1116,9 @@ class MongoClient(common.BaseObject):
 
     @contextlib.contextmanager
     def _get_socket(self, server):
-        try:
+        with self._reset_on_error(server.description.address):
             with server.get_socket(self.__all_credentials) as sock_info:
                 yield sock_info
-        except NetworkTimeout:
-            # The socket has been closed. Don't reset the server.
-            # Server Discovery And Monitoring Spec: "When an application
-            # operation fails because of any network error besides a socket
-            # timeout...."
-            raise
-        except NotMasterError:
-            # "When the client sees a "not master" error it MUST replace the
-            # server's description with type Unknown. It MUST request an
-            # immediate check of the server."
-            self._reset_server_and_request_check(server.description.address)
-            raise
-        except ConnectionFailure:
-            # "Client MUST replace the server's description with type Unknown
-            # ... MUST NOT request an immediate check of the server."
-            self.__reset_server(server.description.address)
-            raise
-        except OperationFailure as exc:
-            if exc.code in helpers._RETRYABLE_ERROR_CODES:
-                # Do not request an immediate check since the server is likely
-                # shutting down.
-                self.__reset_server(server.description.address)
-            raise
 
     def _select_server(self, server_selector, session, address=None):
         """Select a server to run an operation on this client.
@@ -1216,30 +1193,45 @@ class MongoClient(common.BaseObject):
             and server.description.server_type != SERVER_TYPE.Mongos) or (
                 operation.read_preference != ReadPreference.PRIMARY)
 
-        return self._reset_on_error(
-            server,
-            server.send_message_with_response,
-            operation,
-            set_slave_ok,
-            self.__all_credentials,
-            self._event_listeners,
-            exhaust)
+        with self._reset_on_error(server.description.address):
+            return server.send_message_with_response(
+                operation,
+                set_slave_ok,
+                self.__all_credentials,
+                self._event_listeners,
+                exhaust)
 
-    def _reset_on_error(self, server, func, *args, **kwargs):
-        """Execute an operation. Reset the server on network error.
+    @contextlib.contextmanager
+    def _reset_on_error(self, server_address):
+        """On "not master" or "node is recovering" errors reset the server
+        according to the SDAM spec.
 
-        Returns fn()'s return value on success. On error, clears the server's
-        pool and marks the server Unknown.
-
-        Re-raises any exception thrown by fn().
+        Unpin the session on transient transaction errors.
         """
         try:
-            return func(*args, **kwargs)
+            yield
         except NetworkTimeout:
             # The socket has been closed. Don't reset the server.
+            # Server Discovery And Monitoring Spec: "When an application
+            # operation fails because of any network error besides a socket
+            # timeout...."
+            raise
+        except NotMasterError:
+            # "When the client sees a "not master" error it MUST replace the
+            # server's description with type Unknown. It MUST request an
+            # immediate check of the server."
+            self._reset_server_and_request_check(server_address)
             raise
         except ConnectionFailure:
-            self.__reset_server(server.description.address)
+            # "Client MUST replace the server's description with type Unknown
+            # ... MUST NOT request an immediate check of the server."
+            self.__reset_server(server_address)
+            raise
+        except OperationFailure as exc:
+            if exc.code in helpers._RETRYABLE_ERROR_CODES:
+                # Do not request an immediate check since the server is likely
+                # shutting down.
+                self.__reset_server(server_address)
             raise
 
     def _retry_with_session(self, retryable, func, session, bulk):
