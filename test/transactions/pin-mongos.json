@@ -800,151 +800,7 @@
       }
     },
     {
-      "description": "remain pinned after errors within a transaction",
-      "useMultipleMongoses": true,
-      "operations": [
-        {
-          "name": "startTransaction",
-          "object": "session0"
-        },
-        {
-          "name": "insertOne",
-          "object": "collection",
-          "arguments": {
-            "session": "session0",
-            "document": {
-              "_id": 3
-            }
-          },
-          "result": {
-            "insertedId": 3
-          }
-        },
-        {
-          "name": "targetedFailPoint",
-          "object": "testRunner",
-          "arguments": {
-            "session": "session0",
-            "failPoint": {
-              "configureFailPoint": "failCommand",
-              "mode": {
-                "times": 1
-              },
-              "data": {
-                "failCommands": [
-                  "insert"
-                ],
-                "closeConnection": true
-              }
-            }
-          }
-        },
-        {
-          "name": "insertOne",
-          "object": "collection",
-          "arguments": {
-            "session": "session0",
-            "document": {
-              "_id": 4
-            }
-          },
-          "result": {
-            "errorLabelsContain": [
-              "TransientTransactionError"
-            ],
-            "errorLabelsOmit": [
-              "UnknownTransactionCommitResult"
-            ]
-          }
-        },
-        {
-          "name": "commitTransaction",
-          "object": "session0"
-        }
-      ],
-      "expectations": [
-        {
-          "command_started_event": {
-            "command": {
-              "insert": "test",
-              "documents": [
-                {
-                  "_id": 3
-                }
-              ],
-              "ordered": true,
-              "readConcern": null,
-              "lsid": "session0",
-              "txnNumber": {
-                "$numberLong": "1"
-              },
-              "startTransaction": true,
-              "autocommit": false,
-              "writeConcern": null
-            },
-            "command_name": "insert",
-            "database_name": "transaction-tests"
-          }
-        },
-        {
-          "command_started_event": {
-            "command": {
-              "insert": "test",
-              "documents": [
-                {
-                  "_id": 4
-                }
-              ],
-              "ordered": true,
-              "readConcern": null,
-              "lsid": "session0",
-              "txnNumber": {
-                "$numberLong": "1"
-              },
-              "startTransaction": null,
-              "autocommit": false,
-              "writeConcern": null
-            },
-            "command_name": "insert",
-            "database_name": "transaction-tests"
-          }
-        },
-        {
-          "command_started_event": {
-            "command": {
-              "commitTransaction": 1,
-              "lsid": "session0",
-              "txnNumber": {
-                "$numberLong": "1"
-              },
-              "startTransaction": null,
-              "autocommit": false,
-              "writeConcern": null,
-              "recoveryToken": 42
-            },
-            "command_name": "commitTransaction",
-            "database_name": "admin"
-          }
-        }
-      ],
-      "outcome": {
-        "collection": {
-          "data": [
-            {
-              "_id": 1
-            },
-            {
-              "_id": 2
-            },
-            {
-              "_id": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "description": "remain pinned after errors within a transaction and abort",
+      "description": "unpin after transient error within a transaction",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1067,6 +923,160 @@
               "recoveryToken": 42
             },
             "command_name": "abortTransaction",
+            "database_name": "admin"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "unpin after transient error within a transaction and commit",
+      "useMultipleMongoses": true,
+      "clientOptions": {
+        "heartbeatFrequencyMS": 5000
+      },
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "document": {
+              "_id": 3
+            }
+          },
+          "result": {
+            "insertedId": 3
+          }
+        },
+        {
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 7
+              },
+              "data": {
+                "failCommands": [
+                  "insert",
+                  "isMaster"
+                ],
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "document": {
+              "_id": 4
+            }
+          },
+          "result": {
+            "errorLabelsContain": [
+              "TransientTransactionError"
+            ],
+            "errorLabelsOmit": [
+              "UnknownTransactionCommitResult"
+            ]
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "object": "session0",
+          "result": {
+            "errorLabelsContain": [
+              "TransientTransactionError"
+            ],
+            "errorLabelsOmit": [
+              "UnknownTransactionCommitResult"
+            ],
+            "errorCodeName": "NoSuchTransaction"
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "command_started_event": {
+            "command": {
+              "insert": "test",
+              "documents": [
+                {
+                  "_id": 3
+                }
+              ],
+              "ordered": true,
+              "readConcern": null,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "startTransaction": true,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "insert",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "insert": "test",
+              "documents": [
+                {
+                  "_id": 4
+                }
+              ],
+              "ordered": true,
+              "readConcern": null,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "startTransaction": null,
+              "autocommit": false,
+              "writeConcern": null
+            },
+            "command_name": "insert",
+            "database_name": "transaction-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "commitTransaction": 1,
+              "lsid": "session0",
+              "txnNumber": {
+                "$numberLong": "1"
+              },
+              "startTransaction": null,
+              "autocommit": false,
+              "writeConcern": null,
+              "recoveryToken": 42
+            },
+            "command_name": "commitTransaction",
             "database_name": "admin"
           }
         }

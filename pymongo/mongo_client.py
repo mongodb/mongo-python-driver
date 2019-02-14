@@ -1112,10 +1112,16 @@ class MongoClient(common.BaseObject):
         return self._topology
 
     @contextlib.contextmanager
-    def _get_socket(self, server):
+    def _get_socket(self, server, session):
         try:
-            with server.get_socket(self.__all_credentials) as sock_info:
-                yield sock_info
+            try:
+                with server.get_socket(self.__all_credentials) as sock_info:
+                    yield sock_info
+            except PyMongoError as exc:
+                if session and exc.has_error_label(
+                        "TransientTransactionError"):
+                    session._unpin_mongos()
+                raise
         except NetworkTimeout:
             # The socket has been closed. Don't reset the server.
             # Server Discovery And Monitoring Spec: "When an application
@@ -1151,26 +1157,31 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Address when sending a message
             to a specific server, used for getMore.
         """
-        topology = self._get_topology()
-        address = address or (session and session._pinned_address)
-        if address:
-            # We're running a getMore or this session is pinned to a mongos.
-            server = topology.select_server_by_address(address)
-            if not server:
-                raise AutoReconnect('server %s:%d no longer available'
-                                    % address)
-        else:
-            server = topology.select_server(server_selector)
-            # Pin this session to the selected server if it's performing a
-            # sharded transaction.
-            if server.description.mongos and (session and
-                                              session._in_transaction):
-                session._pin_mongos(server)
-        return server
+        try:
+            topology = self._get_topology()
+            address = address or (session and session._pinned_address)
+            if address:
+                # We're running a getMore or this session is pinned to a mongos.
+                server = topology.select_server_by_address(address)
+                if not server:
+                    raise AutoReconnect('server %s:%d no longer available'
+                                        % address)
+            else:
+                server = topology.select_server(server_selector)
+                # Pin this session to the selected server if it's performing a
+                # sharded transaction.
+                if server.description.mongos and (session and
+                                                  session._in_transaction):
+                    session._pin_mongos(server)
+            return server
+        except ConnectionFailure:
+            if session:
+                session._unpin_mongos()
+            raise
 
     def _socket_for_writes(self, session):
         server = self._select_server(writable_server_selector, session)
-        return self._get_socket(server)
+        return self._get_socket(server, session)
 
     @contextlib.contextmanager
     def _socket_for_reads(self, read_preference, session):
@@ -1185,7 +1196,7 @@ class MongoClient(common.BaseObject):
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
         server = self._select_server(read_preference, session)
 
-        with self._get_socket(server) as sock_info:
+        with self._get_socket(server, session) as sock_info:
             slave_ok = (single and not sock_info.is_mongos) or (
                 read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
@@ -1272,7 +1283,7 @@ class MongoClient(common.BaseObject):
                 supports_session = (
                     session is not None and
                     server.description.retryable_writes_supported)
-                with self._get_socket(server) as sock_info:
+                with self._get_socket(server, session) as sock_info:
                     if retryable and not supports_session:
                         if is_retrying():
                             # A retry is not possible because this server does
