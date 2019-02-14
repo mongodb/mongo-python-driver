@@ -2276,12 +2276,14 @@ class Collection(common.BaseObject):
                     kwargs["cursor"]["batchSize"] = first_batch_size
 
             cmd.update(kwargs)
-            # Apply this Collection's read concern if $out is not in the
-            # pipeline.
-            if (sock_info.max_wire_version >= 4
-                    and 'readConcern' not in cmd
-                    and not dollar_out):
-                read_concern = self.read_concern
+            # Apply this Collection's read concern if
+            # - running MongoDB >= 4.2
+            # - pipeline does not have an $out stage on MongoDB >= 3.2
+            # - read concern has not been specified as a kwarg
+            if 'readConcern' not in cmd:
+                if ((sock_info.max_wire_version >= 4 and not dollar_out) or
+                        (sock_info.max_wire_version >= 8)):
+                    read_concern = self.read_concern
             else:
                 read_concern = None
             if 'writeConcern' not in cmd and dollar_out:

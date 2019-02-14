@@ -22,13 +22,16 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.py3compat import iteritems
-from pymongo import operations
+from pymongo import operations, WriteConcern
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
+from pymongo.errors import PyMongoError
+from pymongo.read_concern import ReadConcern
 from pymongo.results import _WriteResult, BulkWriteResult
 
 from test import unittest, client_context, IntegrationTest
 from test.utils import OvertCommandListener, drop_collections, rs_client
+from test.utils_selection_tests import parse_read_preference
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -56,6 +59,21 @@ def camel_to_snake_args(arguments):
     return arguments
 
 
+def parse_collection_options(opts):
+    if 'readPreference' in opts:
+        opts['read_preference'] = parse_read_preference(
+            opts.pop('readPreference'))
+
+    if 'writeConcern' in opts:
+        opts['write_concern'] = WriteConcern(
+            **dict(opts.pop('writeConcern')))
+
+    if 'readConcern' in opts:
+        opts['read_concern'] = ReadConcern(
+            **dict(opts.pop('readConcern')))
+    return opts
+
+
 class TestAllScenarios(IntegrationTest):
     def run_operation(self, collection, test):
         # Iterate over all operations.
@@ -64,11 +82,16 @@ class TestAllScenarios(IntegrationTest):
             operation = camel_to_snake(opdef['name'])
 
             # Get command handle on target entity (collection/database).
-            if opdef.get('object') == 'database':
-                target_obj = collection.database
+            target_object = opdef.get('object', 'collection')
+            if target_object == 'database':
+                cmd = getattr(collection.database, operation)
+            elif target_object == 'collection':
+                collection = collection.with_options(**dict(
+                    parse_collection_options(opdef.get(
+                        'collectionOptions', {}))))
+                cmd = getattr(collection, operation)
             else:
-                target_obj = collection
-            cmd = getattr(target_obj, operation)
+                self.fail("Unknown object name %s" % (target_object,))
 
             # Convert arguments to snake_case and handle special cases.
             arguments = opdef['arguments']
@@ -105,8 +128,12 @@ class TestAllScenarios(IntegrationTest):
                     else:
                         arguments[c2s] = arguments.pop(arg_name)
 
-            result = cmd(**arguments)
-            self.check_result(opdef.get('result'), result)
+            if opdef.get('error') is True:
+                with self.assertRaises(PyMongoError):
+                    cmd(**arguments)
+            else:
+                result = cmd(**arguments)
+                self.check_result(opdef.get('result'), result)
 
     def check_result(self, expected_result, result):
         if expected_result is None:
@@ -220,7 +247,6 @@ class TestAllScenarios(IntegrationTest):
 
 def create_test(scenario_def, test):
     def run_scenario(self):
-        # import ipdb; ipdb.set_trace()
         listener = OvertCommandListener()
         # New client, to avoid interference from pooled sessions.
         # Convert test['clientOptions'] to dict to avoid a Jython bug using "**"
@@ -238,17 +264,15 @@ def create_test(scenario_def, test):
             database, scenario_def.get('collection_name', TEST_COLLECTION))
 
         # Populate collection with data and run test.
-        data = scenario_def.get('data')
-        if data:
-            collection.insert_many(scenario_def['data'])
+        collection.insert_many(scenario_def.get('data', []))
         listener.results.clear()
         self.run_operation(collection, test)
 
         # Assert expected events.
-        self.check_events(test['expectations'], listener)
+        self.check_events(test.get('expectations', {}), listener)
 
         # Assert final state is expected.
-        expected_outcome = test['outcome'].get('collection')
+        expected_outcome = test.get('outcome', {}).get('collection')
         if expected_outcome is not None:
             collname = expected_outcome.get('name')
             if collname is not None:
