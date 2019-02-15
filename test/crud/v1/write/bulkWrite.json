@@ -195,18 +195,6 @@
                   "_id": 1
                 },
                 "replacement": {
-                  "_id": 1,
-                  "x": 11
-                }
-              }
-            },
-            {
-              "name": "replaceOne",
-              "arguments": {
-                "filter": {
-                  "_id": 1
-                },
-                "replacement": {
                   "x": 12
                 }
               }
@@ -234,11 +222,11 @@
           "deletedCount": 0,
           "insertedCount": 0,
           "insertedIds": {},
-          "matchedCount": 2,
+          "matchedCount": 1,
           "modifiedCount": 1,
           "upsertedCount": 1,
           "upsertedIds": {
-            "3": 3
+            "2": 3
           }
         },
         "collection": {
