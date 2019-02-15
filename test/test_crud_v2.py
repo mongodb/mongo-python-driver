@@ -31,7 +31,7 @@ from test import unittest, client_context, IntegrationTest
 from test.utils import (camel_to_snake, camel_to_upper_camel,
                         camel_to_snake_args, drop_collections,
                         parse_collection_options, rs_client,
-                        OvertCommandListener)
+                        OvertCommandListener, TestCreator)
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -245,46 +245,9 @@ def create_test(scenario_def, test):
     return run_scenario
 
 
-def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
-        dirname = os.path.split(dirpath)[-1]
-
-        for filename in filenames:
-            with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = json.load(scenario_stream)
-
-            test_type = os.path.splitext(filename)[0]
-
-            min_ver, max_ver = None, None
-            if 'minServerVersion' in scenario_def:
-                min_ver = tuple(
-                    int(elt) for
-                    elt in scenario_def['minServerVersion'].split('.'))
-            if 'maxServerVersion' in scenario_def:
-                max_ver = tuple(
-                    int(elt) for
-                    elt in scenario_def['maxServerVersion'].split('.'))
-
-            # Construct test from scenario.
-            for test in scenario_def['tests']:
-                new_test = create_test(scenario_def, test)
-                if min_ver is not None:
-                    new_test = client_context.require_version_min(*min_ver)(
-                        new_test)
-                if max_ver is not None:
-                    new_test = client_context.require_version_max(*max_ver)(
-                        new_test)
-
-                test_name = 'test_%s_%s_%s' % (
-                    dirname,
-                    test_type,
-                    str(test['description'].replace(" ", "_")))
-
-                new_test.__name__ = test_name
-                setattr(TestAllScenarios, new_test.__name__, new_test)
-
-
-create_tests()
+test_creator = TestCreator(create_test, TestAllScenarios, _TEST_PATH)
+test_creator.add_test_modifier(test_creator.enforce_min_max_server_version)
+test_creator.create_tests()
 
 
 if __name__ == "__main__":

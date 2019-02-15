@@ -15,8 +15,10 @@
 """Utilities for testing pymongo
 """
 
+import collections
 import contextlib
 import functools
+import os
 import re
 import sys
 import threading
@@ -26,6 +28,7 @@ import warnings
 from collections import defaultdict
 from functools import partial
 
+from bson import json_util, py3compat
 from bson.objectid import ObjectId
 from pymongo import MongoClient, monitoring
 from pymongo.errors import OperationFailure
@@ -34,7 +37,7 @@ from pymongo.read_concern import ReadConcern
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.write_concern import WriteConcern
-from test import (client_context, db_user, db_pwd)
+from test import client_context, db_user, db_pwd
 
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=1000)
@@ -120,6 +123,110 @@ class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
 
     def failed(self, event):
         self.results.append(event)
+
+
+class ScenarioDict(dict):
+    """Dict that returns {} for any unknown key, recursively."""
+    def __init__(self, data):
+        def convert(v):
+            if isinstance(v, collections.Mapping):
+                return ScenarioDict(v)
+            if isinstance(v, py3compat.string_type):
+                return v
+            if isinstance(v, collections.Sequence):
+                return [convert(item) for item in v]
+            return v
+
+        dict.__init__(self, [(k, convert(v)) for k, v in data.items()])
+
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item)
+        except KeyError:
+            # Unlike a defaultdict, don't set the key, just return a dict.
+            return ScenarioDict({})
+
+
+class TestCreator(object):
+    """Class to create test cases from specifications."""
+    def __init__(self, create_test, test_class, test_path):
+        """Create a TestCreator object.
+
+        :Parameters:
+          - `create_test`: callback that returns a test case. The callback
+            must accept the following arguments - a dictionary containing the
+            entire test specification (the `scenario_def`), a dictionary
+            containing the specification for which the test case will be
+            generated (the `test_def`).
+          - `test_class`: the unittest.TestCase class in which to create the
+            test case.
+          - `test_path`: path to the directory containing the JSON files with
+            the test specifications.
+            """
+        self._create_test = create_test
+        self._test_class= test_class
+        self.test_path = test_path
+        self._test_modifiers = []
+
+    @staticmethod
+    def enforce_min_max_server_version(scenario_def, test_def, test_name, method):
+        """Modifier that enforces a version range for the server on a test case."""
+        if 'minServerVersion' in scenario_def:
+            min_ver = tuple(
+                int(elt) for
+                elt in scenario_def['minServerVersion'].split('.'))
+            if min_ver is not None:
+                method = client_context.require_version_min(*min_ver)(method)
+
+        if 'maxServerVersion' in scenario_def:
+            max_ver = tuple(
+                int(elt) for
+                elt in scenario_def['maxServerVersion'].split('.'))
+            if max_ver is not None:
+                method = client_context.require_version_max(*max_ver)(method)
+
+        return method
+
+    def add_test_modifier(self, modifier):
+        """Add a method that can modify the test case. Any number of modifiers
+        can be added. Modifiers are called in the order in which they are
+        added.
+
+        :Parameters:
+          - `modifier`: callback or iterable of callbacks that modify and
+            return the test method. Each callback accepts the following
+            arguments - the `scenario_def`, the `test_def`, a string
+            representing the test name, and the test method to be modified."""
+        if callable(modifier):
+            self._test_modifiers.append(modifier)
+        else:
+            self._test_modifiers.extend(modifier)
+
+    def create_tests(self):
+        for dirpath, _, filenames in os.walk(self.test_path):
+            dirname = os.path.split(dirpath)[-1]
+
+            for filename in filenames:
+                with open(os.path.join(dirpath, filename)) as scenario_stream:
+                    scenario_def = ScenarioDict(
+                        json_util.loads(scenario_stream.read()))
+
+                test_type = os.path.splitext(filename)[0]
+
+                # Construct test from scenario.
+                for test in scenario_def['tests']:
+                    new_test = self._create_test(scenario_def, test)
+
+                    test_name = 'test_%s_%s_%s' % (
+                        dirname,
+                        test_type,
+                        str(test['description'].replace(" ", "_")))
+
+                    for modifier in self._test_modifiers:
+                        new_test = modifier(scenario_def, test, test_name, new_test)
+
+                    new_test.__name__ = test_name
+                    setattr(self._test_class, new_test.__name__, new_test)
 
 
 def _connection_string(h, p, authenticate):

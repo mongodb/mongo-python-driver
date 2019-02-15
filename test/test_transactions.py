@@ -14,13 +14,11 @@
 
 """Execute Transactions Spec tests."""
 
-import collections
 import os
 import sys
 
 sys.path[0:0] = [""]
 
-from bson import json_util, py3compat
 from bson.py3compat import iteritems
 from bson.son import SON
 from pymongo import client_session, operations, WriteConcern
@@ -38,7 +36,7 @@ from pymongo.results import _WriteResult, BulkWriteResult
 from test import unittest, client_context, IntegrationTest
 from test.utils import (camel_to_snake, camel_to_upper_camel,
                         camel_to_snake_args, rs_client,
-                        OvertCommandListener)
+                        OvertCommandListener, TestCreator)
 from test.utils_selection_tests import parse_read_preference
 
 # Location of JSON test specifications.
@@ -504,62 +502,22 @@ def create_test(scenario_def, test):
     return run_scenario
 
 
-class ScenarioDict(dict):
-    """Dict that returns {} for any unknown key, recursively."""
-    def __init__(self, data):
-        def convert(v):
-            if isinstance(v, collections.Mapping):
-                return ScenarioDict(v)
-            if isinstance(v, py3compat.string_type):
-                return v
-            if isinstance(v, collections.Sequence):
-                return [convert(item) for item in v]
-            return v
-
-        dict.__init__(self, [(k, convert(v)) for k, v in data.items()])
-
-    def __getitem__(self, item):
-        try:
-            return dict.__getitem__(self, item)
-        except KeyError:
-            # Unlike a defaultdict, don't set the key, just return a dict.
-            return ScenarioDict({})
+def enforce_require_transactions(scenario_def, test_def, test_name, method):
+    return client_context.require_transactions(method)
 
 
-def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
-        dirname = os.path.split(dirpath)[-1]
-
-        for filename in filenames:
-            test_type, ext = os.path.splitext(filename)
-            if ext != '.json':
-                continue
-
-            with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = ScenarioDict(
-                    json_util.loads(scenario_stream.read()))
-
-            # Construct test from scenario.
-            for test in scenario_def['tests']:
-                test_name = 'test_%s_%s_%s' % (
-                    dirname,
-                    test_type.replace("-", "_"),
-                    str(test['description'].replace(" ", "_")))
-
-                new_test = create_test(scenario_def, test)
-                new_test = client_context.require_transactions(new_test)
-
-                if 'secondary' in test_name:
-                    new_test = client_context._require(
-                        lambda: client_context.has_secondaries,
-                        'No secondaries',
-                        new_test)
-
-                new_test.__name__ = test_name
-                setattr(TestTransactions, new_test.__name__, new_test)
+def enforce_require_secondaries(scenario_def, test_def, test_name, method):
+    if 'secondary' in test_name:
+        method = client_context._require(
+            lambda: client_context.has_secondaries, 'No secondaries', method)
+    return method
 
 
-create_tests()
+test_creator = TestCreator(create_test, TestTransactions, _TEST_PATH)
+test_creator.add_test_modifier(
+    (enforce_require_transactions, enforce_require_secondaries))
+test_creator.create_tests()
+
 
 if __name__ == "__main__":
     unittest.main()
