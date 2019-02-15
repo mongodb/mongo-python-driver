@@ -35,7 +35,8 @@ from pymongo.operations import (InsertOne,
                                 UpdateMany)
 
 from test import unittest, client_context, IntegrationTest
-from test.utils import drop_collections
+from test.utils import (camel_to_snake, camel_to_upper_camel,
+                        camel_to_snake_args, drop_collections)
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -44,16 +45,6 @@ _TEST_PATH = os.path.join(
 
 class TestAllScenarios(IntegrationTest):
     pass
-
-
-def camel_to_snake(camel):
-    # Regex to convert CamelCase to snake_case.
-    snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
-
-
-def camel_to_upper_camel(camel):
-    return camel[0].upper() + camel[1:]
 
 
 def check_result(expected_result, result):
@@ -101,13 +92,6 @@ def check_result(expected_result, result):
             return result is None
         else:
             return result == expected_result
-
-
-def camel_to_snake_args(arguments):
-    for arg_name in list(arguments):
-        c2s = camel_to_snake(arg_name)
-        arguments[c2s] = arguments.pop(arg_name)
-    return arguments
 
 
 def run_operation(collection, test):

@@ -15,9 +15,7 @@
 """Execute Transactions Spec tests."""
 
 import collections
-from functools import partial
 import os
-import re
 import sys
 
 sys.path[0:0] = [""]
@@ -38,10 +36,9 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.results import _WriteResult, BulkWriteResult
 
 from test import unittest, client_context, IntegrationTest
-from test.utils import (OvertCommandListener,
-                        rs_client,
-                        single_client,
-                        wait_until)
+from test.utils import (camel_to_snake, camel_to_upper_camel,
+                        camel_to_snake_args, rs_client,
+                        OvertCommandListener)
 from test.utils_selection_tests import parse_read_preference
 
 # Location of JSON test specifications.
@@ -50,41 +47,8 @@ _TEST_PATH = os.path.join(
 
 _TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
 
-# Max number of operations to perform after a transaction to prove unpinning
-# occurs. Chosen so that there's a low false positive rate. With 2 mongoses,
-# 50 attempts yields a one in a quadrillion chance of a false positive
-# (1/(0.5^50)).
-UNPIN_TEST_MAX_ATTEMPTS = 50
-
-
-# TODO: factor the following functions with CRUD v2 test runner.
-def camel_to_snake(camel):
-    # Regex to convert CamelCase to snake_case.
-    snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
-
-
-def camel_to_upper_camel(camel):
-    return camel[0].upper() + camel[1:]
-
-
-def camel_to_snake_args(arguments):
-    for arg_name in list(arguments):
-        c2s = camel_to_snake(arg_name)
-        arguments[c2s] = arguments.pop(arg_name)
-    return arguments
-
 
 class TestTransactions(IntegrationTest):
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestTransactions, cls).setUpClass()
-        cls.mongos_clients = []
-        if client_context.supports_transactions():
-            for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client('%s:%s' % address))
-
     def transaction_test_debug(self, msg):
         if _TXN_TESTS_DEBUG:
             print(msg)
@@ -102,18 +66,7 @@ class TestTransactions(IntegrationTest):
     def set_fail_point(self, command_args):
         cmd = SON([('configureFailPoint', 'failCommand')])
         cmd.update(command_args)
-        clients = self.mongos_clients if self.mongos_clients else [self.client]
-        for client in clients:
-            client.admin.command(cmd)
-
-    def kill_all_sessions(self):
-        clients = self.mongos_clients if self.mongos_clients else [self.client]
-        for client in clients:
-            # Run killAllSessions without an implicit session to work
-            # around SERVER-38335.
-            with client._socket_for_writes(None) as sock_info:
-                spec = SON([('killAllSessions', [])])
-                sock_info.command('admin', spec, client=client)
+        self.client.admin.command(cmd)
 
     @client_context.require_transactions
     def test_transaction_options_validation(self):
@@ -140,7 +93,6 @@ class TestTransactions(IntegrationTest):
     def test_transaction_write_concern_override(self):
         """Test txn overrides Client/Database/Collection write_concern."""
         client = rs_client(w=0)
-        self.addCleanup(client.close)
         db = client.test
         coll = db.test
         coll.insert_one({})
@@ -187,63 +139,6 @@ class TestTransactions(IntegrationTest):
                 with self.assertRaises(OperationFailure):
                     op(*args, **kwargs)
                 s.abort_transaction()
-
-    @client_context.require_transactions
-    @client_context.require_multiple_mongoses
-    def test_unpin_for_next_transaction(self):
-        # Increase localThresholdMS and wait until both nodes are discovered
-        # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(),
-                           localThresholdMS=1000)
-        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
-        # Create the collection.
-        coll.insert_one({})
-        self.addCleanup(client.close)
-        with client.start_session() as s:
-            # Session is pinned to Mongos.
-            with s.start_transaction():
-                coll.insert_one({}, session=s)
-
-            addresses = set()
-            for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
-                with s.start_transaction():
-                    cursor = coll.find({}, session=s)
-                    self.assertTrue(next(cursor))
-                    addresses.add(cursor.address)
-                # Break early if we can.
-                if len(addresses) > 1:
-                    break
-
-            self.assertGreater(len(addresses), 1)
-
-    @client_context.require_transactions
-    @client_context.require_multiple_mongoses
-    def test_unpin_for_non_transaction_operation(self):
-        # Increase localThresholdMS and wait until both nodes are discovered
-        # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(),
-                           localThresholdMS=1000)
-        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
-        # Create the collection.
-        coll.insert_one({})
-        self.addCleanup(client.close)
-        with client.start_session() as s:
-            # Session is pinned to Mongos.
-            with s.start_transaction():
-                coll.insert_one({}, session=s)
-
-            addresses = set()
-            for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
-                cursor = coll.find({}, session=s)
-                self.assertTrue(next(cursor))
-                addresses.add(cursor.address)
-                # Break early if we can.
-                if len(addresses) > 1:
-                    break
-
-            self.assertGreater(len(addresses), 1)
 
     def check_command_result(self, expected_result, result):
         # Only compare the keys in the expected result.
@@ -482,23 +377,26 @@ def create_test(scenario_def, test):
             raise unittest.SkipTest(test.get('skipReason'))
 
         listener = OvertCommandListener()
-        # Create a new client, to avoid interference from pooled sessions.
-        # Convert test['clientOptions'] to dict to avoid a Jython bug using
-        # "**" with ScenarioDict.
-        client_options = dict(test['clientOptions'])
-        if client_context.is_mongos:
-            client = rs_client(client_context.mongos_seeds(),
-                               event_listeners=[listener], **client_options)
-        else:
-            client = rs_client(event_listeners=[listener], **client_options)
+        # New client, to avoid interference from pooled sessions.
+        # Convert test['clientOptions'] to dict to avoid a Jython bug using "**"
+        # with ScenarioDict.
+        client = rs_client(event_listeners=[listener],
+                           **dict(test['clientOptions']))
         # Close the client explicitly to avoid having too many threads open.
         self.addCleanup(client.close)
 
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
-        self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
+        def kill_all_sessions():
+            try:
+                client.admin.command('killAllSessions', [])
+            except OperationFailure:
+                # "operation was interrupted" by killing the command's
+                # own session.
+                pass
+        kill_all_sessions()
+        self.addCleanup(kill_all_sessions)
 
         database_name = scenario_def['database_name']
         collection_name = scenario_def['collection_name']
@@ -592,11 +490,6 @@ def create_test(scenario_def, test):
             s.end_session()
 
         self.check_events(test, listener, session_ids)
-
-        # Disable fail points.
-        if 'failPoint' in test:
-            self.set_fail_point({
-                'configureFailPoint': 'failCommand', 'mode': 'off'})
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')

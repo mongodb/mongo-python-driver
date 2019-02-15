@@ -17,8 +17,7 @@
 
 import contextlib
 import functools
-import os
-import struct
+import re
 import sys
 import threading
 import time
@@ -29,8 +28,9 @@ from functools import partial
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient, monitoring
-from pymongo.errors import AutoReconnect, OperationFailure
+from pymongo.errors import OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS
+from pymongo.read_concern import ReadConcern
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.write_concern import WriteConcern
@@ -122,13 +122,13 @@ class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
         self.results.append(event)
 
 
-def _connection_string(h, authenticate):
+def _connection_string(h, p, authenticate):
     if h.startswith("mongodb://"):
         return h
     elif client_context.auth_enabled and authenticate:
-        return "mongodb://%s:%s@%s" % (db_user, db_pwd, str(h))
+        return "mongodb://%s:%s@%s:%d" % (db_user, db_pwd, str(h), p)
     else:
-        return "mongodb://%s" % (str(h),)
+        return "mongodb://%s:%d" % (str(h), p)
 
 
 def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
@@ -140,7 +140,7 @@ def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
         client_options['replicaSet'] = client_context.replica_set_name
     client_options.update(kwargs)
 
-    client = MongoClient(_connection_string(host, authenticate), port,
+    client = MongoClient(_connection_string(host, port, authenticate), port,
                          **client_options)
 
     return client
@@ -202,6 +202,38 @@ def get_command_line(client):
     command_line = client.admin.command('getCmdLineOpts')
     assert command_line['ok'] == 1, "getCmdLineOpts() failed"
     return command_line
+
+
+def camel_to_snake(camel):
+    # Regex to convert CamelCase to snake_case.
+    snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
+
+
+def camel_to_upper_camel(camel):
+    return camel[0].upper() + camel[1:]
+
+
+def camel_to_snake_args(arguments):
+    for arg_name in list(arguments):
+        c2s = camel_to_snake(arg_name)
+        arguments[c2s] = arguments.pop(arg_name)
+    return arguments
+
+
+def parse_collection_options(opts):
+    if 'readPreference' in opts:
+        opts['read_preference'] = parse_read_preference(
+            opts.pop('readPreference'))
+
+    if 'writeConcern' in opts:
+        opts['write_concern'] = WriteConcern(
+            **dict(opts.pop('writeConcern')))
+
+    if 'readConcern' in opts:
+        opts['read_concern'] = ReadConcern(
+            **dict(opts.pop('readConcern')))
+    return opts
 
 
 def server_started_with_option(client, cmdline_opt, config_opt):
@@ -375,78 +407,6 @@ class DeprecationFilter(object):
         """Stop filtering deprecations."""
         self.warn_context.__exit__()
         self.warn_context = None
-
-
-def read_from_which_host(
-        client,
-        pref,
-        tag_sets=None,
-):
-    """Read from a client with the given Read Preference.
-
-    Return the 'host:port' which was read from.
-
-    :Parameters:
-      - `client`: A MongoClient
-      - `mode`: A ReadPreference
-      - `tag_sets`: List of dicts of tags for data-center-aware reads
-    """
-    db = client.pymongo_test
-
-    if isinstance(tag_sets, dict):
-        tag_sets = [tag_sets]
-    if tag_sets:
-        tags = tag_sets or pref.tag_sets
-        pref = pref.__class__(tags)
-
-    db.read_preference = pref
-
-    cursor = db.test.find()
-    try:
-        try:
-            next(cursor)
-        except StopIteration:
-            # No documents in collection, that's fine
-            pass
-
-        return cursor.address
-    except AutoReconnect:
-        return None
-
-
-def assertReadFrom(testcase, client, member, *args, **kwargs):
-    """Check that a query with the given mode and tag_sets reads from
-    the expected replica-set member.
-
-    :Parameters:
-      - `testcase`: A unittest.TestCase
-      - `client`: A MongoClient
-      - `member`: A host:port expected to be used
-      - `mode`: A ReadPreference
-      - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
-    """
-    for _ in range(10):
-        testcase.assertEqual(member,
-                             read_from_which_host(client, *args, **kwargs))
-
-
-def assertReadFromAll(testcase, client, members, *args, **kwargs):
-    """Check that a query with the given mode and tag_sets reads from all
-    members in a set, and only members in that set.
-
-    :Parameters:
-      - `testcase`: A unittest.TestCase
-      - `client`: A MongoClient
-      - `members`: Sequence of host:port expected to be used
-      - `mode`: A ReadPreference
-      - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
-    """
-    members = set(members)
-    used = set()
-    for _ in range(100):
-        used.add(read_from_which_host(client, *args, **kwargs))
-
-    testcase.assertEqual(members, used)
 
 
 def get_pool(client):

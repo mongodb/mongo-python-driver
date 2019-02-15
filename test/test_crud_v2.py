@@ -1,4 +1,4 @@
-# Copyright 2015-present MongoDB, Inc.
+# Copyright 2019-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,22 +16,22 @@
 
 import json
 import os
-import re
 import sys
 
 sys.path[0:0] = [""]
 
 from bson.py3compat import iteritems
-from pymongo import operations, WriteConcern
+from pymongo import operations
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import PyMongoError
-from pymongo.read_concern import ReadConcern
 from pymongo.results import _WriteResult, BulkWriteResult
 
 from test import unittest, client_context, IntegrationTest
-from test.utils import OvertCommandListener, drop_collections, rs_client
-from test.utils_selection_tests import parse_read_preference
+from test.utils import (camel_to_snake, camel_to_upper_camel,
+                        camel_to_snake_args, drop_collections,
+                        parse_collection_options, rs_client,
+                        OvertCommandListener)
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -40,38 +40,6 @@ _TEST_PATH = os.path.join(
 # Default test database and collection names.
 TEST_DB = 'testdb'
 TEST_COLLECTION = 'testcollection'
-
-
-def camel_to_snake(camel):
-    # Regex to convert CamelCase to snake_case.
-    snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
-
-
-def camel_to_upper_camel(camel):
-    return camel[0].upper() + camel[1:]
-
-
-def camel_to_snake_args(arguments):
-    for arg_name in list(arguments):
-        c2s = camel_to_snake(arg_name)
-        arguments[c2s] = arguments.pop(arg_name)
-    return arguments
-
-
-def parse_collection_options(opts):
-    if 'readPreference' in opts:
-        opts['read_preference'] = parse_read_preference(
-            opts.pop('readPreference'))
-
-    if 'writeConcern' in opts:
-        opts['write_concern'] = WriteConcern(
-            **dict(opts.pop('writeConcern')))
-
-    if 'readConcern' in opts:
-        opts['read_concern'] = ReadConcern(
-            **dict(opts.pop('readConcern')))
-    return opts
 
 
 class TestAllScenarios(IntegrationTest):
@@ -224,14 +192,6 @@ class TestAllScenarios(IntegrationTest):
                 if isinstance(expected, dict):
                     for key, val in expected.items():
                         if val is None:
-                            if key in actual:
-                                self.fail("Unexpected key [%s] in %r" % (
-                                    key, actual))
-                        elif val == {'$exists': True}:
-                            if key not in actual:
-                                self.fail("Expected key [%s] in %r" % (
-                                    key, actual))
-                        elif val == {'$exists': False}:
                             if key in actual:
                                 self.fail("Unexpected key [%s] in %r" % (
                                     key, actual))

@@ -2277,9 +2277,9 @@ class Collection(common.BaseObject):
 
             cmd.update(kwargs)
             # Apply this Collection's read concern if
-            # - running MongoDB >= 4.2
-            # - pipeline does not have an $out stage on MongoDB >= 3.2
-            # - read concern has not been specified as a kwarg
+            # readConcern has not been specified as a kwarg and either
+            # - server version is >= 4.2 or
+            # - server version is >= 3.2 and pipeline doesn't use $out
             if (('readConcern' not in cmd) and
                     ((sock_info.max_wire_version >= 4 and not dollar_out) or
                      (sock_info.max_wire_version >= 8))):
