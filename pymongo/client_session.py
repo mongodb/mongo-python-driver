@@ -463,7 +463,6 @@ class ClientSession(object):
         except ServerSelectionTimeoutError:
             raise
         except ConnectionFailure as exc:
-            self._unpin_mongos()
             try:
                 return self._finish_transaction(command_name, True)
             except ServerSelectionTimeoutError:
@@ -473,15 +472,12 @@ class ClientSession(object):
         except OperationFailure as exc:
             if exc.code not in _RETRYABLE_ERROR_CODES:
                 raise
-            self._unpin_mongos()
             try:
                 return self._finish_transaction(command_name, True)
             except ServerSelectionTimeoutError:
                 # Raise the original error so the application can infer that
                 # an attempt was made.
                 raise exc
-        finally:
-            self._unpin_mongos()
 
     def _finish_transaction(self, command_name, retrying):
         # Transaction spec says that after the initial commit attempt,
@@ -496,13 +492,16 @@ class ClientSession(object):
         cmd = SON([(command_name, 1)])
         if self._transaction.recovery_token:
             cmd['recoveryToken'] = self._transaction.recovery_token
-        with self._client._socket_for_writes(self) as sock_info:
-            return self._client.admin._command(
-                sock_info,
-                cmd,
-                session=self,
-                write_concern=wc,
-                parse_write_concern_error=True)
+        try:
+            with self._client._socket_for_writes(self) as sock_info:
+                return self._client.admin._command(
+                    sock_info,
+                    cmd,
+                    session=self,
+                    write_concern=wc,
+                    parse_write_concern_error=True)
+        finally:
+            self._unpin_mongos()
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""
