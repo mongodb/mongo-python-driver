@@ -7,7 +7,7 @@
   "data": [],
   "tests": [
     {
-      "description": "commitTransaction explicit retries succeed",
+      "description": "commitTransaction explicit retries include recoveryToken",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -26,14 +26,6 @@
           "result": {
             "insertedId": 1
           }
-        },
-        {
-          "name": "commitTransaction",
-          "object": "session0"
-        },
-        {
-          "name": "commitTransaction",
-          "object": "session0"
         },
         {
           "name": "commitTransaction",
@@ -83,46 +75,6 @@
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null,
-              "recoveryToken": 42
-            },
-            "command_name": "commitTransaction",
-            "database_name": "admin"
-          }
-        },
-        {
-          "command_started_event": {
-            "command": {
-              "commitTransaction": 1,
-              "lsid": "session0",
-              "txnNumber": {
-                "$numberLong": "1"
-              },
-              "startTransaction": null,
-              "autocommit": false,
-              "writeConcern": {
-                "w": "majority",
-                "wtimeout": 10000
-              },
-              "recoveryToken": 42
-            },
-            "command_name": "commitTransaction",
-            "database_name": "admin"
-          }
-        },
-        {
-          "command_started_event": {
-            "command": {
-              "commitTransaction": 1,
-              "lsid": "session0",
-              "txnNumber": {
-                "$numberLong": "1"
-              },
-              "startTransaction": null,
-              "autocommit": false,
-              "writeConcern": {
-                "w": "majority",
-                "wtimeout": 10000
-              },
               "recoveryToken": 42
             },
             "command_name": "commitTransaction",
