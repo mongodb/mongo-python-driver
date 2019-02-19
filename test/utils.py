@@ -166,11 +166,10 @@ class TestCreator(object):
         self._create_test = create_test
         self._test_class= test_class
         self.test_path = test_path
-        self._test_modifiers = []
 
-    @staticmethod
-    def enforce_min_max_server_version(scenario_def, test_def, test_name, method):
-        """Modifier that enforces a version range for the server on a test case."""
+    def _ensure_min_max_server_version(self, scenario_def, method):
+        """Test modifier that enforces a version range for the server on a
+        test case."""
         if 'minServerVersion' in scenario_def:
             min_ver = tuple(
                 int(elt) for
@@ -216,14 +215,13 @@ class TestCreator(object):
                 # Construct test from scenario.
                 for test in scenario_def['tests']:
                     new_test = self._create_test(scenario_def, test)
+                    new_test = self._ensure_min_max_server_version(
+                        scenario_def, new_test)
 
                     test_name = 'test_%s_%s_%s' % (
                         dirname,
                         test_type,
                         str(test['description'].replace(" ", "_")))
-
-                    for modifier in self._test_modifiers:
-                        new_test = modifier(scenario_def, test, test_name, new_test)
 
                     new_test.__name__ = test_name
                     setattr(self._test_class, new_test.__name__, new_test)

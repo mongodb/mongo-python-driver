@@ -246,7 +246,6 @@ def create_test(scenario_def, test):
 
 
 test_creator = TestCreator(create_test, TestAllScenarios, _TEST_PATH)
-test_creator.add_test_modifier(test_creator.enforce_min_max_server_version)
 test_creator.create_tests()
 
 
