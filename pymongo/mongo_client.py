@@ -1174,8 +1174,8 @@ class MongoClient(common.BaseObject):
                                                   session._in_transaction):
                     session._pin_mongos(server)
             return server
-        except ConnectionFailure:
-            if session:
+        except PyMongoError as exc:
+            if session and exc.has_error_label("TransientTransactionError"):
                 session._unpin_mongos()
             raise
 
