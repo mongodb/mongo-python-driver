@@ -213,15 +213,15 @@ class TestCreator(object):
                 test_type = os.path.splitext(filename)[0]
 
                 # Construct test from scenario.
-                for test in scenario_def['tests']:
-                    new_test = self._create_test(scenario_def, test)
+                for test_def in scenario_def['tests']:
+                    test_name = 'test_%s_%s_%s' % (
+                        dirname, test_type,
+                        str(test_def['description'].replace(" ", "_")))
+
+                    new_test = self._create_test(
+                        scenario_def, test_def, test_name)
                     new_test = self._ensure_min_max_server_version(
                         scenario_def, new_test)
-
-                    test_name = 'test_%s_%s_%s' % (
-                        dirname,
-                        test_type,
-                        str(test['description'].replace(" ", "_")))
 
                     new_test.__name__ = test_name
                     setattr(self._test_class, new_test.__name__, new_test)

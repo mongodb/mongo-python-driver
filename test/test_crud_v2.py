@@ -205,7 +205,7 @@ class TestAllScenarios(IntegrationTest):
                     self.assertEqual(actual, expected)
 
 
-def create_test(scenario_def, test):
+def create_test(scenario_def, test, name):
     def run_scenario(self):
         listener = OvertCommandListener()
         # New client, to avoid interference from pooled sessions.

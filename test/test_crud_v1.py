@@ -141,7 +141,7 @@ def run_operation(collection, test):
     return result
 
 
-def create_test(scenario_def, test):
+def create_test(scenario_def, test, name):
     def run_scenario(self):
         # Cleanup state and load data (if provided).
         drop_collections(self.db)

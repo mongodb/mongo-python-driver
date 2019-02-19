@@ -369,7 +369,8 @@ def end_sessions(sessions):
         s.end_session()
 
 
-def create_test(scenario_def, test):
+def create_test(scenario_def, test, name):
+    @client_context.require_transactions
     def run_scenario(self):
         if test.get('skipReason'):
             raise unittest.SkipTest(test.get('skipReason'))
@@ -499,23 +500,15 @@ def create_test(scenario_def, test):
                 read_concern=ReadConcern('local'))
             self.assertEqual(list(primary_coll.find()), expected_c['data'])
 
+    if 'secondary' in name:
+        run_scenario = client_context._require(
+            lambda: client_context.has_secondaries, 'No secondaries',
+            run_scenario)
+
     return run_scenario
 
 
-def enforce_require_transactions(scenario_def, test_def, test_name, method):
-    return client_context.require_transactions(method)
-
-
-def enforce_require_secondaries(scenario_def, test_def, test_name, method):
-    if 'secondary' in test_name:
-        method = client_context._require(
-            lambda: client_context.has_secondaries, 'No secondaries', method)
-    return method
-
-
 test_creator = TestCreator(create_test, TestTransactions, _TEST_PATH)
-test_creator.add_test_modifier(
-    (enforce_require_transactions, enforce_require_secondaries))
 test_creator.create_tests()
 
 
