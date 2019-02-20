@@ -186,21 +186,6 @@ class TestCreator(object):
 
         return method
 
-    def add_test_modifier(self, modifier):
-        """Add a method that can modify the test case. Any number of modifiers
-        can be added. Modifiers are called in the order in which they are
-        added.
-
-        :Parameters:
-          - `modifier`: callback or iterable of callbacks that modify and
-            return the test method. Each callback accepts the following
-            arguments - the `scenario_def`, the `test_def`, a string
-            representing the test name, and the test method to be modified."""
-        if callable(modifier):
-            self._test_modifiers.append(modifier)
-        else:
-            self._test_modifiers.extend(modifier)
-
     def create_tests(self):
         for dirpath, _, filenames in os.walk(self.test_path):
             dirname = os.path.split(dirpath)[-1]
