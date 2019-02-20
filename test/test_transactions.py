@@ -462,23 +462,20 @@ def create_test(scenario_def, test, name):
         # New client, to avoid interference from pooled sessions.
         # Convert test['clientOptions'] to dict to avoid a Jython bug using "**"
         # with ScenarioDict.
-        client = rs_client(event_listeners=[listener],
-                           **dict(test['clientOptions']))
+        client_options = dict(test['clientOptions'])
+        if client_context.is_mongos:
+            client = rs_client(client_context.mongos_seeds(),
+                               event_listeners=[listener], **client_options)
+        else:
+            client = rs_client(event_listeners=[listener], **client_options)
         # Close the client explicitly to avoid having too many threads open.
         self.addCleanup(client.close)
 
         # Kill all sessions before and after each test to prevent an open
         # transaction (from a test failure) from blocking collection/database
         # operations during test set up and tear down.
-        def kill_all_sessions():
-            try:
-                client.admin.command('killAllSessions', [])
-            except OperationFailure:
-                # "operation was interrupted" by killing the command's
-                # own session.
-                pass
-        kill_all_sessions()
-        self.addCleanup(kill_all_sessions)
+        self.kill_all_sessions()
+        self.addCleanup(self.kill_all_sessions)
 
         database_name = scenario_def['database_name']
         collection_name = scenario_def['collection_name']
@@ -572,6 +569,11 @@ def create_test(scenario_def, test, name):
             s.end_session()
 
         self.check_events(test, listener, session_ids)
+
+        # Disable fail points.
+        if 'failPoint' in test:
+            self.set_fail_point({
+                'configureFailPoint': 'failCommand', 'mode': 'off'})
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')
