@@ -493,16 +493,13 @@ class ClientSession(object):
         cmd = SON([(command_name, 1)])
         if self._transaction.recovery_token and is_commit:
             cmd['recoveryToken'] = self._transaction.recovery_token
-        try:
-            with self._client._socket_for_writes(self) as sock_info:
-                return self._client.admin._command(
-                    sock_info,
-                    cmd,
-                    session=self,
-                    write_concern=wc,
-                    parse_write_concern_error=True)
-        finally:
-            self._unpin_mongos()
+        with self._client._socket_for_writes(self) as sock_info:
+            return self._client.admin._command(
+                sock_info,
+                cmd,
+                session=self,
+                write_concern=wc,
+                parse_write_concern_error=True)
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""

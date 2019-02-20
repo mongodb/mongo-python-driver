@@ -740,8 +740,22 @@
           }
         },
         {
+          "name": "assertSessionPinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
           "name": "commitTransaction",
           "object": "session0"
+        },
+        {
+          "name": "assertSessionPinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
         },
         {
           "name": "commitTransaction",
@@ -778,6 +792,116 @@
         {
           "name": "commitTransaction",
           "object": "session0"
+        },
+        {
+          "name": "assertSessionPinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            },
+            {
+              "_id": 3
+            },
+            {
+              "_id": 4
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "remain pinned after non-transient error on commit",
+      "useMultipleMongoses": true,
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "insertMany",
+          "object": "collection",
+          "arguments": {
+            "documents": [
+              {
+                "_id": 3
+              },
+              {
+                "_id": 4
+              }
+            ],
+            "session": "session0"
+          },
+          "result": {
+            "insertedIds": {
+              "0": 3,
+              "1": 4
+            }
+          }
+        },
+        {
+          "name": "assertSessionPinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "commitTransaction"
+                ],
+                "errorCode": 50
+              }
+            }
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "object": "session0",
+          "result": {
+            "errorLabelsOmit": [
+              "TransientTransactionError"
+            ],
+            "errorCode": 50
+          }
+        },
+        {
+          "name": "assertSessionPinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "assertSessionPinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
         }
       ],
       "outcome": {

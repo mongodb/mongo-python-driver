@@ -115,11 +115,12 @@ class TestTransactions(IntegrationTest):
 
     def assert_session_pinned(self, session):
         """Assert that the given session is pinned."""
-        self.assertIsNotNone(session._pinned_address)
+        self.assertIsNotNone(session._transaction.pinned_address)
 
     def assert_session_unpinned(self, session):
         """Assert that the given session is not pinned."""
         self.assertIsNone(session._pinned_address)
+        self.assertIsNone(session._transaction.pinned_address)
 
     def kill_all_sessions(self):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
