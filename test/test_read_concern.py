@@ -20,7 +20,7 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_concern import ReadConcern
 
 from test import client_context, PyMongoTestCase, Version
-from test.utils import single_client, rs_or_single_client, EventListener
+from test.utils import single_client, rs_or_single_client, OvertCommandListener
 
 
 class TestReadConcern(PyMongoTestCase):
@@ -28,7 +28,7 @@ class TestReadConcern(PyMongoTestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        cls.listener = EventListener()
+        cls.listener = OvertCommandListener()
         cls.saved_listeners = monitoring._LISTENERS
         # Don't use any global subscribers.
         monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
