@@ -142,7 +142,7 @@ of the collections in our database:
 
 .. doctest::
 
-  >>> db.collection_names(include_system_collections=False)
+  >>> db.list_collection_names(include_system_collections=False)
   [u'posts']
 
 Getting a Single Document With :meth:`~pymongo.collection.Collection.find_one`
