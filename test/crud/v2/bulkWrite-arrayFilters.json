@@ -116,9 +116,7 @@
                   ]
                 }
               ],
-              "ordered": true,
-              "writeConcern": null,
-              "bypassDocumentValidation": null
+              "ordered": true
             },
             "command_name": "update",
             "database_name": "crud-tests"
