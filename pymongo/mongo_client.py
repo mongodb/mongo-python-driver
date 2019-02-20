@@ -1230,6 +1230,7 @@ class MongoClient(common.BaseObject):
 
         return self._reset_on_error(
             server,
+            operation.session,
             server.send_message_with_response,
             operation,
             set_slave_ok,
@@ -1237,7 +1238,7 @@ class MongoClient(common.BaseObject):
             self._event_listeners,
             exhaust)
 
-    def _reset_on_error(self, server, func, *args, **kwargs):
+    def _reset_on_error(self, server, session, func, *args, **kwargs):
         """Execute an operation. Reset the server on network error.
 
         Returns fn()'s return value on success. On error, clears the server's
@@ -1245,8 +1246,15 @@ class MongoClient(common.BaseObject):
 
         Re-raises any exception thrown by fn().
         """
+        # TODO: refactor this with MongoClient._get_socket
         try:
-            return func(*args, **kwargs)
+            try:
+                return func(*args, **kwargs)
+            except PyMongoError as exc:
+                if session and exc.has_error_label(
+                        "TransientTransactionError"):
+                    session._unpin_mongos()
+                raise
         except NetworkTimeout:
             # The socket has been closed. Don't reset the server.
             raise
