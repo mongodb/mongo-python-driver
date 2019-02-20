@@ -22,7 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.py3compat import iteritems
-from pymongo import operations
+from pymongo import operations, WriteConcern
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import PyMongoError
@@ -148,7 +148,9 @@ def create_test(scenario_def, test, name):
         drop_collections(self.db)
         data = scenario_def.get('data')
         if data:
-            self.db.test.insert_many(scenario_def['data'])
+            self.db.test.with_options(
+                write_concern=WriteConcern(w="majority")).insert_many(
+                scenario_def['data'])
 
         # Run operations and check results or errors.
         expected_result = test.get('outcome', {}).get('result')

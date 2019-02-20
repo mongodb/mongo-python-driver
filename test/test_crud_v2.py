@@ -21,7 +21,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.py3compat import iteritems
-from pymongo import operations
+from pymongo import operations, WriteConcern
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import PyMongoError
@@ -225,7 +225,9 @@ def create_test(scenario_def, test, name):
             database, scenario_def.get('collection_name', TEST_COLLECTION))
 
         # Populate collection with data and run test.
-        collection.insert_many(scenario_def.get('data', []))
+        collection.with_options(
+            write_concern=WriteConcern(w="majority")).insert_many(
+            scenario_def.get('data', []))
         listener.results.clear()
         self.run_operation(collection, test)
 
