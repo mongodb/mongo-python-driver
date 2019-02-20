@@ -26,6 +26,7 @@ from pymongo import operations
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import PyMongoError
+from pymongo.read_concern import ReadConcern
 from pymongo.results import _WriteResult, BulkWriteResult
 from pymongo.operations import (InsertOne,
                                 DeleteOne,
@@ -167,6 +168,8 @@ def create_test(scenario_def, test, name):
                 db_coll = self.db[expected_name]
             else:
                 db_coll = self.db.test
+            db_coll = db_coll.with_options(
+                read_concern=ReadConcern(level="local"))
             self.assertEqual(list(db_coll.find()), expected_c['data'])
 
     return run_scenario

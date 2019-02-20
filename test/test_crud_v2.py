@@ -25,6 +25,7 @@ from pymongo import operations
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import PyMongoError
+from pymongo.read_concern import ReadConcern
 from pymongo.results import _WriteResult, BulkWriteResult
 
 from test import unittest, client_context, IntegrationTest
@@ -239,6 +240,8 @@ def create_test(scenario_def, test, name):
                 o_collection = getattr(database, collname)
             else:
                 o_collection = collection
+            o_collection = o_collection.with_options(
+                read_concern=ReadConcern(level="local"))
             self.assertEqual(list(o_collection.find()),
                              expected_outcome['data'])
 
