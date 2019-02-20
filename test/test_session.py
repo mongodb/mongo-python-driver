@@ -998,7 +998,7 @@ class TestCausalConsistency(unittest.TestCase):
 
     @client_context.require_no_standalone
     @client_context.require_version_max(4, 1, 0)
-    def test_agggreate_out_doe_not_include_read_concern(self):
+    def test_aggregate_out_does_not_include_read_concern(self):
         self._test_no_read_concern(
                 lambda coll, session: list(
                     coll.aggregate([{"$out": "aggout"}], session=session)))
