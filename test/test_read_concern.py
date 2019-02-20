@@ -19,7 +19,7 @@ from pymongo import monitoring
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_concern import ReadConcern
 
-from test import client_context, PyMongoTestCase
+from test import client_context, PyMongoTestCase, Version
 from test.utils import single_client, rs_or_single_client, EventListener
 
 
@@ -118,8 +118,14 @@ class TestReadConcern(PyMongoTestCase):
         except OperationFailure:
             # "ns doesn't exist"
             pass
-        self.assertNotIn('readConcern',
-                         self.listener.results['started'][0].command)
+
+        # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
+        if client_context.version >= Version(4, 1):
+            self.assertIn('readConcern',
+                          self.listener.results['started'][0].command)
+        else:
+            self.assertNotIn('readConcern',
+                          self.listener.results['started'][0].command)
 
     def test_map_reduce_out(self):
         coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
