@@ -459,9 +459,9 @@ def create_test(scenario_def, test, name):
             raise unittest.SkipTest(test.get('skipReason'))
 
         listener = OvertCommandListener()
-        # New client, to avoid interference from pooled sessions.
-        # Convert test['clientOptions'] to dict to avoid a Jython bug using "**"
-        # with ScenarioDict.
+        # Create a new client, to avoid interference from pooled sessions.
+        # Convert test['clientOptions'] to dict to avoid a Jython bug using
+        # "**" with ScenarioDict.
         client_options = dict(test['clientOptions'])
         if client_context.is_mongos:
             client = rs_client(client_context.mongos_seeds(),
