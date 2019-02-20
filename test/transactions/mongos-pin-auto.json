@@ -1315,7 +1315,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on count",
+      "description": "remain pinned after non-transient Interrupted error on countDocuments",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1347,7 +1347,7 @@
               },
               "data": {
                 "failCommands": [
-                  "count"
+                  "aggregate"
                 ],
                 "errorCode": 11601
               }
@@ -1355,13 +1355,11 @@
           }
         },
         {
-          "name": "count",
+          "name": "countDocuments",
           "object": "collection",
           "arguments": {
             "session": "session0",
-            "filter": {
-              "_id": 1
-            }
+            "filter": {}
           },
           "result": {
             "errorLabelsOmit": [
@@ -3635,7 +3633,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on count",
+      "description": "unpin after transient connection error on countDocuments",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3667,7 +3665,7 @@
               },
               "data": {
                 "failCommands": [
-                  "count"
+                  "aggregate"
                 ],
                 "closeConnection": true
               }
@@ -3675,13 +3673,11 @@
           }
         },
         {
-          "name": "count",
+          "name": "countDocuments",
           "object": "collection",
           "arguments": {
             "session": "session0",
-            "filter": {
-              "_id": 1
-            }
+            "filter": {}
           },
           "result": {
             "errorLabelsContain": [
@@ -3715,7 +3711,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on count",
+      "description": "unpin after transient ShutdownInProgress error on countDocuments",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3747,7 +3743,7 @@
               },
               "data": {
                 "failCommands": [
-                  "count"
+                  "aggregate"
                 ],
                 "errorCode": 91
               }
@@ -3755,13 +3751,11 @@
           }
         },
         {
-          "name": "count",
+          "name": "countDocuments",
           "object": "collection",
           "arguments": {
             "session": "session0",
-            "filter": {
-              "_id": 1
-            }
+            "filter": {}
           },
           "result": {
             "errorLabelsContain": [
