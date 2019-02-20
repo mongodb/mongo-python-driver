@@ -19,7 +19,7 @@ from pymongo import monitoring
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_concern import ReadConcern
 
-from test import client_context, PyMongoTestCase, Version
+from test import client_context, PyMongoTestCase
 from test.utils import single_client, rs_or_single_client, OvertCommandListener
 
 
@@ -120,7 +120,7 @@ class TestReadConcern(PyMongoTestCase):
             pass
 
         # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
-        if client_context.version >= Version(4, 1):
+        if client_context.version >= (4, 1):
             self.assertIn('readConcern',
                           self.listener.results['started'][0].command)
         else:
