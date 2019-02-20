@@ -996,6 +996,7 @@ class TestCausalConsistency(unittest.TestCase):
             self._test_no_read_concern(
                 lambda coll, session: coll.reindex(session=session))
 
+    @client_context.require_no_standalone
     @client_context.require_version_max(4, 1, 0)
     def test_agggreate_out_doe_not_include_read_concern(self):
         self._test_no_read_concern(
