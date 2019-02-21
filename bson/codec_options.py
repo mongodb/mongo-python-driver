@@ -35,7 +35,7 @@ def _raw_document_class(document_class):
 _options_base = namedtuple(
     'CodecOptions',
     ('document_class', 'tz_aware', 'uuid_representation',
-     'unicode_decode_error_handler', 'tzinfo'))
+     'unicode_decode_error_handler', 'tzinfo', 'encoder_map', 'decoder_map'))
 
 
 class CodecOptions(_options_base):
@@ -104,7 +104,7 @@ class CodecOptions(_options_base):
     def __new__(cls, document_class=dict,
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
                 unicode_decode_error_handler="strict",
-                tzinfo=None):
+                tzinfo=None, encoder_map=None, decoder_map=None):
         if not (issubclass(document_class, abc.MutableMapping) or
                 _raw_document_class(document_class)):
             raise TypeError("document_class must be dict, bson.son.SON, "
@@ -126,6 +126,13 @@ class CodecOptions(_options_base):
                 raise ValueError(
                     "cannot specify tzinfo without also setting tz_aware=True")
 
+        encoder_map = encoder_map or {}
+        decoder_map = decoder_map or {}
+
+        if (not isinstance(encoder_map, abc.Mapping) or
+                not isinstance(decoder_map, abc.Mapping)):
+            raise TypeError("Encoder/Decoder maps must be of mapping type")
+
         return tuple.__new__(
             cls, (document_class, tz_aware, uuid_representation,
                   unicode_decode_error_handler, tzinfo))
@@ -139,8 +146,9 @@ class CodecOptions(_options_base):
         uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(self.uuid_representation,
                                                       self.uuid_representation)
 
-        return ('document_class=%s, tz_aware=%r, uuid_representation='
-                '%s, unicode_decode_error_handler=%r, tzinfo=%r' %
+        return ('document_class=%s, tz_aware=%r, uuid_representation=%s, '
+                'unicode_decode_error_handler=%r, tzinfo=%r, '
+                'encoder_map=%r, decoder_map=%r' %
                 (document_class_repr, self.tz_aware, uuid_rep_repr,
                  self.unicode_decode_error_handler, self.tzinfo))
 
@@ -165,7 +173,10 @@ class CodecOptions(_options_base):
             kwargs.get('uuid_representation', self.uuid_representation),
             kwargs.get('unicode_decode_error_handler',
                        self.unicode_decode_error_handler),
-            kwargs.get('tzinfo', self.tzinfo))
+            kwargs.get('tzinfo', self.tzinfo),
+            kwargs.get('encoder_map', self.encoder_map),
+            kwargs.get('decoder_map', self.decoder_map)
+        )
 
 
 DEFAULT_CODEC_OPTIONS = CodecOptions()
@@ -183,4 +194,8 @@ def _parse_codec_options(options):
         unicode_decode_error_handler=options.get(
             'unicode_decode_error_handler',
             DEFAULT_CODEC_OPTIONS.unicode_decode_error_handler),
-        tzinfo=options.get('tzinfo', DEFAULT_CODEC_OPTIONS.tzinfo))
+        tzinfo=options.get('tzinfo', DEFAULT_CODEC_OPTIONS.tzinfo),
+        encoder_map=options.get(
+            'encoder_map', DEFAULT_CODEC_OPTIONS.encoder_map),
+        decoder_map=options.get(
+            'decoder_map', DEFAULT_CODEC_OPTIONS.decoder_map))
