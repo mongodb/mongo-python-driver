@@ -22,9 +22,11 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.py3compat import iteritems
-from pymongo import operations
+from pymongo import operations, WriteConcern
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
+from pymongo.errors import PyMongoError
+from pymongo.read_concern import ReadConcern
 from pymongo.results import _WriteResult, BulkWriteResult
 from pymongo.operations import (InsertOne,
                                 DeleteOne,
@@ -34,25 +36,16 @@ from pymongo.operations import (InsertOne,
                                 UpdateMany)
 
 from test import unittest, client_context, IntegrationTest
-from test.utils import drop_collections
+from test.utils import (camel_to_snake, camel_to_upper_camel,
+                        camel_to_snake_args, drop_collections, TestCreator)
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'crud')
+    os.path.dirname(os.path.realpath(__file__)), 'crud', 'v1')
 
 
 class TestAllScenarios(IntegrationTest):
     pass
-
-
-def camel_to_snake(camel):
-    # Regex to convert CamelCase to snake_case.
-    snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
-
-
-def camel_to_upper_camel(camel):
-    return camel[0].upper() + camel[1:]
 
 
 def check_result(expected_result, result):
@@ -96,17 +89,10 @@ def check_result(expected_result, result):
                 return False
         return True
     else:
-        if not expected_result:
+        if expected_result is None:
             return result is None
         else:
             return result == expected_result
-
-
-def camel_to_snake_args(arguments):
-    for arg_name in list(arguments):
-        c2s = camel_to_snake(arg_name)
-        arguments[c2s] = arguments.pop(arg_name)
-    return arguments
 
 
 def run_operation(collection, test):
@@ -156,14 +142,25 @@ def run_operation(collection, test):
     return result
 
 
-def create_test(scenario_def, test):
+def create_test(scenario_def, test, name):
     def run_scenario(self):
-        # Load data.
-        assert scenario_def['data'], "tests must have non-empty data"
+        # Cleanup state and load data (if provided).
         drop_collections(self.db)
-        self.db.test.insert_many(scenario_def['data'])
+        data = scenario_def.get('data')
+        if data:
+            self.db.test.with_options(
+                write_concern=WriteConcern(w="majority")).insert_many(
+                scenario_def['data'])
 
-        result = run_operation(self.db.test, test)
+        # Run operations and check results or errors.
+        expected_result = test.get('outcome', {}).get('result')
+        expected_error = test.get('outcome', {}).get('error')
+        if expected_error is True:
+            with self.assertRaises(PyMongoError):
+                run_operation(self.db.test, test)
+        else:
+            result = run_operation(self.db.test, test)
+            self.assertTrue(check_result(expected_result, result))
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')
@@ -173,53 +170,15 @@ def create_test(scenario_def, test):
                 db_coll = self.db[expected_name]
             else:
                 db_coll = self.db.test
+            db_coll = db_coll.with_options(
+                read_concern=ReadConcern(level="local"))
             self.assertEqual(list(db_coll.find()), expected_c['data'])
-        expected_result = test['outcome'].get('result')
-        self.assertTrue(check_result(expected_result, result))
 
     return run_scenario
 
 
-def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
-        dirname = os.path.split(dirpath)[-1]
-
-        for filename in filenames:
-            with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = json.load(scenario_stream)
-
-            test_type = os.path.splitext(filename)[0]
-
-            min_ver, max_ver = None, None
-            if 'minServerVersion' in scenario_def:
-                min_ver = tuple(
-                    int(elt) for
-                    elt in scenario_def['minServerVersion'].split('.'))
-            if 'maxServerVersion' in scenario_def:
-                max_ver = tuple(
-                    int(elt) for
-                    elt in scenario_def['maxServerVersion'].split('.'))
-
-            # Construct test from scenario.
-            for test in scenario_def['tests']:
-                new_test = create_test(scenario_def, test)
-                if min_ver is not None:
-                    new_test = client_context.require_version_min(*min_ver)(
-                        new_test)
-                if max_ver is not None:
-                    new_test = client_context.require_version_max(*max_ver)(
-                        new_test)
-
-                test_name = 'test_%s_%s_%s' % (
-                    dirname,
-                    test_type,
-                    str(test['description'].replace(" ", "_")))
-
-                new_test.__name__ = test_name
-                setattr(TestAllScenarios, new_test.__name__, new_test)
-
-
-create_tests()
+test_creator = TestCreator(create_test, TestAllScenarios, _TEST_PATH)
+test_creator.create_tests()
 
 
 class TestWriteOpsComparison(unittest.TestCase):
