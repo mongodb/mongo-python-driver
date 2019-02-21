@@ -982,9 +982,6 @@ class TestCausalConsistency(unittest.TestCase):
         self._test_no_read_concern(
             lambda coll, session: coll.drop_indexes(session=session))
         self._test_no_read_concern(
-                lambda coll, session: list(
-                    coll.aggregate([{"$out": "aggout"}], session=session)))
-        self._test_no_read_concern(
             lambda coll, session: coll.map_reduce(
                 'function() {}', 'function() {}', 'mrout', session=session))
 
@@ -998,6 +995,13 @@ class TestCausalConsistency(unittest.TestCase):
         if client_context.supports_reindex:
             self._test_no_read_concern(
                 lambda coll, session: coll.reindex(session=session))
+
+    @client_context.require_no_standalone
+    @client_context.require_version_max(4, 1, 0)
+    def test_aggregate_out_does_not_include_read_concern(self):
+        self._test_no_read_concern(
+                lambda coll, session: list(
+                    coll.aggregate([{"$out": "aggout"}], session=session)))
 
     @client_context.require_no_standalone
     def test_get_more_does_not_include_read_concern(self):

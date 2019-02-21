@@ -15,8 +15,11 @@
 """Utilities for testing pymongo
 """
 
+import collections
 import contextlib
 import functools
+import os
+import re
 import sys
 import threading
 import time
@@ -25,14 +28,16 @@ import warnings
 from collections import defaultdict
 from functools import partial
 
+from bson import json_util, py3compat
 from bson.objectid import ObjectId
 from pymongo import MongoClient, monitoring
 from pymongo.errors import OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS
+from pymongo.read_concern import ReadConcern
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.write_concern import WriteConcern
-from test import (client_context, db_user, db_pwd)
+from test import client_context, db_user, db_pwd
 
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=1000)
@@ -120,6 +125,93 @@ class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
         self.results.append(event)
 
 
+class ScenarioDict(dict):
+    """Dict that returns {} for any unknown key, recursively."""
+    def __init__(self, data):
+        def convert(v):
+            if isinstance(v, collections.Mapping):
+                return ScenarioDict(v)
+            if isinstance(v, py3compat.string_type):
+                return v
+            if isinstance(v, collections.Sequence):
+                return [convert(item) for item in v]
+            return v
+
+        dict.__init__(self, [(k, convert(v)) for k, v in data.items()])
+
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item)
+        except KeyError:
+            # Unlike a defaultdict, don't set the key, just return a dict.
+            return ScenarioDict({})
+
+
+class TestCreator(object):
+    """Class to create test cases from specifications."""
+    def __init__(self, create_test, test_class, test_path):
+        """Create a TestCreator object.
+
+        :Parameters:
+          - `create_test`: callback that returns a test case. The callback
+            must accept the following arguments - a dictionary containing the
+            entire test specification (the `scenario_def`), a dictionary
+            containing the specification for which the test case will be
+            generated (the `test_def`).
+          - `test_class`: the unittest.TestCase class in which to create the
+            test case.
+          - `test_path`: path to the directory containing the JSON files with
+            the test specifications.
+            """
+        self._create_test = create_test
+        self._test_class= test_class
+        self.test_path = test_path
+
+    def _ensure_min_max_server_version(self, scenario_def, method):
+        """Test modifier that enforces a version range for the server on a
+        test case."""
+        if 'minServerVersion' in scenario_def:
+            min_ver = tuple(
+                int(elt) for
+                elt in scenario_def['minServerVersion'].split('.'))
+            if min_ver is not None:
+                method = client_context.require_version_min(*min_ver)(method)
+
+        if 'maxServerVersion' in scenario_def:
+            max_ver = tuple(
+                int(elt) for
+                elt in scenario_def['maxServerVersion'].split('.'))
+            if max_ver is not None:
+                method = client_context.require_version_max(*max_ver)(method)
+
+        return method
+
+    def create_tests(self):
+        for dirpath, _, filenames in os.walk(self.test_path):
+            dirname = os.path.split(dirpath)[-1]
+
+            for filename in filenames:
+                with open(os.path.join(dirpath, filename)) as scenario_stream:
+                    scenario_def = ScenarioDict(
+                        json_util.loads(scenario_stream.read()))
+
+                test_type = os.path.splitext(filename)[0]
+
+                # Construct test from scenario.
+                for test_def in scenario_def['tests']:
+                    test_name = 'test_%s_%s_%s' % (
+                        dirname, test_type,
+                        str(test_def['description'].replace(" ", "_")))
+
+                    new_test = self._create_test(
+                        scenario_def, test_def, test_name)
+                    new_test = self._ensure_min_max_server_version(
+                        scenario_def, new_test)
+
+                    new_test.__name__ = test_name
+                    setattr(self._test_class, new_test.__name__, new_test)
+
+
 def _connection_string(h, authenticate):
     if h.startswith("mongodb://"):
         return h
@@ -200,6 +292,38 @@ def get_command_line(client):
     command_line = client.admin.command('getCmdLineOpts')
     assert command_line['ok'] == 1, "getCmdLineOpts() failed"
     return command_line
+
+
+def camel_to_snake(camel):
+    # Regex to convert CamelCase to snake_case.
+    snake = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', snake).lower()
+
+
+def camel_to_upper_camel(camel):
+    return camel[0].upper() + camel[1:]
+
+
+def camel_to_snake_args(arguments):
+    for arg_name in list(arguments):
+        c2s = camel_to_snake(arg_name)
+        arguments[c2s] = arguments.pop(arg_name)
+    return arguments
+
+
+def parse_collection_options(opts):
+    if 'readPreference' in opts:
+        opts['read_preference'] = parse_read_preference(
+            opts.pop('readPreference'))
+
+    if 'writeConcern' in opts:
+        opts['write_concern'] = WriteConcern(
+            **dict(opts.pop('writeConcern')))
+
+    if 'readConcern' in opts:
+        opts['read_concern'] = ReadConcern(
+            **dict(opts.pop('readConcern')))
+    return opts
 
 
 def server_started_with_option(client, cmdline_opt, config_opt):

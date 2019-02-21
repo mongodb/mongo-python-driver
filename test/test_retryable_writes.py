@@ -43,7 +43,7 @@ from test import unittest, client_context, IntegrationTest, SkipTest, client_kno
 from test.utils import (rs_or_single_client,
                         DeprecationFilter,
                         OvertCommandListener)
-from test.test_crud import check_result, run_operation
+from test.test_crud_v1 import check_result, run_operation
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
