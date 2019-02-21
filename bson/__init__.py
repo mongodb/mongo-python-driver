@@ -377,6 +377,31 @@ _ELEMENT_GETTER = {
     BSONMAX: lambda v, w, x, y, z: (MaxKey(), w)}
 
 
+_BSON_TYPE_MARKER_TO_PYTHON_TYPE_MAP = {
+    BSONNUM: float,
+    BSONSTR: str,
+    # opts.document_class: BSONOBJ, ....... needs special handling
+    # list: BSONARR, ......... needs special handling
+    BSONBIN: Binary,
+    # ?: BSONUND, ..... not sure what happens here
+    BSONOID: ObjectId,
+    BSONBOO: bool,
+    BSONDAT: datetime.datetime,
+    # None: BSONNUL, .... not sure what happens here
+    # BSONRGX: _get_regex,
+    # BSONREF: _get_ref,  # Deprecated DBPointer
+    # BSONCOD: _get_code,
+    # BSONSYM: _get_string,  # Deprecated symbol
+    # BSONCWS: _get_code_w_scope,
+    BSONINT: int,
+    BSONTIM: Timestamp,
+    BSONLON: Int64,
+    BSONDEC: Decimal128,
+    # BSONMIN: lambda v, w, x, y, z: (MinKey(), w),
+    # BSONMAX: lambda v, w, x, y, z: (MaxKey(), w)
+}
+
+
 def _element_to_dict(data, position, obj_end, opts):
     """Decode a single key, value pair."""
     element_type = data[position:position + 1]
@@ -388,6 +413,12 @@ def _element_to_dict(data, position, obj_end, opts):
                                                         element_name)
     except KeyError:
         _raise_unknown_type(element_type, element_name)
+
+    bson_type = _BSON_TYPE_MARKER_TO_PYTHON_TYPE_MAP.get(element_type)
+    custom_decoder = opts.decoder_map.get(bson_type)
+    if custom_decoder is not None:
+        value = custom_decoder(value)
+
     return element_name, value, position
 if _USE_C:
     _element_to_dict = _cbson._element_to_dict
@@ -748,6 +779,13 @@ if not PY3:
 
 def _name_value_to_bson(name, value, check_keys, opts):
     """Encode a single name, value pair."""
+    # Custom encoder (if any) takes precedence over default encoders.
+    # Using 'if' instead of 'try...except' for performance since this will
+    # usually not be true.
+    # No support for auto-encoding subtypes of registered custom types.
+    custom_encoder = opts.encoder_map.get(type(value))
+    if custom_encoder is not None:
+        value = custom_encoder(value)
 
     # First see if the type is already cached. KeyError will only ever
     # happen once per subtype.

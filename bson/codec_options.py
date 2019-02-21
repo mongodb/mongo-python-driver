@@ -23,6 +23,7 @@ from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          PYTHON_LEGACY,
                          UUID_REPRESENTATION_NAMES)
 
+
 _RAW_BSON_DOCUMENT_MARKER = 101
 
 
@@ -135,7 +136,7 @@ class CodecOptions(_options_base):
 
         return tuple.__new__(
             cls, (document_class, tz_aware, uuid_representation,
-                  unicode_decode_error_handler, tzinfo))
+                  unicode_decode_error_handler, tzinfo, encoder_map, decoder_map))
 
     def _arguments_repr(self):
         """Representation of the arguments used to create this object."""
@@ -150,7 +151,8 @@ class CodecOptions(_options_base):
                 'unicode_decode_error_handler=%r, tzinfo=%r, '
                 'encoder_map=%r, decoder_map=%r' %
                 (document_class_repr, self.tz_aware, uuid_rep_repr,
-                 self.unicode_decode_error_handler, self.tzinfo))
+                 self.unicode_decode_error_handler, self.tzinfo,
+                 self.encoder_map, self.decoder_map))
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())

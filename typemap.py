@@ -10,27 +10,43 @@ def _encode_decimal(value):
     return Decimal128(value)
 
 
+def _decode_decimal128(value):
+    """Decodes BSON type Decimal128 to Python native decimal."""
+    return value.to_decimal()
+
+
 def encode_vanilla(document):
+    codec_options = CodecOptions()
     try:
-        BSON.encode(document)
-    except InvalidDocument as exc:
-        print("Success! Received expected exception: %r\n" % (exc,))
-    else:
-        raise AssertionError("Expected encoding error")
+        return BSON.encode(document, codec_options=codec_options)
+    except InvalidDocument:
+        # expected error
+        pass
 
 
 def encode_special(document):
     codec_options = CodecOptions(encoder_map={Decimal: _encode_decimal})
-    try:
-        import ipdb; ipdb.set_trace()
-        BSON.encode(document, codec_options=codec_options)
-    except:
-        raise AssertionError("Unexpected encoding error")
-    else:
-        print("Success! Did not receive exception")
+    return BSON.encode(document, codec_options=codec_options)
+
+
+def decode_vanilla(bson_bytes, expected_document):
+    codec_options = CodecOptions()
+    document = BSON.decode(bson_bytes, codec_options=codec_options)
+    assert document==expected_document, 'Vanilla decoding error!'
+
+
+def decode_special(bson_bytes, expected_document):
+    codec_options = CodecOptions(decoder_map={Decimal128: _decode_decimal128})
+    document = BSON.decode(bson_bytes, codec_options=codec_options)
+    assert document==expected_document, 'Special decoding error!'
 
 
 if __name__ == '__main__':
     document = {'average': Decimal('56.47')}
     encode_vanilla(document)
-    encode_special(document)
+    bsonbytes = encode_special(document)
+
+    decode_vanilla(bsonbytes, {'average': Decimal128('56.47')})
+    decode_special(bsonbytes, document)      # roundtrip
+
+    print("DONE!")
