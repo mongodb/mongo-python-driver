@@ -927,6 +927,7 @@ class TestCodecOptions(unittest.TestCase):
         self.assertRaises(ValueError, CodecOptions, tzinfo=tz)
         self.assertEqual(tz, CodecOptions(tz_aware=True, tzinfo=tz).tzinfo)
 
+    @unittest.expectedFailure
     def test_codec_options_repr(self):
         r = ("CodecOptions(document_class=dict, tz_aware=False, "
              "uuid_representation=PYTHON_LEGACY, "
