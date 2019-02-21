@@ -2369,6 +2369,9 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
+        .. versionchanged:: 3.9
+           Apply this collection's read concern to pipelines containing the
+           `$out` stage when connected to MongoDB >= 4.2.
         .. versionchanged:: 3.6
            Added the `session` parameter. Added the `maxAwaitTimeMS` option.
            Deprecated the `useCursor` option.
