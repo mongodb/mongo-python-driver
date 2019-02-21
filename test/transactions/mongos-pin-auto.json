@@ -63,12 +63,11 @@
             }
           },
           "result": {
-            "errorLabelsContain": [
-              "TransientTransactionError"
-            ],
             "errorLabelsOmit": [
+              "TransientTransactionError",
               "UnknownTransactionCommitResult"
-            ]
+            ],
+            "errorCodeName": "Interrupted"
           }
         },
         {
@@ -159,9 +158,6 @@
             },
             {
               "_id": 3
-            },
-            {
-              "_id": 4
             }
           ]
         }
@@ -316,7 +312,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on insertOne",
+      "description": "remain pinned after non-transient Interrupted error on insertOne insert",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -396,7 +392,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on insertMany",
+      "description": "remain pinned after non-transient Interrupted error on insertMany insert",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -481,7 +477,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on updateOne",
+      "description": "remain pinned after non-transient Interrupted error on updateOne update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -566,7 +562,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on replaceOne",
+      "description": "remain pinned after non-transient Interrupted error on replaceOne update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -649,7 +645,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on updateMany",
+      "description": "remain pinned after non-transient Interrupted error on updateMany update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -736,7 +732,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on deleteOne",
+      "description": "remain pinned after non-transient Interrupted error on deleteOne delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -816,7 +812,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on deleteMany",
+      "description": "remain pinned after non-transient Interrupted error on deleteMany delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -898,7 +894,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on findOneAndDelete",
+      "description": "remain pinned after non-transient Interrupted error on findOneAndDelete findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -978,7 +974,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on findOneAndUpdate",
+      "description": "remain pinned after non-transient Interrupted error on findOneAndUpdate findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1064,7 +1060,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on findOneAndReplace",
+      "description": "remain pinned after non-transient Interrupted error on findOneAndReplace findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1148,7 +1144,186 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on bulkWrite",
+      "description": "remain pinned after non-transient Interrupted error on bulkWrite insert",
+      "useMultipleMongoses": true,
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "document": {
+              "_id": 3
+            }
+          },
+          "result": {
+            "insertedId": 3
+          }
+        },
+        {
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "errorCode": 11601
+              }
+            }
+          }
+        },
+        {
+          "name": "bulkWrite",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "requests": [
+              {
+                "name": "insertOne",
+                "arguments": {
+                  "document": {
+                    "_id": 1
+                  }
+                }
+              }
+            ]
+          },
+          "result": {
+            "errorLabelsOmit": [
+              "TransientTransactionError"
+            ]
+          }
+        },
+        {
+          "name": "assertSessionPinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "object": "session0"
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "remain pinned after non-transient Interrupted error on bulkWrite update",
+      "useMultipleMongoses": true,
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "document": {
+              "_id": 3
+            }
+          },
+          "result": {
+            "insertedId": 3
+          }
+        },
+        {
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "update"
+                ],
+                "errorCode": 11601
+              }
+            }
+          }
+        },
+        {
+          "name": "bulkWrite",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "requests": [
+              {
+                "name": "updateOne",
+                "arguments": {
+                  "filter": {
+                    "_id": 1
+                  },
+                  "update": {
+                    "$set": {
+                      "x": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "result": {
+            "errorLabelsOmit": [
+              "TransientTransactionError"
+            ]
+          }
+        },
+        {
+          "name": "assertSessionPinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "object": "session0"
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "remain pinned after non-transient Interrupted error on bulkWrite delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1235,7 +1410,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on find",
+      "description": "remain pinned after non-transient Interrupted error on find find",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1315,7 +1490,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on countDocuments",
+      "description": "remain pinned after non-transient Interrupted error on countDocuments aggregate",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1393,7 +1568,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on aggregate",
+      "description": "remain pinned after non-transient Interrupted error on aggregate aggregate",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1471,7 +1646,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on distinct",
+      "description": "remain pinned after non-transient Interrupted error on distinct distinct",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1549,7 +1724,7 @@
       }
     },
     {
-      "description": "remain pinned after non-transient Interrupted error on runCommand",
+      "description": "remain pinned after non-transient Interrupted error on runCommand insert",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1635,7 +1810,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on insertOne",
+      "description": "unpin after transient connection error on insertOne insert",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1715,7 +1890,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on insertOne",
+      "description": "unpin after transient ShutdownInProgress error on insertOne insert",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1795,7 +1970,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on insertMany",
+      "description": "unpin after transient connection error on insertMany insert",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1880,7 +2055,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on insertMany",
+      "description": "unpin after transient ShutdownInProgress error on insertMany insert",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1965,7 +2140,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on updateOne",
+      "description": "unpin after transient connection error on updateOne update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2050,7 +2225,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on updateOne",
+      "description": "unpin after transient ShutdownInProgress error on updateOne update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2135,7 +2310,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on replaceOne",
+      "description": "unpin after transient connection error on replaceOne update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2218,7 +2393,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on replaceOne",
+      "description": "unpin after transient ShutdownInProgress error on replaceOne update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2301,7 +2476,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on updateMany",
+      "description": "unpin after transient connection error on updateMany update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2388,7 +2563,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on updateMany",
+      "description": "unpin after transient ShutdownInProgress error on updateMany update",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2475,7 +2650,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on deleteOne",
+      "description": "unpin after transient connection error on deleteOne delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2555,7 +2730,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on deleteOne",
+      "description": "unpin after transient ShutdownInProgress error on deleteOne delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2635,7 +2810,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on deleteMany",
+      "description": "unpin after transient connection error on deleteMany delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2717,7 +2892,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on deleteMany",
+      "description": "unpin after transient ShutdownInProgress error on deleteMany delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2799,7 +2974,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on findOneAndDelete",
+      "description": "unpin after transient connection error on findOneAndDelete findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2879,7 +3054,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on findOneAndDelete",
+      "description": "unpin after transient ShutdownInProgress error on findOneAndDelete findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -2959,7 +3134,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on findOneAndUpdate",
+      "description": "unpin after transient connection error on findOneAndUpdate findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3045,7 +3220,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on findOneAndUpdate",
+      "description": "unpin after transient ShutdownInProgress error on findOneAndUpdate findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3131,7 +3306,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on findOneAndReplace",
+      "description": "unpin after transient connection error on findOneAndReplace findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3215,7 +3390,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on findOneAndReplace",
+      "description": "unpin after transient ShutdownInProgress error on findOneAndReplace findAndModify",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3299,7 +3474,365 @@
       }
     },
     {
-      "description": "unpin after transient connection error on bulkWrite",
+      "description": "unpin after transient connection error on bulkWrite insert",
+      "useMultipleMongoses": true,
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "document": {
+              "_id": 3
+            }
+          },
+          "result": {
+            "insertedId": 3
+          }
+        },
+        {
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "bulkWrite",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "requests": [
+              {
+                "name": "insertOne",
+                "arguments": {
+                  "document": {
+                    "_id": 1
+                  }
+                }
+              }
+            ]
+          },
+          "result": {
+            "errorLabelsContain": [
+              "TransientTransactionError"
+            ]
+          }
+        },
+        {
+          "name": "assertSessionUnpinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "object": "session0"
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "unpin after transient ShutdownInProgress error on bulkWrite insert",
+      "useMultipleMongoses": true,
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "document": {
+              "_id": 3
+            }
+          },
+          "result": {
+            "insertedId": 3
+          }
+        },
+        {
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "insert"
+                ],
+                "errorCode": 91
+              }
+            }
+          }
+        },
+        {
+          "name": "bulkWrite",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "requests": [
+              {
+                "name": "insertOne",
+                "arguments": {
+                  "document": {
+                    "_id": 1
+                  }
+                }
+              }
+            ]
+          },
+          "result": {
+            "errorLabelsContain": [
+              "TransientTransactionError"
+            ]
+          }
+        },
+        {
+          "name": "assertSessionUnpinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "object": "session0"
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "unpin after transient connection error on bulkWrite update",
+      "useMultipleMongoses": true,
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "document": {
+              "_id": 3
+            }
+          },
+          "result": {
+            "insertedId": 3
+          }
+        },
+        {
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "update"
+                ],
+                "closeConnection": true
+              }
+            }
+          }
+        },
+        {
+          "name": "bulkWrite",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "requests": [
+              {
+                "name": "updateOne",
+                "arguments": {
+                  "filter": {
+                    "_id": 1
+                  },
+                  "update": {
+                    "$set": {
+                      "x": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "result": {
+            "errorLabelsContain": [
+              "TransientTransactionError"
+            ]
+          }
+        },
+        {
+          "name": "assertSessionUnpinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "object": "session0"
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "unpin after transient ShutdownInProgress error on bulkWrite update",
+      "useMultipleMongoses": true,
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "document": {
+              "_id": 3
+            }
+          },
+          "result": {
+            "insertedId": 3
+          }
+        },
+        {
+          "name": "targetedFailPoint",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "update"
+                ],
+                "errorCode": 91
+              }
+            }
+          }
+        },
+        {
+          "name": "bulkWrite",
+          "object": "collection",
+          "arguments": {
+            "session": "session0",
+            "requests": [
+              {
+                "name": "updateOne",
+                "arguments": {
+                  "filter": {
+                    "_id": 1
+                  },
+                  "update": {
+                    "$set": {
+                      "x": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "result": {
+            "errorLabelsContain": [
+              "TransientTransactionError"
+            ]
+          }
+        },
+        {
+          "name": "assertSessionUnpinned",
+          "object": "testRunner",
+          "arguments": {
+            "session": "session0"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "object": "session0"
+        }
+      ],
+      "outcome": {
+        "collection": {
+          "data": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "unpin after transient connection error on bulkWrite delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3386,7 +3919,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on bulkWrite",
+      "description": "unpin after transient ShutdownInProgress error on bulkWrite delete",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3473,7 +4006,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on find",
+      "description": "unpin after transient connection error on find find",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3553,7 +4086,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on find",
+      "description": "unpin after transient ShutdownInProgress error on find find",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3633,7 +4166,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on countDocuments",
+      "description": "unpin after transient connection error on countDocuments aggregate",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3711,7 +4244,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on countDocuments",
+      "description": "unpin after transient ShutdownInProgress error on countDocuments aggregate",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3789,7 +4322,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on aggregate",
+      "description": "unpin after transient connection error on aggregate aggregate",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3867,7 +4400,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on aggregate",
+      "description": "unpin after transient ShutdownInProgress error on aggregate aggregate",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -3945,7 +4478,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on distinct",
+      "description": "unpin after transient connection error on distinct distinct",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -4023,7 +4556,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on distinct",
+      "description": "unpin after transient ShutdownInProgress error on distinct distinct",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -4101,7 +4634,7 @@
       }
     },
     {
-      "description": "unpin after transient connection error on runCommand",
+      "description": "unpin after transient connection error on runCommand insert",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -4187,7 +4720,7 @@
       }
     },
     {
-      "description": "unpin after transient ShutdownInProgress error on runCommand",
+      "description": "unpin after transient ShutdownInProgress error on runCommand insert",
       "useMultipleMongoses": true,
       "operations": [
         {
