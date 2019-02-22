@@ -1,23 +1,14 @@
 Changelog
 =========
 
-Changes in Version 3.8.0
+Changes in Version 3.9.0
 ------------------------
 
-.. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
-  Python 2.7 or newer from `Red Hat Software Collections
-  <https://www.softwarecollections.org>`_. CentOS 6 users should install Python
-  2.7 or newer from `SCL
-  <https://wiki.centos.org/AdditionalResources/Repositories/SCL>`_
+Version 3.9 adds support for MongoDB 4.2. Highlights include:
 
-.. warning:: PyMongo no longer supports PyPy3 versions older than 3.5. Users
-  must upgrade to PyPy3.5+.
-
-- :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
-  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/objectid.rst>`_.
-
-
-- Version 3.8.0 implements the `URI options specification`_ in the
+- Support for MongoDB 4.2 sharded transactions. Sharded transactions have
+  the same API as replica set transactions. See :ref:`transactions-ref`.
+- Implement the `URI options specification`_ in the
   :meth:`~pymongo.mongo_client.MongoClient` constructor. Consequently, there are
   a number of changes in connection options:
 
@@ -38,8 +29,31 @@ Changes in Version 3.8.0
     - ``ssl_pem_passphrase`` has been deprecated in favor of ``tlsCertificateKeyFilePassword``.
 
 
-.. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst`
+.. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.9 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=21787
+
+Changes in Version 3.8.0
+------------------------
+
+.. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
+  Python 2.7 or newer from `Red Hat Software Collections
+  <https://www.softwarecollections.org>`_. CentOS 6 users should install Python
+  2.7 or newer from `SCL
+  <https://wiki.centos.org/AdditionalResources/Repositories/SCL>`_
+
+.. warning:: PyMongo no longer supports PyPy3 versions older than 3.5. Users
+  must upgrade to PyPy3.5+.
+
+- :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
+  version 0.2 <https://github.com/mongodb/specifications/blob/master/source/objectid.rst>`_.
 
 Issues Resolved
 ...............

@@ -75,6 +75,19 @@ transactions on the same session can be executed in sequence.
 
 .. versionadded:: 3.7
 
+Sharded Transactions
+^^^^^^^^^^^^^^^^^^^^
+
+PyMongo 3.9 adds support for transactions on sharded clusters running MongoDB
+4.2. Sharded transactions have the same API as replica set transactions.
+When running a transaction against a sharded cluster, the session is
+pinned to the mongos server selected for the first operation in the
+transaction. All subsequent operations that are part of the same transaction
+are routed to the same mongos server. When the transaction is completed, by
+running either commitTransaction or abortTransaction, the session is unpinned.
+
+.. versionadded:: 3.9
+
 .. mongodoc:: transactions
 
 Classes
