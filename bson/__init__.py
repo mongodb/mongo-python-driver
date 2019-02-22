@@ -389,7 +389,7 @@ def _element_to_dict(data, position, obj_end, opts):
     except KeyError:
         _raise_unknown_type(element_type, element_name)
 
-    custom_decoder = opts.type_registry._get_decoder(type(value))
+    custom_decoder = opts.type_registry._decoder_map.get(type(value))
     if custom_decoder is not None:
         value = custom_decoder(value)
 
@@ -757,7 +757,7 @@ def _name_value_to_bson(name, value, check_keys, opts):
     # Using 'if' instead of 'try...except' for performance since this will
     # usually not be true.
     # No support for auto-encoding subtypes of registered custom types.
-    custom_encoder = opts.type_registry._get_encoder(type(value))
+    custom_encoder = opts.type_registry._encoder_map.get(type(value))
     if custom_encoder is not None:
         value = custom_encoder(value)
 

@@ -35,33 +35,26 @@ def _raw_document_class(document_class):
 
 class TypeRegistry(object):
     def __init__(self, encoder_map=None, decoder_map=None):
-        self.__encoder_map = encoder_map or {}
-        self.__decoder_map = decoder_map or {}
-
-    def copy(self):
-        return type(self)(self.__encoder_map.copy(), self.__decoder_map.copy())
-
-    def _arguments_repr(self):
-        return ('Encode=%r, Decode=%r' % (list(self.__encoder_map.keys()), list(self.__decoder_map.keys())))
+        self._encoder_map = (encoder_map or {}).copy()
+        self._decoder_map = (decoder_map or {}).copy()
 
     def __repr__(self):
         return '%s(%s)' % (
             self.__class__.__name__,
-            'encodable_types=%r, decodable_types=%r' % (
-                [t.__name__ for t in self.__encoder_map.keys()],
-                [t.__name__ for t in self.__decoder_map.keys()]))
+            'encoder_map=%r, decoder_map=%r' % (
+                self._encoder_map, self._decoder_map))
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        return ((self._decoder_map == other._decoder_map) and
+                (self._encoder_map == other._encoder_map))
 
     def _register_type(self, typename, encoder=None, decoder=None):
         if encoder is not None:
-            self.__encoder_map[typename] = encoder
+            self._encoder_map[typename] = encoder
         if decoder is not None:
-            self.__decoder_map[typename] = decoder
-
-    def _get_encoder(self, typename):
-        return self.__encoder_map.get(typename)
-
-    def _get_decoder(self, typename):
-        return self.__decoder_map.get(typename)
+            self._decoder_map[typename] = decoder
 
 
 _options_base = namedtuple(
