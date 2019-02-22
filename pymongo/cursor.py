@@ -973,13 +973,14 @@ class Cursor(object):
                 raise
 
         try:
-            docs = self._unpack_response(response=reply,
-                                         cursor_id=self.__id,
-                                         codec_options=self.__codec_options)
-            if from_command:
-                first = docs[0]
-                client._process_response(first, self.__session)
-                helpers._check_command_response(first)
+            with client._reset_on_error(self.__address, self.__session):
+                docs = self._unpack_response(response=reply,
+                                             cursor_id=self.__id,
+                                             codec_options=self.__codec_options)
+                if from_command:
+                    first = docs[0]
+                    client._process_response(first, self.__session)
+                    helpers._check_command_response(first)
         except OperationFailure as exc:
             self.__killed = True
 
@@ -1009,7 +1010,6 @@ class Cursor(object):
                 listeners.publish_command_failure(
                     duration(), exc.details, cmd_name, rqst_id, self.__address)
 
-            client._reset_server_and_request_check(self.__address)
             raise
         except Exception as exc:
             if publish:
