@@ -33,10 +33,41 @@ def _raw_document_class(document_class):
     return marker == _RAW_BSON_DOCUMENT_MARKER
 
 
+class TypeRegistry(object):
+    def __init__(self, encoder_map=None, decoder_map=None):
+        self.__encoder_map = encoder_map or {}
+        self.__decoder_map = decoder_map or {}
+
+    def copy(self):
+        return type(self)(self.__encoder_map.copy(), self.__decoder_map.copy())
+
+    def _arguments_repr(self):
+        return ('Encode=%r, Decode=%r' % (list(self.__encoder_map.keys()), list(self.__decoder_map.keys())))
+
+    def __repr__(self):
+        return '%s(%s)' % (
+            self.__name__,
+            'Encode=%r, Decode=%r' % (
+                [t.__name__ for t in self.__encoder_map.keys()],
+                [t.__name__ for t in self.__decoder_map.keys()]))
+
+    def _register_type(self, typename, encoder=None, decoder=None):
+        if encoder is not None:
+            self.__encoder_map[typename] = encoder
+        if decoder is not None:
+            self.__decoder_map[typename] = decoder
+
+    def _get_encoder(self, typename):
+        return self.__encoder_map.get(typename)
+
+    def _get_decoder(self, typename):
+        return self.__decoder_map.get(typename)
+
+
 _options_base = namedtuple(
     'CodecOptions',
     ('document_class', 'tz_aware', 'uuid_representation',
-     'unicode_decode_error_handler', 'tzinfo', 'encoder_map', 'decoder_map'))
+     'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
 
 
 class CodecOptions(_options_base):
@@ -94,6 +125,8 @@ class CodecOptions(_options_base):
       - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
         timezone to/from which :class:`~datetime.datetime` objects should be
         encoded/decoded.
+      - `type_registry`: Instance of :class:`TypeRegistry` used to customize
+        encoding and decoding behavior.
 
     .. warning:: Care must be taken when changing
        `unicode_decode_error_handler` from its default value ('strict').
@@ -105,7 +138,7 @@ class CodecOptions(_options_base):
     def __new__(cls, document_class=dict,
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
                 unicode_decode_error_handler="strict",
-                tzinfo=None, encoder_map=None, decoder_map=None):
+                tzinfo=None, type_registry=None):
         if not (issubclass(document_class, abc.MutableMapping) or
                 _raw_document_class(document_class)):
             raise TypeError("document_class must be dict, bson.son.SON, "
@@ -127,16 +160,14 @@ class CodecOptions(_options_base):
                 raise ValueError(
                     "cannot specify tzinfo without also setting tz_aware=True")
 
-        encoder_map = encoder_map or {}
-        decoder_map = decoder_map or {}
+        type_registry = type_registry or TypeRegistry()
 
-        if (not isinstance(encoder_map, abc.Mapping) or
-                not isinstance(decoder_map, abc.Mapping)):
-            raise TypeError("Encoder/Decoder maps must be of mapping type")
+        if not isinstance(type_registry, TypeRegistry):
+            raise TypeError("type_registry must be an instance of TypeRegistry")
 
         return tuple.__new__(
             cls, (document_class, tz_aware, uuid_representation,
-                  unicode_decode_error_handler, tzinfo, encoder_map, decoder_map))
+                  unicode_decode_error_handler, tzinfo, type_registry))
 
     def _arguments_repr(self):
         """Representation of the arguments used to create this object."""
@@ -149,10 +180,10 @@ class CodecOptions(_options_base):
 
         return ('document_class=%s, tz_aware=%r, uuid_representation=%s, '
                 'unicode_decode_error_handler=%r, tzinfo=%r, '
-                'encoder_map=%r, decoder_map=%r' %
+                'type_registry=%r' %
                 (document_class_repr, self.tz_aware, uuid_rep_repr,
                  self.unicode_decode_error_handler, self.tzinfo,
-                 self.encoder_map, self.decoder_map))
+                 self.type_registry))
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
@@ -176,8 +207,7 @@ class CodecOptions(_options_base):
             kwargs.get('unicode_decode_error_handler',
                        self.unicode_decode_error_handler),
             kwargs.get('tzinfo', self.tzinfo),
-            kwargs.get('encoder_map', self.encoder_map),
-            kwargs.get('decoder_map', self.decoder_map)
+            kwargs.get('type_registry', self.type_registry)
         )
 
 
@@ -197,7 +227,5 @@ def _parse_codec_options(options):
             'unicode_decode_error_handler',
             DEFAULT_CODEC_OPTIONS.unicode_decode_error_handler),
         tzinfo=options.get('tzinfo', DEFAULT_CODEC_OPTIONS.tzinfo),
-        encoder_map=options.get(
-            'encoder_map', DEFAULT_CODEC_OPTIONS.encoder_map),
-        decoder_map=options.get(
-            'decoder_map', DEFAULT_CODEC_OPTIONS.decoder_map))
+        type_registry=options.get(
+            'type_registry', DEFAULT_CODEC_OPTIONS.type_registry.copy()))
