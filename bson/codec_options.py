@@ -46,8 +46,8 @@ class TypeRegistry(object):
 
     def __repr__(self):
         return '%s(%s)' % (
-            self.__name__,
-            'Encode=%r, Decode=%r' % (
+            self.__class__.__name__,
+            'encodable_types=%r, decodable_types=%r' % (
                 [t.__name__ for t in self.__encoder_map.keys()],
                 [t.__name__ for t in self.__decoder_map.keys()]))
 
