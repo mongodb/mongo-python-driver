@@ -1,45 +1,52 @@
 from decimal import Decimal
 
 from bson import BSON, Decimal128
-from bson.codec_options import CodecOptions, TypeRegistry
+from bson.codec_options import (
+    CodecOptions, DEFAULT_CODEC_OPTIONS, TypeCodecBase, TypeRegistry)
 from bson.errors import InvalidDocument
 
 
-def _encode_decimal(value):
-    """Encodes Python native decimal to BSON type Decimal128."""
-    return Decimal128(value)
+class DecimalCodec(TypeCodecBase):
+    @property
+    def bson_type(self):
+        return Decimal128
+
+    @property
+    def python_type(self):
+        return Decimal
+
+    def transform_bson(self, value):
+        """Decodes BSON type Decimal128 to Python native decimal."""
+        return value.to_decimal()
+
+    def transform_python(self, value):
+        """Encodes Python native decimal to BSON type Decimal128."""
+        return Decimal128(value)
 
 
-def _decode_decimal128(value):
-    """Decodes BSON type Decimal128 to Python native decimal."""
-    return value.to_decimal()
+TYPE_REGISTRY = TypeRegistry(DecimalCodec())
+CODEC_OPTIONS = CodecOptions(type_registry=TYPE_REGISTRY)
 
 
 def encode_vanilla(document):
-    codec_options = CodecOptions()
     try:
-        return BSON.encode(document, codec_options=codec_options)
+        return BSON.encode(document, codec_options=DEFAULT_CODEC_OPTIONS)
     except InvalidDocument:
         # expected error
         pass
 
 
 def encode_special(document):
-    type_registry = TypeRegistry(encoder_map={Decimal: _encode_decimal})
-    codec_options = CodecOptions(type_registry=type_registry)
-    return BSON.encode(document, codec_options=codec_options)
+    return BSON.encode(document, codec_options=CODEC_OPTIONS)
 
 
 def decode_vanilla(bson_bytes, expected_document):
-    codec_options = CodecOptions()
-    document = BSON.decode(bson_bytes, codec_options=codec_options)
+    document = BSON.decode(bson_bytes, codec_options=DEFAULT_CODEC_OPTIONS)
     assert document==expected_document, 'Vanilla decoding error!'
 
 
 def decode_special(bson_bytes, expected_document):
-    type_registry = TypeRegistry(decoder_map={Decimal128: _decode_decimal128})
-    codec_options = CodecOptions(type_registry=type_registry)
-    document = BSON.decode(bson_bytes, codec_options=codec_options)
+    document = BSON.decode(bson_bytes, codec_options=CODEC_OPTIONS)
     assert document == expected_document, 'Special decoding error!'
 
 

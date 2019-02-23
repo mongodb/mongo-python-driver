@@ -33,28 +33,57 @@ def _raw_document_class(document_class):
     return marker == _RAW_BSON_DOCUMENT_MARKER
 
 
+class TypeCodecBase(object):
+    @property
+    def python_type(self):
+        """The Python type to be converted into something serializable."""
+        raise NotImplementedError
+
+    @property
+    def bson_type(self):
+        """The BSON type to be converted into our own type."""
+        raise NotImplementedError
+
+    def transform_bson(self, value):
+        """Convert the given BSON value into our own type."""
+        raise NotImplementedError
+
+    def transform_python(self, value):
+        """Convert the given Python object into something serializable."""
+        raise NotImplementedError
+
+
 class TypeRegistry(object):
-    def __init__(self, encoder_map=None, decoder_map=None):
-        self._encoder_map = (encoder_map or {}).copy()
-        self._decoder_map = (decoder_map or {}).copy()
+    def __init__(self, *args):
+        self.__args = args
+        self._encoder_map = {}
+        self._decoder_map = {}
+        for arg in args:
+            if not isinstance(arg, TypeCodecBase):
+                raise TypeError(
+                    "Expected instance of %s" % (TypeCodecBase.__name__,))
+            try:
+                python_type = arg.python_type
+            except NotImplementedError:
+                pass
+            else:
+                self._encoder_map[python_type] = arg.transform_python
+
+            try:
+                bson_type = arg.bson_type
+            except NotImplementedError:
+                pass
+            else:
+                self._decoder_map[bson_type] = arg.transform_bson
 
     def __repr__(self):
-        return '%s(%s)' % (
-            self.__class__.__name__,
-            'encoder_map=%r, decoder_map=%r' % (
-                self._encoder_map, self._decoder_map))
+        return '%s%r' % (self.__class__.__name__, self.__args)
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
         return ((self._decoder_map == other._decoder_map) and
                 (self._encoder_map == other._encoder_map))
-
-    def _register_type(self, typename, encoder=None, decoder=None):
-        if encoder is not None:
-            self._encoder_map[typename] = encoder
-        if decoder is not None:
-            self._decoder_map[typename] = decoder
 
 
 _options_base = namedtuple(
