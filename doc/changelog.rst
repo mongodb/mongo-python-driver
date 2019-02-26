@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Changes in Version 3.9.0
-------------------------
+Changes in Version 3.9.0.dev0
+-----------------------------
 
 Version 3.9 adds support for MongoDB 4.2. Highlights include:
 
@@ -40,8 +40,8 @@ in this release.
 
 .. _PyMongo 3.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=21787
 
-Changes in Version 3.8.0
-------------------------
+Changes in Version 3.8.0.dev0
+-----------------------------
 
 .. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
   Python 2.7 or newer from `Red Hat Software Collections
