@@ -259,13 +259,18 @@ class _Transaction(object):
     def __init__(self, opts):
         self.opts = opts
         self.state = _TxnState.NONE
-        self.transaction_id = 0
         self.sharded = False
         self.pinned_address = None
         self.recovery_token = None
 
     def active(self):
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
+
+    def reset(self):
+        self.state = _TxnState.NONE
+        self.sharded = False
+        self.pinned_address = None
+        self.recovery_token = None
 
 
 def _reraise_with_unknown_commit(exc):
@@ -383,11 +388,9 @@ class ClientSession(object):
 
         self._transaction.opts = TransactionOptions(
             read_concern, write_concern, read_preference)
+        self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
-        self._transaction.transaction_id = self._server_session.transaction_id
-        self._unpin_mongos()
-        self._transaction.sharded = False
         return _TransactionContext(self)
 
     def commit_transaction(self):
@@ -608,9 +611,7 @@ class ClientSession(object):
         command['lsid'] = self._server_session.session_id
 
         if not self._in_transaction:
-            self._transaction.state = _TxnState.NONE
-            self._unpin_mongos()
-            self._transaction.sharded = False
+            self._transaction.reset()
 
         if is_retryable:
             command['txnNumber'] = self._server_session.transaction_id
