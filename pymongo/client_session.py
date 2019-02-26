@@ -260,6 +260,7 @@ class _Transaction(object):
         self.opts = opts
         self.state = _TxnState.NONE
         self.transaction_id = 0
+        self.sharded = False
         self.pinned_address = None
         self.recovery_token = None
 
@@ -386,6 +387,7 @@ class ClientSession(object):
         self._start_retryable_write()
         self._transaction.transaction_id = self._server_session.transaction_id
         self._unpin_mongos()
+        self._transaction.sharded = False
         return _TransactionContext(self)
 
     def commit_transaction(self):
@@ -561,10 +563,11 @@ class ClientSession(object):
     def _process_response(self, reply):
         """Process a response to a command that was run with this session."""
         self._advance_cluster_time(reply.get('$clusterTime'))
-        self._advance_operation_time(reply.get("operationTime"))
-        recovery_token = reply.get('recoveryToken')
-        if recovery_token and self._in_transaction:
-            self._transaction.recovery_token = recovery_token
+        self._advance_operation_time(reply.get('operationTime'))
+        if self._in_transaction and self._transaction.sharded:
+            recovery_token = reply.get('recoveryToken')
+            if recovery_token:
+                self._transaction.recovery_token = recovery_token
 
     @property
     def has_ended(self):
@@ -585,6 +588,7 @@ class ClientSession(object):
 
     def _pin_mongos(self, server):
         """Pin this session to the given mongos Server."""
+        self._transaction.sharded = True
         self._transaction.pinned_address = server.description.address
 
     def _unpin_mongos(self):
@@ -606,6 +610,7 @@ class ClientSession(object):
         if not self._in_transaction:
             self._transaction.state = _TxnState.NONE
             self._unpin_mongos()
+            self._transaction.sharded = False
 
         if is_retryable:
             command['txnNumber'] = self._server_session.transaction_id
