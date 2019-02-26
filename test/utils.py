@@ -147,6 +147,19 @@ class ScenarioDict(dict):
             return ScenarioDict({})
 
 
+class CompareType(object):
+    """Class that compares equal to any object of the given type."""
+    def __init__(self, type):
+        self.type = type
+
+    def __eq__(self, other):
+        return isinstance(other, self.type)
+
+    def __ne__(self, other):
+        """Needed for Python 2."""
+        return not self.__eq__(other)
+
+
 class TestCreator(object):
     """Class to create test cases from specifications."""
     def __init__(self, create_test, test_class, test_path):

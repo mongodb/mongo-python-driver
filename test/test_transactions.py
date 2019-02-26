@@ -36,7 +36,8 @@ from pymongo.results import _WriteResult, BulkWriteResult
 from test import unittest, client_context, IntegrationTest, client_knobs
 from test.utils import (camel_to_snake, camel_to_upper_camel,
                         camel_to_snake_args, rs_client, single_client,
-                        wait_until, OvertCommandListener, TestCreator)
+                        wait_until, CompareType, OvertCommandListener,
+                        TestCreator)
 from test.utils_selection_tests import parse_read_preference
 
 # Location of JSON test specifications.
@@ -50,15 +51,6 @@ _TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
 # 50 attempts yields a one in a quadrillion chance of a false positive
 # (1/(0.5^50)).
 UNPIN_TEST_MAX_ATTEMPTS = 50
-
-
-class CompareTrue(object):
-    """Class that compares equal to any object."""
-    def __eq__(self, other):
-        return True
-
-    def __ne__(self, other):
-        return False
 
 
 class TestTransactions(IntegrationTest):
@@ -432,7 +424,7 @@ class TestTransactions(IntegrationTest):
                         expected_read_concern['afterClusterTime'] = actual_time
             recovery_token = expected_cmd.get('recoveryToken')
             if recovery_token == 42:
-                expected_cmd['recoveryToken'] = CompareTrue()
+                expected_cmd['recoveryToken'] = CompareType(dict)
 
             # Replace lsid with a name like "session0" to match test.
             if 'lsid' in event.command:
