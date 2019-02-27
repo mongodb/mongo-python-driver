@@ -1210,7 +1210,8 @@ class MongoClient(common.BaseObject):
 
     @contextlib.contextmanager
     def _reset_on_error(self, server_address, session):
-        """Reset the server according to SDAM errors.
+        """On "not master" or "node is recovering" errors reset the server
+        according to the SDAM spec.
 
         Unpin the session on transient transaction errors.
         """
