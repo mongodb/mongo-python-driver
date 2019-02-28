@@ -19,6 +19,9 @@
   "tests": [
     {
       "description": "update",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -227,6 +230,9 @@
     },
     {
       "description": "collections writeConcern ignored for update",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",

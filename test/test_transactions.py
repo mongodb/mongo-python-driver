@@ -104,6 +104,7 @@ class TestTransactions(IntegrationTest):
         clients = {c.address: c for c in self.mongos_clients}
         client = clients[session._pinned_address]
         self._set_fail_point(client, fail_point)
+        self.addCleanup(self.set_fail_point, {'mode': 'off'})
 
     def assert_session_pinned(self, session):
         """Assert that the given session is pinned."""

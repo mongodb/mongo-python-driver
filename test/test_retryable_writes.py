@@ -97,7 +97,7 @@ def create_test(scenario_def, test):
         result = None
         error = None
 
-        db = rs_or_single_client(**test['clientOptions']).pymongo_test
+        db = rs_or_single_client(**test.get('clientOptions', {})).pymongo_test
         # Close the client explicitly to avoid having too many threads open.
         self.addCleanup(db.client.close)
         try:

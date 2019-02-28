@@ -19,6 +19,9 @@
   "tests": [
     {
       "description": "findOneAndUpdate",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -310,6 +313,9 @@
     },
     {
       "description": "collection writeConcern ignored for findOneAndUpdate",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",

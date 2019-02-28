@@ -48,7 +48,9 @@ class TestCommandMonitoring(PyMongoTestCase):
         cls.saved_listeners = monitoring._LISTENERS
         # Don't use any global subscribers.
         monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
-        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+        cls.client = rs_or_single_client(
+            event_listeners=[cls.listener],
+            retryWrites=False)
 
     @classmethod
     def tearDownClass(cls):

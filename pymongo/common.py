@@ -89,7 +89,7 @@ MAX_IDLE_TIME_MS = None
 LOCAL_THRESHOLD_MS = 15
 
 # Default value for retryWrites.
-RETRY_WRITES = False
+RETRY_WRITES = True
 
 # mongod/s 2.6 and above return code 59 when a command doesn't exist.
 COMMAND_NOT_FOUND_CODES = (59,)

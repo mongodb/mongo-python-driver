@@ -89,6 +89,9 @@
     },
     {
       "description": "count",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -175,6 +178,9 @@
     },
     {
       "description": "find",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -339,6 +345,9 @@
     },
     {
       "description": "aggregate",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -535,6 +544,9 @@
     },
     {
       "description": "distinct",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",

@@ -25,6 +25,9 @@
   "tests": [
     {
       "description": "delete",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",
@@ -184,6 +187,9 @@
     },
     {
       "description": "collection writeConcern ignored for delete",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "operations": [
         {
           "name": "startTransaction",

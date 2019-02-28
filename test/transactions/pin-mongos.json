@@ -925,6 +925,9 @@
     },
     {
       "description": "unpin after transient error within a transaction",
+      "clientOptions": {
+          "retryWrites": false
+      },
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -1068,6 +1071,7 @@
       "description": "unpin after transient error within a transaction and commit",
       "useMultipleMongoses": true,
       "clientOptions": {
+        "retryWrites": false,
         "heartbeatFrequencyMS": 5000
       },
       "operations": [

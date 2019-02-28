@@ -27,7 +27,9 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
     - ``ssl_ca_certs`` has been deprecated in favor of ``tlsCAFile``.
     - ``ssl_certfile`` has been deprecated in favor of ``tlsCertificateKeyFile``.
     - ``ssl_pem_passphrase`` has been deprecated in favor of ``tlsCertificateKeyFilePassword``.
-
+- The ``retryWrites`` URI option now defaults to ``True``. Supported write
+  operations that fail with a retryable error will automatically be retried one
+  time, with at-most-once semantics.
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 

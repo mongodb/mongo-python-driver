@@ -252,7 +252,7 @@ class MongoClient(common.BaseObject):
             :mod:`~pymongo.monitoring` for details.
           - `retryWrites`: (boolean) Whether supported write operations
             executed within this MongoClient will be retried once after a
-            network error on MongoDB 3.6+. Defaults to ``False``.
+            network error on MongoDB 3.6+. Defaults to ``True``.
             The supported write operations are:
 
               - :meth:`~pymongo.collection.Collection.bulk_write`, as long as
@@ -448,6 +448,9 @@ class MongoClient(common.BaseObject):
              - ``ssl_crlfile`` was deprecated in favor of ``tlsCRLFile``.
              - ``ssl_pem_passphrase`` was deprecated in favor of
                ``tlsCertificateKeyFilePassword``.
+
+        .. versionchanged:: 3.9
+           ``retryWrites`` now defaults to ``True``.
 
         .. versionchanged:: 3.8
            Added the ``server_selector`` keyword argument.
