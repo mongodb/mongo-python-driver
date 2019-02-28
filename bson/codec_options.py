@@ -54,27 +54,27 @@ class TypeCodecBase(object):
 
 
 class TypeRegistry(object):
-    def __init__(self, *args):
-        self.__args = args
+    def __init__(self, *type_codecs):
+        self.__args = type_codecs
         self._encoder_map = {}
         self._decoder_map = {}
-        for arg in args:
-            if not isinstance(arg, TypeCodecBase):
+        for codec in type_codecs:
+            if not isinstance(codec, TypeCodecBase):
                 raise TypeError(
                     "Expected instance of %s" % (TypeCodecBase.__name__,))
             try:
-                python_type = arg.python_type
+                python_type = codec.python_type
             except NotImplementedError:
                 pass
             else:
-                self._encoder_map[python_type] = arg.transform_python
+                self._encoder_map[python_type] = codec.transform_python
 
             try:
-                bson_type = arg.bson_type
+                bson_type = codec.bson_type
             except NotImplementedError:
                 pass
             else:
-                self._decoder_map[bson_type] = arg.transform_bson
+                self._decoder_map[bson_type] = codec.transform_bson
 
     def __repr__(self):
         return '%s%r' % (self.__class__.__name__, self.__args)
