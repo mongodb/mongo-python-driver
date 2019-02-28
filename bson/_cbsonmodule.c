@@ -447,6 +447,26 @@ static long _type_marker(PyObject* object) {
     return type;
 }
 
+/* Fill out a type_registry_t* from a TypeRegistry object.
+ *
+ * Return 1 on success. options->document_class is a new reference.
+ * Return 0 on failure.
+ */
+int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
+    registry->encoder_map = PyObject_GetAttrString(registry_obj, "_encoder_map");
+    if (registry->encoder_map == NULL)
+        return 0;
+
+    registry->decoder_map = PyObject_GetAttrString(registry_obj, "_decoder_map");
+    if (registry->decoder_map == NULL)
+        return 0;
+
+    registry->registry_obj = registry_obj;
+    Py_INCREF(registry->registry_obj);
+
+    return 1;
+}
+
 /* Fill out a codec_options_t* from a CodecOptions object. Use with the "O&"
  * format spec in PyArg_ParseTuple.
  *
@@ -455,25 +475,30 @@ static long _type_marker(PyObject* object) {
  */
 int convert_codec_options(PyObject* options_obj, void* p) {
     codec_options_t* options = (codec_options_t*)p;
-    long type_marker;
     options->unicode_decode_error_handler = NULL;
-    if (!PyArg_ParseTuple(options_obj, "ObbzO",
+    PyObject* type_registry_obj = NULL;
+    long type_marker;
+
+    if (!PyArg_ParseTuple(options_obj, "ObbzOO",
                           &options->document_class,
                           &options->tz_aware,
                           &options->uuid_rep,
                           &options->unicode_decode_error_handler,
-                          &options->tzinfo)) {
+                          &options->tzinfo,
+                          &type_registry_obj))
         return 0;
-    }
+
+    convert_type_registry(type_registry_obj, &options->type_registry);
 
     type_marker = _type_marker(options->document_class);
     if (type_marker < 0) return 0;
+    options->is_raw_bson = (101 == type_marker);
 
-    Py_INCREF(options->document_class);
-    Py_INCREF(options->tzinfo);
     options->options_obj = options_obj;
     Py_INCREF(options->options_obj);
-    options->is_raw_bson = (101 == type_marker);
+    Py_INCREF(options->document_class);
+    Py_INCREF(options->tzinfo);
+
     return 1;
 }
 
@@ -501,6 +526,7 @@ void destroy_codec_options(codec_options_t* options) {
     Py_CLEAR(options->document_class);
     Py_CLEAR(options->tzinfo);
     Py_CLEAR(options->options_obj);
+    Py_CLEAR(options->type_registry);
 }
 
 static int write_element_to_buffer(PyObject* self, buffer_t buffer,
@@ -701,6 +727,15 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     struct module_state *state = GETSTATE(self);
     PyObject* mapping_type;
     PyObject* uuid_type;
+
+    /* Transform types that have a registered converter. */
+    PyObject* value_type = PyObject_Type(value);
+    PyObject* converter = NULL;
+    if ((converter = PyDict_GetItem(options->type_registry.encoder_map, value_type)) != NULL) {
+        PyObject* args = PyTuple_Pack(1, value);
+        value = PyObject_CallObject(converter, args);
+    }
+
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
      * problems with python sub interpreters. Our custom types should
