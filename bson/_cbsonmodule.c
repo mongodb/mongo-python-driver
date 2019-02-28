@@ -526,7 +526,7 @@ void destroy_codec_options(codec_options_t* options) {
     Py_CLEAR(options->document_class);
     Py_CLEAR(options->tzinfo);
     Py_CLEAR(options->options_obj);
-    Py_CLEAR(options->type_registry);
+    Py_CLEAR(options->type_registry.registry_obj);
 }
 
 static int write_element_to_buffer(PyObject* self, buffer_t buffer,
@@ -735,6 +735,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         PyObject* args = PyTuple_Pack(1, value);
         value = PyObject_CallObject(converter, args);
     }
+    Py_DECREF(value_type);
 
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
@@ -2518,6 +2519,13 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
     }
 
     if (value) {
+        PyObject* value_type = PyObject_Type(value);
+        PyObject* converter = NULL;
+        if ((converter = PyDict_GetItem(options->type_registry.decoder_map, value_type)) != NULL) {
+            PyObject* args = PyTuple_Pack(1, value);
+            value = PyObject_CallObject(converter, args);
+        }
+        Py_DECREF(value_type);
         return value;
     }
 
