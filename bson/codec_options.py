@@ -250,4 +250,4 @@ def _parse_codec_options(options):
             DEFAULT_CODEC_OPTIONS.unicode_decode_error_handler),
         tzinfo=options.get('tzinfo', DEFAULT_CODEC_OPTIONS.tzinfo),
         type_registry=options.get(
-            'type_registry', DEFAULT_CODEC_OPTIONS.type_registry.copy()))
+            'type_registry', DEFAULT_CODEC_OPTIONS.type_registry))

@@ -536,8 +536,24 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
     int result;
     if(Py_EnterRecursiveCall(" while encoding an object to BSON "))
         return 0;
+
+    /* Transform types that have a registered converter.
+     * A new reference is created upon transformation. */
+    PyObject* value_type = PyObject_Type(value);
+    PyObject* converter = NULL;
+    int new_reference = 0;
+    if ((converter = PyDict_GetItem(options->type_registry.encoder_map, value_type)) != NULL) {
+        PyObject* args = PyTuple_Pack(1, value);
+        value = PyObject_CallObject(converter, args);
+        new_reference = 1;
+    }
+    Py_DECREF(value_type);
+
     result = _write_element_to_buffer(self, buffer, type_byte,
                                       value, check_keys, options);
+
+    if (new_reference) Py_DECREF(value);
+
     Py_LeaveRecursiveCall();
     return result;
 }
@@ -727,15 +743,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     struct module_state *state = GETSTATE(self);
     PyObject* mapping_type;
     PyObject* uuid_type;
-
-    /* Transform types that have a registered converter. */
-    PyObject* value_type = PyObject_Type(value);
-    PyObject* converter = NULL;
-    if ((converter = PyDict_GetItem(options->type_registry.encoder_map, value_type)) != NULL) {
-        PyObject* args = PyTuple_Pack(1, value);
-        value = PyObject_CallObject(converter, args);
-    }
-    Py_DECREF(value_type);
 
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
