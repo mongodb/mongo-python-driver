@@ -475,9 +475,10 @@ int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
  */
 int convert_codec_options(PyObject* options_obj, void* p) {
     codec_options_t* options = (codec_options_t*)p;
-    options->unicode_decode_error_handler = NULL;
     PyObject* type_registry_obj = NULL;
     long type_marker;
+
+    options->unicode_decode_error_handler = NULL;
 
     if (!PyArg_ParseTuple(options_obj, "ObbzOO",
                           &options->document_class,
@@ -534,8 +535,11 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
                                    unsigned char check_keys,
                                    const codec_options_t* options) {
     int result;
-    PyObject* value_type = PyObject_Type(value);
+    PyObject* value_type = NULL;
     PyObject* converter = NULL;
+
+    if ((value_type = PyObject_Type(value)) == NULL)
+        return 0;
 
     if(Py_EnterRecursiveCall(" while encoding an object to BSON "))
         return 0;
@@ -2524,8 +2528,10 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
     }
 
     if (value) {
-        PyObject* value_type = PyObject_Type(value);
+        PyObject* value_type = NULL;
         PyObject* converter = NULL;
+        if ((value_type = PyObject_Type(value)) == NULL)
+            goto invalid;
         if ((converter = PyDict_GetItem(options->type_registry.decoder_map, value_type)) != NULL) {
             PyObject* new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
             Py_DECREF(value_type);
