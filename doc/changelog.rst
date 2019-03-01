@@ -63,6 +63,30 @@ in this release.
 
 .. _PyMongo 3.8 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=19904
 
+Changes in Version 3.7.2
+------------------------
+
+Version 3.7.2 fixes a few issues discovered since the release of 3.7.1.
+
+- Fixed a bug in retryable writes where a previous command's "txnNumber"
+  field could be sent leading to incorrect results.
+- Fixed a memory leak of a few bytes on some insert, update, or delete
+  commands when running against MongoDB 3.6+.
+- Fixed a bug that caused :meth:`pymongo.collection.Collection.ensure_index`
+  to only cache a single index per database.
+- Updated the documentation examples to use
+  :meth:`pymongo.collection.Collection.count_documents` instead of
+  :meth:`pymongo.collection.Collection.count` and
+  :meth:`pymongo.cursor.Cursor.count`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.7.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.7.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=21519
+
 Changes in Version 3.7.1
 ------------------------
 
