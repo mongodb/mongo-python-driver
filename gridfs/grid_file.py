@@ -524,23 +524,23 @@ class GridOut(object):
 
         # TODO: Great, but why do we do this on EVERY call to read()?
         # Detect extra chunks.
-        max_chunk_n = math.ceil(self.length / float(self.chunk_size))
         if size == remainder and self.__chunk_iter:
             # Optimization: Reading the rest of the file so we can reuse the
             # cursor to find extra chunks
             try:
-                chunk = self.__chunk_iter.next()
+                self.__chunk_iter.next()
             except StopIteration:
-                chunk = None
+                pass
         else:
+            num_chunks = math.ceil(int(self.length) / float(self.chunk_size))
             chunk = self.__chunks.find_one({"files_id": self._id,
-                                            "n": {"$gte": max_chunk_n}},
+                                            "n": {"$gte": num_chunks}},
                                            session=self._session)
-        # According to spec, ignore extra chunks if they are empty.
-        if chunk is not None and len(chunk['data']):
-            raise CorruptGridFile(
-                "Extra chunk found: expected %i chunks but found "
-                "chunk with n=%i" % (max_chunk_n, chunk['n']))
+            # According to spec, ignore extra chunks if they are empty.
+            if chunk is not None and len(chunk['data']):
+                raise CorruptGridFile(
+                    "Extra chunk found: expected %i chunks but found "
+                    "chunk with n=%i" % (num_chunks, chunk['n']))
 
         self.__position -= received - size
 
@@ -613,7 +613,7 @@ class GridOut(object):
         if new_pos < 0:
             raise IOError(22, "Invalid value for `pos` - must be positive")
 
-        # Optimization.
+        # Optimization, continue using the same buffer and chunk iterator.
         if new_pos == self.__position:
             return
 
@@ -654,22 +654,33 @@ class GridOut(object):
 
 
 class _GridOutChunkIterator(object):
+    """Iterates over a file's chunks using a single cursor.
+
+    Raises CorruptGridFile when encountering any truncated, missing, or extra
+    chunk in a file.
+    """
     def __init__(self, grid_out, chunks, session, next_chunk):
         self.__id = grid_out._id
+        self.__chunk_size = int(grid_out.chunk_size)
+        self.__length = int(grid_out.length)
         self.__chunks = chunks
         self.__session = session
         self.__next_chunk = next_chunk
-        self.__max_chunk = math.ceil(float(grid_out.length) /
-                                     grid_out.chunk_size)
+        self.__num_chunks = math.ceil(float(self.__length) / self.__chunk_size)
         self.__cursor = None
+
+    def expected_chunk_length(self, chunk_n):
+        if chunk_n < self.__num_chunks - 1:
+            return self.__chunk_size
+        return self.__length - (self.__chunk_size * (self.__num_chunks - 1))
 
     @property
     def next_chunk(self):
         return self.__next_chunk
 
     @property
-    def max_chunk(self):
-        return self.__max_chunk
+    def num_chunks(self):
+        return self.__num_chunks
 
     def __iter__(self):
         return self
@@ -684,14 +695,31 @@ class _GridOutChunkIterator(object):
         try:
             chunk = next(self.__cursor)
         except StopIteration:
-            if self.__next_chunk >= self.__max_chunk:
+            if self.__next_chunk >= self.__num_chunks:
                 raise
             raise CorruptGridFile("no chunk #%d" % self.__next_chunk)
 
         if chunk["n"] != self.__next_chunk:
+            self.close()
             raise CorruptGridFile(
                 "Missing chunk: expected chunk #%d but found "
                 "chunk with n=%i" % (self.__next_chunk, chunk["n"]))
+
+        if chunk["n"] >= self.__num_chunks:
+            # According to spec, ignore extra chunks if they are empty.
+            if len(chunk["data"]):
+                self.close()
+                raise CorruptGridFile(
+                    "Extra chunk found: expected %i chunks but found "
+                    "chunk with n=%i" % (self.__num_chunks, chunk["n"]))
+
+        expected_length = self.expected_chunk_length(chunk["n"])
+        if len(chunk["data"]) != expected_length:
+            self.close()
+            raise CorruptGridFile(
+                "truncated chunk #%d: expected chunk length to be %i but "
+                "found chunk with length %i" % (
+                    chunk["n"], expected_length, len(chunk["data"])))
 
         self.__next_chunk += 1
         return chunk
@@ -712,8 +740,6 @@ class GridOutIterator(object):
         return self
 
     def next(self):
-        if self.__chunk_iter.next_chunk >= self.__chunk_iter.max_chunk:
-            raise StopIteration
         chunk = self.__chunk_iter.next()
         return bytes(chunk["data"])
 
