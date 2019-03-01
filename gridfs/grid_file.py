@@ -539,8 +539,8 @@ class GridOut(object):
             # According to spec, ignore extra chunks if they are empty.
             if chunk is not None and len(chunk['data']):
                 raise CorruptGridFile(
-                    "Extra chunk found: expected %i chunks but found "
-                    "chunk with n=%i" % (num_chunks, chunk['n']))
+                    "Extra chunk found: expected %d chunks but found "
+                    "chunk with n=%d" % (num_chunks, chunk['n']))
 
         self.__position -= received - size
 
@@ -703,22 +703,22 @@ class _GridOutChunkIterator(object):
             self.close()
             raise CorruptGridFile(
                 "Missing chunk: expected chunk #%d but found "
-                "chunk with n=%i" % (self.__next_chunk, chunk["n"]))
+                "chunk with n=%d" % (self.__next_chunk, chunk["n"]))
 
         if chunk["n"] >= self.__num_chunks:
             # According to spec, ignore extra chunks if they are empty.
             if len(chunk["data"]):
                 self.close()
                 raise CorruptGridFile(
-                    "Extra chunk found: expected %i chunks but found "
-                    "chunk with n=%i" % (self.__num_chunks, chunk["n"]))
+                    "Extra chunk found: expected %d chunks but found "
+                    "chunk with n=%d" % (self.__num_chunks, chunk["n"]))
 
         expected_length = self.expected_chunk_length(chunk["n"])
         if len(chunk["data"]) != expected_length:
             self.close()
             raise CorruptGridFile(
-                "truncated chunk #%d: expected chunk length to be %i but "
-                "found chunk with length %i" % (
+                "truncated chunk #%d: expected chunk length to be %d but "
+                "found chunk with length %d" % (
                     chunk["n"], expected_length, len(chunk["data"])))
 
         self.__next_chunk += 1
