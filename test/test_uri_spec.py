@@ -63,9 +63,6 @@ def run_scenario_in_dir(target_workdir):
 
 def create_test(test, test_workdir):
     def run_scenario(self):
-        # if test['description'].startswith('Subdelimiters'):
-        #     import ipdb; ipdb.set_trace()
-
         compressors = (test.get('options') or {}).get('compressors', [])
         if 'snappy' in compressors and not _HAVE_SNAPPY:
             self.skipTest('This test needs the snappy module.')

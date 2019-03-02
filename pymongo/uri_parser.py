@@ -26,9 +26,9 @@ except ImportError:
 from bson.py3compat import abc, iteritems, string_type, PY3
 
 if PY3:
-    from urllib.parse import quote, quote_plus, unquote, unquote_plus
+    from urllib.parse import quote_plus, unquote, unquote_plus
 else:
-    from urllib import quote, quote_plus, unquote, unquote_plus
+    from urllib import quote_plus, unquote, unquote_plus
 
 from pymongo.common import (
     get_validated_options, URI_OPTIONS_DEPRECATION_MAP, INTERNAL_URI_OPTION_NAME_MAP)
