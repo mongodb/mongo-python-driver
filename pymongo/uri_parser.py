@@ -18,7 +18,13 @@ import re
 import warnings
 import sys
 
-from urllib.parse import unquote_plus
+from urllib.parse import unquote_plus, unquote, quote_plus
+
+try:
+    from dns import resolver
+    _HAVE_DNSPYTHON = True
+except ImportError:
+    _HAVE_DNSPYTHON = False
 
 from pymongo.common import (
     SRV_SERVICE_NAME,
@@ -34,17 +40,25 @@ SRV_SCHEME = 'mongodb+srv://'
 SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
+# List of sub-delimiters as defined in RFC 3986.
+SUBDELIMS = ["!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "="]
+
 
 def parse_userinfo(userinfo):
     """Validates the format of user information in a MongoDB URI.
-    Reserved characters like ':', '/', '+' and '@' must be escaped
-    following RFC 3986.
+    Reserved characters that are gen-delimiters (":", "/", "?", "#", "[",
+    "]", "@") as per RFC 3986 must be escaped.
 
     Returns a 2-tuple containing the unescaped username followed
     by the unescaped password.
 
     :Paramaters:
         - `userinfo`: A string of the form <username>:<password>
+
+    .. versionchanged:: 4.0
+       Reserved characters that are sub-delimiters ("!", "$", "&", "'",
+       "(", ")", "*", "+", ",", ";", "=") as per RFC 3986 need not be
+       escaped.
     """
     if '@' in userinfo or userinfo.count(':') > 1:
         raise InvalidURI("Username and password must be escaped according to "
@@ -53,7 +67,18 @@ def parse_userinfo(userinfo):
     # No password is expected with GSSAPI authentication.
     if not user:
         raise InvalidURI("The empty string is not valid username.")
-    return unquote_plus(user), unquote_plus(passwd)
+
+    # If we cannot round-trip a value, it is not properly URI encoded.
+    for value_name, quoted_value in zip(
+            ('username', 'password',), (user, passwd,)):
+        quoted_value_no_sdelims = "".join(
+            [ch for ch in quoted_value if ch not in SUBDELIMS])
+        unquoted_value = unquote_plus(quoted_value_no_sdelims)
+        if not quoted_value_no_sdelims == quote_plus(unquoted_value):
+            raise InvalidURI("%r is not a valid %s" % (
+                quoted_value, value_name))
+
+    return unquote(user), unquote(passwd)
 
 
 def parse_ipv6_literal_host(entity, default_port):
