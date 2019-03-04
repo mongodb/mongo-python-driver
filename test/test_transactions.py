@@ -175,7 +175,8 @@ class TransactionsBase(IntegrationTest):
         else:
             self.assertEqual(result, expected_result)
 
-    def run_operations(self, sessions, collection, ops):
+    def run_operations(self, sessions, collection, ops,
+                       in_with_transaction=False):
         for op in ops:
             expected_result = op.get('result')
             if expect_error(expected_result):
@@ -197,6 +198,11 @@ class TransactionsBase(IntegrationTest):
                     self.assertErrorLabelsOmit(
                         context.exception,
                         expected_result['errorLabelsOmit'])
+
+                # Reraise the exception if we're in the with_transaction
+                # callback.
+                if in_with_transaction:
+                    raise context.exception
             else:
                 result = self.run_operation(sessions, collection, op.copy())
                 if 'result' in op:
@@ -281,7 +287,8 @@ class TransactionsBase(IntegrationTest):
             elif name == 'with_transaction' and arg_name == 'callback':
                 callback_ops = arguments[arg_name]['operations']
                 arguments['callback'] = lambda _: self.run_operations(
-                    sessions, original_collection, copy.deepcopy(callback_ops))
+                    sessions, original_collection, copy.deepcopy(callback_ops),
+                    in_with_transaction=True)
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
