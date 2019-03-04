@@ -14,6 +14,7 @@
 
 """Execute Transactions Spec tests."""
 
+import copy
 import os
 import sys
 
@@ -174,7 +175,38 @@ class TransactionsBase(IntegrationTest):
         else:
             self.assertEqual(result, expected_result)
 
+    def run_operations(self, sessions, collection, ops):
+        for op in ops:
+            expected_result = op.get('result')
+            if expect_error(expected_result):
+                with self.assertRaises(PyMongoError,
+                                       msg=op['name']) as context:
+                    self.run_operation(sessions, collection, op.copy())
+
+                if expect_error_message(expected_result):
+                    self.assertIn(expected_result['errorContains'].lower(),
+                                  str(context.exception).lower())
+                if expect_error_code(expected_result):
+                    self.assertEqual(expected_result['errorCodeName'],
+                                     context.exception.details.get('codeName'))
+                if expect_error_labels_contain(expected_result):
+                    self.assertErrorLabelsContain(
+                        context.exception,
+                        expected_result['errorLabelsContain'])
+                if expect_error_labels_omit(expected_result):
+                    self.assertErrorLabelsOmit(
+                        context.exception,
+                        expected_result['errorLabelsOmit'])
+            else:
+                result = self.run_operation(sessions, collection, op.copy())
+                if 'result' in op:
+                    if op['name'] == 'runCommand':
+                        self.check_command_result(expected_result, result)
+                    else:
+                        self.check_result(expected_result, result)
+
     def run_operation(self, sessions, collection, operation):
+        original_collection = collection
         name = camel_to_snake(operation['name'])
         if name == 'run_command':
             name = 'command'
@@ -246,6 +278,10 @@ class TransactionsBase(IntegrationTest):
                 ordered_command = SON([(operation['command_name'], 1)])
                 ordered_command.update(arguments['command'])
                 arguments['command'] = ordered_command
+            elif name == 'with_transaction' and arg_name == 'callback':
+                callback_ops = arguments[arg_name]['operations']
+                arguments['callback'] = lambda _: self.run_operations(
+                    sessions, original_collection, copy.deepcopy(callback_ops))
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
@@ -586,34 +622,7 @@ def create_test(scenario_def, test, name):
         listener.results.clear()
         collection = client[database_name][collection_name]
 
-        for op in test['operations']:
-            expected_result = op.get('result')
-            if expect_error(expected_result):
-                with self.assertRaises(PyMongoError,
-                                       msg=op['name']) as context:
-                    self.run_operation(sessions, collection, op.copy())
-
-                if expect_error_message(expected_result):
-                    self.assertIn(expected_result['errorContains'].lower(),
-                                  str(context.exception).lower())
-                if expect_error_code(expected_result):
-                    self.assertEqual(expected_result['errorCodeName'],
-                                     context.exception.details.get('codeName'))
-                if expect_error_labels_contain(expected_result):
-                    self.assertErrorLabelsContain(
-                        context.exception,
-                        expected_result['errorLabelsContain'])
-                if expect_error_labels_omit(expected_result):
-                    self.assertErrorLabelsOmit(
-                        context.exception,
-                        expected_result['errorLabelsOmit'])
-            else:
-                result = self.run_operation(sessions, collection, op.copy())
-                if 'result' in op:
-                    if op['name'] == 'runCommand':
-                        self.check_command_result(expected_result, result)
-                    else:
-                        self.check_result(expected_result, result)
+        self.run_operations(sessions, collection, test['operations'])
 
         for s in sessions.values():
             s.end_session()
