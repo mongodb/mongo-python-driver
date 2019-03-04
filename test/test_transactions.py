@@ -53,10 +53,10 @@ _TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class TestTransactions(IntegrationTest):
+class TransactionsBase(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        super(TestTransactions, cls).setUpClass()
+        super(TransactionsBase, cls).setUpClass()
         # Speed up tests by reducing SDAM waiting time after a network error.
         cls.knobs = client_knobs(min_heartbeat_interval=0.1)
         cls.knobs.enable()
@@ -68,7 +68,7 @@ class TestTransactions(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         cls.knobs.disable()
-        super(TestTransactions, cls).tearDownClass()
+        super(TransactionsBase, cls).tearDownClass()
 
     def transaction_test_debug(self, msg):
         if _TXN_TESTS_DEBUG:
@@ -123,136 +123,6 @@ class TestTransactions(IntegrationTest):
                 # "operation was interrupted" by killing the command's
                 # own session.
                 pass
-
-    @client_context.require_transactions
-    def test_transaction_options_validation(self):
-        default_options = TransactionOptions()
-        self.assertIsNone(default_options.read_concern)
-        self.assertIsNone(default_options.write_concern)
-        self.assertIsNone(default_options.read_preference)
-        TransactionOptions(read_concern=ReadConcern(),
-                           write_concern=WriteConcern(),
-                           read_preference=ReadPreference.PRIMARY)
-        with self.assertRaisesRegex(TypeError, "read_concern must be "):
-            TransactionOptions(read_concern={})
-        with self.assertRaisesRegex(TypeError, "write_concern must be "):
-            TransactionOptions(write_concern={})
-        with self.assertRaisesRegex(
-                ConfigurationError,
-                "transactions do not support unacknowledged write concern"):
-            TransactionOptions(write_concern=WriteConcern(w=0))
-        with self.assertRaisesRegex(
-                TypeError, "is not valid for read_preference"):
-            TransactionOptions(read_preference={})
-
-    @client_context.require_transactions
-    def test_transaction_write_concern_override(self):
-        """Test txn overrides Client/Database/Collection write_concern."""
-        client = rs_client(w=0)
-        self.addCleanup(client.close)
-        db = client.test
-        coll = db.test
-        coll.insert_one({})
-        with client.start_session() as s:
-            with s.start_transaction(write_concern=WriteConcern(w=1)):
-                self.assertTrue(coll.insert_one({}, session=s).acknowledged)
-                self.assertTrue(coll.insert_many(
-                    [{}, {}], session=s).acknowledged)
-                self.assertTrue(coll.bulk_write(
-                    [InsertOne({})], session=s).acknowledged)
-                self.assertTrue(coll.replace_one(
-                    {}, {}, session=s).acknowledged)
-                self.assertTrue(coll.update_one(
-                    {}, {"$set": {"a": 1}}, session=s).acknowledged)
-                self.assertTrue(coll.update_many(
-                    {}, {"$set": {"a": 1}}, session=s).acknowledged)
-                self.assertTrue(coll.delete_one({}, session=s).acknowledged)
-                self.assertTrue(coll.delete_many({}, session=s).acknowledged)
-                coll.find_one_and_delete({}, session=s)
-                coll.find_one_and_replace({}, {}, session=s)
-                coll.find_one_and_update({}, {"$set": {"a": 1}}, session=s)
-
-        unsupported_txn_writes = [
-            (client.drop_database, [db.name], {}),
-            (db.create_collection, ['collection'], {}),
-            (db.drop_collection, ['collection'], {}),
-            (coll.drop, [], {}),
-            (coll.map_reduce,
-             ['function() {}', 'function() {}', 'output'], {}),
-            (coll.rename, ['collection2'], {}),
-            # Drop collection2 between tests of "rename", above.
-            (coll.database.drop_collection, ['collection2'], {}),
-            (coll.create_indexes, [[IndexModel('a')]], {}),
-            (coll.create_index, ['a'], {}),
-            (coll.drop_index, ['a_1'], {}),
-            (coll.drop_indexes, [], {}),
-            (coll.aggregate, [[{"$out": "aggout"}]], {}),
-        ]
-        for op in unsupported_txn_writes:
-            op, args, kwargs = op
-            with client.start_session() as s:
-                kwargs['session'] = s
-                s.start_transaction(write_concern=WriteConcern(w=1))
-                with self.assertRaises(OperationFailure):
-                    op(*args, **kwargs)
-                s.abort_transaction()
-
-    @client_context.require_transactions
-    @client_context.require_multiple_mongoses
-    def test_unpin_for_next_transaction(self):
-        # Increase localThresholdMS and wait until both nodes are discovered
-        # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(),
-                           localThresholdMS=1000)
-        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
-        # Create the collection.
-        coll.insert_one({})
-        self.addCleanup(client.close)
-        with client.start_session() as s:
-            # Session is pinned to Mongos.
-            with s.start_transaction():
-                coll.insert_one({}, session=s)
-
-            addresses = set()
-            for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
-                with s.start_transaction():
-                    cursor = coll.find({}, session=s)
-                    self.assertTrue(next(cursor))
-                    addresses.add(cursor.address)
-                # Break early if we can.
-                if len(addresses) > 1:
-                    break
-
-            self.assertGreater(len(addresses), 1)
-
-    @client_context.require_transactions
-    @client_context.require_multiple_mongoses
-    def test_unpin_for_non_transaction_operation(self):
-        # Increase localThresholdMS and wait until both nodes are discovered
-        # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(),
-                           localThresholdMS=1000)
-        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
-        # Create the collection.
-        coll.insert_one({})
-        self.addCleanup(client.close)
-        with client.start_session() as s:
-            # Session is pinned to Mongos.
-            with s.start_transaction():
-                coll.insert_one({}, session=s)
-
-            addresses = set()
-            for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
-                cursor = coll.find({}, session=s)
-                self.assertTrue(next(cursor))
-                addresses.add(cursor.address)
-                # Break early if we can.
-                if len(addresses) > 1:
-                    break
-
-            self.assertGreater(len(addresses), 1)
 
     def check_command_result(self, expected_result, result):
         # Only compare the keys in the expected result.
@@ -451,6 +321,143 @@ class TestTransactions(IntegrationTest):
                     self.assertEqual(actual, expected)
 
 
+class TestTransactions(TransactionsBase):
+    @client_context.require_transactions
+    def test_transaction_options_validation(self):
+        default_options = TransactionOptions()
+        self.assertIsNone(default_options.read_concern)
+        self.assertIsNone(default_options.write_concern)
+        self.assertIsNone(default_options.read_preference)
+        TransactionOptions(read_concern=ReadConcern(),
+                           write_concern=WriteConcern(),
+                           read_preference=ReadPreference.PRIMARY)
+        with self.assertRaisesRegex(TypeError, "read_concern must be "):
+            TransactionOptions(read_concern={})
+        with self.assertRaisesRegex(TypeError, "write_concern must be "):
+            TransactionOptions(write_concern={})
+        with self.assertRaisesRegex(
+                ConfigurationError,
+                "transactions do not support unacknowledged write concern"):
+            TransactionOptions(write_concern=WriteConcern(w=0))
+        with self.assertRaisesRegex(
+                TypeError, "is not valid for read_preference"):
+            TransactionOptions(read_preference={})
+
+    @client_context.require_transactions
+    def test_transaction_write_concern_override(self):
+        """Test txn overrides Client/Database/Collection write_concern."""
+        client = rs_client(w=0)
+        self.addCleanup(client.close)
+        db = client.test
+        coll = db.test
+        coll.insert_one({})
+        with client.start_session() as s:
+            with s.start_transaction(write_concern=WriteConcern(w=1)):
+                self.assertTrue(coll.insert_one({}, session=s).acknowledged)
+                self.assertTrue(coll.insert_many(
+                    [{}, {}], session=s).acknowledged)
+                self.assertTrue(coll.bulk_write(
+                    [InsertOne({})], session=s).acknowledged)
+                self.assertTrue(coll.replace_one(
+                    {}, {}, session=s).acknowledged)
+                self.assertTrue(coll.update_one(
+                    {}, {"$set": {"a": 1}}, session=s).acknowledged)
+                self.assertTrue(coll.update_many(
+                    {}, {"$set": {"a": 1}}, session=s).acknowledged)
+                self.assertTrue(coll.delete_one({}, session=s).acknowledged)
+                self.assertTrue(coll.delete_many({}, session=s).acknowledged)
+                coll.find_one_and_delete({}, session=s)
+                coll.find_one_and_replace({}, {}, session=s)
+                coll.find_one_and_update({}, {"$set": {"a": 1}}, session=s)
+
+        unsupported_txn_writes = [
+            (client.drop_database, [db.name], {}),
+            (db.create_collection, ['collection'], {}),
+            (db.drop_collection, ['collection'], {}),
+            (coll.drop, [], {}),
+            (coll.map_reduce,
+             ['function() {}', 'function() {}', 'output'], {}),
+            (coll.rename, ['collection2'], {}),
+            # Drop collection2 between tests of "rename", above.
+            (coll.database.drop_collection, ['collection2'], {}),
+            (coll.create_indexes, [[IndexModel('a')]], {}),
+            (coll.create_index, ['a'], {}),
+            (coll.drop_index, ['a_1'], {}),
+            (coll.drop_indexes, [], {}),
+            (coll.aggregate, [[{"$out": "aggout"}]], {}),
+        ]
+        for op in unsupported_txn_writes:
+            op, args, kwargs = op
+            with client.start_session() as s:
+                kwargs['session'] = s
+                s.start_transaction(write_concern=WriteConcern(w=1))
+                with self.assertRaises(OperationFailure):
+                    op(*args, **kwargs)
+                s.abort_transaction()
+
+    @client_context.require_transactions
+    @client_context.require_multiple_mongoses
+    def test_unpin_for_next_transaction(self):
+        # Increase localThresholdMS and wait until both nodes are discovered
+        # to avoid false positives.
+        client = rs_client(client_context.mongos_seeds(),
+                           localThresholdMS=1000)
+        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
+        coll = client.test.test
+        # Create the collection.
+        coll.insert_one({})
+        self.addCleanup(client.close)
+        with client.start_session() as s:
+            # Session is pinned to Mongos.
+            with s.start_transaction():
+                coll.insert_one({}, session=s)
+
+            addresses = set()
+            for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
+                with s.start_transaction():
+                    cursor = coll.find({}, session=s)
+                    self.assertTrue(next(cursor))
+                    addresses.add(cursor.address)
+                # Break early if we can.
+                if len(addresses) > 1:
+                    break
+
+            self.assertGreater(len(addresses), 1)
+
+    @client_context.require_transactions
+    @client_context.require_multiple_mongoses
+    def test_unpin_for_non_transaction_operation(self):
+        # Increase localThresholdMS and wait until both nodes are discovered
+        # to avoid false positives.
+        client = rs_client(client_context.mongos_seeds(),
+                           localThresholdMS=1000)
+        wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
+        coll = client.test.test
+        # Create the collection.
+        coll.insert_one({})
+        self.addCleanup(client.close)
+        with client.start_session() as s:
+            # Session is pinned to Mongos.
+            with s.start_transaction():
+                coll.insert_one({}, session=s)
+
+            addresses = set()
+            for _ in range(UNPIN_TEST_MAX_ATTEMPTS):
+                cursor = coll.find({}, session=s)
+                self.assertTrue(next(cursor))
+                addresses.add(cursor.address)
+                # Break early if we can.
+                if len(addresses) > 1:
+                    break
+
+            self.assertGreater(len(addresses), 1)
+
+
+class TestTransactionsConvenientAPI(TransactionsBase):
+    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             'transactions-convenient-api')
+
+
 def expect_error_message(expected_result):
     if isinstance(expected_result, dict):
         return expected_result['errorContains']
@@ -638,6 +645,10 @@ def create_test(scenario_def, test, name):
 
 test_creator = TestCreator(create_test, TestTransactions, _TEST_PATH)
 test_creator.create_tests()
+
+
+TestCreator(create_test, TestTransactionsConvenientAPI,
+            TestTransactionsConvenientAPI.TEST_PATH).create_tests()
 
 
 if __name__ == "__main__":
