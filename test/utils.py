@@ -181,7 +181,7 @@ class TestCreator(object):
             the test specifications.
             """
         self._create_test = create_test
-        self._test_class= test_class
+        self._test_class = test_class
         self.test_path = test_path
 
     def _ensure_min_max_server_version(self, scenario_def, method):
@@ -203,6 +203,47 @@ class TestCreator(object):
 
         return method
 
+    @staticmethod
+    def valid_topology(run_on_req):
+        return client_context.is_topology_type(
+            run_on_req.get('topology', ['single', 'replicaset', 'sharded']))
+
+    @staticmethod
+    def min_server_version(run_on_req):
+        version = run_on_req.get('minServerVersion')
+        if version:
+            min_ver = tuple(int(elt) for elt in version.split('.'))
+            return client_context.version >= min_ver
+        return True
+
+    @staticmethod
+    def max_server_version(run_on_req):
+        version = run_on_req.get('maxServerVersion')
+        if version:
+            max_ver = tuple(int(elt) for elt in version.split('.'))
+            return client_context.version <= max_ver
+        return True
+
+    def should_run_on(self, scenario_def):
+        run_on = scenario_def.get('runOn', [])
+        if not run_on:
+            # Always run these tests.
+            return True
+
+        for req in run_on:
+            if (self.valid_topology(req) and
+                    self.min_server_version(req) and
+                    self.max_server_version(req)):
+                return True
+        return False
+
+    def ensure_run_on(self, scenario_def, method):
+        """Test modifier that enforces a 'runOn' on a test case."""
+        return client_context._require(
+            lambda: self.should_run_on(scenario_def),
+            "runOn not satisfied",
+            method)
+
     def create_tests(self):
         for dirpath, _, filenames in os.walk(self.test_path):
             dirname = os.path.split(dirpath)[-1]
@@ -223,6 +264,8 @@ class TestCreator(object):
                     new_test = self._create_test(
                         scenario_def, test_def, test_name)
                     new_test = self._ensure_min_max_server_version(
+                        scenario_def, new_test)
+                    new_test = self.ensure_run_on(
                         scenario_def, new_test)
 
                     new_test.__name__ = test_name
