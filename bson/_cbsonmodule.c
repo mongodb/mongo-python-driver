@@ -458,12 +458,14 @@ int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
     registry->registry_obj = NULL;
 
     registry->encoder_map = PyObject_GetAttrString(registry_obj, "_encoder_map");
-    if (registry->encoder_map == NULL)
+    if (registry->encoder_map == NULL) {
         goto fail;
+    }
 
     registry->decoder_map = PyObject_GetAttrString(registry_obj, "_decoder_map");
-    if (registry->decoder_map == NULL)
+    if (registry->decoder_map == NULL) {
         goto fail;
+    }
 
     registry->registry_obj = registry_obj;
     Py_INCREF(registry->registry_obj);
@@ -497,12 +499,15 @@ int convert_codec_options(PyObject* options_obj, void* p) {
                           &type_registry_obj))
         return 0;
 
-    if ((type_marker = _type_marker(options->document_class)) < 0)
+    type_marker = _type_marker(options->document_class);
+    if (type_marker < 0) {
         return 0;
+    }
 
     if (!convert_type_registry(type_registry_obj,
-                               &options->type_registry))
+                               &options->type_registry)) {
         return 0;
+    }
 
     options->is_raw_bson = (101 == type_marker);
     options->options_obj = options_obj;
@@ -552,17 +557,23 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
     PyObject* converter = NULL;
     PyObject* new_value = NULL;
 
-    if ((value_type = PyObject_Type(value)) == NULL)
+    value_type = PyObject_Type(value);
+    if (value_type == NULL) {
         goto fail;
+    }
 
-    if(Py_EnterRecursiveCall(" while encoding an object to BSON "))
+    if(Py_EnterRecursiveCall(" while encoding an object to BSON ")) {
         goto fail;
+    }
 
-    if ((converter = PyDict_GetItem(options->type_registry.encoder_map, value_type)) != NULL) {
+    converter = PyDict_GetItem(options->type_registry.encoder_map, value_type);
+    if (converter != NULL) {
         /* Transform types that have a registered converter.
          * A new reference is created upon transformation. */
-        if ((new_value = PyObject_CallFunctionObjArgs(converter, value, NULL)) == NULL)
+        new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
+        if (new_value == NULL) {
             goto fail;
+        }
         result = _write_element_to_buffer(self, buffer, type_byte,
                                           new_value, check_keys, options);
     } else {
@@ -764,7 +775,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     struct module_state *state = GETSTATE(self);
     PyObject* mapping_type;
     PyObject* uuid_type;
-
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
      * problems with python sub interpreters. Our custom types should
@@ -2549,9 +2559,12 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
     if (value) {
         PyObject* value_type = NULL;
         PyObject* converter = NULL;
-        if ((value_type = PyObject_Type(value)) == NULL)
+        value_type = PyObject_Type(value);
+        if (value_type == NULL) {
             goto invalid;
-        if ((converter = PyDict_GetItem(options->type_registry.decoder_map, value_type)) != NULL) {
+        }
+        converter = PyDict_GetItem(options->type_registry.decoder_map, value_type);
+        if (converter != NULL) {
             PyObject* new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
             Py_DECREF(value_type);
             Py_DECREF(value);
