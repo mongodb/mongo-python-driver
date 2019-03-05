@@ -453,6 +453,10 @@ static long _type_marker(PyObject* object) {
  * Return 0 on failure.
  */
 int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
+    registry->encoder_map = NULL;
+    registry->decoder_map = NULL;
+    registry->registry_obj = NULL;
+
     registry->encoder_map = PyObject_GetAttrString(registry_obj, "_encoder_map");
     if (registry->encoder_map == NULL)
         goto fail;
@@ -546,20 +550,21 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
     int result;
     PyObject* value_type = NULL;
     PyObject* converter = NULL;
+    PyObject* new_value = NULL;
 
     if ((value_type = PyObject_Type(value)) == NULL)
-        return 0;
+        goto fail;
 
     if(Py_EnterRecursiveCall(" while encoding an object to BSON "))
-        return 0;
+        goto fail;
 
     if ((converter = PyDict_GetItem(options->type_registry.encoder_map, value_type)) != NULL) {
         /* Transform types that have a registered converter.
          * A new reference is created upon transformation. */
-        PyObject* new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
+        if ((new_value = PyObject_CallFunctionObjArgs(converter, value, NULL)) == NULL)
+            goto fail;
         result = _write_element_to_buffer(self, buffer, type_byte,
                                           new_value, check_keys, options);
-        Py_DECREF(new_value);
     } else {
         result = _write_element_to_buffer(self, buffer, type_byte,
                                           value, check_keys, options);
@@ -567,6 +572,11 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
     Py_DECREF(value_type);
     Py_LeaveRecursiveCall();
     return result;
+
+fail:
+    Py_XDECREF(value_type);
+    Py_XDECREF(new_value);
+    return 0;
 }
 
 static void
