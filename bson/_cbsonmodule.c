@@ -489,7 +489,9 @@ int convert_codec_options(PyObject* options_obj, void* p) {
                           &type_registry_obj))
         return 0;
 
-    convert_type_registry(type_registry_obj, &options->type_registry);
+    if (!convert_type_registry(type_registry_obj,
+                               &options->type_registry))
+        return 0;
 
     type_marker = _type_marker(options->document_class);
     if (type_marker < 0) return 0;
