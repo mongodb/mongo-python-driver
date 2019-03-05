@@ -552,17 +552,17 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
                                    int type_byte, PyObject* value,
                                    unsigned char check_keys,
                                    const codec_options_t* options) {
-    int result;
+    int result = 0;
     PyObject* value_type = NULL;
     PyObject* converter = NULL;
     PyObject* new_value = NULL;
 
-    value_type = PyObject_Type(value);
-    if (value_type == NULL) {
-        goto fail;
+    if(Py_EnterRecursiveCall(" while encoding an object to BSON ")) {
+        return 0;
     }
 
-    if(Py_EnterRecursiveCall(" while encoding an object to BSON ")) {
+    value_type = PyObject_Type(value);
+    if (value_type == NULL) {
         goto fail;
     }
 
@@ -574,20 +574,16 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
         if (new_value == NULL) {
             goto fail;
         }
-        result = _write_element_to_buffer(self, buffer, type_byte,
-                                          new_value, check_keys, options);
-    } else {
-        result = _write_element_to_buffer(self, buffer, type_byte,
-                                          value, check_keys, options);
+        value = new_value;
     }
-    Py_DECREF(value_type);
-    Py_LeaveRecursiveCall();
-    return result;
+    result = _write_element_to_buffer(self, buffer, type_byte,
+                                      value, check_keys, options);
 
 fail:
     Py_XDECREF(value_type);
     Py_XDECREF(new_value);
-    return 0;
+    Py_LeaveRecursiveCall();
+    return result;
 }
 
 static void
