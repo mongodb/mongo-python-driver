@@ -1765,9 +1765,8 @@ class TestCollection(IntegrationTest):
         db.test_large_limit.create_index([('x', 1)])
         my_str = "mongomongo" * 1000
 
-        for i in range(2000):
-            doc = {"x": i, "y": my_str}
-            db.test_large_limit.insert_one(doc)
+        db.test_large_limit.insert_many(
+            {"x": i, "y": my_str} for i in range(2000))
 
         i = 0
         y = 0
@@ -1781,9 +1780,7 @@ class TestCollection(IntegrationTest):
     def test_find_kwargs(self):
         db = self.db
         db.drop_collection("test")
-
-        for i in range(10):
-            db.test.insert_one({"x": i})
+        db.test.insert_many({"x": i} for i in range(10))
 
         self.assertEqual(10, db.test.count_documents({}))
 
@@ -1808,8 +1805,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count_documents({}))
         self.assertEqual(0, db.foo.count_documents({}))
 
-        for i in range(10):
-            db.test.insert_one({"x": i})
+        db.test.insert_many({"x": i} for i in range(10))
 
         self.assertEqual(10, db.test.count_documents({}))
 
