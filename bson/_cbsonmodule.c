@@ -455,16 +455,20 @@ static long _type_marker(PyObject* object) {
 int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
     registry->encoder_map = PyObject_GetAttrString(registry_obj, "_encoder_map");
     if (registry->encoder_map == NULL)
-        return 0;
+        goto fail;
 
     registry->decoder_map = PyObject_GetAttrString(registry_obj, "_decoder_map");
     if (registry->decoder_map == NULL)
-        return 0;
+        goto fail;
 
     registry->registry_obj = registry_obj;
     Py_INCREF(registry->registry_obj);
-
     return 1;
+
+fail:
+    Py_XDECREF(registry->encoder_map);
+    Py_XDECREF(registry->decoder_map);
+    return 0;
 }
 
 /* Fill out a codec_options_t* from a CodecOptions object. Use with the "O&"
@@ -489,15 +493,16 @@ int convert_codec_options(PyObject* options_obj, void* p) {
                           &type_registry_obj))
         return 0;
 
+    if ((type_marker = _type_marker(options->document_class)) < 0)
+        return 0;
+
     if (!convert_type_registry(type_registry_obj,
                                &options->type_registry))
         return 0;
 
-    type_marker = _type_marker(options->document_class);
-    if (type_marker < 0) return 0;
     options->is_raw_bson = (101 == type_marker);
-
     options->options_obj = options_obj;
+
     Py_INCREF(options->options_obj);
     Py_INCREF(options->document_class);
     Py_INCREF(options->tzinfo);
@@ -530,6 +535,8 @@ void destroy_codec_options(codec_options_t* options) {
     Py_CLEAR(options->tzinfo);
     Py_CLEAR(options->options_obj);
     Py_CLEAR(options->type_registry.registry_obj);
+    Py_CLEAR(options->type_registry.encoder_map);
+    Py_CLEAR(options->type_registry.decoder_map);
 }
 
 static int write_element_to_buffer(PyObject* self, buffer_t buffer,
