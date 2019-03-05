@@ -27,6 +27,7 @@ from pymongo.client_session import TransactionOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import (ConfigurationError,
+                            ConnectionFailure,
                             OperationFailure,
                             PyMongoError)
 from pymongo.operations import IndexModel, InsertOne
@@ -496,9 +497,145 @@ class TestTransactions(TransactionsBase):
             self.assertGreater(len(addresses), 1)
 
 
+class PatchMockTimer(object):
+    """Patches the client_session module's monotonic time to test timeouts."""
+    def __init__(self):
+        self.monotonic_time = None
+        self.counter = 0
+
+    def time(self):
+        time = self.monotonic_time()
+        if self.counter > 0:
+            time += client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT
+        self.counter += 1
+        return time
+
+    def __enter__(self):
+        self.monotonic_time = client_session.monotonic.time
+        self.counter = 0
+        client_session.monotonic.time = self.time
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.monotonic_time:
+            client_session.monotonic.time = self.monotonic_time
+
+
 class TestTransactionsConvenientAPI(TransactionsBase):
     TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                              'transactions-convenient-api')
+
+    @client_context.require_transactions
+    def test_callback_raises_custom_error(self):
+        class _MyException(Exception):pass
+
+        def raise_error(_):
+            raise _MyException()
+        with self.client.start_session() as s:
+            with self.assertRaises(_MyException):
+                s.with_transaction(raise_error)
+
+    @client_context.require_transactions
+    def test_callback_returns_value(self):
+        def callback(_):
+            return 'Foo'
+        with self.client.start_session() as s:
+            self.assertEqual(s.with_transaction(callback), 'Foo')
+
+        self.db.test.insert_one({})
+
+        def callback(session):
+            self.db.test.insert_one({}, session=session)
+            return 'Foo'
+        with self.client.start_session() as s:
+            self.assertEqual(s.with_transaction(callback), 'Foo')
+
+    @client_context.require_transactions
+    def test_callback_not_retried_after_timeout(self):
+        listener = OvertCommandListener()
+        client = rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+            err = {
+                'ok': 0,
+                'errmsg': 'Transaction 7819 has been aborted.',
+                'code': 251,
+                'codeName': 'NoSuchTransaction',
+                'errorLabels': ['TransientTransactionError'],
+            }
+            raise OperationFailure(err['errmsg'], err['code'], err)
+
+        # Create the collection.
+        coll.insert_one({})
+        listener.results.clear()
+        with client.start_session() as s:
+            with PatchMockTimer():
+                with self.assertRaises(OperationFailure):
+                    s.with_transaction(callback)
+
+        self.assertEqual(listener.started_command_names(),
+                         ['insert', 'abortTransaction'])
+
+    @client_context.require_transactions
+    def test_callback_not_retried_after_commit_timeout(self):
+        listener = OvertCommandListener()
+        client = rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+
+        # Create the collection.
+        coll.insert_one({})
+        self.set_fail_point({
+            'configureFailPoint': 'failCommand', 'mode': {'times': 1},
+            'data': {
+                'failCommands': ['commitTransaction'],
+                'errorCode': 251,  # NoSuchTransaction
+            }})
+        self.addCleanup(self.set_fail_point, {
+            'configureFailPoint': 'failCommand', 'mode': 'off'})
+        listener.results.clear()
+
+        with client.start_session() as s:
+            with PatchMockTimer():
+                with self.assertRaises(OperationFailure):
+                    s.with_transaction(callback)
+
+        self.assertEqual(listener.started_command_names(),
+                         ['insert', 'commitTransaction'])
+
+    @client_context.require_transactions
+    def test_commit_not_retried_after_timeout(self):
+        listener = OvertCommandListener()
+        client = rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+
+        # Create the collection.
+        coll.insert_one({})
+        self.set_fail_point({
+            'configureFailPoint': 'failCommand', 'mode': {'times': 2},
+            'data': {
+                'failCommands': ['commitTransaction'],
+                'closeConnection': True}})
+        self.addCleanup(self.set_fail_point, {
+            'configureFailPoint': 'failCommand', 'mode': 'off'})
+        listener.results.clear()
+
+        with client.start_session() as s:
+            with PatchMockTimer():
+                with self.assertRaises(ConnectionFailure):
+                    s.with_transaction(callback)
+
+        # One insert for the callback and two commits (includes the automatic
+        # retry).
+        self.assertEqual(listener.started_command_names(),
+                         ['insert', 'commitTransaction', 'commitTransaction'])
 
 
 def expect_error_message(expected_result):
