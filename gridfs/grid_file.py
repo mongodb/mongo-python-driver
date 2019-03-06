@@ -674,14 +674,6 @@ class _GridOutChunkIterator(object):
             return self.__chunk_size
         return self.__length - (self.__chunk_size * (self.__num_chunks - 1))
 
-    @property
-    def next_chunk(self):
-        return self.__next_chunk
-
-    @property
-    def num_chunks(self):
-        return self.__num_chunks
-
     def __iter__(self):
         return self
 
