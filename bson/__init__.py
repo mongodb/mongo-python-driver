@@ -389,9 +389,10 @@ def _element_to_dict(data, position, obj_end, opts):
     except KeyError:
         _raise_unknown_type(element_type, element_name)
 
-    custom_decoder = opts.type_registry._decoder_map.get(type(value))
-    if custom_decoder is not None:
-        value = custom_decoder(value)
+    if opts.type_registry._decoder_map:
+        custom_decoder = opts.type_registry._decoder_map.get(type(value))
+        if custom_decoder is not None:
+            value = custom_decoder(value)
 
     return element_name, value, position
 if _USE_C:
@@ -756,10 +757,11 @@ def _name_value_to_bson(name, value, check_keys, opts):
     # Custom encoder (if any) takes precedence over default encoders.
     # Using 'if' instead of 'try...except' for performance since this will
     # usually not be true.
-    # No support for auto-encoding subtypes of registered custom types.
-    custom_encoder = opts.type_registry._encoder_map.get(type(value))
-    if custom_encoder is not None:
-        value = custom_encoder(value)
+    # No support for auto-encoding subtypes of registered cstom types.
+    if opts.type_registry._encoder_map:
+        custom_encoder = opts.type_registry._encoder_map.get(type(value))
+        if custom_encoder is not None:
+            value = custom_encoder(value)
 
     # First see if the type is already cached. KeyError will only ever
     # happen once per subtype.
