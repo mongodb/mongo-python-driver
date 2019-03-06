@@ -461,11 +461,13 @@ int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
     if (registry->encoder_map == NULL) {
         goto fail;
     }
+    registry->is_encoder_empty = (PyDict_Size(registry->encoder_map) == 0);
 
     registry->decoder_map = PyObject_GetAttrString(registry_obj, "_decoder_map");
     if (registry->decoder_map == NULL) {
         goto fail;
     }
+    registry->is_decoder_empty = (PyDict_Size(registry->decoder_map) == 0);
 
     registry->registry_obj = registry_obj;
     Py_INCREF(registry->registry_obj);
@@ -561,20 +563,21 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
         return 0;
     }
 
-    value_type = PyObject_Type(value);
-    if (value_type == NULL) {
-        goto fail;
-    }
-
-    converter = PyDict_GetItem(options->type_registry.encoder_map, value_type);
-    if (converter != NULL) {
-        /* Transform types that have a registered converter.
-         * A new reference is created upon transformation. */
-        new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
-        if (new_value == NULL) {
+    if (!options->type_registry.is_encoder_empty) {
+        value_type = PyObject_Type(value);
+        if (value_type == NULL) {
             goto fail;
         }
-        value = new_value;
+        converter = PyDict_GetItem(options->type_registry.encoder_map, value_type);
+        if (converter != NULL) {
+            /* Transform types that have a registered converter.
+             * A new reference is created upon transformation. */
+            new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
+            if (new_value == NULL) {
+                goto fail;
+            }
+            value = new_value;
+        }
     }
     result = _write_element_to_buffer(self, buffer, type_byte,
                                       value, check_keys, options);
@@ -2553,22 +2556,25 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
     }
 
     if (value) {
-        PyObject* value_type = NULL;
-        PyObject* converter = NULL;
-        value_type = PyObject_Type(value);
-        if (value_type == NULL) {
-            goto invalid;
+        if (!options->type_registry.is_decoder_empty) {
+            PyObject* value_type = NULL;
+            PyObject* converter = NULL;
+            value_type = PyObject_Type(value);
+            if (value_type == NULL) {
+                goto invalid;
+            }
+            converter = PyDict_GetItem(options->type_registry.decoder_map, value_type);
+            if (converter != NULL) {
+                PyObject* new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
+                Py_DECREF(value_type);
+                Py_DECREF(value);
+                return new_value;
+            } else {
+                Py_DECREF(value_type);
+                return value;
+            }
         }
-        converter = PyDict_GetItem(options->type_registry.decoder_map, value_type);
-        if (converter != NULL) {
-            PyObject* new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
-            Py_DECREF(value_type);
-            Py_DECREF(value);
-            return new_value;
-        } else {
-            Py_DECREF(value_type);
-            return value;
-        }
+        return value;
     }
 
     invalid:
