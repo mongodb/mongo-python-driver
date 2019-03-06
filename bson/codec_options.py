@@ -81,7 +81,7 @@ class TypeRegistry(object):
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
-            return False
+            return NotImplemented
         return ((self._decoder_map == other._decoder_map) and
                 (self._encoder_map == other._encoder_map))
 
