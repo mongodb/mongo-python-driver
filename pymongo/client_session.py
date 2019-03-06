@@ -287,6 +287,8 @@ _UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset([
 
 # From the Convenient API for Transactions spec, with_transaction must
 # halt retries after 120 seconds.
+# This limit is non-configurable and was chosen to be twice the 60 second
+# default value of MongoDB's `transactionLifetimeLimitSeconds` parameter.
 _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
 
 
@@ -381,7 +383,8 @@ class ClientSession(object):
                          read_preference=None):
         """Execute a callback in a transaction.
 
-        .. code-block:: python
+        This method starts a transaction on this session, executes ``callback``
+        once, and then commits the transaction. For example::
 
           def callback(session):
               orders = session.client.db.orders
@@ -393,26 +396,46 @@ class ClientSession(object):
           with client.start_session() as session:
               session.with_transaction(callback)
 
-        In an ideal scenario, `with_transaction` will start a transaction,
-        execute the callback once, and commit the transaction. In the event of
-        error, the commit or entire transaction may need to be retried and
-        thus the callback may be invoked multiple times. Even though the
-        callback may be invoked multiple times, `with_transaction` ensures
+        In the event an exception, `with_transaction` may retry the commit or
+        entire transaction and thus ``callback`` may be invoked multiple times.
+        Applications should take care when writing a ``callback`` that changes
+        application state because the ``callback`` may be executed multiple
+        times by a single call to `with_transaction`. Note, even when the
+        ``callback`` is invoked multiple times, ``with_transaction`` ensures
         that the transaction will be committed at most once on the server.
 
+        The ``callback`` should not attempt to start new transactions, but
+        should simply run operations meant to be contained within a
+        transaction. The ``callback`` should also not commit the transaction;
+        this is handled automatically by ``with_transaction``. If the
+        ``callback`` does commit or abort the transaction without error,
+        however, ``with_transaction`` will return without taking further
+        action.
+
+        When ``callback`` raises an exception, ``with_transaction``
+        automatically aborts the current transaction. When ``callback`` or
+        :meth:`~ClientSession.commit_transaction` raises an exception that
+        includes the ``"TransientTransactionError"`` error label,
+        ``with_transaction`` will start a new transaction and re-execute
+        ``callback``.
+
+        When :meth:`~ClientSession.commit_transaction` raises an exception with
+        the ``"UnknownTransactionCommitResult"`` error label,
+        ``with_transaction`` will retry the commit until the result of the
+        transaction is known.
+
         In order to safeguard applications from infinite retry loops,
-        `with_transaction` will cease retrying the callback and
-        `commit_transaction` if it has exceeded a fixed timeout period of 120
-        seconds. This limit is non-configurable and is intentionally twice the
-        value of MongoDB's default for the  `transactionLifetimeLimitSeconds`
-        parameter (60 seconds). Applications that desire longer retry periods
-        may call `with_transaction` additional times as needed. Applications
-        that desire shorter retry periods should not use this method.
+        ``with_transaction`` will cease retrying once it has exceeded a fixed
+        timeout period of 120 seconds. Any exception raised by the ``callback``
+        or by :meth:`ClientSession.commit_transaction` after the timeout is
+        reached will be re-raised. Applications that desire a different
+        timeout should not use this method.
 
         :Parameters:
-          - `callback`: The callback to run inside a transaction which must
-            accept a single argument, this session. Under certain error
-            conditions the callback may be run multiple times.
+          - `callback`: The callable ``callback`` to run inside a transaction.
+            The callable must accept a single argument, this session. Note,
+            under certain error conditions the callback may be run multiple
+            times.
           - `read_concern` (optional): The
             :class:`~pymongo.read_concern.ReadConcern` to use for this
             transaction.
@@ -425,7 +448,7 @@ class ClientSession(object):
             :mod:`~pymongo.read_preferences` for options.
 
         :Returns:
-          The return value of the callback.
+          The return value of the ``callback``.
 
         .. versionadded:: 3.9
         """
