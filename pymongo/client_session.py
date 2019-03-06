@@ -406,13 +406,14 @@ class ClientSession(object):
               session.with_transaction(
                   lambda s: callback(s, "custom_arg", custom_kwarg=1))
 
-        In the event an exception, `with_transaction` may retry the commit or
-        entire transaction and thus ``callback`` may be invoked multiple times.
-        Applications should take care when writing a ``callback`` that changes
-        application state because the ``callback`` may be executed multiple
-        times by a single call to `with_transaction`. Note, even when the
-        ``callback`` is invoked multiple times, ``with_transaction`` ensures
-        that the transaction will be committed at most once on the server.
+        In the event of an exception, ``with_transaction`` may retry the commit
+        or the entire transaction, therefore ``callback`` may be invoked
+        multiple times by a single call to ``with_transaction``. Developers
+        should be mindful of this possiblity when writing a ``callback`` that
+        modifies application state or has any other side-effects.
+        Note that even when the ``callback`` is invoked multiple times,
+        ``with_transaction`` ensures that the transaction will be committed
+        at-most-once on the server.
 
         The ``callback`` should not attempt to start new transactions, but
         should simply run operations meant to be contained within a
@@ -426,20 +427,19 @@ class ClientSession(object):
         automatically aborts the current transaction. When ``callback`` or
         :meth:`~ClientSession.commit_transaction` raises an exception that
         includes the ``"TransientTransactionError"`` error label,
-        ``with_transaction`` will start a new transaction and re-execute
-        ``callback``.
+        ``with_transaction`` starts a new transaction and re-executes
+        the ``callback``.
 
         When :meth:`~ClientSession.commit_transaction` raises an exception with
         the ``"UnknownTransactionCommitResult"`` error label,
-        ``with_transaction`` will retry the commit until the result of the
+        ``with_transaction`` retries the commit until the result of the
         transaction is known.
 
-        In order to safeguard applications from infinite retry loops,
-        ``with_transaction`` will cease retrying once it has exceeded a fixed
-        timeout period of 120 seconds. Any exception raised by the ``callback``
-        or by :meth:`ClientSession.commit_transaction` after the timeout is
-        reached will be re-raised. Applications that desire a different
-        timeout should not use this method.
+        This method will cease retrying after 120 seconds has elapsed. This
+        timeout is not configurable and any exception raised by the
+        ``callback`` or by :meth:`ClientSession.commit_transaction` after the
+        timeout is reached will be re-raised. Applications that desire a
+        different timeout duration should not use this method.
 
         :Parameters:
           - `callback`: The callable ``callback`` to run inside a transaction.
