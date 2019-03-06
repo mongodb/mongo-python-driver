@@ -909,21 +909,44 @@ class TestBSON(unittest.TestCase):
 class TestTypeRegistry(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        types = (
-            type("MyIntType", (int,), {}), type("MyStrType", (str,), {}))
-        codecs = (
-            type("MyIntCodec", (TypeCodecBase,), {
-                "python_type": types[0],
-                "transform_python": lambda self, val: int(val),
-                "bson_type": int,
-                "transform_bson": lambda self, val: types[0](val)}),
-            type("MyStrCodec", (TypeCodecBase,), {
-                "python_type": types[1],
-                "transform_python": lambda self, val: str(val),
-                "bson_type": str,
-                "transform_bson": lambda self, val: types[1](val)}))
-        cls.types = types
-        cls.codecs = codecs
+        class MyIntType(int):
+            pass
+
+        class MyStrType(str):
+            pass
+
+        class MyIntCodec(TypeCodecBase):
+            @property
+            def python_type(self):
+                return MyIntType
+
+            @property
+            def bson_type(self):
+                return int
+
+            def transform_python(self, value):
+                return int(value)
+
+            def transform_bson(self, value):
+                return MyIntType(value)
+
+        class MyStrCodec(TypeCodecBase):
+            @property
+            def python_type(self):
+                return MyStrType
+
+            @property
+            def bson_type(self):
+                return str
+
+            def transform_python(self, value):
+                return str(value)
+
+            def transform_bson(self, value):
+                return MyStrType(value)
+
+        cls.types = (MyIntType, MyStrType)
+        cls.codecs = (MyIntCodec, MyStrCodec)
 
     def test_simple(self):
         codec_instances = [codec() for codec in self.codecs]
@@ -936,9 +959,12 @@ class TestTypeRegistry(unittest.TestCase):
             str: codec_instances[1].transform_bson})
 
     def test_initialize_fail(self):
-        err_msg = "Expected instance of TypeCodecBase, got type instead"
+        err_msg = "Expected an instance of TypeCodecBase, got .* instead"
         with self.assertRaisesRegex(TypeError, err_msg):
             TypeRegistry(*self.codecs)
+
+        with self.assertRaisesRegex(TypeError, err_msg):
+            TypeRegistry(type('AnyType', (object,), {})())
 
     def test_not_implemented(self):
         type_registry = TypeRegistry(type("codec1", (TypeCodecBase, ), {})(),
