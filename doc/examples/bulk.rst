@@ -109,7 +109,7 @@ the failure.
    'writeConcernErrors': [],
    'writeErrors': [{u'code': 11000,
                     u'errmsg': u'...E11000...duplicate key error...',
-                    u'index': 1,
+                    u'index': 1,...
                     u'op': {'_id': 4}}]}
 
 .. _unordered_bulk:
@@ -147,11 +147,11 @@ and fourth operations succeed.
    'writeConcernErrors': [],
    'writeErrors': [{u'code': 11000,
                     u'errmsg': u'...E11000...duplicate key error...',
-                    u'index': 0,
+                    u'index': 0,...
                     u'op': {'_id': 1}},
                    {u'code': 11000,
                     u'errmsg': u'...E11000...duplicate key error...',
-                    u'index': 2,
+                    u'index': 2,...
                     u'op': {'_id': 3}}]}
 
 Write Concern
