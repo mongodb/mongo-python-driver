@@ -396,6 +396,16 @@ class ClientSession(object):
           with client.start_session() as session:
               session.with_transaction(callback)
 
+        To pass arbitrary arguments to the ``callback``, wrap your callable
+        with a ``lambda`` like this::
+
+          def callback(session, custom_arg, custom_kwarg=None):
+              # Transaction operations...
+
+          with client.start_session() as session:
+              session.with_transaction(
+                  lambda s: callback(s, "custom_arg", custom_kwarg=1))
+
         In the event an exception, `with_transaction` may retry the commit or
         entire transaction and thus ``callback`` may be invoked multiple times.
         Applications should take care when writing a ``callback`` that changes
