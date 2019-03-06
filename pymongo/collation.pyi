@@ -18,7 +18,18 @@ class CollationCaseFirst(object):
     LOWER: str = ...
     OFF: str = ...
 class Collation(object):
-    def __init__(self, locale: str, caseLevel: Optional[bool] = ..., caseFirst: Optional[str] = ..., strength: Optional[int] = ..., numericOrdering: Optional[bool] = ..., alternate: Optional[str] = ..., maxVariable: Optional[str] = ..., normalization: Optional[bool] = ..., backwards: Optional[bool] = ..., **kwargs: Any) -> None: ...
+    def __init__(
+        self,
+        locale: str,
+        caseLevel: Optional[bool] = ...,
+        caseFirst: Optional[str] = ...,
+        strength: Optional[int] = ...,
+        numericOrdering: Optional[bool] = ...,
+        alternate: Optional[str] = ...,
+        maxVariable: Optional[str] = ...,
+        normalization: Optional[bool] = ...,
+        backwards: Optional[bool] = ...,
+        **kwargs: Any) -> None: ...
     @property
     def document(self) -> Dict[str, Any]: ...
     def __repr__(self) -> str: ...

@@ -1,3 +1,20 @@
+import typing
+from pymongo.collection import ReturnDocument as ReturnDocument
+from pymongo.common import (MIN_SUPPORTED_WIRE_VERSION as MIN_SUPPORTED_WIRE_VERSION,
+                            MAX_SUPPORTED_WIRE_VERSION as MAX_SUPPORTED_WIRE_VERSION)
+from pymongo.cursor import CursorType as CursorType
+from pymongo.mongo_client import MongoClient as MongoClient
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient as MongoReplicaSetClient
+from pymongo.operations import (IndexModel as IndexModel,
+                                InsertOne as InsertOne,
+                                DeleteOne as DeleteOne,
+                                DeleteMany as DeleteMany,
+                                UpdateOne as UpdateOne,
+                                UpdateMany as UpdateMany,
+                                ReplaceOne as ReplaceOne)
+from pymongo.read_preferences import ReadPreference as ReadPreference
+from pymongo.write_concern import WriteConcern as WriteConcern
+
 ASCENDING: int = ...
 DESCENDING: int = ...
 GEO2D: str = ...
@@ -8,28 +25,10 @@ TEXT: str = ...
 OFF: int = ...
 SLOW_ONLY: int = ...
 ALL: int = ...
-version_tuple = (3, 5, 0, '.dev0')
-
+version_tuple: typing.Tuple[int, int, int, str] = ...
 
 def get_version_string() -> str: ...
 
-
 __version__ = version = ...
-
-from pymongo.collection import ReturnDocument
-from pymongo.common import (MIN_SUPPORTED_WIRE_VERSION,
-                            MAX_SUPPORTED_WIRE_VERSION)
-from pymongo.cursor import CursorType
-from pymongo.mongo_client import MongoClient
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
-from pymongo.operations import (IndexModel,
-                                InsertOne,
-                                DeleteOne,
-                                DeleteMany,
-                                UpdateOne,
-                                UpdateMany,
-                                ReplaceOne)
-from pymongo.read_preferences import ReadPreference
-from pymongo.write_concern import WriteConcern
 
 def has_c() -> bool: ...

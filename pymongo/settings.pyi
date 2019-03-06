@@ -7,7 +7,17 @@ from pymongo.server_description import ServerDescription
 
 
 class TopologySettings(object):
-    def __init__(self, seeds: Optional[Sequence[Tuple[str, int]]] = ..., replica_set_name: Optional[str] = ..., pool_class: Optional[Pool] = ..., pool_options: Optional[PoolOptions] = ..., monitor_class: Optional[Monitor] = ..., condition_class: Optional[threading.Condition] = ..., local_threshold_ms: int = ..., server_selection_timeout: int = ..., heartbeat_frequency: int = ...) -> None: ...
+    def __init__(
+        self,
+        seeds: Optional[Sequence[Tuple[str, int]]] = ...,
+        replica_set_name: Optional[str] = ...,
+        pool_class: Optional[Pool] = ...,
+        pool_options: Optional[PoolOptions] = ...,
+        monitor_class: Optional[Monitor] = ...,
+        condition_class: Optional[threading.Condition] = ...,
+        local_threshold_ms: int = ...,
+        server_selection_timeout: int = ...,
+        heartbeat_frequency: int = ...) -> None: ...
     @property
     def seeds(self) -> List[Tuple[str, int]]: ...
     @property

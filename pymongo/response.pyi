@@ -5,7 +5,13 @@ from typing import Tuple
 from pymongo.pool import Pool, SocketInfo
 
 class Response(object):
-    def __init__(self, data: bytes, address: Tuple[str, int], request_id: int, duration: datetime.timedelta, from_command: bool) -> None: ...
+    def __init__(
+        self,
+        data: bytes,
+        address: Tuple[str, int],
+        request_id: int,
+        duration: datetime.timedelta,
+        from_command: bool) -> None: ...
     @property
     def data(self) -> bytes: ...
     @property
@@ -18,7 +24,15 @@ class Response(object):
     def from_command(self) -> bool: ...
 
 class ExhaustResponse(Response):
-    def __init__(self, data: bytes, address: Tuple[str, int], socket_info: SocketInfo, pool: Pool, request_id: int, duration: datetime.timedelta, from_command: bool) -> None: ...
+    def __init__(
+        self,
+        data: bytes,
+        address: Tuple[str, int],
+        socket_info: SocketInfo,
+        pool: Pool,
+        request_id: int,
+        duration: datetime.timedelta,
+        from_command: bool) -> None: ...
     @property
     def socket_info(self) -> SocketInfo: ...
     @property

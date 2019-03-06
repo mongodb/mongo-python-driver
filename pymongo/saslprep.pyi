@@ -1,0 +1,3 @@
+from typing import Text
+
+def saslprep(data: Text) -> Text: ...

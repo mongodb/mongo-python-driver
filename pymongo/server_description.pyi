@@ -2,12 +2,16 @@ import datetime
 from typing import Any, Dict, Optional, Set, Tuple
 
 from pymongo.ismaster import IsMaster
+from pymongo.server_type import SERVER_TYPE as SERVER_TYPE
 
-
-def _total_seconds(delta: datetime.timedelta) -> float: ...
 
 class ServerDescription(object):
-    def __init__(self, address: Tuple[str, int], ismaster: Optional[IsMaster] = ..., round_trip_time: Optional[float] = ..., error: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        address: Tuple[str, int],
+        ismaster: Optional[IsMaster] = ...,
+        round_trip_time: Optional[float] = ...,
+        error: Optional[Any] = ...) -> None: ...
     @property
     def address(self) -> Tuple[str, int]: ...
     @property

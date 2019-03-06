@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 
-def _get_server_type(doc: Mapping[str, Any]) -> int: ...
 class IsMaster(object):
     def __init__(self, doc: Mapping[str, Any]) -> None: ...
     @property
