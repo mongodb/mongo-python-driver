@@ -60,8 +60,8 @@ class TypeRegistry(object):
         self._decoder_map = {}
         for codec in type_codecs:
             if not isinstance(codec, TypeCodecBase):
-                raise TypeError(
-                    "Expected instance of %s" % (TypeCodecBase.__name__,))
+                raise TypeError("Expected instance of %s, got %s instead" % (
+                    TypeCodecBase.__name__, type(codec).__name__))
             try:
                 python_type = codec.python_type
             except NotImplementedError:

@@ -34,7 +34,7 @@ from bson import (BSON,
                   Regex)
 from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
-from bson.codec_options import CodecOptions
+from bson.codec_options import CodecOptions, TypeCodecBase, TypeRegistry
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
@@ -906,6 +906,62 @@ class TestBSON(unittest.TestCase):
         BSON.encode({"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}})
 
 
+class TestTypeRegistry(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        types = (
+            type("MyIntType", (int,), {}), type("MyStrType", (str,), {}))
+        codecs = (
+            type("MyIntCodec", (TypeCodecBase,), {
+                "python_type": types[0],
+                "transform_python": lambda self, val: int(val),
+                "bson_type": int,
+                "transform_bson": lambda self, val: types[0](val)}),
+            type("MyStrCodec", (TypeCodecBase,), {
+                "python_type": types[1],
+                "transform_python": lambda self, val: str(val),
+                "bson_type": str,
+                "transform_bson": lambda self, val: types[1](val)}))
+        cls.types = types
+        cls.codecs = codecs
+
+    def test_simple(self):
+        codec_instances = [codec() for codec in self.codecs]
+        type_registry = TypeRegistry(*codec_instances)
+        self.assertEqual(type_registry._encoder_map, {
+            self.types[0]: codec_instances[0].transform_python,
+            self.types[1]: codec_instances[1].transform_python})
+        self.assertEqual(type_registry._decoder_map, {
+            int: codec_instances[0].transform_bson,
+            str: codec_instances[1].transform_bson})
+
+    def test_initialize_fail(self):
+        err_msg = "Expected instance of TypeCodecBase, got type instead"
+        with self.assertRaisesRegex(TypeError, err_msg):
+            TypeRegistry(*self.codecs)
+
+    def test_not_implemented(self):
+        type_registry = TypeRegistry(type("codec1", (TypeCodecBase, ), {})(),
+                                     type("codec2", (TypeCodecBase, ), {})())
+        self.assertEqual(type_registry._encoder_map, {})
+        self.assertEqual(type_registry._decoder_map, {})
+
+    def test_type_registry_repr(self):
+        codec_instances = [codec() for codec in self.codecs]
+        type_registry = TypeRegistry(*codec_instances)
+        r = ("TypeRegistry(%s, %s)" % tuple(codec_instances))
+        self.assertEqual(r, repr(type_registry))
+
+    def test_type_registry_eq(self):
+        codec_instances = [codec() for codec in self.codecs]
+        self.assertEqual(
+            TypeRegistry(*codec_instances), TypeRegistry(*codec_instances))
+
+        codec_instances_2 = [codec() for codec in self.codecs]
+        self.assertNotEqual(
+            TypeRegistry(*codec_instances), TypeRegistry(*codec_instances_2))
+
+
 class TestCodecOptions(unittest.TestCase):
     def test_document_class(self):
         self.assertRaises(TypeError, CodecOptions, document_class=object)
@@ -927,12 +983,11 @@ class TestCodecOptions(unittest.TestCase):
         self.assertRaises(ValueError, CodecOptions, tzinfo=tz)
         self.assertEqual(tz, CodecOptions(tz_aware=True, tzinfo=tz).tzinfo)
 
-    @unittest.expectedFailure
     def test_codec_options_repr(self):
         r = ("CodecOptions(document_class=dict, tz_aware=False, "
              "uuid_representation=PYTHON_LEGACY, "
              "unicode_decode_error_handler='strict', "
-             "tzinfo=None)")
+             "tzinfo=None, type_registry=TypeRegistry())")
         self.assertEqual(r, repr(CodecOptions()))
 
     def test_decode_all_defaults(self):
