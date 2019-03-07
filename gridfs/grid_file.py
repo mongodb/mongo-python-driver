@@ -518,25 +518,12 @@ class GridOut(object):
             received += len(chunk_data)
             data.write(chunk_data)
 
-        # TODO: Great, but why do we do this on EVERY call to read()?
-        # Detect extra chunks.
+        # Detect extra chunks after reading the entire file.
         if size == remainder and self.__chunk_iter:
-            # Optimization: Reading the rest of the file so we can reuse the
-            # cursor to find extra chunks
             try:
                 self.__chunk_iter.next()
             except StopIteration:
                 pass
-        else:
-            num_chunks = math.ceil(int(self.length) / float(self.chunk_size))
-            chunk = self.__chunks.find_one({"files_id": self._id,
-                                            "n": {"$gte": num_chunks}},
-                                           session=self._session)
-            # According to spec, ignore extra chunks if they are empty.
-            if chunk is not None and len(chunk['data']):
-                raise CorruptGridFile(
-                    "Extra chunk found: expected %d chunks but found "
-                    "chunk with n=%d" % (num_chunks, chunk['n']))
 
         self.__position -= received - size
 
