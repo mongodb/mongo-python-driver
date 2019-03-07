@@ -482,11 +482,7 @@ class GridOut(object):
                 self.__chunk_iter = _GridOutChunkIterator(
                     self, self.__chunks, self._session, chunk_number)
 
-            try:
-                chunk = self.__chunk_iter.next()
-            except StopIteration:
-                raise CorruptGridFile("truncated chunk")
-
+            chunk = self.__chunk_iter.next()
             chunk_data = chunk["data"][self.__position % chunk_size:]
 
             if not chunk_data:
