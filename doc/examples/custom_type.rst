@@ -1,9 +1,13 @@
 Custom Type Example
 ===================
 
-This is an example of using a custom type with PyMongo. The example here is a
-bit contrived, but shows how to use a :class:`~bson.codec_options.TypeRegistry`
-to manipulate documents as they are saved or retrieved from MongoDB.
+This is an example of using a custom type with PyMongo. The example here shows
+how to subclass :class:`~bson.codec_options.TypeCodecBase` to write a type
+codec, which is used to populate a :class:`~bson.codec_options.TypeRegistry`.
+The type registry can then be used to create a custom-type-aware
+:class:`~pymongo.collection.Collection`. Read and write operations
+issued against the resulting collection object transparently manipulate
+documents as they are saved or retrieved from MongoDB.
 
 
 Setup
@@ -43,7 +47,9 @@ does not have a way to serialize an instance of our custom type:
 .. doctest::
 
   >>> db.test.insert_one({'custom': Custom(5)})
-  bson.errors.InvalidDocument: Cannot encode object: <__main__.Custom object at 0x106f46c18>
+  Traceback (most recent call last):
+  ...
+  bson.errors.InvalidDocument: Cannot encode object: <__main__.Custom object at ...>
 
 
 .. _custom-type-type-codec:
@@ -54,21 +60,19 @@ The Type Codec
 In order to encode custom types, we must first define a **type codec** for our
 type. A type codec describes how an instance of a custom type can be
 *transformed* into one of the types :mod:`~bson` already understands, and can
-encode.
-
-Type codecs must inherit from :class:`bson.codec_options.TypeCodecBase`. In
-order to facilitate encoding of a custom type, they also must implement
-the ``python_type`` property, along with the ``transform_python`` method.
-Similarly, for decoding, they must implement the ``bson_type`` property and
-the ``transform_bson`` method. Note that a type codec does not need to
-implement both encoding and decoding logic for any give type.
+encode. Type codecs must inherit from
+:class:`~bson.codec_options.TypeCodecBase`. In order to facilitate encoding of
+a custom type, they also must implement the ``python_type`` property, and the
+``transform_python`` method. Similarly, for decoding, codecs must implement the
+``bson_type`` property and the ``transform_bson`` method. Note that a type
+codec does not need to implement both encoding and decoding logic.
 
 While our ``Custom`` type does not place any restrictions on the kind of
-data that it can hold, for the sake of this particular exercise, let us assume
-that we expect it to hold integers. Without any such restriction it would be
-impossible for us to define the decoding logic for our codec since a BSON
-value of any type could potentially be an instance of ``Custom``. With that,
-we can define our codec:
+data that it can encapsulate, for the sake of this particular exercise, let's
+assume that we expect it to only store integers. Without any such restriction
+it would be impossible for us to define the decoding logic for our codec since
+a BSON value of any type could potentially be an instance of ``Custom``. With
+that, we can define our codec:
 
 .. doctest::
 
@@ -92,7 +96,7 @@ we can define our codec:
   ...     def transform_bson(self, value):
   ...         """Function that transforms a vanilla BSON type value into our
   ...         custom type."""
-  ...         return value.x()
+  ...         return Custom(value)
   >>> custom_type_codec = CustomTypeCodec()
 
 
@@ -102,9 +106,8 @@ The Type Registry
 -----------------
 
 Before we can begin encoding and decoding our custom type objects, we must
-first inform PyMongo about our type codec. This is achieved with the help of a
-:class:`bson.codec_options.TypeRegistry` instance. Creating a registry is
-trivial:
+first inform PyMongo about our type codec. This is done by creating a
+:class:`bson.codec_options.TypeRegistry` instance:
 
 .. doctest::
 
@@ -132,16 +135,25 @@ data type:
   >>> collection = db.get_collection('test', codec_options=codec_options)
 
 
-Now, we can transparently encode and decode ``Custom`` type instances. As long
-as we use the :class:`~pymongo.collection.Collection` that has been properly
-setup, the BSON library will do the heavy-lifting for us:
+Now, we can seamlessly encode and decode ``Custom`` type instances:
 
 .. doctest::
 
   >>> collection.insert_one({'custom': Custom(5)})
-  <pymongo.results.InsertOneResult at 0x1076bb348>
+  <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> print(mydoc)
-  {'_id': ObjectId('5c8161350c944094f971aeff'), 'custom': <__main__.Custom object at 0x107716a20>}
+  {'_id': ObjectId('...'), 'custom': <Custom object at ...>}
   >>> print(mydoc['custom'].x())
   5
+
+
+We can see what's actually being saved to the database by creating a new
+collection object without the custom codec options and using that to query
+MongoDB:
+
+.. doctest::
+
+  >>> vanilla_collection = db.get_collection('test')
+  >>> vanilla_collection.find_one()
+  {'_id': ObjectId('...'), 'custom': 5}

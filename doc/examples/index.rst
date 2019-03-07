@@ -20,6 +20,7 @@ MongoDB, you can start it like so:
    authentication
    collations
    copydb
+   custom_type
    bulk
    datetimes
    geo
