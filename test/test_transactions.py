@@ -14,6 +14,7 @@
 
 """Execute Transactions Spec tests."""
 
+import copy
 import os
 import sys
 
@@ -26,6 +27,7 @@ from pymongo.client_session import TransactionOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import (ConfigurationError,
+                            ConnectionFailure,
                             OperationFailure,
                             PyMongoError)
 from pymongo.operations import IndexModel, InsertOne
@@ -53,10 +55,10 @@ _TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
 UNPIN_TEST_MAX_ATTEMPTS = 50
 
 
-class TestTransactions(IntegrationTest):
+class TransactionsBase(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        super(TestTransactions, cls).setUpClass()
+        super(TransactionsBase, cls).setUpClass()
         # Speed up tests by reducing SDAM waiting time after a network error.
         cls.knobs = client_knobs(min_heartbeat_interval=0.1)
         cls.knobs.enable()
@@ -68,7 +70,7 @@ class TestTransactions(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         cls.knobs.disable()
-        super(TestTransactions, cls).tearDownClass()
+        super(TransactionsBase, cls).tearDownClass()
 
     def transaction_test_debug(self, msg):
         if _TXN_TESTS_DEBUG:
@@ -125,6 +127,246 @@ class TestTransactions(IntegrationTest):
                 # own session.
                 pass
 
+    def check_command_result(self, expected_result, result):
+        # Only compare the keys in the expected result.
+        filtered_result = {}
+        for key in expected_result:
+            try:
+                filtered_result[key] = result[key]
+            except KeyError:
+                pass
+        self.assertEqual(filtered_result, expected_result)
+
+    # TODO: factor the following function with CRUD v2 test runner.
+    def check_result(self, expected_result, result):
+        if isinstance(result, _WriteResult):
+            for res in expected_result:
+                prop = camel_to_snake(res)
+                # SPEC-869: Only BulkWriteResult has upserted_count.
+                if (prop == "upserted_count"
+                        and not isinstance(result, BulkWriteResult)):
+                    if result.upserted_id is not None:
+                        upserted_count = 1
+                    else:
+                        upserted_count = 0
+                    self.assertEqual(upserted_count, expected_result[res], prop)
+                elif prop == "inserted_ids":
+                    # BulkWriteResult does not have inserted_ids.
+                    if isinstance(result, BulkWriteResult):
+                        self.assertEqual(len(expected_result[res]),
+                                         result.inserted_count)
+                    else:
+                        # InsertManyResult may be compared to [id1] from the
+                        # crud spec or {"0": id1} from the retryable write spec.
+                        ids = expected_result[res]
+                        if isinstance(ids, dict):
+                            ids = [ids[str(i)] for i in range(len(ids))]
+                        self.assertEqual(ids, result.inserted_ids, prop)
+                elif prop == "upserted_ids":
+                    # Convert indexes from strings to integers.
+                    ids = expected_result[res]
+                    expected_ids = {}
+                    for str_index in ids:
+                        expected_ids[int(str_index)] = ids[str_index]
+                    self.assertEqual(expected_ids, result.upserted_ids, prop)
+                else:
+                    self.assertEqual(
+                        getattr(result, prop), expected_result[res], prop)
+
+            return True
+        else:
+            self.assertEqual(result, expected_result)
+
+    def run_operations(self, sessions, collection, ops,
+                       in_with_transaction=False):
+        for op in ops:
+            expected_result = op.get('result')
+            if expect_error(expected_result):
+                with self.assertRaises(PyMongoError,
+                                       msg=op['name']) as context:
+                    self.run_operation(sessions, collection, op.copy())
+
+                if expect_error_message(expected_result):
+                    self.assertIn(expected_result['errorContains'].lower(),
+                                  str(context.exception).lower())
+                if expect_error_code(expected_result):
+                    self.assertEqual(expected_result['errorCodeName'],
+                                     context.exception.details.get('codeName'))
+                if expect_error_labels_contain(expected_result):
+                    self.assertErrorLabelsContain(
+                        context.exception,
+                        expected_result['errorLabelsContain'])
+                if expect_error_labels_omit(expected_result):
+                    self.assertErrorLabelsOmit(
+                        context.exception,
+                        expected_result['errorLabelsOmit'])
+
+                # Reraise the exception if we're in the with_transaction
+                # callback.
+                if in_with_transaction:
+                    raise context.exception
+            else:
+                result = self.run_operation(sessions, collection, op.copy())
+                if 'result' in op:
+                    if op['name'] == 'runCommand':
+                        self.check_command_result(expected_result, result)
+                    else:
+                        self.check_result(expected_result, result)
+
+    def run_operation(self, sessions, collection, operation):
+        original_collection = collection
+        name = camel_to_snake(operation['name'])
+        if name == 'run_command':
+            name = 'command'
+        self.transaction_test_debug(name)
+
+        def parse_options(opts):
+            if 'readPreference' in opts:
+                opts['read_preference'] = parse_read_preference(
+                    opts.pop('readPreference'))
+
+            if 'writeConcern' in opts:
+                opts['write_concern'] = WriteConcern(
+                    **dict(opts.pop('writeConcern')))
+
+            if 'readConcern' in opts:
+                opts['read_concern'] = ReadConcern(
+                    **dict(opts.pop('readConcern')))
+            return opts
+
+        database = collection.database
+        collection = database.get_collection(collection.name)
+        if 'collectionOptions' in operation:
+            collection = collection.with_options(
+                **dict(parse_options(operation['collectionOptions'])))
+
+        objects = {
+            'database': database,
+            'collection': collection,
+            'testRunner': self
+        }
+        objects.update(sessions)
+        obj = objects[operation['object']]
+
+        # Combine arguments with options and handle special cases.
+        arguments = operation.get('arguments', {})
+        arguments.update(arguments.pop("options", {}))
+        parse_options(arguments)
+
+        cmd = getattr(obj, name)
+
+        for arg_name in list(arguments):
+            c2s = camel_to_snake(arg_name)
+            # PyMongo accepts sort as list of tuples.
+            if arg_name == "sort":
+                sort_dict = arguments[arg_name]
+                arguments[arg_name] = list(iteritems(sort_dict))
+            # Named "key" instead not fieldName.
+            if arg_name == "fieldName":
+                arguments["key"] = arguments.pop(arg_name)
+            # Aggregate uses "batchSize", while find uses batch_size.
+            elif arg_name == "batchSize" and name == "aggregate":
+                continue
+            # Requires boolean returnDocument.
+            elif arg_name == "returnDocument":
+                arguments[c2s] = arguments[arg_name] == "After"
+            elif c2s == "requests":
+                # Parse each request into a bulk write model.
+                requests = []
+                for request in arguments["requests"]:
+                    bulk_model = camel_to_upper_camel(request["name"])
+                    bulk_class = getattr(operations, bulk_model)
+                    bulk_arguments = camel_to_snake_args(request["arguments"])
+                    requests.append(bulk_class(**dict(bulk_arguments)))
+                arguments["requests"] = requests
+            elif arg_name == "session":
+                arguments['session'] = sessions[arguments['session']]
+            elif name == 'command' and arg_name == 'command':
+                # Ensure the first key is the command name.
+                ordered_command = SON([(operation['command_name'], 1)])
+                ordered_command.update(arguments['command'])
+                arguments['command'] = ordered_command
+            elif name == 'with_transaction' and arg_name == 'callback':
+                callback_ops = arguments[arg_name]['operations']
+                arguments['callback'] = lambda _: self.run_operations(
+                    sessions, original_collection, copy.deepcopy(callback_ops),
+                    in_with_transaction=True)
+            else:
+                arguments[c2s] = arguments.pop(arg_name)
+
+        result = cmd(**dict(arguments))
+
+        if name == "aggregate":
+            if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
+                # Read from the primary to ensure causal consistency.
+                out = collection.database.get_collection(
+                    arguments["pipeline"][-1]["$out"],
+                    read_preference=ReadPreference.PRIMARY)
+                return out.find()
+
+        if isinstance(result, Cursor) or isinstance(result, CommandCursor):
+            return list(result)
+
+        return result
+
+    # TODO: factor with test_command_monitoring.py
+    def check_events(self, test, listener, session_ids):
+        res = listener.results
+        if not len(test['expectations']):
+            return
+
+        self.assertEqual(len(res['started']), len(test['expectations']))
+        for i, expectation in enumerate(test['expectations']):
+            event_type = next(iter(expectation))
+            event = res['started'][i]
+
+            # The tests substitute 42 for any number other than 0.
+            if (event.command_name == 'getMore'
+                    and event.command['getMore']):
+                event.command['getMore'] = 42
+            elif event.command_name == 'killCursors':
+                event.command['cursors'] = [42]
+
+            # Replace afterClusterTime: 42 with actual afterClusterTime.
+            expected_cmd = expectation[event_type]['command']
+            expected_read_concern = expected_cmd.get('readConcern')
+            if expected_read_concern is not None:
+                time = expected_read_concern.get('afterClusterTime')
+                if time == 42:
+                    actual_time = event.command.get(
+                        'readConcern', {}).get('afterClusterTime')
+                    if actual_time is not None:
+                        expected_read_concern['afterClusterTime'] = actual_time
+            recovery_token = expected_cmd.get('recoveryToken')
+            if recovery_token == 42:
+                expected_cmd['recoveryToken'] = CompareType(dict)
+
+            # Replace lsid with a name like "session0" to match test.
+            if 'lsid' in event.command:
+                for name, lsid in session_ids.items():
+                    if event.command['lsid'] == lsid:
+                        event.command['lsid'] = name
+                        break
+
+            for attr, expected in expectation[event_type].items():
+                actual = getattr(event, attr)
+                if isinstance(expected, dict):
+                    for key, val in expected.items():
+                        if val is None:
+                            if key in actual:
+                                self.fail("Unexpected key [%s] in %r" % (
+                                    key, actual))
+                        elif key not in actual:
+                            self.fail("Expected key [%s] in %r" % (
+                                key, actual))
+                        else:
+                            self.assertEqual(val, actual[key],
+                                             "Key [%s] in %s" % (key, actual))
+                else:
+                    self.assertEqual(actual, expected)
+
+
+class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     def test_transaction_options_validation(self):
         default_options = TransactionOptions()
@@ -255,201 +497,146 @@ class TestTransactions(IntegrationTest):
 
             self.assertGreater(len(addresses), 1)
 
-    def check_command_result(self, expected_result, result):
-        # Only compare the keys in the expected result.
-        filtered_result = {}
-        for key in expected_result:
-            try:
-                filtered_result[key] = result[key]
-            except KeyError:
-                pass
-        self.assertEqual(filtered_result, expected_result)
 
-    # TODO: factor the following function with CRUD v2 test runner.
-    def check_result(self, expected_result, result):
-        if isinstance(result, _WriteResult):
-            for res in expected_result:
-                prop = camel_to_snake(res)
-                # SPEC-869: Only BulkWriteResult has upserted_count.
-                if (prop == "upserted_count"
-                        and not isinstance(result, BulkWriteResult)):
-                    if result.upserted_id is not None:
-                        upserted_count = 1
-                    else:
-                        upserted_count = 0
-                    self.assertEqual(upserted_count, expected_result[res], prop)
-                elif prop == "inserted_ids":
-                    # BulkWriteResult does not have inserted_ids.
-                    if isinstance(result, BulkWriteResult):
-                        self.assertEqual(len(expected_result[res]),
-                                         result.inserted_count)
-                    else:
-                        # InsertManyResult may be compared to [id1] from the
-                        # crud spec or {"0": id1} from the retryable write spec.
-                        ids = expected_result[res]
-                        if isinstance(ids, dict):
-                            ids = [ids[str(i)] for i in range(len(ids))]
-                        self.assertEqual(ids, result.inserted_ids, prop)
-                elif prop == "upserted_ids":
-                    # Convert indexes from strings to integers.
-                    ids = expected_result[res]
-                    expected_ids = {}
-                    for str_index in ids:
-                        expected_ids[int(str_index)] = ids[str_index]
-                    self.assertEqual(expected_ids, result.upserted_ids, prop)
-                else:
-                    self.assertEqual(
-                        getattr(result, prop), expected_result[res], prop)
+class PatchMockTimer(object):
+    """Patches the client_session module's monotonic time to test timeouts."""
+    def __init__(self):
+        self.monotonic_time = None
+        self.counter = 0
 
-            return True
-        else:
-            self.assertEqual(result, expected_result)
+    def time(self):
+        time = self.monotonic_time()
+        if self.counter > 0:
+            time += client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT
+        self.counter += 1
+        return time
 
-    def run_operation(self, sessions, collection, operation):
-        name = camel_to_snake(operation['name'])
-        if name == 'run_command':
-            name = 'command'
-        self.transaction_test_debug(name)
+    def __enter__(self):
+        self.monotonic_time = client_session.monotonic.time
+        self.counter = 0
+        client_session.monotonic.time = self.time
+        return self
 
-        def parse_options(opts):
-            if 'readPreference' in opts:
-                opts['read_preference'] = parse_read_preference(
-                    opts.pop('readPreference'))
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.monotonic_time:
+            client_session.monotonic.time = self.monotonic_time
 
-            if 'writeConcern' in opts:
-                opts['write_concern'] = WriteConcern(
-                    **dict(opts.pop('writeConcern')))
 
-            if 'readConcern' in opts:
-                opts['read_concern'] = ReadConcern(
-                    **dict(opts.pop('readConcern')))
-            return opts
+class TestTransactionsConvenientAPI(TransactionsBase):
+    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             'transactions-convenient-api')
 
-        database = collection.database
-        collection = database.get_collection(collection.name)
-        if 'collectionOptions' in operation:
-            collection = collection.with_options(
-                **dict(parse_options(operation['collectionOptions'])))
+    @client_context.require_transactions
+    def test_callback_raises_custom_error(self):
+        class _MyException(Exception):pass
 
-        objects = {
-            'database': database,
-            'collection': collection,
-            'testRunner': self
-        }
-        objects.update(sessions)
-        obj = objects[operation['object']]
+        def raise_error(_):
+            raise _MyException()
+        with self.client.start_session() as s:
+            with self.assertRaises(_MyException):
+                s.with_transaction(raise_error)
 
-        # Combine arguments with options and handle special cases.
-        arguments = operation.get('arguments', {})
-        arguments.update(arguments.pop("options", {}))
-        parse_options(arguments)
+    @client_context.require_transactions
+    def test_callback_returns_value(self):
+        def callback(_):
+            return 'Foo'
+        with self.client.start_session() as s:
+            self.assertEqual(s.with_transaction(callback), 'Foo')
 
-        cmd = getattr(obj, name)
+        self.db.test.insert_one({})
 
-        for arg_name in list(arguments):
-            c2s = camel_to_snake(arg_name)
-            # PyMongo accepts sort as list of tuples.
-            if arg_name == "sort":
-                sort_dict = arguments[arg_name]
-                arguments[arg_name] = list(iteritems(sort_dict))
-            # Named "key" instead not fieldName.
-            if arg_name == "fieldName":
-                arguments["key"] = arguments.pop(arg_name)
-            # Aggregate uses "batchSize", while find uses batch_size.
-            elif arg_name == "batchSize" and name == "aggregate":
-                continue
-            # Requires boolean returnDocument.
-            elif arg_name == "returnDocument":
-                arguments[c2s] = arguments[arg_name] == "After"
-            elif c2s == "requests":
-                # Parse each request into a bulk write model.
-                requests = []
-                for request in arguments["requests"]:
-                    bulk_model = camel_to_upper_camel(request["name"])
-                    bulk_class = getattr(operations, bulk_model)
-                    bulk_arguments = camel_to_snake_args(request["arguments"])
-                    requests.append(bulk_class(**dict(bulk_arguments)))
-                arguments["requests"] = requests
-            elif arg_name == "session":
-                arguments['session'] = sessions[arguments['session']]
-            elif name == 'command' and arg_name == 'command':
-                # Ensure the first key is the command name.
-                ordered_command = SON([(operation['command_name'], 1)])
-                ordered_command.update(arguments['command'])
-                arguments['command'] = ordered_command
-            else:
-                arguments[c2s] = arguments.pop(arg_name)
+        def callback(session):
+            self.db.test.insert_one({}, session=session)
+            return 'Foo'
+        with self.client.start_session() as s:
+            self.assertEqual(s.with_transaction(callback), 'Foo')
 
-        result = cmd(**dict(arguments))
+    @client_context.require_transactions
+    def test_callback_not_retried_after_timeout(self):
+        listener = OvertCommandListener()
+        client = rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
 
-        if name == "aggregate":
-            if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
-                # Read from the primary to ensure causal consistency.
-                out = collection.database.get_collection(
-                    arguments["pipeline"][-1]["$out"],
-                    read_preference=ReadPreference.PRIMARY)
-                return out.find()
+        def callback(session):
+            coll.insert_one({}, session=session)
+            err = {
+                'ok': 0,
+                'errmsg': 'Transaction 7819 has been aborted.',
+                'code': 251,
+                'codeName': 'NoSuchTransaction',
+                'errorLabels': ['TransientTransactionError'],
+            }
+            raise OperationFailure(err['errmsg'], err['code'], err)
 
-        if isinstance(result, Cursor) or isinstance(result, CommandCursor):
-            return list(result)
+        # Create the collection.
+        coll.insert_one({})
+        listener.results.clear()
+        with client.start_session() as s:
+            with PatchMockTimer():
+                with self.assertRaises(OperationFailure):
+                    s.with_transaction(callback)
 
-        return result
+        self.assertEqual(listener.started_command_names(),
+                         ['insert', 'abortTransaction'])
 
-    # TODO: factor with test_command_monitoring.py
-    def check_events(self, test, listener, session_ids):
-        res = listener.results
-        if not len(test['expectations']):
-            return
+    @client_context.require_transactions
+    def test_callback_not_retried_after_commit_timeout(self):
+        listener = OvertCommandListener()
+        client = rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
 
-        self.assertEqual(len(res['started']), len(test['expectations']))
-        for i, expectation in enumerate(test['expectations']):
-            event_type = next(iter(expectation))
-            event = res['started'][i]
+        def callback(session):
+            coll.insert_one({}, session=session)
 
-            # The tests substitute 42 for any number other than 0.
-            if (event.command_name == 'getMore'
-                    and event.command['getMore']):
-                event.command['getMore'] = 42
-            elif event.command_name == 'killCursors':
-                event.command['cursors'] = [42]
+        # Create the collection.
+        coll.insert_one({})
+        self.set_fail_point({
+            'configureFailPoint': 'failCommand', 'mode': {'times': 1},
+            'data': {
+                'failCommands': ['commitTransaction'],
+                'errorCode': 251,  # NoSuchTransaction
+            }})
+        self.addCleanup(self.set_fail_point, {
+            'configureFailPoint': 'failCommand', 'mode': 'off'})
+        listener.results.clear()
 
-            # Replace afterClusterTime: 42 with actual afterClusterTime.
-            expected_cmd = expectation[event_type]['command']
-            expected_read_concern = expected_cmd.get('readConcern')
-            if expected_read_concern is not None:
-                time = expected_read_concern.get('afterClusterTime')
-                if time == 42:
-                    actual_time = event.command.get(
-                        'readConcern', {}).get('afterClusterTime')
-                    if actual_time is not None:
-                        expected_read_concern['afterClusterTime'] = actual_time
-            recovery_token = expected_cmd.get('recoveryToken')
-            if recovery_token == 42:
-                expected_cmd['recoveryToken'] = CompareType(dict)
+        with client.start_session() as s:
+            with PatchMockTimer():
+                with self.assertRaises(OperationFailure):
+                    s.with_transaction(callback)
 
-            # Replace lsid with a name like "session0" to match test.
-            if 'lsid' in event.command:
-                for name, lsid in session_ids.items():
-                    if event.command['lsid'] == lsid:
-                        event.command['lsid'] = name
-                        break
+        self.assertEqual(listener.started_command_names(),
+                         ['insert', 'commitTransaction'])
 
-            for attr, expected in expectation[event_type].items():
-                actual = getattr(event, attr)
-                if isinstance(expected, dict):
-                    for key, val in expected.items():
-                        if val is None:
-                            if key in actual:
-                                self.fail("Unexpected key [%s] in %r" % (
-                                    key, actual))
-                        elif key not in actual:
-                            self.fail("Expected key [%s] in %r" % (
-                                key, actual))
-                        else:
-                            self.assertEqual(val, actual[key],
-                                             "Key [%s] in %s" % (key, actual))
-                else:
-                    self.assertEqual(actual, expected)
+    @client_context.require_transactions
+    def test_commit_not_retried_after_timeout(self):
+        listener = OvertCommandListener()
+        client = rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
+
+        def callback(session):
+            coll.insert_one({}, session=session)
+
+        # Create the collection.
+        coll.insert_one({})
+        self.set_fail_point({
+            'configureFailPoint': 'failCommand', 'mode': {'times': 2},
+            'data': {
+                'failCommands': ['commitTransaction'],
+                'closeConnection': True}})
+        self.addCleanup(self.set_fail_point, {
+            'configureFailPoint': 'failCommand', 'mode': 'off'})
+        listener.results.clear()
+
+        with client.start_session() as s:
+            with PatchMockTimer():
+                with self.assertRaises(ConnectionFailure):
+                    s.with_transaction(callback)
+
+        # One insert for the callback and two commits (includes the automatic
+        # retry).
+        self.assertEqual(listener.started_command_names(),
+                         ['insert', 'commitTransaction', 'commitTransaction'])
 
 
 def expect_error_message(expected_result):
@@ -580,34 +767,7 @@ def create_test(scenario_def, test, name):
         listener.results.clear()
         collection = client[database_name][collection_name]
 
-        for op in test['operations']:
-            expected_result = op.get('result')
-            if expect_error(expected_result):
-                with self.assertRaises(PyMongoError,
-                                       msg=op['name']) as context:
-                    self.run_operation(sessions, collection, op.copy())
-
-                if expect_error_message(expected_result):
-                    self.assertIn(expected_result['errorContains'].lower(),
-                                  str(context.exception).lower())
-                if expect_error_code(expected_result):
-                    self.assertEqual(expected_result['errorCodeName'],
-                                     context.exception.details.get('codeName'))
-                if expect_error_labels_contain(expected_result):
-                    self.assertErrorLabelsContain(
-                        context.exception,
-                        expected_result['errorLabelsContain'])
-                if expect_error_labels_omit(expected_result):
-                    self.assertErrorLabelsOmit(
-                        context.exception,
-                        expected_result['errorLabelsOmit'])
-            else:
-                result = self.run_operation(sessions, collection, op.copy())
-                if 'result' in op:
-                    if op['name'] == 'runCommand':
-                        self.check_command_result(expected_result, result)
-                    else:
-                        self.check_result(expected_result, result)
+        self.run_operations(sessions, collection, test['operations'])
 
         for s in sessions.values():
             s.end_session()
@@ -639,6 +799,10 @@ def create_test(scenario_def, test, name):
 
 test_creator = TestCreator(create_test, TestTransactions, _TEST_PATH)
 test_creator.create_tests()
+
+
+TestCreator(create_test, TestTransactionsConvenientAPI,
+            TestTransactionsConvenientAPI.TEST_PATH).create_tests()
 
 
 if __name__ == "__main__":

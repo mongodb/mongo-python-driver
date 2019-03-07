@@ -109,8 +109,8 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
                             OperationFailure,
+                            PyMongoError,
                             ServerSelectionTimeoutError,
-                            WriteConcernError,
                             WTimeoutError)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
@@ -285,6 +285,17 @@ _UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset([
     64,    # WriteConcernFailed
 ])
 
+# From the Convenient API for Transactions spec, with_transaction must
+# halt retries after 120 seconds.
+# This limit is non-configurable and was chosen to be twice the 60 second
+# default value of MongoDB's `transactionLifetimeLimitSeconds` parameter.
+_WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
+
+
+def _within_time_limit(start_time):
+    """Are we within the with_transaction retry limit?"""
+    return monotonic.time() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+
 
 class ClientSession(object):
     """A session for ordering sequential operations."""
@@ -367,6 +378,128 @@ class ClientSession(object):
         if val:
             return val
         return getattr(self.client, name)
+
+    def with_transaction(self, callback, read_concern=None, write_concern=None,
+                         read_preference=None):
+        """Execute a callback in a transaction.
+
+        This method starts a transaction on this session, executes ``callback``
+        once, and then commits the transaction. For example::
+
+          def callback(session):
+              orders = session.client.db.orders
+              inventory = session.client.db.inventory
+              orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
+              inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
+                                   {"$inc": {"qty": -100}}, session=session)
+
+          with client.start_session() as session:
+              session.with_transaction(callback)
+
+        To pass arbitrary arguments to the ``callback``, wrap your callable
+        with a ``lambda`` like this::
+
+          def callback(session, custom_arg, custom_kwarg=None):
+              # Transaction operations...
+
+          with client.start_session() as session:
+              session.with_transaction(
+                  lambda s: callback(s, "custom_arg", custom_kwarg=1))
+
+        In the event of an exception, ``with_transaction`` may retry the commit
+        or the entire transaction, therefore ``callback`` may be invoked
+        multiple times by a single call to ``with_transaction``. Developers
+        should be mindful of this possiblity when writing a ``callback`` that
+        modifies application state or has any other side-effects.
+        Note that even when the ``callback`` is invoked multiple times,
+        ``with_transaction`` ensures that the transaction will be committed
+        at-most-once on the server.
+
+        The ``callback`` should not attempt to start new transactions, but
+        should simply run operations meant to be contained within a
+        transaction. The ``callback`` should also not commit the transaction;
+        this is handled automatically by ``with_transaction``. If the
+        ``callback`` does commit or abort the transaction without error,
+        however, ``with_transaction`` will return without taking further
+        action.
+
+        When ``callback`` raises an exception, ``with_transaction``
+        automatically aborts the current transaction. When ``callback`` or
+        :meth:`~ClientSession.commit_transaction` raises an exception that
+        includes the ``"TransientTransactionError"`` error label,
+        ``with_transaction`` starts a new transaction and re-executes
+        the ``callback``.
+
+        When :meth:`~ClientSession.commit_transaction` raises an exception with
+        the ``"UnknownTransactionCommitResult"`` error label,
+        ``with_transaction`` retries the commit until the result of the
+        transaction is known.
+
+        This method will cease retrying after 120 seconds has elapsed. This
+        timeout is not configurable and any exception raised by the
+        ``callback`` or by :meth:`ClientSession.commit_transaction` after the
+        timeout is reached will be re-raised. Applications that desire a
+        different timeout duration should not use this method.
+
+        :Parameters:
+          - `callback`: The callable ``callback`` to run inside a transaction.
+            The callable must accept a single argument, this session. Note,
+            under certain error conditions the callback may be run multiple
+            times.
+          - `read_concern` (optional): The
+            :class:`~pymongo.read_concern.ReadConcern` to use for this
+            transaction.
+          - `write_concern` (optional): The
+            :class:`~pymongo.write_concern.WriteConcern` to use for this
+            transaction.
+          - `read_preference` (optional): The read preference to use for this
+            transaction. If ``None`` (the default) the :attr:`read_preference`
+            of this :class:`Database` is used. See
+            :mod:`~pymongo.read_preferences` for options.
+
+        :Returns:
+          The return value of the ``callback``.
+
+        .. versionadded:: 3.9
+        """
+        start_time = monotonic.time()
+        while True:
+            self.start_transaction(
+                read_concern, write_concern, read_preference)
+            try:
+                ret = callback(self)
+            except Exception as exc:
+                if self._in_transaction:
+                    self.abort_transaction()
+                if (isinstance(exc, PyMongoError) and
+                        exc.has_error_label("TransientTransactionError") and
+                        _within_time_limit(start_time)):
+                    # Retry the entire transaction.
+                    continue
+                raise
+
+            if self._transaction.state in (
+                    _TxnState.NONE, _TxnState.COMMITTED, _TxnState.ABORTED):
+                # Assume callback intentionally ended the transaction.
+                return ret
+
+            while True:
+                try:
+                    self.commit_transaction()
+                except PyMongoError as exc:
+                    if (exc.has_error_label("UnknownTransactionCommitResult")
+                            and _within_time_limit(start_time)):
+                        # Retry the commit.
+                        continue
+
+                    if (exc.has_error_label("TransientTransactionError") and
+                            _within_time_limit(start_time)):
+                        # Retry the entire transaction.
+                        break
+                    raise
+
+                # Commit succeeded.
+                return ret
 
     def start_transaction(self, read_concern=None, write_concern=None,
                           read_preference=None):
