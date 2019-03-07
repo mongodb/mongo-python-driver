@@ -285,15 +285,24 @@ class CommandCursor(object):
     def next(self):
         """Advance the cursor."""
         # Block until a document is returnable.
-        while not len(self.__data) and not self.__killed:
+        while self.alive:
+            doc = self._try_next(True)
+            if doc is not None:
+                return doc
+
+        raise StopIteration
+
+    __next__ = next
+
+    def _try_next(self, get_more_allowed):
+        """Advance the cursor blocking for at most one getMore command."""
+        if not len(self.__data) and not self.__killed and get_more_allowed:
             self._refresh()
         if len(self.__data):
             coll = self.__collection
             return coll.database._fix_outgoing(self.__data.popleft(), coll)
         else:
-            raise StopIteration
-
-    __next__ = next
+            return None
 
     def __enter__(self):
         return self

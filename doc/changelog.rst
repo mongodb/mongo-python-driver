@@ -42,6 +42,9 @@ Changes in Version 3.8.0.dev0
   string.
 - Add the ``filter`` parameter to
   :meth:`~pymongo.database.Database.list_collection_names`.
+- Changes can now be requested from a ``ChangeStream`` cursor without blocking
+  indefinitely using the new
+  :meth:`pymongo.change_stream.ChangeStream.try_next` method.
 
 Issues Resolved
 ...............

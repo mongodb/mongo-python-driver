@@ -50,7 +50,92 @@ from test.utils import (
 )
 
 
-class TestClusterChangeStream(IntegrationTest):
+class ChangeStreamTryNextMixin(object):
+
+    def change_stream_with_client(self, client, *args, **kwargs):
+        raise NotImplementedError
+
+    def change_stream(self, *args, **kwargs):
+        return self.change_stream_with_client(self.client, *args, **kwargs)
+
+    def watched_collection(self):
+        """Return a collection that is watched by self.change_stream()."""
+        raise NotImplementedError
+
+    def kill_change_stream_cursor(self, change_stream):
+        # Cause a cursor not found error on the next getMore.
+        cursor = change_stream._cursor
+        address = _CursorAddress(cursor.address, cursor._CommandCursor__ns)
+        client = self.watched_collection().database.client
+        client._close_cursor_now(cursor.cursor_id, address)
+
+    def test_try_next(self):
+        coll = self.watched_collection()
+        coll.insert_one({})
+        self.addCleanup(coll.drop)
+        with self.change_stream(max_await_time_ms=100) as stream:
+            self.assertIsNone(stream.try_next())
+            self.assertIsNone(stream._resume_token)
+            coll.insert_one({})
+            change = stream.try_next()
+            self.assertEqual(change['_id'], stream._resume_token)
+            self.assertIsNone(stream.try_next())
+            self.assertEqual(change['_id'], stream._resume_token)
+
+    def test_try_next_runs_one_getmore(self):
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        # Connect to the cluster.
+        client.admin.command('ping')
+        listener.results.clear()
+        coll = self.watched_collection()
+        coll.drop()
+        # Create the watched collection before starting the change stream to
+        # skip any "create" events.
+        coll.insert_one({'_id': 1})
+        self.addCleanup(coll.drop)
+        with self.change_stream_with_client(
+                client, max_await_time_ms=100) as stream:
+            self.assertEqual(listener.started_command_names(), ["aggregate"])
+            listener.results.clear()
+
+            # Confirm that only a single getMore is run even when no documents
+            # are returned.
+            self.assertIsNone(stream.try_next())
+            self.assertEqual(listener.started_command_names(), ["getMore"])
+            listener.results.clear()
+            self.assertIsNone(stream.try_next())
+            self.assertEqual(listener.started_command_names(), ["getMore"])
+            listener.results.clear()
+
+            # Get at least one change before resuming.
+            coll.insert_one({'_id': 2})
+            change = stream.try_next()
+            self.assertEqual(change['_id'], stream._resume_token)
+            listener.results.clear()
+
+            # Cause the next request to initiate the resume process.
+            self.kill_change_stream_cursor(stream)
+            listener.results.clear()
+
+            # The sequence should be:
+            # - getMore, fail
+            # - resume with aggregate command
+            # - no results, return immediately without another getMore
+            self.assertIsNone(stream.try_next())
+            self.assertEqual(
+                listener.started_command_names(), ["getMore", "aggregate"])
+            listener.results.clear()
+
+            # Stream still works after a resume.
+            coll.insert_one({'_id': 3})
+            change = stream.try_next()
+            self.assertEqual(change['_id'], stream._resume_token)
+            self.assertEqual(listener.started_command_names(), ["getMore"])
+            self.assertIsNone(stream.try_next())
+
+
+class TestClusterChangeStream(IntegrationTest, ChangeStreamTryNextMixin):
 
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
@@ -66,8 +151,11 @@ class TestClusterChangeStream(IntegrationTest):
             cls.client.drop_database(db)
         super(TestClusterChangeStream, cls).tearDownClass()
 
-    def change_stream(self, *args, **kwargs):
-        return self.client.watch(*args, **kwargs)
+    def change_stream_with_client(self, client, *args, **kwargs):
+        return client.watch(*args, **kwargs)
+
+    def watched_collection(self):
+        return self.db.test
 
     def generate_unique_collnames(self, numcolls):
         # Generate N collection names unique to a test.
@@ -94,7 +182,7 @@ class TestClusterChangeStream(IntegrationTest):
                 )
 
 
-class TestDatabaseChangeStream(IntegrationTest):
+class TestDatabaseChangeStream(IntegrationTest, ChangeStreamTryNextMixin):
 
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
@@ -103,8 +191,11 @@ class TestDatabaseChangeStream(IntegrationTest):
     def setUpClass(cls):
         super(TestDatabaseChangeStream, cls).setUpClass()
 
-    def change_stream(self, *args, **kwargs):
-        return self.db.watch(*args, **kwargs)
+    def change_stream_with_client(self, client, *args, **kwargs):
+        return client[self.db.name].watch(*args, **kwargs)
+
+    def watched_collection(self):
+        return self.db.test
 
     def generate_unique_collnames(self, numcolls):
         # Generate N collection names unique to a test.
@@ -145,7 +236,7 @@ class TestDatabaseChangeStream(IntegrationTest):
         self.client.drop_database(other_db)
 
 
-class TestCollectionChangeStream(IntegrationTest):
+class TestCollectionChangeStream(IntegrationTest, ChangeStreamTryNextMixin):
 
     @classmethod
     @client_context.require_version_min(3, 5, 11)
@@ -170,6 +261,12 @@ class TestCollectionChangeStream(IntegrationTest):
 
     def tearDown(self):
         self.coll.drop()
+
+    def change_stream_with_client(self, client, *args, **kwargs):
+        return client[self.db.name].test.watch(*args, **kwargs)
+
+    def watched_collection(self):
+        return self.db.test
 
     def insert_and_check(self, change_stream, doc):
         self.coll.insert_one(doc)
@@ -319,9 +416,7 @@ class TestCollectionChangeStream(IntegrationTest):
         with self.coll.watch([]) as change_stream:
             self.insert_and_check(change_stream, {'_id': 1})
             # Cause a cursor not found error on the next getMore.
-            cursor = change_stream._cursor
-            address = _CursorAddress(cursor.address, self.coll.full_name)
-            self.client._close_cursor_now(cursor.cursor_id, address)
+            self.kill_change_stream_cursor(change_stream)
             self.insert_and_check(change_stream, {'_id': 2})
 
     def test_does_not_resume_fatal_errors(self):
@@ -330,16 +425,16 @@ class TestCollectionChangeStream(IntegrationTest):
             with self.coll.watch() as change_stream:
                 self.coll.insert_one({})
 
-                def mock_next(*args, **kwargs):
+                def mock_try_next(*args, **kwargs):
                     change_stream._cursor.close()
                     raise OperationFailure('Mock server error', code=code)
 
-                original_next = change_stream._cursor.next
-                change_stream._cursor.next = mock_next
+                original_try_next = change_stream._cursor._try_next
+                change_stream._cursor._try_next = mock_try_next
 
                 with self.assertRaises(OperationFailure):
                     next(change_stream)
-                change_stream._cursor.next = original_next
+                change_stream._cursor._try_next = original_try_next
                 with self.assertRaises(StopIteration):
                     next(change_stream)
 
@@ -368,8 +463,7 @@ class TestCollectionChangeStream(IntegrationTest):
             self.insert_and_check(change_stream, {'_id': 1})
             # Cause a cursor not found error on the next getMore.
             cursor = change_stream._cursor
-            address = _CursorAddress(cursor.address, self.coll.full_name)
-            self.client._close_cursor_now(cursor.cursor_id, address)
+            self.kill_change_stream_cursor(change_stream)
             cursor.close = raise_error
             self.insert_and_check(change_stream, {'_id': 2})
 

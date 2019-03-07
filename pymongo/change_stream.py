@@ -12,7 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""ChangeStream cursor to iterate over changes on a collection."""
+"""Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
 
@@ -41,14 +41,12 @@ class ChangeStream(object):
     """The internal abstract base class for change stream cursors.
 
     Should not be called directly by application developers. Use 
-    :meth:pymongo.collection.Collection.watch,
-    :meth:pymongo.database.Database.watch, or
-    :meth:pymongo.mongo_client.MongoClient.watch instead.
+    :meth:`pymongo.collection.Collection.watch`,
+    :meth:`pymongo.database.Database.watch`, or
+    :meth:`pymongo.mongo_client.MongoClient.watch` instead.
 
-    Defines the interface for change streams. Should be subclassed to
-    implement the `ChangeStream._create_cursor` abstract method, and
-    the `ChangeStream._database`and ChangeStream._aggregation_target`
-    abstract properties.
+    .. versionadded:: 3.6
+    .. mongodoc:: changeStreams
     """
     def __init__(self, target, pipeline, full_document, resume_after,
                  max_await_time_ms, batch_size, collation,
@@ -175,33 +173,96 @@ class ChangeStream(object):
         """Advance the cursor.
 
         This method blocks until the next change document is returned or an
-        unrecoverable error is raised.
+        unrecoverable error is raised. This method is used when iterating over
+        all changes in the cursor. For example::
+
+            try:
+                with db.collection.watch(
+                        [{'$match': {'operationType': 'insert'}}]) as stream:
+                    for insert_change in stream:
+                        print(insert_change)
+            except pymongo.errors.PyMongoError:
+                # The ChangeStream encountered an unrecoverable error or the
+                # resume attempt failed to recreate the cursor.
+                logging.error('...')
 
         Raises :exc:`StopIteration` if this ChangeStream is closed.
         """
-        while True:
-            try:
-                change = self._cursor.next()
-            except ConnectionFailure:
-                self._resume()
-                continue
-            except OperationFailure as exc:
-                if exc.code in _NON_RESUMABLE_GETMORE_ERRORS:
-                    raise
-                self._resume()
-                continue
-            try:
-                resume_token = change['_id']
-            except KeyError:
-                self.close()
-                raise InvalidOperation(
-                    "Cannot provide resume functionality when the resume "
-                    "token is missing.")
-            self._resume_token = copy.copy(resume_token)
-            self._start_at_operation_time = None
-            return change
+        while self.alive:
+            doc = self.try_next()
+            if doc is not None:
+                return doc
+
+        raise StopIteration
 
     __next__ = next
+
+    @property
+    def alive(self):
+        """Does this cursor have the potential to return more data?
+
+        .. note:: Even if :attr:`alive` is ``True``, :meth:`next` can raise
+            :exc:`StopIteration` and :meth:`try_next` can return ``None``.
+
+        .. versionadded:: 3.8
+        """
+        return self._cursor.alive
+
+    def try_next(self):
+        """Advance the cursor without blocking indefinitely.
+
+        This method returns the next change document without waiting
+        indefinitely for the next change. For example::
+
+            with db.collection.watch() as stream:
+                while stream.alive:
+                    change = stream.try_next()
+                    if change is not None:
+                        print(change)
+                    elif stream.alive:
+                        # We end up here when there are no recent changes.
+                        # Sleep for a while to avoid flooding the server with
+                        # getMore requests when no changes are available.
+                        time.sleep(10)
+
+        If no change document is cached locally then this method runs a single
+        getMore command. If the getMore yields any documents, the next
+        document is returned, otherwise, if the getMore returns no documents
+        (because there have been no changes) then ``None`` is returned.
+
+        :Returns:
+          The next change document or ``None`` when no document is available
+          after running a single getMore or when the cursor is closed.
+
+        .. versionadded:: 3.8
+        """
+        # Attempt to get the next change with at most one getMore and at most
+        # one resume attempt.
+        try:
+            change = self._cursor._try_next(True)
+        except ConnectionFailure:
+            self._resume()
+            change = self._cursor._try_next(False)
+        except OperationFailure as exc:
+            if exc.code in _NON_RESUMABLE_GETMORE_ERRORS:
+                raise
+            self._resume()
+            change = self._cursor._try_next(False)
+
+        # No changes are available.
+        if change is None:
+            return None
+
+        try:
+            resume_token = change['_id']
+        except KeyError:
+            self.close()
+            raise InvalidOperation(
+                "Cannot provide resume functionality when the resume "
+                "token is missing.")
+        self._resume_token = copy.copy(resume_token)
+        self._start_at_operation_time = None
+        return change
 
     def __enter__(self):
         return self
@@ -211,13 +272,12 @@ class ChangeStream(object):
 
 
 class CollectionChangeStream(ChangeStream):
-    """Class for creating a change stream on a collection.
+    """A change stream that watches changes on a single collection.
 
     Should not be called directly by application developers. Use
     helper method :meth:`pymongo.collection.Collection.watch` instead.
 
-    .. versionadded: 3.6
-    .. mongodoc:: changeStreams
+    .. versionadded:: 3.7
     """
     @property
     def _aggregation_target(self):
@@ -229,13 +289,12 @@ class CollectionChangeStream(ChangeStream):
 
 
 class DatabaseChangeStream(ChangeStream):
-    """Class for creating a change stream on all collections in a database.
+    """A change stream that watches changes on all collections in a database.
 
     Should not be called directly by application developers. Use
     helper method :meth:`pymongo.database.Database.watch` instead.
 
-    .. versionadded: 3.7
-    .. mongodoc:: changeStreams
+    .. versionadded:: 3.7
     """
     @property
     def _aggregation_target(self):
@@ -247,13 +306,12 @@ class DatabaseChangeStream(ChangeStream):
 
 
 class ClusterChangeStream(DatabaseChangeStream):
-    """Class for creating a change stream on all collections on a cluster.
+    """A change stream that watches changes on all collections in the cluster.
 
     Should not be called directly by application developers. Use
     helper method :meth:`pymongo.mongo_client.MongoClient.watch` instead.
 
-    .. versionadded: 3.7
-    .. mongodoc:: changeStreams
+    .. versionadded:: 3.7
     """
     def _pipeline_options(self):
         options = super(ClusterChangeStream, self)._pipeline_options()
