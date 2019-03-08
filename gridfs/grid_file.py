@@ -419,6 +419,11 @@ class GridOut(object):
             :class:`~pymongo.client_session.ClientSession` to use for all
             commands
 
+        .. versionchanged:: 3.8
+           For better performance and to better follow the GridFS spec,
+           :class:`GridOut` now uses a single cursor to read all the chunks in
+           the file.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -501,6 +506,11 @@ class GridOut(object):
 
         :Parameters:
           - `size` (optional): the number of bytes to read
+
+        .. versionchanged:: 3.8
+           This method now only checks for extra chunks after reading the
+           entire file. Previously, this method would check for extra chunks
+           on every call.
         """
         self._ensure_file()
 
@@ -613,6 +623,12 @@ class GridOut(object):
         :class:`str` (:class:`bytes` in python 3). This can be
         useful when serving files using a webserver that handles
         such an iterator efficiently.
+
+        .. versionchanged:: 3.8
+           The iterator now raises :class:`CorruptGridFile` when encountering
+           any truncated, missing, or extra chunk in a file. The previous
+           behavior was to only raise :class:`CorruptGridFile` on a missing
+           chunk.
         """
         return GridOutIterator(self, self.__chunks, self._session)
 

@@ -59,6 +59,13 @@ Changes in Version 3.8.0.dev0
 
 - :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
   version 0.2 <https://github.com/mongodb/specifications/blob/master/source/objectid.rst>`_.
+- For better performance and to better follow the GridFS spec,
+  :class:`~gridfs.grid_file.GridOut` now uses a single cursor to read all the
+  chunks in the file. Previously, each chunk in the file was queried
+  individually using :meth:`~pymongo.collection.Collection.find_one`.
+- :meth:`gridfs.grid_file.GridOut.read` now only checks for extra chunks after
+  reading the entire file. Previously, this method would check for extra
+  chunks on every call.
 
 Issues Resolved
 ...............
