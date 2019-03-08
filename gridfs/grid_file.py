@@ -27,6 +27,7 @@ from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.errors import (ConfigurationError,
+                            CursorNotFound,
                             DuplicateKeyError,
                             OperationFailure)
 from pymongo.read_preferences import ReadPreference
@@ -676,15 +677,33 @@ class _GridOutChunkIterator(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __create_cursor(self):
+        filter = {"files_id": self.__id}
+        if self.__next_chunk > 0:
+            filter["n"] = {"$gte": self.__next_chunk}
+        self.__cursor = self.__chunks.find(filter, sort=[("n", 1)],
+                                           session=self.__session)
+
+    def _next_with_retry(self):
+        """Return the next chunk and retry on CursorNotFound.
+
+        We retry on CursorNotFound because before PyMongo 3.8 we used
+        find_one for each chunk.
+        # TODO: add a test for this.
+        """
         if self.__cursor is None:
-            filter = {"files_id": self.__id}
-            if self.__next_chunk > 0:
-                filter["n"] = {"$gte": self.__next_chunk}
-            self.__cursor = self.__chunks.find(filter, sort=[("n", 1)],
-                                               session=self.__session)
+            self.__create_cursor()
+
         try:
-            chunk = next(self.__cursor)
+            return self.__cursor.next()
+        except CursorNotFound:
+            self.__cursor.close()
+            self.__create_cursor()
+            return self.__cursor.next()
+
+    def next(self):
+        try:
+            chunk = self._next_with_retry()
         except StopIteration:
             if self.__next_chunk >= self.__num_chunks:
                 raise
