@@ -24,32 +24,22 @@ We’ll start by getting a clean database to use for the example:
 
 
 Since the purpose of the example is to demonstrate working with custom types,
-we’ll need a custom data type to use. Here, we define the aptly named
-``Custom`` class, which has a single method, ``x()``:
+we’ll need a custom data type to use. For this example, we will be working with
+the :py:class:`~decimal.Decimal` type from Python's standard library. Since the
+BSON library has a :class:`~bson.decimal128.Decimal128` type (that implements
+the IEEE 754 decimal128 decimal-based floating-point numbering format) which
+is distinct from Python's built-in :py:class:`~decimal.Decimal` type, when we
+try to save an instance of ``Decimal`` with PyMongo, we get an
+:exc:`~bson.errors.InvalidDocument` exception.
 
 .. doctest::
 
-  >>> class Custom(object):
-  ...     def __init__(self, x):
-  ...         self.__x = x
-  ...
-  ...     def x(self):
-  ...         return self.__x
-  >>> foo = Custom(10)
-  >>> foo.x()
-  10
-
-
-When we try to save an instance of ``Custom`` with PyMongo, we'll get an
-:exc:`~bson.errors.InvalidDocument` exception since the :mod:`~bson` module
-does not have a way to serialize an instance of our custom type:
-
-.. doctest::
-
-  >>> db.test.insert_one({'custom': Custom(5)})
+  >>> from decimal import Decimal
+  >>> mynumber = Decimal("45.321")
+  >>> db.test.insert_one({'mynumber': mynumber})
   Traceback (most recent call last):
   ...
-  bson.errors.InvalidDocument: Cannot encode object: <__main__.Custom object at ...>
+  bson.errors.InvalidDocument: Cannot encode object: <__main__.Decimal object at ...>
 
 
 .. _custom-type-type-codec:
@@ -61,43 +51,41 @@ In order to encode custom types, we must first define a **type codec** for our
 type. A type codec describes how an instance of a custom type can be
 *transformed* into one of the types :mod:`~bson` already understands, and can
 encode. Type codecs must inherit from
-:class:`~bson.codec_options.TypeCodecBase`. In order to facilitate encoding of
-a custom type, they also must implement the ``python_type`` property, and the
-``transform_python`` method. Similarly, for decoding, codecs must implement the
-``bson_type`` property and the ``transform_bson`` method. Note that a type
-codec does not need to implement both encoding and decoding logic.
+:class:`~bson.codec_options.TypeCodecBase`. Codecs that facilitate encoding of
+a custom type, must implement the ``python_type`` property, and the
+``transform_python`` method. Similarly, codecs that facilitate decoding must
+implement the ``bson_type`` property and the ``transform_bson`` method.
+Note that a type codec need not support both encoding and decoding.
 
-While our ``Custom`` type does not place any restrictions on the kind of
-data that it can encapsulate, for the sake of this particular exercise, let's
-assume that we expect it to only store integers. Without any such restriction
-it would be impossible for us to define the decoding logic for our codec since
-a BSON value of any type could potentially be an instance of ``Custom``. With
-that, we can define our codec:
+The type codec for our custom type simply needs to define how a
+:py:class:`~decimal.Decimal` instance can be converted into a
+:class:`~bson.decimal.Decimal128` instance and vice-versa:
 
 .. doctest::
 
+  >>> from bson.decimal128 import Decimal128
   >>> from bson.codec_options import TypeCodecBase
-  >>> class CustomTypeCodec(TypeCodecBase):
+  >>> class DecimalCodec(TypeCodecBase):
   ...     @property
   ...     def python_type(self):
   ...         """The Python type acted upon by this type codec."""
-  ...         return Custom
+  ...         return Decimal
   ...
   ...     def transform_python(self, value):
   ...         """Function that transforms a custom type value into a type
   ...         that BSON can encode."""
-  ...         return value.x()
+  ...         return Decimal128(value)
   ...
   ...     @property
   ...     def bson_type(self):
   ...         """The BSON type acted upon by this type codec."""
-  ...         return int
+  ...         return Decimal128
   ...
   ...     def transform_bson(self, value):
   ...         """Function that transforms a vanilla BSON type value into our
   ...         custom type."""
-  ...         return Custom(value)
-  >>> custom_type_codec = CustomTypeCodec()
+  ...         return value.to_decimal()
+  >>> decimal_codec = DecimalCodec()
 
 
 .. _custom-type-type-registry:
@@ -112,7 +100,7 @@ first inform PyMongo about our type codec. This is done by creating a
 .. doctest::
 
   >>> from bson.codec_options import TypeRegistry
-  >>> type_registry = TypeRegistry(custom_type_codec)
+  >>> type_registry = TypeRegistry(decimal_codec)
 
 
 Note that type registries can be instantiated with any number of type codecs.
@@ -125,8 +113,8 @@ Putting it together
 
 Finally, we can define a :class:`~bson.codec_options.CodecOptions` instance
 with our ``type_registry`` and use it to get a
-:class:`~pymongo.collection.Collection` object that understands the ``Custom``
-data type:
+:class:`~pymongo.collection.Collection` object that understands the
+:py:class:`~decimal.Decimal` data type:
 
 .. doctest::
 
@@ -135,25 +123,24 @@ data type:
   >>> collection = db.get_collection('test', codec_options=codec_options)
 
 
-Now, we can seamlessly encode and decode ``Custom`` type instances:
+Now, we can seamlessly encode and decode instances of
+:py:class:`~decimal.Decimal`:
 
 .. doctest::
 
-  >>> collection.insert_one({'custom': Custom(5)})
+  >>> collection.insert_one({'mynumber': Decimal("45.321")})
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> print(mydoc)
-  {'_id': ObjectId('...'), 'custom': <Custom object at ...>}
-  >>> print(mydoc['custom'].x())
-  5
+  {'_id': ObjectId('...'), 'mynumber': Decimal("45.321")}
 
 
-We can see what's actually being saved to the database by creating a new
-collection object without the custom codec options and using that to query
+We can see what's actually being saved to the database by creating a fresh
+collection object without the customized codec options and using that to query
 MongoDB:
 
 .. doctest::
 
   >>> vanilla_collection = db.get_collection('test')
   >>> vanilla_collection.find_one()
-  {'_id': ObjectId('...'), 'custom': 5}
+  {'_id': ObjectId('...'), 'mynumber': Decimal128("45.321")}
