@@ -660,29 +660,29 @@ class _GridOutChunkIterator(object):
     chunk in a file.
     """
     def __init__(self, grid_out, chunks, session, next_chunk):
-        self.__id = grid_out._id
-        self.__chunk_size = int(grid_out.chunk_size)
-        self.__length = int(grid_out.length)
-        self.__chunks = chunks
-        self.__session = session
-        self.__next_chunk = next_chunk
-        self.__num_chunks = math.ceil(float(self.__length) / self.__chunk_size)
-        self.__cursor = None
+        self._id = grid_out._id
+        self._chunk_size = int(grid_out.chunk_size)
+        self._length = int(grid_out.length)
+        self._chunks = chunks
+        self._session = session
+        self._next_chunk = next_chunk
+        self._num_chunks = math.ceil(float(self._length) / self._chunk_size)
+        self._cursor = None
 
     def expected_chunk_length(self, chunk_n):
-        if chunk_n < self.__num_chunks - 1:
-            return self.__chunk_size
-        return self.__length - (self.__chunk_size * (self.__num_chunks - 1))
+        if chunk_n < self._num_chunks - 1:
+            return self._chunk_size
+        return self._length - (self._chunk_size * (self._num_chunks - 1))
 
     def __iter__(self):
         return self
 
-    def __create_cursor(self):
-        filter = {"files_id": self.__id}
-        if self.__next_chunk > 0:
-            filter["n"] = {"$gte": self.__next_chunk}
-        self.__cursor = self.__chunks.find(filter, sort=[("n", 1)],
-                                           session=self.__session)
+    def _create_cursor(self):
+        filter = {"files_id": self._id}
+        if self._next_chunk > 0:
+            filter["n"] = {"$gte": self._next_chunk}
+        self._cursor = self._chunks.find(filter, sort=[("n", 1)],
+                                         session=self._session)
 
     def _next_with_retry(self):
         """Return the next chunk and retry on CursorNotFound.
@@ -691,37 +691,37 @@ class _GridOutChunkIterator(object):
         find_one for each chunk.
         # TODO: add a test for this.
         """
-        if self.__cursor is None:
-            self.__create_cursor()
+        if self._cursor is None:
+            self._create_cursor()
 
         try:
-            return self.__cursor.next()
+            return self._cursor.next()
         except CursorNotFound:
-            self.__cursor.close()
-            self.__create_cursor()
-            return self.__cursor.next()
+            self._cursor.close()
+            self._create_cursor()
+            return self._cursor.next()
 
     def next(self):
         try:
             chunk = self._next_with_retry()
         except StopIteration:
-            if self.__next_chunk >= self.__num_chunks:
+            if self._next_chunk >= self._num_chunks:
                 raise
-            raise CorruptGridFile("no chunk #%d" % self.__next_chunk)
+            raise CorruptGridFile("no chunk #%d" % self._next_chunk)
 
-        if chunk["n"] != self.__next_chunk:
+        if chunk["n"] != self._next_chunk:
             self.close()
             raise CorruptGridFile(
                 "Missing chunk: expected chunk #%d but found "
-                "chunk with n=%d" % (self.__next_chunk, chunk["n"]))
+                "chunk with n=%d" % (self._next_chunk, chunk["n"]))
 
-        if chunk["n"] >= self.__num_chunks:
+        if chunk["n"] >= self._num_chunks:
             # According to spec, ignore extra chunks if they are empty.
             if len(chunk["data"]):
                 self.close()
                 raise CorruptGridFile(
                     "Extra chunk found: expected %d chunks but found "
-                    "chunk with n=%d" % (self.__num_chunks, chunk["n"]))
+                    "chunk with n=%d" % (self._num_chunks, chunk["n"]))
 
         expected_length = self.expected_chunk_length(chunk["n"])
         if len(chunk["data"]) != expected_length:
@@ -731,15 +731,15 @@ class _GridOutChunkIterator(object):
                 "found chunk with length %d" % (
                     chunk["n"], expected_length, len(chunk["data"])))
 
-        self.__next_chunk += 1
+        self._next_chunk += 1
         return chunk
 
     __next__ = next
 
     def close(self):
-        if self.__cursor:
-            self.__cursor.close()
-            self.__cursor = None
+        if self._cursor:
+            self._cursor.close()
+            self._cursor = None
 
 
 class GridOutIterator(object):
