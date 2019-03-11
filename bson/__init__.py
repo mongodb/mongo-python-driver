@@ -757,7 +757,7 @@ def _name_value_to_bson(name, value, check_keys, opts):
     # Custom encoder (if any) takes precedence over default encoders.
     # Using 'if' instead of 'try...except' for performance since this will
     # usually not be true.
-    # No support for auto-encoding subtypes of registered cstom types.
+    # No support for auto-encoding subtypes of registered custom types.
     if opts.type_registry._encoder_map:
         custom_encoder = opts.type_registry._encoder_map.get(type(value))
         if custom_encoder is not None:
