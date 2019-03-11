@@ -39,11 +39,9 @@ class DecimalCodec(TypeCodecBase):
         return Decimal
 
     def transform_bson(self, value):
-        """Decodes BSON type Decimal128 to Python native decimal."""
         return value.to_decimal()
 
     def transform_python(self, value):
-        """Encodes Python native decimal to BSON type Decimal128."""
         return Decimal128(value)
 
 

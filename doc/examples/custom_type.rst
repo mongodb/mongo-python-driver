@@ -49,8 +49,8 @@ The Type Codec
 
 In order to encode custom types, we must first define a **type codec** for our
 type. A type codec describes how an instance of a custom type can be
-*transformed* into one of the types :mod:`~bson` already understands, and can
-encode. Type codecs must inherit from
+*transformed* to/from one of the types :mod:`~bson` already understands, and
+can encode/decode. Type codecs must inherit from
 :class:`~bson.codec_options.TypeCodecBase`. Codecs that facilitate encoding of
 a custom type, must implement the ``python_type`` property, and the
 ``transform_python`` method. Similarly, codecs that facilitate decoding must
