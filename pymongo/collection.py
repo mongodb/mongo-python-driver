@@ -767,9 +767,11 @@ class Collection(common.BaseObject):
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
         update_doc = SON([('q', criteria),
-                          ('u', document),
-                          ('multi', multi),
-                          ('upsert', upsert)])
+                          ('u', document)])
+        if multi is not False:
+            update_doc['multi'] = multi
+        if upsert is not False:
+            update_doc['upsert'] = upsert
         if collation is not None:
             if sock_info.max_wire_version < 5:
                 raise ConfigurationError(

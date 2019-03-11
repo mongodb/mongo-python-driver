@@ -178,8 +178,11 @@ class _Bulk(object):
         """Create an update document and add it to the list of ops.
         """
         validate_ok_for_update(update)
-        cmd = SON([('q', selector), ('u', update),
-                   ('multi', multi), ('upsert', upsert)])
+        cmd = SON([('q', selector), ('u', update)])
+        if multi is not False:
+            cmd['multi'] = multi
+        if upsert is not False:
+            cmd['upsert'] = upsert
         collation = validate_collation_or_none(collation)
         if collation is not None:
             self.uses_collation = True
