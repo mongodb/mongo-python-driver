@@ -210,6 +210,9 @@ class TestThreadsAuth(IntegrationTest):
         super(TestThreadsAuth, cls).setUpClass()
 
     def test_auto_auth_login(self):
+        # Create the database upfront to workaround SERVER-39167.
+        self.client.auth_test.test.insert_one({})
+        self.addCleanup(self.client.drop_database, "auth_test")
         client = rs_or_single_client_noauth()
         self.assertRaises(OperationFailure, client.auth_test.test.find_one)
 
