@@ -15,13 +15,17 @@
 """Test support for callbacks to encode/decode custom types."""
 
 import sys
+import tempfile
 from decimal import Decimal
+from random import random
 
 sys.path[0:0] = [""]
 
 from bson import (BSON,
                   Decimal128,
                   decode_all,
+                  decode_file_iter,
+                  decode_iter,
                   _dict_to_bson,
                   _bson_to_dict)
 from bson.codec_options import CodecOptions, TypeCodecBase, TypeRegistry
@@ -81,6 +85,34 @@ class TestCustomPythonTypeToBSON(unittest.TestCase):
         rawbytes = BSON.encode(document, codec_options=self.codecopts)
         encoded_document = _dict_to_bson(document, False, self.codecopts)
         self.assertEqual(encoded_document, rawbytes)
+
+    def _generate_multidocument_bson_stream(self):
+        inp_num = [str(random() * 100)[:4] for _ in range(10)]
+        docs = [{'n': Decimal128(dec)} for dec in inp_num]
+        edocs = [{'n': Decimal(dec)} for dec in inp_num]
+        bsonstream = b""
+        for doc in docs:
+            bsonstream += BSON.encode(doc)
+        return edocs, bsonstream
+
+    def test_decode_iter(self):
+        expected, bson_data = self._generate_multidocument_bson_stream()
+        for expected_doc, decoded_doc in zip(
+                expected, decode_iter(bson_data, self.codecopts)):
+            self.assertEqual(expected_doc, decoded_doc)
+
+    def test_decode_file_iter(self):
+        expected, bson_data = self._generate_multidocument_bson_stream()
+        fileobj = tempfile.TemporaryFile()
+        fileobj.write(bson_data)
+        fileobj.seek(0)
+
+        for expected_doc, decoded_doc in zip(
+                expected, decode_file_iter(fileobj, self.codecopts)):
+            self.assertEqual(expected_doc, decoded_doc)
+
+        fileobj.close()
+
 
 
 if __name__ == "__main__":
