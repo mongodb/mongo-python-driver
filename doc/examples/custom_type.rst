@@ -133,7 +133,7 @@ Now, we can seamlessly encode and decode instances of
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> print(mydoc)
-  {'_id': ObjectId('...'), 'mynumber': Decimal('45.321')}
+  {u'_id': ObjectId('...'), u'mynumber': Decimal('45.321')}
 
 
 We can see what's actually being saved to the database by creating a fresh
@@ -144,4 +144,4 @@ MongoDB:
 
   >>> vanilla_collection = db.get_collection('test')
   >>> vanilla_collection.find_one()
-  {'_id': ObjectId('...'), 'mynumber': Decimal128('45.321')}
+  {u'_id': ObjectId('...'), u'mynumber': Decimal128('45.321')}
