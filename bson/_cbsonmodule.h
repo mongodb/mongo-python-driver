@@ -51,12 +51,21 @@
 #define BYTES_FORMAT_STRING "s#"
 #endif
 
+typedef struct type_registry_t {
+    PyObject* encoder_map;
+    PyObject* decoder_map;
+    PyObject* registry_obj;
+    unsigned char is_encoder_empty;
+    unsigned char is_decoder_empty;
+} type_registry_t;
+
 typedef struct codec_options_t {
     PyObject* document_class;
     unsigned char tz_aware;
     unsigned char uuid_rep;
     char* unicode_decode_error_handler;
     PyObject* tzinfo;
+    type_registry_t type_registry;
     PyObject* options_obj;
     unsigned char is_raw_bson;
 } codec_options_t;

@@ -166,6 +166,8 @@ latex_documents = [
 # If false, no module index is generated.
 #latex_use_modindex = True
 
+
 intersphinx_mapping = {
     'gevent': ('http://www.gevent.org/', None),
+    'py': ('https://docs.python.org/3/', None),
 }

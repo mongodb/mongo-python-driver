@@ -659,7 +659,7 @@ class IntegrationTest(PyMongoTestCase):
 # Use assertRaisesRegex if available, otherwise use Python 2.7's
 # deprecated assertRaisesRegexp, with a 'p'.
 if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
-    IntegrationTest.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
 
 
 class MockClientTest(unittest.TestCase):
