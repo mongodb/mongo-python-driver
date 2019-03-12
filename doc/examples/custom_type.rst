@@ -13,7 +13,7 @@ documents as they are saved or retrieved from MongoDB.
 Setup
 -----
 
-We’ll start by getting a clean database to use for the example:
+We'll start by getting a clean database to use for the example:
 
 .. doctest::
 
@@ -24,7 +24,7 @@ We’ll start by getting a clean database to use for the example:
 
 
 Since the purpose of the example is to demonstrate working with custom types,
-we’ll need a custom data type to use. For this example, we will be working with
+we'll need a custom data type to use. For this example, we will be working with
 the :py:class:`~decimal.Decimal` type from Python's standard library. Since the
 BSON library has a :class:`~bson.decimal128.Decimal128` type (that implements
 the IEEE 754 decimal128 decimal-based floating-point numbering format) which

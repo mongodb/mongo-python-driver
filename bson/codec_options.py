@@ -39,9 +39,10 @@ class TypeCodecBase(object):
     understands, and can encode/decode.
 
     Codec classes must implement the ``python_type`` property, and the
-    ``transform_python`` method to facilitate encoding, or the ``bson_type``
-    property and ``transform_bson`` method to facilitate decoding. A single
-    codec class may facilitate both encoding and decoding."""
+    ``transform_python`` method to support encoding, or the ``bson_type``
+    property and ``transform_bson`` method to support decoding. Note that a
+    single codec class may support both encoding and decoding.
+    """
     @property
     def python_type(self):
         """The Python type to be converted into something serializable."""
@@ -71,7 +72,8 @@ class TypeRegistry(object):
       >>> type_registry = TypeRegistry(Codec1, Codec2, Codec3, ...)
 
     If multiple codecs try to transform a single python or BSON type,
-    the transformation described by the last type codec prevails."""
+    the transformation described by the last type codec prevails.
+    """
     def __init__(self, *type_codecs):
         self.__args = type_codecs
         self._encoder_map = {}
