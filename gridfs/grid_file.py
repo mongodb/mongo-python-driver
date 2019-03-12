@@ -685,11 +685,11 @@ class _GridOutChunkIterator(object):
                                          session=self._session)
 
     def _next_with_retry(self):
-        """Return the next chunk and retry on CursorNotFound.
+        """Return the next chunk and retry once on CursorNotFound.
 
-        We retry on CursorNotFound because before PyMongo 3.8 we used
-        find_one for each chunk.
-        # TODO: add a test for this.
+        We retry on CursorNotFound to maintain backwards compatibility in
+        cases where two calls to read occur more than 10 minutes apart (the
+        server's default cursor timeout).
         """
         if self._cursor is None:
             self._create_cursor()
