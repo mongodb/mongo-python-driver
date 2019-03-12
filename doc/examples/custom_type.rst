@@ -35,8 +35,8 @@ try to save an instance of ``Decimal`` with PyMongo, we get an
 .. doctest::
 
   >>> from decimal import Decimal
-  >>> mynumber = Decimal("45.321")
-  >>> db.test.insert_one({'mynumber': mynumber})
+  >>> num = Decimal("45.321")
+  >>> db.test.insert_one({'num': num})
   Traceback (most recent call last):
   ...
   bson.errors.InvalidDocument: Cannot encode object: <__main__.Decimal object at ...>
@@ -129,12 +129,12 @@ Now, we can seamlessly encode and decode instances of
 
 .. doctest::
 
-  >>> collection.insert_one({'mynumber': Decimal("45.321")})
+  >>> collection.insert_one({'num': Decimal("45.321")})
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> import pprint
   >>> pprint.pprint(mydoc)
-  {u'_id': ObjectId('...'), u'mynumber': Decimal('45.321')}
+  {u'_id': ObjectId('...'), u'num': Decimal('45.321')}
 
 
 We can see what's actually being saved to the database by creating a fresh
@@ -145,4 +145,4 @@ MongoDB:
 
   >>> vanilla_collection = db.get_collection('test')
   >>> pprint.pprint(vanilla_collection.find_one())
-  {u'_id': ObjectId('...'), u'mynumber': Decimal128('45.321')}
+  {u'_id': ObjectId('...'), u'num': Decimal128('45.321')}
