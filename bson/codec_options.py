@@ -23,6 +23,7 @@ from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          PYTHON_LEGACY,
                          UUID_REPRESENTATION_NAMES)
 
+
 _RAW_BSON_DOCUMENT_MARKER = 101
 
 
@@ -32,10 +33,84 @@ def _raw_document_class(document_class):
     return marker == _RAW_BSON_DOCUMENT_MARKER
 
 
+class TypeCodecBase(object):
+    """Base class for defining type codec classes which describe how a
+    custom type can be transformed to/from one of the types BSON already
+    understands, and can encode/decode.
+
+    Codec classes must implement the ``python_type`` property, and the
+    ``transform_python`` method to support encoding, or the ``bson_type``
+    property and ``transform_bson`` method to support decoding. Note that a
+    single codec class may support both encoding and decoding.
+    """
+    @property
+    def python_type(self):
+        """The Python type to be converted into something serializable."""
+        raise NotImplementedError
+
+    @property
+    def bson_type(self):
+        """The BSON type to be converted into our own type."""
+        raise NotImplementedError
+
+    def transform_bson(self, value):
+        """Convert the given BSON value into our own type."""
+        raise NotImplementedError
+
+    def transform_python(self, value):
+        """Convert the given Python object into something serializable."""
+        raise NotImplementedError
+
+
+class TypeRegistry(object):
+    """Encapsulates type codecs used in encoding and / or decoding BSON.
+
+    ``TypeRegistry`` can be initialized with an arbitrary number of type
+    codecs::
+
+      >>> from bson.codec_options import TypeRegistry
+      >>> type_registry = TypeRegistry(Codec1, Codec2, Codec3, ...)
+
+    If multiple codecs try to transform a single python or BSON type,
+    the transformation described by the last type codec prevails.
+    """
+    def __init__(self, *type_codecs):
+        self.__args = type_codecs
+        self._encoder_map = {}
+        self._decoder_map = {}
+        for codec in type_codecs:
+            if not isinstance(codec, TypeCodecBase):
+                raise TypeError(
+                    "Expected an instance of %s, got %r instead" % (
+                    TypeCodecBase.__name__, codec))
+            try:
+                python_type = codec.python_type
+            except NotImplementedError:
+                pass
+            else:
+                self._encoder_map[python_type] = codec.transform_python
+
+            try:
+                bson_type = codec.bson_type
+            except NotImplementedError:
+                pass
+            else:
+                self._decoder_map[bson_type] = codec.transform_bson
+
+    def __repr__(self):
+        return '%s%r' % (self.__class__.__name__, self.__args)
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return ((self._decoder_map == other._decoder_map) and
+                (self._encoder_map == other._encoder_map))
+
+
 _options_base = namedtuple(
     'CodecOptions',
     ('document_class', 'tz_aware', 'uuid_representation',
-     'unicode_decode_error_handler', 'tzinfo'))
+     'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
 
 
 class CodecOptions(_options_base):
@@ -93,6 +168,8 @@ class CodecOptions(_options_base):
       - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
         timezone to/from which :class:`~datetime.datetime` objects should be
         encoded/decoded.
+      - `type_registry`: Instance of :class:`TypeRegistry` used to customize
+        encoding and decoding behavior.
 
     .. warning:: Care must be taken when changing
        `unicode_decode_error_handler` from its default value ('strict').
@@ -104,7 +181,7 @@ class CodecOptions(_options_base):
     def __new__(cls, document_class=dict,
                 tz_aware=False, uuid_representation=PYTHON_LEGACY,
                 unicode_decode_error_handler="strict",
-                tzinfo=None):
+                tzinfo=None, type_registry=None):
         if not (issubclass(document_class, abc.MutableMapping) or
                 _raw_document_class(document_class)):
             raise TypeError("document_class must be dict, bson.son.SON, "
@@ -126,9 +203,14 @@ class CodecOptions(_options_base):
                 raise ValueError(
                     "cannot specify tzinfo without also setting tz_aware=True")
 
+        type_registry = type_registry or TypeRegistry()
+
+        if not isinstance(type_registry, TypeRegistry):
+            raise TypeError("type_registry must be an instance of TypeRegistry")
+
         return tuple.__new__(
             cls, (document_class, tz_aware, uuid_representation,
-                  unicode_decode_error_handler, tzinfo))
+                  unicode_decode_error_handler, tzinfo, type_registry))
 
     def _arguments_repr(self):
         """Representation of the arguments used to create this object."""
@@ -139,10 +221,12 @@ class CodecOptions(_options_base):
         uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(self.uuid_representation,
                                                       self.uuid_representation)
 
-        return ('document_class=%s, tz_aware=%r, uuid_representation='
-                '%s, unicode_decode_error_handler=%r, tzinfo=%r' %
+        return ('document_class=%s, tz_aware=%r, uuid_representation=%s, '
+                'unicode_decode_error_handler=%r, tzinfo=%r, '
+                'type_registry=%r' %
                 (document_class_repr, self.tz_aware, uuid_rep_repr,
-                 self.unicode_decode_error_handler, self.tzinfo))
+                 self.unicode_decode_error_handler, self.tzinfo,
+                 self.type_registry))
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
@@ -165,7 +249,9 @@ class CodecOptions(_options_base):
             kwargs.get('uuid_representation', self.uuid_representation),
             kwargs.get('unicode_decode_error_handler',
                        self.unicode_decode_error_handler),
-            kwargs.get('tzinfo', self.tzinfo))
+            kwargs.get('tzinfo', self.tzinfo),
+            kwargs.get('type_registry', self.type_registry)
+        )
 
 
 DEFAULT_CODEC_OPTIONS = CodecOptions()
@@ -183,4 +269,6 @@ def _parse_codec_options(options):
         unicode_decode_error_handler=options.get(
             'unicode_decode_error_handler',
             DEFAULT_CODEC_OPTIONS.unicode_decode_error_handler),
-        tzinfo=options.get('tzinfo', DEFAULT_CODEC_OPTIONS.tzinfo))
+        tzinfo=options.get('tzinfo', DEFAULT_CODEC_OPTIONS.tzinfo),
+        type_registry=options.get(
+            'type_registry', DEFAULT_CODEC_OPTIONS.type_registry))
