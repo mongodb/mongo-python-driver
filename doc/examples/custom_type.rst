@@ -132,7 +132,8 @@ Now, we can seamlessly encode and decode instances of
   >>> collection.insert_one({'mynumber': Decimal("45.321")})
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
-  >>> print(mydoc)
+  >>> import pprint
+  >>> pprint.pprint(mydoc)
   {u'_id': ObjectId('...'), u'mynumber': Decimal('45.321')}
 
 
@@ -143,5 +144,5 @@ MongoDB:
 .. doctest::
 
   >>> vanilla_collection = db.get_collection('test')
-  >>> vanilla_collection.find_one()
+  >>> pprint.pprint(vanilla_collection.find_one())
   {u'_id': ObjectId('...'), u'mynumber': Decimal128('45.321')}
