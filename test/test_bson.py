@@ -909,11 +909,15 @@ class TestBSON(unittest.TestCase):
 class TestTypeRegistry(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        class MyIntType(int):
-            pass
+        class MyIntType(object):
+            def __init__(self, x):
+                assert isinstance(x, int)
+                self.x = x
 
-        class MyStrType(str):
-            pass
+        class MyStrType(object):
+            def __init__(self, x):
+                assert isinstance(x, str)
+                self.x = x
 
         class MyIntCodec(TypeCodecBase):
             @property
@@ -925,7 +929,7 @@ class TestTypeRegistry(unittest.TestCase):
                 return int
 
             def transform_python(self, value):
-                return int(value)
+                return value.x
 
             def transform_bson(self, value):
                 return MyIntType(value)
@@ -940,7 +944,7 @@ class TestTypeRegistry(unittest.TestCase):
                 return str
 
             def transform_python(self, value):
-                return str(value)
+                return value.x
 
             def transform_bson(self, value):
                 return MyStrType(value)
