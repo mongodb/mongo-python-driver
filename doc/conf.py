@@ -7,6 +7,7 @@
 import sys, os
 sys.path[0:0] = [os.path.abspath('..')]
 
+import bson
 import pymongo
 
 # -- General configuration -----------------------------------------------------
@@ -166,6 +167,9 @@ latex_documents = [
 # If false, no module index is generated.
 #latex_use_modindex = True
 
+PY_VERSION = 3 if bson.py3compat.PY3 else 2
+
 intersphinx_mapping = {
     'gevent': ('http://www.gevent.org/', None),
+    'py': ('https://docs.python.org/%i/' % (PY_VERSION,), None),
 }
