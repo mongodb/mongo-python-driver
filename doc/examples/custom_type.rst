@@ -51,11 +51,12 @@ In order to encode custom types, we must first define a **type codec** for our
 type. A type codec describes how an instance of a custom type can be
 *transformed* to/from one of the types :mod:`~bson` already understands, and
 can encode/decode. Type codecs must inherit from
-:class:`~bson.codec_options.TypeCodecBase`. Codecs that facilitate encoding of
-a custom type, must implement the ``python_type`` property, and the
-``transform_python`` method. Similarly, codecs that facilitate decoding must
-implement the ``bson_type`` property and the ``transform_bson`` method.
-Note that a type codec need not support both encoding and decoding.
+:class:`~bson.codec_options.TypeCodecBase`. In order to encode a custom type,
+a codec must implement the ``python_type`` property and the
+``transform_python`` method. Similarly, in order to decode a custom type,
+a codec must implement the ``bson_type`` property and the ``transform_bson``
+method. Note that a type codec need not support both encoding and decoding.
+
 
 The type codec for our custom type simply needs to define how a
 :py:class:`~decimal.Decimal` instance can be converted into a
