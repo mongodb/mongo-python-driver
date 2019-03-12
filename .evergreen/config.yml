@@ -554,7 +554,7 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             VERSION: "latest"
-            TOPOLOGY: "replica_set"
+            TOPOLOGY: "server"
         - func: "run doctests"
 
     - name: "test-2.6-standalone"
