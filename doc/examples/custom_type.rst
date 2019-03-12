@@ -60,7 +60,7 @@ method. Note that a type codec need not support both encoding and decoding.
 
 The type codec for our custom type simply needs to define how a
 :py:class:`~decimal.Decimal` instance can be converted into a
-:class:`~bson.decimal.Decimal128` instance and vice-versa:
+:class:`~bson.decimal128.Decimal128` instance and vice-versa:
 
 .. doctest::
 
@@ -96,7 +96,7 @@ The Type Registry
 
 Before we can begin encoding and decoding our custom type objects, we must
 first inform PyMongo about our type codec. This is done by creating a
-:class:`bson.codec_options.TypeRegistry` instance:
+:class:`~bson.codec_options.TypeRegistry` instance:
 
 .. doctest::
 
