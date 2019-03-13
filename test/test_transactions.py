@@ -700,7 +700,8 @@ def create_test(scenario_def, test, name):
 
         database_name = scenario_def['database_name']
         collection_name = scenario_def['collection_name']
-        write_concern_db = client.get_database(
+        # Don't use the test client to load data.
+        write_concern_db = client_context.client.get_database(
             database_name, write_concern=WriteConcern(w='majority'))
         write_concern_coll = write_concern_db[collection_name]
         write_concern_coll.drop()

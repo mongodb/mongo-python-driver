@@ -15,7 +15,7 @@
     {
       "description": "causal consistency",
       "clientOptions": {
-          "retryWrites": false
+        "retryWrites": false
       },
       "operations": [
         {
@@ -165,7 +165,7 @@
     {
       "description": "causal consistency disabled",
       "clientOptions": {
-          "retryWrites": false
+        "retryWrites": false
       },
       "sessionOptions": {
         "session0": {

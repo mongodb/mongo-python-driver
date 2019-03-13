@@ -430,7 +430,7 @@
     {
       "description": "collection writeConcern without transaction",
       "clientOptions": {
-          "retryWrites": false
+        "retryWrites": false
       },
       "operations": [
         {

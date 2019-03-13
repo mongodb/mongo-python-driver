@@ -22,9 +22,6 @@
   "tests": [
     {
       "description": "only first countDocuments includes readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -188,9 +185,6 @@
     },
     {
       "description": "only first find includes readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -378,9 +372,6 @@
     },
     {
       "description": "only first aggregate includes readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -600,9 +591,6 @@
     },
     {
       "description": "only first distinct includes readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -736,9 +724,6 @@
     },
     {
       "description": "only first runCommand includes readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -854,9 +839,6 @@
     },
     {
       "description": "countDocuments ignores collection readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -1011,9 +993,6 @@
     },
     {
       "description": "find ignores collection readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -1192,9 +1171,6 @@
     },
     {
       "description": "aggregate ignores collection readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -1405,9 +1381,6 @@
     },
     {
       "description": "distinct ignores collection readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -1532,9 +1505,6 @@
     },
     {
       "description": "runCommand ignores database readConcern",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",

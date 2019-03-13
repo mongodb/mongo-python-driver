@@ -19,9 +19,6 @@
   "tests": [
     {
       "description": "findOneAndDelete",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",
@@ -132,9 +129,6 @@
     },
     {
       "description": "collection writeConcern ignored for findOneAndDelete",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "operations": [
         {
           "name": "startTransaction",

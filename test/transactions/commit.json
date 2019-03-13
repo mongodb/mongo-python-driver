@@ -673,7 +673,7 @@
     {
       "description": "reset session state commit",
       "clientOptions": {
-          "retryWrites": false
+        "retryWrites": false
       },
       "operations": [
         {
@@ -795,7 +795,7 @@
     {
       "description": "reset session state abort",
       "clientOptions": {
-          "retryWrites": false
+        "retryWrites": false
       },
       "operations": [
         {

@@ -15,9 +15,6 @@
   "tests": [
     {
       "description": "remain pinned after non-transient Interrupted error on insertOne",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -168,9 +165,6 @@
     },
     {
       "description": "unpin after transient error within a transaction",
-      "clientOptions": {
-          "retryWrites": false
-      },
       "useMultipleMongoses": true,
       "operations": [
         {
