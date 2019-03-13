@@ -54,9 +54,11 @@
 typedef struct type_registry_t {
     PyObject* encoder_map;
     PyObject* decoder_map;
+    PyObject* fallback_encoder;
     PyObject* registry_obj;
     unsigned char is_encoder_empty;
     unsigned char is_decoder_empty;
+    unsigned char has_fallback_encoder;
 } type_registry_t;
 
 typedef struct codec_options_t {

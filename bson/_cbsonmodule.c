@@ -119,7 +119,8 @@ static PyObject* elements_to_dict(PyObject* self, const char* string,
 static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     int type_byte, PyObject* value,
                                     unsigned char check_keys,
-                                    const codec_options_t* options);
+                                    const codec_options_t* options,
+                                    unsigned char in_fallback_call);
 
 /* Date stuff */
 static PyObject* datetime_from_millis(long long millis) {
@@ -455,6 +456,7 @@ static long _type_marker(PyObject* object) {
 int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
     registry->encoder_map = NULL;
     registry->decoder_map = NULL;
+    registry->fallback_encoder = NULL;
     registry->registry_obj = NULL;
 
     registry->encoder_map = PyObject_GetAttrString(registry_obj, "_encoder_map");
@@ -469,6 +471,12 @@ int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
     }
     registry->is_decoder_empty = (PyDict_Size(registry->decoder_map) == 0);
 
+    registry->fallback_encoder = PyObject_GetAttrString(registry_obj, "_fallback_encoder");
+    if (registry->fallback_encoder == NULL) {
+        goto fail;
+    }
+    registry->has_fallback_encoder = (registry->fallback_encoder != Py_None);
+
     registry->registry_obj = registry_obj;
     Py_INCREF(registry->registry_obj);
     return 1;
@@ -476,6 +484,7 @@ int convert_type_registry(PyObject* registry_obj, type_registry_t* registry) {
 fail:
     Py_XDECREF(registry->encoder_map);
     Py_XDECREF(registry->decoder_map);
+    Py_XDECREF(registry->fallback_encoder);
     return 0;
 }
 
@@ -548,6 +557,7 @@ void destroy_codec_options(codec_options_t* options) {
     Py_CLEAR(options->type_registry.registry_obj);
     Py_CLEAR(options->type_registry.encoder_map);
     Py_CLEAR(options->type_registry.decoder_map);
+    Py_CLEAR(options->type_registry.fallback_encoder);
 }
 
 static int write_element_to_buffer(PyObject* self, buffer_t buffer,
@@ -580,7 +590,7 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
     }
     result = _write_element_to_buffer(self, buffer, type_byte,
-                                      value, check_keys, options);
+                                      value, check_keys, options, 0);
 
 fail:
     Py_XDECREF(value_type);
@@ -770,9 +780,12 @@ static int _write_regex_to_buffer(
 static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     int type_byte, PyObject* value,
                                     unsigned char check_keys,
-                                    const codec_options_t* options) {
+                                    const codec_options_t* options,
+                                    unsigned char in_fallback_call) {
     struct module_state *state = GETSTATE(self);
     PyObject* mapping_type;
+    PyObject* new_value = NULL;
+    int retval;
     PyObject* uuid_type;
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
@@ -1363,6 +1376,23 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     }
     Py_XDECREF(mapping_type);
     Py_XDECREF(uuid_type);
+
+    /* Try the fallback encoder if one is provided and we have not already
+     * attempted to use the fallback encoder. */
+    if (!in_fallback_call && options->type_registry.has_fallback_encoder) {
+        new_value = PyObject_CallFunctionObjArgs(
+            options->type_registry.fallback_encoder, value, NULL);
+        if (new_value == NULL) {
+            // propagate any exception raised by the callback
+            return 0;
+        }
+        retval = _write_element_to_buffer(self, buffer, type_byte, new_value,
+                                          check_keys, options, 1);
+        Py_XDECREF(new_value);
+        return retval;
+    }
+    Py_XDECREF(new_value);
+
     /* We can't determine value's type. Fail. */
     _set_cannot_encode(value);
     return 0;

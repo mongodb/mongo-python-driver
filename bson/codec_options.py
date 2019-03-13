@@ -63,22 +63,38 @@ class TypeCodecBase(object):
 
 
 class TypeRegistry(object):
-    """Encapsulates type codecs used in encoding and / or decoding BSON.
+    """Encapsulates type codecs used in encoding and / or decoding BSON, as
+    well as the fallback encoder. Type registries cannot be modified after
+    instantiation.
 
-    ``TypeRegistry`` can be initialized with an arbitrary number of type
-    codecs::
+    ``TypeRegistry`` can be initialized with an iterable of type codecs, and
+    a callable for the fallback encoder::
 
       >>> from bson.codec_options import TypeRegistry
-      >>> type_registry = TypeRegistry(Codec1, Codec2, Codec3, ...)
+      >>> type_registry = TypeRegistry([Codec1, Codec2, Codec3, ...],
+      ...                              fallback_encoder)
 
-    If multiple codecs try to transform a single python or BSON type,
-    the transformation described by the last type codec prevails.
+    :Parameters:
+      - `type_codecs` (optional): iterable of type codec instances. If
+        ``type_codecs`` contains multiple codecs that transform a single
+        python or BSON type, the transformation specified by the type codec
+        occurring last prevails.
+      - `fallback_encoder` (optional): callable that accepts a single,
+        unencodable python value and transforms it into a type that BSON can
+        encode.
     """
-    def __init__(self, *type_codecs):
-        self.__args = type_codecs
+    def __init__(self, type_codecs=None, fallback_encoder=None):
+        self.__type_codecs = list(type_codecs or [])
+        self._fallback_encoder = fallback_encoder
         self._encoder_map = {}
         self._decoder_map = {}
-        for codec in type_codecs:
+
+        if self._fallback_encoder is not None:
+            if not callable(fallback_encoder):
+                raise TypeError("fallback_encoder %r is not a callable" % (
+                    fallback_encoder))
+
+        for codec in self.__type_codecs:
             if not isinstance(codec, TypeCodecBase):
                 raise TypeError(
                     "Expected an instance of %s, got %r instead" % (
@@ -98,13 +114,16 @@ class TypeRegistry(object):
                 self._decoder_map[bson_type] = codec.transform_bson
 
     def __repr__(self):
-        return '%s%r' % (self.__class__.__name__, self.__args)
+        return ('%s(type_codecs=%r, fallback_encoder=%r)' % (
+            self.__class__.__name__, self.__type_codecs,
+            self._fallback_encoder))
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return NotImplemented
         return ((self._decoder_map == other._decoder_map) and
-                (self._encoder_map == other._encoder_map))
+                (self._encoder_map == other._encoder_map) and
+                (self._fallback_encoder == other._fallback_encoder))
 
 
 _options_base = namedtuple(
