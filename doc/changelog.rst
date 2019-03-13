@@ -60,6 +60,11 @@ Changes in Version 3.8.0.dev0
 - :class:`~bson.objectid.ObjectId` now implements the `ObjectID specification
   version 0.2 <https://github.com/mongodb/specifications/blob/master/source/objectid.rst>`_.
 
+- :meth:`~pymongo.database.Database.current_op` now always uses the
+  ``Database``'s  :attr:`~pymongo.database.Database.codec_options`
+  when decoding the command response. Previously the codec_options
+  was only used when the MongoDB server version was <= 3.0.
+
 Issues Resolved
 ...............
 
