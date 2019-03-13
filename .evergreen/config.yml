@@ -351,7 +351,13 @@ functions:
       params:
         script: |
           ${PREPARE_SHELL}
-          MONGODB_VERSION=${VERSION} TOPOLOGY=${TOPOLOGY} AUTH=${AUTH} SSL=${SSL} STORAGE_ENGINE=${STORAGE_ENGINE} sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
+          MONGODB_VERSION=${VERSION} \
+            TOPOLOGY=${TOPOLOGY} \
+            AUTH=${AUTH} \
+            SSL=${SSL} \
+            STORAGE_ENGINE=${STORAGE_ENGINE} \
+            DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS} \
+            sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
@@ -415,7 +421,18 @@ functions:
           if [ -n "${MONGODB_STARTED}" ]; then
             export PYMONGO_MUST_CONNECT=1
           fi
-          PYTHON_BINARY=${PYTHON_BINARY} GREEN_FRAMEWORK=${GREEN_FRAMEWORK} C_EXTENSIONS=${C_EXTENSIONS} COVERAGE=${COVERAGE} COMPRESSORS=${COMPRESSORS} AUTH=${AUTH} SSL=${SSL} sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+          if [ -n "${DISABLE_TEST_COMMANDS}" ]; then
+            export PYMONGO_DISABLE_TEST_COMMANDS=1
+          fi
+
+          PYTHON_BINARY=${PYTHON_BINARY} \
+            GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
+            C_EXTENSIONS=${C_EXTENSIONS} \
+            COVERAGE=${COVERAGE} \
+            COMPRESSORS=${COMPRESSORS} \
+            AUTH=${AUTH} \
+            SSL=${SSL} \
+            sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -1098,6 +1115,13 @@ axes:
         display_name: InMemory
         variables:
            STORAGE_ENGINE: "inmemory"
+  - id: disableTestCommands
+    display_name: Disable test commands
+    values:
+      - id: disabled
+        display_name: disabled
+        variables:
+           DISABLE_TEST_COMMANDS: "1"
   - id: windows-vs2010-python-version
     display_name: "Windows Visual Studio 2010 Python"
     values:
@@ -1380,6 +1404,14 @@ buildvariants:
       then:
         add_tasks:
           - "test-3.0-standalone"
+
+# enableTestCommands=0 tests on RHEL 6.2 (x86_64) with Python 2.7.
+- matrix_name: "test-disableTestCommands"
+  matrix_spec: {disableTestCommands: "*", python-version: "2.7"}
+  display_name: "Disable test commands ${python-version} RHEL 6.2 (x86_64)"
+  run_on: rhel62-small
+  tasks:
+     - ".latest"
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec: {"python-version": "*", auth: "auth"}

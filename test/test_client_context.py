@@ -30,6 +30,14 @@ class TestClientContext(unittest.TestCase):
                         'PYMONGO_MUST_CONNECT is set. Failed attempts:\n%s' %
                         (client_context.connection_attempt_info(),))
 
+    def test_enableTestCommands_is_disabled(self):
+        if 'PYMONGO_DISABLE_TEST_COMMANDS' not in os.environ:
+            raise SkipTest('PYMONGO_DISABLE_TEST_COMMANDS is not set')
+
+        self.assertFalse(client_context.test_commands_enabled,
+                         'enableTestCommands must be disabled when '
+                         'PYMONGO_DISABLE_TEST_COMMANDS is set.')
+
 
 if __name__ == "__main__":
     unittest.main()
