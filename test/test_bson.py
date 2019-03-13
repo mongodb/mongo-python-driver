@@ -949,47 +949,76 @@ class TestTypeRegistry(unittest.TestCase):
             def transform_bson(self, value):
                 return MyStrType(value)
 
+        def fallback_encoder(value):
+            return value
+
         cls.types = (MyIntType, MyStrType)
         cls.codecs = (MyIntCodec, MyStrCodec)
+        cls.fallback_encoder = fallback_encoder
 
     def test_simple(self):
         codec_instances = [codec() for codec in self.codecs]
-        type_registry = TypeRegistry(*codec_instances)
-        self.assertEqual(type_registry._encoder_map, {
-            self.types[0]: codec_instances[0].transform_python,
-            self.types[1]: codec_instances[1].transform_python})
-        self.assertEqual(type_registry._decoder_map, {
-            int: codec_instances[0].transform_bson,
-            str: codec_instances[1].transform_bson})
+        def assert_proper_initialization(type_registry, codec_instances):
+            self.assertEqual(type_registry._encoder_map, {
+                self.types[0]: codec_instances[0].transform_python,
+                self.types[1]: codec_instances[1].transform_python})
+            self.assertEqual(type_registry._decoder_map, {
+                int: codec_instances[0].transform_bson,
+                str: codec_instances[1].transform_bson})
+            self.assertEqual(
+                type_registry._fallback_encoder, self.fallback_encoder)
+
+        type_registry = TypeRegistry(codec_instances, self.fallback_encoder)
+        assert_proper_initialization(type_registry, codec_instances)
+
+        type_registry = TypeRegistry(
+            fallback_encoder=self.fallback_encoder, type_codecs=codec_instances)
+        assert_proper_initialization(type_registry, codec_instances)
+
+        # Ensure codec list held by the type registry doesn't change if we
+        # mutate the initial list.
+        codec_instances_copy = list(codec_instances)
+        codec_instances.pop(0)
+        self.assertListEqual(
+            type_registry._TypeRegistry__type_codecs, codec_instances_copy)
 
     def test_initialize_fail(self):
         err_msg = "Expected an instance of TypeCodecBase, got .* instead"
         with self.assertRaisesRegex(TypeError, err_msg):
-            TypeRegistry(*self.codecs)
+            TypeRegistry(self.codecs)
 
         with self.assertRaisesRegex(TypeError, err_msg):
-            TypeRegistry(type('AnyType', (object,), {})())
+            TypeRegistry([type('AnyType', (object,), {})()])
+
+        err_msg = "fallback_encoder %r is not a callable" % (True,)
+        with self.assertRaisesRegex(TypeError, err_msg):
+            TypeRegistry([], True)
+
+        err_msg = "fallback_encoder %r is not a callable" % ('hello',)
+        with self.assertRaisesRegex(TypeError, err_msg):
+            TypeRegistry(fallback_encoder='hello')
 
     def test_not_implemented(self):
-        type_registry = TypeRegistry(type("codec1", (TypeCodecBase, ), {})(),
-                                     type("codec2", (TypeCodecBase, ), {})())
+        type_registry = TypeRegistry([type("codec1", (TypeCodecBase, ), {})(),
+                                      type("codec2", (TypeCodecBase, ), {})()])
         self.assertEqual(type_registry._encoder_map, {})
         self.assertEqual(type_registry._decoder_map, {})
 
     def test_type_registry_repr(self):
         codec_instances = [codec() for codec in self.codecs]
-        type_registry = TypeRegistry(*codec_instances)
-        r = ("TypeRegistry(%s, %s)" % tuple(codec_instances))
+        type_registry = TypeRegistry(codec_instances)
+        r = ("TypeRegistry(type_codecs=%r, fallback_encoder=%r)" % (
+            codec_instances, None))
         self.assertEqual(r, repr(type_registry))
 
     def test_type_registry_eq(self):
         codec_instances = [codec() for codec in self.codecs]
         self.assertEqual(
-            TypeRegistry(*codec_instances), TypeRegistry(*codec_instances))
+            TypeRegistry(codec_instances), TypeRegistry(codec_instances))
 
         codec_instances_2 = [codec() for codec in self.codecs]
         self.assertNotEqual(
-            TypeRegistry(*codec_instances), TypeRegistry(*codec_instances_2))
+            TypeRegistry(codec_instances), TypeRegistry(codec_instances_2))
 
 
 class TestCodecOptions(unittest.TestCase):
@@ -1017,7 +1046,8 @@ class TestCodecOptions(unittest.TestCase):
         r = ("CodecOptions(document_class=dict, tz_aware=False, "
              "uuid_representation=PYTHON_LEGACY, "
              "unicode_decode_error_handler='strict', "
-             "tzinfo=None, type_registry=TypeRegistry())")
+             "tzinfo=None, type_registry=TypeRegistry(type_codecs=[], "
+             "fallback_encoder=None))")
         self.assertEqual(r, repr(CodecOptions()))
 
     def test_decode_all_defaults(self):

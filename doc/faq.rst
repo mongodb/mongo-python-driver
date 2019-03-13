@@ -248,7 +248,8 @@ collection, configured to use :class:`~bson.son.SON` instead of dict:
                tz_aware=False,
                uuid_representation=PYTHON_LEGACY,
                unicode_decode_error_handler='strict',
-               tzinfo=None)
+               tzinfo=None, type_registry=TypeRegistry(type_codecs=[],
+                                                       fallback_encoder=None))
   >>> collection_son = collection.with_options(codec_options=opts)
 
 Now, documents and subdocuments in query results are represented with

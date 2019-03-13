@@ -752,7 +752,8 @@ if not PY3:
     _ENCODERS[long] = _encode_long
 
 
-def _name_value_to_bson(name, value, check_keys, opts):
+def _name_value_to_bson(name, value, check_keys, opts,
+                        in_fallback_call=False):
     """Encode a single name, value pair."""
     # Custom encoder (if any) takes precedence over default encoders.
     # Using 'if' instead of 'try...except' for performance since this will
@@ -789,8 +790,15 @@ def _name_value_to_bson(name, value, check_keys, opts):
             _ENCODERS[type(value)] = func
             return func(name, value, check_keys, opts)
 
-    raise InvalidDocument("cannot convert value of type %s to bson" %
-                          type(value))
+    # As a last resort, try using the fallback encoder, if the user has
+    # provided one.
+    fallback_encoder = opts.type_registry._fallback_encoder
+    if not in_fallback_call and fallback_encoder is not None:
+        return _name_value_to_bson(
+            name, fallback_encoder(value), check_keys, opts, True)
+
+    raise InvalidDocument(
+        "cannot convert value of type %s to bson" % type(value))
 
 
 def _element_to_bson(key, value, check_keys, opts):
