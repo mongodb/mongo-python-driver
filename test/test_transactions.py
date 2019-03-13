@@ -390,6 +390,7 @@ def end_sessions(sessions):
 
 
 def create_test(scenario_def, test):
+    @client_context.require_test_commands
     def run_scenario(self):
         if test.get('skipReason'):
             raise unittest.SkipTest(test.get('skipReason'))
