@@ -71,6 +71,10 @@ class EventListener(monitoring.CommandListener):
     def failed(self, event):
         self.results['failed'].append(event)
 
+    def started_command_names(self):
+        """Return list of command names started."""
+        return [event.command_name for event in self.results['started']]
+
 
 class OvertCommandListener(EventListener):
     """A CommandListener that ignores sensitive commands."""
