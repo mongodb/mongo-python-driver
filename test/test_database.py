@@ -942,6 +942,15 @@ class TestDatabase(IntegrationTest):
                                       "maxTimeAlwaysTimeOut",
                                       mode="off")
 
+    def test_current_op_codec_options(self):
+        class MySON(SON):
+            pass
+        opts = CodecOptions(document_class=MySON)
+        db = self.client.get_database("pymongo_test", codec_options=opts)
+        current_op = db.current_op(True)
+        self.assertTrue(current_op['inprog'])
+        self.assertIsInstance(current_op, MySON)
+
 
 if __name__ == "__main__":
     unittest.main()

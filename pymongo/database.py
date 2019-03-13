@@ -828,9 +828,9 @@ class Database(common.BaseObject):
         cmd = SON([("currentOp", 1), ("$all", include_all)])
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
-                with self.__client._tmp_session(session) as s:
-                    return sock_info.command("admin", cmd, session=s,
-                                             client=self.__client)
+                return self.__client.admin._command(
+                    sock_info, cmd, codec_options=self.codec_options,
+                    session=session)
             else:
                 spec = {"$all": True} if include_all else {}
                 return _first_batch(sock_info, "admin", "$cmd.sys.inprog",
