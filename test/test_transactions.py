@@ -569,6 +569,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         self.assertEqual(listener.started_command_names(),
                          ['insert', 'abortTransaction'])
 
+    @client_context.require_test_commands
     @client_context.require_transactions
     def test_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
@@ -598,6 +599,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         self.assertEqual(listener.started_command_names(),
                          ['insert', 'commitTransaction'])
 
+    @client_context.require_test_commands
     @client_context.require_transactions
     def test_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
@@ -671,6 +673,7 @@ def end_sessions(sessions):
 
 
 def create_test(scenario_def, test, name):
+    @client_context.require_test_commands
     @client_context.require_transactions
     @client_context.require_cluster_type(
         scenario_def.get('topology', ['single', 'replicaset', 'sharded']))
