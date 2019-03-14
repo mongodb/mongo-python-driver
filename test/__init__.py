@@ -605,7 +605,7 @@ class ClientContext(object):
                              func=func)
 
     def supports_transactions(self):
-        if self.version.at_least(4, 1, 6):
+        if self.version.at_least(4, 1, 8):
             return self.is_mongos or self.is_rs
 
         if self.version.at_least(4, 0):
