@@ -122,12 +122,12 @@ class TestMaxStaleness(unittest.TestCase):
         # From max-staleness-tests.rst, "Parse lastWriteDate".
         client = rs_or_single_client(heartbeatFrequencyMS=500)
         client.pymongo_test.test.insert_one({})
-        time.sleep(1)
+        time.sleep(2)
         server = client._topology.select_server(writable_server_selector)
         last_write = server.description.last_write_date
         self.assertTrue(last_write)
         client.pymongo_test.test.insert_one({})
-        time.sleep(1)
+        time.sleep(2)
         server = client._topology.select_server(writable_server_selector)
         self.assertGreater(server.description.last_write_date, last_write)
         self.assertLess(server.description.last_write_date, last_write + 10)
