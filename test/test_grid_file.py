@@ -19,6 +19,7 @@
 
 import datetime
 import sys
+import zipfile
 sys.path[0:0] = [""]
 
 from bson.objectid import ObjectId
@@ -643,6 +644,24 @@ Bye"""))
 
         # Paranoid, ensure that a getMore was actually sent.
         self.assertIn("getMore", listener.started_command_names())
+
+    def test_zip(self):
+        zf = StringIO()
+        z = zipfile.ZipFile(zf, "w")
+        z.writestr("test.txt", b"hello world")
+        z.close()
+        zf.seek(0)
+
+        f = GridIn(self.db.fs, filename="test.zip")
+        f.write(zf)
+        f.close()
+        self.assertEqual(1, self.db.fs.files.count_documents({}))
+        self.assertEqual(1, self.db.fs.chunks.count_documents({}))
+
+        g = GridOut(self.db.fs, f._id)
+        z = zipfile.ZipFile(g)
+        self.assertSequenceEqual(z.namelist(), ["test.txt"])
+        self.assertEqual(z.read("test.txt"), b"hello world")
 
 
 if __name__ == "__main__":
