@@ -15,6 +15,7 @@
 """Tools for representing files stored in GridFS."""
 import datetime
 import hashlib
+import io
 import math
 import os
 
@@ -312,6 +313,15 @@ class GridIn(object):
             self.__flush()
             object.__setattr__(self, "_closed", True)
 
+    def read(self, size=-1):
+        raise io.UnsupportedOperation('read')
+
+    def readable(self):
+        return False
+
+    def seekable(self):
+        return False
+
     def write(self, data):
         """Write data to the file. There is no return value.
 
@@ -378,6 +388,9 @@ class GridIn(object):
         """
         for line in sequence:
             self.write(line)
+
+    def writeable(self):
+        return True
 
     def __enter__(self):
         """Support for the context manager protocol.
@@ -471,6 +484,9 @@ class GridOut(object):
         if name in self._file:
             return self._file[name]
         raise AttributeError("GridOut object has no attribute '%s'" % name)
+
+    def readable(self):
+        return True
 
     def readchunk(self):
         """Reads a chunk at a time. If the current position is within a
@@ -617,6 +633,9 @@ class GridOut(object):
             self.__chunk_iter.close()
             self.__chunk_iter = None
 
+    def seekable(self):
+        return True
+
     def __iter__(self):
         """Return an iterator over all of this file's data.
 
@@ -624,6 +643,11 @@ class GridOut(object):
         :class:`str` (:class:`bytes` in python 3). This can be
         useful when serving files using a webserver that handles
         such an iterator efficiently.
+
+        .. note::
+           This is different from :py:class:`io.IOBase` which iterates over
+           *lines* in the file. Use :meth:`GridOut.readline` to read line by
+           line instead of chunk by chunk.
 
         .. versionchanged:: 3.8
            The iterator now raises :class:`CorruptGridFile` when encountering
@@ -638,6 +662,9 @@ class GridOut(object):
         if self.__chunk_iter:
             self.__chunk_iter.close()
             self.__chunk_iter = None
+
+    def write(self, value):
+        raise io.UnsupportedOperation('write')
 
     def __enter__(self):
         """Makes it possible to use :class:`GridOut` files
