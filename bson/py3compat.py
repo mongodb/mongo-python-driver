@@ -22,7 +22,11 @@ if PY3:
     import codecs
     import collections.abc as abc
     import _thread as thread
+    from abc import ABC, abstractmethod
     from io import BytesIO as StringIO
+
+    def abstractproperty(func):
+        return property(abstractmethod(func))
 
     MAXSIZE = sys.maxsize
 
@@ -60,12 +64,15 @@ if PY3:
 else:
     import collections as abc
     import thread
+    from abc import ABCMeta, abstractproperty
 
     from itertools import imap
     try:
         from cStringIO import StringIO
     except ImportError:
         from StringIO import StringIO
+
+    ABC = ABCMeta('ABC', (object,), {})
 
     MAXSIZE = sys.maxint
 

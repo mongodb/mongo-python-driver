@@ -2,7 +2,7 @@ Custom Type Example
 ===================
 
 This is an example of using a custom type with PyMongo. The example here shows
-how to subclass :class:`~bson.codec_options.TypeCodecBase` to write a type
+how to subclass :class:`~bson.codec_options.TypeCodec` to write a type
 codec, which is used to populate a :class:`~bson.codec_options.TypeRegistry`.
 The type registry can then be used to create a custom-type-aware
 :class:`~pymongo.collection.Collection`. Read and write operations
@@ -51,39 +51,39 @@ The Type Codec
 
 In order to encode custom types, we must first define a **type codec** for our
 type. A type codec describes how an instance of a custom type can be
-*transformed* to/from one of the types :mod:`~bson` already understands, and
-can encode/decode. Type codecs must inherit from
-:class:`~bson.codec_options.TypeCodecBase`. In order to encode a custom type,
-a codec must implement the ``python_type`` property and the
-``transform_python`` method. Similarly, in order to decode a custom type,
-a codec must implement the ``bson_type`` property and the ``transform_bson``
-method. Note that a type codec need not support both encoding and decoding.
+*transformed* to and/or from one of the types :mod:`~bson` already understands.
+Depending on the desired functionality, users must choose from the following
+base classes when defining type codecs:
+
+* :class:`~bson.codec_options.TypeEncoder`: subclass this to define a codec that
+  encodes a custom Python type to a known BSON type. Users must implement the
+  ``python_type`` property/attribute and the ``transform_python`` method.
+* :class:`~bson.codec_options.TypeDecoder`: subclass this to define a codec that
+  decodes a specified BSON type into a custom Python type. Users must implement
+  the ``bson_type`` property/attribute and the ``transform_bson`` method.
+* :class:`~bson.codec_options.TypeCodec`: subclass this to define a codec that
+  can both encode from and decode to a custom type. Users must implement the
+  ``python_type`` and ``bson_type`` properties/attributes, as well as the
+  ``transform_python`` and ``transform_bson`` methods.
 
 
 The type codec for our custom type simply needs to define how a
 :py:class:`~decimal.Decimal` instance can be converted into a
-:class:`~bson.decimal128.Decimal128` instance and vice-versa:
+:class:`~bson.decimal128.Decimal128` instance and vice-versa. Since we are
+interested in both encoding and decoding our custom type, we use the
+``TypeCodec`` base class to define our codec:
 
 .. doctest::
 
   >>> from bson.decimal128 import Decimal128
-  >>> from bson.codec_options import TypeCodecBase
-  >>> class DecimalCodec(TypeCodecBase):
-  ...     @property
-  ...     def python_type(self):
-  ...         """The Python type acted upon by this type codec."""
-  ...         return Decimal
-  ...
+  >>> from bson.codec_options import TypeCodec
+  >>> class DecimalCodec(TypeCodec):
+  ...     python_type = Decimal    # the Python type acted upon by this type codec
+  ...     bson_type = Decimal128   # the BSON type acted upon by this type codec
   ...     def transform_python(self, value):
   ...         """Function that transforms a custom type value into a type
   ...         that BSON can encode."""
   ...         return Decimal128(value)
-  ...
-  ...     @property
-  ...     def bson_type(self):
-  ...         """The BSON type acted upon by this type codec."""
-  ...         return Decimal128
-  ...
   ...     def transform_bson(self, value):
   ...         """Function that transforms a vanilla BSON type value into our
   ...         custom type."""

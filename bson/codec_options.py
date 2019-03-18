@@ -16,9 +16,10 @@
 
 import datetime
 
+from abc import abstractmethod
 from collections import namedtuple
 
-from bson.py3compat import abc, string_type
+from bson.py3compat import ABC, abc, abstractproperty, string_type
 from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          PYTHON_LEGACY,
                          UUID_REPRESENTATION_NAMES)
@@ -33,33 +34,53 @@ def _raw_document_class(document_class):
     return marker == _RAW_BSON_DOCUMENT_MARKER
 
 
-class TypeCodecBase(object):
+class TypeEncoder(ABC):
+    """Base class for defining type codec classes which describe how a
+    custom type can be transformed to one of the types BSON understands.
+
+    Codec classes must implement the ``python_type`` attribute, and the
+    ``transform_python`` method to support encoding.
+    """
+    @abstractproperty
+    def python_type(self):
+        """The Python type to be converted into something serializable."""
+        pass
+
+    @abstractmethod
+    def transform_python(self, value):
+        """Convert the given Python object into something serializable."""
+        pass
+
+
+class TypeDecoder(ABC):
+    """Base class for defining type codec classes which describe how a
+    BSON type can be transformed to a custom type.
+
+    Codec classes must implement the ``bson_type`` attribute, and the
+    ``transform_bson`` method to support decoding.
+    """
+    @abstractproperty
+    def bson_type(self):
+        """The BSON type to be converted into our own type."""
+        pass
+
+    @abstractmethod
+    def transform_bson(self, value):
+        """Convert the given BSON value into our own type."""
+        pass
+
+
+class TypeCodec(TypeEncoder, TypeDecoder):
     """Base class for defining type codec classes which describe how a
     custom type can be transformed to/from one of the types BSON already
     understands, and can encode/decode.
 
-    Codec classes must implement the ``python_type`` property, and the
-    ``transform_python`` method to support encoding, or the ``bson_type``
-    property and ``transform_bson`` method to support decoding. Note that a
-    single codec class may support both encoding and decoding.
+    Codec classes must implement the ``python_type`` attribute, and the
+    ``transform_python`` method to support encoding, as well as the
+    ``bson_type`` attribute, and the ``transform_bson`` method to support
+    decoding.
     """
-    @property
-    def python_type(self):
-        """The Python type to be converted into something serializable."""
-        raise NotImplementedError
-
-    @property
-    def bson_type(self):
-        """The BSON type to be converted into our own type."""
-        raise NotImplementedError
-
-    def transform_bson(self, value):
-        """Convert the given BSON value into our own type."""
-        raise NotImplementedError
-
-    def transform_python(self, value):
-        """Convert the given Python object into something serializable."""
-        raise NotImplementedError
+    pass
 
 
 class TypeRegistry(object):
@@ -95,23 +116,18 @@ class TypeRegistry(object):
                     fallback_encoder))
 
         for codec in self.__type_codecs:
-            if not isinstance(codec, TypeCodecBase):
+            is_valid_codec = False
+            if isinstance(codec, TypeEncoder):
+                is_valid_codec = True
+                self._encoder_map[codec.python_type] = codec.transform_python
+            if isinstance(codec, TypeDecoder):
+                is_valid_codec = True
+                self._decoder_map[codec.bson_type] = codec.transform_bson
+            if not is_valid_codec:
                 raise TypeError(
-                    "Expected an instance of %s, got %r instead" % (
-                    TypeCodecBase.__name__, codec))
-            try:
-                python_type = codec.python_type
-            except NotImplementedError:
-                pass
-            else:
-                self._encoder_map[python_type] = codec.transform_python
-
-            try:
-                bson_type = codec.bson_type
-            except NotImplementedError:
-                pass
-            else:
-                self._decoder_map[bson_type] = codec.transform_bson
+                    "Expected an instance of %s, %s, or %s, got %r instead" % (
+                        TypeEncoder.__name__, TypeDecoder.__name__,
+                        TypeCodec.__name__, codec))
 
     def __repr__(self):
         return ('%s(type_codecs=%r, fallback_encoder=%r)' % (
