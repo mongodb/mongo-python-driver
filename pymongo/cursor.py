@@ -801,6 +801,13 @@ class Cursor(object):
     def explain(self):
         """Returns an explain plan record for this cursor.
 
+        .. note:: Starting with MongoDB 3.2 :meth:`explain` uses
+          the default verbosity mode of the `explain command
+          <https://docs.mongodb.com/manual/reference/command/explain/>`_,
+          ``allPlansExecution``. To use a different verbosity use
+          :meth:`~pymongo.database.Database.command` to run the explain
+          command directly.
+
         .. mongodoc:: explain
         """
         c = self.clone()
