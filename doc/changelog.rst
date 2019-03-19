@@ -66,11 +66,11 @@ Changes in Version 3.8.0.dev0
 - :meth:`gridfs.grid_file.GridOut.read` now only checks for extra chunks after
   reading the entire file. Previously, this method would check for extra
   chunks on every call.
-
 - :meth:`~pymongo.database.Database.current_op` now always uses the
   ``Database``'s  :attr:`~pymongo.database.Database.codec_options`
   when decoding the command response. Previously the codec_options
   was only used when the MongoDB server version was <= 3.0.
+- TLS Renegotiation is now disabled when possible.
 
 Issues Resolved
 ...............

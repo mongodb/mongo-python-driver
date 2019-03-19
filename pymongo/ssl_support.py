@@ -137,6 +137,8 @@ if HAVE_SSL:
             ctx.options |= getattr(ssl, "OP_NO_SSLv3", 0)
             # OpenSSL >= 1.0.0
             ctx.options |= getattr(ssl, "OP_NO_COMPRESSION", 0)
+            # Python 3.7+ with OpenSSL >= 1.1.0h
+            ctx.options |= getattr(ssl, "OP_NO_RENEGOTIATION", 0)
         if certfile is not None:
             try:
                 if passphrase is not None:
