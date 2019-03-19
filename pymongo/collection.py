@@ -1299,7 +1299,8 @@ class Collection(common.BaseObject):
           - `skip` (optional): the number of documents to omit (from
             the start of the result set) when returning the results
           - `limit` (optional): the maximum number of results to
-            return
+            return. A limit of 0 (the default) is equivalent to setting no
+            limit.
           - `no_cursor_timeout` (optional): if False (the default), any
             returned cursor is closed by the server after 10 minutes of
             inactivity. If set to True, the returned cursor will never
@@ -1623,7 +1624,8 @@ class Collection(common.BaseObject):
 
           - `skip` (int): The number of matching documents to skip before
             returning results.
-          - `limit` (int): The maximum number of documents to count.
+          - `limit` (int): The maximum number of documents to count. Must be
+            a positive integer. If not provided, no limit is imposed.
           - `maxTimeMS` (int): The maximum amount of time to allow this
             operation to run, in milliseconds.
           - `collation` (optional): An instance of
@@ -1699,7 +1701,8 @@ class Collection(common.BaseObject):
 
           - `skip` (int): The number of matching documents to skip before
             returning results.
-          - `limit` (int): The maximum number of documents to count.
+          - `limit` (int): The maximum number of documents to count. A limit
+            of 0 (the default) is equivalent to setting no limit.
           - `maxTimeMS` (int): The maximum amount of time to allow the count
             command to run, in milliseconds.
           - `collation` (optional): An instance of
