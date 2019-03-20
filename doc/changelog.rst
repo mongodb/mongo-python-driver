@@ -26,6 +26,8 @@ Changes in Version 3.8.0.dev0
   ``Database``'s  :attr:`~pymongo.database.Database.codec_options`
   when decoding the command response. Previously the codec_options
   was only used when the MongoDB server version was <= 3.0.
+- Undeprecated :meth:`~pymongo.mongo_client.MongoClient.get_default_database`
+  and added the ``default`` parameter.
 - TLS Renegotiation is now disabled when possible.
 - Custom types can now be directly encoded to, and decoded from MongoDB using
   the :class:`~bson.codec_options.TypeCodec` and
