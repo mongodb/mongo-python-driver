@@ -1059,10 +1059,10 @@ class BSON(bytes):
             >>> import bson
             >>> from bson.codec_options import CodecOptions
             >>> data = bson.BSON.encode({'a': 1})
-            >>> decoded_doc = bson.BSON.decode(data)
+            >>> decoded_doc = bson.BSON(data).decode()
             <type 'dict'>
             >>> options = CodecOptions(document_class=collections.OrderedDict)
-            >>> decoded_doc = bson.BSON.decode(data, codec_options=options)
+            >>> decoded_doc = bson.BSON(data).decode(codec_options=options)
             >>> type(decoded_doc)
             <class 'collections.OrderedDict'>
 
