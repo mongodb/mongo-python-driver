@@ -1817,8 +1817,9 @@ class MongoClient(common.BaseObject):
                 parse_write_concern_error=True,
                 session=session)
 
-    def get_default_database(self):
-        """DEPRECATED - Get the database named in the MongoDB connection URI.
+    def get_default_database(self, default=None, codec_options=None,
+            read_preference=None, write_concern=None, read_concern=None):
+        """Get the database named in the MongoDB connection URI.
 
         >>> uri = 'mongodb://host/my_database'
         >>> client = MongoClient(uri)
@@ -1830,15 +1831,41 @@ class MongoClient(common.BaseObject):
         Useful in scripts where you want to choose which database to use
         based only on the URI in a configuration file.
 
+        :Parameters:
+          - `default` (optional): the database name to use if no database name
+            was provided in the URI.
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`MongoClient` is
+            used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`MongoClient` is used. See :mod:`~pymongo.read_preferences`
+            for options.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`MongoClient` is
+            used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) the :attr:`read_concern` of this :class:`MongoClient` is
+            used.
+
+        .. versionchanged:: 3.8
+           Undeprecated. Added the ``default``, ``codec_options``,
+           ``read_preference``, ``write_concern`` and ``read_concern``
+           parameters.
+
         .. versionchanged:: 3.5
            Deprecated, use :meth:`get_database` instead.
         """
-        warnings.warn("get_default_database is deprecated. Use get_database "
-                      "instead.", DeprecationWarning, stacklevel=2)
-        if self.__default_database_name is None:
-            raise ConfigurationError('No default database defined')
+        if self.__default_database_name is None and default is None:
+            raise ConfigurationError(
+                'No default database name defined or provided.')
 
-        return self[self.__default_database_name]
+        return database.Database(
+            self, self.__default_database_name or default, codec_options,
+            read_preference, write_concern, read_concern)
 
     def get_database(self, name=None, codec_options=None, read_preference=None,
                      write_concern=None, read_concern=None):

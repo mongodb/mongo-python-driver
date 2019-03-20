@@ -40,6 +40,7 @@
       .. automethod:: list_database_names
       .. automethod:: database_names
       .. automethod:: drop_database
+      .. automethod:: get_default_database
       .. automethod:: get_database
       .. automethod:: server_info
       .. automethod:: close_cursor
@@ -48,4 +49,3 @@
       .. automethod:: watch
       .. automethod:: fsync
       .. automethod:: unlock
-      .. automethod:: get_default_database
