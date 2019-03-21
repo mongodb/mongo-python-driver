@@ -271,9 +271,10 @@ def server_is_master_with_slave(client):
 
 
 def drop_collections(db):
-    for coll in db.list_collection_names():
-        if not coll.startswith('system'):
-            db.drop_collection(coll)
+    # Drop all non-system collections in this database.
+    for coll in db.list_collection_names(
+            filter={"name": {"$regex": r"^(?!system\.)"}}):
+        db.drop_collection(coll)
 
 
 def remove_all_users(db):

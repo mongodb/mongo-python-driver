@@ -361,7 +361,8 @@ class Database(common.BaseObject):
            Removed deprecated argument: options
         """
         with self.__client._tmp_session(session) as s:
-            if name in self.list_collection_names(session=s):
+            if name in self.list_collection_names(
+                    filter={"name": name}, session=s):
                 raise CollectionInvalid("collection %s already exists" % name)
 
             return Collection(self, name, True, codec_options,
@@ -651,12 +652,14 @@ class Database(common.BaseObject):
             cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
             return CommandCursor(coll, cursor, sock_info.address)
 
-    def list_collections(self, session=None, **kwargs):
+    def list_collections(self, session=None, filter=None, **kwargs):
         """Get a cursor over the collectons of this database.
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `filter` (optional):  A query document to filter the list of
+            collections returned from the listCollections command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
@@ -668,6 +671,8 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.6
         """
+        if filter is not None:
+            kwargs['filter'] = filter
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
         with self.__client._socket_for_reads(
@@ -676,18 +681,42 @@ class Database(common.BaseObject):
                 sock_info, slave_okay, session, read_preference=read_pref,
                 **kwargs)
 
-    def list_collection_names(self, session=None):
+    def list_collection_names(self, session=None, filter=None, **kwargs):
         """Get a list of all the collection names in this database.
+
+        For example, to list all non-system collections::
+
+            filter = {"name": {"$regex": r"^(?!system\.)"}}
+            db.list_collection_names(filter=filter)
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `filter` (optional):  A query document to filter the list of
+            collections returned from the listCollections command.
+          - `**kwargs` (optional): Optional parameters of the
+            `listCollections command
+            <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
+            can be passed as keyword arguments to this method. The supported
+            options differ by server version.
+
+        .. versionchanged:: 3.8
+           Added the ``filter`` and ``**kwargs`` parameters.
 
         .. versionadded:: 3.6
         """
+        if filter is None:
+            kwargs["nameOnly"] = True
+        else:
+            # The enumerate collections spec states that "drivers MUST NOT set
+            # nameOnly if a filter specifies any keys other than name."
+            common.validate_is_mapping("filter", filter)
+            kwargs["filter"] = filter
+            if not filter or (len(filter) == 1 and "name" in filter):
+                kwargs["nameOnly"] = True
+
         return [result["name"]
-                for result in self.list_collections(session=session,
-                                                    nameOnly=True)]
+                for result in self.list_collections(session=session, **kwargs)]
 
     def collection_names(self, include_system_collections=True,
                          session=None):

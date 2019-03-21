@@ -40,6 +40,8 @@ Changes in Version 3.8.0.dev0
   :meth:`~pymongo.cursor.Cursor.comment` as the "comment" top-level
   command option instead of "$comment". Also, note that "comment" must be a
   string.
+- Add the ``filter`` parameter to
+  :meth:`~pymongo.database.Database.list_collection_names`.
 
 Issues Resolved
 ...............
