@@ -289,7 +289,7 @@ class _Query(object):
             cmd = SON([('explain', cmd)])
         session = self.session
         if session:
-            session._apply_to(cmd, False, self.read_preference)
+            session._apply_to(cmd, False, self.read_preference, sock_info)
             # Explain does not support readConcern.
             if (not explain and session.options.causal_consistency
                     and session.operation_time is not None
@@ -379,7 +379,7 @@ class _GetMore(object):
                                     self.max_await_time_ms)
 
         if self.session:
-            self.session._apply_to(cmd, False, self.read_preference)
+            self.session._apply_to(cmd, False, self.read_preference, sock_info)
         sock_info.send_cluster_time(cmd, self.session, self.client)
         self._as_command = cmd, self.db
         return self._as_command

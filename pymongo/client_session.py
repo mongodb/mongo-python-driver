@@ -90,7 +90,7 @@ from bson.int64 import Int64
 from bson.py3compat import abc, reraise_instance
 from bson.timestamp import Timestamp
 
-from pymongo import monotonic
+from pymongo import monotonic, __version__
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
@@ -263,6 +263,10 @@ _UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset([
     64,    # WriteConcernFailed
 ])
 
+_MONGOS_NOT_SUPPORTED_MSG = (
+    'PyMongo %s does not support running multi-document transactions on '
+    'sharded clusters') % (__version__,)
+
 
 class ClientSession(object):
     """A session for ordering sequential operations."""
@@ -355,6 +359,9 @@ class ClientSession(object):
         .. versionadded:: 3.7
         """
         self._check_ended()
+
+        if self._client._is_mongos_non_blocking():
+            raise ConfigurationError(_MONGOS_NOT_SUPPORTED_MSG)
 
         if self._in_transaction:
             raise InvalidOperation("Transaction already in progress")
@@ -534,7 +541,7 @@ class ClientSession(object):
             return self._transaction.opts.read_preference
         return None
 
-    def _apply_to(self, command, is_retryable, read_preference):
+    def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
 
         self._server_session.last_use = monotonic.time()
@@ -548,6 +555,9 @@ class ClientSession(object):
             return
 
         if self._in_transaction:
+            if sock_info.is_mongos:
+                raise ConfigurationError(_MONGOS_NOT_SUPPORTED_MSG)
+
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
                     'read preference in a transaction must be primary, not: '

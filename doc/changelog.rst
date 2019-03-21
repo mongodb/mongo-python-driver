@@ -33,7 +33,8 @@ Changes in Version 3.8.0.dev0
   the :class:`~bson.codec_options.TypeCodec` and
   :class:`~bson.codec_options.TypeRegistry` APIs. For more information, see
   the :doc:`custom type example <examples/custom_type>`.
-
+- Attempting a multi-document transaction on a sharded cluster now raises a
+  :exc:`~pymongo.errors.ConfigurationError`.
 
 Issues Resolved
 ...............

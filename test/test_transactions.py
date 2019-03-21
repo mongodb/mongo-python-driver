@@ -86,6 +86,23 @@ class TestTransactions(IntegrationTest):
         cmd.update(command_args)
         self.client.admin.command(cmd)
 
+    @client_context.require_mongos
+    @client_context.require_version_min(4, 0)
+    def test_transactions_not_supported(self):
+        with self.client.start_session() as s:
+            with self.assertRaisesRegex(
+                    ConfigurationError,
+                    'does not support running multi-document transactions on '
+                    'sharded clusters'):
+                s.start_transaction()
+            self.client.close()
+            with s.start_transaction():
+                with self.assertRaisesRegex(
+                        ConfigurationError,
+                        'does not support running multi-document transactions '
+                        'on sharded clusters'):
+                    self.client.test.test.insert_one({}, session=s)
+
     @client_context.require_transactions
     def test_transaction_options_validation(self):
         default_options = TransactionOptions()

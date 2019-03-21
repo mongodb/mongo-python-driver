@@ -1530,6 +1530,9 @@ class MongoClient(common.BaseObject):
         except Exception:
             helpers._handle_exception()
 
+    def _is_mongos_non_blocking(self):
+        return self._topology.is_mongos_non_blocking()
+
     def __start_session(self, implicit, **kwargs):
         # Driver Sessions Spec: "If startSession is called when multiple users
         # are authenticated drivers MUST raise an error with the error message

@@ -30,6 +30,7 @@ from pymongo import common
 from pymongo import periodic_executor
 from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
+                                          SERVER_TYPE,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
 from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
@@ -450,6 +451,22 @@ class Topology(object):
         else:
             # Called from a __del__ method, can't use a lock.
             self._session_pool.return_server_session_no_lock(server_session)
+
+    def is_mongos_non_blocking(self):
+        """Return if we are connected to a Mongos without blocking.
+
+        If the state is unknown, return False.
+        """
+        with self._lock:
+            if not self._opened:
+                return False
+            if self._description.topology_type == TOPOLOGY_TYPE.Sharded:
+                return True
+            server_descriptions = self._description.apply_selector(
+                writable_server_selector, None)
+            if not server_descriptions:
+                return False
+            return server_descriptions[0].server_type == SERVER_TYPE.Mongos
 
     def _new_selection(self):
         """A Selection object, initially including all known servers.
