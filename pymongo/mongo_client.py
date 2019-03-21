@@ -39,7 +39,7 @@ import weakref
 
 from collections import defaultdict
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry
 from bson.py3compat import (integer_types,
                             string_type)
 from bson.son import SON
@@ -95,6 +95,7 @@ class MongoClient(common.BaseObject):
             host=None,
             port=None,
             document_class=dict,
+            type_registry=None,
             tz_aware=None,
             connect=None,
             **kwargs):
@@ -187,6 +188,9 @@ class MongoClient(common.BaseObject):
           - `port` (optional): port number on which to connect
           - `document_class` (optional): default class to use for
             documents returned from queries on this client
+          - `type_registry` (optional): instance of
+            :class:`~bson.codec_options.TypeRegistry` to enable encoding
+            and decoding of custom types.
           - `tz_aware` (optional): if ``True``,
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`MongoClient` will be timezone
@@ -421,6 +425,7 @@ class MongoClient(common.BaseObject):
 
         .. versionchanged:: 3.8
            Added the ``server_selector`` keyword argument.
+           Added the ``type_registry`` keyword argument.
 
         .. versionchanged:: 3.7
            Added the ``driver`` keyword argument.
@@ -530,6 +535,8 @@ class MongoClient(common.BaseObject):
 
         keyword_opts = kwargs
         keyword_opts['document_class'] = document_class
+        if type_registry is not None:
+            keyword_opts['type_registry'] = type_registry
         if tz_aware is None:
             tz_aware = opts.get('tz_aware', False)
         if connect is None:
