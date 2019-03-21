@@ -56,7 +56,8 @@ from test.utils import (ignore_deprecations,
                         rs_or_single_client_noauth,
                         rs_or_single_client,
                         server_started_with_auth,
-                        IMPOSSIBLE_WRITE_CONCERN)
+                        IMPOSSIBLE_WRITE_CONCERN,
+                        OvertCommandListener)
 
 
 if PY3:
@@ -156,7 +157,7 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(u"test.foo" in db.list_collection_names())
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
-    def _test_collection_names(self, meth, test_no_system):
+    def _test_collection_names(self, meth, **no_system_kwargs):
         db = Database(self.client, "pymongo_test")
         db.test.insert_one({"dummy": u"object"})
         db.test.mike.insert_one({"dummy": u"object"})
@@ -167,13 +168,11 @@ class TestDatabase(IntegrationTest):
         for coll in colls:
             self.assertTrue("$" not in coll)
 
-        if test_no_system:
-            db.systemcoll.test.insert_one({})
-            no_system_collections = getattr(
-                db, meth)(include_system_collections=False)
-            for coll in no_system_collections:
-                self.assertTrue(not coll.startswith("system."))
-            self.assertIn("systemcoll.test", no_system_collections)
+        db.systemcoll.test.insert_one({})
+        no_system_collections = getattr(db, meth)(**no_system_kwargs)
+        for coll in no_system_collections:
+            self.assertTrue(not coll.startswith("system."))
+        self.assertIn("systemcoll.test", no_system_collections)
 
         # Force more than one batch.
         db = self.client.many_collections
@@ -186,10 +185,45 @@ class TestDatabase(IntegrationTest):
             self.client.drop_database("many_collections")
 
     def test_collection_names(self):
-        self._test_collection_names('collection_names', True)
+        self._test_collection_names(
+            'collection_names', include_system_collections=False)
 
     def test_list_collection_names(self):
-        self._test_collection_names('list_collection_names', False)
+        self._test_collection_names(
+            'list_collection_names', filter={
+                "name": {"$regex": r"^(?!system\.)"}})
+
+    def test_list_collection_names_filter(self):
+        listener = OvertCommandListener()
+        results = listener.results
+        client = rs_or_single_client(event_listeners=[listener])
+        db = client[self.db.name]
+        db.capped.drop()
+        db.create_collection("capped", capped=True, size=4096)
+        db.capped.insert_one({})
+        db.non_capped.insert_one({})
+        self.addCleanup(client.drop_database, db.name)
+
+        # Should not send nameOnly.
+        for filter in ({'options.capped': True},
+                       {'options.capped': True, 'name': 'capped'}):
+            results.clear()
+            names = db.list_collection_names(filter=filter)
+            self.assertEqual(names, ["capped"])
+            self.assertNotIn("nameOnly", results["started"][0].command)
+
+        # Should send nameOnly (except on 2.6).
+        for filter in (None, {}, {'name': {'$in': ['capped', 'non_capped']}}):
+            results.clear()
+            names = db.list_collection_names(filter=filter)
+            self.assertIn("capped", names)
+            self.assertIn("non_capped", names)
+            command = results["started"][0].command
+            if client_context.version >= (3, 0):
+                self.assertIn("nameOnly", command)
+                self.assertTrue(command["nameOnly"])
+            else:
+                self.assertNotIn("nameOnly", command)
 
     def test_list_collections(self):
         self.client.drop_database("pymongo_test")
