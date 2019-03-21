@@ -21,7 +21,7 @@ import warnings
 from bson import SON
 from bson.binary import (STANDARD, PYTHON_LEGACY,
                          JAVA_LEGACY, CSHARP_LEGACY)
-from bson.codec_options import CodecOptions
+from bson.codec_options import CodecOptions, TypeRegistry
 from bson.py3compat import abc, integer_types, iteritems, string_type
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
@@ -423,6 +423,14 @@ def validate_document_class(option, value):
     return value
 
 
+def validate_type_registry(option, value):
+    """Validate the type_registry option."""
+    if value is not None and not isinstance(value, TypeRegistry):
+        raise TypeError("%s must be an instance of %s" % (
+            option, TypeRegistry))
+    return value
+
+
 def validate_list(option, value):
     """Validates that 'value' is a list."""
     if not isinstance(value, list):
@@ -600,6 +608,7 @@ NONSPEC_OPTIONS_VALIDATOR_MAP = {
 # values for those options.
 KW_VALIDATORS = {
     'document_class': validate_document_class,
+    'type_registry': validate_type_registry,
     'read_preference': validate_read_preference,
     'event_listeners': _validate_event_listeners,
     'tzinfo': validate_tzinfo,
