@@ -27,6 +27,11 @@ Changes in Version 3.8.0.dev0
   when decoding the command response. Previously the codec_options
   was only used when the MongoDB server version was <= 3.0.
 - TLS Renegotiation is now disabled when possible.
+- Custom types can now be directly encoded to, and decoded from MongoDB using
+  the :class:`~bson.codec_options.TypeCodec` and
+  :class:`~bson.codec_options.TypeRegistry` APIs. For more information, see
+  the :doc:`custom type example <examples/custom_type>`.
+
 
 Issues Resolved
 ...............
