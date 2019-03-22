@@ -754,7 +754,7 @@ class Cursor(object):
         if self.__max_time_ms is not None:
             cmd["maxTimeMS"] = self.__max_time_ms
         if self.__comment:
-            cmd["$comment"] = self.__comment
+            cmd["comment"] = self.__comment
 
         if self.__hint is not None:
             cmd["hint"] = self.__hint
@@ -791,7 +791,7 @@ class Cursor(object):
         if self.__max_time_ms is not None:
             options['maxTimeMS'] = self.__max_time_ms
         if self.__comment:
-            options['$comment'] = self.__comment
+            options['comment'] = self.__comment
         if self.__collation is not None:
             options['collation'] = self.__collation
 
@@ -862,7 +862,8 @@ class Cursor(object):
         http://docs.mongodb.org/manual/reference/operator/comment/
 
         :Parameters:
-          - `comment`: A string or document
+          - `comment`: A string to attach to the query to help interpret and
+            trace the operation in the server logs and in profile data.
 
         .. versionadded:: 2.7
         """
