@@ -35,6 +35,11 @@ Changes in Version 3.8.0.dev0
   the :doc:`custom type example <examples/custom_type>`.
 - Attempting a multi-document transaction on a sharded cluster now raises a
   :exc:`~pymongo.errors.ConfigurationError`.
+- :meth:`pymongo.cursor.Cursor.distinct` and
+  :meth:`pymongo.cursor.Cursor.count` now send the Cursor's
+  :meth:`~pymongo.cursor.Cursor.comment` as the "comment" top-level
+  command option instead of "$comment". Also, note that "comment" must be a
+  string.
 
 Issues Resolved
 ...............

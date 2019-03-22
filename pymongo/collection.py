@@ -1372,9 +1372,10 @@ class Collection(common.BaseObject):
             exclusive upper bound for all keys of a specific index in order.
             Pass this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.max` on the cursor.
-          - `comment` (optional): A string or document. Pass this as an
-            alternative to calling :meth:`~pymongo.cursor.Cursor.comment` on the
-            cursor.
+          - `comment` (optional): A string to attach to the query to help
+            interpret and trace the operation in the server logs and in profile
+            data. Pass this as an alternative to calling
+            :meth:`~pymongo.cursor.Cursor.comment` on the cursor.
           - `modifiers` (optional): **DEPRECATED** - A dict specifying
             additional MongoDB query modifiers. Use the keyword arguments listed
             above instead.

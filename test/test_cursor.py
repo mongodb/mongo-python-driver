@@ -1218,12 +1218,8 @@ class TestCursor(IntegrationTest):
         self.assertTrue(c1.alive)
 
     @client_context.require_no_mongos
-    @client_context.require_version_max(4, 1, 8)
     @ignore_deprecations
     def test_comment(self):
-        if client_context.auth_enabled:
-            raise SkipTest("SERVER-4754 - This test uses profiling.")
-
         # MongoDB 3.1.5 changed the ns for commands.
         regex = {'$regex': r'pymongo_test.(\$cmd|test)'}
 
@@ -1247,14 +1243,14 @@ class TestCursor(IntegrationTest):
             op = self.db.system.profile.find({'ns': regex,
                                               'op': 'command',
                                               'command.count': 'test',
-                                              'command.$comment': 'foo'})
+                                              'command.comment': 'foo'})
             self.assertEqual(op.count(), 1)
 
             self.db.test.find().comment('foo').distinct('type')
             op = self.db.system.profile.find({'ns': regex,
                                               'op': 'command',
                                               'command.distinct': 'test',
-                                              'command.$comment': 'foo'})
+                                              'command.comment': 'foo'})
             self.assertEqual(op.count(), 1)
         finally:
             self.db.set_profiling_level(OFF)
