@@ -95,9 +95,9 @@ class MongoClient(common.BaseObject):
             host=None,
             port=None,
             document_class=dict,
-            type_registry=None,
             tz_aware=None,
             connect=None,
+            type_registry=None,
             **kwargs):
         """Client for a MongoDB instance, a replica set, or a set of mongoses.
 
