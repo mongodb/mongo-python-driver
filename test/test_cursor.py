@@ -1218,6 +1218,7 @@ class TestCursor(IntegrationTest):
         self.assertTrue(c1.alive)
 
     @client_context.require_no_mongos
+    @client_context.require_version_max(4, 1, 8)
     @ignore_deprecations
     def test_comment(self):
         if client_context.auth_enabled:
