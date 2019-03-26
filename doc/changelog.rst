@@ -45,6 +45,8 @@ Changes in Version 3.8.0.dev0
 - Changes can now be requested from a ``ChangeStream`` cursor without blocking
   indefinitely using the new
   :meth:`pymongo.change_stream.ChangeStream.try_next` method.
+- Fixed a reference leak bug when splitting a batched write command based on
+  maxWriteBatchSize or the max message size.
 
 Issues Resolved
 ...............
