@@ -346,9 +346,9 @@ static int _load_object(PyObject** object, char* module_name, char* object_name)
  *
  * Returns non-zero on failure. */
 static int _load_python_objects(PyObject* module) {
-    PyObject* empty_string;
-    PyObject* re_compile;
-    PyObject* compiled;
+    PyObject* empty_string = NULL;
+    PyObject* re_compile = NULL;
+    PyObject* compiled = NULL;
     struct module_state *state = GETSTATE(module);
 
     if (_load_object(&state->Binary, "bson.binary", "Binary") ||
