@@ -1676,7 +1676,7 @@ class Collection(common.BaseObject):
             pipeline.append({'$skip': kwargs.pop('skip')})
         if 'limit' in kwargs:
             pipeline.append({'$limit': kwargs.pop('limit')})
-        pipeline.append({'$group': {'_id': None, 'n': {'$sum': 1}}})
+        pipeline.append({'$group': {'_id': 1, 'n': {'$sum': 1}}})
         cmd = SON([('aggregate', self.__name),
                    ('pipeline', pipeline),
                    ('cursor', {})])
