@@ -756,17 +756,9 @@ _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
 
 
 def _name_value_to_bson(name, value, check_keys, opts,
+                        in_custom_call=False,
                         in_fallback_call=False):
     """Encode a single name, value pair."""
-    # Custom encoder (if any) takes precedence over default encoders.
-    # Using 'if' instead of 'try...except' for performance since this will
-    # usually not be true.
-    # No support for auto-encoding subtypes of registered custom types.
-    if opts.type_registry._encoder_map:
-        custom_encoder = opts.type_registry._encoder_map.get(type(value))
-        if custom_encoder is not None:
-            value = custom_encoder(value)
-
     # First see if the type is already cached. KeyError will only ever
     # happen once per subtype.
     try:
@@ -784,8 +776,19 @@ def _name_value_to_bson(name, value, check_keys, opts,
         _ENCODERS[type(value)] = func
         return func(name, value, check_keys, opts)
 
-    # If all else fails test each base type. This will only happen once for
-    # a subtype of a supported base type.
+    # Third, check if a type encoder is registered for this type.
+    # Note that subtypes of registered custom types are not auto-encoded.
+    if not in_custom_call and opts.type_registry._encoder_map:
+        custom_encoder = opts.type_registry._encoder_map.get(type(value))
+        if custom_encoder is not None:
+            return _name_value_to_bson(
+                name, custom_encoder(value), check_keys, opts,
+                in_custom_call=True)
+
+    # Fourth, test each base type. This will only happen once for
+    # a subtype of a supported base type. Unlike in the C-extensions, this
+    # is done after trying the custom type encoder because checking for each
+    # subtype is expensive.
     for base in _BUILT_IN_TYPES:
         if isinstance(value, base):
             func = _ENCODERS[base]
@@ -798,7 +801,8 @@ def _name_value_to_bson(name, value, check_keys, opts,
     fallback_encoder = opts.type_registry._fallback_encoder
     if not in_fallback_call and fallback_encoder is not None:
         return _name_value_to_bson(
-            name, fallback_encoder(value), check_keys, opts, True)
+            name, fallback_encoder(value), check_keys, opts,
+            in_fallback_call=True)
 
     raise InvalidDocument(
         "cannot convert value of type %s to bson" % type(value))

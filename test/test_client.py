@@ -284,14 +284,21 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(options.pool_options.metadata, metadata)
 
     def test_kwargs_codec_options(self):
-        class FloatAsIntEncoder(TypeEncoder):
-            python_type = float
+        class MyFloatType(object):
+            def __init__(self, x):
+                self.__x = x
+            @property
+            def x(self):
+                return self.__x
+
+        class MyFloatAsIntEncoder(TypeEncoder):
+            python_type = MyFloatType
             def transform_python(self, value):
                 return int(value)
 
         # Ensure codec options are passed in correctly
         document_class = SON
-        type_registry = TypeRegistry([FloatAsIntEncoder()])
+        type_registry = TypeRegistry([MyFloatAsIntEncoder()])
         tz_aware = True
         uuid_representation_label = 'javaLegacy'
         unicode_decode_error_handler = 'ignore'
