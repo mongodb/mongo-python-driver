@@ -713,6 +713,10 @@ def create_test(scenario_def, test, name):
             # Load data.
             write_concern_coll.insert_many(scenario_def['data'])
 
+        # SPEC-1245 workaround StaleDbVersion on distinct
+        for c in self.mongos_clients:
+            c[database_name][collection_name].distinct("x")
+
         # Create session0 and session1.
         sessions = {}
         session_ids = {}
