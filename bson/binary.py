@@ -125,8 +125,8 @@ class Binary(bytes):
     the difference between what should be considered binary data and
     what should be considered a string when we encode to BSON.
 
-    Raises TypeError if `data` is not an instance of :class:`str`
-    (:class:`bytes` in python 3) or `subtype` is not an instance of
+    Raises TypeError if `data` is not an instance of :class:`bytes`
+    (:class:`str` in python 2) or `subtype` is not an instance of
     :class:`int`. Raises ValueError if `subtype` is not in [0, 256).
 
     .. note::
