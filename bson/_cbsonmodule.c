@@ -120,6 +120,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     int type_byte, PyObject* value,
                                     unsigned char check_keys,
                                     const codec_options_t* options,
+                                    unsigned char in_custom_call,
                                     unsigned char in_fallback_call);
 
 /* Date stuff */
@@ -563,38 +564,16 @@ void destroy_codec_options(codec_options_t* options) {
 static int write_element_to_buffer(PyObject* self, buffer_t buffer,
                                    int type_byte, PyObject* value,
                                    unsigned char check_keys,
-                                   const codec_options_t* options) {
+                                   const codec_options_t* options,
+                                   unsigned char in_custom_call,
+                                   unsigned char in_fallback_call) {
     int result = 0;
-    PyObject* value_type = NULL;
-    PyObject* converter = NULL;
-    PyObject* new_value = NULL;
-
     if(Py_EnterRecursiveCall(" while encoding an object to BSON ")) {
         return 0;
     }
-
-    if (!options->type_registry.is_encoder_empty) {
-        value_type = PyObject_Type(value);
-        if (value_type == NULL) {
-            goto fail;
-        }
-        converter = PyDict_GetItem(options->type_registry.encoder_map, value_type);
-        if (converter != NULL) {
-            /* Transform types that have a registered converter.
-             * A new reference is created upon transformation. */
-            new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
-            if (new_value == NULL) {
-                goto fail;
-            }
-            value = new_value;
-        }
-    }
     result = _write_element_to_buffer(self, buffer, type_byte,
-                                      value, check_keys, options, 0);
-
-fail:
-    Py_XDECREF(value_type);
-    Py_XDECREF(new_value);
+                                      value, check_keys, options,
+                                      in_custom_call, in_fallback_call);
     Py_LeaveRecursiveCall();
     return result;
 }
@@ -781,6 +760,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     int type_byte, PyObject* value,
                                     unsigned char check_keys,
                                     const codec_options_t* options,
+                                    unsigned char in_custom_call,
                                     unsigned char in_fallback_call) {
     struct module_state *state = GETSTATE(self);
     PyObject* mapping_type;
@@ -1178,7 +1158,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             if (!(item_value = PySequence_GetItem(value, i)))
                 return 0;
             if (!write_element_to_buffer(self, buffer, list_type_byte,
-                                         item_value, check_keys, options)) {
+                                         item_value, check_keys, options,
+                                         0, 0)) {
                 Py_DECREF(item_value);
                 return 0;
             }
@@ -1377,6 +1358,31 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     Py_XDECREF(mapping_type);
     Py_XDECREF(uuid_type);
 
+    /* Try a custom encoder if one is provided and we have not already
+     * attempted to use a type encoder. */
+    if (!in_custom_call && !options->type_registry.is_encoder_empty) {
+        PyObject* value_type = NULL;
+        PyObject* converter = NULL;
+        value_type = PyObject_Type(value);
+        if (value_type == NULL) {
+            return 0;
+        }
+        converter = PyDict_GetItem(options->type_registry.encoder_map, value_type);
+        Py_XDECREF(value_type);
+        if (converter != NULL) {
+            /* Transform types that have a registered converter.
+             * A new reference is created upon transformation. */
+            new_value = PyObject_CallFunctionObjArgs(converter, value, NULL);
+            if (new_value == NULL) {
+                return 0;
+            }
+            retval = write_element_to_buffer(self, buffer, type_byte, new_value,
+                                             check_keys, options, 1, 0);
+            Py_XDECREF(new_value);
+            return retval;
+        }
+    }
+
     /* Try the fallback encoder if one is provided and we have not already
      * attempted to use the fallback encoder. */
     if (!in_fallback_call && options->type_registry.has_fallback_encoder) {
@@ -1386,12 +1392,11 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             // propagate any exception raised by the callback
             return 0;
         }
-        retval = _write_element_to_buffer(self, buffer, type_byte, new_value,
-                                          check_keys, options, 1);
+        retval = write_element_to_buffer(self, buffer, type_byte, new_value,
+                                         check_keys, options, 0, 1);
         Py_XDECREF(new_value);
         return retval;
     }
-    Py_XDECREF(new_value);
 
     /* We can't determine value's type. Fail. */
     _set_cannot_encode(value);
@@ -1466,7 +1471,7 @@ int write_pair(PyObject* self, buffer_t buffer, const char* name, int name_lengt
         return 0;
     }
     if (!write_element_to_buffer(self, buffer, type_byte,
-                                 value, check_keys, options)) {
+                                 value, check_keys, options, 0, 0)) {
         return 0;
     }
     return 1;

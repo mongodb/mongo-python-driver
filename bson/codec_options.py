@@ -20,6 +20,7 @@ from abc import abstractmethod
 from collections import namedtuple
 
 from bson.py3compat import ABC, abc, abstractproperty, string_type
+
 from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          PYTHON_LEGACY,
                          UUID_REPRESENTATION_NAMES)
@@ -118,6 +119,7 @@ class TypeRegistry(object):
         for codec in self.__type_codecs:
             is_valid_codec = False
             if isinstance(codec, TypeEncoder):
+                self._validate_type_encoder(codec)
                 is_valid_codec = True
                 self._encoder_map[codec.python_type] = codec.transform_python
             if isinstance(codec, TypeDecoder):
@@ -128,6 +130,15 @@ class TypeRegistry(object):
                     "Expected an instance of %s, %s, or %s, got %r instead" % (
                         TypeEncoder.__name__, TypeDecoder.__name__,
                         TypeCodec.__name__, codec))
+
+    def _validate_type_encoder(self, codec):
+        from bson import _BUILT_IN_TYPES
+        for pytype in _BUILT_IN_TYPES:
+            if issubclass(codec.python_type, pytype):
+                err_msg = ("TypeEncoders cannot change how built-in types are "
+                           "encoded (encoder %s transforms type %s)" %
+                           (codec, pytype))
+                raise TypeError(err_msg)
 
     def __repr__(self):
         return ('%s(type_codecs=%r, fallback_encoder=%r)' % (

@@ -26,6 +26,8 @@ from bson import (BSON,
                   decode_all,
                   decode_file_iter,
                   decode_iter,
+                  RE_TYPE,
+                  _BUILT_IN_TYPES,
                   _dict_to_bson,
                   _bson_to_dict)
 from bson.codec_options import (CodecOptions, TypeCodec, TypeDecoder,
@@ -189,10 +191,13 @@ class TestTypeEnDeCodecs(unittest.TestCase):
             else:
                 codec()
 
-        run_test(TypeEncoder, {'python_type': int,}, fail=True)
+        class MyType(object):
+            pass
+
+        run_test(TypeEncoder, {'python_type': MyType,}, fail=True)
         run_test(TypeEncoder, {'transform_python': lambda s, x: x}, fail=True)
         run_test(TypeEncoder, {'transform_python': lambda s, x: x,
-                               'python_type': int}, fail=False)
+                               'python_type': MyType}, fail=False)
 
         run_test(TypeDecoder, {'bson_type': Decimal128, }, fail=True)
         run_test(TypeDecoder, {'transform_bson': lambda s, x: x}, fail=True)
@@ -200,10 +205,10 @@ class TestTypeEnDeCodecs(unittest.TestCase):
                                'bson_type': Decimal128}, fail=False)
 
         run_test(TypeCodec, {'bson_type': Decimal128,
-                             'python_type': int}, fail=True)
+                             'python_type': MyType}, fail=True)
         run_test(TypeCodec, {'transform_bson': lambda s, x: x,
                              'transform_python': lambda s, x: x}, fail=True)
-        run_test(TypeCodec, {'python_type': int,
+        run_test(TypeCodec, {'python_type': MyType,
                              'transform_python': lambda s, x: x,
                              'transform_bson': lambda s, x: x,
                              'bson_type': Decimal128}, fail=False)
@@ -213,6 +218,91 @@ class TestTypeEnDeCodecs(unittest.TestCase):
         self.assertTrue(issubclass(TypeCodec, TypeDecoder))
         self.assertFalse(issubclass(TypeDecoder, TypeEncoder))
         self.assertFalse(issubclass(TypeEncoder, TypeDecoder))
+
+
+class TestCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        class TypeA(object):
+            def __init__(self, x):
+                self.value = x
+
+        class TypeB(object):
+            def __init__(self, x):
+                self.value = x
+
+        # transforms A, and only A into B
+        def fallback_encoder_A2B(value):
+            assert isinstance(value, TypeA)
+            return TypeB(value.value)
+
+        # transforms A, and only A into something encodable
+        def fallback_encoder_A2BSON(value):
+            assert isinstance(value, TypeA)
+            return value.value
+
+        # transforms B into something encodable
+        class B2BSON(TypeEncoder):
+            python_type = TypeB
+            def transform_python(self, value):
+                return value.value
+
+        # transforms A into B
+        # technically, this isn't a proper type encoder as the output is not
+        # BSON-encodable.
+        class A2B(TypeEncoder):
+            python_type = TypeA
+            def transform_python(self, value):
+                return TypeB(value.value)
+
+        # transforms B into A
+        # technically, this isn't a proper type encoder as the output is not
+        # BSON-encodable.
+        class B2A(TypeEncoder):
+            python_type = TypeB
+            def transform_python(self, value):
+                return TypeA(value.value)
+
+        cls.TypeA = TypeA
+        cls.TypeB = TypeB
+        cls.fallback_encoder_A2B = staticmethod(fallback_encoder_A2B)
+        cls.fallback_encoder_A2BSON = staticmethod(fallback_encoder_A2BSON)
+        cls.B2BSON = B2BSON
+        cls.B2A = B2A
+        cls.A2B = A2B
+
+    def test_encode_fallback_then_custom(self):
+        codecopts = CodecOptions(type_registry=TypeRegistry(
+            [self.B2BSON()], fallback_encoder=self.fallback_encoder_A2B))
+        testdoc = {'x': self.TypeA(123)}
+        expected_bytes = BSON.encode({'x': 123})
+
+        self.assertEqual(BSON.encode(testdoc, codec_options=codecopts),
+                         expected_bytes)
+
+    def test_encode_custom_then_fallback(self):
+        codecopts = CodecOptions(type_registry=TypeRegistry(
+            [self.B2A()], fallback_encoder=self.fallback_encoder_A2BSON))
+        testdoc = {'x': self.TypeB(123)}
+        expected_bytes = BSON.encode({'x': 123})
+
+        self.assertEqual(BSON.encode(testdoc, codec_options=codecopts),
+                         expected_bytes)
+
+    def test_chaining_encoders_fails(self):
+        codecopts = CodecOptions(type_registry=TypeRegistry(
+            [self.A2B(), self.B2BSON()]))
+
+        with self.assertRaises(InvalidDocument):
+            BSON.encode({'x': self.TypeA(123)}, codec_options=codecopts)
+
+    def test_infinite_loop_exceeds_max_recursion_depth(self):
+        codecopts = CodecOptions(type_registry=TypeRegistry(
+            [self.B2A()], fallback_encoder=self.fallback_encoder_A2B))
+
+        # Raises max recursion depth exceeded error
+        with self.assertRaises(RuntimeError):
+            BSON.encode({'x': self.TypeA(100)}, codec_options=codecopts)
 
 
 class TestTypeRegistry(unittest.TestCase):
@@ -346,6 +436,35 @@ class TestTypeRegistry(unittest.TestCase):
         codec_instances_2 = [codec() for codec in self.codecs]
         self.assertNotEqual(
             TypeRegistry(codec_instances), TypeRegistry(codec_instances_2))
+
+    def test_builtin_types_override_fails(self):
+        def run_test(base, attrs):
+            msg = ("TypeEncoders cannot change how built-in types "
+                   "are encoded \(encoder .* transforms type .*\)")
+            for pytype in _BUILT_IN_TYPES:
+                attrs.update({'python_type': pytype,
+                              'transform_python': lambda x: x})
+                codec = type('testcodec', (base, ), attrs)
+                codec_instance = codec()
+                with self.assertRaisesRegex(TypeError, msg):
+                    TypeRegistry([codec_instance,])
+
+                # Test only some subtypes as not all can be subclassed.
+                if pytype in [bool, type(None), RE_TYPE,]:
+                    continue
+
+                class MyType(pytype):
+                    pass
+                attrs.update({'python_type': MyType,
+                              'transform_python': lambda x: x})
+                codec = type('testcodec', (base, ), attrs)
+                codec_instance = codec()
+                with self.assertRaisesRegex(TypeError, msg):
+                    TypeRegistry([codec_instance,])
+
+        run_test(TypeEncoder, {})
+        run_test(TypeCodec, {'bson_type': Decimal128,
+                             'transform_bson': lambda x: x})
 
 
 if __name__ == "__main__":
