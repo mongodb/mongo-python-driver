@@ -752,6 +752,9 @@ if not PY3:
     _ENCODERS[long] = _encode_long
 
 
+_BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
+
+
 def _name_value_to_bson(name, value, check_keys, opts,
                         in_fallback_call=False):
     """Encode a single name, value pair."""
@@ -783,7 +786,7 @@ def _name_value_to_bson(name, value, check_keys, opts,
 
     # If all else fails test each base type. This will only happen once for
     # a subtype of a supported base type.
-    for base in _ENCODERS:
+    for base in _BUILT_IN_TYPES:
         if isinstance(value, base):
             func = _ENCODERS[base]
             # Cache this type for faster subsequent lookup.
