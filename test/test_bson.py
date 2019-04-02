@@ -50,6 +50,7 @@ from bson.tz_util import (FixedOffset,
                           utc)
 
 from test import qcheck, SkipTest, unittest
+from test.utils import ExceptionCatchingThread
 
 if PY3:
     long = int
@@ -903,6 +904,24 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidDocument, BSON.encode,
                           {"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}}, True)
         BSON.encode({"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}})
+
+    def test_bson_encode_thread_safe(self):
+
+        def target(i):
+            for j in range(1000):
+                my_int = type('MyInt_%s_%s' % (i, j), (int,), {})
+                bson.BSON.encode({'my_int': my_int()})
+
+        threads = [ExceptionCatchingThread(target=target, args=(i,))
+                   for i in range(3)]
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        for t in threads:
+            self.assertIsNone(t.exc)
 
 
 class TestCodecOptions(unittest.TestCase):
