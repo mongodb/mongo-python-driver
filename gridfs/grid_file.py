@@ -98,6 +98,12 @@ def _grid_out_property(field_name, docstring):
     return property(getter, doc=docstring)
 
 
+def _clear_entity_type_registry(entity, **kwargs):
+    """Clear the given database/collection object's type registry."""
+    codecopts = entity.codec_options.with_options(type_registry=None)
+    return entity.with_options(codec_options=codecopts, **kwargs)
+
+
 class GridIn(object):
     """Class to write data to GridFS.
     """
@@ -168,8 +174,8 @@ class GridIn(object):
         if "chunk_size" in kwargs:
             kwargs["chunkSize"] = kwargs.pop("chunk_size")
 
-        coll = root_collection.with_options(
-            read_preference=ReadPreference.PRIMARY)
+        coll = _clear_entity_type_registry(
+            root_collection, read_preference=ReadPreference.PRIMARY)
 
         if not disable_md5:
             kwargs["md5"] = hashlib.md5()
@@ -448,6 +454,8 @@ class GridOut(object):
         if not isinstance(root_collection, Collection):
             raise TypeError("root_collection must be an "
                             "instance of Collection")
+
+        root_collection = _clear_entity_type_registry(root_collection)
 
         self.__chunks = root_collection.chunks
         self.__files = root_collection.files
@@ -800,6 +808,8 @@ class GridOutCursor(Cursor):
 
         .. mongodoc:: cursors
         """
+        collection = _clear_entity_type_registry(collection)
+
         # Hold on to the base "fs" collection to create GridOut objects later.
         self.__root_collection = collection
 

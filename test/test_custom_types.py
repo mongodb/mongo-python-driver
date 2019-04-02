@@ -14,6 +14,7 @@
 
 """Test support for callbacks to encode/decode custom types."""
 
+import datetime
 import sys
 import tempfile
 from decimal import Decimal
@@ -30,11 +31,21 @@ from bson import (BSON,
                   _BUILT_IN_TYPES,
                   _dict_to_bson,
                   _bson_to_dict)
+from bson.code import Code
 from bson.codec_options import (CodecOptions, TypeCodec, TypeDecoder,
                                 TypeEncoder, TypeRegistry)
 from bson.errors import InvalidDocument
+from bson.int64 import Int64
+from bson.py3compat import text_type
 
-from test import unittest
+from gridfs import GridIn, GridOut
+
+from pymongo.collection import ReturnDocument
+from pymongo.errors import DuplicateKeyError
+
+from test import client_context, unittest
+from test.test_client import IntegrationTest
+from test.utils import ignore_deprecations
 
 
 class DecimalEncoder(TypeEncoder):
@@ -59,7 +70,51 @@ class DecimalCodec(DecimalDecoder, DecimalEncoder):
     pass
 
 
-class CustomTypeTests(object):
+DECIMAL_CODECOPTS = CodecOptions(
+    type_registry=TypeRegistry([DecimalCodec()]))
+
+
+class UndecipherableInt64Type(object):
+    def __init__(self, value):
+        self.value = value
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.value == other.value
+        return self.value == other
+
+
+class UndecipherableIntDecoder(TypeDecoder):
+    bson_type = Int64
+    def transform_bson(self, value):
+        return UndecipherableInt64Type(value)
+
+
+class UndecipherableIntEncoder(TypeEncoder):
+    python_type = UndecipherableInt64Type
+    def transform_python(self, value):
+        return Int64(value.value)
+
+
+UNINT_DECODER_CODECOPTS = CodecOptions(
+    type_registry=TypeRegistry([UndecipherableIntDecoder(), ]))
+
+
+UNINT_CODECOPTS = CodecOptions(type_registry=TypeRegistry(
+    [UndecipherableIntDecoder(), UndecipherableIntEncoder()]))
+
+
+class UppercaseTextDecoder(TypeDecoder):
+    bson_type = text_type
+    def transform_bson(self, value):
+        return value.upper()
+
+
+UPPERSTR_DECODER_CODECOPTS = CodecOptions(type_registry=TypeRegistry(
+    [UppercaseTextDecoder(),]))
+
+
+class CustomBSONTypeTests(object):
     def test_encode_decode_roundtrip(self):
         document = {'average': Decimal('56.47')}
         bsonbytes = BSON().encode(document, codec_options=self.codecopts)
@@ -117,25 +172,24 @@ class CustomTypeTests(object):
 
         fileobj.close()
 
-class TestCustomPythonTypeToBSONMonolithicCodec(CustomTypeTests,
-                                                unittest.TestCase):
+
+class TestCustomPythonBSONTypeToBSONMonolithicCodec(CustomBSONTypeTests,
+                                                    unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        type_registry = TypeRegistry((DecimalCodec(),))
-        codec_options = CodecOptions(type_registry=type_registry)
+        cls.codecopts = DECIMAL_CODECOPTS
+
+
+class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests,
+                                                     unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        codec_options = CodecOptions(
+            type_registry=TypeRegistry((DecimalEncoder(), DecimalDecoder())))
         cls.codecopts = codec_options
 
 
-class TestCustomPythonTypeToBSONMultiplexedCodec(CustomTypeTests,
-                                                 unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        type_registry = TypeRegistry((DecimalEncoder(), DecimalDecoder()))
-        codec_options = CodecOptions(type_registry=type_registry)
-        cls.codecopts = codec_options
-
-
-class TestFallbackEncoder(unittest.TestCase):
+class TestBSONFallbackEncoder(unittest.TestCase):
     def _get_codec_options(self, fallback_encoder):
         type_registry = TypeRegistry(fallback_encoder=fallback_encoder)
         return CodecOptions(type_registry=type_registry)
@@ -180,7 +234,7 @@ class TestFallbackEncoder(unittest.TestCase):
             BSON().encode(document, codec_options=codecopts)
 
 
-class TestTypeEnDeCodecs(unittest.TestCase):
+class TestBSONTypeEnDeCodecs(unittest.TestCase):
     def test_instantiation(self):
         msg = "Can't instantiate abstract class .* with abstract methods .*"
         def run_test(base, attrs, fail):
@@ -220,7 +274,7 @@ class TestTypeEnDeCodecs(unittest.TestCase):
         self.assertFalse(issubclass(TypeEncoder, TypeDecoder))
 
 
-class TestCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
+class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         class TypeA(object):
@@ -465,6 +519,193 @@ class TestTypeRegistry(unittest.TestCase):
         run_test(TypeEncoder, {})
         run_test(TypeCodec, {'bson_type': Decimal128,
                              'transform_bson': lambda x: x})
+
+
+class TestCollectionWCustomType(IntegrationTest):
+    def setUp(self):
+        self.db.test.drop()
+
+    def tearDown(self):
+        self.db.test.drop()
+
+    def test_command_errors_w_custom_type_decoder(self):
+        db = self.db
+        test_doc = {'_id': 1, 'data': 'a'}
+        test = db.get_collection('test',
+                                 codec_options=UNINT_DECODER_CODECOPTS)
+
+        result = test.insert_one(test_doc)
+        self.assertEqual(result.inserted_id, test_doc['_id'])
+        with self.assertRaises(DuplicateKeyError):
+            test.insert_one(test_doc)
+
+    def test_find_w_custom_type_decoder(self):
+        db = self.db
+        input_docs = [
+            {'x': Int64(k)} for k in [1.0, 2.0, 3.0]]
+        for doc in input_docs:
+            db.test.insert_one(doc)
+
+        test = db.get_collection(
+            'test', codec_options=UNINT_DECODER_CODECOPTS)
+        for doc in test.find({}, batch_size=1):
+            self.assertIsInstance(doc['x'], UndecipherableInt64Type)
+
+    @client_context.require_version_max(4, 1, 0, -1)
+    def test_group_w_custom_type(self):
+        db = self.db
+        test = db.get_collection('test', codec_options=UNINT_CODECOPTS)
+        test.insert_many([
+            {'sku': 'a', 'qty': UndecipherableInt64Type(2)},
+            {'sku': 'b', 'qty': UndecipherableInt64Type(5)},
+            {'sku': 'a', 'qty': UndecipherableInt64Type(1)}])
+
+        self.assertEqual([{'sku': 'b', 'qty': UndecipherableInt64Type(5)},],
+                         test.group(["sku", "qty"], {"sku": "b"}, {},
+                                    "function (obj, prev) { }"))
+
+    def test_aggregate_w_custom_type_decoder(self):
+        db = self.db
+        db.test.insert_many([
+            {'status': 'in progress', 'qty': Int64(1)},
+            {'status': 'complete', 'qty': Int64(10)},
+            {'status': 'in progress', 'qty': Int64(1)},
+            {'status': 'complete', 'qty': Int64(10)},
+            {'status': 'in progress', 'qty': Int64(1)},])
+        test = db.get_collection(
+            'test', codec_options=UNINT_DECODER_CODECOPTS)
+
+        pipeline = [
+            {'$match': {'status': 'complete'}},
+            {'$group': {'_id': "$status", 'total_qty': {"$sum": "$qty"}}},]
+        result = test.aggregate(pipeline)
+
+        res = list(result)[0]
+        self.assertEqual(res['_id'], 'complete')
+        self.assertIsInstance(res['total_qty'], UndecipherableInt64Type)
+        self.assertEqual(res['total_qty'].value, 20)
+
+    # collection.distinct does not support custom type decoding
+    def test_distinct_w_custom_type(self):
+        self.db.drop_collection("test")
+
+        test = self.db.get_collection('test', codec_options=UNINT_CODECOPTS)
+        test.insert_many([
+            {"a": UndecipherableInt64Type(1)},
+            {"a": UndecipherableInt64Type(2)},
+            {"a": UndecipherableInt64Type(2)},
+            {"a": UndecipherableInt64Type(2)},
+            {"a": UndecipherableInt64Type(3)}])
+
+        distinct = test.distinct("a")
+        distinct.sort()
+
+        self.assertEqual([
+            UndecipherableInt64Type(1), UndecipherableInt64Type(2),
+            UndecipherableInt64Type(3)], distinct)
+
+    def test_map_reduce_w_custom_type(self):
+        test = self.db.get_collection(
+            'test', codec_options=UPPERSTR_DECODER_CODECOPTS)
+
+        test.insert_many([
+            {'_id': 1, 'sku': 'abcd', 'qty': 1},
+            {'_id': 2, 'sku': 'abcd', 'qty': 2},
+            {'_id': 3, 'sku': 'abcd', 'qty': 3}])
+
+        map = Code("function () {"
+                   "  emit(this.sku, this.qty);"
+                   "}")
+        reduce = Code("function (key, values) {"
+                      "  return Array.sum(values);"
+                      "}")
+
+        result = test.map_reduce(map, reduce, out={'inline': 1})
+        self.assertTrue(isinstance(result, dict))
+        self.assertTrue('results' in result)
+        self.assertEqual(result['results'][0], {'_id': 'ABCD', 'value': 6})
+
+        result = test.inline_map_reduce(map, reduce)
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0]["_id"], 'ABCD')
+
+        full_result = test.inline_map_reduce(map, reduce,
+                                             full_response=True)
+        self.assertEqual(3, full_result["counts"]["emit"])
+
+    def test_find_one_and__w_custom_type_decoder(self):
+        db = self.db
+        c = db.get_collection('test', codec_options=UNINT_DECODER_CODECOPTS)
+        c.insert_one({'_id': 1, 'x': Int64(1)})
+
+        doc = c.find_one_and_update({'_id': 1}, {'$inc': {'x': 1}},
+                                    return_document=ReturnDocument.AFTER)
+        self.assertEqual(doc['_id'], 1)
+        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
+        self.assertEqual(doc['x'].value, 2)
+
+        doc = c.find_one_and_replace({'_id': 1}, {'x': Int64(3), 'y': True},
+                                     return_document=ReturnDocument.AFTER)
+        self.assertEqual(doc['_id'], 1)
+        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
+        self.assertEqual(doc['x'].value, 3)
+        self.assertEqual(doc['y'], True)
+
+        doc = c.find_one_and_delete({'y': True})
+        self.assertEqual(doc['_id'], 1)
+        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
+        self.assertEqual(doc['x'].value, 3)
+        self.assertIsNone(c.find_one())
+
+    @ignore_deprecations
+    def test_find_and_modify_w_custom_type_decoder(self):
+        db = self.db
+        c = db.get_collection('test', codec_options=UNINT_DECODER_CODECOPTS)
+        c.insert_one({'_id': 1, 'x': Int64(1)})
+
+        doc = c.find_and_modify({'_id': 1}, {'$inc': {'x': Int64(10)}})
+        self.assertEqual(doc['_id'], 1)
+        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
+        self.assertEqual(doc['x'].value, 1)
+
+        doc = c.find_one()
+        self.assertEqual(doc['_id'], 1)
+        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
+        self.assertEqual(doc['x'].value, 11)
+
+
+class TestGridFileCustomType(IntegrationTest):
+    def setUp(self):
+        self.db.drop_collection('fs.files')
+        self.db.drop_collection('fs.chunks')
+
+    def test_grid_out_custom_opts(self):
+        db = self.db.with_options(codec_options=UPPERSTR_DECODER_CODECOPTS)
+        one = GridIn(db.fs, _id=5, filename="my_file",
+                     contentType="text/html", chunkSize=1000, aliases=["foo"],
+                     metadata={"foo": 'red', "bar": 'blue'}, bar=3,
+                     baz="hello")
+        one.write(b"hello world")
+        one.close()
+
+        two = GridOut(db.fs, 5)
+
+        self.assertEqual("my_file", two.name)
+        self.assertEqual("my_file", two.filename)
+        self.assertEqual(5, two._id)
+        self.assertEqual(11, two.length)
+        self.assertEqual("text/html", two.content_type)
+        self.assertEqual(1000, two.chunk_size)
+        self.assertTrue(isinstance(two.upload_date, datetime.datetime))
+        self.assertEqual(["foo"], two.aliases)
+        self.assertEqual({"foo": 'red', "bar": 'blue'}, two.metadata)
+        self.assertEqual(3, two.bar)
+        self.assertEqual("5eb63bbbe01eeed093cb22bb8f5acdc3", two.md5)
+
+        for attr in ["_id", "name", "content_type", "length", "chunk_size",
+                     "upload_date", "aliases", "metadata", "md5"]:
+            self.assertRaises(AttributeError, setattr, two, attr, 5)
 
 
 if __name__ == "__main__":

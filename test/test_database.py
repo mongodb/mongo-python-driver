@@ -58,6 +58,7 @@ from test.utils import (ignore_deprecations,
                         server_started_with_auth,
                         IMPOSSIBLE_WRITE_CONCERN,
                         OvertCommandListener)
+from test.test_custom_types import DECIMAL_CODECOPTS
 
 
 if PY3:
@@ -975,6 +976,36 @@ class TestDatabase(IntegrationTest):
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",
                                       mode="off")
+
+    def test_with_options(self):
+        codec_options = DECIMAL_CODECOPTS
+        read_preference = ReadPreference.SECONDARY_PREFERRED
+        write_concern = WriteConcern(j=True)
+        read_concern = ReadConcern(level="majority")
+
+        # List of all options to compare.
+        allopts = ['name', 'client', 'codec_options',
+                   'read_preference', 'write_concern', 'read_concern']
+
+        db1 = self.client.get_database(
+            'with_options_test', codec_options=codec_options,
+            read_preference=read_preference, write_concern=write_concern,
+            read_concern=read_concern)
+
+        # Case 1: swap no options
+        db2 = db1.with_options()
+        for opt in allopts:
+            self.assertEqual(getattr(db1, opt), getattr(db2, opt))
+
+        # Case 2: swap all options
+        newopts = {'codec_options': CodecOptions(),
+                   'read_preference': ReadPreference.PRIMARY,
+                   'write_concern': WriteConcern(w=1),
+                   'read_concern': ReadConcern(level="local")}
+        db2 = db1.with_options(**newopts)
+        for opt in newopts:
+            self.assertEqual(
+                getattr(db2, opt), newopts.get(opt, getattr(db1, opt)))
 
     def test_current_op_codec_options(self):
         class MySON(SON):

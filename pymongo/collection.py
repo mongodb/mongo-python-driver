@@ -53,6 +53,7 @@ from pymongo.write_concern import WriteConcern
 
 _NO_OBJ_ERROR = "No matching object found"
 _UJOIN = u"%s.%s"
+_FIND_AND_MODIFY_DOC_FIELDS = {'value': dict}
 
 
 class ReturnDocument(object):
@@ -203,7 +204,8 @@ class Collection(common.BaseObject):
                  write_concern=None,
                  collation=None,
                  session=None,
-                 retryable_write=False):
+                 retryable_write=False,
+                 user_fields=None):
         """Internal command helper.
 
         :Parameters:
@@ -242,7 +244,8 @@ class Collection(common.BaseObject):
                 collation=collation,
                 session=s,
                 client=self.__database.client,
-                retryable_write=retryable_write)
+                retryable_write=retryable_write,
+                user_fields=user_fields)
 
     def __create(self, options, collation, session):
         """Sends a create command with the given options.
@@ -315,9 +318,8 @@ class Collection(common.BaseObject):
         """
         return self.__database
 
-    def with_options(
-            self, codec_options=None, read_preference=None,
-            write_concern=None, read_concern=None):
+    def with_options(self, codec_options=None, read_preference=None,
+                     write_concern=None, read_concern=None):
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -2310,7 +2312,8 @@ class Collection(common.BaseObject):
                 write_concern=write_concern,
                 collation=collation,
                 session=session,
-                client=self.__database.client)
+                client=self.__database.client,
+                user_fields={'cursor': {'firstBatch': list}})
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -2571,7 +2574,8 @@ class Collection(common.BaseObject):
 
         with self._socket_for_reads(session=None) as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
-                                 collation=collation)["retval"]
+                                 collation=collation,
+                                 user_fields={'retval': list})["retval"]
 
     def rename(self, new_name, session=None, **kwargs):
         """Rename this collection.
@@ -2675,7 +2679,8 @@ class Collection(common.BaseObject):
         with self._socket_for_reads(session) as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
                                  read_concern=self.read_concern,
-                                 collation=collation, session=session)["values"]
+                                 collation=collation,
+                                 session=session)["values"]
 
     def map_reduce(self, map, reduce, out, full_response=False, session=None,
                    **kwargs):
@@ -2755,12 +2760,17 @@ class Collection(common.BaseObject):
                 write_concern = self._write_concern_for(session)
             else:
                 write_concern = None
+            if inline:
+                user_fields = {'results': list}
+            else:
+                user_fields = None
 
             response = self._command(
                 sock_info, cmd, slave_ok, read_pref,
                 read_concern=read_concern,
                 write_concern=write_concern,
-                collation=collation, session=session)
+                collation=collation, session=session,
+                user_fields=user_fields)
 
         if full_response or not response.get('result'):
             return response
@@ -2810,16 +2820,19 @@ class Collection(common.BaseObject):
                    ("map", map),
                    ("reduce", reduce),
                    ("out", {"inline": 1})])
+        user_fields = {'results': list}
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
         with self._socket_for_reads(session) as (sock_info, slave_ok):
             if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
                 res = self._command(sock_info, cmd, slave_ok,
                                     read_concern=self.read_concern,
-                                    collation=collation, session=session)
+                                    collation=collation, session=session,
+                                    user_fields=user_fields)
             else:
                 res = self._command(sock_info, cmd, slave_ok,
-                                    collation=collation, session=session)
+                                    collation=collation, session=session,
+                                    user_fields=user_fields)
 
         if full_response:
             return res
@@ -2837,6 +2850,7 @@ class Collection(common.BaseObject):
                           return_document=ReturnDocument.BEFORE,
                           array_filters=None, session=None, **kwargs):
         """Internal findAndModify helper."""
+
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise ValueError("return_document must be "
@@ -2876,8 +2890,10 @@ class Collection(common.BaseObject):
                                 write_concern=write_concern,
                                 allowable_errors=[_NO_OBJ_ERROR],
                                 collation=collation, session=session,
-                                retryable_write=retryable_write)
+                                retryable_write=retryable_write,
+                                user_fields=_FIND_AND_MODIFY_DOC_FIELDS)
             _check_write_command_response(out)
+
             return out.get("value")
 
         return self.__database.client._retryable_write(
@@ -3293,7 +3309,8 @@ class Collection(common.BaseObject):
             result = self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 allowable_errors=[_NO_OBJ_ERROR], collation=collation,
-                session=session, retryable_write=retryable_write)
+                session=session, retryable_write=retryable_write,
+                user_fields=_FIND_AND_MODIFY_DOC_FIELDS)
 
             _check_write_command_response(result)
             return result

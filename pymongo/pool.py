@@ -512,7 +512,8 @@ class SocketInfo(object):
                 session=None,
                 client=None,
                 retryable_write=False,
-                publish_events=True):
+                publish_events=True,
+                user_fields=None):
         """Execute a command or raise an error.
 
         :Parameters:
@@ -576,7 +577,8 @@ class SocketInfo(object):
                            collation=collation,
                            compression_ctx=self.compression_context,
                            use_op_msg=self.op_msg_enabled,
-                           unacknowledged=unacknowledged)
+                           unacknowledged=unacknowledged,
+                           user_fields=user_fields)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

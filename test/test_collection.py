@@ -132,6 +132,12 @@ class TestCollection(IntegrationTest):
     def tearDownClass(cls):
         cls.db.drop_collection("test_large_limit")
 
+    def setUp(self):
+        self.db.test.drop()
+
+    def tearDown(self):
+        self.db.test.drop()
+
     @contextlib.contextmanager
     def write_concern_collection(self):
         if client_context.version.at_least(3, 3, 9) and client_context.is_rs:
