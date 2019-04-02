@@ -40,7 +40,7 @@ from pymongo.message import (_convert_exception,
                              _RawBatchGetMore,
                              _Query,
                              _RawBatchQuery)
-from pymongo.read_preferences import ReadPreference
+
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -50,6 +50,7 @@ _QUERY_OPTIONS = {
     "await_data": 32,
     "exhaust": 64,
     "partial": 128}
+_CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': list, 'nextBatch': list}}
 
 
 class CursorType(object):
@@ -995,12 +996,17 @@ class Cursor(object):
                 raise
 
         try:
-            docs = self._unpack_response(response=reply,
-                                         cursor_id=self.__id,
-                                         codec_options=self.__codec_options)
+            user_fields = None
+            legacy_response = True
+            if from_command:
+                user_fields = _CURSOR_DOC_FIELDS
+                legacy_response = False
+            docs = self._unpack_response(
+                reply, self.__id, self.__collection.codec_options,
+                legacy_response=legacy_response, user_fields=user_fields)
             if from_command:
                 first = docs[0]
-                client._receive_cluster_time(first, self.__session)
+                client._process_response(first, self.__session)
                 helpers._check_command_response(first)
         except OperationFailure as exc:
             self.__killed = True
@@ -1031,7 +1037,6 @@ class Cursor(object):
                 listeners.publish_command_failure(
                     duration(), exc.details, cmd_name, rqst_id, self.__address)
 
-            client._reset_server_and_request_check(self.__address)
             raise
         except Exception as exc:
             if publish:
@@ -1085,8 +1090,10 @@ class Cursor(object):
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()
 
-    def _unpack_response(self, response, cursor_id, codec_options):
-        return response.unpack_response(cursor_id, codec_options)
+    def _unpack_response(self, response, cursor_id, codec_options,
+                         user_fields=None, legacy_response=False):
+        return response.unpack_response(cursor_id, codec_options, user_fields,
+                                        legacy_response)
 
     def _read_preference(self):
         if self.__read_preference is None:
@@ -1303,7 +1310,8 @@ class RawBatchCursor(Cursor):
             raise InvalidOperation(
                 "Cannot use RawBatchCursor with manipulate=True")
 
-    def _unpack_response(self, response, cursor_id, codec_options):
+    def _unpack_response(self, response, cursor_id, codec_options,
+                         user_fields=None, legacy_response=False):
         return response.raw_response(cursor_id)
 
     def explain(self):

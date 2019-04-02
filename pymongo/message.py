@@ -1398,7 +1398,8 @@ class _OpReply(object):
         return [self.documents]
 
     def unpack_response(self, cursor_id=None,
-                        codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
+                        codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                        user_fields=None, legacy_response=False):
         """Unpack a response from the database and decode the BSON document(s).
 
         Check the response for errors and unpack, returning a dictionary
@@ -1415,7 +1416,10 @@ class _OpReply(object):
             :class:`~bson.codec_options.CodecOptions`
         """
         self.raw_response(cursor_id)
-        return bson.decode_all(self.documents, codec_options)
+        if legacy_response:
+            return bson.decode_all(self.documents, codec_options)
+        return bson._decode_all_selective(
+            self.documents, codec_options, user_fields)
 
     def command_response(self):
         """Unpack a command response."""
@@ -1451,7 +1455,8 @@ class _OpMsg(object):
         raise NotImplementedError
 
     def unpack_response(self, cursor_id=None,
-                        codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
+                        codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                        user_fields=None, legacy_response=False):
         """Unpack a OP_MSG command response.
 
         :Parameters:
@@ -1459,7 +1464,10 @@ class _OpMsg(object):
           - `codec_options` (optional): an instance of
             :class:`~bson.codec_options.CodecOptions`
         """
-        return bson.decode_all(self.payload_document, codec_options)
+        # If _OpMsg is in-use, this cannot be a legacy response.
+        assert not legacy_response
+        return bson._decode_all_selective(
+            self.payload_document, codec_options, user_fields)
 
     def command_response(self):
         """Unpack a command response."""

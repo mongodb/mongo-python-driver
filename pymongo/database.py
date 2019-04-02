@@ -222,6 +222,46 @@ class Database(common.BaseObject):
         return [manipulator.__class__.__name__
                 for manipulator in self.__outgoing_copying_manipulators]
 
+    def with_options(self, codec_options=None, read_preference=None,
+                     write_concern=None, read_concern=None):
+        """Get a clone of this database changing the specified settings.
+
+          >>> db1.read_preference
+          Primary()
+          >>> from pymongo import ReadPreference
+          >>> db2 = db1.with_options(read_preference=ReadPreference.SECONDARY)
+          >>> db1.read_preference
+          Primary()
+          >>> db2.read_preference
+          Secondary(tag_sets=None)
+
+        :Parameters:
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`Collection`
+            is used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`Collection` is used. See :mod:`~pymongo.read_preferences`
+            for options.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`Collection`
+            is used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) the :attr:`read_concern` of this :class:`Collection`
+            is used.
+
+        .. versionadded:: 3.8
+        """
+        return Database(self.client,
+                        self.__name,
+                        codec_options or self.codec_options,
+                        read_preference or self.read_preference,
+                        write_concern or self.write_concern,
+                        read_concern or self.read_concern)
+
     def __eq__(self, other):
         if isinstance(other, Database):
             return (self.__client == other.client and

@@ -58,7 +58,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             collation=None,
             compression_ctx=None,
             use_op_msg=False,
-            unacknowledged=False):
+            unacknowledged=False,
+            user_fields=None):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -139,7 +140,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             response_doc = {"ok": 1}
         else:
             reply = receive_message(sock, request_id)
-            unpacked_docs = reply.unpack_response(codec_options=codec_options)
+            unpacked_docs = reply.unpack_response(
+                codec_options=codec_options, user_fields=user_fields)
 
             response_doc = unpacked_docs[0]
             if client:
