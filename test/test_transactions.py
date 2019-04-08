@@ -537,6 +537,12 @@ def create_test(scenario_def, test):
                 read_concern=ReadConcern('local'))
             self.assertEqual(list(primary_coll.find()), expected_c['data'])
 
+    if 'minServerVersion' in scenario_def:
+        min_ver = tuple(
+            int(elt) for
+            elt in scenario_def['minServerVersion'].split('.'))
+        return client_context.require_version_min(*min_ver)(run_scenario)
+
     return run_scenario
 
 
