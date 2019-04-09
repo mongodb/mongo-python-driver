@@ -18,9 +18,13 @@ import contextlib
 
 from datetime import datetime
 
+from pymongo.errors import NotMasterError, OperationFailure
+from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
+
+_CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': 1, 'nextBatch': 1}}
 
 
 class Server(object):
@@ -65,11 +69,12 @@ class Server(object):
 
     def send_message_with_response(
             self,
+            sock_info,
             operation,
             set_slave_okay,
-            all_credentials,
             listeners,
-            exhaust=False):
+            exhaust,
+            unpack_res):
         """Send a message to MongoDB and return a Response object.
 
         Can raise ConnectionFailure.
@@ -82,56 +87,103 @@ class Server(object):
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
         """
-        with self.get_socket(all_credentials, exhaust) as sock_info:
+        duration = None
+        publish = listeners.enabled_for_commands
+        if publish:
+            start = datetime.now()
 
-            duration = None
-            publish = listeners.enabled_for_commands
-            if publish:
-                start = datetime.now()
+        send_message = not operation.exhaust_mgr
 
-            use_find_cmd = operation.use_command(sock_info, exhaust)
+        if send_message:
+            use_cmd = operation.use_command(sock_info, exhaust)
             message = operation.get_message(
-                set_slave_okay, sock_info, use_find_cmd)
+                set_slave_okay, sock_info, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
+        else:
+            use_cmd = False
+            request_id = 0
 
-            if publish:
-                encoding_duration = datetime.now() - start
-                cmd, dbn = operation.as_command(sock_info)
-                listeners.publish_command_start(
-                    cmd, dbn, request_id, sock_info.address)
-                start = datetime.now()
+        if publish:
+            cmd, dbn = operation.as_command(sock_info)
+            listeners.publish_command_start(
+                cmd, dbn, request_id, sock_info.address)
+            start = datetime.now()
 
-            try:
+        try:
+            if send_message:
                 sock_info.send_message(data, max_doc_size)
                 reply = sock_info.receive_message(request_id)
-            except Exception as exc:
-                if publish:
-                    duration = (datetime.now() - start) + encoding_duration
-                    failure = _convert_exception(exc)
-                    listeners.publish_command_failure(
-                        duration, failure, next(iter(cmd)), request_id,
-                        sock_info.address)
-                raise
-
-            if publish:
-                duration = (datetime.now() - start) + encoding_duration
-
-            if exhaust:
-                return ExhaustResponse(
-                    data=reply,
-                    address=self._description.address,
-                    socket_info=sock_info,
-                    pool=self._pool,
-                    duration=duration,
-                    request_id=request_id,
-                    from_command=use_find_cmd)
             else:
-                return Response(
-                    data=reply,
-                    address=self._description.address,
-                    duration=duration,
-                    request_id=request_id,
-                    from_command=use_find_cmd)
+                reply = sock_info.receive_message(None)
+
+            # Unpack and check for command errors.
+            if use_cmd:
+                user_fields = _CURSOR_DOC_FIELDS
+                legacy_response = False
+            else:
+                user_fields = None
+                legacy_response = True
+            docs = unpack_res(reply, operation.cursor_id,
+                              operation.codec_options,
+                              legacy_response=legacy_response,
+                              user_fields=user_fields)
+            if use_cmd:
+                first = docs[0]
+                operation.client._process_response(
+                    first, operation.session)
+                _check_command_response(first)
+        except Exception as exc:
+            if publish:
+                duration = datetime.now() - start
+                if isinstance(exc, (NotMasterError, OperationFailure)):
+                    failure = exc.details
+                else:
+                    failure = _convert_exception(exc)
+                listeners.publish_command_failure(
+                    duration, failure, operation.name,
+                    request_id, sock_info.address)
+            raise
+
+        if publish:
+            duration = datetime.now() - start
+            # Must publish in find / getMore / explain command response
+            # format.
+            if use_cmd:
+                res = docs[0]
+            elif operation.name == "explain":
+                res = docs[0] if docs else {}
+            else:
+                res = {"cursor": {"id": reply.cursor_id,
+                                  "ns": operation.namespace()},
+                       "ok": 1}
+                if operation.name == "find":
+                    res["cursor"]["firstBatch"] = docs
+                else:
+                    res["cursor"]["nextBatch"] = docs
+            listeners.publish_command_success(
+                duration, res, operation.name, request_id,
+                sock_info.address)
+
+        if exhaust:
+            response = ExhaustResponse(
+                data=reply,
+                address=self._description.address,
+                socket_info=sock_info,
+                pool=self._pool,
+                duration=duration,
+                request_id=request_id,
+                from_command=use_cmd,
+                docs=docs)
+        else:
+            response = Response(
+                data=reply,
+                address=self._description.address,
+                duration=duration,
+                request_id=request_id,
+                from_command=use_cmd,
+                docs=docs)
+
+        return response
 
     def get_socket(self, all_credentials, checkout=False):
         return self.pool.get_socket(all_credentials, checkout)

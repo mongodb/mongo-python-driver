@@ -15,7 +15,6 @@
 """Cursor class to iterate over Mongo query results."""
 
 import copy
-import datetime
 import warnings
 
 from collections import deque
@@ -29,13 +28,11 @@ from bson.son import SON
 from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.collation import validate_collation_or_none
-from pymongo.errors import (AutoReconnect,
-                            ConnectionFailure,
+from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
-from pymongo.message import (_convert_exception,
-                             _CursorAddress,
+from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore,
                              _Query,
@@ -50,7 +47,6 @@ _QUERY_OPTIONS = {
     "await_data": 32,
     "exhaust": 64,
     "partial": 128}
-_CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': 1, 'nextBatch': 1}}
 
 
 class CursorType(object):
@@ -941,83 +937,15 @@ class Cursor(object):
         Can raise ConnectionFailure.
         """
         client = self.__collection.database.client
-        listeners = client._event_listeners
-        publish = listeners.enabled_for_commands
-        from_command = False
-        start = datetime.datetime.now()
-
-        def duration(): return datetime.datetime.now() - start
-
-        if operation:
-            try:
-                response = client._send_message_with_response(
-                    operation, exhaust=self.__exhaust, address=self.__address)
-                self.__address = response.address
-                if self.__exhaust:
-                    # 'response' is an ExhaustResponse.
-                    self.__exhaust_mgr = _SocketManager(response.socket_info,
-                                                        response.pool)
-
-                cmd_name = operation.name
-                reply = response.data
-                rqst_id = response.request_id
-                from_command = response.from_command
-            except AutoReconnect:
-                # Don't try to send kill cursors on another socket
-                # or to another server. It can cause a _pinValue
-                # assertion on some server releases if we get here
-                # due to a socket timeout.
-                self.__killed = True
-                self.__die()
-                raise
-        else:
-            # Exhaust cursor - no getMore message.
-            rqst_id = 0
-            cmd_name = 'getMore'
-            if publish:
-                # Fake a getMore command.
-                cmd = SON([('getMore', self.__id),
-                           ('collection', self.__collection.name)])
-                if self.__batch_size:
-                    cmd['batchSize'] = self.__batch_size
-                if self.__max_time_ms:
-                    cmd['maxTimeMS'] = self.__max_time_ms
-                listeners.publish_command_start(
-                    cmd, self.__collection.database.name, 0, self.__address)
-            try:
-                reply = self.__exhaust_mgr.sock.receive_message(None)
-            except Exception as exc:
-                if publish:
-                    listeners.publish_command_failure(
-                        duration(), _convert_exception(exc), cmd_name, rqst_id,
-                        self.__address)
-                if isinstance(exc, ConnectionFailure):
-                    self.__die()
-                raise
-
         try:
-            with client._reset_on_error(self.__address, self.__session):
-                user_fields = None
-                legacy_response = True
-                if from_command:
-                    user_fields = _CURSOR_DOC_FIELDS
-                    legacy_response = False
-                docs = self._unpack_response(
-                    reply, self.__id, self.__collection.codec_options,
-                    legacy_response=legacy_response, user_fields=user_fields)
-                if from_command:
-                    first = docs[0]
-                    client._process_response(first, self.__session)
-                    helpers._check_command_response(first)
-        except OperationFailure as exc:
+            response = client._send_message_with_response(
+                operation, exhaust=self.__exhaust, address=self.__address,
+                unpack_res=self._unpack_response)
+        except OperationFailure:
             self.__killed = True
 
             # Make sure exhaust socket is returned immediately, if necessary.
             self.__die()
-
-            if publish:
-                listeners.publish_command_failure(
-                    duration(), exc.details, cmd_name, rqst_id, self.__address)
 
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
@@ -1026,7 +954,7 @@ class Cursor(object):
             if self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]:
                 return
             raise
-        except NotMasterError as exc:
+        except NotMasterError:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
@@ -1034,36 +962,29 @@ class Cursor(object):
             # Make sure exhaust socket is returned immediately, if necessary.
             self.__die()
 
-            if publish:
-                listeners.publish_command_failure(
-                    duration(), exc.details, cmd_name, rqst_id, self.__address)
-
             raise
-        except Exception as exc:
-            if publish:
-                listeners.publish_command_failure(
-                    duration(), _convert_exception(exc), cmd_name, rqst_id,
-                    self.__address)
+        except ConnectionFailure:
+            # Don't try to send kill cursors on another socket
+            # or to another server. It can cause a _pinValue
+            # assertion on some server releases if we get here
+            # due to a socket timeout.
+            self.__killed = True
+            self.__die()
+            raise
+        except Exception:
+            # Close the cursor
+            self.__die()
             raise
 
-        if publish:
-            # Must publish in find / getMore / explain command response format.
-            if from_command:
-                res = docs[0]
-            elif cmd_name == "explain":
-                res = docs[0] if docs else {}
-            else:
-                res = {"cursor": {"id": reply.cursor_id,
-                                  "ns": self.__collection.full_name},
-                       "ok": 1}
-                if cmd_name == "find":
-                    res["cursor"]["firstBatch"] = docs
-                else:
-                    res["cursor"]["nextBatch"] = docs
-            listeners.publish_command_success(
-                duration(), res, cmd_name, rqst_id, self.__address)
+        self.__address = response.address
+        if self.__exhaust and not self.__exhaust_mgr:
+            # 'response' is an ExhaustResponse.
+            self.__exhaust_mgr = _SocketManager(response.socket_info,
+                                                response.pool)
 
-        if from_command:
+        cmd_name = operation.name
+        docs = response.docs
+        if response.from_command:
             if cmd_name != "explain":
                 cursor = docs[0]['cursor']
                 self.__id = cursor['id']
@@ -1078,9 +999,9 @@ class Cursor(object):
                 self.__data = deque(docs)
                 self.__retrieved += len(docs)
         else:
-            self.__id = reply.cursor_id
+            self.__id = response.data.cursor_id
             self.__data = deque(docs)
-            self.__retrieved += reply.number_returned
+            self.__retrieved += response.data.number_returned
 
         if self.__id == 0:
             self.__killed = True
@@ -1147,19 +1068,17 @@ class Cursor(object):
                 limit = self.__batch_size
 
             # Exhaust cursors don't send getMore messages.
-            if self.__exhaust:
-                self.__send_message(None)
-            else:
-                g = self._getmore_class(self.__collection.database.name,
-                                        self.__collection.name,
-                                        limit,
-                                        self.__id,
-                                        self.__codec_options,
-                                        self._read_preference(),
-                                        self.__session,
-                                        self.__collection.database.client,
-                                        self.__max_await_time_ms)
-                self.__send_message(g)
+            g = self._getmore_class(self.__collection.database.name,
+                                    self.__collection.name,
+                                    limit,
+                                    self.__id,
+                                    self.__codec_options,
+                                    self._read_preference(),
+                                    self.__session,
+                                    self.__collection.database.client,
+                                    self.__max_await_time_ms,
+                                    self.__exhaust_mgr)
+            self.__send_message(g)
 
         return len(self.__data)
 

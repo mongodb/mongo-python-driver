@@ -17,9 +17,10 @@
 
 class Response(object):
     __slots__ = ('_data', '_address', '_request_id', '_duration',
-                 '_from_command')
+                 '_from_command', '_docs')
 
-    def __init__(self, data, address, request_id, duration, from_command):
+    def __init__(self, data, address, request_id, duration, from_command,
+                 docs):
         """Represent a response from the server.
 
         :Parameters:
@@ -34,6 +35,7 @@ class Response(object):
         self._request_id = request_id
         self._duration = duration
         self._from_command = from_command
+        self._docs = docs
 
     @property
     def data(self):
@@ -60,12 +62,16 @@ class Response(object):
         """If the response is a result from a db command."""
         return self._from_command
 
+    @property
+    def docs(self):
+        """The decoded document(s)."""
+        return self._docs
 
 class ExhaustResponse(Response):
     __slots__ = ('_socket_info', '_pool')
 
     def __init__(self, data, address, socket_info, pool, request_id, duration,
-                 from_command):
+                 from_command, docs):
         """Represent a response to an exhaust cursor's initial query.
 
         :Parameters:
@@ -81,7 +87,7 @@ class ExhaustResponse(Response):
                                               address,
                                               request_id,
                                               duration,
-                                              from_command)
+                                              from_command, docs)
         self._socket_info = socket_info
         self._pool = pool
 

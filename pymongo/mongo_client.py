@@ -1130,9 +1130,10 @@ class MongoClient(common.BaseObject):
         return self._topology
 
     @contextlib.contextmanager
-    def _get_socket(self, server, session):
+    def _get_socket(self, server, session, exhaust=False):
         with self._reset_on_error(server.description.address, session):
-            with server.get_socket(self.__all_credentials) as sock_info:
+            with server.get_socket(self.__all_credentials,
+                                   checkout=exhaust) as sock_info:
                 yield sock_info
 
     def _select_server(self, server_selector, session, address=None):
@@ -1191,7 +1192,7 @@ class MongoClient(common.BaseObject):
             yield sock_info, slave_ok
 
     def _send_message_with_response(self, operation, exhaust=False,
-                                    address=None):
+                                    address=None, unpack_res=None):
         """Send a message to MongoDB and return a Response.
 
         :Parameters:
@@ -1204,23 +1205,35 @@ class MongoClient(common.BaseObject):
         """
         server = self._select_server(
             operation.read_preference, operation.session, address=address)
-        topology = self._get_topology()
+
+        if operation.exhaust_mgr:
+            with self._reset_on_error(server.description.address,
+                                      operation.session):
+                return server.send_message_with_response(
+                    operation.exhaust_mgr.sock,
+                    operation,
+                    True,
+                    self._event_listeners,
+                    exhaust,
+                    unpack_res)
 
         # If this is a direct connection to a mongod, *always* set the slaveOk
         # bit. See bullet point 2 in server-selection.rst#topology-type-single.
+        topology = self._get_topology()
         set_slave_ok = (
             topology.description.topology_type == TOPOLOGY_TYPE.Single
             and server.description.server_type != SERVER_TYPE.Mongos) or (
                 operation.read_preference != ReadPreference.PRIMARY)
 
-        with self._reset_on_error(server.description.address,
-                                  operation.session):
+        with self._get_socket(server, operation.session,
+                              exhaust=exhaust) as sock_info:
             return server.send_message_with_response(
+                sock_info,
                 operation,
                 set_slave_ok,
-                self.__all_credentials,
                 self._event_listeners,
-                exhaust)
+                exhaust,
+                unpack_res)
 
     @contextlib.contextmanager
     def _reset_on_error(self, server_address, session):

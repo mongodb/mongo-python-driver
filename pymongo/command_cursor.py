@@ -20,7 +20,7 @@ from collections import deque
 
 from bson.py3compat import integer_types
 from pymongo import helpers
-from pymongo.errors import (AutoReconnect,
+from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
@@ -127,86 +127,41 @@ class CommandCursor(object):
             self.__end_session(True)
 
         client = self.__collection.database.client
-        listeners = client._event_listeners
-        publish = listeners.enabled_for_commands
-        start = datetime.datetime.now()
-
-        def duration(): return datetime.datetime.now() - start
-
         try:
             response = client._send_message_with_response(
-                operation, address=self.__address)
-        except AutoReconnect:
+                operation, address=self.__address,
+                unpack_res=self._unpack_response)
+        except OperationFailure:
+            kill()
+            raise
+        except NotMasterError:
+            # Don't send kill cursors to another server after a "not master"
+            # error. It's completely pointless.
+            kill()
+            raise
+        except ConnectionFailure:
             # Don't try to send kill cursors on another socket
             # or to another server. It can cause a _pinValue
             # assertion on some server releases if we get here
             # due to a socket timeout.
             kill()
             raise
+        except Exception:
+            # Close the cursor
+            self.__die()
+            raise
 
-        rqst_id = response.request_id
         from_command = response.from_command
         reply = response.data
-
-        try:
-            with client._reset_on_error(self.__address, self.__session):
-                user_fields = None
-                legacy_response = True
-                if from_command:
-                    user_fields = {'cursor': {'nextBatch': 1}}
-                    legacy_response = False
-                docs = self._unpack_response(
-                    reply, self.__id, self.__collection.codec_options,
-                    legacy_response=legacy_response, user_fields=user_fields)
-                if from_command:
-                    first = docs[0]
-                    client._process_response(first, self.__session)
-                    helpers._check_command_response(first)
-        except OperationFailure as exc:
-            kill()
-
-            if publish:
-                listeners.publish_command_failure(
-                    duration(), exc.details, "getMore", rqst_id, self.__address)
-
-            raise
-        except NotMasterError as exc:
-            # Don't send kill cursors to another server after a "not master"
-            # error. It's completely pointless.
-            kill()
-
-            if publish:
-                listeners.publish_command_failure(
-                    duration(), exc.details, "getMore", rqst_id, self.__address)
-
-            raise
-        except Exception as exc:
-            if publish:
-                listeners.publish_command_failure(
-                    duration(), _convert_exception(exc), "getMore", rqst_id,
-                    self.__address)
-            raise
+        docs = response.docs
 
         if from_command:
             cursor = docs[0]['cursor']
             documents = cursor['nextBatch']
             self.__id = cursor['id']
-            if publish:
-                listeners.publish_command_success(
-                    duration(), docs[0], "getMore", rqst_id,
-                    self.__address)
         else:
             documents = docs
             self.__id = reply.cursor_id
-
-            if publish:
-                # Must publish in getMore command response format.
-                res = {"cursor": {"id": self.__id,
-                                  "ns": self.__collection.full_name,
-                                  "nextBatch": documents},
-                       "ok": 1}
-                listeners.publish_command_success(
-                    duration(), res, "getMore", rqst_id, self.__address)
 
         if self.__id == 0:
             kill()
@@ -239,7 +194,8 @@ class CommandCursor(object):
                                     read_pref,
                                     self.__session,
                                     self.__collection.database.client,
-                                    self.__max_await_time_ms))
+                                    self.__max_await_time_ms,
+                                    False))
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
             self.__end_session(True)

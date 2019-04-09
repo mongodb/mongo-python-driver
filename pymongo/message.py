@@ -231,6 +231,10 @@ class _Query(object):
                  'batch_size', 'name', 'read_concern', 'collation',
                  'session', 'client', '_as_command')
 
+    # For compatibility with the _GetMore class.
+    exhaust_mgr = None
+    cursor_id = None
+
     def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
                  batch_size, read_concern, collation, session, client):
@@ -250,6 +254,9 @@ class _Query(object):
         self.client = client
         self.name = 'find'
         self._as_command = None
+
+    def namespace(self):
+        return _UJOIN % (self.db, self.coll)
 
     def use_command(self, sock_info, exhaust):
         use_find_cmd = False
@@ -309,7 +316,7 @@ class _Query(object):
         else:
             flags = self.flags
 
-        ns = _UJOIN % (self.db, self.coll)
+        ns = self.namespace()
         spec = self.spec
 
         if use_cmd:
@@ -347,12 +354,13 @@ class _GetMore(object):
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_await_time_ms',
                  'codec_options', 'read_preference', 'session', 'client',
-                 '_as_command')
+                 'exhaust_mgr', '_as_command')
 
     name = 'getMore'
 
     def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
-                 read_preference, session, client, max_await_time_ms=None):
+                 read_preference, session, client, max_await_time_ms,
+                 exhaust_mgr):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
@@ -362,7 +370,11 @@ class _GetMore(object):
         self.session = session
         self.client = client
         self.max_await_time_ms = max_await_time_ms
+        self.exhaust_mgr = exhaust_mgr
         self._as_command = None
+
+    def namespace(self):
+        return _UJOIN % (self.db, self.coll)
 
     def use_command(self, sock_info, exhaust):
         sock_info.validate_session(self.client, self.session)
@@ -387,7 +399,7 @@ class _GetMore(object):
     def get_message(self, dummy0, sock_info, use_cmd=False):
         """Get a getmore message."""
 
-        ns = _UJOIN % (self.db, self.coll)
+        ns = self.namespace()
         ctx = sock_info.compression_context
 
         if use_cmd:

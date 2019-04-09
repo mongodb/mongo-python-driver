@@ -1228,7 +1228,7 @@ class TestClient(IntegrationTest):
                 operation=message._GetMore('pymongo_test', 'collection',
                                            101, 1234, client.codec_options,
                                            ReadPreference.PRIMARY,
-                                           None, client),
+                                           None, client, None, None),
                 address=('not-a-member', 27017))
 
     def test_heartbeat_frequency_ms(self):
