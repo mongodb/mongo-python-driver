@@ -37,7 +37,7 @@ from pymongo import auth, message
 from pymongo.common import _UUID_REPRESENTATIONS
 from pymongo.command_cursor import CommandCursor
 from pymongo.compression_support import _HAVE_SNAPPY
-from pymongo.cursor import CursorType
+from pymongo.cursor import Cursor, CursorType
 from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -1161,7 +1161,7 @@ class TestClient(IntegrationTest):
     def test_exhaust_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = rs_or_single_client(maxPoolSize=1)
+        client = rs_or_single_client(maxPoolSize=1, retryReads=False)
         collection = client.pymongo_test.test
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -1188,7 +1188,8 @@ class TestClient(IntegrationTest):
 
         # Get a client with one socket so we detect if it's leaked.
         c = connected(rs_or_single_client(maxPoolSize=1,
-                                          waitQueueTimeoutMS=1))
+                                          waitQueueTimeoutMS=1,
+                                          retryReads=False))
 
         # Simulate an authenticate() call on a different socket.
         credentials = auth._build_credentials_tuple(
@@ -1220,15 +1221,17 @@ class TestClient(IntegrationTest):
     def test_stale_getmore(self):
         # A cursor is created, but its member goes down and is removed from
         # the topology before the getMore message is sent. Test that
-        # MongoClient._send_message_with_response handles the error.
+        # MongoClient._run_operation_with_response handles the error.
         with self.assertRaises(AutoReconnect):
             client = rs_client(connect=False,
                                serverSelectionTimeoutMS=100)
-            client._send_message_with_response(
+            client._run_operation_with_response(
                 operation=message._GetMore('pymongo_test', 'collection',
                                            101, 1234, client.codec_options,
                                            ReadPreference.PRIMARY,
                                            None, client, None, None),
+                unpack_res=Cursor(
+                    client.pymongo_test.collection)._unpack_response,
                 address=('not-a-member', 27017))
 
     def test_heartbeat_frequency_ms(self):
@@ -1419,7 +1422,8 @@ class TestExhaustCursor(IntegrationTest):
     def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
-        client = connected(rs_or_single_client(maxPoolSize=1))
+        client = connected(rs_or_single_client(maxPoolSize=1,
+                                               retryReads=False))
         collection = client.pymongo_test.test
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -1576,7 +1580,8 @@ class TestMongoClientFailover(MockClientTest):
             members=['a:1', 'b:2', 'c:3'],
             mongoses=[],
             host='b:2',  # Pass a secondary.
-            replicaSet='rs')
+            replicaSet='rs',
+            retryReads=False)
 
         wait_until(lambda: len(c.nodes) == 3, 'connect')
 
@@ -1604,7 +1609,8 @@ class TestMongoClientFailover(MockClientTest):
                 mongoses=[],
                 host='a:1',
                 replicaSet='rs',
-                connect=False)
+                connect=False,
+                retryReads=False)
 
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range('a:1', 2, 6)

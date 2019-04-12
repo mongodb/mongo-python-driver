@@ -188,12 +188,6 @@ class Collection(common.BaseObject):
         return self.__database.client._socket_for_reads(
             self._read_preference_for(session), session)
 
-    def _socket_for_primary_reads(self, session):
-        read_pref = ((session and session._txn_read_preference())
-                     or ReadPreference.PRIMARY)
-        return self.__database.client._socket_for_reads(
-            read_pref, session), read_pref
-
     def _socket_for_writes(self, session):
         return self.__database.client._socket_for_writes(session)
 
@@ -1572,7 +1566,7 @@ class Collection(common.BaseObject):
 
     def _count(self, cmd, collation=None, session=None):
         """Internal count helper."""
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
+        def _cmd(session, server, sock_info, slave_ok):
             res = self._command(
                 sock_info,
                 cmd,
@@ -1582,9 +1576,12 @@ class Collection(common.BaseObject):
                 read_concern=self.read_concern,
                 collation=collation,
                 session=session)
-        if res.get("errmsg", "") == "ns missing":
-            return 0
-        return int(res["n"])
+            if res.get("errmsg", "") == "ns missing":
+                return 0
+            return int(res["n"])
+
+        return self.__database.client._retryable_read(
+            _cmd, self._read_preference_for(session), session)
 
     def _aggregate_one_result(
             self, sock_info, slave_ok, cmd, collation=None, session=None):
@@ -1693,12 +1690,16 @@ class Collection(common.BaseObject):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
+
+        def _cmd(session, server, sock_info, slave_ok):
             result = self._aggregate_one_result(
                 sock_info, slave_ok, cmd, collation, session)
-        if not result:
-            return 0
-        return result['n']
+            if not result:
+                return 0
+            return result['n']
+
+        return self.__database.client._retryable_read(
+            _cmd, self._read_preference_for(session), session)
 
     def count(self, filter=None, session=None, **kwargs):
         """**DEPRECATED** - Get the number of documents in this collection.
@@ -2149,8 +2150,10 @@ class Collection(common.BaseObject):
         codec_options = CodecOptions(SON)
         coll = self.with_options(codec_options=codec_options,
                                  read_preference=ReadPreference.PRIMARY)
-        sock_ctx, read_pref = self._socket_for_primary_reads(session)
-        with sock_ctx as (sock_info, slave_ok):
+        read_pref = ((session and session._txn_read_preference())
+                     or ReadPreference.PRIMARY)
+
+        def _cmd(session, server, sock_info, slave_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:
                 with self.__database.client._tmp_session(session, False) as s:
@@ -2178,6 +2181,9 @@ class Collection(common.BaseObject):
                 # Note that a collection can only have 64 indexes, so there
                 # will never be a getMore call.
                 return CommandCursor(coll, cursor, sock_info.address)
+
+        return self.__database.client._retryable_read(
+            _cmd, read_pref, session)
 
     def index_information(self, session=None):
         """Get information on this collection's indexes.
@@ -2275,10 +2281,11 @@ class Collection(common.BaseObject):
                 "useCursor", kwargs.pop("useCursor"))
         batch_size = common.validate_non_negative_integer_or_none(
             "batchSize", kwargs.pop("batchSize", None))
+
+        dollar_out = pipeline and '$out' in pipeline[-1]
         # If the server does not support the "cursor" option we
         # ignore useCursor and batchSize.
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
-            dollar_out = pipeline and '$out' in pipeline[-1]
+        def _cmd(session, server, sock_info, slave_ok):
             if use_cursor:
                 if "cursor" not in kwargs:
                     kwargs["cursor"] = {}
@@ -2335,6 +2342,10 @@ class Collection(common.BaseObject):
                 batch_size=batch_size or 0,
                 max_await_time_ms=max_await_time_ms,
                 session=session, explicit_session=explicit_session)
+
+        return self.__database.client._retryable_read(
+            _cmd, self._read_preference_for(session), session,
+            retryable=not dollar_out)
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
@@ -2681,12 +2692,53 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
-            return self._command(sock_info, cmd, slave_ok,
-                                 read_concern=self.read_concern,
-                                 collation=collation,
-                                 session=session,
-                                 user_fields={"values": 1})["values"]
+        def _cmd(session, server, sock_info, slave_ok):
+            return self._command(
+                sock_info, cmd, slave_ok, read_concern=self.read_concern,
+                collation=collation, session=session,
+                user_fields={"values": 1})["values"]
+
+        return self.__database.client._retryable_read(
+            _cmd, self._read_preference_for(session), session)
+
+    def _map_reduce(self, map, reduce, out, session, read_pref, **kwargs):
+        """Internal mapReduce helper."""
+        cmd = SON([("mapReduce", self.__name),
+                   ("map", map),
+                   ("reduce", reduce),
+                   ("out", out)])
+        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        cmd.update(kwargs)
+
+        inline = 'inline' in out
+
+        if inline:
+            user_fields = {'results': 1}
+        else:
+            user_fields = None
+
+        read_pref = ((session and session._txn_read_preference())
+                     or read_pref)
+
+        with self.__database.client._socket_for_reads(read_pref, session) as (
+                sock_info, slave_ok):
+            if (sock_info.max_wire_version >= 4 and
+                    ('readConcern' not in cmd) and
+                    inline):
+                read_concern = self.read_concern
+            else:
+                read_concern = None
+            if 'writeConcern' not in cmd and not inline:
+                write_concern = self._write_concern_for(session)
+            else:
+                write_concern = None
+
+            return self._command(
+                sock_info, cmd, slave_ok, read_pref,
+                read_concern=read_concern,
+                write_concern=write_concern,
+                collation=collation, session=session,
+                user_fields=user_fields)
 
     def map_reduce(self, map, reduce, out, full_response=False, session=None,
                    **kwargs):
@@ -2747,36 +2799,8 @@ class Collection(common.BaseObject):
             raise TypeError("'out' must be an instance of "
                             "%s or a mapping" % (string_type.__name__,))
 
-        cmd = SON([("mapreduce", self.__name),
-                   ("map", map),
-                   ("reduce", reduce),
-                   ("out", out)])
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        cmd.update(kwargs)
-
-        inline = 'inline' in cmd['out']
-        sock_ctx, read_pref = self._socket_for_primary_reads(session)
-        with sock_ctx as (sock_info, slave_ok):
-            if (sock_info.max_wire_version >= 4 and 'readConcern' not in cmd and
-                    inline):
-                read_concern = self.read_concern
-            else:
-                read_concern = None
-            if 'writeConcern' not in cmd and not inline:
-                write_concern = self._write_concern_for(session)
-            else:
-                write_concern = None
-            if inline:
-                user_fields = {'results': 1}
-            else:
-                user_fields = None
-
-            response = self._command(
-                sock_info, cmd, slave_ok, read_pref,
-                read_concern=read_concern,
-                write_concern=write_concern,
-                collation=collation, session=session,
-                user_fields=user_fields)
+        response = self._map_reduce(map, reduce, out, session,
+                                    ReadPreference.PRIMARY, **kwargs)
 
         if full_response or not response.get('result'):
             return response
@@ -2822,23 +2846,8 @@ class Collection(common.BaseObject):
            Added the `collation` option.
 
         """
-        cmd = SON([("mapreduce", self.__name),
-                   ("map", map),
-                   ("reduce", reduce),
-                   ("out", {"inline": 1})])
-        user_fields = {'results': 1}
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        cmd.update(kwargs)
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
-            if sock_info.max_wire_version >= 4 and 'readConcern' not in cmd:
-                res = self._command(sock_info, cmd, slave_ok,
-                                    read_concern=self.read_concern,
-                                    collation=collation, session=session,
-                                    user_fields=user_fields)
-            else:
-                res = self._command(sock_info, cmd, slave_ok,
-                                    collation=collation, session=session,
-                                    user_fields=user_fields)
+        res = self._map_reduce(map, reduce, {"inline": 1}, session,
+                               self.read_preference, **kwargs)
 
         if full_response:
             return res

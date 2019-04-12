@@ -175,6 +175,10 @@ class SpecRunner(IntegrationTest):
         name = camel_to_snake(operation['name'])
         if name == 'run_command':
             name = 'command'
+        elif name == 'download_by_name':
+            name = 'open_download_stream_by_name'
+        elif name == 'download':
+            name = 'open_download_stream'
 
         def parse_options(opts):
             if 'readPreference' in opts:
@@ -197,14 +201,21 @@ class SpecRunner(IntegrationTest):
                 **dict(parse_options(operation['collectionOptions'])))
 
         object_name = operation['object']
-        objects = {
-            'client': database.client,
-            'database': database,
-            'collection': collection,
-            'testRunner': self
-        }
-        objects.update(sessions)
-        obj = objects[object_name]
+        if object_name == 'gridfsbucket':
+            # Only create the GridFSBucket when we need it (for the gridfs
+            # retryable reads tests).
+            obj = GridFSBucket(
+                database, bucket_name=collection.name,
+                disable_md5=True)
+        else:
+            objects = {
+                'client': database.client,
+                'database': database,
+                'collection': collection,
+                'testRunner': self
+            }
+            objects.update(sessions)
+            obj = objects[object_name]
 
         # Combine arguments with options and handle special cases.
         arguments = operation.get('arguments', {})
@@ -244,6 +255,8 @@ class SpecRunner(IntegrationTest):
                 ordered_command = SON([(operation['command_name'], 1)])
                 ordered_command.update(arguments['command'])
                 arguments['command'] = ordered_command
+            elif name == 'open_download_stream' and arg_name == 'id':
+                arguments['file_id'] = arguments.pop(arg_name)
             elif name == 'with_transaction' and arg_name == 'callback':
                 callback_ops = arguments[arg_name]['operations']
                 arguments['callback'] = lambda _: self.run_operations(
@@ -261,6 +274,11 @@ class SpecRunner(IntegrationTest):
                     arguments["pipeline"][-1]["$out"],
                     read_preference=ReadPreference.PRIMARY)
                 return out.find()
+        if name == "map_reduce":
+            if isinstance(result, dict) and 'results' in result:
+                return result['results']
+        if 'download' in name:
+            result = Binary(result.read())
 
         if isinstance(result, Cursor) or isinstance(result, CommandCursor):
             return list(result)
@@ -271,7 +289,7 @@ class SpecRunner(IntegrationTest):
                        in_with_transaction=False):
         for op in ops:
             expected_result = op.get('result')
-            if expect_error(expected_result):
+            if expect_error(op):
                 with self.assertRaises(PyMongoError,
                                        msg=op['name']) as context:
                     self.run_operation(sessions, collection, op.copy())
@@ -391,13 +409,23 @@ class SpecRunner(IntegrationTest):
         database_name = scenario_def['database_name']
         write_concern_db = client_context.client.get_database(
             database_name, write_concern=WriteConcern(w='majority'))
-        collection_name = scenario_def['collection_name']
-        write_concern_coll = write_concern_db[collection_name]
-        write_concern_coll.drop()
-        write_concern_db.create_collection(collection_name)
-        if scenario_def['data']:
-            # Load data.
-            write_concern_coll.insert_many(scenario_def['data'])
+        if 'bucket_name' in scenario_def:
+            # Create a bucket for the retryable reads GridFS tests.
+            collection_name = scenario_def['bucket_name']
+            client_context.client.drop_database(database_name)
+            if scenario_def['data']:
+                data = scenario_def['data']
+                # Load data.
+                write_concern_db['fs.chunks'].insert_many(data['fs.chunks'])
+                write_concern_db['fs.files'].insert_many(data['fs.files'])
+        else:
+            collection_name = scenario_def['collection_name']
+            write_concern_coll = write_concern_db[collection_name]
+            write_concern_coll.drop()
+            write_concern_db.create_collection(collection_name)
+            if scenario_def['data']:
+                # Load data.
+                write_concern_coll.insert_many(scenario_def['data'])
 
         # SPEC-1245 workaround StaleDbVersion on distinct
         for c in self.mongos_clients:
@@ -473,6 +501,13 @@ class SpecRunner(IntegrationTest):
             self.assertEqual(list(primary_coll.find()), expected_c['data'])
 
 
+def expect_any_error(op):
+    if isinstance(op, dict):
+        return op.get('error')
+
+    return False
+
+
 def expect_error_message(expected_result):
     if isinstance(expected_result, dict):
         return expected_result['errorContains']
@@ -501,8 +536,10 @@ def expect_error_labels_omit(expected_result):
     return False
 
 
-def expect_error(expected_result):
-    return (expect_error_message(expected_result)
+def expect_error(op):
+    expected_result = op.get('result')
+    return (expect_any_error(op) or
+            expect_error_message(expected_result)
             or expect_error_code(expected_result)
             or expect_error_labels_contain(expected_result)
             or expect_error_labels_omit(expected_result))

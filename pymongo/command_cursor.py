@@ -128,9 +128,8 @@ class CommandCursor(object):
 
         client = self.__collection.database.client
         try:
-            response = client._send_message_with_response(
-                operation, address=self.__address,
-                unpack_res=self._unpack_response)
+            response = client._run_operation_with_response(
+                operation, self._unpack_response, address=self.__address)
         except OperationFailure:
             kill()
             raise

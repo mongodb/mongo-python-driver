@@ -118,8 +118,8 @@ class ChangeStream(object):
         """
         read_preference = self._target._read_preference_for(session)
         client = self._database.client
-        with client._socket_for_reads(
-                read_preference, session) as (sock_info, slave_ok):
+
+        def _cmd(session, server, sock_info, slave_ok):
             pipeline = self._full_pipeline()
             cmd = SON([("aggregate", self._aggregation_target),
                        ("pipeline", pipeline),
@@ -159,6 +159,8 @@ class ChangeStream(object):
                 batch_size=self._batch_size or 0,
                 max_await_time_ms=self._max_await_time_ms,
                 session=session, explicit_session=explicit_session)
+
+        return client._retryable_read(_cmd, read_preference, session)
 
     def _create_cursor(self):
         with self._database.client._tmp_session(self._session, close=False) as s:

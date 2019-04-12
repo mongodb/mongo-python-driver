@@ -14,8 +14,6 @@
 
 """Communicate with one MongoDB server in a topology."""
 
-import contextlib
-
 from datetime import datetime
 
 from pymongo.errors import NotMasterError, OperationFailure
@@ -67,7 +65,7 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def send_message_with_response(
+    def run_operation_with_response(
             self,
             sock_info,
             operation,
@@ -75,17 +73,19 @@ class Server(object):
             listeners,
             exhaust,
             unpack_res):
-        """Send a message to MongoDB and return a Response object.
+        """Run a _Query or _GetMore operation and return a Response object.
 
-        Can raise ConnectionFailure.
+        This method is used only to run _Query/_GetMore operations from
+        cursors.
+        Can raise ConnectionFailure, OperationFailure, etc.
 
         :Parameters:
           - `operation`: A _Query or _GetMore object.
           - `set_slave_okay`: Pass to operation.get_message.
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `listeners`: Instance of _EventListeners or None.
-          - `exhaust` (optional): If True, the socket used stays checked out.
-            It is returned along with its Pool in the Response.
+          - `exhaust`: If True, then this is an exhaust cursor operation.
+          - `unpack_res`: A callable that decodes the wire protocol response.
         """
         duration = None
         publish = listeners.enabled_for_commands

@@ -657,6 +657,22 @@ class Database(common.BaseObject):
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
+    def _retryable_read_command(self, command, value=1, check=True,
+                allowable_errors=None, read_preference=None,
+                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
+        """Same as command but used for retryable read commands."""
+        if read_preference is None:
+            read_preference = ((session and session._txn_read_preference())
+                               or ReadPreference.PRIMARY)
+
+        def _cmd(session, server, sock_info, slave_ok):
+            return self._command(sock_info, command, slave_ok, value,
+                                 check, allowable_errors, read_preference,
+                                 codec_options, session=session, **kwargs)
+
+        return self.__client._retryable_read(
+            _cmd, read_preference, session)
+
     def _list_collections(self, sock_info, slave_okay, session,
                           read_preference, **kwargs):
         """Internal listCollections helper."""
@@ -718,11 +734,14 @@ class Database(common.BaseObject):
             kwargs['filter'] = filter
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
-        with self.__client._socket_for_reads(
-                read_pref, session) as (sock_info, slave_okay):
+
+        def _cmd(session, server, sock_info, slave_okay):
             return self._list_collections(
                 sock_info, slave_okay, session, read_preference=read_pref,
                 **kwargs)
+
+        return self.__client._retryable_read(
+            _cmd, read_pref, session)
 
     def list_collection_names(self, session=None, filter=None, **kwargs):
         """Get a list of all the collection names in this database.

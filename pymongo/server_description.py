@@ -202,5 +202,10 @@ class ServerDescription(object):
             self._ls_timeout_minutes is not None and
             self._server_type in (SERVER_TYPE.Mongos, SERVER_TYPE.RSPrimary))
 
+    @property
+    def retryable_reads_supported(self):
+        """Checks if this server supports retryable writes."""
+        return self._max_wire_version >= 6
+
     # For unittesting only. Use under no circumstances!
     _host_to_round_trip_time = {}

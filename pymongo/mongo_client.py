@@ -276,6 +276,36 @@ class MongoClient(common.BaseObject):
             pipeline operator and any operation with an unacknowledged write
             concern (e.g. {w: 0})). See
             https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst
+          - `retryReads`: (boolean) Whether supported read operations
+            executed within this MongoClient will be retried once after a
+            network error on MongoDB 3.6+. Defaults to ``True``.
+            The supported read operations are:
+            :meth:`~pymongo.collection.Collection.find`,
+            :meth:`~pymongo.collection.Collection.find_one`,
+            :meth:`~pymongo.collection.Collection.aggregate` without ``$out``,
+            :meth:`~pymongo.collection.Collection.distinct`,
+            :meth:`~pymongo.collection.Collection.count`,
+            :meth:`~pymongo.collection.Collection.estimated_document_count`,
+            :meth:`~pymongo.collection.Collection.count_documents`,
+            :meth:`pymongo.collection.Collection.watch`,
+            :meth:`~pymongo.collection.Collection.list_indexes`,
+            :meth:`pymongo.database.Database.watch`,
+            :meth:`~pymongo.database.Database.list_collections`,
+            :meth:`pymongo.mongo_client.MongoClient.watch`,
+            and :meth:`~pymongo.mongo_client.MongoClient.list_databases`.
+
+            Unsupported read operations include, but are not limited to:
+            :meth:`~pymongo.collection.Collection.map_reduce`,
+            :meth:`~pymongo.collection.Collection.inline_map_reduce`,
+            :meth:`~pymongo.database.Database.command`,
+            and any getMore operation on a cursor.
+
+            Enabling retryable reads makes applications more resilient to
+            transient errors such as network failures, database upgrades, and
+            replica set failovers. For an exact definition of which errors
+            trigger a retry, see the `retryable reads specification
+            <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.rst>`_.
+
           - `socketKeepAlive`: (boolean) **DEPRECATED** Whether to send
             periodic keep-alive packets on connected sockets. Defaults to
             ``True``. Disabling it is not recommended, see
@@ -441,7 +471,8 @@ class MongoClient(common.BaseObject):
 
         .. mongodoc:: connections
 
-        .. versionchanged:: 4.0
+        .. versionchanged:: 3.9
+           Added the ``retryReads`` keyword argument and URI option.
            Added the ``tlsInsecure`` keyword argument and URI option.
            The following keyword arguments and URI options were deprecated:
 
@@ -1032,6 +1063,11 @@ class MongoClient(common.BaseObject):
         """If this instance should retry supported write operations."""
         return self.__options.retry_writes
 
+    @property
+    def retry_reads(self):
+        """If this instance should retry supported write operations."""
+        return self.__options.retry_reads
+
     def _is_writable(self):
         """Attempt to connect to a writable server, or return False.
         """
@@ -1174,6 +1210,24 @@ class MongoClient(common.BaseObject):
         return self._get_socket(server, session)
 
     @contextlib.contextmanager
+    def _slaveok_for_server(self, read_preference, server, session,
+                            exhaust=False):
+        assert read_preference is not None, "read_preference must not be None"
+        # Get a socket for a server matching the read preference, and yield
+        # sock_info, slave_ok. Server Selection Spec: "slaveOK must be sent to
+        # mongods with topology type Single. If the server type is Mongos,
+        # follow the rules for passing read preference to mongos, even for
+        # topology type Single."
+        # Thread safe: if the type is single it cannot change.
+        topology = self._get_topology()
+        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
+
+        with self._get_socket(server, session, exhaust=exhaust) as sock_info:
+            slave_ok = (single and not sock_info.is_mongos) or (
+                read_preference != ReadPreference.PRIMARY)
+            yield sock_info, slave_ok
+
+    @contextlib.contextmanager
     def _socket_for_reads(self, read_preference, session):
         assert read_preference is not None, "read_preference must not be None"
         # Get a socket for a server matching the read preference, and yield
@@ -1191,25 +1245,25 @@ class MongoClient(common.BaseObject):
                 read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
 
-    def _send_message_with_response(self, operation, exhaust=False,
-                                    address=None, unpack_res=None):
-        """Send a message to MongoDB and return a Response.
+    def _run_operation_with_response(self, operation, unpack_res,
+                                     exhaust=False, address=None):
+        """Run a _Query/_GetMore operation and return a Response.
 
         :Parameters:
           - `operation`: a _Query or _GetMore object.
-          - `read_preference` (optional): A ReadPreference.
+          - `unpack_res`: A callable that decodes the wire protocol response.
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
-        server = self._select_server(
-            operation.read_preference, operation.session, address=address)
-
         if operation.exhaust_mgr:
+            server = self._select_server(
+                operation.read_preference, operation.session, address=address)
+
             with self._reset_on_error(server.description.address,
                                       operation.session):
-                return server.send_message_with_response(
+                return server.run_operation_with_response(
                     operation.exhaust_mgr.sock,
                     operation,
                     True,
@@ -1217,23 +1271,20 @@ class MongoClient(common.BaseObject):
                     exhaust,
                     unpack_res)
 
-        # If this is a direct connection to a mongod, *always* set the slaveOk
-        # bit. See bullet point 2 in server-selection.rst#topology-type-single.
-        topology = self._get_topology()
-        set_slave_ok = (
-            topology.description.topology_type == TOPOLOGY_TYPE.Single
-            and server.description.server_type != SERVER_TYPE.Mongos) or (
-                operation.read_preference != ReadPreference.PRIMARY)
-
-        with self._get_socket(server, operation.session,
-                              exhaust=exhaust) as sock_info:
-            return server.send_message_with_response(
+        def _cmd(session, server, sock_info, slave_ok):
+            return server.run_operation_with_response(
                 sock_info,
                 operation,
-                set_slave_ok,
+                slave_ok,
                 self._event_listeners,
                 exhaust,
                 unpack_res)
+
+        return self._retryable_read(
+            _cmd, operation.read_preference, operation.session,
+            address=address,
+            retryable=isinstance(operation, message._Query),
+            exhaust=exhaust)
 
     @contextlib.contextmanager
     def _reset_on_error(self, server_address, session):
@@ -1352,6 +1403,58 @@ class MongoClient(common.BaseObject):
                     bulk.retrying = True
                 else:
                     retrying = True
+                last_error = exc
+
+    def _retryable_read(self, func, read_pref, session, address=None,
+                        retryable=True, exhaust=False):
+        """Execute an operation with at most one consecutive retries
+
+        Returns func()'s return value on success. On error retries the same
+        command once.
+
+        Re-raises any exception thrown by func().
+        """
+        retryable = (retryable and
+                     self.retry_reads
+                     and not (session and session._in_transaction))
+        last_error = None
+        retrying = False
+
+        while True:
+            try:
+                server = self._select_server(
+                    read_pref, session, address=address)
+                if not server.description.retryable_reads_supported:
+                    retryable = False
+                with self._slaveok_for_server(read_pref, server, session,
+                                              exhaust=exhaust) as (sock_info,
+                                                                   slave_ok):
+                    if retrying and not retryable:
+                        # A retry is not possible because this server does
+                        # not support retryable reads, raise the last error.
+                        raise last_error
+                    return func(session, server, sock_info, slave_ok)
+            except ServerSelectionTimeoutError:
+                if retrying:
+                    # The application may think the write was never attempted
+                    # if we raise ServerSelectionTimeoutError on the retry
+                    # attempt. Raise the original exception instead.
+                    raise last_error
+                # A ServerSelectionTimeoutError error indicates that there may
+                # be a persistent outage. Attempting to retry in this case will
+                # most likely be a waste of time.
+                raise
+            except ConnectionFailure as exc:
+                if not retryable or retrying:
+                    raise
+                retrying = True
+                last_error = exc
+            except OperationFailure as exc:
+                if not retryable or retrying:
+                    raise
+                if exc.code not in helpers._RETRYABLE_ERROR_CODES:
+                    raise
+                retrying = True
                 last_error = exc
 
     def _retryable_write(self, retryable, func, session):
@@ -1752,7 +1855,7 @@ class MongoClient(common.BaseObject):
         cmd = SON([("listDatabases", 1)])
         cmd.update(kwargs)
         admin = self._database_default_options("admin")
-        res = admin.command(cmd, session=session)
+        res = admin._retryable_read_command(cmd, session=session)
         # listDatabases doesn't return a cursor (yet). Fake one.
         cursor = {
             "id": 0,

@@ -141,7 +141,7 @@ class ScenarioDict(dict):
         def convert(v):
             if isinstance(v, collections.Mapping):
                 return ScenarioDict(v)
-            if isinstance(v, py3compat.string_type):
+            if isinstance(v, (py3compat.string_type, bytes)):
                 return v
             if isinstance(v, collections.Sequence):
                 return [convert(item) for item in v]
@@ -264,8 +264,10 @@ class TestCreator(object):
                 # Construct test from scenario.
                 for test_def in scenario_def['tests']:
                     test_name = 'test_%s_%s_%s' % (
-                        dirname, test_type,
-                        str(test_def['description'].replace(" ", "_")))
+                        dirname,
+                        test_type.replace("-", "_").replace('.', '_'),
+                        str(test_def['description'].replace(" ", "_").replace(
+                            '.', '_')))
 
                     new_test = self._create_test(
                         scenario_def, test_def, test_name)

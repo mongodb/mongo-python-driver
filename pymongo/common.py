@@ -91,6 +91,9 @@ LOCAL_THRESHOLD_MS = 15
 # Default value for retryWrites.
 RETRY_WRITES = True
 
+# Default value for retryReads.
+RETRY_READS = True
+
 # mongod/s 2.6 and above return code 59 when a command doesn't exist.
 COMMAND_NOT_FOUND_CODES = (59,)
 
@@ -569,6 +572,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
     'replicaset': validate_string_or_none,
+    'retryreads': validate_boolean_or_string,
     'retrywrites': validate_boolean_or_string,
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'sockettimeoutms': validate_timeout_or_none,

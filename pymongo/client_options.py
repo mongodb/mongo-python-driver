@@ -164,6 +164,7 @@ class ClientOptions(object):
         self.__heartbeat_frequency = options.get(
             'heartbeatfrequencyms', common.HEARTBEAT_FREQUENCY)
         self.__retry_writes = options.get('retrywrites', common.RETRY_WRITES)
+        self.__retry_reads = options.get('retryreads', common.RETRY_READS)
         self.__server_selector = options.get(
             'server_selector', any_server_selector)
 
@@ -235,3 +236,8 @@ class ClientOptions(object):
     def retry_writes(self):
         """If this instance should retry supported write operations."""
         return self.__retry_writes
+
+    @property
+    def retry_reads(self):
+        """If this instance should retry supported read operations."""
+        return self.__retry_reads

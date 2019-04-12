@@ -33,6 +33,13 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
 - The ``retryWrites`` URI option now defaults to ``True``. Supported write
   operations that fail with a retryable error will automatically be retried one
   time, with at-most-once semantics.
+- Support for retryable reads and the ``retryReads`` URI option which is
+  enabled by default. See the :class:`~pymongo.mongo_client.MongoClient`
+  documentation for details.
+
+  Now that supported operations are retried automatically and transparently,
+  users should consider adjusting any custom retry logic to prevent
+  an application from inadvertently retrying for too long.
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 
