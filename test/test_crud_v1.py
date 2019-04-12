@@ -48,51 +48,44 @@ class TestAllScenarios(IntegrationTest):
     pass
 
 
-def check_result(expected_result, result):
-    if isinstance(result, Cursor) or isinstance(result, CommandCursor):
-        return list(result) == expected_result
-
-    elif isinstance(result, _WriteResult):
+def check_result(self, expected_result, result):
+    if isinstance(result, _WriteResult):
         for res in expected_result:
             prop = camel_to_snake(res)
+            msg = "%s : %r != %r" % (prop, expected_result, result)
             # SPEC-869: Only BulkWriteResult has upserted_count.
-            if (prop == "upserted_count" and
-                    not isinstance(result, BulkWriteResult)):
+            if (prop == "upserted_count"
+                    and not isinstance(result, BulkWriteResult)):
                 if result.upserted_id is not None:
                     upserted_count = 1
                 else:
                     upserted_count = 0
-                if upserted_count != expected_result[res]:
-                    return False
+                self.assertEqual(upserted_count, expected_result[res], msg)
             elif prop == "inserted_ids":
                 # BulkWriteResult does not have inserted_ids.
                 if isinstance(result, BulkWriteResult):
-                    if len(expected_result[res]) != result.inserted_count:
-                        return False
+                    self.assertEqual(len(expected_result[res]),
+                                     result.inserted_count)
                 else:
                     # InsertManyResult may be compared to [id1] from the
                     # crud spec or {"0": id1} from the retryable write spec.
                     ids = expected_result[res]
                     if isinstance(ids, dict):
                         ids = [ids[str(i)] for i in range(len(ids))]
-                    if ids != result.inserted_ids:
-                        return False
+                    self.assertEqual(ids, result.inserted_ids, msg)
             elif prop == "upserted_ids":
                 # Convert indexes from strings to integers.
                 ids = expected_result[res]
                 expected_ids = {}
                 for str_index in ids:
                     expected_ids[int(str_index)] = ids[str_index]
-                if expected_ids != result.upserted_ids:
-                    return False
-            elif getattr(result, prop) != expected_result[res]:
-                return False
-        return True
+                self.assertEqual(expected_ids, result.upserted_ids, msg)
+            else:
+                self.assertEqual(
+                    getattr(result, prop), expected_result[res], msg)
+
     else:
-        if expected_result is None:
-            return result is None
-        else:
-            return result == expected_result
+        self.assertEqual(result, expected_result)
 
 
 def run_operation(collection, test):
@@ -138,7 +131,11 @@ def run_operation(collection, test):
     if operation == "aggregate":
         if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
             out = collection.database[arguments["pipeline"][-1]["$out"]]
-            return out.find()
+            result = out.find()
+
+    if isinstance(result, Cursor) or isinstance(result, CommandCursor):
+        return list(result)
+
     return result
 
 
@@ -160,7 +157,7 @@ def create_test(scenario_def, test, name):
                 run_operation(self.db.test, test)
         else:
             result = run_operation(self.db.test, test)
-            self.assertTrue(check_result(expected_result, result))
+            check_result(self, expected_result, result)
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')

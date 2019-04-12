@@ -30,14 +30,20 @@ from functools import partial
 
 from bson import json_util, py3compat
 from bson.objectid import ObjectId
-from pymongo import MongoClient, monitoring
+
+from pymongo import (MongoClient,
+                     monitoring)
 from pymongo.errors import OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.read_concern import ReadConcern
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.write_concern import WriteConcern
-from test import client_context, db_user, db_pwd
+
+from test import (client_context,
+                  db_user,
+                  db_pwd)
+from test.utils_selection_tests import parse_read_preference
 
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=1000)

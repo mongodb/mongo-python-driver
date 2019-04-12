@@ -123,8 +123,7 @@ def create_test(scenario_def, test):
         # We can't test the expected result when the test should fail because
         # the BulkWriteResult is not reported when raising a network error.
         if not should_fail:
-            self.assertTrue(check_result(expected_result, result),
-                            "%r != %r" % (expected_result, result))
+            check_result(self, expected_result, result)
 
     return run_scenario
 
