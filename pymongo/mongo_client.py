@@ -294,6 +294,11 @@ class MongoClient(common.BaseObject):
             are -1 through 9. -1 tells the zlib library to use its default
             compression level (usually 6). 0 means no compression. 1 is best
             speed. 9 is best compression. Defaults to -1.
+          - `uuidRepresentation`: The BSON representation to use when encoding
+            from and decoding to instances of :class:`~uuid.UUID`. Valid
+            values are `pythonLegacy` (the default), `javaLegacy`,
+            `csharpLegacy` and `standard`. New applications should consider
+            setting this to `standard` for cross language compatibility.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)

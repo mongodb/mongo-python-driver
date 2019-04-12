@@ -94,6 +94,10 @@ Changes in Version 3.8.0.dev0
   :meth:`~pymongo.cursor.Cursor.hint` of which index to use. The find command
   is expected to require a :meth:`~pymongo.cursor.Cursor.hint` when using
   min/max starting in MongoDB 4.2.
+- Documented support for the uuidRepresentation URI option, which has been
+  supported since PyMongo 2.7. Valid values are `pythonLegacy` (the default),
+  `javaLegacy`, `csharpLegacy` and `standard`. New applications should consider
+  setting this to `standard` for cross language compatibility.
 
 Issues Resolved
 ...............
