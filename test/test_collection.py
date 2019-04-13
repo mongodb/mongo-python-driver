@@ -2000,10 +2000,13 @@ class TestCollection(IntegrationTest):
         self.db.test.insert_many([{"x": 1}, {"x": 2}])
         self.db.test.create_index("x")
 
-        self.assertEqual(1, len(list(self.db.test.find({"$min": {"x": 2},
-                                                        "$query": {}}))))
-        self.assertEqual(2, self.db.test.find({"$min": {"x": 2},
-                                               "$query": {}})[0]["x"])
+        cursor = self.db.test.find({"$min": {"x": 2}, "$query": {}})
+        if client_context.requires_hint_with_min_max_queries:
+            cursor = cursor.hint("x_1")
+
+        docs = list(cursor)
+        self.assertEqual(1, len(docs))
+        self.assertEqual(2, docs[0]["x"])
 
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's 1000-document batch size limit.
