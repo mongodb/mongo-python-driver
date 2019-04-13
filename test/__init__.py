@@ -604,6 +604,12 @@ class ClientContext(object):
         """Does the connected server support getpreverror?"""
         return not (self.version.at_least(4, 1, 0) or self.is_mongos)
 
+    @property
+    def requires_hint_with_min_max_queries(self):
+        """Does the server require a hint with min/max queries."""
+        # Changed in SERVER-39567.
+        return self.version.at_least(4, 1, 10)
+
 
 # Reusable client context
 client_context = ClientContext()

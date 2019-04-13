@@ -47,6 +47,11 @@ Changes in Version 3.8.0.dev0
   :meth:`pymongo.change_stream.ChangeStream.try_next` method.
 - Fixed a reference leak bug when splitting a batched write command based on
   maxWriteBatchSize or the max message size.
+- Deprecated running find queries that set :meth:`~pymongo.cursor.Cursor.min`
+  and/or :meth:`~pymongo.cursor.Cursor.max` but do not also set a
+  :meth:`~pymongo.cursor.Cursor.hint` of which index to use. The find command
+  is expected to require a :meth:`~pymongo.cursor.Cursor.hint` when using
+  min/max starting in MongoDB 4.2.
 
 Issues Resolved
 ...............

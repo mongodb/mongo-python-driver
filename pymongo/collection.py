@@ -1367,11 +1367,13 @@ class Collection(common.BaseObject):
           - `min` (optional): A list of field, limit pairs specifying the
             inclusive lower bound for all keys of a specific index in order.
             Pass this as an alternative to calling
-            :meth:`~pymongo.cursor.Cursor.min` on the cursor.
+            :meth:`~pymongo.cursor.Cursor.min` on the cursor. ``hint`` must
+            also be passed to ensure the query utilizes the correct index.
           - `max` (optional): A list of field, limit pairs specifying the
             exclusive upper bound for all keys of a specific index in order.
             Pass this as an alternative to calling
-            :meth:`~pymongo.cursor.Cursor.max` on the cursor.
+            :meth:`~pymongo.cursor.Cursor.max` on the cursor. ``hint`` must
+            also be passed to ensure the query utilizes the correct index.
           - `comment` (optional): A string to attach to the query to help
             interpret and trace the operation in the server logs and in profile
             data. Pass this as an alternative to calling

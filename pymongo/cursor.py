@@ -634,11 +634,18 @@ class Cursor(object):
         return self
 
     def max(self, spec):
-        """Adds `max` operator that specifies upper bound for specific index.
+        """Adds ``max`` operator that specifies upper bound for specific index.
+
+        When using ``max``, :meth:`~hint` should also be configured to ensure
+        the query uses the expected index and starting in MongoDB 4.2
+        :meth:`~hint` will be required.
 
         :Parameters:
           - `spec`: a list of field, limit pairs specifying the exclusive
             upper bound for all keys of a specific index in order.
+
+        .. versionchanged:: 3.8
+           Deprecated cursors that use ``max`` without a :meth:`~hint`.
 
         .. versionadded:: 2.7
         """
@@ -650,11 +657,18 @@ class Cursor(object):
         return self
 
     def min(self, spec):
-        """Adds `min` operator that specifies lower bound for specific index.
+        """Adds ``min`` operator that specifies lower bound for specific index.
+
+        When using ``min``, :meth:`~hint` should also be configured to ensure
+        the query uses the expected index and starting in MongoDB 4.2
+        :meth:`~hint` will be required.
 
         :Parameters:
           - `spec`: a list of field, limit pairs specifying the inclusive
             lower bound for all keys of a specific index in order.
+
+        .. versionchanged:: 3.8
+           Deprecated cursors that use ``min`` without a :meth:`~hint`.
 
         .. versionadded:: 2.7
         """
@@ -1095,6 +1109,12 @@ class Cursor(object):
             self.__session = self.__collection.database.client._ensure_session()
 
         if self.__id is None:  # Query
+            if (self.__min or self.__max) and not self.__hint:
+                warnings.warn("using a min/max query operator without "
+                              "specifying a Cursor.hint is deprecated. A "
+                              "hint will be required when using min/max in "
+                              "PyMongo 4.0",
+                              DeprecationWarning, stacklevel=3)
             q = self._query_class(self.__query_flags,
                                   self.__collection.database.name,
                                   self.__collection.name,
