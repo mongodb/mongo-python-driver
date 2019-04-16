@@ -616,6 +616,9 @@ class Database(common.BaseObject):
            :attr:`read_preference` or :attr:`codec_options`. You must use the
            `read_preference` and `codec_options` parameters instead.
 
+        .. note:: :meth:`command` does **not** apply any custom TypeDecoders
+           when decoding the command response.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
