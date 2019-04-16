@@ -41,6 +41,8 @@ class TypeEncoder(ABC):
 
     Codec classes must implement the ``python_type`` attribute, and the
     ``transform_python`` method to support encoding.
+
+    See :ref:`custom-type-type-codec` documentation for an example.
     """
     @abstractproperty
     def python_type(self):
@@ -59,6 +61,8 @@ class TypeDecoder(ABC):
 
     Codec classes must implement the ``bson_type`` attribute, and the
     ``transform_bson`` method to support decoding.
+
+    See :ref:`custom-type-type-codec` documentation for an example.
     """
     @abstractproperty
     def bson_type(self):
@@ -73,13 +77,15 @@ class TypeDecoder(ABC):
 
 class TypeCodec(TypeEncoder, TypeDecoder):
     """Base class for defining type codec classes which describe how a
-    custom type can be transformed to/from one of the types BSON already
-    understands, and can encode/decode.
+    custom type can be transformed to/from one of the types :mod:`bson`
+    can already encode/decode.
 
     Codec classes must implement the ``python_type`` attribute, and the
     ``transform_python`` method to support encoding, as well as the
     ``bson_type`` attribute, and the ``transform_bson`` method to support
     decoding.
+
+    See :ref:`custom-type-type-codec` documentation for an example.
     """
     pass
 
@@ -96,14 +102,19 @@ class TypeRegistry(object):
       >>> type_registry = TypeRegistry([Codec1, Codec2, Codec3, ...],
       ...                              fallback_encoder)
 
+    See :ref:`custom-type-type-registry` documentation for an example.
+
     :Parameters:
       - `type_codecs` (optional): iterable of type codec instances. If
         ``type_codecs`` contains multiple codecs that transform a single
         python or BSON type, the transformation specified by the type codec
-        occurring last prevails.
+        occurring last prevails. A TypeError will be raised if one or more
+        type codecs modify the encoding behavior of a built-in :mod:`bson`
+        type.
       - `fallback_encoder` (optional): callable that accepts a single,
-        unencodable python value and transforms it into a type that BSON can
-        encode.
+        unencodable python value and transforms it into a type that
+        :mod:`bson` can encode. See :ref:`fallback-encoder-callable`
+        documentation for an example.
     """
     def __init__(self, type_codecs=None, fallback_encoder=None):
         self.__type_codecs = list(type_codecs or [])
@@ -216,6 +227,9 @@ class CodecOptions(_options_base):
         encoded/decoded.
       - `type_registry`: Instance of :class:`TypeRegistry` used to customize
         encoding and decoding behavior.
+
+    .. versionadded:: 3.8
+       `type_registry` attribute.
 
     .. warning:: Care must be taken when changing
        `unicode_decode_error_handler` from its default value ('strict').
