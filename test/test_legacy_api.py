@@ -1379,6 +1379,13 @@ class TestLegacy(IntegrationTest):
         wait_until(raises_cursor_not_found, 'close cursor')
 
     def test_kill_cursors_with_tuple(self):
+        # Some evergreen distros (Debian 7.1) still test against 3.6.5 where
+        # OP_KILL_CURSORS does not work.
+        if (client_context.is_mongos and client_context.auth_enabled and
+                (3, 6, 0) <= client_context.version < (3, 6, 6)):
+            raise SkipTest("SERVER-33553 This server version does not support "
+                           "OP_KILL_CURSORS")
+
         coll = self.client.pymongo_test.test
         coll.drop()
 
