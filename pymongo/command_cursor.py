@@ -159,7 +159,7 @@ class CommandCursor(object):
                 legacy_response=legacy_response, user_fields=user_fields)
             if from_command:
                 first = docs[0]
-                client._process_response(first, self.__session)
+                client._receive_cluster_time(first, self.__session)
                 helpers._check_command_response(first)
 
         except OperationFailure as exc:
