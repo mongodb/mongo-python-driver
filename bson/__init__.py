@@ -948,7 +948,13 @@ if _USE_C:
 
 
 def _decode_selective(rawdoc, fields, codec_options):
-    doc = {}
+    if _raw_document_class(codec_options.document_class):
+        # If document_class is RawBSONDocument, use vanilla dictionary for
+        # decoding command response.
+        doc = {}
+    else:
+        # Else, use the specified document_class.
+        doc = codec_options.document_class()
     for key, value in iteritems(rawdoc):
         if key in fields:
             if fields[key] == 1:

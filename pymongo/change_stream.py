@@ -16,6 +16,8 @@
 
 import copy
 
+from bson import _bson_to_dict
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 
 from pymongo import common
@@ -60,7 +62,16 @@ class ChangeStream(object):
         validate_collation_or_none(collation)
         common.validate_non_negative_integer_or_none("batchSize", batch_size)
 
-        self._target = target
+        self._decode_custom = False
+        self._orig_codec_options = target.codec_options
+        if target.codec_options.type_registry._decoder_map:
+            self._decode_custom = True
+            self._target = target.with_options(
+                codec_options=target.codec_options.with_options(
+                    document_class=RawBSONDocument, type_registry=None))
+        else:
+            self._target = target
+
         self._pipeline = copy.deepcopy(pipeline)
         self._full_document = full_document
         self._resume_token = copy.deepcopy(resume_after)
@@ -145,8 +156,7 @@ class ChangeStream(object):
                 aggregation_collection, cursor, sock_info.address,
                 batch_size=self._batch_size or 0,
                 max_await_time_ms=self._max_await_time_ms,
-                session=session, explicit_session=explicit_session
-            )
+                session=session, explicit_session=explicit_session)
 
     def _create_cursor(self):
         with self._database.client._tmp_session(self._session, close=False) as s:
@@ -263,6 +273,9 @@ class ChangeStream(object):
                 "token is missing.")
         self._resume_token = copy.copy(resume_token)
         self._start_at_operation_time = None
+
+        if self._decode_custom:
+            return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 
     def __enter__(self):

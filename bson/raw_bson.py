@@ -19,6 +19,7 @@ from bson import _elements_to_dict, _get_object_size
 from bson.py3compat import abc, iteritems
 from bson.codec_options import (
     DEFAULT_CODEC_OPTIONS as DEFAULT, _RAW_BSON_DOCUMENT_MARKER)
+from bson.son import SON
 
 
 class RawBSONDocument(abc.Mapping):
@@ -93,8 +94,9 @@ class RawBSONDocument(abc.Mapping):
         if self.__inflated_doc is None:
             # We already validated the object's size when this document was
             # created, so no need to do that again.
+            # Use SON to preserve ordering of elements.
             self.__inflated_doc = _elements_to_dict(
-                self.__raw, 4, len(self.__raw)-1, self.__codec_options, {})
+                self.__raw, 4, len(self.__raw)-1, self.__codec_options, SON())
         return self.__inflated_doc
 
     def __getitem__(self, item):
