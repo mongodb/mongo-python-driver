@@ -81,7 +81,8 @@ class UndecipherableInt64Type(object):
     def __eq__(self, other):
         if isinstance(other, type(self)):
             return self.value == other.value
-        return self.value == other
+        # Does not compare equal to integers.
+        return False
 
 
 class UndecipherableIntDecoder(TypeDecoder):
@@ -115,11 +116,17 @@ UPPERSTR_DECODER_CODECOPTS = CodecOptions(type_registry=TypeRegistry(
 
 
 class CustomBSONTypeTests(object):
-    def test_encode_decode_roundtrip(self):
-        document = {'average': Decimal('56.47')}
-        bsonbytes = BSON().encode(document, codec_options=self.codecopts)
+    def roundtrip(self, doc):
+        bsonbytes = BSON().encode(doc, codec_options=self.codecopts)
         rt_document = BSON(bsonbytes).decode(codec_options=self.codecopts)
-        self.assertEqual(document, rt_document)
+        self.assertEqual(doc, rt_document)
+
+    def test_encode_decode_roundtrip(self):
+        self.roundtrip({'average': Decimal('56.47')})
+        self.roundtrip({'average': {'b': Decimal('56.47')}})
+        self.roundtrip({'average': [Decimal('56.47')]})
+        self.roundtrip({'average': [[Decimal('56.47')]]})
+        self.roundtrip({'average': [{'b': Decimal('56.47')}]})
 
     def test_decode_all(self):
         documents = []
@@ -585,24 +592,18 @@ class TestCollectionWCustomType(IntegrationTest):
         self.assertIsInstance(res['total_qty'], UndecipherableInt64Type)
         self.assertEqual(res['total_qty'].value, 20)
 
-    # collection.distinct does not support custom type decoding
     def test_distinct_w_custom_type(self):
         self.db.drop_collection("test")
 
         test = self.db.get_collection('test', codec_options=UNINT_CODECOPTS)
-        test.insert_many([
-            {"a": UndecipherableInt64Type(1)},
-            {"a": UndecipherableInt64Type(2)},
-            {"a": UndecipherableInt64Type(2)},
-            {"a": UndecipherableInt64Type(2)},
-            {"a": UndecipherableInt64Type(3)}])
+        values = [
+            UndecipherableInt64Type(1),
+            UndecipherableInt64Type(2),
+            UndecipherableInt64Type(3),
+            {"b": UndecipherableInt64Type(3)}]
+        test.insert_many({"a": val} for val in values)
 
-        distinct = test.distinct("a")
-        distinct.sort()
-
-        self.assertEqual([
-            UndecipherableInt64Type(1), UndecipherableInt64Type(2),
-            UndecipherableInt64Type(3)], distinct)
+        self.assertEqual(values, test.distinct("a"))
 
     def test_map_reduce_w_custom_type(self):
         test = self.db.get_collection(

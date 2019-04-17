@@ -219,6 +219,7 @@ def _get_array(data, position, obj_end, opts, element_name):
     append = result.append
     index = data.index
     getter = _ELEMENT_GETTER
+    decoder_map = opts.type_registry._decoder_map
 
     while position < end:
         element_type = data[position:position + 1]
@@ -229,6 +230,12 @@ def _get_array(data, position, obj_end, opts, element_name):
                 data, position, obj_end, opts, element_name)
         except KeyError:
             _raise_unknown_type(element_type, element_name)
+
+        if decoder_map:
+            custom_decoder = decoder_map.get(type(value))
+            if custom_decoder is not None:
+                value = custom_decoder(value)
+
         append(value)
 
     if position != end + 1:
@@ -941,17 +948,15 @@ if _USE_C:
 
 
 def _decode_selective(rawdoc, fields, codec_options):
-    doc = codec_options.document_class()
+    doc = {}
     for key, value in iteritems(rawdoc):
         if key in fields:
-            if fields[key] == list:
-                doc[key] = [_bson_to_dict(r.raw, codec_options) for r in value]
-            elif fields[key] == dict:
-                doc[key] = _bson_to_dict(value.raw, codec_options)
+            if fields[key] == 1:
+                doc[key] = _bson_to_dict(rawdoc.raw, codec_options)[key]
             else:
                 doc[key] = _decode_selective(value, fields[key], codec_options)
-            continue
-        doc[key] = value
+        else:
+            doc[key] = value
     return doc
 
 
@@ -970,9 +975,8 @@ def _decode_all_selective(data, codec_options, fields):
       - `fields`: Map of document namespaces where data that needs
         to be custom decoded lives or None. For example, to custom decode a
         list of objects in 'field1.subfield1', the specified value should be
-        ``{'field1': {'subfield1': list}}``. Use ``dict`` instead of ``list``
-        if the field contains a single object to custom decode. If ``fields``
-        is an empty map or None, this method is the same as ``decode_all``.
+        ``{'field1': {'subfield1': 1}}``. If ``fields``  is an empty map or
+        None, this method is the same as ``decode_all``.
 
     :Returns:
       - `document_list`: Single-member list containing the decoded document.
