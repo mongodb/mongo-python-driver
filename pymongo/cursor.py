@@ -50,7 +50,7 @@ _QUERY_OPTIONS = {
     "await_data": 32,
     "exhaust": 64,
     "partial": 128}
-_CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': list, 'nextBatch': list}}
+_CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': 1, 'nextBatch': 1}}
 
 
 class CursorType(object):

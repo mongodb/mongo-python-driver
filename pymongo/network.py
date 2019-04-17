@@ -82,6 +82,12 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
         field in the command response.
       - `collation`: The collation for this command.
+      - `compression_ctx`: optional compression Context.
+      - `use_op_msg`: True if we should use OP_MSG.
+      - `unacknowledged`: True if this is an unacknowledged command.
+      - `user_fields` (optional): Response fields that should be decoded
+        using the TypeDecoders from codec_options, passed to
+        bson._decode_all_selective.
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'

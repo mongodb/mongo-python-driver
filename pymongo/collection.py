@@ -53,7 +53,7 @@ from pymongo.write_concern import WriteConcern
 
 _NO_OBJ_ERROR = "No matching object found"
 _UJOIN = u"%s.%s"
-_FIND_AND_MODIFY_DOC_FIELDS = {'value': dict}
+_FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
 
 
 class ReturnDocument(object):
@@ -225,6 +225,11 @@ class Collection(common.BaseObject):
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `retryable_write` (optional): True if this command is a retryable
+            write.
+          - `user_fields` (optional): Response fields that should be decoded
+            using the TypeDecoders from codec_options, passed to
+            bson._decode_all_selective.
 
         :Returns:
           The result document.
@@ -2313,7 +2318,7 @@ class Collection(common.BaseObject):
                 collation=collation,
                 session=session,
                 client=self.__database.client,
-                user_fields={'cursor': {'firstBatch': list}})
+                user_fields={'cursor': {'firstBatch': 1}})
 
             if "cursor" in result:
                 cursor = result["cursor"]
@@ -2575,7 +2580,7 @@ class Collection(common.BaseObject):
         with self._socket_for_reads(session=None) as (sock_info, slave_ok):
             return self._command(sock_info, cmd, slave_ok,
                                  collation=collation,
-                                 user_fields={'retval': list})["retval"]
+                                 user_fields={'retval': 1})["retval"]
 
     def rename(self, new_name, session=None, **kwargs):
         """Rename this collection.
@@ -2680,7 +2685,8 @@ class Collection(common.BaseObject):
             return self._command(sock_info, cmd, slave_ok,
                                  read_concern=self.read_concern,
                                  collation=collation,
-                                 session=session)["values"]
+                                 session=session,
+                                 user_fields={"values": 1})["values"]
 
     def map_reduce(self, map, reduce, out, full_response=False, session=None,
                    **kwargs):
@@ -2761,7 +2767,7 @@ class Collection(common.BaseObject):
             else:
                 write_concern = None
             if inline:
-                user_fields = {'results': list}
+                user_fields = {'results': 1}
             else:
                 user_fields = None
 
@@ -2820,7 +2826,7 @@ class Collection(common.BaseObject):
                    ("map", map),
                    ("reduce", reduce),
                    ("out", {"inline": 1})])
-        user_fields = {'results': list}
+        user_fields = {'results': 1}
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
         with self._socket_for_reads(session) as (sock_info, slave_ok):

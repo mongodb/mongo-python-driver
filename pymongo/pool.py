@@ -534,6 +534,9 @@ class SocketInfo(object):
           - `client`: optional MongoClient for gossipping $clusterTime.
           - `retryable_write`: True if this command is a retryable write.
           - `publish_events`: Should we publish events for this command?
+          - `user_fields` (optional): Response fields that should be decoded
+            using the TypeDecoders from codec_options, passed to
+            bson._decode_all_selective.
         """
         self.validate_session(client, session)
         session = _validate_session_write_concern(session, write_concern)
