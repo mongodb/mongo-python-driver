@@ -98,6 +98,9 @@ Changes in Version 3.8.0.dev0
   supported since PyMongo 2.7. Valid values are `pythonLegacy` (the default),
   `javaLegacy`, `csharpLegacy` and `standard`. New applications should consider
   setting this to `standard` for cross language compatibility.
+- :class:`~bson.raw_bson.RawBSONDocument` now validates that the ``bson_bytes``
+  passed in represent a single bson document. Earlier versions would mistakenly
+  accept multiple bson documents.
 
 Issues Resolved
 ...............
