@@ -59,6 +59,8 @@ Changes in Version 3.8.0.dev0
 - :class:`~bson.raw_bson.RawBSONDocument` now validates that the ``bson_bytes``
   passed in represent a single bson document. Earlier versions would mistakenly
   accept multiple bson documents.
+- Iterating over a :class:`~bson.raw_bson.RawBSONDocument` now maintains the
+  same field order of the underlying raw BSON document.
 
 Issues Resolved
 ...............

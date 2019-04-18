@@ -20,6 +20,7 @@ from bson.binary import JAVA_LEGACY
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidBSON
 from bson.raw_bson import RawBSONDocument
+from bson.son import SON
 from test import client_context, unittest
 
 
@@ -157,3 +158,10 @@ class TestRawBSONDocument(unittest.TestCase):
         coll.delete_many(self.document)
         coll.update_one(self.document, {'$set': {'a': 'b'}}, upsert=True)
         coll.update_many(self.document, {'$set': {'b': 'c'}})
+
+    def test_preserve_key_ordering(self):
+        keyvaluepairs = [('a', 1), ('b', 2), ('c', 3),]
+        rawdoc = RawBSONDocument(BSON.encode(SON(keyvaluepairs)))
+
+        for rkey, elt in zip(rawdoc, keyvaluepairs):
+            self.assertEqual(rkey, elt[0])
