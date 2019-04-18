@@ -15,11 +15,10 @@
 """Tools for representing raw BSON documents.
 """
 
-from bson import _UNPACK_INT, _iterate_elements
+from bson import _elements_to_dict, _get_object_size
 from bson.py3compat import abc, iteritems
 from bson.codec_options import (
     DEFAULT_CODEC_OPTIONS as DEFAULT, _RAW_BSON_DOCUMENT_MARKER)
-from bson.errors import InvalidBSON
 
 
 class RawBSONDocument(abc.Mapping):
@@ -34,12 +33,33 @@ class RawBSONDocument(abc.Mapping):
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
 
     def __init__(self, bson_bytes, codec_options=None):
-        """Create a new :class:`RawBSONDocument`.
+        """Create a new :class:`RawBSONDocument`
+
+        :class:`RawBSONDocument` is a representation of a BSON document that
+        provides access to the underlying raw BSON bytes. Only when a field is
+        accessed or modified within the document does RawBSONDocument decode
+        its bytes.
+
+        :class:`RawBSONDocument` implements the ``Mapping`` abstract base
+        class from the standard library so it can be used like a read-only
+        ``dict``::
+
+            >>> raw_doc = RawBSONDocument(BSON.encode({'_id': 'my_doc'}))
+            >>> raw_doc.raw
+            b'...'
+            >>> raw_doc['_id']
+            'my_doc'
 
         :Parameters:
           - `bson_bytes`: the BSON bytes that compose this document
           - `codec_options` (optional): An instance of
-            :class:`~bson.codec_options.CodecOptions`.
+            :class:`~bson.codec_options.CodecOptions` whose ``document_class``
+            must be :class:`RawBSONDocument`. The default is
+            :attr:`DEFAULT_RAW_BSON_OPTIONS`.
+
+        .. versionchanged:: 3.8
+          :class:`RawBSONDocument` now validates that the ``bson_bytes``
+          passed in represent a single bson document.
 
         .. versionchanged:: 3.5
           If a :class:`~bson.codec_options.CodecOptions` is passed in, its
@@ -56,6 +76,8 @@ class RawBSONDocument(abc.Mapping):
                 "RawBSONDocument cannot use CodecOptions with document "
                 "class %s" % (codec_options.document_class, ))
         self.__codec_options = codec_options
+        # Validate the bson object size.
+        _get_object_size(bson_bytes, 0, len(bson_bytes))
 
     @property
     def raw(self):
@@ -70,16 +92,9 @@ class RawBSONDocument(abc.Mapping):
     def __inflated(self):
         if self.__inflated_doc is None:
             # We already validated the object's size when this document was
-            # created, so no need to do that again. We still need to check the
-            # size of all the elements and compare to the document size.
-            object_size = _UNPACK_INT(self.__raw[:4])[0] - 1
-            position = 0
-            self.__inflated_doc = {}
-            for key, value, position in _iterate_elements(
-                    self.__raw, 4, object_size, self.__codec_options):
-                self.__inflated_doc[key] = value
-            if position != object_size:
-                raise InvalidBSON('bad object or element length')
+            # created, so no need to do that again.
+            self.__inflated_doc = _elements_to_dict(
+                self.__raw, 4, len(self.__raw)-1, self.__codec_options, {})
         return self.__inflated_doc
 
     def __getitem__(self, item):
@@ -102,3 +117,6 @@ class RawBSONDocument(abc.Mapping):
 
 
 DEFAULT_RAW_BSON_OPTIONS = DEFAULT.with_options(document_class=RawBSONDocument)
+"""The default :class:`~bson.codec_options.CodecOptions` for
+:class:`RawBSONDocument`.
+"""

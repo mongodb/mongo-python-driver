@@ -183,14 +183,26 @@ def _get_string(data, position, obj_end, opts, dummy):
                          opts.unicode_decode_error_handler, True)[0], end + 1
 
 
-def _get_object(data, position, obj_end, opts, dummy):
-    """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
-    obj_size = _UNPACK_INT(data[position:position + 4])[0]
+def _get_object_size(data, position, obj_end):
+    """Validate and return a BSON document's size."""
+    try:
+        obj_size = _UNPACK_INT(data[position:position + 4])[0]
+    except struct.error as exc:
+        raise InvalidBSON(str(exc))
     end = position + obj_size - 1
-    if data[end:position + obj_size] != b"\x00":
+    if data[end:end + 1] != b"\x00":
         raise InvalidBSON("bad eoo")
     if end >= obj_end:
         raise InvalidBSON("invalid object length")
+    # If this is the top-level document, validate the total size too.
+    if position == 0 and obj_size != obj_end:
+        raise InvalidBSON("invalid object length")
+    return obj_size, end
+
+
+def _get_object(data, position, obj_end, opts, dummy):
+    """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
+    obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
         return (opts.document_class(data[position:end + 1], opts),
                 position + obj_size)
@@ -406,20 +418,15 @@ if _USE_C:
     _element_to_dict = _cbson._element_to_dict
 
 
-def _iterate_elements(data, position, obj_end, opts):
+def _elements_to_dict(data, position, obj_end, opts, result=None):
+    """Decode a BSON document into result."""
+    if result is None:
+        result = opts.document_class()
     end = obj_end - 1
     while position < end:
-        (key, value, position) = _element_to_dict(data, position, obj_end, opts)
-        yield key, value, position
-
-
-def _elements_to_dict(data, position, obj_end, opts):
-    """Decode a BSON document."""
-    result = opts.document_class()
-    pos = position
-    for key, value, pos in _iterate_elements(data, position, obj_end, opts):
+        key, value, position = _element_to_dict(data, position, obj_end, opts)
         result[key] = value
-    if pos != obj_end:
+    if position != obj_end:
         raise InvalidBSON('bad object or element length')
     return result
 
@@ -427,17 +434,10 @@ def _elements_to_dict(data, position, obj_end, opts):
 def _bson_to_dict(data, opts):
     """Decode a BSON string to document_class."""
     try:
-        obj_size = _UNPACK_INT(data[:4])[0]
-    except struct.error as exc:
-        raise InvalidBSON(str(exc))
-    if obj_size != len(data):
-        raise InvalidBSON("invalid object size")
-    if data[obj_size - 1:obj_size] != b"\x00":
-        raise InvalidBSON("bad eoo")
-    try:
         if _raw_document_class(opts.document_class):
             return opts.document_class(data, opts)
-        return _elements_to_dict(data, 4, obj_size - 1, opts)
+        _, end = _get_object_size(data, 0, len(data))
+        return _elements_to_dict(data, 4, end, opts)
     except InvalidBSON:
         raise
     except Exception:

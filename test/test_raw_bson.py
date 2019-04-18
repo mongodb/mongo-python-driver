@@ -18,6 +18,7 @@ import uuid
 from bson import BSON
 from bson.binary import JAVA_LEGACY
 from bson.codec_options import CodecOptions
+from bson.errors import InvalidBSON
 from bson.raw_bson import RawBSONDocument
 from test import client_context, unittest
 
@@ -50,6 +51,21 @@ class TestRawBSONDocument(unittest.TestCase):
 
     def test_raw(self):
         self.assertEqual(self.bson_string, self.document.raw)
+
+    def test_empty_doc(self):
+        doc = RawBSONDocument(BSON.encode({}))
+        with self.assertRaises(KeyError):
+            doc['does-not-exist']
+
+    def test_invalid_bson_sequence(self):
+        bson_byte_sequence = BSON.encode({'a': 1})+BSON.encode({})
+        with self.assertRaisesRegex(InvalidBSON, 'invalid object length'):
+            RawBSONDocument(bson_byte_sequence)
+
+    def test_invalid_bson_eoo(self):
+        invalid_bson_eoo = BSON.encode({'a': 1})[:-1] + b'\x01'
+        with self.assertRaisesRegex(InvalidBSON, 'bad eoo'):
+            RawBSONDocument(invalid_bson_eoo)
 
     @client_context.require_connection
     def test_round_trip(self):
