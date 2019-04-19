@@ -66,9 +66,11 @@ class ChangeStream(object):
         self._orig_codec_options = target.codec_options
         if target.codec_options.type_registry._decoder_map:
             self._decode_custom = True
+            # Keep the type registry so that we support encoding custom types
+            # in the pipeline.
             self._target = target.with_options(
                 codec_options=target.codec_options.with_options(
-                    document_class=RawBSONDocument, type_registry=None))
+                    document_class=RawBSONDocument))
         else:
             self._target = target
 
