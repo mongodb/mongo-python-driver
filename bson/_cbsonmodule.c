@@ -593,37 +593,53 @@ _fix_java(const char* in, char* out) {
 
 static void
 _set_cannot_encode(PyObject* value) {
+    PyObject* type = NULL;
     PyObject* InvalidDocument = _error("InvalidDocument");
-    if (InvalidDocument) {
-        PyObject* repr = PyObject_Repr(value);
-        if (repr) {
-#if PY_MAJOR_VERSION >= 3
-            PyObject* errmsg = PyUnicode_FromString("Cannot encode object: ");
-#else
-            PyObject* errmsg = PyString_FromString("Cannot encode object: ");
-#endif
-            if (errmsg) {
-#if PY_MAJOR_VERSION >= 3
-                PyObject* error = PyUnicode_Concat(errmsg, repr);
-                if (error) {
-                    PyErr_SetObject(InvalidDocument, error);
-                    Py_DECREF(error);
-                }
-                Py_DECREF(errmsg);
-                Py_DECREF(repr);
-#else
-                PyString_ConcatAndDel(&errmsg, repr);
-                if (errmsg) {
-                    PyErr_SetObject(InvalidDocument, errmsg);
-                    Py_DECREF(errmsg);
-                }
-#endif
-            } else {
-                Py_DECREF(repr);
-            }
-        }
-        Py_DECREF(InvalidDocument);
+    if (InvalidDocument == NULL) {
+        goto error;
     }
+
+    type = PyObject_Type(value);
+    if (type == NULL) {
+        goto error;
+    }
+#if PY_MAJOR_VERSION >= 3
+    PyErr_Format(InvalidDocument, "cannot encode object: %R, of type: %R",
+                 value, type);
+#else
+     else {
+        PyObject* value_repr = NULL;
+        PyObject* type_repr = NULL;
+        char* value_str = NULL;
+        char* type_str = NULL;
+
+        value_repr = PyObject_Repr(value);
+        if (value_repr == NULL) {
+            goto py2error;
+        }
+        value_str = PyString_AsString(value_repr);
+        if (value_str == NULL) {
+            goto py2error;
+        }
+        type_repr = PyObject_Repr(type);
+        if (type_repr == NULL) {
+            goto py2error;
+        }
+        type_str = PyString_AsString(type_repr);
+        if (type_str == NULL) {
+            goto py2error;
+        }
+
+        PyErr_Format(InvalidDocument, "cannot encode object: %s, of type: %s",
+                     value_str, type_str);
+py2error:
+        Py_XDECREF(type_repr);
+        Py_XDECREF(value_repr);
+    }
+#endif
+error:
+    Py_XDECREF(type);
+    Py_XDECREF(InvalidDocument);
 }
 
 /*

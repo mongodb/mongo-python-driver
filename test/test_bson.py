@@ -923,6 +923,20 @@ class TestBSON(unittest.TestCase):
         for t in threads:
             self.assertIsNone(t.exc)
 
+    def test_raise_invalid_document(self):
+        class Wrapper(object):
+            def __init__(self, val):
+                self.val = val
+
+            def __repr__(self):
+                return repr(self.val)
+
+        self.assertEqual('1', repr(Wrapper(1)))
+        with self.assertRaisesRegex(
+                InvalidDocument,
+                "cannot encode object: 1, of type: " + repr(Wrapper)):
+            BSON.encode({'t': Wrapper(1)})
+
 
 class TestCodecOptions(unittest.TestCase):
     def test_document_class(self):
