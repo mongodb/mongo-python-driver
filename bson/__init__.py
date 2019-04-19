@@ -812,7 +812,7 @@ def _name_value_to_bson(name, value, check_keys, opts,
             in_fallback_call=True)
 
     raise InvalidDocument(
-        "cannot convert value of type %s to bson" % type(value))
+        "cannot encode object: %r, of type: %r" % (value, type(value)))
 
 
 def _element_to_bson(key, value, check_keys, opts):

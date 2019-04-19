@@ -39,7 +39,7 @@ to save an instance of ``Decimal`` with PyMongo, results in an
   >>> db.test.insert_one({'num': num})
   Traceback (most recent call last):
   ...
-  bson.errors.InvalidDocument: Cannot encode object: <__main__.Decimal object at ...>
+  bson.errors.InvalidDocument: cannot encode object: Decimal('45.321'), of type: <class 'decimal.Decimal'>
 
 
 .. _custom-type-type-codec:
@@ -179,7 +179,7 @@ codec for it, we get an error:
   >>> collection.insert_one({'num': DecimalInt("45.321")})
   Traceback (most recent call last):
   ...
-  bson.errors.InvalidDocument: Cannot encode object: Decimal('45.321')
+  bson.errors.InvalidDocument: cannot encode object: Decimal('45.321'), of type: <class 'decimal.Decimal'>
 
 In order to proceed further, we must define a type codec for ``DecimalInt``.
 This is trivial to do since the same transformation as the one used for
