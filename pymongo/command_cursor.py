@@ -179,6 +179,7 @@ class CommandCursor(object):
                 listeners.publish_command_failure(
                     duration(), exc.details, "getMore", rqst_id, self.__address)
 
+            client._reset_server_and_request_check(self.__address)
             raise
         except Exception as exc:
             if publish:
