@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Changes in Version 3.8.0.dev0
------------------------------
+Changes in Version 3.8.0
+------------------------
 
 .. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
   Python 2.7 or newer from `Red Hat Software Collections
@@ -61,6 +61,9 @@ Changes in Version 3.8.0.dev0
   accept multiple bson documents.
 - Iterating over a :class:`~bson.raw_bson.RawBSONDocument` now maintains the
   same field order of the underlying raw BSON document.
+- Applications can now register a custom server selector. For more information
+  see :doc:`custom type example <examples/server_selection>`.
+- The connection pool now implements a LIFO policy.
 
 Issues Resolved
 ...............
