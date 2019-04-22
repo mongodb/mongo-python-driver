@@ -45,8 +45,8 @@ in this release.
 
 .. _PyMongo 3.9 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=21787
 
-Changes in Version 3.8.0.dev0
------------------------------
+Changes in Version 3.8.0
+------------------------
 
 .. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
   Python 2.7 or newer from `Red Hat Software Collections
@@ -77,6 +77,8 @@ Changes in Version 3.8.0.dev0
   the :class:`~bson.codec_options.TypeCodec` and
   :class:`~bson.codec_options.TypeRegistry` APIs. For more information, see
   the :doc:`custom type example <examples/custom_type>`.
+- Attempting a multi-document transaction on a sharded cluster now raises a
+  :exc:`~pymongo.errors.ConfigurationError`.
 - :meth:`pymongo.cursor.Cursor.distinct` and
   :meth:`pymongo.cursor.Cursor.count` now send the Cursor's
   :meth:`~pymongo.cursor.Cursor.comment` as the "comment" top-level
@@ -103,6 +105,9 @@ Changes in Version 3.8.0.dev0
   accept multiple bson documents.
 - Iterating over a :class:`~bson.raw_bson.RawBSONDocument` now maintains the
   same field order of the underlying raw BSON document.
+- Applications can now register a custom server selector. For more information
+  see the :doc:`server selector example <examples/server_selection>`.
+- The connection pool now implements a LIFO policy.
 
 Issues Resolved
 ...............
