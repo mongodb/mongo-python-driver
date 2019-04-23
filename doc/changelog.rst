@@ -11,6 +11,8 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
 - New method :meth:`pymongo.client_session.ClientSession.with_transaction` to
   support conveniently running a transaction in a session with automatic
   retries and at-most-once semantics.
+- Added the ``max_commit_time_ms`` parameter to
+  :meth:`~pymongo.client_session.ClientSession.start_transaction`.
 - Implement the `URI options specification`_ in the
   :meth:`~pymongo.mongo_client.MongoClient` constructor. Consequently, there are
   a number of changes in connection options:

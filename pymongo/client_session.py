@@ -100,7 +100,7 @@ import uuid
 
 from bson.binary import Binary
 from bson.int64 import Int64
-from bson.py3compat import abc, reraise_instance
+from bson.py3compat import abc, integer_types, reraise_instance
 from bson.son import SON
 from bson.timestamp import Timestamp
 
@@ -158,18 +158,35 @@ class TransactionOptions(object):
     """Options for :meth:`ClientSession.start_transaction`.
     
     :Parameters:
-      - `read_concern`: The :class:`~pymongo.read_concern.ReadConcern` to use
-        for this transaction.
-      - `write_concern`: The :class:`~pymongo.write_concern.WriteConcern` to
-        use for this transaction.
+      - `read_concern` (optional): The
+        :class:`~pymongo.read_concern.ReadConcern` to use for this transaction.
+        If ``None`` (the default) the :attr:`read_preference` of
+        the :class:`MongoClient` is used.
+      - `write_concern` (optional): The
+        :class:`~pymongo.write_concern.WriteConcern` to use for this
+        transaction. If ``None`` (the default) the :attr:`read_preference` of
+        the :class:`MongoClient` is used.
+      - `read_preference` (optional): The read preference to use. If
+        ``None`` (the default) the :attr:`read_preference` of this
+        :class:`MongoClient` is used. See :mod:`~pymongo.read_preferences`
+        for options. Transactions which read must use
+        :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
+      - `max_commit_time_ms` (optional): The maximum amount of time to allow a
+        single commitTransaction command to run. This option is an alias for
+        maxTimeMS option on the commitTransaction command. If ``None`` (the
+        default) maxTimeMS is not used.
+
+    .. versionchanged:: 3.9
+       Added the ``max_commit_time_ms`` option.
 
     .. versionadded:: 3.7
     """
     def __init__(self, read_concern=None, write_concern=None,
-                 read_preference=None):
+                 read_preference=None, max_commit_time_ms=None):
         self._read_concern = read_concern
         self._write_concern = write_concern
         self._read_preference = read_preference
+        self._max_commit_time_ms = max_commit_time_ms
         if read_concern is not None:
             if not isinstance(read_concern, ReadConcern):
                 raise TypeError("read_concern must be an instance of "
@@ -189,6 +206,10 @@ class TransactionOptions(object):
                 raise TypeError("%r is not valid for read_preference. See "
                                 "pymongo.read_preferences for valid "
                                 "options." % (read_preference,))
+        if max_commit_time_ms is not None:
+            if not isinstance(max_commit_time_ms, integer_types):
+                raise TypeError(
+                    "max_commit_time_ms must be an integer or None")
 
     @property
     def read_concern(self):
@@ -205,6 +226,14 @@ class TransactionOptions(object):
         """This transaction's :class:`~pymongo.read_preferences.ReadPreference`.
         """
         return self._read_preference
+
+    @property
+    def max_commit_time_ms(self):
+        """The maxTimeMS to use when running a commitTransaction command.
+
+        .. versionadded:: 3.9
+        """
+        return self._max_commit_time_ms
 
 
 def _validate_session_write_concern(session, write_concern):
@@ -279,10 +308,16 @@ def _reraise_with_unknown_commit(exc):
     reraise_instance(exc, trace=sys.exc_info()[2])
 
 
+def _max_time_expired_error(exc):
+    """Return true if exc is a MaxTimeMSExpired error."""
+    return isinstance(exc, OperationFailure) and exc.code == 50
+
+
 # From the transactions spec, all the retryable writes errors plus
 # WriteConcernFailed.
 _UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset([
     64,    # WriteConcernFailed
+    50,    # MaxTimeMSExpired
 ])
 
 # From the Convenient API for Transactions spec, with_transaction must
@@ -380,7 +415,7 @@ class ClientSession(object):
         return getattr(self.client, name)
 
     def with_transaction(self, callback, read_concern=None, write_concern=None,
-                         read_preference=None):
+                         read_preference=None, max_commit_time_ms=None):
         """Execute a callback in a transaction.
 
         This method starts a transaction on this session, executes ``callback``
@@ -465,7 +500,8 @@ class ClientSession(object):
         start_time = monotonic.time()
         while True:
             self.start_transaction(
-                read_concern, write_concern, read_preference)
+                read_concern, write_concern, read_preference,
+                max_commit_time_ms)
             try:
                 ret = callback(self)
             except Exception as exc:
@@ -488,7 +524,8 @@ class ClientSession(object):
                     self.commit_transaction()
                 except PyMongoError as exc:
                     if (exc.has_error_label("UnknownTransactionCommitResult")
-                            and _within_time_limit(start_time)):
+                            and _within_time_limit(start_time)
+                            and not _max_time_expired_error(exc)):
                         # Retry the commit.
                         continue
 
@@ -502,10 +539,13 @@ class ClientSession(object):
                 return ret
 
     def start_transaction(self, read_concern=None, write_concern=None,
-                          read_preference=None):
+                          read_preference=None, max_commit_time_ms=None):
         """Start a multi-statement transaction.
 
         Takes the same arguments as :class:`TransactionOptions`.
+
+        .. versionchanged:: 3.9
+           Added the ``max_commit_time_ms`` option.
 
         .. versionadded:: 3.7
         """
@@ -518,9 +558,13 @@ class ClientSession(object):
         write_concern = self._inherit_option("write_concern", write_concern)
         read_preference = self._inherit_option(
             "read_preference", read_preference)
+        if max_commit_time_ms is None:
+            opts = self.options.default_transaction_options
+            if opts:
+                max_commit_time_ms = opts.max_commit_time_ms
 
         self._transaction.opts = TransactionOptions(
-            read_concern, write_concern, read_preference)
+            read_concern, write_concern, read_preference, max_commit_time_ms)
         self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
@@ -631,18 +675,25 @@ class ClientSession(object):
                 raise exc
 
     def _finish_transaction(self, command_name, retrying):
-        # Transaction spec says that after the initial commit attempt,
-        # subsequent commitTransaction commands should be upgraded to use
-        # w:"majority" and set a default value of 10 seconds for wtimeout.
-        wc = self._transaction.opts.write_concern
-        if retrying and command_name == "commitTransaction":
-            wc_doc = wc.document
-            wc_doc["w"] = "majority"
-            wc_doc.setdefault("wtimeout", 10000)
-            wc = WriteConcern(**wc_doc)
+        opts = self._transaction.opts
+        wc = opts.write_concern
         cmd = SON([(command_name, 1)])
+        if command_name == "commitTransaction":
+            if opts.max_commit_time_ms:
+                cmd['maxTimeMS'] = opts.max_commit_time_ms
+
+            # Transaction spec says that after the initial commit attempt,
+            # subsequent commitTransaction commands should be upgraded to use
+            # w:"majority" and set a default value of 10 seconds for wtimeout.
+            if retrying:
+                wc_doc = wc.document
+                wc_doc["w"] = "majority"
+                wc_doc.setdefault("wtimeout", 10000)
+                wc = WriteConcern(**wc_doc)
+
         if self._transaction.recovery_token:
             cmd['recoveryToken'] = self._transaction.recovery_token
+
         with self._client._socket_for_writes(self) as sock_info:
             return self._client.admin._command(
                 sock_info,

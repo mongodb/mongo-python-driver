@@ -70,9 +70,12 @@ class TestTransactions(TransactionsBase):
         self.assertIsNone(default_options.read_concern)
         self.assertIsNone(default_options.write_concern)
         self.assertIsNone(default_options.read_preference)
+        self.assertIsNone(default_options.max_commit_time_ms)
+        # No error when valid options are provided.
         TransactionOptions(read_concern=ReadConcern(),
                            write_concern=WriteConcern(),
-                           read_preference=ReadPreference.PRIMARY)
+                           read_preference=ReadPreference.PRIMARY,
+                           max_commit_time_ms=10000)
         with self.assertRaisesRegex(TypeError, "read_concern must be "):
             TransactionOptions(read_concern={})
         with self.assertRaisesRegex(TypeError, "write_concern must be "):
@@ -84,6 +87,10 @@ class TestTransactions(TransactionsBase):
         with self.assertRaisesRegex(
                 TypeError, "is not valid for read_preference"):
             TransactionOptions(read_preference={})
+        with self.assertRaisesRegex(
+                TypeError, "max_commit_time_ms must be an integer or None"):
+            TransactionOptions(max_commit_time_ms="10000")
+
 
     @client_context.require_transactions
     def test_transaction_write_concern_override(self):
