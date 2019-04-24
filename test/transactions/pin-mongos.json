@@ -1049,7 +1049,7 @@
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null,
-              "recoveryToken": null
+              "recoveryToken": 42
             },
             "command_name": "abortTransaction",
             "database_name": "admin"

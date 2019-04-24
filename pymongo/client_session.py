@@ -635,14 +635,13 @@ class ClientSession(object):
         # subsequent commitTransaction commands should be upgraded to use
         # w:"majority" and set a default value of 10 seconds for wtimeout.
         wc = self._transaction.opts.write_concern
-        is_commit = command_name == "commitTransaction"
-        if retrying and is_commit:
+        if retrying and command_name == "commitTransaction":
             wc_doc = wc.document
             wc_doc["w"] = "majority"
             wc_doc.setdefault("wtimeout", 10000)
             wc = WriteConcern(**wc_doc)
         cmd = SON([(command_name, 1)])
-        if self._transaction.recovery_token and is_commit:
+        if self._transaction.recovery_token:
             cmd['recoveryToken'] = self._transaction.recovery_token
         with self._client._socket_for_writes(self) as sock_info:
             return self._client.admin._command(

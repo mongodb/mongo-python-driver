@@ -393,7 +393,7 @@
       }
     },
     {
-      "description": "abortTransaction does not send recoveryToken",
+      "description": "abortTransaction sends recoveryToken",
       "useMultipleMongoses": true,
       "operations": [
         {
@@ -472,7 +472,7 @@
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null,
-              "recoveryToken": null
+              "recoveryToken": 42
             },
             "command_name": "abortTransaction",
             "database_name": "admin"
@@ -489,7 +489,7 @@
               "startTransaction": null,
               "autocommit": false,
               "writeConcern": null,
-              "recoveryToken": null
+              "recoveryToken": 42
             },
             "command_name": "abortTransaction",
             "database_name": "admin"
