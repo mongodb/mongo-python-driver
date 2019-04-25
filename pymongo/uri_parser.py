@@ -23,7 +23,7 @@ try:
 except ImportError:
     _HAVE_DNSPYTHON = False
 
-from bson.py3compat import abc, iteritems, string_type, PY3
+from bson.py3compat import string_type, PY3
 
 if PY3:
     from urllib.parse import unquote_plus
@@ -31,7 +31,8 @@ else:
     from urllib import unquote_plus
 
 from pymongo.common import (
-    get_validated_options, URI_OPTIONS_DEPRECATION_MAP, INTERNAL_URI_OPTION_NAME_MAP)
+    get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
+    URI_OPTIONS_DEPRECATION_MAP, _CaseInsensitiveDictionary)
 from pymongo.errors import ConfigurationError, InvalidURI
 
 
@@ -40,80 +41,6 @@ SCHEME_LEN = len(SCHEME)
 SRV_SCHEME = 'mongodb+srv://'
 SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
-
-
-class _CaseInsensitiveDictionary(abc.MutableMapping):
-    def __init__(self, *args, **kwargs):
-        self.__casedkeys = {}
-        self.__data = {}
-        self.update(dict(*args, **kwargs))
-
-    def __contains__(self, key):
-        return key.lower() in self.__data
-
-    def __len__(self):
-        return len(self.__data)
-
-    def __iter__(self):
-        return (self.__casedkeys[key] for key in self.__casedkeys)
-
-    def __repr__(self):
-        return str(self.__data)
-
-    def __setitem__(self, key, value):
-        lc_key = key.lower()
-        self.__casedkeys[lc_key] = key
-        self.__data[lc_key] = value
-
-    def __getitem__(self, key):
-        return self.__data[key.lower()]
-
-    def __delitem__(self, key):
-        lc_key = key.lower()
-        del self.__casedkeys[lc_key]
-        del self.__data[lc_key]
-
-    def get(self, key, default=None):
-        lc_key = key.lower()
-        if lc_key in self:
-            return self.__data[lc_key]
-        return default
-
-    def pop(self, key, *args, **kwargs):
-        lc_key = key.lower()
-        self.__casedkeys.pop(lc_key, None)
-        return self.__data.pop(lc_key, *args, **kwargs)
-
-    def popitem(self):
-        lc_key, cased_key = self.__casedkeys.popitem()
-        value = self.__data.pop(lc_key)
-        return cased_key, value
-
-    def clear(self):
-        self.__casedkeys.clear()
-        self.__data.clear()
-
-    def setdefault(self, key, default=None):
-        lc_key = key.lower()
-        if key in self:
-            return self.__data[lc_key]
-        else:
-            self.__casedkeys[lc_key] = key
-            self.__data[lc_key] = default
-            return default
-
-    def update(self, other):
-        for key in other:
-            self[key] = other[key]
-
-    def cased_key(self, key):
-        return self.__casedkeys[key.lower()]
-
-    def as_dict(self):
-        lc_data = {}
-        for lc_key in self.__data:
-            lc_data[lc_key] = self.__data[lc_key]
-        return lc_data
 
 
 def parse_userinfo(userinfo):
@@ -207,11 +134,15 @@ def parse_host(entity, default_port=DEFAULT_PORT):
 _IMPLICIT_TLSINSECURE_OPTS = {"tlsallowinvalidcertificates",
                               "tlsallowinvalidhostnames"}
 
+_TLSINSECURE_EXCLUDE_OPTS = (_IMPLICIT_TLSINSECURE_OPTS |
+                             {INTERNAL_URI_OPTION_NAME_MAP[k] for k in
+                              _IMPLICIT_TLSINSECURE_OPTS})
+
 
 def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
-    readpreferencetags portion and the use of the tlsInsecure option."""
+    readpreferencetags portion, and the use of a unicode options string."""
     options = _CaseInsensitiveDictionary()
     for uriopt in opts.split(delim):
         key, value = uriopt.split("=")
@@ -222,14 +153,38 @@ def _parse_options(opts, delim):
                 warnings.warn("Duplicate URI option '%s'." % (key,))
             options[key] = unquote_plus(value)
 
-    if 'tlsInsecure' in options:
-        for implicit_option in _IMPLICIT_TLSINSECURE_OPTS:
-            if implicit_option in options:
-                warn_msg = "URI option '%s' overrides value implied by '%s'."
-                warnings.warn(warn_msg % (options.cased_key(implicit_option),
-                                          options.cased_key('tlsInsecure')))
-                continue
-            options[implicit_option] = options['tlsInsecure']
+    return options
+
+
+def _handle_security_options(options):
+    """Raise appropriate errors when conflicting TLS options are present in
+    the options dictionary.
+
+    :Parameters:
+        - `options`: Instance of _CaseInsensitiveDictionary containing
+          MongoDB URI options.
+    """
+    tlsinsecure = options.get('tlsinsecure')
+    if tlsinsecure is not None:
+        for opt in _TLSINSECURE_EXCLUDE_OPTS:
+            if opt in options:
+                err_msg = ("URI options %s and %s cannot be specified "
+                           "simultaneously.")
+                raise InvalidURI(err_msg % (
+                    options.cased_key('tlsinsecure'), options.cased_key(opt)))
+
+    if 'ssl' in options and 'tls' in options:
+        def truth_value(val):
+            if val in ('true', 'false'):
+                return val == 'true'
+            if isinstance(val, bool):
+                return val
+            return val
+        if truth_value(options.get('ssl')) != truth_value(options.get('tls')):
+            err_msg = ("Can not specify conflicting values for URI options %s "
+                      "and %s.")
+            raise InvalidURI(err_msg % (
+                options.cased_key('ssl'), options.cased_key('tls')))
 
     return options
 
@@ -237,31 +192,49 @@ def _parse_options(opts, delim):
 def _handle_option_deprecations(options):
     """Issue appropriate warnings when deprecated options are present in the
     options dictionary. Removes deprecated option key, value pairs if the
-    options dictionary is found to also have the renamed option."""
-    undeprecated_options = _CaseInsensitiveDictionary()
-    for key, value in iteritems(options):
-        optname = str(key).lower()
+    options dictionary is found to also have the renamed option.
+
+    :Parameters:
+        - `options`: Instance of _CaseInsensitiveDictionary containing
+          MongoDB URI options.
+    """
+    for optname in list(options):
         if optname in URI_OPTIONS_DEPRECATION_MAP:
-            renamed_key = URI_OPTIONS_DEPRECATION_MAP[optname]
-            if renamed_key.lower() in options:
-                warnings.warn("Deprecated option '%s' ignored in favor of "
-                              "'%s'." % (str(key), renamed_key))
+            newoptname = URI_OPTIONS_DEPRECATION_MAP[optname]
+            if newoptname in options:
+                warn_msg = "Deprecated option '%s' ignored in favor of '%s'."
+                warnings.warn(warn_msg % (options.cased_key(optname),
+                                          options.cased_key(newoptname)))
+                options.pop(optname)
                 continue
-            warnings.warn("Option '%s' is deprecated, use '%s' instead." % (
-                          str(key), renamed_key))
-        undeprecated_options[str(key)] = value
-    return undeprecated_options
+            warn_msg = "Option '%s' is deprecated, use '%s' instead."
+            warnings.warn(warn_msg % (options.cased_key(optname),
+                                      newoptname))
+
+    return options
 
 
 def _normalize_options(options):
-    """Renames keys in the options dictionary to their internally-used
-    names."""
-    normalized_options = {}
-    for key, value in iteritems(options):
-        optname = str(key).lower()
-        intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, key)
-        normalized_options[intname] = options[key]
-    return normalized_options
+    """Normalizes option names in the options dictionary by converting them to
+    their internally-used names. Also handles use of the tlsInsecure option.
+
+    :Parameters:
+        - `options`: Instance of _CaseInsensitiveDictionary containing
+          MongoDB URI options.
+    """
+    tlsinsecure = options.get('tlsinsecure')
+    if tlsinsecure is not None:
+        for opt in _IMPLICIT_TLSINSECURE_OPTS:
+            intname = INTERNAL_URI_OPTION_NAME_MAP.get(opt, None)
+            # Internal options are logical inverse of public options.
+            options[intname] = not tlsinsecure
+
+    for optname in list(options):
+        intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, None)
+        if intname is not None:
+            options[intname] = options.pop(optname)
+
+    return options
 
 
 def validate_options(opts, warn=False):
@@ -308,6 +281,8 @@ def split_options(opts, validate=True, warn=False, normalize=True):
             raise ValueError
     except ValueError:
         raise InvalidURI("MongoDB URI options are key=value pairs.")
+
+    options = _handle_security_options(options)
 
     options = _handle_option_deprecations(options)
 
@@ -390,7 +365,8 @@ def _get_dns_txt_options(hostname):
         b'&'.join([b''.join(res.strings) for res in results])).decode('utf-8')
 
 
-def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
+def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
+              normalize=True):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -411,15 +387,20 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
         - `uri`: The MongoDB URI to parse.
         - `default_port`: The port number to use when one wasn't specified
           for a host in the URI.
-        - `validate`: If ``True`` (the default), validate and normalize all
-          options.
+        - `validate` (optional): If ``True`` (the default), validate and
+          normalize all options. Default: ``True``.
         - `warn` (optional): When validating, if ``True`` then will warn
           the user then ignore any invalid options or values. If ``False``,
           validation will error when options are unsupported or values are
-          invalid.
+          invalid. Default: ``False``.
+        - `normalize` (optional): If ``True``, convert names of URI options
+          to their internally-used names. Default: ``True``.
+
+    .. versionchanged:: 3.9
+        Added the ``normalize`` parameter.
 
     .. versionchanged:: 3.6
-        Added support for mongodb+srv:// URIs
+        Added support for mongodb+srv:// URIs.
 
     .. versionchanged:: 3.5
         Return the original value of the ``readPreference`` MongoDB URI option
@@ -448,7 +429,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
     passwd = None
     dbase = None
     collection = None
-    options = {}
+    options = _CaseInsensitiveDictionary()
 
     host_part, _, path_part = scheme_free.partition('/')
     if not host_part:
@@ -500,7 +481,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
 
         dns_options = _get_dns_txt_options(fqdn)
         if dns_options:
-            options = split_options(dns_options, validate, warn)
+            options = split_options(dns_options, validate, warn, normalize)
             if set(options) - _ALLOWED_TXT_OPTS:
                 raise ConfigurationError(
                     "Only authSource and replicaSet are supported from DNS")
@@ -520,7 +501,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False):
                 raise InvalidURI('Bad database name "%s"' % dbase)
 
         if opts:
-            options.update(split_options(opts, validate, warn))
+            options.update(split_options(opts, validate, warn, normalize))
 
     if dbase is not None:
         dbase = unquote_plus(dbase)

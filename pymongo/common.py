@@ -700,17 +700,25 @@ def get_validated_options(options, warn=True):
     Returns a copy of options with invalid entries removed.
 
     :Parameters:
-        - `opts`: A dict of MongoDB URI options.
+        - `opts`: A dict containing MongoDB URI options.
         - `warn` (optional): If ``True`` then warnings will be logged and
           invalid options will be ignored. Otherwise, invalid options will
           cause errors.
     """
-    validated_options = {}
+    if isinstance(options, _CaseInsensitiveDictionary):
+        validated_options = _CaseInsensitiveDictionary()
+        get_normed_key = lambda x: x
+        get_setter_key = lambda x: options.cased_key(x)
+    else:
+        validated_options = {}
+        get_normed_key = lambda x: x.lower()
+        get_setter_key = lambda x: x
+
     for opt, value in iteritems(options):
-        lower = opt.lower()
+        normed_key = get_normed_key(opt)
         try:
             validator = URI_OPTIONS_VALIDATOR_MAP.get(
-                lower, raise_config_error)
+                normed_key, raise_config_error)
             value = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
@@ -718,7 +726,7 @@ def get_validated_options(options, warn=True):
             else:
                 raise
         else:
-            validated_options[lower] = value
+            validated_options[get_setter_key(normed_key)] = value
     return validated_options
 
 
@@ -814,3 +822,83 @@ class BaseObject(object):
         .. versionadded:: 3.2
         """
         return self.__read_concern
+
+
+class _CaseInsensitiveDictionary(abc.MutableMapping):
+    def __init__(self, *args, **kwargs):
+        self.__casedkeys = {}
+        self.__data = {}
+        self.update(dict(*args, **kwargs))
+
+    def __contains__(self, key):
+        return key.lower() in self.__data
+
+    def __len__(self):
+        return len(self.__data)
+
+    def __iter__(self):
+        return (key for key in self.__casedkeys)
+
+    def __repr__(self):
+        return str({self.__casedkeys[k]: self.__data[k] for k in self})
+
+    def __setitem__(self, key, value):
+        lc_key = key.lower()
+        self.__casedkeys[lc_key] = key
+        self.__data[lc_key] = value
+
+    def __getitem__(self, key):
+        return self.__data[key.lower()]
+
+    def __delitem__(self, key):
+        lc_key = key.lower()
+        del self.__casedkeys[lc_key]
+        del self.__data[lc_key]
+
+    def __eq__(self, other):
+        if not isinstance(other, abc.Mapping):
+            return NotImplemented
+        if len(self) != len(other):
+            return False
+        for key in other:
+            if self[key] != other[key]:
+                return False
+
+        return True
+
+    def get(self, key, default=None):
+        return self.__data.get(key.lower(), default)
+
+    def pop(self, key, *args, **kwargs):
+        lc_key = key.lower()
+        self.__casedkeys.pop(lc_key, None)
+        return self.__data.pop(lc_key, *args, **kwargs)
+
+    def popitem(self):
+        lc_key, cased_key = self.__casedkeys.popitem()
+        value = self.__data.pop(lc_key)
+        return cased_key, value
+
+    def clear(self):
+        self.__casedkeys.clear()
+        self.__data.clear()
+
+    def setdefault(self, key, default=None):
+        lc_key = key.lower()
+        if key in self:
+            return self.__data[lc_key]
+        else:
+            self.__casedkeys[lc_key] = key
+            self.__data[lc_key] = default
+            return default
+
+    def update(self, other):
+        if isinstance(other, _CaseInsensitiveDictionary):
+            for key in other:
+                self[other.cased_key(key)] = other[key]
+        else:
+            for key in other:
+                self[key] = other[key]
+
+    def cased_key(self, key):
+        return self.__casedkeys[key.lower()]

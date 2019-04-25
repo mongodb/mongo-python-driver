@@ -121,7 +121,7 @@ def create_test(test, test_workdir):
 
         # Compare URI options.
         err_msg = "For option %s expected %s but got %s"
-        if test['options'] is not None:
+        if test['options']:
             opts = options['options']
             for opt in test['options']:
                 lopt = opt.lower()

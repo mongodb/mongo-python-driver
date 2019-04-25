@@ -39,7 +39,7 @@ import weakref
 
 from collections import defaultdict
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import (integer_types,
                             string_type)
 from bson.son import SON
@@ -71,8 +71,8 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.settings import TopologySettings
-from pymongo.uri_parser import (_CaseInsensitiveDictionary,
-                                _handle_option_deprecations,
+from pymongo.uri_parser import (_handle_option_deprecations,
+                                _handle_security_options,
                                 _normalize_options)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
@@ -588,7 +588,7 @@ class MongoClient(common.BaseObject):
         for entity in host:
             if "://" in entity:
                 res = uri_parser.parse_uri(
-                    entity, port, validate=True, warn=True)
+                    entity, port, validate=True, warn=True, normalize=False)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
@@ -605,7 +605,7 @@ class MongoClient(common.BaseObject):
         monitor_class = kwargs.pop('_monitor_class', None)
         condition_class = kwargs.pop('_condition_class', None)
 
-        keyword_opts = kwargs
+        keyword_opts = common._CaseInsensitiveDictionary(kwargs)
         keyword_opts['document_class'] = document_class
         if type_registry is not None:
             keyword_opts['type_registry'] = type_registry
@@ -616,15 +616,19 @@ class MongoClient(common.BaseObject):
         keyword_opts['tz_aware'] = tz_aware
         keyword_opts['connect'] = connect
 
-        # Validate kwargs options.
-        keyword_opts = _CaseInsensitiveDictionary(
-            dict(common.validate(k, v) for k, v in keyword_opts.items()))
-        # Handle deprecated options in kwarg list.
+        # Handle deprecated options in kwarg options.
         keyword_opts = _handle_option_deprecations(keyword_opts)
-        # Change kwarg option names to those used internally.
-        keyword_opts = _normalize_options(keyword_opts)
-        # Augment URI options with kwarg options, overriding the former.
+        # Validate kwarg options.
+        keyword_opts = common._CaseInsensitiveDictionary(
+            dict(common.validate(k, v) for k, v in keyword_opts.items()))
+
+        # Override connection string options with kwarg options.
         opts.update(keyword_opts)
+        # Handle security-option conflicts in combined options.
+        opts = _handle_security_options(opts)
+        # Normalize combined options.
+        opts = _normalize_options(opts)
+
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)

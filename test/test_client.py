@@ -344,6 +344,41 @@ class ClientUnitTest(unittest.TestCase):
             c.codec_options.unicode_decode_error_handler,
             unicode_decode_error_handler)
 
+    def test_uri_option_precedence(self):
+        # Ensure kwarg options override connection string options.
+        uri = ("mongodb://localhost/?ssl=true&replicaSet=name"
+               "&readPreference=primary")
+        c = MongoClient(uri, ssl=False, replicaSet="newname",
+                        readPreference="secondaryPreferred")
+        clopts = c._MongoClient__options
+        opts = clopts._options
+
+        self.assertEqual(opts['ssl'], False)
+        self.assertEqual(clopts.replica_set_name, "newname")
+        self.assertEqual(
+            clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
+
+    def test_uri_security_options(self):
+        # Ensure that we don't silently override security-related options.
+        with self.assertRaises(InvalidURI):
+            MongoClient('mongodb://localhost/?ssl=true', tls=False,
+                        connect=False)
+
+        # Matching SSL and TLS options should not cause errors.
+        c = MongoClient('mongodb://localhost/?ssl=false', tls=False,
+                        connect=False)
+        self.assertEqual(c._MongoClient__options._options['ssl'], False)
+
+        # Conflicting tlsInsecure options should raise an error.
+        with self.assertRaises(InvalidURI):
+            MongoClient('mongodb://localhost/?tlsInsecure=true',
+                        connect=False, tlsAllowInvalidHostnames=True)
+
+        # Conflicting legacy tlsInsecure options should also raise an error.
+        with self.assertRaises(InvalidURI):
+            MongoClient('mongodb://localhost/?tlsInsecure=true',
+                        connect=False, ssl_cert_reqs=True)
+
 
 class TestClient(IntegrationTest):
 
