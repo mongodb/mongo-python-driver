@@ -170,6 +170,13 @@ class SpecRunner(IntegrationTest):
         else:
             self.assertEqual(result, expected_result)
 
+    def get_object_name(self, op):
+        """Allow CRUD spec to override handling of 'object'
+
+        Transaction spec says 'object' is required.
+        """
+        return op['object']
+
     def run_operation(self, sessions, collection, operation):
         original_collection = collection
         name = camel_to_snake(operation['name'])
@@ -200,7 +207,7 @@ class SpecRunner(IntegrationTest):
             collection = collection.with_options(
                 **dict(parse_options(operation['collectionOptions'])))
 
-        object_name = operation['object']
+        object_name = self.get_object_name(operation)
         if object_name == 'gridfsbucket':
             # Only create the GridFSBucket when we need it (for the gridfs
             # retryable reads tests).
@@ -340,6 +347,13 @@ class SpecRunner(IntegrationTest):
                 event.command['getMore'] = 42
             elif event.command_name == 'killCursors':
                 event.command['cursors'] = [42]
+            elif event.command_name == 'update':
+                # TODO: remove this once PYTHON-1744 is done.
+                # Add upsert and multi fields back into expectations.
+                updates = expectation[event_type]['command']['updates']
+                for update in updates:
+                    update.setdefault('upsert', False)
+                    update.setdefault('multi', False)
 
             # Replace afterClusterTime: 42 with actual afterClusterTime.
             expected_cmd = expectation[event_type]['command']
@@ -384,6 +398,18 @@ class SpecRunner(IntegrationTest):
         if test.get('skipReason'):
             raise unittest.SkipTest(test.get('skipReason'))
 
+    def get_scenario_db_name(self, scenario_def):
+        """Allow CRUD spec to override a test's database name."""
+        return scenario_def['database_name']
+
+    def get_scenario_coll_name(self, scenario_def):
+        """Allow CRUD spec to override a test's collection name."""
+        return scenario_def['collection_name']
+
+    def get_outcome_coll_name(self, outcome, collection):
+        """Allow CRUD spec to override outcome collection."""
+        return collection.name
+
     def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
         listener = OvertCommandListener()
@@ -406,7 +432,7 @@ class SpecRunner(IntegrationTest):
         self.kill_all_sessions()
         self.addCleanup(self.kill_all_sessions)
 
-        database_name = scenario_def['database_name']
+        database_name = self.get_scenario_db_name(scenario_def)
         write_concern_db = client_context.client.get_database(
             database_name, write_concern=WriteConcern(w='majority'))
         if 'bucket_name' in scenario_def:
@@ -419,7 +445,7 @@ class SpecRunner(IntegrationTest):
                 write_concern_db['fs.chunks'].insert_many(data['fs.chunks'])
                 write_concern_db['fs.files'].insert_many(data['fs.files'])
         else:
-            collection_name = scenario_def['collection_name']
+            collection_name = self.get_scenario_coll_name(scenario_def)
             write_concern_coll = write_concern_db[collection_name]
             write_concern_coll.drop()
             write_concern_db.create_collection(collection_name)
@@ -491,14 +517,19 @@ class SpecRunner(IntegrationTest):
                 'configureFailPoint': 'failCommand', 'mode': 'off'})
 
         # Assert final state is expected.
-        expected_c = test['outcome'].get('collection')
+        outcome = test['outcome']
+        expected_c = outcome.get('collection')
         if expected_c is not None:
+            outcome_coll_name = self.get_outcome_coll_name(
+                outcome, collection)
+
             # Read from the primary with local read concern to ensure causal
             # consistency.
-            primary_coll = collection.with_options(
+            outcome_coll = collection.database.get_collection(
+                outcome_coll_name,
                 read_preference=ReadPreference.PRIMARY,
                 read_concern=ReadConcern('local'))
-            self.assertEqual(list(primary_coll.find()), expected_c['data'])
+            self.assertEqual(list(outcome_coll.find()), expected_c['data'])
 
 
 def expect_any_error(op):
