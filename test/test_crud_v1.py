@@ -122,7 +122,7 @@ def run_operation(collection, test):
                 continue
             # Requires boolean returnDocument.
             elif arg_name == "returnDocument":
-                arguments[c2s] = arguments[arg_name] == "After"
+                arguments[c2s] = arguments.pop(arg_name) == "After"
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 

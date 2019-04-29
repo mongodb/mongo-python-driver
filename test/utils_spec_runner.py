@@ -238,7 +238,7 @@ class SpecRunner(IntegrationTest):
                 continue
             # Requires boolean returnDocument.
             elif arg_name == "returnDocument":
-                arguments[c2s] = arguments[arg_name] == "After"
+                arguments[c2s] = arguments.pop(arg_name) == "After"
             elif c2s == "requests":
                 # Parse each request into a bulk write model.
                 requests = []
