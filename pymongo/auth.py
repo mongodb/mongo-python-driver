@@ -17,6 +17,7 @@
 import functools
 import hashlib
 import hmac
+import os
 import socket
 
 try:
@@ -38,7 +39,6 @@ except ImportError:
 
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
-from random import SystemRandom
 
 from bson.binary import Binary
 from bson.py3compat import string_type, _unicode, PY3
@@ -253,8 +253,7 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     _hmac = hmac.HMAC
 
     user = username.encode("utf-8").replace(b"=", b"=3D").replace(b",", b"=2C")
-    nonce = standard_b64encode(
-        (("%s" % (SystemRandom().random(),))[2:]).encode("utf-8"))
+    nonce = standard_b64encode(os.urandom(32))
     first_bare = b"n=" + user + b",r=" + nonce
 
     cmd = SON([('saslStart', 1),
