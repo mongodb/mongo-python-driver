@@ -628,7 +628,7 @@ class BulkOperationBuilder(object):
     """**DEPRECATED**: An interface for executing a batch of write operations.
     """
 
-    __slots__ = '__bulk'
+    __slots__ = ('__bulk',)
 
     def __init__(self, collection, ordered=True,
                  bypass_document_validation=False):

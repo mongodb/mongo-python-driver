@@ -321,7 +321,7 @@ def _password_digest(username, password):
     if not isinstance(password, string_type):
         raise TypeError("password must be an "
                         "instance of %s" % (string_type.__name__,))
-    if len(password) == 0:
+    if not password:
         raise ValueError("password can't be empty")
     if not isinstance(username, string_type):
         raise TypeError("password must be an "

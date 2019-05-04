@@ -1093,7 +1093,7 @@ class Pool:
             return self.connect()
 
         if (self._check_interval_seconds is not None and (
-                0 == self._check_interval_seconds or
+                self._check_interval_seconds == 0 or
                 idle_time_seconds > self._check_interval_seconds)):
             if self.socket_checker.socket_closed(sock_info.sock):
                 sock_info.close()

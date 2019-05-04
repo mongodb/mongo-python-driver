@@ -752,7 +752,7 @@ class _GridOutChunkIterator(object):
 
         if chunk["n"] >= self._num_chunks:
             # According to spec, ignore extra chunks if they are empty.
-            if len(chunk["data"]):
+            if chunk["data"]:
                 self.close()
                 raise CorruptGridFile(
                     "Extra chunk found: expected %d chunks but found "

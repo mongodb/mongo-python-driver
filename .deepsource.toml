@@ -1,0 +1,17 @@
+version = 1
+
+test_patterns = [
+  'test/test_*.py',
+  'test/**/test_*.py'
+]
+
+exclude_patterns = [
+  'bson/py3compat.py',
+  'setup.py',
+  'ez_setup.py'
+]
+
+[[analyzers]]
+name = 'python'
+enabled = true
+runtime_version = '2.x.x'

@@ -1056,7 +1056,7 @@ def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):
     while True:
         # Read size of next object.
         size_data = file_obj.read(4)
-        if len(size_data) == 0:
+        if not size_data:
             break  # Finished with file normaly.
         elif len(size_data) != 4:
             raise InvalidBSON("cut off in middle of objsize")

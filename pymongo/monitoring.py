@@ -529,7 +529,7 @@ class ServerClosedEvent(_ServerEvent):
 class TopologyEvent(object):
     """Base class for topology description events."""
 
-    __slots__ = ('__topology_id')
+    __slots__ = ('__topology_id',)
 
     def __init__(self, topology_id):
         self.__topology_id = topology_id
@@ -548,7 +548,7 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
 
     __slots__ = ('__previous_description', '__new_description')
 
-    def __init__(self, previous_description,  new_description, *args):
+    def __init__(self, previous_description, new_description, *args):
         super(TopologyDescriptionChangedEvent, self).__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
@@ -587,7 +587,7 @@ class TopologyClosedEvent(TopologyEvent):
 class _ServerHeartbeatEvent(object):
     """Base class for server heartbeat events."""
 
-    __slots__ = ('__connection_id')
+    __slots__ = ('__connection_id',)
 
     def __init__(self, connection_id):
         self.__connection_id = connection_id
