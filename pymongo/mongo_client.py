@@ -1312,6 +1312,8 @@ class MongoClient(common.BaseObject):
             # Server Discovery And Monitoring Spec: "When an application
             # operation fails because of any network error besides a socket
             # timeout...."
+            if session:
+                session._server_session.mark_dirty()
             raise
         except NotMasterError:
             # "When the client sees a "not master" error it MUST replace the
@@ -1323,6 +1325,8 @@ class MongoClient(common.BaseObject):
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
             self.__reset_server(server_address)
+            if session:
+                session._server_session.mark_dirty()
             raise
         except OperationFailure as exc:
             if exc.code in helpers._RETRYABLE_ERROR_CODES:

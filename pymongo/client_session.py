@@ -786,6 +786,15 @@ class _ServerSession(object):
         self.session_id = {'id': Binary(uuid.uuid4().bytes, 4)}
         self.last_use = monotonic.time()
         self._transaction_id = 0
+        self.dirty = False
+
+    def mark_dirty(self):
+        """Mark this session as dirty.
+
+        A server session is marked dirty when a command fails with a network
+        error. Dirty sessions are later discarded from the server session pool.
+        """
+        self.dirty = True
 
     def timed_out(self, session_timeout_minutes):
         idle_seconds = monotonic.time() - self.last_use
@@ -832,10 +841,11 @@ class _ServerSessionPool(collections.deque):
     def return_server_session(self, server_session, session_timeout_minutes):
         self._clear_stale(session_timeout_minutes)
         if not server_session.timed_out(session_timeout_minutes):
-            self.appendleft(server_session)
+            self.return_server_session_no_lock(server_session)
 
     def return_server_session_no_lock(self, server_session):
-        self.appendleft(server_session)
+        if not server_session.dirty:
+            self.appendleft(server_session)
 
     def _clear_stale(self, session_timeout_minutes):
         # Clear stale sessions. The least recently used are on the right.

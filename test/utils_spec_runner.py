@@ -63,6 +63,10 @@ class SpecRunner(IntegrationTest):
         cls.knobs.disable()
         super(SpecRunner, cls).tearDownClass()
 
+    def setUp(self):
+        super(SpecRunner, self).setUp()
+        self.listener = None
+
     def _set_fail_point(self, client, command_args):
         cmd = SON([('configureFailPoint', 'failCommand')])
         cmd.update(command_args)
@@ -423,6 +427,7 @@ class SpecRunner(IntegrationTest):
                                event_listeners=[listener], **client_options)
         else:
             client = rs_client(event_listeners=[listener], **client_options)
+        self.listener = listener
         # Close the client explicitly to avoid having too many threads open.
         self.addCleanup(client.close)
 
