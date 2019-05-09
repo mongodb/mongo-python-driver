@@ -1026,6 +1026,10 @@ axes:
         display_name: zlib compression
         variables:
             COMPRESSORS: "zlib"
+      - id: zstd
+        display_name: zstd compression
+        variables:
+            COMPRESSORS: "zstd"
   - id: python-version
     display_name: "Python"
     values:
@@ -1283,15 +1287,22 @@ buildvariants:
      compression: "*"
    - python-version: ["jython2.7"]
      c-extensions: "*"
-     compression: "snappy"
+     compression: ["snappy", "zstd"]
   batchtime: 10080  # 7 days
   display_name: "${compression} ${c-extensions} ${python-version} (x86_64)"
   # Ubuntu 16.04 images have libsnappy-dev installed
   run_on: ubuntu1604-test
   tasks:
-     - "test-latest-standalone"
-     - "test-4.0-standalone"
-     - "test-3.6-standalone"
+    - "test-latest-standalone"
+  rules:
+    - if:
+        python-version: "*"
+        c-extensions: "*"
+        compression: ["snappy", "zlib"]
+      then:
+        add_tasks:
+          - "test-4.0-standalone"
+          - "test-3.6-standalone"
 
 - matrix_name: "tests-python-version-py37-plus-compression"
   matrix_spec: {"python-version-requires-openssl-102-plus": "*", "c-extensions": "*", "compression": "*"}
@@ -1301,9 +1312,16 @@ buildvariants:
   # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2
   run_on: ubuntu1604-test
   tasks:
-     - "test-latest-standalone"
-     - "test-4.0-standalone"
-     - "test-3.6-standalone"
+    - "test-latest-standalone"
+  rules:
+    - if:
+        python-version: "*"
+        c-extensions: "*"
+        compression: ["snappy", "zlib"]
+      then:
+        add_tasks:
+          - "test-4.0-standalone"
+          - "test-3.6-standalone"
 
 - matrix_name: "tests-python-version-green-framework-rhel62"
   matrix_spec: {"python-version": "*", "green-framework": "*", auth-ssl: "*"}

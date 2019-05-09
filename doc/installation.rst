@@ -75,10 +75,15 @@ Wire protocol compression with snappy requires `python-snappy
 
   $ python -m pip install pymongo[snappy]
 
+Wire protocol compression with zstandard requires `zstandard
+<https://pypi.org/project/zstandard>`_::
+
+  $ python -m pip install pymongo[zstd]
+
 You can install all dependencies automatically with the following
 command::
 
-  $ python -m pip install pymongo[snappy,gssapi,srv,tls]
+  $ python -m pip install pymongo[snappy,gssapi,srv,tls,zstd]
 
 Other optional packages:
 

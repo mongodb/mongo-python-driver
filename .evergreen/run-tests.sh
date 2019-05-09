@@ -56,6 +56,12 @@ elif [ $COMPRESSORS = "snappy" ]; then
     # 0.5.2 has issues in pypy3(.5)
     pip install python-snappy==0.5.1
     PYTHON=python
+elif [ $COMPRESSORS = "zstd" ]; then
+    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download zstdtest
+    . zstdtest/bin/activate
+    trap "deactivate; rm -rf zstdtest" EXIT HUP
+    pip install zstandard
+    PYTHON=python
 else
     PYTHON="$PYTHON_BINARY"
 fi

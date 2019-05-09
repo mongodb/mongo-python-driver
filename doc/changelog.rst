@@ -36,6 +36,7 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
 - Support for retryable reads and the ``retryReads`` URI option which is
   enabled by default. See the :class:`~pymongo.mongo_client.MongoClient`
   documentation for details.
+- Support zstandard for wire protocol compression.
 
   Now that supported operations are retried automatically and transparently,
   users should consider adjusting any custom retry logic to prevent

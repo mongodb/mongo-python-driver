@@ -36,7 +36,7 @@ from bson.tz_util import utc
 from pymongo import auth, message
 from pymongo.common import _UUID_REPRESENTATIONS
 from pymongo.command_cursor import CommandCursor
-from pymongo.compression_support import _HAVE_SNAPPY
+from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.cursor import Cursor, CursorType
 from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
@@ -1342,6 +1342,21 @@ class TestClient(IntegrationTest):
             client = MongoClient(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, ['snappy', 'zlib'])
+
+        if not _HAVE_ZSTD:
+            uri = "mongodb://localhost:27017/?compressors=zstd"
+            client = MongoClient(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, [])
+        else:
+            uri = "mongodb://localhost:27017/?compressors=zstd"
+            client = MongoClient(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, ['zstd'])
+            uri = "mongodb://localhost:27017/?compressors=zstd,zlib"
+            client = MongoClient(uri, connect=False)
+            opts = compression_settings(client)
+            self.assertEqual(opts.compressors, ['zstd', 'zlib'])
 
         options = client_context.default_client_options
         if "compressors" in options and "zlib" in options["compressors"]:
