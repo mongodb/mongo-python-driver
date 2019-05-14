@@ -802,7 +802,7 @@ class MongoClient(common.BaseObject):
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None):
+              start_at_operation_time=None, session=None, start_after=None):
         """Watch changes on this cluster.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -854,8 +854,10 @@ class MongoClient(common.BaseObject):
             updates will include both a delta describing the changes to the
             document, as well as a copy of the entire document that was
             changed from some time after the change occurred.
-          - `resume_after` (optional): The logical starting point for this
-            change stream.
+          - `resume_after` (optional): A resume token. If provided, the
+            change stream will start returning changes that occur directly
+            after the operation specified in the resume token. A resume token
+            is the _id value of a change document.
           - `max_await_time_ms` (optional): The maximum time in milliseconds
             for the server to wait for changes before responding to a getMore
             operation.
@@ -869,9 +871,15 @@ class MongoClient(common.BaseObject):
             MongoDB >= 4.0.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `start_after` (optional): The same as `resume_after` except that
+            `start_after` can resume notifications after an invalidate event.
+            This option and `resume_after` are mutually exclusive.
 
         :Returns:
           A :class:`~pymongo.change_stream.ClusterChangeStream` cursor.
+
+        .. versionchanged:: 3.9
+           Added the ``start_after`` parameter.
 
         .. versionadded:: 3.7
 
@@ -882,8 +890,8 @@ class MongoClient(common.BaseObject):
         """
         return ClusterChangeStream(
             self.admin, pipeline, full_document, resume_after, max_await_time_ms,
-            batch_size, collation, start_at_operation_time, session
-        )
+            batch_size, collation, start_at_operation_time, session,
+            start_after)
 
     @property
     def event_listeners(self):

@@ -597,6 +597,64 @@ class TestCollectionChangeStream(IntegrationTest, ChangeStreamTryNextMixin):
         with coll.watch():
             pass
 
+    def invalidate_resume_token(self):
+        with self.coll.watch(
+                [{'$match': {'operationType': 'invalidate'}}]) as cs:
+            self.coll.insert_one({'_id': 1})
+            self.coll.drop()
+            resume_token = cs.next()['_id']
+            self.assertFalse(cs.alive)
+            return resume_token
+
+    @client_context.require_version_min(4, 1, 1)
+    def test_start_after(self):
+        resume_token = self.invalidate_resume_token()
+
+        # resume_after cannot resume after invalidate.
+        with self.assertRaises(OperationFailure):
+            self.coll.watch(resume_after=resume_token)
+
+        # start_after can resume after invalidate.
+        with self.coll.watch(start_after=resume_token) as change_stream:
+            self.coll.insert_one({'_id': 2})
+            change = change_stream.next()
+            self.assertEqual(change['operationType'], 'insert')
+            self.assertEqual(change['fullDocument'], {'_id': 2})
+
+    @client_context.require_version_min(4, 1, 1)
+    def test_start_after_resume_process_with_changes(self):
+        resume_token = self.invalidate_resume_token()
+
+        with self.coll.watch(start_after=resume_token,
+                             max_await_time_ms=250) as change_stream:
+            self.coll.insert_one({'_id': 2})
+            change = change_stream.next()
+            self.assertEqual(change['operationType'], 'insert')
+            self.assertEqual(change['fullDocument'], {'_id': 2})
+
+            self.assertIsNone(change_stream.try_next())
+            self.kill_change_stream_cursor(change_stream)
+
+            self.coll.insert_one({'_id': 3})
+            change = change_stream.next()
+            self.assertEqual(change['operationType'], 'insert')
+            self.assertEqual(change['fullDocument'], {'_id': 3})
+
+    @client_context.require_no_mongos  # Remove after SERVER-41196
+    @client_context.require_version_min(4, 1, 1)
+    def test_start_after_resume_process_without_changes(self):
+        resume_token = self.invalidate_resume_token()
+
+        with self.coll.watch(start_after=resume_token,
+                             max_await_time_ms=250) as change_stream:
+            self.assertIsNone(change_stream.try_next())
+            self.kill_change_stream_cursor(change_stream)
+
+            self.coll.insert_one({'_id': 2})
+            change = change_stream.next()
+            self.assertEqual(change['operationType'], 'insert')
+            self.assertEqual(change['fullDocument'], {'_id': 2})
+
 
 class TestAllScenarios(unittest.TestCase):
 

@@ -52,7 +52,7 @@ class ChangeStream(object):
     """
     def __init__(self, target, pipeline, full_document, resume_after,
                  max_await_time_ms, batch_size, collation,
-                 start_at_operation_time, session):
+                 start_at_operation_time, session, start_after):
         if pipeline is None:
             pipeline = []
         elif not isinstance(pipeline, list):
@@ -82,6 +82,7 @@ class ChangeStream(object):
         self._collation = collation
         self._start_at_operation_time = start_at_operation_time
         self._session = session
+        self._start_after = copy.deepcopy(start_after)
         self._cursor = self._create_cursor()
 
     @property
@@ -101,6 +102,8 @@ class ChangeStream(object):
             options['fullDocument'] = self._full_document
         if self._resume_token is not None:
             options['resumeAfter'] = self._resume_token
+        if self._start_after is not None:
+            options['startAfter'] = self._start_after
         if self._start_at_operation_time is not None:
             options['startAtOperationTime'] = self._start_at_operation_time
         return options
@@ -141,7 +144,7 @@ class ChangeStream(object):
 
             if (self._start_at_operation_time is None and
                 self._resume_token is None and
-                cursor.get("_id") is None and
+                self._start_after is None and
                 sock_info.max_wire_version >= 7):
                 self._start_at_operation_time = result["operationTime"]
 
@@ -277,6 +280,7 @@ class ChangeStream(object):
                 "token is missing.")
         self._resume_token = copy.copy(resume_token)
         self._start_at_operation_time = None
+        self._start_after = None
 
         if self._decode_custom:
             return _bson_to_dict(change.raw, self._orig_codec_options)
