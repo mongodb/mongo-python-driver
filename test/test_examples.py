@@ -1010,7 +1010,8 @@ class TestTransactionExamples(IntegrationTest):
 
             with session.start_transaction(
                     read_concern=ReadConcern("snapshot"),
-                    write_concern=WriteConcern(w="majority")):
+                    write_concern=WriteConcern(w="majority"),
+                    read_preference=ReadPreference.PRIMARY):
                 employees_coll.update_one(
                     {"employee": 3}, {"$set": {"status": "Inactive"}},
                     session=session)
