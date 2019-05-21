@@ -39,6 +39,8 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
   enabled by default. See the :class:`~pymongo.mongo_client.MongoClient`
   documentation for details.
 - Support zstandard for wire protocol compression.
+- Support for periodically polling DNS SRV records to update the mongos proxy
+  list without having to change client configuration.
 
   Now that supported operations are retried automatically and transparently,
   users should consider adjusting any custom retry logic to prevent

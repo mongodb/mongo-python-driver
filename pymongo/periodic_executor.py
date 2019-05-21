@@ -102,6 +102,9 @@ class PeriodicExecutor(object):
         """Execute the target function soon."""
         self._event = True
 
+    def update_interval(self, new_interval):
+        self._interval = new_interval
+
     def __should_stop(self):
         with self._lock:
             if self._stopped:

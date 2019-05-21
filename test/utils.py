@@ -170,6 +170,21 @@ class CompareType(object):
         return not self.__eq__(other)
 
 
+class FunctionCallCounter(object):
+    """Class that wraps a function and keeps count of invocations."""
+    def __init__(self, function):
+        self._function = function
+        self._call_count = 0
+
+    def __call__(self, *args, **kwargs):
+        self._call_count += 1
+        return self._function(*args, **kwargs)
+
+    @property
+    def call_count(self):
+        return self._call_count
+
+
 class TestCreator(object):
     """Class to create test cases from specifications."""
     def __init__(self, create_test, test_class, test_path):
@@ -502,6 +517,7 @@ def wait_until(predicate, success_description, timeout=10):
     Returns the predicate's first true value.
     """
     start = time.time()
+    interval = min(float(timeout)/100, 0.1)
     while True:
         retval = predicate()
         if retval:
@@ -510,7 +526,7 @@ def wait_until(predicate, success_description, timeout=10):
         if time.time() - start > timeout:
             raise AssertionError("Didn't ever %s" % success_description)
 
-        time.sleep(0.1)
+        time.sleep(interval)
 
 
 def is_mongos(client):

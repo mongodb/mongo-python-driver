@@ -193,7 +193,8 @@ class TestURI(unittest.TestCase):
             'password': None,
             'database': None,
             'collection': None,
-            'options': {}
+            'options': {},
+            'fqdn': None
         }
 
         res = copy.deepcopy(orig)
@@ -442,7 +443,8 @@ class TestURI(unittest.TestCase):
              'nodelist': [('/MongoDB.sock', None)],
              'options': {'ssl_certfile': '/a/b'},
              'password': 'foo/bar',
-             'username': 'jesse'},
+             'username': 'jesse',
+             'fqdn': None},
             parse_uri(
                 'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?ssl_certfile=/a/b',
                 validate=False))
@@ -453,7 +455,8 @@ class TestURI(unittest.TestCase):
              'nodelist': [('/MongoDB.sock', None)],
              'options': {'ssl_certfile': 'a/b'},
              'password': 'foo/bar',
-             'username': 'jesse'},
+             'username': 'jesse',
+             'fqdn': None},
             parse_uri(
                 'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?ssl_certfile=a/b',
                 validate=False))

@@ -24,9 +24,13 @@ from pymongo.server_selectors import Selection
 from pymongo.server_type import SERVER_TYPE
 
 
+# Enumeration for various kinds of MongoDB cluster topologies.
 TOPOLOGY_TYPE = namedtuple('TopologyType', ['Single', 'ReplicaSetNoPrimary',
                                             'ReplicaSetWithPrimary', 'Sharded',
                                             'Unknown'])(*range(5))
+
+# Topologies compatible with SRV record polling.
+SRV_POLLING_TOPOLOGIES = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
 
 
 class TopologyDescription(object):
@@ -398,6 +402,40 @@ def updated_topology_description(topology_description, server_description):
                                max_set_version,
                                max_election_id,
                                topology_description._topology_settings)
+
+
+def _updated_topology_description_srv_polling(topology_description, seedlist):
+    """Return an updated copy of a TopologyDescription.
+
+    :Parameters:
+      - `topology_description`: the current TopologyDescription
+      - `seedlist`: a list of new seeds new ServerDescription that resulted from
+        an ismaster call
+    """
+    # Create a copy of the server descriptions.
+    sds = topology_description.server_descriptions()
+
+    # If seeds haven't changed, don't do anything.
+    if set(sds.keys()) == set(seedlist):
+        return topology_description
+
+    # Add SDs corresponding to servers recently added to the SRV record.
+    for address in seedlist:
+        if address not in sds:
+            sds[address] = ServerDescription(address)
+
+    # Remove SDs corresponding to servers no longer part of the SRV record.
+    for address in list(sds.keys()):
+        if address not in seedlist:
+            sds.pop(address)
+
+    return TopologyDescription(
+        topology_description.topology_type,
+        sds,
+        topology_description.replica_set_name,
+        topology_description.max_set_version,
+        topology_description.max_election_id,
+        topology_description._topology_settings)
 
 
 def _update_rs_from_primary(

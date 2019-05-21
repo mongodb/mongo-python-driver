@@ -27,7 +27,8 @@ from pymongo.topology import Topology
 sys.path[0:0] = [""]
 
 from test import client_context, unittest, IntegrationTest
-from test.utils import rs_or_single_client, wait_until, EventListener
+from test.utils import (rs_or_single_client, wait_until, EventListener,
+                        FunctionCallCounter)
 from test.utils_selection_tests import (
     create_selection_tests, get_addresses, get_topology_settings_dict,
     make_server_description)
@@ -37,16 +38,6 @@ from test.utils_selection_tests import (
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     os.path.join('server_selection', 'server_selection'))
-
-
-class CallCountSelector(object):
-    """No-op selector that keeps track of how many times it is called."""
-    def __init__(self):
-        self.call_count = 0
-
-    def __call__(self, servers):
-        self.call_count += 1
-        return servers
 
 
 class SelectionStoreSelector(object):
@@ -114,7 +105,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
     @client_context.require_replica_set
     def test_selector_called(self):
-        selector = CallCountSelector()
+        selector = FunctionCallCounter(lambda x: x)
 
         # Client setup.
         mongo_client = rs_or_single_client(server_selector=selector)
@@ -178,7 +169,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
     @client_context.require_replica_set
     def test_server_selector_bypassed(self):
-        selector = CallCountSelector()
+        selector = FunctionCallCounter(lambda x: x)
 
         scenario_def = {
             'topology_description': {

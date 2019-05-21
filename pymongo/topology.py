@@ -30,9 +30,11 @@ from pymongo import common
 from pymongo import periodic_executor
 from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
-                                          TOPOLOGY_TYPE,
-                                          TopologyDescription)
+                                          _updated_topology_description_srv_polling,
+                                          TopologyDescription,
+                                          SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE)
 from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
+from pymongo.monitor import SrvMonitor
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
 from pymongo.server_selectors import (any_server_selector,
@@ -128,6 +130,10 @@ class Topology(object):
             weak = weakref.ref(self._events)
             self.__events_executor = executor
             executor.open()
+
+        self._srv_monitor = None
+        if self._settings.fqdn is not None:
+            self._srv_monitor = SrvMonitor(self, self._settings)
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -272,6 +278,14 @@ class Topology(object):
                 self._listeners.publish_topology_description_changed,
                 (td_old, self._description, self._topology_id)))
 
+        # Shutdown SRV polling for unsupported cluster types.
+        # This is only applicable if the old topology was Unknown, and the
+        # new one is something other than Unknown or Sharded.
+        if self._srv_monitor and (td_old.topology_type == TOPOLOGY_TYPE.Unknown
+                                  and self._description.topology_type not in
+                                  SRV_POLLING_TOPOLOGIES):
+            self._srv_monitor.close()
+
         # Wake waiters in select_servers().
         self._condition.notify_all()
 
@@ -290,6 +304,28 @@ class Topology(object):
             if (self._opened and
                     self._description.has_server(server_description.address)):
                 self._process_change(server_description)
+
+    def _process_srv_update(self, seedlist):
+        """Process a new seedlist on an opened topology.
+        Hold the lock when calling this.
+        """
+        td_old = self._description
+        self._description = _updated_topology_description_srv_polling(
+            self._description, seedlist)
+
+        self._update_servers()
+
+        if self._publish_tp:
+            self._events.put((
+                self._listeners.publish_topology_description_changed,
+                (td_old, self._description, self._topology_id)))
+
+    def on_srv_update(self, seedlist):
+        """Process a new list of nodes obtained from scanning SRV records."""
+        # We do no I/O holding the lock.
+        with self._lock:
+            if self._opened:
+                self._process_srv_update(seedlist)
 
     def get_server_by_address(self, address):
         """Get a Server or None.
@@ -396,6 +432,11 @@ class Topology(object):
             # Mark all servers Unknown.
             self._description = self._description.reset()
             self._update_servers()
+
+            # Stop SRV polling thread.
+            if self._srv_monitor:
+                self._srv_monitor.close()
+
             self._opened = False
 
         # Publish only after releasing the lock.
@@ -470,6 +511,11 @@ class Topology(object):
             # Start or restart the events publishing thread.
             if self._publish_tp or self._publish_server:
                 self.__events_executor.open()
+
+            # Start the SRV polling thread.
+            if self._srv_monitor and (self.description.topology_type in
+                                      SRV_POLLING_TOPOLOGIES):
+                self._srv_monitor.open()
 
         # Ensure that the monitors are open.
         for server in itervalues(self._servers):

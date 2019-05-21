@@ -29,7 +29,7 @@ from pymongo.monitor import Monitor
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.server_type import SERVER_TYPE
-from pymongo.topology import TOPOLOGY_TYPE
+from pymongo.topology_description import TOPOLOGY_TYPE
 from test import unittest, client_context, client_knobs
 from test.utils import (ServerAndTopologyEventListener,
                         single_client,

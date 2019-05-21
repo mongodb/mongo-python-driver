@@ -585,6 +585,7 @@ class MongoClient(common.BaseObject):
         password = None
         dbase = None
         opts = {}
+        fqdn = None
         for entity in host:
             if "://" in entity:
                 res = uri_parser.parse_uri(
@@ -594,6 +595,7 @@ class MongoClient(common.BaseObject):
                 password = res["password"] or password
                 dbase = res["database"] or dbase
                 opts = res["options"]
+                fqdn = res["fqdn"]
             else:
                 seeds.update(uri_parser.split_hosts(entity, port))
         if not seeds:
@@ -673,7 +675,8 @@ class MongoClient(common.BaseObject):
             local_threshold_ms=options.local_threshold_ms,
             server_selection_timeout=options.server_selection_timeout,
             server_selector=options.server_selector,
-            heartbeat_frequency=options.heartbeat_frequency)
+            heartbeat_frequency=options.heartbeat_frequency,
+            fqdn=fqdn)
 
         self._topology = Topology(self._topology_settings)
         if connect:

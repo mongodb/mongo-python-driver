@@ -22,9 +22,10 @@ import sys
 sys.path[0:0] = [""]
 
 from pymongo.common import validate_read_preference_tags
+from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.errors import ConfigurationError
 from pymongo.mongo_client import MongoClient
-from pymongo.uri_parser import parse_uri, split_hosts, _HAVE_DNSPYTHON
+from pymongo.uri_parser import parse_uri, split_hosts
 from test import client_context, unittest
 from test.utils import wait_until
 

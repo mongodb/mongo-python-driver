@@ -17,12 +17,6 @@
 import re
 import warnings
 
-try:
-    from dns import resolver
-    _HAVE_DNSPYTHON = True
-except ImportError:
-    _HAVE_DNSPYTHON = False
-
 from bson.py3compat import string_type, PY3
 
 if PY3:
@@ -34,6 +28,7 @@ from pymongo.common import (
     get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
     URI_OPTIONS_DEPRECATION_MAP, _CaseInsensitiveDictionary)
 from pymongo.errors import ConfigurationError, InvalidURI
+from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 
 
 SCHEME = 'mongodb://'
@@ -325,44 +320,8 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
 # backward-compat we allow "db.collection" in URI.
 _BAD_DB_CHARS = re.compile('[' + re.escape(r'/ "$') + ']')
 
-
-if PY3:
-    # dnspython can return bytes or str from various parts
-    # of its API depending on version. We always want str.
-    def maybe_decode(text):
-        if isinstance(text, bytes):
-            return text.decode()
-        return text
-else:
-    def maybe_decode(text):
-        return text
-
-
 _ALLOWED_TXT_OPTS = frozenset(
     ['authsource', 'authSource', 'replicaset', 'replicaSet'])
-
-
-def _get_dns_srv_hosts(hostname):
-    try:
-        results = resolver.query('_mongodb._tcp.' + hostname, 'SRV')
-    except Exception as exc:
-        raise ConfigurationError(str(exc))
-    return [(maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)
-            for res in results]
-
-
-def _get_dns_txt_options(hostname):
-    try:
-        results = resolver.query(hostname, 'TXT')
-    except (resolver.NoAnswer, resolver.NXDOMAIN):
-        # No TXT records
-        return None
-    except Exception as exc:
-        raise ConfigurationError(str(exc))
-    if len(results) > 1:
-        raise ConfigurationError('Only one TXT record is supported')
-    return (
-        b'&'.join([b''.join(res.strings) for res in results])).decode('utf-8')
 
 
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
@@ -377,7 +336,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             'password': <password> or None,
             'database': <database name> or None,
             'collection': <collection name> or None,
-            'options': <dict of MongoDB URI options>
+            'options': <dict of MongoDB URI options>,
+            'fqdn': <fqdn of the MongoDB+SRV URI> or None
         }
 
     If the URI scheme is "mongodb+srv://" DNS SRV and TXT lookups will be done
@@ -451,6 +411,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                          " percent-encoded: %s" % host_part)
 
     hosts = unquote_plus(hosts)
+    fqdn = None
 
     if is_srv:
         nodes = split_hosts(hosts, default_port=None)
@@ -462,24 +423,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         if port is not None:
             raise InvalidURI(
                 "%s URIs must not include a port number" % (SRV_SCHEME,))
-        nodes = _get_dns_srv_hosts(fqdn)
 
-        try:
-            plist = fqdn.split(".")[1:]
-        except Exception:
-            raise ConfigurationError("Invalid URI host")
-        slen = len(plist)
-        if slen < 2:
-            raise ConfigurationError("Invalid URI host")
-        for node in nodes:
-            try:
-                nlist = node[0].split(".")[1:][-slen:]
-            except Exception:
-                raise ConfigurationError("Invalid SRV host")
-            if plist != nlist:
-                raise ConfigurationError("Invalid SRV host")
-
-        dns_options = _get_dns_txt_options(fqdn)
+        dns_resolver = _SrvResolver(fqdn)
+        nodes = dns_resolver.get_hosts()
+        dns_options = dns_resolver.get_options()
         if dns_options:
             options = split_options(dns_options, validate, warn, normalize)
             if set(options) - _ALLOWED_TXT_OPTS:
@@ -514,7 +461,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         'password': passwd,
         'database': dbase,
         'collection': collection,
-        'options': options
+        'options': options,
+        'fqdn': fqdn
     }
 
 

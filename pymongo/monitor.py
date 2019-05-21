@@ -18,13 +18,42 @@ import weakref
 
 from pymongo import common, periodic_executor
 from pymongo.errors import OperationFailure
-from pymongo.server_type import SERVER_TYPE
 from pymongo.monotonic import time as _time
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
+from pymongo.server_type import SERVER_TYPE
+from pymongo.srv_resolver import _SrvResolver
 
 
-class Monitor(object):
+class MonitorBase(object):
+    def __init__(self, *args, **kwargs):
+        """Override this method to create an executor."""
+        raise NotImplementedError
+
+    def open(self):
+        """Start monitoring, or restart after a fork.
+
+        Multiple calls have no effect.
+        """
+        self._executor.open()
+
+    def close(self):
+        """Close and stop monitoring.
+
+        open() restarts the monitor after closing.
+        """
+        self._executor.close()
+
+    def join(self, timeout=None):
+        """Wait for the monitor to stop."""
+        self._executor.join(timeout)
+
+    def request_check(self):
+        """If the monitor is sleeping, wake it soon."""
+        self._executor.wake()
+
+
+class Monitor(MonitorBase):
     def __init__(
             self,
             server_description,
@@ -68,30 +97,12 @@ class Monitor(object):
         self_ref = weakref.ref(self, executor.close)
         self._topology = weakref.proxy(topology, executor.close)
 
-    def open(self):
-        """Start monitoring, or restart after a fork.
-
-        Multiple calls have no effect.
-        """
-        self._executor.open()
-
     def close(self):
-        """Close and stop monitoring.
-
-        open() restarts the monitor after closing.
-        """
-        self._executor.close()
+        super(Monitor, self).close()
 
         # Increment the pool_id and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
         self._pool.reset()
-
-    def join(self, timeout=None):
-        self._executor.join(timeout)
-
-    def request_check(self):
-        """If the monitor is sleeping, wake and check the server soon."""
-        self._executor.wake()
 
     def _run(self):
         try:
@@ -182,3 +193,66 @@ class Monitor(object):
             self._topology.receive_cluster_time(
                 exc.details.get('$clusterTime'))
             raise
+
+
+class SrvMonitor(MonitorBase):
+    def __init__(self, topology, topology_settings):
+        """Class to poll SRV records on a background thread.
+
+        Pass a Topology and a TopologySettings.
+
+        The Topology is weakly referenced.
+        """
+        self._settings = topology_settings
+        self._fqdn = self._settings.fqdn
+
+        # We strongly reference the executor and it weakly references us via
+        # this closure. When the monitor is freed, stop the executor soon.
+        def target():
+            monitor = self_ref()
+            if monitor is None:
+                return False  # Stop the executor.
+            SrvMonitor._run(monitor)
+            return True
+
+        executor = periodic_executor.PeriodicExecutor(
+            interval=common.MIN_SRV_RESCAN_INTERVAL,
+            min_interval=self._settings.heartbeat_frequency,
+            target=target,
+            name="pymongo_srv_polling_thread")
+
+        self._executor = executor
+
+        # Avoid cycles. When self or topology is freed, stop executor soon.
+        self_ref = weakref.ref(self, executor.close)
+        self._topology = weakref.proxy(topology, executor.close)
+
+    def _run(self):
+        try:
+            self._seedlist = self._get_seedlist()
+            self._topology.on_srv_update(self._seedlist)
+        except ReferenceError:
+            # Topology was garbage-collected.
+            self.close()
+
+    def _get_seedlist(self):
+        """Poll SRV records for a seedlist.
+
+        Returns a list of ServerDescriptions.
+        """
+        try:
+            seedlist, ttl = _SrvResolver(self._fqdn).get_hosts_and_min_ttl()
+            if len(seedlist) == 0:
+                # As per the spec: this should be treated as a failure.
+                raise Exception
+        except Exception:
+            # As per the spec, upon encountering an error:
+            # - An error must not be raised
+            # - SRV records must be rescanned every heartbeatFrequencyMS
+            # - Topology must be left unchanged
+            self.request_check()
+            return self._seedlist
+        else:
+            self._executor.update_interval(
+                max(ttl, common.MIN_SRV_RESCAN_INTERVAL))
+            return seedlist

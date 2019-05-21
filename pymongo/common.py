@@ -73,6 +73,9 @@ SERVER_SELECTION_TIMEOUT = 30
 # Spec requires at least 500ms between ismaster calls.
 MIN_HEARTBEAT_INTERVAL = 0.5
 
+# Spec requires at least 60s between SRV rescans.
+MIN_SRV_RESCAN_INTERVAL = 60
+
 # Default connectTimeout in seconds.
 CONNECT_TIMEOUT = 20.0
 
