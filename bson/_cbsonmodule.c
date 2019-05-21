@@ -867,7 +867,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         {
             /* ObjectId */
             const char* data;
-            PyObject* pystring = PyObject_GetAttrString(value, "_ObjectId__id");
+            PyObject* pystring = PyObject_GetAttrString(value, "binary");
             if (!pystring) {
                 return 0;
             }
