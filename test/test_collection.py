@@ -37,7 +37,6 @@ from bson.py3compat import itervalues
 from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
-from pymongo import monitoring
 from pymongo.bulk import BulkWriteError
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
@@ -2225,8 +2224,6 @@ class TestCollection(IntegrationTest):
 
     def test_find_one_and_write_concern(self):
         listener = EventListener()
-        saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         db = single_client(event_listeners=[listener])[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection(
@@ -2237,89 +2234,86 @@ class TestCollection(IntegrationTest):
         # Authenticate the client and throw out auth commands from the listener.
         db.command('ismaster')
         results.clear()
-        try:
-            if client_context.version.at_least(3, 1, 9, -1):
-                c_w0.find_and_modify(
+        if client_context.version.at_least(3, 1, 9, -1):
+            c_w0.find_and_modify(
+                {'_id': 1}, {'$set': {'foo': 'bar'}})
+            self.assertEqual(
+                {'w': 0}, results['started'][0].command['writeConcern'])
+            results.clear()
+
+            c_w0.find_one_and_update(
+                {'_id': 1}, {'$set': {'foo': 'bar'}})
+            self.assertEqual(
+                {'w': 0}, results['started'][0].command['writeConcern'])
+            results.clear()
+
+            c_w0.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
+            self.assertEqual(
+                {'w': 0}, results['started'][0].command['writeConcern'])
+            results.clear()
+
+            c_w0.find_one_and_delete({'_id': 1})
+            self.assertEqual(
+                {'w': 0}, results['started'][0].command['writeConcern'])
+            results.clear()
+
+            # Test write concern errors.
+            if client_context.is_rs:
+                c_wc_error = db.get_collection(
+                    'test',
+                    write_concern=WriteConcern(
+                        w=len(client_context.nodes) + 1))
+                self.assertRaises(
+                    WriteConcernError,
+                    c_wc_error.find_and_modify,
                     {'_id': 1}, {'$set': {'foo': 'bar'}})
-                self.assertEqual(
+                self.assertRaises(
+                    WriteConcernError,
+                    c_wc_error.find_one_and_update,
+                    {'_id': 1}, {'$set': {'foo': 'bar'}})
+                self.assertRaises(
+                    WriteConcernError,
+                    c_wc_error.find_one_and_replace,
+                    {'w': 0}, results['started'][0].command['writeConcern'])
+                self.assertRaises(
+                    WriteConcernError,
+                    c_wc_error.find_one_and_delete,
                     {'w': 0}, results['started'][0].command['writeConcern'])
                 results.clear()
-
-                c_w0.find_one_and_update(
-                    {'_id': 1}, {'$set': {'foo': 'bar'}})
-                self.assertEqual(
-                    {'w': 0}, results['started'][0].command['writeConcern'])
-                results.clear()
-
-                c_w0.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
-                self.assertEqual(
-                    {'w': 0}, results['started'][0].command['writeConcern'])
-                results.clear()
-
-                c_w0.find_one_and_delete({'_id': 1})
-                self.assertEqual(
-                    {'w': 0}, results['started'][0].command['writeConcern'])
-                results.clear()
-
-                # Test write concern errors.
-                if client_context.is_rs:
-                    c_wc_error = db.get_collection(
-                        'test',
-                        write_concern=WriteConcern(
-                            w=len(client_context.nodes) + 1))
-                    self.assertRaises(
-                        WriteConcernError,
-                        c_wc_error.find_and_modify,
-                        {'_id': 1}, {'$set': {'foo': 'bar'}})
-                    self.assertRaises(
-                        WriteConcernError,
-                        c_wc_error.find_one_and_update,
-                        {'_id': 1}, {'$set': {'foo': 'bar'}})
-                    self.assertRaises(
-                        WriteConcernError,
-                        c_wc_error.find_one_and_replace,
-                        {'w': 0}, results['started'][0].command['writeConcern'])
-                    self.assertRaises(
-                        WriteConcernError,
-                        c_wc_error.find_one_and_delete,
-                        {'w': 0}, results['started'][0].command['writeConcern'])
-                    results.clear()
-            else:
-                c_w0.find_and_modify(
-                    {'_id': 1}, {'$set': {'foo': 'bar'}})
-                self.assertNotIn('writeConcern', results['started'][0].command)
-                results.clear()
-
-                c_w0.find_one_and_update(
-                    {'_id': 1}, {'$set': {'foo': 'bar'}})
-                self.assertNotIn('writeConcern', results['started'][0].command)
-                results.clear()
-
-                c_w0.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
-                self.assertNotIn('writeConcern', results['started'][0].command)
-                results.clear()
-
-                c_w0.find_one_and_delete({'_id': 1})
-                self.assertNotIn('writeConcern', results['started'][0].command)
-                results.clear()
-
-            c_default.find_and_modify({'_id': 1}, {'$set': {'foo': 'bar'}})
+        else:
+            c_w0.find_and_modify(
+                {'_id': 1}, {'$set': {'foo': 'bar'}})
             self.assertNotIn('writeConcern', results['started'][0].command)
             results.clear()
 
-            c_default.find_one_and_update({'_id': 1}, {'$set': {'foo': 'bar'}})
+            c_w0.find_one_and_update(
+                {'_id': 1}, {'$set': {'foo': 'bar'}})
             self.assertNotIn('writeConcern', results['started'][0].command)
             results.clear()
 
-            c_default.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
+            c_w0.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
             self.assertNotIn('writeConcern', results['started'][0].command)
             results.clear()
 
-            c_default.find_one_and_delete({'_id': 1})
+            c_w0.find_one_and_delete({'_id': 1})
             self.assertNotIn('writeConcern', results['started'][0].command)
             results.clear()
-        finally:
-            monitoring._LISTENERS = saved_listeners
+
+        c_default.find_and_modify({'_id': 1}, {'$set': {'foo': 'bar'}})
+        self.assertNotIn('writeConcern', results['started'][0].command)
+        results.clear()
+
+        c_default.find_one_and_update({'_id': 1}, {'$set': {'foo': 'bar'}})
+        self.assertNotIn('writeConcern', results['started'][0].command)
+        results.clear()
+
+        c_default.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
+        self.assertNotIn('writeConcern', results['started'][0].command)
+        results.clear()
+
+        c_default.find_one_and_delete({'_id': 1})
+        self.assertNotIn('writeConcern', results['started'][0].command)
+        results.clear()
 
     def test_find_with_nested(self):
         c = self.db.test

@@ -37,16 +37,18 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
   time, with at-most-once semantics.
 - Support for retryable reads and the ``retryReads`` URI option which is
   enabled by default. See the :class:`~pymongo.mongo_client.MongoClient`
-  documentation for details.
+  documentation for details. Now that supported operations are retried
+  automatically and transparently, users should consider adjusting any custom
+  retry logic to prevent an application from inadvertently retrying for too
+  long.
 - Support zstandard for wire protocol compression.
 - Support for periodically polling DNS SRV records to update the mongos proxy
   list without having to change client configuration.
 - New method :meth:`pymongo.database.Database.aggregate` to support running
   database level aggregations.
-
-  Now that supported operations are retried automatically and transparently,
-  users should consider adjusting any custom retry logic to prevent
-  an application from inadvertently retrying for too long.
+- Support for publishing Connection Monitoring and Pooling events via the new
+  :class:`~pymongo.monitoring.ConnectionPoolListener` class. See
+  :mod:`~pymongo.monitoring` for an example.
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 

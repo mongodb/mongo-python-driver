@@ -19,7 +19,6 @@ import threading
 
 sys.path[0:0] = [""]
 
-from pymongo import monitoring
 from pymongo.errors import ConnectionFailure
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
@@ -51,23 +50,21 @@ class MockPool(object):
     def return_socket(self, _):
         pass
 
-    def reset(self):
+    def _reset(self):
         with self._lock:
             self.pool_id += 1
+
+    def reset(self):
+        self._reset()
+
+    def close(self):
+        self._reset()
 
     def remove_stale_sockets(self):
         pass
 
 
 class TestHeartbeatMonitoring(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
-
-    @classmethod
-    def tearDownClass(cls):
-        monitoring._LISTENERS = cls.saved_listeners
 
     def create_mock_monitor(self, responses, uri, expected_results):
         listener = HeartbeatEventListener()

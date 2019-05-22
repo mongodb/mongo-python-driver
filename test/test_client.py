@@ -453,7 +453,7 @@ class TestClient(IntegrationTest):
 
             # Assert that if a socket is closed, a new one takes its place
             with server._pool.get_socket({}) as sock_info:
-                sock_info.close()
+                sock_info.close_socket(None)
             wait_until(lambda: 10 == len(server._pool.sockets),
                        "a closed socket gets replaced from the pool")
             self.assertFalse(sock_info in server._pool.sockets)

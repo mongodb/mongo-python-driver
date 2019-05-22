@@ -110,15 +110,15 @@ def _parse_pool_options(options):
     """Parse connection pool options."""
     max_pool_size = options.get('maxpoolsize', common.MAX_POOL_SIZE)
     min_pool_size = options.get('minpoolsize', common.MIN_POOL_SIZE)
-    default_idle_seconds = common.validate_timeout_or_none(
-        'maxidletimems', common.MAX_IDLE_TIME_MS)
-    max_idle_time_seconds = options.get('maxidletimems', default_idle_seconds)
+    max_idle_time_seconds = options.get(
+        'maxidletimems', common.MAX_IDLE_TIME_SEC)
     if max_pool_size is not None and min_pool_size > max_pool_size:
         raise ValueError("minPoolSize must be smaller or equal to maxPoolSize")
     connect_timeout = options.get('connecttimeoutms', common.CONNECT_TIMEOUT)
     socket_keepalive = options.get('socketkeepalive', True)
     socket_timeout = options.get('sockettimeoutms')
-    wait_queue_timeout = options.get('waitqueuetimeoutms')
+    wait_queue_timeout = options.get(
+        'waitqueuetimeoutms', common.WAIT_QUEUE_TIMEOUT)
     wait_queue_multiple = options.get('waitqueuemultiple')
     event_listeners = options.get('event_listeners')
     appname = options.get('appname')

@@ -43,10 +43,14 @@ from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (MAX_BSON_SIZE,
+                            MAX_IDLE_TIME_SEC,
                             MAX_MESSAGE_SIZE,
+                            MAX_POOL_SIZE,
                             MAX_WIRE_VERSION,
                             MAX_WRITE_BATCH_SIZE,
-                            ORDERED_TYPES)
+                            MIN_POOL_SIZE,
+                            ORDERED_TYPES,
+                            WAIT_QUEUE_TIMEOUT)
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             ConfigurationError,
@@ -54,9 +58,12 @@ from pymongo.errors import (AutoReconnect,
                             DocumentTooLarge,
                             NetworkTimeout,
                             NotMasterError,
-                            OperationFailure)
+                            OperationFailure,
+                            PyMongoError)
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
+from pymongo.monitoring import (ConnectionCheckOutFailedReason,
+                                ConnectionClosedReason)
 from pymongo.network import (command,
                              receive_message,
                              SocketChecker)
@@ -293,9 +300,10 @@ class PoolOptions(object):
                  '__event_listeners', '__appname', '__driver', '__metadata',
                  '__compression_settings')
 
-    def __init__(self, max_pool_size=100, min_pool_size=0,
-                 max_idle_time_seconds=None, connect_timeout=None,
-                 socket_timeout=None, wait_queue_timeout=None,
+    def __init__(self, max_pool_size=MAX_POOL_SIZE,
+                 min_pool_size=MIN_POOL_SIZE,
+                 max_idle_time_seconds=MAX_IDLE_TIME_SEC, connect_timeout=None,
+                 socket_timeout=None, wait_queue_timeout=WAIT_QUEUE_TIMEOUT,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=True,
                  event_listeners=None, appname=None, driver=None,
@@ -337,6 +345,23 @@ class PoolOptions(object):
             if driver.platform:
                 self.__metadata['platform'] = "%s|%s" % (
                     _METADATA['platform'], driver.platform)
+
+    @property
+    def non_default_options(self):
+        """The non-default options this pool was created with.
+
+        Added for CMAP's :class:`PoolCreatedEvent`.
+        """
+        opts = {}
+        if self.__max_pool_size != MAX_POOL_SIZE:
+            opts['maxPoolSize'] = self.__max_pool_size
+        if self.__min_pool_size != MIN_POOL_SIZE:
+            opts['minPoolSize'] = self.__min_pool_size
+        if self.__max_idle_time_seconds != MAX_IDLE_TIME_SEC:
+            opts['maxIdleTimeMS'] = self.__max_idle_time_seconds * 1000
+        if self.__wait_queue_timeout != WAIT_QUEUE_TIMEOUT:
+            opts['waitQueueTimeoutMS'] = self.__wait_queue_timeout * 1000
+        return opts
 
     @property
     def max_pool_size(self):
@@ -449,10 +474,12 @@ class SocketInfo(object):
       - `sock`: a raw socket object
       - `pool`: a Pool instance
       - `address`: the server's (host, port)
+      - `id`: the id of this socket in it's pool
     """
-    def __init__(self, sock, pool, address):
+    def __init__(self, sock, pool, address, id):
         self.sock = sock
         self.address = address
+        self.id = id
         self.authset = set()
         self.closed = False
         self.last_checkin_time = _time()
@@ -466,6 +493,7 @@ class SocketInfo(object):
         self.is_mongos = False
         self.op_msg_enabled = False
         self.listeners = pool.opts.event_listeners
+        self.enabled_for_cmap = pool.enabled_for_cmap
         self.compression_settings = pool.opts.compression_settings
         self.compression_context = None
 
@@ -709,13 +737,20 @@ class SocketInfo(object):
                     'Cannot use session after authenticating with different'
                     ' credentials')
 
-    def close(self):
+    def close_socket(self, reason):
+        """Close this connection with a reason."""
+        if self.closed:
+            return
         self.closed = True
         # Avoid exceptions on interpreter shutdown.
         try:
             self.sock.close()
         except Exception:
             pass
+
+        if reason and self.enabled_for_cmap:
+            self.listeners.publish_connection_closed(
+                self.address, self.id, reason)
 
     def send_cluster_time(self, command, session, client):
         """Add cluster time for MongoDB >= 3.6."""
@@ -743,7 +778,7 @@ class SocketInfo(object):
         # ...) is called in Python code, which experiences the signal as a
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.
-        self.close()
+        self.close_socket(ConnectionClosedReason.ERROR)
         if isinstance(error, socket.error):
             _raise_connection_failure(self.address, error)
         else:
@@ -886,6 +921,13 @@ def _configured_socket(address, options):
     return sock
 
 
+class _PoolClosedError(PyMongoError):
+    """Internal error raised when a thread tries to get a connection from a
+    closed pool.
+    """
+    pass
+
+
 # Do *not* explicitly inherit from object or Jython won't call __del__
 # http://bugs.jython.org/issue1057
 class Pool:
@@ -905,6 +947,9 @@ class Pool:
         self.sockets = collections.deque()
         self.lock = threading.Lock()
         self.active_sockets = 0
+        # Monotonically increasing connection ID required for CMAP Events.
+        self.next_connection_id = 1
+        self.closed = False
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
@@ -913,6 +958,11 @@ class Pool:
         self.address = address
         self.opts = options
         self.handshake = handshake
+        # Don't publish events in Monitor pools.
+        self.enabled_for_cmap = (
+                self.handshake and
+                self.opts.event_listeners is not None and
+                self.opts.event_listeners.enabled_for_cmap)
 
         if (self.opts.wait_queue_multiple is None or
                 self.opts.max_pool_size is None):
@@ -924,16 +974,41 @@ class Pool:
         self._socket_semaphore = thread_util.create_semaphore(
             self.opts.max_pool_size, max_waiters)
         self.socket_checker = SocketChecker()
+        if self.enabled_for_cmap:
+            self.opts.event_listeners.publish_pool_created(
+                self.address, self.opts.non_default_options)
 
-    def reset(self):
+    def _reset(self, close):
         with self.lock:
+            if self.closed:
+                return
             self.pool_id += 1
             self.pid = os.getpid()
             sockets, self.sockets = self.sockets, collections.deque()
             self.active_sockets = 0
+            if close:
+                self.closed = True
 
-        for sock_info in sockets:
-            sock_info.close()
+        listeners = self.opts.event_listeners
+        # CMAP spec says that close() MUST close sockets before publishing the
+        # PoolClosedEvent but that reset() SHOULD close sockets *after*
+        # publishing the PoolClearedEvent.
+        if close:
+            for sock_info in sockets:
+                sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)
+            if self.enabled_for_cmap:
+                listeners.publish_pool_closed(self.address)
+        else:
+            if self.enabled_for_cmap:
+                listeners.publish_pool_cleared(self.address)
+            for sock_info in sockets:
+                sock_info.close_socket(ConnectionClosedReason.STALE)
+
+    def reset(self):
+        self._reset(close=False)
+
+    def close(self):
+        self._reset(close=True)
 
     def remove_stale_sockets(self):
         """Removes stale sockets then adds new ones if pool is too small."""
@@ -942,7 +1017,7 @@ class Pool:
                 while (self.sockets and
                        self.sockets[-1].idle_time_seconds() > self.opts.max_idle_time_seconds):
                     sock_info = self.sockets.pop()
-                    sock_info.close()
+                    sock_info.close_socket(ConnectionClosedReason.IDLE)
         while True:
             with self.lock:
                 if (len(self.sockets) + self.active_sockets >=
@@ -968,17 +1043,34 @@ class Pool:
         Note that the pool does not keep a reference to the socket -- you
         must call return_socket() when you're done with it.
         """
+        with self.lock:
+            conn_id = self.next_connection_id
+            self.next_connection_id += 1
+
+        listeners = self.opts.event_listeners
+        if self.enabled_for_cmap:
+            listeners.publish_connection_created(self.address, conn_id)
+
         sock = None
         try:
             sock = _configured_socket(self.address, self.opts)
         except socket.error as error:
             if sock is not None:
                 sock.close()
+
+            if self.enabled_for_cmap:
+                listeners.publish_connection_closed(
+                    self.address, conn_id, ConnectionClosedReason.ERROR)
+
             _raise_connection_failure(self.address, error)
 
-        sock_info = SocketInfo(sock, self, self.address)
+        sock_info = SocketInfo(sock, self, self.address, conn_id)
         if self.handshake:
             sock_info.ismaster(self.opts.metadata, None)
+
+        if self.enabled_for_cmap:
+            listeners.publish_connection_ready(self.address, conn_id)
+
         return sock_info
 
     @contextlib.contextmanager
@@ -1004,11 +1096,17 @@ class Pool:
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `checkout` (optional): keep socket checked out.
         """
+        listeners = self.opts.event_listeners
+        if self.enabled_for_cmap:
+            listeners.publish_connection_check_out_started(self.address)
         # First get a socket, then attempt authentication. Simplifies
         # semaphore management in the face of network errors during auth.
         sock_info = self._get_socket_no_auth()
         try:
             sock_info.check_auth(all_credentials)
+            if self.enabled_for_cmap:
+                listeners.publish_connection_checked_out(
+                    self.address, sock_info.id)
             yield sock_info
         except:
             # Exception in caller. Decrement semaphore.
@@ -1026,6 +1124,14 @@ class Pool:
         if self.pid != os.getpid():
             self.reset()
 
+        if self.closed:
+            if self.enabled_for_cmap:
+                self.opts.event_listeners.publish_connection_check_out_failed(
+                    self.address, ConnectionCheckOutFailedReason.POOL_CLOSED)
+            raise _PoolClosedError(
+                'Attempted to check out a connection from closed connection '
+                'pool')
+
         # Get a free socket or create one.
         if not self._socket_semaphore.acquire(
                 True, self.opts.wait_queue_timeout):
@@ -1035,18 +1141,17 @@ class Pool:
 
         # We've now acquired the semaphore and must release it on error.
         try:
-            try:
-                # set.pop() isn't atomic in Jython less than 2.7, see
-                # http://bugs.jython.org/issue1854
-                with self.lock:
-                    # Can raise ConnectionFailure.
-                    sock_info = self.sockets.popleft()
-            except IndexError:
-                # Can raise ConnectionFailure or CertificateError.
-                sock_info = self.connect()
-            else:
-                # Can raise ConnectionFailure.
-                sock_info = self._check(sock_info)
+            sock_info = None
+            while sock_info is None:
+                try:
+                    with self.lock:
+                        sock_info = self.sockets.popleft()
+                except IndexError:
+                    # Can raise ConnectionFailure or CertificateError.
+                    sock_info = self.connect()
+                else:
+                    if self._perished(sock_info):
+                        sock_info = None
         except Exception:
             self._socket_semaphore.release()
             with self.lock:
@@ -1057,11 +1162,16 @@ class Pool:
 
     def return_socket(self, sock_info):
         """Return the socket to the pool, or if it's closed discard it."""
+        listeners = self.opts.event_listeners
+        if self.enabled_for_cmap:
+            listeners.publish_connection_checked_in(self.address, sock_info.id)
         if self.pid != os.getpid():
             self.reset()
         else:
-            if sock_info.pool_id != self.pool_id:
-                sock_info.close()
+            if self.closed:
+                sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)
+            elif sock_info.pool_id != self.pool_id:
+                sock_info.close_socket(ConnectionClosedReason.STALE)
             elif not sock_info.closed:
                 sock_info.update_last_checkin_time()
                 with self.lock:
@@ -1071,12 +1181,10 @@ class Pool:
         with self.lock:
             self.active_sockets -= 1
 
-    def _check(self, sock_info):
+    def _perished(self, sock_info):
         """This side-effecty function checks if this socket has been idle for
         for longer than the max idle time, or if the socket has been closed by
-        some external network error, and if so, attempts to create a new
-        socket. If this connection attempt fails we raise the
-        ConnectionFailure.
+        some external network error.
 
         Checking sockets lets us avoid seeing *some*
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
@@ -1089,25 +1197,31 @@ class Pool:
         # If socket is idle, open a new one.
         if (self.opts.max_idle_time_seconds is not None and
                 idle_time_seconds > self.opts.max_idle_time_seconds):
-            sock_info.close()
-            return self.connect()
+            sock_info.close_socket(ConnectionClosedReason.IDLE)
+            return True
 
         if (self._check_interval_seconds is not None and (
                 0 == self._check_interval_seconds or
                 idle_time_seconds > self._check_interval_seconds)):
             if self.socket_checker.socket_closed(sock_info.sock):
-                sock_info.close()
-                return self.connect()
+                sock_info.close_socket(ConnectionClosedReason.ERROR)
+                return True
 
-        return sock_info
+        return False
 
     def _raise_wait_queue_timeout(self):
+        listeners = self.opts.event_listeners
+        if self.enabled_for_cmap:
+            listeners.publish_connection_check_out_failed(
+                self.address, ConnectionCheckOutFailedReason.TIMEOUT)
         raise ConnectionFailure(
-            'Timed out waiting for socket from pool with max_size %r and'
-            ' wait_queue_timeout %r' % (
+            'Timed out while checking out a connection from connection pool '
+            'with max_size %r and wait_queue_timeout %r' % (
                 self.opts.max_pool_size, self.opts.wait_queue_timeout))
 
     def __del__(self):
         # Avoid ResourceWarnings in Python 3
+        # Close all sockets without calling reset() or close() because it is
+        # not safe to acquire a lock in __del__.
         for sock_info in self.sockets:
-            sock_info.close()
+            sock_info.close_socket(None)

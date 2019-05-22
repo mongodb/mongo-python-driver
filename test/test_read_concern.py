@@ -15,7 +15,6 @@
 """Test the read_concern module."""
 
 from bson.son import SON
-from pymongo import monitoring
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_concern import ReadConcern
 
@@ -29,15 +28,8 @@ class TestReadConcern(PyMongoTestCase):
     @client_context.require_connection
     def setUpClass(cls):
         cls.listener = OvertCommandListener()
-        cls.saved_listeners = monitoring._LISTENERS
-        # Don't use any global subscribers.
-        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         cls.client = single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
-
-    @classmethod
-    def tearDownClass(cls):
-        monitoring._LISTENERS = cls.saved_listeners
 
     def tearDown(self):
         self.db.coll.drop()

@@ -53,9 +53,15 @@ class MockPool(object):
         self.pool_id = 0
         self._lock = threading.Lock()
 
-    def reset(self):
+    def _reset(self):
         with self._lock:
             self.pool_id += 1
+
+    def reset(self):
+        self._reset()
+
+    def close(self):
+        self._reset()
 
 
 class MockMonitor(object):

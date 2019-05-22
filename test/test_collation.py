@@ -17,7 +17,6 @@
 import functools
 import warnings
 
-from pymongo import monitoring
 from pymongo.collation import (
     Collation,
     CollationCaseFirst, CollationStrength, CollationAlternate,
@@ -95,8 +94,6 @@ class TestCollation(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
-        cls.saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
         cls.collation = Collation('en_US')
@@ -106,7 +103,6 @@ class TestCollation(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        monitoring._LISTENERS = cls.saved_listeners
         cls.warn_context.__exit__()
         cls.warn_context = None
 

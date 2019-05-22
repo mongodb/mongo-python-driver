@@ -114,6 +114,48 @@ Server discovery and monitoring events are also available. For example::
             logging.info("Topology with id {0.topology_id} "
                          "closed".format(event))
 
+Connection monitoring and pooling events are also available. For example::
+
+    class ConnectionPoolLogger(ConnectionPoolListener):
+
+        def pool_created(self, event):
+            logging.info("[pool {0.address}] pool created".format(event))
+
+        def pool_cleared(self, event):
+            logging.info("[pool {0.address}] pool cleared".format(event))
+
+        def pool_closed(self, event):
+            logging.info("[pool {0.address}] pool closed".format(event))
+
+        def connection_created(self, event):
+            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+                         "connection created".format(event))
+
+        def connection_ready(self, event):
+            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+                         "connection setup succeeded".format(event))
+
+        def connection_closed(self, event):
+            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+                         "connection closed, reason: "
+                         "{0.reason}".format(event))
+
+        def connection_check_out_started(self, event):
+            logging.info("[pool {0.address}] connection check out "
+                         "started".format(event))
+
+        def connection_check_out_failed(self, event):
+            logging.info("[pool {0.address}] connection check out "
+                         "failed, reason: {0.reason}".format(event))
+
+        def connection_checked_out(self, event):
+            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+                         "connection checked out of pool".format(event))
+
+        def connection_checked_in(self, event):
+            logging.info("[pool {0.address}][conn #{0.connection_id}] "
+                         "connection checked into pool".format(event))
+
 
 Event listeners can also be registered per instance of
 :class:`~pymongo.mongo_client.MongoClient`::
@@ -134,9 +176,6 @@ will not add that listener to existing client instances.
   handler first.
 """
 
-import sys
-import traceback
-
 from collections import namedtuple
 
 from bson.py3compat import abc
@@ -144,9 +183,10 @@ from pymongo.helpers import _handle_exception
 
 _Listeners = namedtuple('Listeners',
                         ('command_listeners', 'server_listeners',
-                         'server_heartbeat_listeners', 'topology_listeners'))
+                         'server_heartbeat_listeners', 'topology_listeners',
+                         'cmap_listeners'))
 
-_LISTENERS = _Listeners([], [], [], [])
+_LISTENERS = _Listeners([], [], [], [], [])
 
 
 class _EventListener(object):
@@ -155,8 +195,10 @@ class _EventListener(object):
 
 class CommandListener(_EventListener):
     """Abstract base class for command listeners.
+
     Handles `CommandStartedEvent`, `CommandSucceededEvent`,
-    and `CommandFailedEvent`."""
+    and `CommandFailedEvent`.
+    """
 
     def started(self, event):
         """Abstract method to handle a `CommandStartedEvent`.
@@ -183,8 +225,128 @@ class CommandListener(_EventListener):
         raise NotImplementedError
 
 
+class ConnectionPoolListener(_EventListener):
+    """Abstract base class for connection pool listeners.
+
+    Handles all of the connection pool events defined in the Connection
+    Monitoring and Pooling Specification:
+    :class:`PoolCreatedEvent`, :class:`PoolClearedEvent`,
+    :class:`PoolClosedEvent`, :class:`ConnectionCreatedEvent`,
+    :class:`ConnectionReadyEvent`, :class:`ConnectionClosedEvent`,
+    :class:`ConnectionCheckOutStartedEvent`,
+    :class:`ConnectionCheckOutFailedEvent`,
+    :class:`ConnectionCheckedOutEvent`,
+    and :class:`ConnectionCheckedInEvent`.
+
+    .. versionadded:: 3.9
+    """
+
+    def pool_created(self, event):
+        """Abstract method to handle a :class:`PoolCreatedEvent`.
+
+        Emitted when a Connection Pool is created.
+
+        :Parameters:
+          - `event`: An instance of :class:`PoolCreatedEvent`.
+        """
+        raise NotImplementedError
+
+    def pool_cleared(self, event):
+        """Abstract method to handle a `PoolClearedEvent`.
+
+        Emitted when a Connection Pool is cleared.
+
+        :Parameters:
+          - `event`: An instance of :class:`PoolClearedEvent`.
+        """
+        raise NotImplementedError
+
+    def pool_closed(self, event):
+        """Abstract method to handle a `PoolClosedEvent`.
+
+        Emitted when a Connection Pool is closed.
+
+        :Parameters:
+          - `event`: An instance of :class:`PoolClosedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_created(self, event):
+        """Abstract method to handle a :class:`ConnectionCreatedEvent`.
+
+        Emitted when a Connection Pool creates a Connection object.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCreatedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_ready(self, event):
+        """Abstract method to handle a :class:`ConnectionReadyEvent`.
+
+        Emitted when a Connection has finished its setup, and is now ready to
+        use.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionReadyEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_closed(self, event):
+        """Abstract method to handle a :class:`ConnectionClosedEvent`.
+
+        Emitted when a Connection Pool closes a Connection.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionClosedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_check_out_started(self, event):
+        """Abstract method to handle a :class:`ConnectionCheckOutStartedEvent`.
+
+        Emitted when the driver starts attempting to check out a connection.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCheckOutStartedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_check_out_failed(self, event):
+        """Abstract method to handle a :class:`ConnectionCheckOutFailedEvent`.
+
+        Emitted when the driver's attempt to check out a connection fails.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCheckOutFailedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_checked_out(self, event):
+        """Abstract method to handle a :class:`ConnectionCheckedOutEvent`.
+
+        Emitted when the driver successfully checks out a Connection.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCheckedOutEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_checked_in(self, event):
+        """Abstract method to handle a :class:`ConnectionCheckedInEvent`.
+
+        Emitted when the driver checks in a Connection back to the Connection
+        Pool.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCheckedInEvent`.
+        """
+        raise NotImplementedError
+
+
 class ServerHeartbeatListener(_EventListener):
     """Abstract base class for server heartbeat listeners.
+
     Handles `ServerHeartbeatStartedEvent`, `ServerHeartbeatSucceededEvent`,
     and `ServerHeartbeatFailedEvent`.
 
@@ -295,7 +457,8 @@ def _validate_event_listeners(option, listeners):
         if not isinstance(listener, _EventListener):
             raise TypeError("Listeners for %s must be either a "
                             "CommandListener, ServerHeartbeatListener, "
-                            "ServerListener, or TopologyListener." % (option,))
+                            "ServerListener, TopologyListener, or "
+                            "ConnectionPoolListener." % (option,))
     return listeners
 
 
@@ -304,13 +467,14 @@ def register(listener):
 
     :Parameters:
       - `listener`: A subclasses of :class:`CommandListener`,
-        :class:`ServerHeartbeatListener`, :class:`ServerListener`, or
-        :class:`TopologyListener`.
+        :class:`ServerHeartbeatListener`, :class:`ServerListener`,
+        :class:`TopologyListener`, or :class:`ConnectionPoolListener`.
     """
     if not isinstance(listener, _EventListener):
         raise TypeError("Listeners for %s must be either a "
                         "CommandListener, ServerHeartbeatListener, "
-                        "ServerListener, or TopologyListener." % (listener,))
+                        "ServerListener, TopologyListener, or "
+                        "ConnectionPoolListener." % (listener,))
     if isinstance(listener, CommandListener):
         _LISTENERS.command_listeners.append(listener)
     if isinstance(listener, ServerHeartbeatListener):
@@ -319,7 +483,8 @@ def register(listener):
         _LISTENERS.server_listeners.append(listener)
     if isinstance(listener, TopologyListener):
         _LISTENERS.topology_listeners.append(listener)
-
+    if isinstance(listener, ConnectionPoolListener):
+        _LISTENERS.cmap_listeners.append(listener)
 
 # Note - to avoid bugs from forgetting which if these is all lowercase and
 # which are camelCase, and at the same time avoid having to add a test for
@@ -462,6 +627,283 @@ class CommandFailedEvent(_CommandEvent):
         return self.__failure
 
 
+class _PoolEvent(object):
+    """Base class for pool events."""
+    __slots__ = ("__address",)
+
+    def __init__(self, address):
+        self.__address = address
+
+    @property
+    def address(self):
+        """The address (host, port) pair of the server the pool is attempting
+        to connect to.
+        """
+        return self.__address
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.__address)
+
+
+class PoolCreatedEvent(_PoolEvent):
+    """Published when a Connection Pool is created.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this Pool is
+       attempting to connect to.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ("__options",)
+
+    def __init__(self, address, options):
+        super(PoolCreatedEvent, self).__init__(address)
+        self.__options = options
+
+    @property
+    def options(self):
+        """Any non-default pool options that were set on this Connection Pool.
+        """
+        return self.__options
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (
+            self.__class__.__name__, self.address, self.__options)
+
+
+class PoolClearedEvent(_PoolEvent):
+    """Published when a Connection Pool is cleared.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this Pool is
+       attempting to connect to.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ()
+
+
+class PoolClosedEvent(_PoolEvent):
+    """Published when a Connection Pool is closed.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this Pool is
+       attempting to connect to.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ()
+
+
+class ConnectionClosedReason(object):
+    """An enum that defines values for `reason` on a
+    :class:`ConnectionClosedEvent`.
+
+    .. versionadded:: 3.9
+    """
+
+    STALE = 'stale'
+    """The pool was cleared, making the connection no longer valid."""
+
+    IDLE = 'idle'
+    """The connection became stale by being idle for too long (maxIdleTimeMS).
+    """
+
+    ERROR = 'error'
+    """The connection experienced an error, making it no longer valid."""
+
+    POOL_CLOSED = 'poolClosed'
+    """The pool was closed, making the connection no longer valid."""
+
+
+class ConnectionCheckOutFailedReason(object):
+    """An enum that defines values for `reason` on a
+    :class:`ConnectionCheckOutFailedEvent`.
+
+    .. versionadded:: 3.9
+    """
+
+    TIMEOUT = 'timeout'
+    """The connection check out attempt exceeded the specified timeout."""
+
+    POOL_CLOSED = 'poolClosed'
+    """The pool was previously closed, and cannot provide new connections."""
+
+
+class _ConnectionEvent(object):
+    """Private base class for some connection events."""
+    __slots__ = ("__address", "__connection_id")
+
+    def __init__(self, address, connection_id):
+        self.__address = address
+        self.__connection_id = connection_id
+
+    @property
+    def address(self):
+        """The address (host, port) pair of the server this connection is
+        attempting to connect to.
+        """
+        return self.__address
+
+    @property
+    def connection_id(self):
+        """The ID of the Connection."""
+        return self.__connection_id
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (
+            self.__class__.__name__, self.__address, self.__connection_id)
+
+
+class ConnectionCreatedEvent(_ConnectionEvent):
+    """Published when a Connection Pool creates a Connection object.
+
+    NOTE: This connection is not ready for use until the
+    :class:`ConnectionReadyEvent` is published.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this
+       Connection is attempting to connect to.
+     - `connection_id`: The integer ID of the Connection in this Pool.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ()
+
+
+class ConnectionReadyEvent(_ConnectionEvent):
+    """Published when a Connection has finished its setup, and is ready to use.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this
+       Connection is attempting to connect to.
+     - `connection_id`: The integer ID of the Connection in this Pool.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ()
+
+
+class ConnectionClosedEvent(_ConnectionEvent):
+    """Published when a Connection is closed.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this
+       Connection is attempting to connect to.
+     - `connection_id`: The integer ID of the Connection in this Pool.
+     - `reason`: A reason explaining why this connection was closed.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ("__reason",)
+
+    def __init__(self, address, connection_id, reason):
+        super(ConnectionClosedEvent, self).__init__(address, connection_id)
+        self.__reason = reason
+
+    @property
+    def reason(self):
+        """A reason explaining why this connection was closed.
+
+        The reason must be one of the strings from the
+        :class:`ConnectionClosedReason` enum.
+        """
+        return self.__reason
+
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (
+            self.__class__.__name__, self.address, self.connection_id,
+            self.__reason)
+
+
+class ConnectionCheckOutStartedEvent(object):
+    """Published when the driver starts attempting to check out a connection.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this
+       Connection is attempting to connect to.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ("__address",)
+
+    def __init__(self, address):
+        self.__address = address
+
+    @property
+    def address(self):
+        """The address (host, port) pair of the server this connection is
+        attempting to connect to.
+        """
+        return self.__address
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.__address)
+
+
+class ConnectionCheckOutFailedEvent(object):
+    """Published when the driver's attempt to check out a connection fails.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this
+       Connection is attempting to connect to.
+     - `reason`: A reason explaining why connection check out failed.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ("__address", "__reason")
+
+    def __init__(self, address, reason):
+        self.__address = address
+        self.__reason = reason
+
+    @property
+    def address(self):
+        """The address (host, port) pair of the server this connection is
+        attempting to connect to.
+        """
+        return self.__address
+
+    @property
+    def reason(self):
+        """A reason explaining why connection check out failed.
+
+        The reason must be one of the strings from the
+        :class:`ConnectionCheckOutFailedReason` enum.
+        """
+        return self.__reason
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (
+            self.__class__.__name__, self.__address, self.__reason)
+
+
+class ConnectionCheckedOutEvent(_ConnectionEvent):
+    """Published when the driver successfully checks out a Connection.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this
+       Connection is attempting to connect to.
+     - `connection_id`: The integer ID of the Connection in this Pool.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ()
+
+
+class ConnectionCheckedInEvent(_ConnectionEvent):
+    """Published when the driver checks in a Connection into the Pool.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this
+       Connection is attempting to connect to.
+     - `connection_id`: The integer ID of the Connection in this Pool.
+
+    .. versionadded:: 3.9
+    """
+    __slots__ = ()
+
+
 class _ServerEvent(object):
     """Base class for server events."""
 
@@ -473,7 +915,7 @@ class _ServerEvent(object):
 
     @property
     def server_address(self):
-        """The address (host/port pair) of the server"""
+        """The address (host, port) pair of the server"""
         return self.__server_address
 
     @property
@@ -671,6 +1113,7 @@ class _EventListeners(object):
         lst = _LISTENERS.server_heartbeat_listeners
         self.__server_heartbeat_listeners = lst[:]
         self.__topology_listeners = _LISTENERS.topology_listeners[:]
+        self.__cmap_listeners = _LISTENERS.cmap_listeners[:]
         if listeners is not None:
             for lst in listeners:
                 if isinstance(lst, CommandListener):
@@ -681,11 +1124,14 @@ class _EventListeners(object):
                     self.__server_heartbeat_listeners.append(lst)
                 if isinstance(lst, TopologyListener):
                     self.__topology_listeners.append(lst)
+                if isinstance(lst, ConnectionPoolListener):
+                    self.__cmap_listeners.append(lst)
         self.__enabled_for_commands = bool(self.__command_listeners)
         self.__enabled_for_server = bool(self.__server_listeners)
         self.__enabled_for_server_heartbeat = bool(
             self.__server_heartbeat_listeners)
         self.__enabled_for_topology = bool(self.__topology_listeners)
+        self.__enabled_for_cmap = bool(self.__cmap_listeners)
 
     @property
     def enabled_for_commands(self):
@@ -706,6 +1152,11 @@ class _EventListeners(object):
     def enabled_for_topology(self):
         """Are any TopologyListener instances registered?"""
         return self.__enabled_for_topology
+
+    @property
+    def enabled_for_cmap(self):
+        """Are any ConnectionPoolListener instances registered?"""
+        return self.__enabled_for_cmap
 
     def event_listeners(self):
         """List of registered event listeners."""
@@ -789,7 +1240,7 @@ class _EventListeners(object):
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host/port pair) of the connection.
+         - `connection_id`: The address (host, port) pair of the connection.
         """
         event = ServerHeartbeatStartedEvent(connection_id)
         for subscriber in self.__server_heartbeat_listeners:
@@ -804,7 +1255,7 @@ class _EventListeners(object):
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host/port pair) of the connection.
+         - `connection_id`: The address (host, port) pair of the connection.
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.
@@ -821,7 +1272,7 @@ class _EventListeners(object):
         listeners.
 
         :Parameters:
-         - `connection_id`: The address (host/port pair) of the connection.
+         - `connection_id`: The address (host, port) pair of the connection.
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.
@@ -837,7 +1288,7 @@ class _EventListeners(object):
         """Publish a ServerOpeningEvent to all server listeners.
 
         :Parameters:
-         - `server_address`: The address (host/port pair) of the server.
+         - `server_address`: The address (host, port) pair of the server.
          - `topology_id`: A unique identifier for the topology this server
            is a part of.
         """
@@ -852,7 +1303,7 @@ class _EventListeners(object):
         """Publish a ServerClosedEvent to all server listeners.
 
         :Parameters:
-         - `server_address`: The address (host/port pair) of the server.
+         - `server_address`: The address (host, port) pair of the server.
          - `topology_id`: A unique identifier for the topology this server
            is a part of.
         """
@@ -870,7 +1321,7 @@ class _EventListeners(object):
 
         :Parameters:
          - `previous_description`: The previous server description.
-         - `server_address`: The address (host/port pair) of the server.
+         - `server_address`: The address (host, port) pair of the server.
          - `new_description`: The new server description.
          - `topology_id`: A unique identifier for the topology this server
            is a part of.
@@ -927,5 +1378,111 @@ class _EventListeners(object):
         for subscriber in self.__topology_listeners:
             try:
                 subscriber.description_changed(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_pool_created(self, address, options):
+        """Publish a :class:`PoolCreatedEvent` to all pool listeners.
+        """
+        event = PoolCreatedEvent(address, options)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.pool_created(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_pool_cleared(self, address):
+        """Publish a :class:`PoolClearedEvent` to all pool listeners.
+        """
+        event = PoolClearedEvent(address)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.pool_cleared(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_pool_closed(self, address):
+        """Publish a :class:`PoolClosedEvent` to all pool listeners.
+        """
+        event = PoolClosedEvent(address)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.pool_closed(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_connection_created(self, address, connection_id):
+        """Publish a :class:`ConnectionCreatedEvent` to all connection
+        listeners.
+        """
+        event = ConnectionCreatedEvent(address, connection_id)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.connection_created(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_connection_ready(self, address, connection_id):
+        """Publish a :class:`ConnectionReadyEvent` to all connection listeners.
+        """
+        event = ConnectionReadyEvent(address, connection_id)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.connection_ready(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_connection_closed(self, address, connection_id, reason):
+        """Publish a :class:`ConnectionClosedEvent` to all connection
+        listeners.
+        """
+        event = ConnectionClosedEvent(address, connection_id, reason)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.connection_closed(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_connection_check_out_started(self, address):
+        """Publish a :class:`ConnectionCheckOutStartedEvent` to all connection
+        listeners.
+        """
+        event = ConnectionCheckOutStartedEvent(address)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.connection_check_out_started(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_connection_check_out_failed(self, address, reason):
+        """Publish a :class:`ConnectionCheckOutFailedEvent` to all connection
+        listeners.
+        """
+        event = ConnectionCheckOutFailedEvent(address, reason)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.connection_check_out_started(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_connection_checked_out(self, address, connection_id):
+        """Publish a :class:`ConnectionCheckedOutEvent` to all connection
+        listeners.
+        """
+        event = ConnectionCheckedOutEvent(address, connection_id)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.connection_checked_out(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_connection_checked_in(self, address, connection_id):
+        """Publish a :class:`ConnectionCheckedInEvent` to all connection
+        listeners.
+        """
+        event = ConnectionCheckedInEvent(address, connection_id)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.connection_checked_in(event)
             except Exception:
                 _handle_exception()

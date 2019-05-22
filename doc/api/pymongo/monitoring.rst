@@ -17,6 +17,10 @@
    .. autoclass:: TopologyListener
       :members:
       :inherited-members:
+   .. autoclass:: ConnectionPoolListener
+      :members:
+      :inherited-members:
+
    .. autoclass:: CommandStartedEvent
       :members:
       :inherited-members:
@@ -51,5 +55,45 @@
       :members:
       :inherited-members:
    .. autoclass:: ServerHeartbeatFailedEvent
+      :members:
+      :inherited-members:
+
+   .. autoclass:: PoolCreatedEvent
+      :members:
+      :inherited-members:
+   .. autoclass:: PoolClearedEvent
+      :members:
+      :inherited-members:
+   .. autoclass:: PoolClosedEvent
+      :members:
+      :inherited-members:
+
+   .. autoclass:: ConnectionCreatedEvent
+      :members:
+      :inherited-members:
+   .. autoclass:: ConnectionReadyEvent
+      :members:
+      :inherited-members:
+
+   .. autoclass:: ConnectionClosedReason
+      :members:
+
+   .. autoclass:: ConnectionClosedEvent
+      :members:
+      :inherited-members:
+   .. autoclass:: ConnectionCheckOutStartedEvent
+      :members:
+      :inherited-members:
+
+   .. autoclass:: ConnectionCheckOutFailedReason
+      :members:
+
+   .. autoclass:: ConnectionCheckOutFailedEvent
+      :members:
+      :inherited-members:
+   .. autoclass:: ConnectionCheckedOutEvent
+      :members:
+      :inherited-members:
+   .. autoclass:: ConnectionCheckedInEvent
       :members:
       :inherited-members:

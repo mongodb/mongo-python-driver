@@ -29,8 +29,7 @@ from bson import decode_all
 from bson.code import Code
 from bson.py3compat import PY3
 from bson.son import SON
-from pymongo import (monitoring,
-                     ASCENDING,
+from pymongo import (ASCENDING,
                      DESCENDING,
                      ALL,
                      OFF)
@@ -42,9 +41,8 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure)
 from pymongo.read_concern import ReadConcern
 from test import (client_context,
-                  SkipTest,
                   unittest,
-                  IntegrationTest, Version)
+                  IntegrationTest)
 from test.utils import (EventListener,
                         ignore_deprecations,
                         rs_or_single_client,
@@ -227,91 +225,85 @@ class TestCursor(IntegrationTest):
         self.assertEqual(90, cursor._Cursor__max_await_time_ms)
 
         listener = WhiteListEventListener('find', 'getMore')
-        saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         coll = rs_or_single_client(
             event_listeners=[listener])[self.db.name].pymongo_test
         results = listener.results
 
-        try:
-            # Tailable_await defaults.
-            list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT))
-            # find
-            self.assertFalse('maxTimeMS' in results['started'][0].command)
-            # getMore
-            self.assertFalse('maxTimeMS' in results['started'][1].command)
-            results.clear()
+        # Tailable_await defaults.
+        list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT))
+        # find
+        self.assertFalse('maxTimeMS' in results['started'][0].command)
+        # getMore
+        self.assertFalse('maxTimeMS' in results['started'][1].command)
+        results.clear()
 
-            # Tailable_await with max_await_time_ms set.
-            list(coll.find(
-                cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99))
-            # find
-            self.assertEqual('find', results['started'][0].command_name)
-            self.assertFalse('maxTimeMS' in results['started'][0].command)
-            # getMore
-            self.assertEqual('getMore', results['started'][1].command_name)
-            self.assertTrue('maxTimeMS' in results['started'][1].command)
-            self.assertEqual(99, results['started'][1].command['maxTimeMS'])
-            results.clear()
+        # Tailable_await with max_await_time_ms set.
+        list(coll.find(
+            cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99))
+        # find
+        self.assertEqual('find', results['started'][0].command_name)
+        self.assertFalse('maxTimeMS' in results['started'][0].command)
+        # getMore
+        self.assertEqual('getMore', results['started'][1].command_name)
+        self.assertTrue('maxTimeMS' in results['started'][1].command)
+        self.assertEqual(99, results['started'][1].command['maxTimeMS'])
+        results.clear()
 
-            # Tailable_await with max_time_ms
-            list(coll.find(
-                cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))
-            # find
-            self.assertEqual('find', results['started'][0].command_name)
-            self.assertTrue('maxTimeMS' in results['started'][0].command)
-            self.assertEqual(99, results['started'][0].command['maxTimeMS'])
-            # getMore
-            self.assertEqual('getMore', results['started'][1].command_name)
-            self.assertFalse('maxTimeMS' in results['started'][1].command)
-            results.clear()
+        # Tailable_await with max_time_ms
+        list(coll.find(
+            cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))
+        # find
+        self.assertEqual('find', results['started'][0].command_name)
+        self.assertTrue('maxTimeMS' in results['started'][0].command)
+        self.assertEqual(99, results['started'][0].command['maxTimeMS'])
+        # getMore
+        self.assertEqual('getMore', results['started'][1].command_name)
+        self.assertFalse('maxTimeMS' in results['started'][1].command)
+        results.clear()
 
-            # Tailable_await with both max_time_ms and max_await_time_ms
-            list(coll.find(
-                cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(
-                    99).max_await_time_ms(99))
-            # find
-            self.assertEqual('find', results['started'][0].command_name)
-            self.assertTrue('maxTimeMS' in results['started'][0].command)
-            self.assertEqual(99, results['started'][0].command['maxTimeMS'])
-            # getMore
-            self.assertEqual('getMore', results['started'][1].command_name)
-            self.assertTrue('maxTimeMS' in results['started'][1].command)
-            self.assertEqual(99, results['started'][1].command['maxTimeMS'])
-            results.clear()
+        # Tailable_await with both max_time_ms and max_await_time_ms
+        list(coll.find(
+            cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(
+                99).max_await_time_ms(99))
+        # find
+        self.assertEqual('find', results['started'][0].command_name)
+        self.assertTrue('maxTimeMS' in results['started'][0].command)
+        self.assertEqual(99, results['started'][0].command['maxTimeMS'])
+        # getMore
+        self.assertEqual('getMore', results['started'][1].command_name)
+        self.assertTrue('maxTimeMS' in results['started'][1].command)
+        self.assertEqual(99, results['started'][1].command['maxTimeMS'])
+        results.clear()
 
-            # Non tailable_await with max_await_time_ms
-            list(coll.find(batch_size=1).max_await_time_ms(99))
-            # find
-            self.assertEqual('find', results['started'][0].command_name)
-            self.assertFalse('maxTimeMS' in results['started'][0].command)
-            # getMore
-            self.assertEqual('getMore', results['started'][1].command_name)
-            self.assertFalse('maxTimeMS' in results['started'][1].command)
-            results.clear()
+        # Non tailable_await with max_await_time_ms
+        list(coll.find(batch_size=1).max_await_time_ms(99))
+        # find
+        self.assertEqual('find', results['started'][0].command_name)
+        self.assertFalse('maxTimeMS' in results['started'][0].command)
+        # getMore
+        self.assertEqual('getMore', results['started'][1].command_name)
+        self.assertFalse('maxTimeMS' in results['started'][1].command)
+        results.clear()
 
-            # Non tailable_await with max_time_ms
-            list(coll.find(batch_size=1).max_time_ms(99))
-            # find
-            self.assertEqual('find', results['started'][0].command_name)
-            self.assertTrue('maxTimeMS' in results['started'][0].command)
-            self.assertEqual(99, results['started'][0].command['maxTimeMS'])
-            # getMore
-            self.assertEqual('getMore', results['started'][1].command_name)
-            self.assertFalse('maxTimeMS' in results['started'][1].command)
+        # Non tailable_await with max_time_ms
+        list(coll.find(batch_size=1).max_time_ms(99))
+        # find
+        self.assertEqual('find', results['started'][0].command_name)
+        self.assertTrue('maxTimeMS' in results['started'][0].command)
+        self.assertEqual(99, results['started'][0].command['maxTimeMS'])
+        # getMore
+        self.assertEqual('getMore', results['started'][1].command_name)
+        self.assertFalse('maxTimeMS' in results['started'][1].command)
 
-            # Non tailable_await with both max_time_ms and max_await_time_ms
-            list(coll.find(batch_size=1).max_time_ms(99).max_await_time_ms(88))
-            # find
-            self.assertEqual('find', results['started'][0].command_name)
-            self.assertTrue('maxTimeMS' in results['started'][0].command)
-            self.assertEqual(99, results['started'][0].command['maxTimeMS'])
-            # getMore
-            self.assertEqual('getMore', results['started'][1].command_name)
-            self.assertFalse('maxTimeMS' in results['started'][1].command)
-
-        finally:
-            monitoring._LISTENERS = saved_listeners
+        # Non tailable_await with both max_time_ms and max_await_time_ms
+        list(coll.find(batch_size=1).max_time_ms(99).max_await_time_ms(88))
+        # find
+        self.assertEqual('find', results['started'][0].command_name)
+        self.assertTrue('maxTimeMS' in results['started'][0].command)
+        self.assertEqual(99, results['started'][0].command['maxTimeMS'])
+        # getMore
+        self.assertEqual('getMore', results['started'][1].command_name)
+        self.assertFalse('maxTimeMS' in results['started'][1].command)
 
     @client_context.require_test_commands
     @client_context.require_no_mongos

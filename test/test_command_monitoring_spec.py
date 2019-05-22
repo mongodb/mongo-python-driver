@@ -23,7 +23,6 @@ sys.path[0:0] = [""]
 import pymongo
 
 from bson import json_util
-from pymongo import monitoring
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context
@@ -48,13 +47,7 @@ class TestAllScenarios(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
-        cls.saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         cls.client = single_client(event_listeners=[cls.listener])
-
-    @classmethod
-    def tearDownClass(cls):
-        monitoring._LISTENERS = cls.saved_listeners
 
     def tearDown(self):
         self.listener.results.clear()

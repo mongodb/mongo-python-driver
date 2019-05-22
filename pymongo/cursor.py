@@ -37,6 +37,7 @@ from pymongo.message import (_CursorAddress,
                              _RawBatchGetMore,
                              _Query,
                              _RawBatchQuery)
+from pymongo.monitoring import ConnectionClosedReason
 
 
 _QUERY_OPTIONS = {
@@ -303,7 +304,8 @@ class Cursor(object):
                 # If this is an exhaust cursor and we haven't completely
                 # exhausted the result set we *must* close the socket
                 # to stop the server from sending more data.
-                self.__exhaust_mgr.sock.close()
+                self.__exhaust_mgr.sock.close_socket(
+                    ConnectionClosedReason.ERROR)
             else:
                 address = _CursorAddress(
                     self.__address, self.__collection.full_name)

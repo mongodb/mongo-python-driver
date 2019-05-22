@@ -130,7 +130,7 @@ class SocketGetter(MongoThread):
 
     def __del__(self):
         if self.sock:
-            self.sock.close()
+            self.sock.close_socket(None)
 
 
 def run_cases(client, cases):
@@ -222,7 +222,7 @@ class TestPooling(_TestPoolingBase):
 
         with cx_pool.get_socket({}) as sock_info:
             # Use SocketInfo's API to close the socket.
-            sock_info.close()
+            sock_info.close_socket(None)
 
         self.assertEqual(0, len(cx_pool.sockets))
 
@@ -260,6 +260,7 @@ class TestPooling(_TestPoolingBase):
     def test_socket_closed_thread_safe(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((client_context.host, client_context.port))
+        self.addCleanup(s.close)
         socket_checker = SocketChecker()
 
         def check_socket():
@@ -290,6 +291,7 @@ class TestPooling(_TestPoolingBase):
                                    connect_timeout=1,
                                    wait_queue_timeout=1)
         cx_pool._check_interval_seconds = 0  # Always check.
+        self.addCleanup(cx_pool.close)
 
         with cx_pool.get_socket({}) as sock_info:
             # Simulate a closed socket without telling the SocketInfo it's
@@ -307,12 +309,13 @@ class TestPooling(_TestPoolingBase):
         with cx_pool.get_socket({}, checkout=True) as sock_info:
             pass
 
-        sock_info.close()
+        sock_info.close_socket(None)
 
     def test_wait_queue_timeout(self):
         wait_queue_timeout = 2  # Seconds
         pool = self.create_pool(
             max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
+        self.addCleanup(pool.close)
 
         with pool.get_socket({}) as sock_info:
             start = time.time()
@@ -326,11 +329,11 @@ class TestPooling(_TestPoolingBase):
             "Waited %.2f seconds for a socket, expected %f" % (
                 duration, wait_queue_timeout))
 
-        sock_info.close()
 
     def test_no_wait_queue_timeout(self):
         # Verify get_socket() with no wait_queue_timeout blocks forever.
         pool = self.create_pool(max_pool_size=1)
+        self.addCleanup(pool.close)
 
         # Reach max_size.
         with pool.get_socket({}) as s1:
@@ -347,7 +350,6 @@ class TestPooling(_TestPoolingBase):
 
         self.assertEqual(t.state, 'sock')
         self.assertEqual(t.sock, s1)
-        s1.close()
 
     def test_wait_queue_multiple(self):
         wait_queue_multiple = 3
@@ -392,7 +394,7 @@ class TestPooling(_TestPoolingBase):
             self.assertEqual(t.state, 'get_socket')
 
         for socket_info in socks:
-            socket_info.close()
+            socket_info.close_socket(None)
 
 
 class TestPoolMaxSize(_TestPoolingBase):

@@ -63,9 +63,15 @@ class MockPool(object):
     def return_socket(self, _):
         pass
 
-    def reset(self):
+    def _reset(self):
         with self._lock:
             self.pool_id += 1
+
+    def reset(self):
+        self._reset()
+
+    def close(self):
+        self._reset()
 
     def remove_stale_sockets(self):
         pass

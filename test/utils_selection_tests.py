@@ -50,6 +50,9 @@ class MockPool(object):
     def reset(self):
         pass
 
+    def close(self):
+        pass
+
     def remove_stale_sockets(self):
         pass
 

@@ -265,6 +265,10 @@ class TestCreator(object):
             "runOn not satisfied",
             method)
 
+    def tests(self, scenario_def):
+        """Allow CMAP spec test to override the location of test."""
+        return scenario_def['tests']
+
     def create_tests(self):
         for dirpath, _, filenames in os.walk(self.test_path):
             dirname = os.path.split(dirpath)[-1]
@@ -277,7 +281,7 @@ class TestCreator(object):
                 test_type = os.path.splitext(filename)[0]
 
                 # Construct test from scenario.
-                for test_def in scenario_def['tests']:
+                for test_def in self.tests(scenario_def):
                     test_name = 'test_%s_%s_%s' % (
                         dirname,
                         test_type.replace("-", "_").replace('.', '_'),

@@ -172,12 +172,6 @@ class TestAllScenarios(unittest.TestCase):
     @client_context.require_connection
     def setUp(cls):
         cls.all_listener = ServerAndTopologyEventListener()
-        cls.saved_listeners = monitoring._LISTENERS
-        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
-
-    @classmethod
-    def tearDown(cls):
-        monitoring._LISTENERS = cls.saved_listeners
 
 
 def create_test(scenario_def):
