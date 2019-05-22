@@ -47,11 +47,11 @@ if HAVE_SSL:
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                          'certificates')
 CLIENT_PEM = os.path.join(CERT_PATH, 'client.pem')
-CLIENT_ENCRYPTED_PEM = os.path.join(CERT_PATH, 'client_encrypted.pem')
+CLIENT_ENCRYPTED_PEM = os.path.join(CERT_PATH, 'password_protected.pem')
 CA_PEM = os.path.join(CERT_PATH, 'ca.pem')
 CRL_PEM = os.path.join(CERT_PATH, 'crl.pem')
 MONGODB_X509_USERNAME = (
-    "C=US,ST=California,L=Palo Alto,O=,OU=Drivers,CN=client")
+    "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=client")
 
 _PY37PLUS = sys.version_info[:2] >= (3, 7)
 
@@ -187,21 +187,21 @@ class TestSSL(IntegrationTest):
                 'localhost',
                 ssl=True,
                 ssl_certfile=CLIENT_ENCRYPTED_PEM,
-                ssl_pem_passphrase="clientpassword",
+                ssl_pem_passphrase="qwerty",
                 ssl_ca_certs=CA_PEM,
                 serverSelectionTimeoutMS=100)
         else:
             connected(MongoClient('localhost',
                                   ssl=True,
                                   ssl_certfile=CLIENT_ENCRYPTED_PEM,
-                                  ssl_pem_passphrase="clientpassword",
+                                  ssl_pem_passphrase="qwerty",
                                   ssl_ca_certs=CA_PEM,
-                                  serverSelectionTimeoutMS=100,
+                                  serverSelectionTimeoutMS=5000,
                                   **self.credentials))
 
             uri_fmt = ("mongodb://localhost/?ssl=true"
-                       "&ssl_certfile=%s&ssl_pem_passphrase=clientpassword"
-                       "&ssl_ca_certs=%s&serverSelectionTimeoutMS=100")
+                       "&ssl_certfile=%s&ssl_pem_passphrase=qwerty"
+                       "&ssl_ca_certs=%s&serverSelectionTimeoutMS=5000")
             connected(MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM),
                                   **self.credentials))
 
