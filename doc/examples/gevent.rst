@@ -8,7 +8,7 @@ PyMongo supports `Gevent <http://www.gevent.org/>`_. Simply call Gevent's
 
   >>> # You must call patch_all() *before* importing any other modules
   >>> from gevent import monkey
-  >>> monkey.patch_all()
+  >>> _ = monkey.patch_all()
   >>> from pymongo import MongoClient
   >>> client = MongoClient()
 
