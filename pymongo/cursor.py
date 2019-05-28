@@ -159,7 +159,7 @@ class Cursor(object):
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
 
-        if projection is not None:
+        if projection not in (None, {}):
             if not projection:
                 projection = {"_id": 1}
             projection = helpers._fields_list_to_dict(projection, "projection")
