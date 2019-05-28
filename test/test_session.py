@@ -816,14 +816,18 @@ class TestCausalConsistency(unittest.TestCase):
                 self.assertEqual(sess.cluster_time, sess2.cluster_time)
                 self.assertEqual(sess.operation_time, sess2.operation_time)
 
-    def _test_reads(self, op):
+    def _test_reads(self, op, exception=None):
         coll = self.client.pymongo_test.test
         with self.client.start_session() as sess:
             coll.find_one({}, session=sess)
             operation_time = sess.operation_time
             self.assertIsNotNone(operation_time)
             self.listener.results.clear()
-            op(coll, sess)
+            if exception:
+                with self.assertRaises(exception):
+                    op(coll, sess)
+            else:
+                op(coll, sess)
             act = self.listener.results['started'][0].command.get(
                 'readConcern', {}).get('afterClusterTime')
             self.assertEqual(operation_time, act)
@@ -844,12 +848,19 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.count_documents({}, session=session))
         self._test_reads(
             lambda coll, session: coll.distinct('foo', session=session))
+
+        # SERVER-40938 removed support for casually consistent mapReduce.
+        map_reduce_exc = None
+        if client_context.version.at_least(4, 1, 12):
+            map_reduce_exc = OperationFailure
         self._test_reads(
             lambda coll, session: coll.map_reduce(
-                'function() {}', 'function() {}', 'inline', session=session))
+                'function() {}', 'function() {}', 'inline', session=session),
+            exception=map_reduce_exc)
         self._test_reads(
             lambda coll, session: coll.inline_map_reduce(
-                'function() {}', 'function() {}', session=session))
+                'function() {}', 'function() {}', session=session),
+            exception=map_reduce_exc)
         if (not client_context.is_mongos and
                 not client_context.version.at_least(4, 1, 0)):
             def scan(coll, session):
