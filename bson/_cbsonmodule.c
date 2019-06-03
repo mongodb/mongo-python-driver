@@ -2648,13 +2648,13 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (InvalidBSON) {
                 if (!PyErr_GivenExceptionMatches(etype, InvalidBSON)) {
                     /*
-                     * Raise InvalidBSON(str(e)).
+                     * Raise InvalidBSON(repr(e)).
                      */
                     Py_DECREF(etype);
                     etype = InvalidBSON;
 
                     if (evalue) {
-                        PyObject *msg = PyObject_Str(evalue);
+                        PyObject *msg = PyObject_Repr(evalue);
                         Py_DECREF(evalue);
                         evalue = msg;
                     }
