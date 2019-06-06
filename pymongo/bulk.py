@@ -33,7 +33,8 @@ from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
                             InvalidOperation,
-                            OperationFailure)
+                            OperationFailure,
+                            PyMongoError)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
                              _do_batched_insert,
                              _do_bulk_write_command,
@@ -514,11 +515,19 @@ class _Bulk(object):
             generator = self.gen_unordered()
 
         client = self.collection.database.client
-        if not write_concern.acknowledged:
-            with client._socket_for_writes(session) as sock_info:
-                self.execute_no_results(sock_info, generator)
-        else:
-            return self.execute_command(generator, write_concern, session)
+
+        executed_successfully = True
+        try:
+            if not write_concern.acknowledged:
+                with client._socket_for_writes(session) as sock_info:
+                    self.execute_no_results(sock_info, generator)
+            else:
+                return self.execute_command(generator, write_concern, session)
+        except PyMongoError:
+            executed_successfully = False
+            raise
+        finally:
+            self.executed = executed_successfully
 
 
 class BulkUpsertOperation(object):
