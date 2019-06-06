@@ -18,9 +18,10 @@ import copy
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
-from bson.son import SON
 
 from pymongo import common
+from pymongo.aggregation import (_CollectionAggregationCommand,
+                                 _DatabaseAggregationCommand)
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (ConnectionFailure,
@@ -86,17 +87,17 @@ class ChangeStream(object):
         self._cursor = self._create_cursor()
 
     @property
-    def _aggregation_target(self):
-        """The argument to pass to the aggregate command."""
+    def _aggregation_command_class(self):
+        """The aggregation command class to be used."""
         raise NotImplementedError
 
     @property
-    def _database(self):
-        """The database against which the aggregation commands for
+    def _client(self):
+        """The client against which the aggregation commands for
         this ChangeStream will be run. """
         raise NotImplementedError
 
-    def _pipeline_options(self):
+    def _change_stream_options(self):
         options = {}
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
@@ -108,69 +109,45 @@ class ChangeStream(object):
             options['startAtOperationTime'] = self._start_at_operation_time
         return options
 
-    def _full_pipeline(self):
+    def _command_options(self):
+        options = {'cursor': {}}
+        if self._max_await_time_ms is not None:
+            options["maxAwaitTimeMS"] = self._max_await_time_ms
+        return options
+
+    def _aggregation_pipeline(self):
         """Return the full aggregation pipeline for this ChangeStream."""
-        options = self._pipeline_options()
+        options = self._change_stream_options()
         full_pipeline = [{'$changeStream': options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
+
+    def _process_result(self, result, session, server, sock_info, slave_ok):
+        """Callback that records a change stream cursor's operationTime."""
+        if (self._start_at_operation_time is None and
+                self._resume_token is None and
+                self._start_after is None and
+                sock_info.max_wire_version >= 7):
+            self._start_at_operation_time = result["operationTime"]
 
     def _run_aggregation_cmd(self, session, explicit_session):
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
-        read_preference = self._target._read_preference_for(session)
-        client = self._database.client
+        cmd = self._aggregation_command_class(
+            self._target, CommandCursor, self._aggregation_pipeline(),
+            self._command_options(), explicit_session,
+            result_processor=self._process_result)
 
-        def _cmd(session, server, sock_info, slave_ok):
-            pipeline = self._full_pipeline()
-            cmd = SON([("aggregate", self._aggregation_target),
-                       ("pipeline", pipeline),
-                       ("cursor", {})])
-
-            result = sock_info.command(
-                self._database.name,
-                cmd,
-                slave_ok,
-                read_preference,
-                self._target.codec_options,
-                parse_write_concern_error=True,
-                read_concern=self._target.read_concern,
-                collation=self._collation,
-                session=session,
-                client=self._database.client)
-
-            cursor = result["cursor"]
-
-            if (self._start_at_operation_time is None and
-                self._resume_token is None and
-                self._start_after is None and
-                sock_info.max_wire_version >= 7):
-                self._start_at_operation_time = result["operationTime"]
-
-            ns = cursor["ns"]
-            _, collname = ns.split(".", 1)
-            aggregation_collection = self._database.get_collection(
-                collname, codec_options=self._target.codec_options,
-                read_preference=read_preference,
-                write_concern=self._target.write_concern,
-                read_concern=self._target.read_concern
-            )
-
-            return CommandCursor(
-                aggregation_collection, cursor, sock_info.address,
-                batch_size=self._batch_size or 0,
-                max_await_time_ms=self._max_await_time_ms,
-                session=session, explicit_session=explicit_session)
-
-        return client._retryable_read(_cmd, read_preference, session)
+        return self._client._retryable_read(
+            cmd.get_cursor, self._target._read_preference_for(session),
+            session)
 
     def _create_cursor(self):
-        with self._database.client._tmp_session(self._session, close=False) as s:
+        with self._client._tmp_session(self._session, close=False) as s:
             return self._run_aggregation_cmd(
                 session=s,
-                explicit_session=self._session is not None
-            )
+                explicit_session=self._session is not None)
 
     def _resume(self):
         """Reestablish this change stream after a resumable error."""
@@ -302,12 +279,12 @@ class CollectionChangeStream(ChangeStream):
     .. versionadded:: 3.7
     """
     @property
-    def _aggregation_target(self):
-        return self._target.name
+    def _aggregation_command_class(self):
+        return _CollectionAggregationCommand
 
     @property
-    def _database(self):
-        return self._target.database
+    def _client(self):
+        return self._target.database.client
 
 
 class DatabaseChangeStream(ChangeStream):
@@ -319,12 +296,12 @@ class DatabaseChangeStream(ChangeStream):
     .. versionadded:: 3.7
     """
     @property
-    def _aggregation_target(self):
-        return 1
+    def _aggregation_command_class(self):
+        return _DatabaseAggregationCommand
 
     @property
-    def _database(self):
-        return self._target
+    def _client(self):
+        return self._target.client
 
 
 class ClusterChangeStream(DatabaseChangeStream):
@@ -335,7 +312,7 @@ class ClusterChangeStream(DatabaseChangeStream):
 
     .. versionadded:: 3.7
     """
-    def _pipeline_options(self):
-        options = super(ClusterChangeStream, self)._pipeline_options()
+    def _change_stream_options(self):
+        options = super(ClusterChangeStream, self)._change_stream_options()
         options["allChangesForCluster"] = True
         return options

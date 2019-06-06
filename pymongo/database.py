@@ -22,6 +22,7 @@ from bson.dbref import DBRef
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
 from pymongo import auth, common
+from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
@@ -444,6 +445,97 @@ class Database(common.BaseObject):
         for manipulator in reversed(self.__outgoing_copying_manipulators):
             son = manipulator.transform_outgoing(son, collection)
         return son
+
+    def _aggregate(self, pipeline, cursor_class, session,
+                   explicit_session, **kwargs):
+        # Check if we use the $out stage
+        dollar_out = pipeline and '$out' in pipeline[-1]
+
+        # Specify cursor option if it has not been provided by the user.
+        if "cursor" not in kwargs:
+            kwargs["cursor"] = {}
+
+        # Ignore batchSize when the $out pipeline stage is used.
+        # batchSize is meaningless in that case since the server
+        # doesn't return results. This also avoids SERVER-23923.
+        batch_size = kwargs.get("batchSize")
+        if batch_size is not None and not dollar_out:
+            kwargs["cursor"]["batchSize"] = batch_size
+
+        cmd = _DatabaseAggregationCommand(
+            self, cursor_class, pipeline, kwargs, explicit_session,
+            user_fields={'cursor': {'firstBatch': 1}})
+        return self.client._retryable_read(
+            cmd.get_cursor, self._read_preference_for(session), session,
+            retryable=not dollar_out)
+
+    def aggregate(self, pipeline, session=None, **kwargs):
+        """Perform a database-level aggregation.
+
+        See the `aggregation pipeline`_ documentation for a list of stages
+        that are supported.
+
+        Introduced in MongoDB 3.6.
+
+        .. code-block:: python
+
+           # Lists all operations currently running on the server.
+           with client.admin.aggregate([{"$currentOp": {}}]) as cursor:
+               for operation in cursor:
+                   print(operation)
+
+        All optional `aggregate command`_ parameters should be passed as
+        keyword arguments to this method. Valid options include, but are not
+        limited to:
+
+          - `allowDiskUse` (bool): Enables writing to temporary files. When set
+            to True, aggregation stages can write data to the _tmp subdirectory
+            of the --dbpath directory. The default is False.
+          - `maxTimeMS` (int): The maximum amount of time to allow the operation
+            to run in milliseconds.
+          - `batchSize` (int): The maximum number of documents to return per
+            batch. Ignored if the connected mongod or mongos does not support
+            returning aggregate results using a cursor.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`.
+
+        The :meth:`aggregate` method obeys the :attr:`read_preference` of this
+        :class:`Database`. Please note that using the ``$out`` pipeline stage
+        requires a read preference of
+        :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` (the default).
+        The server will raise an error if the ``$out`` pipeline stage is used
+        with any other read preference.
+
+        .. note:: This method does not support the 'explain' option. Please
+           use :meth:`~pymongo.database.Database.command` instead.
+
+        .. note:: The :attr:`~pymongo.database.Database.write_concern` of
+           this collection is automatically applied to this operation.
+
+        :Parameters:
+          - `pipeline`: a list of aggregation pipeline stages
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): See list of options above.
+
+        :Returns:
+          A :class:`~pymongo.command_cursor.CommandCursor` over the result
+          set.
+
+        .. versionadded:: 3.9
+
+        .. _aggregation pipeline:
+            https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline
+
+        .. _aggregate command:
+            https://docs.mongodb.com/manual/reference/command/aggregate
+        """
+        with self.client._tmp_session(session, close=False) as s:
+            return self._aggregate(pipeline,
+                                   CommandCursor,
+                                   session=s,
+                                   explicit_session=session is not None,
+                                   **kwargs)
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,

@@ -253,7 +253,8 @@ class SpecRunner(IntegrationTest):
             if arg_name == "fieldName":
                 arguments["key"] = arguments.pop(arg_name)
             # Aggregate uses "batchSize", while find uses batch_size.
-            elif arg_name == "batchSize" and name == "aggregate":
+            elif ((arg_name == "batchSize" or arg_name == "allowDiskUse") and
+                  name == "aggregate"):
                 continue
             # Requires boolean returnDocument.
             elif arg_name == "returnDocument":

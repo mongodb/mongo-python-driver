@@ -41,6 +41,8 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
 - Support zstandard for wire protocol compression.
 - Support for periodically polling DNS SRV records to update the mongos proxy
   list without having to change client configuration.
+- New method :meth:`pymongo.database.Database.aggregate` to support running
+  database level aggregations.
 
   Now that supported operations are retried automatically and transparently,
   users should consider adjusting any custom retry logic to prevent

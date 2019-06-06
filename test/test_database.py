@@ -56,6 +56,7 @@ from test.utils import (ignore_deprecations,
                         rs_or_single_client_noauth,
                         rs_or_single_client,
                         server_started_with_auth,
+                        wait_until,
                         IMPOSSIBLE_WRITE_CONCERN,
                         OvertCommandListener)
 from test.test_custom_types import DECIMAL_CODECOPTS
@@ -1015,6 +1016,48 @@ class TestDatabase(IntegrationTest):
         current_op = db.current_op(True)
         self.assertTrue(current_op['inprog'])
         self.assertIsInstance(current_op, MySON)
+
+
+class TestDatabaseAggregation(IntegrationTest):
+    def setUp(self):
+        self.pipeline = [{"$listLocalSessions": {}},
+                         {"$limit": 1},
+                         {"$addFields": {"dummy": "dummy field"}},
+                         {"$project": {"_id": 0, "dummy": 1}}]
+        self.result = {"dummy": "dummy field"}
+        self.admin = self.client.admin
+
+    @client_context.require_version_min(3, 6, 0)
+    def test_database_aggregation(self):
+        with self.admin.aggregate(self.pipeline) as cursor:
+            result = next(cursor)
+            self.assertEqual(result, self.result)
+
+    @client_context.require_version_min(3, 6, 0)
+    @client_context.require_no_mongos
+    def test_database_aggregation_fake_cursor(self):
+        admin = self.admin.with_options(write_concern=WriteConcern(w=0))
+        test_collection_name = "test_output"
+        admin.drop_collection(test_collection_name)
+        self.addCleanup(admin.drop_collection, test_collection_name)
+
+        pipeline = self.pipeline[:]
+        pipeline.append({"$out": "test_output"})
+        with admin.aggregate(pipeline) as cursor:
+            with self.assertRaises(StopIteration):
+                next(cursor)
+
+        result = wait_until(
+            admin[test_collection_name].find_one,
+            "read unacknowledged write")
+        self.assertEqual(result["dummy"], self.result["dummy"])
+
+    @client_context.require_version_max(3, 6, 0, -1)
+    def test_database_aggregation_unsupported(self):
+        err_msg = "Database.aggregation is only supported on MongoDB 3.6\+."
+        with self.assertRaisesRegex(ConfigurationError, err_msg):
+            with self.admin.aggregate(self.pipeline) as _:
+                pass
 
 
 if __name__ == "__main__":
