@@ -291,7 +291,13 @@ class Cursor(object):
     def __die(self, synchronous=False):
         """Closes this cursor.
         """
-        already_killed = self.__killed
+        # the __init__ might not have run completely here (or at all)
+        try:
+            already_killed = self.__killed
+        except AttributeError:
+            # __init__ did not run to completion (or at all)
+            return
+
         self.__killed = True
         if self.__id and not already_killed:
             if self.__exhaust and self.__exhaust_mgr:
