@@ -35,7 +35,7 @@ from pymongo import (monitoring,
                      ALL,
                      OFF)
 from pymongo.collation import Collation
-from pymongo.cursor import CursorType
+from pymongo.cursor import Cursor, CursorType
 from pymongo.errors import (ConfigurationError,
                             ExecutionTimeout,
                             InvalidOperation,
@@ -1408,6 +1408,12 @@ class TestCursor(IntegrationTest):
             assertCursorKilled()
         else:
             self.assertEqual(0, len(results["started"]))
+
+    def test_delete_not_initialized(self):
+        # Creating a cursor with invalid arguments will not run __init__
+        # but will still call __del__, eg test.find(invalidKwarg=1).
+        cursor = Cursor.__new__(Cursor)  # Skip calling __init__
+        cursor.__del__()  # no error
 
 
 class TestRawBatchCursor(IntegrationTest):
