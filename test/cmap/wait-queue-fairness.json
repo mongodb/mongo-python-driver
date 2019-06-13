@@ -4,7 +4,7 @@
   "description": "must issue Connections to threads in the order that the threads entered the queue",
   "poolOptions": {
     "maxPoolSize": 1,
-    "waitQueueTimeoutMS": 1000
+    "waitQueueTimeoutMS": 5000
   },
   "operations": [
     {
