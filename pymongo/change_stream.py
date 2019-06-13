@@ -98,6 +98,7 @@ class ChangeStream(object):
         raise NotImplementedError
 
     def _change_stream_options(self):
+        """Return the options dict for the $changeStream pipeline stage."""
         options = {}
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
@@ -110,6 +111,7 @@ class ChangeStream(object):
         return options
 
     def _command_options(self):
+        """Return the options dict for the aggregation command."""
         options = {'cursor': {}}
         if self._max_await_time_ms is not None:
             options["maxAwaitTimeMS"] = self._max_await_time_ms

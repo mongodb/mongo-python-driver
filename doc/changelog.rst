@@ -49,6 +49,8 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
 - Support for publishing Connection Monitoring and Pooling events via the new
   :class:`~pymongo.monitoring.ConnectionPoolListener` class. See
   :mod:`~pymongo.monitoring` for an example.
+- :meth:`pymongo.collection.Collection.aggregate` and
+  :meth:`pymongo.database.Database.aggregate` now support the ``$merge`` pipeline
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 

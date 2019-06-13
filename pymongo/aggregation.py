@@ -38,9 +38,24 @@ class _AggregationCommand(object):
 
         common.validate_list('pipeline', pipeline)
         self._pipeline = pipeline
+        self._performs_write = False
+        if pipeline and ("$out" in pipeline[-1] or "$merge" in pipeline[-1]):
+            self._performs_write = True
 
         common.validate_is_mapping('options', options)
         self._options = options
+
+        # This is the batchSize that will be used for setting the initial
+        # batchSize for the cursor, as well as the subsequent getMores.
+        self._batch_size = common.validate_non_negative_integer_or_none(
+            "batchSize", self._options.pop("batchSize", None))
+
+        # If the cursor option is already specified, avoid overriding it.
+        self._options.setdefault("cursor", {})
+        # If the pipeline performs a write, we ignore the initial batchSize
+        # since the server doesn't return results in this case.
+        if self._batch_size is not None and not self._performs_write:
+            self._options["cursor"]["batchSize"] = self._batch_size
 
         self._cursor_class = cursor_class
         self._explicit_session = explicit_session
@@ -51,11 +66,6 @@ class _AggregationCommand(object):
             options.pop('collation', None))
 
         self._max_await_time_ms = options.pop('maxAwaitTimeMS', None)
-        self._batch_size = common.validate_non_negative_integer_or_none(
-            "batchSize", options.pop("batchSize", None))
-
-        self._dollar_out = (self._pipeline and
-                            '$out' in self._pipeline[-1])
 
     @property
     def _aggregation_target(self):
@@ -99,7 +109,8 @@ class _AggregationCommand(object):
         # - server version is >= 4.2 or
         # - server version is >= 3.2 and pipeline doesn't use $out
         if (('readConcern' not in cmd) and
-                ((sock_info.max_wire_version >= 4 and not self._dollar_out) or
+                ((sock_info.max_wire_version >= 4 and
+                  not self._performs_write) or
                  (sock_info.max_wire_version >= 8))):
             read_concern = self._target.read_concern
         else:
@@ -107,8 +118,8 @@ class _AggregationCommand(object):
 
         # Apply this target's write concern if:
         # writeConcern has not been specified as a kwarg and pipeline doesn't
-        # use $out
-        if 'writeConcern' not in cmd and self._dollar_out:
+        # perform a write operation
+        if 'writeConcern' not in cmd and self._performs_write:
             write_concern = self._target._write_concern_for(session)
         else:
             write_concern = None
@@ -159,6 +170,16 @@ class _AggregationCommand(object):
 
 
 class _CollectionAggregationCommand(_AggregationCommand):
+    def __init__(self, *args, **kwargs):
+        # Pop additional option and initialize parent class.
+        use_cursor = kwargs.pop("use_cursor", True)
+        super(_CollectionAggregationCommand, self).__init__(*args, **kwargs)
+
+        # Remove the cursor document if the user has set use_cursor to False.
+        self._use_cursor = use_cursor
+        if not self._use_cursor:
+            self._options.pop("cursor", None)
+
     @property
     def _aggregation_target(self):
         return self._target.name
@@ -170,6 +191,15 @@ class _CollectionAggregationCommand(_AggregationCommand):
     @property
     def _database(self):
         return self._target.database
+
+
+class _CollectionRawAggregationCommand(_CollectionAggregationCommand):
+    def __init__(self, *args, **kwargs):
+        super(_CollectionRawAggregationCommand, self).__init__(*args, **kwargs)
+
+        # For raw-batches, we set the initial batchSize for the cursor to 0.
+        if self._use_cursor and not self._performs_write:
+            self._options["cursor"]["batchSize"] = 0
 
 
 class _DatabaseAggregationCommand(_AggregationCommand):

@@ -446,29 +446,6 @@ class Database(common.BaseObject):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
-    def _aggregate(self, pipeline, cursor_class, session,
-                   explicit_session, **kwargs):
-        # Check if we use the $out stage
-        dollar_out = pipeline and '$out' in pipeline[-1]
-
-        # Specify cursor option if it has not been provided by the user.
-        if "cursor" not in kwargs:
-            kwargs["cursor"] = {}
-
-        # Ignore batchSize when the $out pipeline stage is used.
-        # batchSize is meaningless in that case since the server
-        # doesn't return results. This also avoids SERVER-23923.
-        batch_size = kwargs.get("batchSize")
-        if batch_size is not None and not dollar_out:
-            kwargs["cursor"]["batchSize"] = batch_size
-
-        cmd = _DatabaseAggregationCommand(
-            self, cursor_class, pipeline, kwargs, explicit_session,
-            user_fields={'cursor': {'firstBatch': 1}})
-        return self.client._retryable_read(
-            cmd.get_cursor, self._read_preference_for(session), session,
-            retryable=not dollar_out)
-
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform a database-level aggregation.
 
@@ -500,11 +477,11 @@ class Database(common.BaseObject):
             :class:`~pymongo.collation.Collation`.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
-        :class:`Database`. Please note that using the ``$out`` pipeline stage
-        requires a read preference of
+        :class:`Database`. Please note that using the ``$out`` or ``$merge``
+        pipeline stages requires a read preference of
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` (the default).
-        The server will raise an error if the ``$out`` pipeline stage is used
-        with any other read preference.
+        The server will raise an error if the ``$out`` or ``$merge`` pipeline
+        stages is used with any other read preference.
 
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead.
@@ -531,11 +508,12 @@ class Database(common.BaseObject):
             https://docs.mongodb.com/manual/reference/command/aggregate
         """
         with self.client._tmp_session(session, close=False) as s:
-            return self._aggregate(pipeline,
-                                   CommandCursor,
-                                   session=s,
-                                   explicit_session=session is not None,
-                                   **kwargs)
+            cmd = _DatabaseAggregationCommand(
+                self, CommandCursor, pipeline, kwargs, session is not None,
+                user_fields={'cursor': {'firstBatch': 1}})
+            return self.client._retryable_read(
+                cmd.get_cursor, self._read_preference_for(s), s,
+                retryable=not cmd._performs_write)
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,

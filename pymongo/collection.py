@@ -29,7 +29,8 @@ from bson.son import SON
 from pymongo import (common,
                      helpers,
                      message)
-from pymongo.aggregation import _CollectionAggregationCommand
+from pymongo.aggregation import (_CollectionAggregationCommand,
+                                 _CollectionRawAggregationCommand)
 from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.common import ORDERED_TYPES
@@ -2258,11 +2259,8 @@ class Collection(common.BaseObject):
 
         return options
 
-    def _aggregate(self, pipeline, cursor_class, first_batch_size, session,
+    def _aggregate(self, aggregation_command, pipeline, cursor_class, session,
                    explicit_session, **kwargs):
-        # Check if we use the $out stage
-        dollar_out = pipeline and '$out' in pipeline[-1]
-
         # Remove things that are not command options.
         use_cursor = True
         if "useCursor" in kwargs:
@@ -2271,25 +2269,14 @@ class Collection(common.BaseObject):
                 "and will be removed in PyMongo 4.0",
                 DeprecationWarning, stacklevel=2)
             use_cursor = common.validate_boolean(
-                "useCursor", kwargs.pop("useCursor"))
+                "useCursor", kwargs.pop("useCursor", True))
 
-        # If the server does not support the "cursor" option we
-        # ignore useCursor and batchSize.
-        if use_cursor:
-            if "cursor" not in kwargs:
-                kwargs["cursor"] = {}
-            # Ignore batchSize when the $out pipeline stage is used.
-            # batchSize is meaningless in that case since the server
-            # doesn't return results. This also avoids SERVER-23923.
-            if first_batch_size is not None and not dollar_out:
-                kwargs["cursor"]["batchSize"] = first_batch_size
-
-        cmd = _CollectionAggregationCommand(
+        cmd = aggregation_command(
             self, cursor_class, pipeline, kwargs, explicit_session,
-            user_fields={'cursor': {'firstBatch': 1}})
+            user_fields={'cursor': {'firstBatch': 1}}, use_cursor=use_cursor)
         return self.__database.client._retryable_read(
             cmd.get_cursor, self._read_preference_for(session), session,
-            retryable=not dollar_out)
+            retryable=not cmd._performs_write)
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
@@ -2314,11 +2301,11 @@ class Collection(common.BaseObject):
           - `useCursor` (bool): Deprecated. Will be removed in PyMongo 4.0.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
-        :class:`Collection`. Please note that using the ``$out`` pipeline stage
-        requires a read preference of
+        :class:`Collection`. Please note that using the ``$out`` and ``$merge``
+        pipeline stages requires a read preference of
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` (the default).
-        The server will raise an error if the ``$out`` pipeline stage is used
-        with any other read preference.
+        The server will raise an error if the ``$out`` or ``$merge`` pipeline
+        stages are used with any other read preference.
 
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead. An
@@ -2338,6 +2325,8 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
+        .. versionchanged:: 3.9
+           Added support for the ``$merge`` pipeline stage.
         .. versionchanged:: 3.9
            Apply this collection's read concern to pipelines containing the
            `$out` stage when connected to MongoDB >= 4.2.
@@ -2364,9 +2353,9 @@ class Collection(common.BaseObject):
             https://docs.mongodb.com/manual/reference/command/aggregate
         """
         with self.__database.client._tmp_session(session, close=False) as s:
-            return self._aggregate(pipeline,
+            return self._aggregate(_CollectionAggregationCommand,
+                                   pipeline,
                                    CommandCursor,
-                                   kwargs.get('batchSize'),
                                    session=s,
                                    explicit_session=session is not None,
                                    **kwargs)
@@ -2397,8 +2386,13 @@ class Collection(common.BaseObject):
         if "session" in kwargs:
             raise ConfigurationError(
                 "aggregate_raw_batches does not support sessions")
-        return self._aggregate(pipeline, RawBatchCommandCursor, 0,
-                               None, False, **kwargs)
+
+        return self._aggregate(_CollectionRawAggregationCommand,
+                               pipeline,
+                               RawBatchCommandCursor,
+                               session=None,
+                               explicit_session=False,
+                               **kwargs)
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
