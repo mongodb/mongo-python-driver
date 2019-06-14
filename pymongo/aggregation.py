@@ -78,6 +78,11 @@ class _AggregationCommand(object):
         raise NotImplementedError
 
     @property
+    def _cursor_collection(self, cursor_doc):
+        """The Collection used for the aggregate command cursor."""
+        raise NotImplementedError
+
+    @property
     def _database(self):
         """The database against which the aggregation command is run."""
         raise NotImplementedError
@@ -152,18 +157,9 @@ class _AggregationCommand(object):
                 "ns": self._cursor_namespace,
             }
 
-        # Get collection to target with cursor.
-        ns = cursor["ns"]
-        _, collname = ns.split(".", 1)
-        aggregation_collection = self._database.get_collection(
-            collname, codec_options=self._target.codec_options,
-            read_preference=read_preference,
-            write_concern=self._target.write_concern,
-            read_concern=self._target.read_concern)
-
         # Create and return cursor instance.
         return self._cursor_class(
-            aggregation_collection, cursor, sock_info.address,
+            self._cursor_collection(cursor), cursor, sock_info.address,
             batch_size=self._batch_size or 0,
             max_await_time_ms=self._max_await_time_ms,
             session=session, explicit_session=self._explicit_session)
@@ -188,6 +184,10 @@ class _CollectionAggregationCommand(_AggregationCommand):
     def _cursor_namespace(self):
         return self._target.full_name
 
+    def _cursor_collection(self, cursor):
+        """The Collection used for the aggregate command cursor."""
+        return self._target
+
     @property
     def _database(self):
         return self._target.database
@@ -209,16 +209,24 @@ class _DatabaseAggregationCommand(_AggregationCommand):
 
     @property
     def _cursor_namespace(self):
-        return "%s.%s.aggregate" % (self._target.name, "$cmd")
+        return "%s.$cmd.aggregate" % (self._target.name,)
 
     @property
     def _database(self):
         return self._target
+
+    def _cursor_collection(self, cursor):
+        """The Collection used for the aggregate command cursor."""
+        # Collection level aggregate may not always return the "ns" field
+        # according to our MockupDB tests. Let's handle that case for db level
+        # aggregate too by defaulting to the <db>.$cmd.aggregate namespace.
+        _, collname = cursor.get("ns", self._cursor_namespace).split(".", 1)
+        return self._database[collname]
 
     @staticmethod
     def _check_compat(sock_info):
         # Older server version don't raise a descriptive error, so we raise
         # one instead.
         if not sock_info.max_wire_version >= 6:
-            err_msg = "Database.aggregation is only supported on MongoDB 3.6+."
+            err_msg = "Database.aggregate() is only supported on MongoDB 3.6+."
             raise ConfigurationError(err_msg)
