@@ -204,6 +204,7 @@ class SrvMonitor(MonitorBase):
         The Topology is weakly referenced.
         """
         self._settings = topology_settings
+        self._seedlist = self._settings._seeds
         self._fqdn = self._settings.fqdn
 
         # We strongly reference the executor and it weakly references us via
@@ -228,12 +229,14 @@ class SrvMonitor(MonitorBase):
         self._topology = weakref.proxy(topology, executor.close)
 
     def _run(self):
-        try:
-            self._seedlist = self._get_seedlist()
-            self._topology.on_srv_update(self._seedlist)
-        except ReferenceError:
-            # Topology was garbage-collected.
-            self.close()
+        seedlist = self._get_seedlist()
+        if seedlist:
+            self._seedlist = seedlist
+            try:
+                self._topology.on_srv_update(self._seedlist)
+            except ReferenceError:
+                # Topology was garbage-collected.
+                self.close()
 
     def _get_seedlist(self):
         """Poll SRV records for a seedlist.
@@ -251,7 +254,7 @@ class SrvMonitor(MonitorBase):
             # - SRV records must be rescanned every heartbeatFrequencyMS
             # - Topology must be left unchanged
             self.request_check()
-            return self._seedlist
+            return None
         else:
             self._executor.update_interval(
                 max(ttl, common.MIN_SRV_RESCAN_INTERVAL))

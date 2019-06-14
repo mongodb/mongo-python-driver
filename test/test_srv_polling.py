@@ -23,6 +23,7 @@ sys.path[0:0] = [""]
 import pymongo
 
 from pymongo import common
+from pymongo.errors import ConfigurationError
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.mongo_client import MongoClient
 from test import client_knobs, unittest
@@ -91,6 +92,14 @@ class TestSRVPolling(unittest.TestCase):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("SRV polling tests require the dnspython "
                                     "module")
+        # Patch timeouts to ensure short rescan SRV interval.
+        self.client_knobs = client_knobs(
+            heartbeat_frequency=WAIT_TIME, min_heartbeat_interval=WAIT_TIME,
+            events_queue_frequency=WAIT_TIME)
+        self.client_knobs.enable()
+
+    def tearDown(self):
+        self.client_knobs.disable()
 
     def get_nodelist(self, client):
         return client._topology.description.server_descriptions().keys()
@@ -122,7 +131,7 @@ class TestSRVPolling(unittest.TestCase):
             1, "resolver was never called")
         return True
 
-    def _run_scenario(self, dns_response, expect_change):
+    def run_scenario(self, dns_response, expect_change):
         if callable(dns_response):
             dns_resolver_response = dns_response
         else:
@@ -148,13 +157,6 @@ class TestSRVPolling(unittest.TestCase):
                     dns_resolver_nodelist_response=dns_resolver_response,
                     count_resolver_calls=count_resolver_calls):
                 assertion_method(expected_response, mc)
-
-    def run_scenario(self, dns_response, expect_change):
-        # Patch timeouts to ensure short rescan SRV interval.
-        with client_knobs(heartbeat_frequency=WAIT_TIME,
-                          min_heartbeat_interval=WAIT_TIME,
-                          events_queue_frequency=WAIT_TIME):
-            self._run_scenario(dns_response, expect_change)
 
     def test_addition(self):
         response = self.BASE_SRV_RESPONSE[:]
@@ -195,6 +197,24 @@ class TestSRVPolling(unittest.TestCase):
     def test_dns_record_lookup_empty(self):
         response = []
         self.run_scenario(response, False)
+
+    def _test_recover_from_initial(self, response_callback):
+        with SRVPollingKnobs(
+                ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME,
+                dns_resolver_nodelist_response=response_callback,
+                count_resolver_calls=True):
+            mc = MongoClient(self.CONNECTION_STRING)
+            self.assert_nodelist_nochange(self.BASE_SRV_RESPONSE, mc)
+
+    def test_recover_from_initially_empty_seedlist(self):
+        def empty_seedlist():
+            return []
+        self._test_recover_from_initial(empty_seedlist)
+
+    def test_recover_from_initially_erroring_seedlist(self):
+        def erroring_seedlist():
+            raise ConfigurationError
+        self._test_recover_from_initial(erroring_seedlist)
 
 
 if __name__ == '__main__':
