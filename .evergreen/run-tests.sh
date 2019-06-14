@@ -76,7 +76,12 @@ fi
 # Don't download unittest-xml-reporting from pypi, which often fails.
 HAVE_XMLRUNNER=$($PYTHON -c "import pkgutil, sys; sys.stdout.write('1' if pkgutil.find_loader('xmlrunner') else '0')")
 if [ $HAVE_XMLRUNNER = "1" ]; then
-    OUTPUT="--xunit-output=xunit-results"
+    # The xunit output dir must be a Python style absolute path.
+    XUNIT_DIR="$(pwd)/xunit-results"
+    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+        XUNIT_DIR=$(cygpath -m $XUNIT_DIR)
+    fi
+    OUTPUT="--xunit-output=${XUNIT_DIR}"
 else
     OUTPUT=""
 fi
