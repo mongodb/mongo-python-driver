@@ -139,6 +139,34 @@ class ChangeStreamTryNextMixin(object):
             self.assertEqual(listener.started_command_names(), ["getMore"])
             self.assertIsNone(stream.try_next())
 
+    def test_batch_size_is_honored(self):
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        # Connect to the cluster.
+        client.admin.command('ping')
+        listener.results.clear()
+        # ChangeStreams only read majority committed data so use w:majority.
+        coll = self.watched_collection().with_options(
+            write_concern=WriteConcern("majority"))
+        coll.drop()
+        # Create the watched collection before starting the change stream to
+        # skip any "create" events.
+        coll.insert_one({'_id': 1})
+        self.addCleanup(coll.drop)
+        # Expected batchSize.
+        expected = {'batchSize': 23}
+        with self.change_stream_with_client(
+                client, max_await_time_ms=250, batch_size=23) as stream:
+            # Confirm that batchSize is honored for initial batch.
+            cmd = listener.results['started'][0].command
+            self.assertEqual(cmd['cursor'], expected)
+            listener.results.clear()
+            # Confirm that batchSize is honored by getMores.
+            self.assertIsNone(stream.try_next())
+            cmd = listener.results['started'][0].command
+            key = next(iter(expected))
+            self.assertEqual(expected[key], cmd[key])
+
 
 class TestClusterChangeStream(IntegrationTest, ChangeStreamTryNextMixin):
 

@@ -112,9 +112,11 @@ class ChangeStream(object):
 
     def _command_options(self):
         """Return the options dict for the aggregation command."""
-        options = {'cursor': {}}
+        options = {}
         if self._max_await_time_ms is not None:
             options["maxAwaitTimeMS"] = self._max_await_time_ms
+        if self._batch_size is not None:
+            options["batchSize"] = self._batch_size
         return options
 
     def _aggregation_pipeline(self):
