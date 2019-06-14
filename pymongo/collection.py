@@ -974,6 +974,9 @@ class Collection(common.BaseObject):
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
 
+        .. versionchanged:: 3.9
+           Added the ability to accept a pipeline as the `update`.
+
         .. versionchanged:: 3.6
            Added the `array_filters` and ``session`` parameters.
 
@@ -1043,6 +1046,9 @@ class Collection(common.BaseObject):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 3.9
+           Added the ability to accept a pipeline as the `update`.
 
         .. versionchanged:: 3.6
            Added ``array_filters`` and ``session`` parameters.
@@ -3087,6 +3093,8 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.9
+           Added the ability to accept a pipeline as the `update`.
         .. versionchanged:: 3.6
            Added the `array_filters` and `session` options.
         .. versionchanged:: 3.4

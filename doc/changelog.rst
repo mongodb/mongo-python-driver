@@ -51,6 +51,12 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
   :mod:`~pymongo.monitoring` for an example.
 - :meth:`pymongo.collection.Collection.aggregate` and
   :meth:`pymongo.database.Database.aggregate` now support the ``$merge`` pipeline
+- Support for specifying a pipeline or document in
+  :meth:`~pymongo.collection.Collection.update_one`,
+  :meth:`~pymongo.collection.Collection.update_many`,
+  :meth:`~pymongo.collection.Collection.find_one_and_update`,
+  :meth:`~pymongo.operations.UpdateOne`, and
+  :meth:`~pymongo.operations.UpdateMany`.
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 

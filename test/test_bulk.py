@@ -139,7 +139,7 @@ class TestBulk(BulkTestBase):
         self.assertEqual(1, result.inserted_count)
         self.assertEqual(1, self.coll.count_documents({}))
 
-    def test_update_many(self):
+    def _test_update_many(self, update):
 
         expected = {
             'nMatched': 2,
@@ -153,11 +153,17 @@ class TestBulk(BulkTestBase):
         }
         self.coll.insert_many([{}, {}])
 
-        result = self.coll.bulk_write([UpdateMany({},
-                                                  {'$set': {'foo': 'bar'}})])
+        result = self.coll.bulk_write([UpdateMany({}, update)])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(2, result.matched_count)
         self.assertTrue(result.modified_count in (2, None))
+
+    def test_update_many(self):
+        self._test_update_many({'$set': {'foo': 'bar'}})
+
+    @client_context.require_version_min(4, 1, 11)
+    def test_update_many_pipeline(self):
+        self._test_update_many([{'$set': {'foo': 'bar'}}])
 
     @client_context.require_version_max(3, 5, 5)
     def test_array_filters_unsupported(self):
@@ -184,8 +190,7 @@ class TestBulk(BulkTestBase):
         self.assertRaises(ConfigurationError, coll.bulk_write, [update_one])
         self.assertRaises(ConfigurationError, coll.bulk_write, [update_many])
 
-    def test_update_one(self):
-
+    def _test_update_one(self, update):
         expected = {
             'nMatched': 1,
             'nModified': 1,
@@ -199,11 +204,17 @@ class TestBulk(BulkTestBase):
 
         self.coll.insert_many([{}, {}])
 
-        result = self.coll.bulk_write([UpdateOne({},
-                                                 {'$set': {'foo': 'bar'}})])
+        result = self.coll.bulk_write([UpdateOne({}, update)])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.matched_count)
         self.assertTrue(result.modified_count in (1, None))
+
+    def test_update_one(self):
+        self._test_update_one({'$set': {'foo': 'bar'}})
+
+    @client_context.require_version_min(4, 1, 11)
+    def test_update_one_pipeline(self):
+        self._test_update_one([{'$set': {'foo': 'bar'}}])
 
     def test_replace_one(self):
 

@@ -457,11 +457,19 @@ def validate_list_or_none(option, value):
     return validate_list(option, value)
 
 
+def validate_list_or_mapping(option, value):
+    """Validates that 'value' is a list or a document."""
+    if not isinstance(value, (abc.Mapping, list)):
+        raise TypeError("%s must either be a list or an instance of dict, "
+                        "bson.son.SON, or any other type that inherits from "
+                        "collections.Mapping" % (option,))
+
+
 def validate_is_mapping(option, value):
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, abc.Mapping):
         raise TypeError("%s must be an instance of dict, bson.son.SON, or "
-                        "other type that inherits from "
+                        "any other type that inherits from "
                         "collections.Mapping" % (option,))
 
 
@@ -515,12 +523,14 @@ def validate_ok_for_replace(replacement):
 
 def validate_ok_for_update(update):
     """Validate an update document."""
-    validate_is_mapping("update", update)
-    # Update can not be {}
+    validate_list_or_mapping("update", update)
+    # Update cannot be {}.
     if not update:
-        raise ValueError('update only works with $ operators')
+        raise ValueError('update cannot be empty')
+
+    is_document = not isinstance(update, list)
     first = next(iter(update))
-    if not first.startswith('$'):
+    if is_document and not first.startswith('$'):
         raise ValueError('update only works with $ operators')
 
 
