@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Changes in Version 3.9.0.dev0
------------------------------
+Changes in Version 3.9.0b1
+--------------------------
 
 Version 3.9 adds support for MongoDB 4.2. Highlights include:
 
