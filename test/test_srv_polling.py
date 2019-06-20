@@ -33,7 +33,7 @@ from test.utils import wait_until, FunctionCallCounter
 WAIT_TIME = 0.1
 
 
-class SRVPollingKnobs(object):
+class SrvPollingKnobs(object):
     def __init__(self, ttl_time=None, min_srv_rescan_interval=None,
                  dns_resolver_nodelist_response=None,
                  count_resolver_calls=False):
@@ -80,7 +80,7 @@ class SRVPollingKnobs(object):
         self.disable()
 
 
-class TestSRVPolling(unittest.TestCase):
+class TestSrvPolling(unittest.TestCase):
 
     BASE_SRV_RESPONSE = [
         ("localhost.test.build.10gen.cc", 27017),
@@ -113,7 +113,7 @@ class TestSRVPolling(unittest.TestCase):
             if set(expected_nodelist) == set(nodelist):
                 return True
             return False
-        wait_until(predicate, "see expected nodelist", timeout=10*WAIT_TIME)
+        wait_until(predicate, "see expected nodelist", timeout=100*WAIT_TIME)
 
     def assert_nodelist_nochange(self, expected_nodelist, client):
         """Check if the client._topology ever deviates from seeing all nodes
@@ -148,15 +148,15 @@ class TestSRVPolling(unittest.TestCase):
             expected_response = self.BASE_SRV_RESPONSE
 
         # Patch timeouts to ensure short test running times.
-        with SRVPollingKnobs(
+        with SrvPollingKnobs(
                 ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
-            mc = MongoClient(self.CONNECTION_STRING)
-            self.assert_nodelist_change(self.BASE_SRV_RESPONSE, mc)
+            client = MongoClient(self.CONNECTION_STRING)
+            self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
             # Patch list of hosts returned by DNS query.
-            with SRVPollingKnobs(
+            with SrvPollingKnobs(
                     dns_resolver_nodelist_response=dns_resolver_response,
                     count_resolver_calls=count_resolver_calls):
-                assertion_method(expected_response, mc)
+                assertion_method(expected_response, client)
 
     def test_addition(self):
         response = self.BASE_SRV_RESPONSE[:]
@@ -198,13 +198,27 @@ class TestSRVPolling(unittest.TestCase):
         response = []
         self.run_scenario(response, False)
 
-    def _test_recover_from_initial(self, response_callback):
-        with SRVPollingKnobs(
+    def _test_recover_from_initial(self, initial_callback):
+        # Construct a valid final response callback distinct from base.
+        response_final = self.BASE_SRV_RESPONSE[:]
+        response_final.pop()
+        def final_callback():
+            return response_final
+
+        with SrvPollingKnobs(
                 ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME,
-                dns_resolver_nodelist_response=response_callback,
+                dns_resolver_nodelist_response=initial_callback,
                 count_resolver_calls=True):
-            mc = MongoClient(self.CONNECTION_STRING)
-            self.assert_nodelist_nochange(self.BASE_SRV_RESPONSE, mc)
+            # Client uses unpatched method to get initial nodelist
+            client = MongoClient(self.CONNECTION_STRING)
+            # Invalid DNS resolver response should not change nodelist.
+            self.assert_nodelist_nochange(self.BASE_SRV_RESPONSE, client)
+
+        with SrvPollingKnobs(
+                ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME,
+                dns_resolver_nodelist_response=final_callback):
+            # Nodelist should reflect new valid DNS resolver response.
+            self.assert_nodelist_change(response_final, client)
 
     def test_recover_from_initially_empty_seedlist(self):
         def empty_seedlist():
