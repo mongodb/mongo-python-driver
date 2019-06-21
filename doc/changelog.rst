@@ -62,6 +62,8 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
   :meth:`~pymongo.operations.UpdateMany`.
 - :class:`~bson.binary.Binary` now supports any bytes-like type that implements
   the buffer protocol.
+- Resume tokens can now be accessed from a ``ChangeStream`` cursor using the
+  :attr:`~pymongo.change_stream.ChangeStream.resume_token` attribute.
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 

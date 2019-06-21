@@ -77,13 +77,16 @@ class ChangeStream(object):
 
         self._pipeline = copy.deepcopy(pipeline)
         self._full_document = full_document
-        self._resume_token = copy.deepcopy(resume_after)
+        self._uses_start_after = start_after is not None
+        self._uses_resume_after = resume_after is not None
+        self._resume_token = copy.deepcopy(start_after or resume_after)
         self._max_await_time_ms = max_await_time_ms
         self._batch_size = batch_size
         self._collation = collation
         self._start_at_operation_time = start_at_operation_time
         self._session = session
-        self._start_after = copy.deepcopy(start_after)
+
+        # Initialize cursor.
         self._cursor = self._create_cursor()
 
     @property
@@ -102,10 +105,14 @@ class ChangeStream(object):
         options = {}
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
-        if self._resume_token is not None:
-            options['resumeAfter'] = self._resume_token
-        if self._start_after is not None:
-            options['startAfter'] = self._start_after
+
+        resume_token = self.resume_token
+        if resume_token is not None:
+            if self._uses_start_after:
+                options['startAfter'] = resume_token
+            if self._uses_resume_after:
+                options['resumeAfter'] = resume_token
+
         if self._start_at_operation_time is not None:
             options['startAtOperationTime'] = self._start_at_operation_time
         return options
@@ -127,12 +134,18 @@ class ChangeStream(object):
         return full_pipeline
 
     def _process_result(self, result, session, server, sock_info, slave_ok):
-        """Callback that records a change stream cursor's operationTime."""
-        if (self._start_at_operation_time is None and
-                self._resume_token is None and
-                self._start_after is None and
-                sock_info.max_wire_version >= 7):
-            self._start_at_operation_time = result["operationTime"]
+        """Callback that caches the startAtOperationTime from a changeStream
+        aggregate command response containing an empty batch of change
+        documents.
+
+        This is implemented as a callback because we need access to the wire
+        version in order to determine whether to cache this value.
+        """
+        if not result['cursor']['firstBatch']:
+            if (self._start_at_operation_time is None and
+                    self.resume_token is None and
+                    sock_info.max_wire_version >= 7):
+                self._start_at_operation_time = result["operationTime"]
 
     def _run_aggregation_cmd(self, session, explicit_session):
         """Run the full aggregation pipeline for this ChangeStream and return
@@ -167,6 +180,15 @@ class ChangeStream(object):
 
     def __iter__(self):
         return self
+
+    @property
+    def resume_token(self):
+        """The cached resume token that will be used to resume after the most
+        recently returned change.
+
+        .. versionadded:: 3.9
+        """
+        return copy.deepcopy(self._resume_token)
 
     def next(self):
         """Advance the cursor.
@@ -249,10 +271,18 @@ class ChangeStream(object):
             self._resume()
             change = self._cursor._try_next(False)
 
-        # No changes are available.
+        # If no changes are available.
         if change is None:
-            return None
+            # We have either iterated over all documents in the cursor,
+            # OR the most-recently returned batch is empty. In either case,
+            # update the cached resume token with the postBatchResumeToken if
+            # one was returned. We also clear the startAtOperationTime.
+            if self._cursor._post_batch_resume_token is not None:
+                self._resume_token = self._cursor._post_batch_resume_token
+                self._start_at_operation_time = None
+            return change
 
+        # Else, changes are available.
         try:
             resume_token = change['_id']
         except KeyError:
@@ -260,9 +290,20 @@ class ChangeStream(object):
             raise InvalidOperation(
                 "Cannot provide resume functionality when the resume "
                 "token is missing.")
-        self._resume_token = copy.copy(resume_token)
+
+        # If this is the last change document from the current batch, cache the
+        # postBatchResumeToken.
+        if (not self._cursor._has_next() and
+                self._cursor._post_batch_resume_token):
+            resume_token = self._cursor._post_batch_resume_token
+
+        # Hereafter, don't use startAfter; instead use resumeAfter.
+        self._uses_start_after = False
+        self._uses_resume_after = True
+
+        # Cache the resume token and clear startAtOperationTime.
+        self._resume_token = resume_token
         self._start_at_operation_time = None
-        self._start_after = None
 
         if self._decode_custom:
             return _bson_to_dict(change.raw, self._orig_codec_options)

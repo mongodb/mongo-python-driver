@@ -14,18 +14,14 @@
 
 """CommandCursor class to iterate over command results."""
 
-import datetime
-
 from collections import deque
 
 from bson.py3compat import integer_types
-from pymongo import helpers
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
-from pymongo.message import (_convert_exception,
-                             _CursorAddress,
+from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore)
 
@@ -43,8 +39,9 @@ class CommandCursor(object):
         """
         self.__collection = collection
         self.__id = cursor_info['id']
-        self.__address = address
         self.__data = deque(cursor_info['firstBatch'])
+        self.__postbatchresumetoken = cursor_info.get('postBatchResumeToken')
+        self.__address = address
         self.__batch_size = batch_size
         self.__max_await_time_ms = max_await_time_ms
         self.__session = session
@@ -119,6 +116,17 @@ class CommandCursor(object):
         self.__batch_size = batch_size == 1 and 2 or batch_size
         return self
 
+    def _has_next(self):
+        """Returns `True` if the cursor has documents remaining from the
+        previous batch."""
+        return len(self.__data) > 0
+
+    @property
+    def _post_batch_resume_token(self):
+        """Retrieve the postBatchResumeToken from the response to a
+        changeStream aggregate or getMore."""
+        return self.__postbatchresumetoken
+
     def __send_message(self, operation):
         """Send a getmore message and handle the response.
         """
@@ -157,6 +165,7 @@ class CommandCursor(object):
         if from_command:
             cursor = docs[0]['cursor']
             documents = cursor['nextBatch']
+            self.__postbatchresumetoken = cursor.get('postBatchResumeToken')
             self.__id = cursor['id']
         else:
             documents = docs
