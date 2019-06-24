@@ -877,14 +877,18 @@ axes:
         run_on: amazon1-2018-test
         batchtime: 10080  # 7 days
 
-      - id: ubuntu-14.04
-        display_name: "Ubuntu 14.04"
-        run_on: ubuntu1404-test
-        batchtime: 10080  # 7 days
-
       - id: rhel70
         display_name: "RHEL 7.0"
         run_on: rhel70-small
+        batchtime: 10080  # 7 days
+
+  # OSes that support versions of MongoDB>=2.6 and <3.6 with SSL.
+  - id: os-no-36-plus
+    display_name: OS
+    values:
+      - id: ubuntu-12.04
+        display_name: "Ubuntu 12.04"
+        run_on: ubuntu1204-test
         batchtime: 10080  # 7 days
 
   # OSes that support versions of MongoDB>=2.6 and <4.0 with SSL.
@@ -894,11 +898,6 @@ axes:
       - id: debian71-test
         display_name: "Debian 7.1"
         run_on: debian71-test
-        batchtime: 10080  # 7 days
-
-      - id: ubuntu-12.04
-        display_name: "Ubuntu 12.04"
-        run_on: ubuntu1204-test
         batchtime: 10080  # 7 days
 
   # OSes that support versions of MongoDB without SSL.
@@ -1174,6 +1173,15 @@ buildvariants:
      - ".latest"
      - ".4.0"
      - ".3.6"
+     - ".3.4"
+     - ".3.2"
+     - ".3.0"
+     - ".2.6"
+
+- matrix_name: "tests-no-36-plus"
+  matrix_spec: {"os-no-36-plus": "*", auth-ssl: "*"}
+  display_name: "${os-no-36-plus} ${auth-ssl}"
+  tasks:
      - ".3.4"
      - ".3.2"
      - ".3.0"
@@ -1515,7 +1523,6 @@ buildvariants:
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
-      # Ubuntu14.04 only supports 2.6+ with SSL
       # Ubuntu16.04 ppc64le is only supported by MongoDB 3.4+
       # Ubuntu16.04 aarch64 is only supported by MongoDB 3.4+
       # Ubuntu16.04 s390x is only supported by MongoDB 3.4+
