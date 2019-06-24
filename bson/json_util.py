@@ -545,7 +545,7 @@ def _parse_canonical_datetime(doc, json_options):
         if dtm[-1] == 'Z':
             dt = dtm[:-1]
             offset = 'Z'
-        elif dtm[-3] == ':':
+        elif dtm[-6] in ('+', '-') and dtm[-3] == ':':
             # (+|-)HH:MM
             dt = dtm[:-6]
             offset = dtm[-6:]
