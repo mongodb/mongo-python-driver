@@ -215,6 +215,7 @@ class TestCMAP(IntegrationTest):
     def run_operations(self, ops):
         """Run a test's operations."""
         for op in ops:
+            self._ops.append(op)
             self.run_operation(op)
 
     def check_object(self, actual, expected):
@@ -261,6 +262,7 @@ class TestCMAP(IntegrationTest):
         self.assertEqual(scenario_def['version'], 1)
         self.assertEqual(scenario_def['style'], 'unit')
         self.listener = CMAPListener()
+        self._ops = []
 
         opts = test['poolOptions'].copy()
         opts['event_listeners'] = [self.listener]
@@ -283,14 +285,30 @@ class TestCMAP(IntegrationTest):
 
         self.addCleanup(cleanup)
 
-        if test['error']:
-            with self.assertRaises(PyMongoError) as ctx:
+        try:
+            if test['error']:
+                with self.assertRaises(PyMongoError) as ctx:
+                    self.run_operations(test['operations'])
+                self.check_error(ctx.exception, test['error'])
+            else:
                 self.run_operations(test['operations'])
-            self.check_error(ctx.exception, test['error'])
-        else:
-            self.run_operations(test['operations'])
 
-        self.check_events(test['events'], test['ignore'])
+            self.check_events(test['events'], test['ignore'])
+        except Exception:
+            # Print the events after a test failure.
+            print()
+            print('Failed test: %r' % (test['description'],))
+            print('Operations:')
+            for op in self._ops:
+                print(op)
+            print('Threads:')
+            print(self.targets)
+            print('Connections:')
+            print(self.labels)
+            print('Events:')
+            for event in self.listener.events:
+                print(event)
+            raise
 
     POOL_OPTIONS = {
         'maxPoolSize': 50,
