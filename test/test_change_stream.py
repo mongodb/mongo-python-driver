@@ -750,7 +750,10 @@ def get_change_stream(client, scenario_def, test):
 def run_operation(client, operation):
     # Apply specified operations
     opname = camel_to_snake(operation["name"])
-    arguments = operation["arguments"]
+    arguments = operation.get("arguments", {})
+    if opname == 'rename':
+        # Special case for rename operation.
+        arguments = {'new_name': arguments["to"]}
     cmd = getattr(client.get_database(
         operation["database"]).get_collection(
         operation["collection"]), opname
