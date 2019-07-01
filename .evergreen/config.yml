@@ -1177,17 +1177,16 @@ buildvariants:
     - ".3.0"
     - ".2.6"
 
-- matrix_name: "tests-nossl"
+- matrix_name: "tests-archlinux"
   matrix_spec:
     platform:
-      # OSes that support versions of MongoDB without SSL.
+      # Archlinux supports MongoDB without SSL.
+      # MongoDB 4.2 drops support for archlinux (generic linux builds).
       - archlinux-test
-      - macos-1012
     auth: "*"
     ssl: "nossl"
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
-    - ".latest"
     - ".4.0"
     - ".3.6"
     - ".3.4"
@@ -1212,13 +1211,20 @@ buildvariants:
     - ".3.4"
     - ".3.2"
 
-- matrix_name: "tests-ssl-requires-32"
+- matrix_name: "test-macos"
   matrix_spec:
     platform:
-      # OSes that introduced support for SSL with MongoDB>=3.2.
+      # MacOS introduced SSL support with MongoDB >= 3.2.
+      # Older server versions (2.6, 3.0) are supported without SSL.
       - macos-1012
-    auth-ssl: "auth-ssl"
-  display_name: "${platform} ${auth-ssl}"
+    auth: "*"
+    ssl: "*"
+  exclude_spec:
+    # No point testing with SSL without auth.
+    - platform: macos-1012
+      auth: "noauth"
+      ssl: "ssl"
+  display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - ".latest"
     - ".4.2"
@@ -1226,6 +1232,15 @@ buildvariants:
     - ".3.6"
     - ".3.4"
     - ".3.2"
+  rules:
+    - if:
+        platform: macos-1012
+        auth: "*"
+        ssl: "nossl"
+      then:
+        add_tasks:
+          - ".3.0"
+          - ".2.6"
 
 - matrix_name: "test-os-requires-34-no-42plus"
   matrix_spec:
