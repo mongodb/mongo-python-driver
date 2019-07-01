@@ -426,20 +426,27 @@ class TestCollectionChangeStream(IntegrationTest, ChangeStreamTryNextMixin):
                 change = next(change_stream)
                 self.assertEqual(change['_id'], change_stream._resume_token)
 
-    @client_context.require_no_mongos  # PYTHON-1739
-    def test_raises_error_on_missing_id(self):
+    def _test_raises_error_on_missing_id(self, expected_exception):
         """ChangeStream will raise an exception if the server response is
         missing the resume token.
         """
         with self.coll.watch([{'$project': {'_id': 0}}]) as change_stream:
             self.coll.insert_one({})
-            # Server returns an error after SERVER-37786, otherwise pymongo
-            # raises an error.
-            with self.assertRaises((InvalidOperation, OperationFailure)):
+            with self.assertRaises(expected_exception):
                 next(change_stream)
             # The cursor should now be closed.
             with self.assertRaises(StopIteration):
                 next(change_stream)
+
+    @client_context.require_version_min(4, 1, 8)
+    def test_raises_error_on_missing_id_418plus(self):
+        # Server returns an error on 4.1.8+
+        self._test_raises_error_on_missing_id(OperationFailure)
+
+    @client_context.require_version_max(4, 1, 8)
+    def test_raises_error_on_missing_id_418minus(self):
+        # PyMongo raises an error
+        self._test_raises_error_on_missing_id(InvalidOperation)
 
     def test_resume_on_error(self):
         """ChangeStream will automatically resume one time on a resumable
@@ -791,6 +798,7 @@ def create_test(scenario_def, test):
     def run_scenario(self):
         # Set up
         self.setUpCluster(scenario_def)
+        is_error = test["result"].get("error", False)
         try:
             with get_change_stream(
                 self.client, scenario_def, test
@@ -798,13 +806,16 @@ def create_test(scenario_def, test):
                 for operation in test["operations"]:
                     # Run specified operations
                     run_operation(self.client, operation)
-                num_expected_changes = len(test["result"]["success"])
+                num_expected_changes = len(test["result"].get("success", []))
                 changes = [
-                    change_stream.next() for _ in range(num_expected_changes)
-                ]
+                    change_stream.next() for _ in range(num_expected_changes)]
+                # Run a next() to induce an error if one is expected and
+                # there are no changes.
+                if is_error and not changes:
+                    change_stream.next()
 
         except OperationFailure as exc:
-            if test["result"].get("error") is None:
+            if not is_error:
                 raise
             expected_code = test["result"]["error"]["code"]
             self.assertEqual(exc.code, expected_code)
@@ -818,7 +829,7 @@ def create_test(scenario_def, test):
         finally:
             # Check for expected events
             results = self.listener.results
-            for expectation in test["expectations"]:
+            for expectation in test.get("expectations", []):
                 for idx, (event_type, event_desc) in enumerate(iteritems(expectation)):
                     results_key = event_type.split("_")[1]
                     event = results[results_key][idx] if len(results[results_key]) > idx else None

@@ -243,7 +243,8 @@ class ChangeStream(object):
             self._resume()
             change = self._cursor._try_next(False)
         except OperationFailure as exc:
-            if exc.code in _NON_RESUMABLE_GETMORE_ERRORS:
+            if (exc.code in _NON_RESUMABLE_GETMORE_ERRORS or
+                    exc.has_error_label("NonResumableChangeStreamError")):
                 raise
             self._resume()
             change = self._cursor._try_next(False)
