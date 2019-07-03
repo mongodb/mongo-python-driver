@@ -74,7 +74,7 @@ class Topology(object):
 
         # Create events queue if there are publishers.
         self._events = None
-        self._events_thread = None
+        self.__events_executor = None
 
         if self._publish_server or self._publish_tp:
             self._events = Queue.Queue(maxsize=100)
@@ -127,7 +127,7 @@ class Topology(object):
             # We strongly reference the executor and it weakly references
             # the queue via this closure. When the topology is freed, stop
             # the executor soon.
-            weak = weakref.ref(self._events)
+            weak = weakref.ref(self._events, executor.close)
             self.__events_executor = executor
             executor.open()
 

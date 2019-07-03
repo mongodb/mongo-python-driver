@@ -21,8 +21,12 @@ from functools import partial
 sys.path[0:0] = [""]
 
 from pymongo.periodic_executor import _EXECUTORS
-from test import client_context, unittest, IntegrationTest
-from test.utils import single_client, one, connected, wait_until
+
+from test import unittest, IntegrationTest
+from test.utils import (connected,
+                        ServerAndTopologyEventListener,
+                        single_client,
+                        wait_until)
 
 
 def unregistered(ref):
@@ -30,20 +34,51 @@ def unregistered(ref):
     return ref not in _EXECUTORS
 
 
+def get_executors(client):
+    executors = []
+    for server in client._topology._servers.values():
+        executors.append(server._monitor._executor)
+    executors.append(client._kill_cursors_executor)
+    executors.append(client._topology._Topology__events_executor)
+    return [e for e in executors if e is not None]
+
+
+def create_client():
+    listener = ServerAndTopologyEventListener()
+    client = single_client(event_listeners=[listener])
+    connected(client)
+    return client
+
+
 class TestMonitor(IntegrationTest):
-    def test_atexit_hook(self):
-        client = single_client(client_context.host, client_context.port)
-        executor = one(client._topology._servers.values())._monitor._executor
-        connected(client)
+    def test_cleanup_executors_on_client_del(self):
+        client = create_client()
+        executors = get_executors(client)
+        self.assertEqual(len(executors), 3)
 
-        # The executor stores a weakref to itself in _EXECUTORS.
-        ref = one([r for r in _EXECUTORS.copy() if r() is executor])
+        # Each executor stores a weakref to itself in _EXECUTORS.
+        executor_refs = [
+            (r, r()._name) for r in _EXECUTORS.copy() if r() in executors]
 
-        del executor
+        del executors
         del client
 
-        wait_until(partial(unregistered, ref), 'unregister executor',
-                   timeout=5)
+        for ref, name in executor_refs:
+            wait_until(partial(unregistered, ref),
+                       'unregister executor: %s' % (name,),
+                       timeout=5)
+
+    def test_cleanup_executors_on_client_close(self):
+        client = create_client()
+        executors = get_executors(client)
+        self.assertEqual(len(executors), 3)
+
+        client.close()
+
+        for executor in executors:
+            wait_until(lambda: executor._stopped,
+                       'closed executor: %s' % (executor._name,),
+                       timeout=5)
 
 
 if __name__ == "__main__":
