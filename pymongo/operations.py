@@ -338,14 +338,15 @@ class IndexModel(object):
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
-            a partial index.
+            a partial index. Requires server version >= 3.2.
           - `collation`: An instance of :class:`~pymongo.collation.Collation`
             that specifies the collation to use in MongoDB >= 3.4.
+          - `wildcardProjection`: Allows users to include or exclude specific
+            field paths from a `wildcard index`_ using the { "$**" : 1} key
+            pattern. Requires server version >= 4.2.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
-
-        .. note:: `partialFilterExpression` requires server version **>= 3.2**
 
         :Parameters:
           - `keys`: a single key or a list of (key, direction)
@@ -356,6 +357,8 @@ class IndexModel(object):
 
         .. versionchanged:: 3.2
             Added partialFilterExpression to support partial indexes.
+
+        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/#wildcard-index-core
         """
         keys = _index_list(keys)
         if "name" not in kwargs:

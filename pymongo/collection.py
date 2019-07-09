@@ -1931,10 +1931,13 @@ class Collection(common.BaseObject):
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
-            a partial index.
+            a partial index. Requires server version >=3.2.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `wildcardProjection`: Allows users to include or exclude specific
+            field paths from a `wildcard index`_ using the { "$**" : 1} key
+            pattern. Requires server version >= 4.2.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
@@ -1942,8 +1945,6 @@ class Collection(common.BaseObject):
         .. warning:: `dropDups` is not supported by MongoDB 3.0 or newer. The
           option is silently ignored by the server and unique index builds
           using the option will fail if a duplicate value is detected.
-
-        .. note:: `partialFilterExpression` requires server version **>= 3.2**
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation when using
@@ -1972,6 +1973,8 @@ class Collection(common.BaseObject):
             for the drop_dups and bucket_size aliases.
 
         .. mongodoc:: indexes
+
+        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/#wildcard-index-core
         """
         keys = helpers._index_list(keys)
         name = kwargs.setdefault("name", helpers._gen_index_name(keys))
