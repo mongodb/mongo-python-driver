@@ -983,7 +983,25 @@ class Database(common.BaseObject):
         return result
 
     def current_op(self, include_all=False, session=None):
-        """Get information on operations currently running.
+        """**DEPRECATED**: Get information on operations currently running.
+
+        Starting with MongoDB 3.6 this helper is obsolete. The functionality
+        provided by this helper is available in MongoDB 3.6+ using the
+        `$currentOp aggregation pipeline stage`_, which can be used with
+        :meth:`aggregate`. Note that, while this helper can only return
+        a single document limited to a 16MB result, :meth:`aggregate`
+        returns a cursor avoiding that limitation.
+
+        Users of MongoDB versions older than 3.6 can use the `currentOp command`_
+        directly::
+
+          # MongoDB 3.2 and 3.4
+          client.admin.command("currentOp")
+
+        Or query the "inprog" virtual collection::
+
+          # MongoDB 2.6 and 3.0
+          client.admin["$cmd.sys.inprog"].find_one()
 
         :Parameters:
           - `include_all` (optional): if ``True`` also list currently
@@ -991,9 +1009,18 @@ class Database(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
+        .. versionchanged:: 3.9
+           Deprecated.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
+
+        .. _$currentOp aggregation pipeline stage: https://docs.mongodb.com/manual/reference/operator/aggregation/currentOp/
+        .. _currentOp command: https://docs.mongodb.com/manual/reference/command/currentOp/
         """
+        warnings.warn("current_op() is deprecated. See the documentation for"
+                      "more information",
+                      DeprecationWarning, stacklevel=2)
         cmd = SON([("currentOp", 1), ("$all", include_all)])
         with self.__client._socket_for_writes(session) as sock_info:
             if sock_info.max_wire_version >= 4:
