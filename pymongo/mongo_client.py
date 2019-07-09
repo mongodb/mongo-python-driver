@@ -181,6 +181,10 @@ class MongoClient(common.BaseObject):
         .. warning:: When using PyMongo in a multiprocessing context, please
           read :ref:`multiprocessing` first.
 
+        .. note:: Many of the following options can be passed using a MongoDB
+          URI or keyword parameters. If the same option is passed in a URI and
+          as a keyword parameter the keyword parameter takes precedence.
+
         :Parameters:
           - `host` (optional): hostname or IP address or Unix domain socket
             path of a single mongod or mongos instance to connect to, or a
