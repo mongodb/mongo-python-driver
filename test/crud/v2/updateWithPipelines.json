@@ -1,4 +1,9 @@
 {
+  "runOn": [
+    {
+      "minServerVersion": "4.1.11"
+    }
+  ],
   "data": [
     {
       "_id": 1,
@@ -16,7 +21,6 @@
       "y": 1
     }
   ],
-  "minServerVersion": "4.1.11",
   "collection_name": "test",
   "database_name": "crud-tests",
   "tests": [
