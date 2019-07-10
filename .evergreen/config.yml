@@ -926,6 +926,10 @@ axes:
         display_name: "Ubuntu 16.04 (POWER8)"
         run_on: ubuntu1604-power8-test
         batchtime: 10080  # 7 days
+      - id: ubuntu1804-arm64-test
+        display_name: "Ubuntu 18.04 (ARM64)"
+        run_on: ubuntu1804-arm64-test
+        batchtime: 10080  # 7 days
       - id: windows-vs2010
         display_name: "Windows 64 Visual Studio 2010"
         run_on: windows-64-vs2010-test
@@ -1248,6 +1252,7 @@ buildvariants:
       # OSes that support versions of MongoDB>=3.4 <4.2 with SSL.
       - debian81
       - ubuntu1604-power8-test
+      - ubuntu1604-arm64-small
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -1260,7 +1265,6 @@ buildvariants:
     platform:
       # OSes that support versions of MongoDB>=3.4 with SSL.
       - rhel72-zseries-test
-      - ubuntu1604-arm64-small
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -1269,6 +1273,17 @@ buildvariants:
     - ".4.0"
     - ".3.6"
     - ".3.4"
+
+- matrix_name: "test-os-requires-42"
+  matrix_spec:
+    platform:
+      # OSes that support versions of MongoDB>=4.2 with SSL.
+      - ubuntu1804-arm64-test
+    auth-ssl: "*"
+  display_name: "${platform} ${auth-ssl}"
+  tasks:
+    - ".latest"
+    - ".4.2"
 
 - matrix_name: "tests-python-version-rhel62-test-ssl"
   matrix_spec:
