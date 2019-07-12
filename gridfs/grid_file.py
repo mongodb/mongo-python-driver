@@ -19,6 +19,7 @@ import io
 import math
 import os
 
+from bson.int64 import Int64
 from bson.son import SON
 from bson.binary import Binary
 from bson.objectid import ObjectId
@@ -297,7 +298,8 @@ class GridIn(object):
 
             if "md5" in self._file:
                 self._file["md5"] = self._file["md5"].hexdigest()
-            self._file["length"] = self._position
+            # The GridFS spec says length SHOULD be an Int64.
+            self._file["length"] = Int64(self._position)
             self._file["uploadDate"] = datetime.datetime.utcnow()
 
             return self._coll.files.insert_one(

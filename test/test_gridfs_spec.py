@@ -19,12 +19,15 @@ import os
 import sys
 import re
 
+from json import loads
+
 import gridfs
 
 sys.path[0:0] = [""]
 
 from bson import Binary
-from bson.json_util import loads
+from bson.int64 import Int64
+from bson.json_util import object_hook
 from bson.py3compat import bytes_from_hex
 from gridfs.errors import NoFile, CorruptGridFile
 from test import (unittest,
@@ -185,12 +188,17 @@ def create_test(scenario_def):
 
     return run_scenario
 
+def _object_hook(dct):
+    if 'length' in dct:
+        dct['length'] = Int64(dct['length'])
+    return object_hook(dct)
 
 def create_tests():
     for dirpath, _, filenames in os.walk(_TEST_PATH):
         for filename in filenames:
             with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = loads(scenario_stream.read())
+                scenario_def = loads(
+                    scenario_stream.read(), object_hook=_object_hook)
 
             # Because object_hook is already defined by bson.json_util,
             # and everything is named 'data'
