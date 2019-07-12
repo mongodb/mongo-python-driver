@@ -1633,6 +1633,9 @@ class Collection(common.BaseObject):
     def count_documents(self, filter, session=None, **kwargs):
         """Count the number of documents in this collection.
 
+        .. note:: For a fast count of the total documents in a collection see
+           :meth:`estimated_document_count`.
+
         The :meth:`count_documents` method is supported in a transaction.
 
         All optional parameters should be passed as keyword arguments
