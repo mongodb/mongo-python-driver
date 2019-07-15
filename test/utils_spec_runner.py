@@ -37,7 +37,6 @@ from test import (client_context,
                   client_knobs,
                   IntegrationTest,
                   unittest)
-
 from test.utils import (camel_to_snake,
                         camel_to_snake_args,
                         camel_to_upper_camel,
@@ -175,7 +174,7 @@ class SpecRunner(IntegrationTest):
             self.assertEqual(result, expected_result)
 
     def get_object_name(self, op):
-        """Allow CRUD spec to override handling of 'object'
+        """Allow subclasses to override handling of 'object'
 
         Transaction spec says 'object' is required.
         """
@@ -417,16 +416,21 @@ class SpecRunner(IntegrationTest):
             raise unittest.SkipTest(test.get('skipReason'))
 
     def get_scenario_db_name(self, scenario_def):
-        """Allow CRUD spec to override a test's database name."""
+        """Allow subclasses to override a test's database name."""
         return scenario_def['database_name']
 
     def get_scenario_coll_name(self, scenario_def):
-        """Allow CRUD spec to override a test's collection name."""
+        """Allow subclasses to override a test's collection name."""
         return scenario_def['collection_name']
 
     def get_outcome_coll_name(self, outcome, collection):
-        """Allow CRUD spec to override outcome collection."""
+        """Allow subclasses to override outcome collection."""
         return collection.name
+
+    def run_test_ops(self, sessions, collection, test):
+        """Added to allow retryable writes spec to override a test's
+        operation."""
+        self.run_operations(sessions, collection, test['operations'])
 
     def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
@@ -497,14 +501,15 @@ class SpecRunner(IntegrationTest):
         self.addCleanup(end_sessions, sessions)
 
         if 'failPoint' in test:
-            self.set_fail_point(test['failPoint'])
+            fp = test['failPoint']
+            self.set_fail_point(fp)
             self.addCleanup(self.set_fail_point, {
-                'configureFailPoint': 'failCommand', 'mode': 'off'})
+                'configureFailPoint': fp['configureFailPoint'], 'mode': 'off'})
 
         listener.results.clear()
 
         collection = client[database_name][collection_name]
-        self.run_operations(sessions, collection, test['operations'])
+        self.run_test_ops(sessions, collection, test)
 
         end_sessions(sessions)
 
@@ -512,8 +517,9 @@ class SpecRunner(IntegrationTest):
 
         # Disable fail points.
         if 'failPoint' in test:
+            fp = test['failPoint']
             self.set_fail_point({
-                'configureFailPoint': 'failCommand', 'mode': 'off'})
+                'configureFailPoint': fp['configureFailPoint'], 'mode': 'off'})
 
         # Assert final state is expected.
         outcome = test['outcome']

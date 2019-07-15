@@ -15,7 +15,6 @@
 """Test retryable writes."""
 
 import copy
-import json
 import os
 import sys
 
@@ -36,137 +35,58 @@ from pymongo.operations import (InsertOne,
                                 ReplaceOne,
                                 UpdateMany,
                                 UpdateOne)
-from pymongo.results import BulkWriteResult
 from pymongo.write_concern import WriteConcern
 
 from test import unittest, client_context, IntegrationTest, SkipTest, client_knobs
+from test.test_crud_v1 import check_result as crud_v1_check_result
 from test.utils import (rs_or_single_client,
                         DeprecationFilter,
-                        OvertCommandListener)
-from test.test_crud_v1 import check_result, run_operation
+                        OvertCommandListener,
+                        TestCreator)
+from test.utils_spec_runner import SpecRunner
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'retryable_writes')
 
 
-class TestAllScenarios(IntegrationTest):
+class TestAllScenarios(SpecRunner):
 
-    @classmethod
-    @client_context.require_version_min(3, 5)
-    @client_context.require_replica_set
-    @client_context.require_test_commands
-    def setUpClass(cls):
-        super(TestAllScenarios, cls).setUpClass()
-        # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(heartbeat_frequency=0.1,
-                                 min_heartbeat_interval=0.1)
-        cls.knobs.enable()
+    def get_object_name(self, op):
+        return op.get('object', 'collection')
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.knobs.disable()
-        super(TestAllScenarios, cls).tearDownClass()
+    def get_scenario_db_name(self, scenario_def):
+        return scenario_def.get('database_name', 'pymongo_test')
 
-    def tearDown(self):
-        client_context.client.admin.command(SON([
-            ('configureFailPoint', 'onPrimaryTransactionalWrite'),
-            ('mode', 'off')]))
+    def get_scenario_coll_name(self, scenario_def):
+        return scenario_def.get('collection_name', 'test')
 
-    def set_fail_point(self, command_args):
-        cmd = SON([('configureFailPoint', 'onPrimaryTransactionalWrite')])
-        cmd.update(command_args)
-        client_context.client.admin.command(cmd)
-
-
-def create_test(scenario_def, test):
-    def run_scenario(self):
-        # Load data.
-        assert scenario_def['data'], "tests must have non-empty data"
-        client_context.client.pymongo_test.test.drop()
-        client_context.client.pymongo_test.test.insert_many(scenario_def['data'])
-
-        # Set the failPoint
-        self.set_fail_point(test['failPoint'])
-        self.addCleanup(self.set_fail_point, {
-            'configureFailPoint': test['failPoint']['configureFailPoint'],
-            'mode': 'off'})
-
-        test_outcome = test['outcome']
-        should_fail = test_outcome.get('error')
+    def run_test_ops(self, sessions, collection, test):
+        outcome = test['outcome']
+        should_fail = outcome.get('error')
         result = None
         error = None
-
-        db = rs_or_single_client(**test.get('clientOptions', {})).pymongo_test
-        # Close the client explicitly to avoid having too many threads open.
-        self.addCleanup(db.client.close)
         try:
-            result = run_operation(db.test, test)
+            result = self.run_operation(
+                sessions, collection, test['operation'])
         except (ConnectionFailure, OperationFailure) as exc:
             error = exc
-
         if should_fail:
             self.assertIsNotNone(error, 'should have raised an error')
         else:
             self.assertIsNone(error)
+            crud_v1_check_result(self, outcome['result'], result)
 
-        # Assert final state is expected.
-        expected_c = test_outcome.get('collection')
-        if expected_c is not None:
-            expected_name = expected_c.get('name')
-            if expected_name is not None:
-                db_coll = db[expected_name]
-            else:
-                db_coll = db.test
-            self.assertEqual(list(db_coll.find()), expected_c['data'])
-        expected_result = test_outcome.get('result')
-        # We can't test the expected result when the test should fail because
-        # the BulkWriteResult is not reported when raising a network error.
-        if not should_fail:
-            check_result(self, expected_result, result)
+
+def create_test(scenario_def, test, name):
+    @client_context.require_test_commands
+    def run_scenario(self):
+        self.run_scenario(scenario_def, test)
 
     return run_scenario
 
-
-def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
-        dirname = os.path.split(dirpath)[-1]
-
-        for filename in filenames:
-            with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = json.load(scenario_stream)
-
-            test_type = os.path.splitext(filename)[0]
-            min_ver, max_ver = None, None
-            if 'minServerVersion' in scenario_def:
-                min_ver = tuple(
-                    int(elt) for
-                    elt in scenario_def['minServerVersion'].split('.'))
-            if 'maxServerVersion' in scenario_def:
-                max_ver = tuple(
-                    int(elt) for
-                    elt in scenario_def['maxServerVersion'].split('.'))
-
-            # Construct test from scenario.
-            for test in scenario_def['tests']:
-                new_test = create_test(scenario_def, test)
-                if min_ver is not None:
-                    new_test = client_context.require_version_min(*min_ver)(
-                        new_test)
-                if max_ver is not None:
-                    new_test = client_context.require_version_max(*max_ver)(
-                        new_test)
-
-                test_name = 'test_%s_%s_%s' % (
-                    dirname,
-                    test_type,
-                    str(test['description'].replace(" ", "_")))
-
-                new_test.__name__ = test_name
-                setattr(TestAllScenarios, new_test.__name__, new_test)
-
-
-create_tests()
+test_creator = TestCreator(create_test, TestAllScenarios, _TEST_PATH)
+test_creator.create_tests()
 
 
 def _retryable_single_statement_ops(coll):
