@@ -45,10 +45,10 @@ class _SrvResolver(object):
         try:
             self.__plist = self.__fqdn.split(".")[1:]
         except Exception:
-            raise ConfigurationError("Invalid URI host")
+            raise ConfigurationError("Invalid URI host: %s" % (fqdn,))
         self.__slen = len(self.__plist)
         if self.__slen < 2:
-            raise ConfigurationError("Invalid URI host")
+            raise ConfigurationError("Invalid URI host: %s" % (fqdn,))
 
     def get_options(self):
         try:
@@ -88,9 +88,9 @@ class _SrvResolver(object):
             try:
                 nlist = node[0].split(".")[1:][-self.__slen:]
             except Exception:
-                raise ConfigurationError("Invalid SRV host")
+                raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
             if self.__plist != nlist:
-                raise ConfigurationError("Invalid SRV host")
+                raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
 
         return results, nodes
 

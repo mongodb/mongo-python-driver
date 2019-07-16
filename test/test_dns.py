@@ -106,6 +106,18 @@ def create_tests():
 
 create_tests()
 
+class TestParsingErrors(unittest.TestCase):
+
+    def test_invalid_host(self):
+        self.assertRaisesRegex(
+            ConfigurationError,
+            "Invalid URI host: mongodb",
+            MongoClient, "mongodb+srv://mongodb")
+        self.assertRaisesRegex(
+            ConfigurationError,
+            "Invalid URI host: mongodb.com",
+            MongoClient, "mongodb+srv://mongodb.com")
+
 
 if __name__ == '__main__':
     unittest.main()
