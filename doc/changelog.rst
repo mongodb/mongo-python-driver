@@ -133,6 +133,13 @@ Changes in Version 3.8.0
   see the :doc:`server selector example <examples/server_selection>`.
 - The connection pool now implements a LIFO policy.
 
+Unavoidable breaking changes:
+
+- In order to follow the ObjectID Spec version 0.2, an ObjectId's 3-byte
+  machine identifier and 2-byte process id have been replaced with a single
+  5-byte random value generated per process. This is a breaking change for any
+  application that attempts to interpret those bytes.
+
 Issues Resolved
 ...............
 
