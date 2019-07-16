@@ -51,6 +51,9 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
   :mod:`~pymongo.monitoring` for an example.
 - :meth:`pymongo.collection.Collection.aggregate` and
   :meth:`pymongo.database.Database.aggregate` now support the ``$merge`` pipeline
+  stage and use read preference
+  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` if the ``$out`` or
+  ``$merge`` pipeline stages are used.
 - Support for specifying a pipeline or document in
   :meth:`~pymongo.collection.Collection.update_one`,
   :meth:`~pymongo.collection.Collection.update_many`,

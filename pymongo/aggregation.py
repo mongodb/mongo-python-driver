@@ -19,6 +19,7 @@ from bson.son import SON
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
+from pymongo.read_preferences import ReadPreference
 
 
 class _AggregationCommand(object):
@@ -97,6 +98,11 @@ class _AggregationCommand(object):
             self._result_processor(
                 result, session, server, sock_info, slave_ok)
 
+    def get_read_preference(self, session):
+        if self._performs_write:
+            return ReadPreference.PRIMARY
+        return self._target._read_preference_for(session)
+
     def get_cursor(self, session, server, sock_info, slave_ok):
         # Ensure command compatibility.
         self._check_compat(sock_info)
@@ -105,9 +111,6 @@ class _AggregationCommand(object):
         cmd = SON([("aggregate", self._aggregation_target),
                    ("pipeline", self._pipeline)])
         cmd.update(self._options)
-
-        # Cache read preference for easy access.
-        read_preference = self._target._read_preference_for(session)
 
         # Apply this target's read concern if:
         # readConcern has not been specified as a kwarg and either
@@ -134,7 +137,7 @@ class _AggregationCommand(object):
             self._database.name,
             cmd,
             slave_ok,
-            read_preference,
+            self.get_read_preference(session),
             self._target.codec_options,
             parse_write_concern_error=True,
             read_concern=read_concern,

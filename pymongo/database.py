@@ -477,11 +477,9 @@ class Database(common.BaseObject):
             :class:`~pymongo.collation.Collation`.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
-        :class:`Database`. Please note that using the ``$out`` or ``$merge``
-        pipeline stages requires a read preference of
-        :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` (the default).
-        The server will raise an error if the ``$out`` or ``$merge`` pipeline
-        stages is used with any other read preference.
+        :class:`Database`, except when ``$out`` or ``$merge`` are used, in
+        which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
+        is used.
 
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead.
@@ -512,7 +510,7 @@ class Database(common.BaseObject):
                 self, CommandCursor, pipeline, kwargs, session is not None,
                 user_fields={'cursor': {'firstBatch': 1}})
             return self.client._retryable_read(
-                cmd.get_cursor, self._read_preference_for(s), s,
+                cmd.get_cursor, cmd.get_read_preference(s), s,
                 retryable=not cmd._performs_write)
 
     def watch(self, pipeline=None, full_document='default', resume_after=None,

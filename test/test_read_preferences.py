@@ -468,6 +468,11 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                                'aggregate',
                                [{'$project': {'_id': 1}}])
 
+    def test_aggregate_write(self):
+        self._test_coll_helper(False, self.c.pymongo_test.test,
+                               'aggregate',
+                               [{'$project': {'_id': 1}}, {'$out': "agg_write_test"}])
+
 
 class TestMovingAverage(unittest.TestCase):
     def test_moving_average(self):

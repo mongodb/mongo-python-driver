@@ -2287,7 +2287,7 @@ class Collection(common.BaseObject):
             self, cursor_class, pipeline, kwargs, explicit_session,
             user_fields={'cursor': {'firstBatch': 1}}, use_cursor=use_cursor)
         return self.__database.client._retryable_read(
-            cmd.get_cursor, self._read_preference_for(session), session,
+            cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
     def aggregate(self, pipeline, session=None, **kwargs):
@@ -2313,11 +2313,9 @@ class Collection(common.BaseObject):
           - `useCursor` (bool): Deprecated. Will be removed in PyMongo 4.0.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
-        :class:`Collection`. Please note that using the ``$out`` and ``$merge``
-        pipeline stages requires a read preference of
-        :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` (the default).
-        The server will raise an error if the ``$out`` or ``$merge`` pipeline
-        stages are used with any other read preference.
+        :class:`Collection`, except when ``$out`` or ``$merge`` are used, in
+        which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
+        is used.
 
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead. An
@@ -2338,10 +2336,11 @@ class Collection(common.BaseObject):
           set.
 
         .. versionchanged:: 3.9
-           Added support for the ``$merge`` pipeline stage.
-        .. versionchanged:: 3.9
            Apply this collection's read concern to pipelines containing the
            `$out` stage when connected to MongoDB >= 4.2.
+           Added support for the ``$merge`` pipeline stage.
+           Aggregations that write always use read preference
+           :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`.
         .. versionchanged:: 3.6
            Added the `session` parameter. Added the `maxAwaitTimeMS` option.
            Deprecated the `useCursor` option.
