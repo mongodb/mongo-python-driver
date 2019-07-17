@@ -500,6 +500,7 @@ class SocketInfo(object):
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
         self.pool_id = pool.pool_id
+        self.ready = False
 
     def ismaster(self, metadata, cluster_time):
         cmd = SON([('ismaster', 1)])
@@ -709,6 +710,13 @@ class SocketInfo(object):
             for credentials in cached - authset:
                 auth.authenticate(credentials, self)
                 self.authset.add(credentials)
+
+        # CMAP spec says to publish the ready event only after authenticating
+        # the connection.
+        if not self.ready:
+            self.ready = True
+            if self.enabled_for_cmap:
+                self.listeners.publish_connection_ready(self.address, self.id)
 
     def authenticate(self, credentials):
         """Log in to the server and store these credentials in `authset`.
@@ -1068,9 +1076,6 @@ class Pool:
         if self.handshake:
             sock_info.ismaster(self.opts.metadata, None)
 
-        if self.enabled_for_cmap:
-            listeners.publish_connection_ready(self.address, conn_id)
-
         return sock_info
 
     @contextlib.contextmanager
@@ -1102,15 +1107,20 @@ class Pool:
         # First get a socket, then attempt authentication. Simplifies
         # semaphore management in the face of network errors during auth.
         sock_info = self._get_socket_no_auth()
+        checked_auth = False
         try:
             sock_info.check_auth(all_credentials)
+            checked_auth = True
             if self.enabled_for_cmap:
                 listeners.publish_connection_checked_out(
                     self.address, sock_info.id)
             yield sock_info
         except:
             # Exception in caller. Decrement semaphore.
-            self.return_socket(sock_info)
+            self.return_socket(sock_info, publish_checkin=checked_auth)
+            if self.enabled_for_cmap and not checked_auth:
+                self.opts.event_listeners.publish_connection_check_out_failed(
+                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
             raise
         else:
             if not checkout:
@@ -1156,14 +1166,24 @@ class Pool:
             self._socket_semaphore.release()
             with self.lock:
                 self.active_sockets -= 1
+
+            if self.enabled_for_cmap:
+                self.opts.event_listeners.publish_connection_check_out_failed(
+                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
             raise
 
         return sock_info
 
-    def return_socket(self, sock_info):
-        """Return the socket to the pool, or if it's closed discard it."""
+    def return_socket(self, sock_info, publish_checkin=True):
+        """Return the socket to the pool, or if it's closed discard it.
+
+        :Parameters:
+          - `sock_info`: The socket to check into the pool.
+          - `publish_checkin`: If False, a ConnectionCheckedInEvent will not
+            be published.
+        """
         listeners = self.opts.event_listeners
-        if self.enabled_for_cmap:
+        if self.enabled_for_cmap and publish_checkin:
             listeners.publish_connection_checked_in(self.address, sock_info.id)
         if self.pid != os.getpid():
             self.reset()

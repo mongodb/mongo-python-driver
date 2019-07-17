@@ -14,6 +14,7 @@
 
 """Execute Transactions Spec tests."""
 
+import functools
 import os
 import sys
 import time
@@ -322,11 +323,13 @@ class TestCMAP(IntegrationTest):
     #
     def test_1_client_connection_pool_options(self):
         client = rs_or_single_client(**self.POOL_OPTIONS)
+        self.addCleanup(client.close)
         pool_opts = get_pool(client).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
 
     def test_2_all_client_pools_have_same_options(self):
         client = rs_or_single_client(**self.POOL_OPTIONS)
+        self.addCleanup(client.close)
         client.admin.command('isMaster')
         # Discover at least one secondary.
         if client_context.has_secondaries:
@@ -344,12 +347,14 @@ class TestCMAP(IntegrationTest):
                          for k, v in self.POOL_OPTIONS.items()])
         uri = 'mongodb://%s/?%s' % (client_context.pair, opts)
         client = rs_or_single_client(uri, **self.credentials)
+        self.addCleanup(client.close)
         pool_opts = get_pool(client).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
 
     def test_4_subscribe_to_events(self):
         listener = CMAPListener()
         client = single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
         self.assertEqual(listener.event_count(PoolCreatedEvent), 1)
 
         # Creates a new connection.
@@ -371,6 +376,66 @@ class TestCMAP(IntegrationTest):
         client.close()
         self.assertEqual(listener.event_count(PoolClearedEvent), 1)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 1)
+
+    def test_5_check_out_fails_connection_error(self):
+        listener = CMAPListener()
+        client = single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        pool = get_pool(client)
+
+        def mock_connect(*args, **kwargs):
+            raise ConnectionFailure('connect failed')
+        pool.connect = mock_connect
+
+        # Attempt to create a new connection.
+        with self.assertRaisesRegex(ConnectionFailure, 'connect failed'):
+            client.admin.command('isMaster')
+
+        self.assertIsInstance(listener.events[0], PoolCreatedEvent)
+        self.assertIsInstance(listener.events[1],
+                              ConnectionCheckOutStartedEvent)
+        self.assertIsInstance(listener.events[2],
+                              ConnectionCheckOutFailedEvent)
+        self.assertIsInstance(listener.events[3], PoolClearedEvent)
+
+        failed_event = listener.events[2]
+        self.assertEqual(
+            failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
+
+    def test_5_check_out_fails_auth_error(self):
+        listener = CMAPListener()
+        client = single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        pool = get_pool(client)
+        connect = pool.connect
+
+        def mock_check_auth(self, *args, **kwargs):
+            self.close_socket(ConnectionClosedReason.ERROR)
+            raise ConnectionFailure('auth failed')
+
+        def mock_connect(*args, **kwargs):
+            sock_info = connect(*args, **kwargs)
+            sock_info.check_auth = functools.partial(mock_check_auth, sock_info)
+            return sock_info
+        pool.connect = mock_connect
+
+        # Attempt to create a new connection.
+        with self.assertRaisesRegex(ConnectionFailure, 'auth failed'):
+            client.admin.command('isMaster')
+
+        self.assertIsInstance(listener.events[0], PoolCreatedEvent)
+        self.assertIsInstance(listener.events[1],
+                              ConnectionCheckOutStartedEvent)
+        self.assertIsInstance(listener.events[2], ConnectionCreatedEvent)
+        # Error happens here.
+        self.assertIsInstance(listener.events[3], ConnectionClosedEvent)
+        self.assertIsInstance(listener.events[4],
+                              ConnectionCheckOutFailedEvent)
+        self.assertIsInstance(listener.events[5], PoolClearedEvent)
+
+        failed_event = listener.events[4]
+        self.assertEqual(
+            failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
     #
     # Extra non-spec tests

@@ -47,7 +47,7 @@ class MockPool(object):
     def get_socket(self, all_credentials):
         return MockSocketInfo()
 
-    def return_socket(self, _):
+    def return_socket(self, *args, **kwargs):
         pass
 
     def _reset(self):

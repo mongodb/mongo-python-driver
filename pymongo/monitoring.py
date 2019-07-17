@@ -729,6 +729,11 @@ class ConnectionCheckOutFailedReason(object):
     POOL_CLOSED = 'poolClosed'
     """The pool was previously closed, and cannot provide new connections."""
 
+    CONN_ERROR = 'connectionError'
+    """The connection check out attempt experienced an error while setting up
+    a new connection.
+    """
+
 
 class _ConnectionEvent(object):
     """Private base class for some connection events."""

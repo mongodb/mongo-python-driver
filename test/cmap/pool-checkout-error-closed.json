@@ -29,15 +29,25 @@
       "options": 42
     },
     {
+      "type": "ConnectionCheckOutStarted",
+      "address": 42
+    },
+    {
       "type": "ConnectionCheckedOut",
+      "address": 42,
       "connectionId": 42
     },
     {
       "type": "ConnectionCheckedIn",
+      "address": 42,
       "connectionId": 42
     },
     {
       "type": "ConnectionPoolClosed",
+      "address": 42
+    },
+    {
+      "type": "ConnectionCheckOutStarted",
       "address": 42
     },
     {
@@ -49,7 +59,6 @@
   "ignore": [
     "ConnectionCreated",
     "ConnectionReady",
-    "ConnectionClosed",
-    "ConnectionCheckOutStarted"
+    "ConnectionClosed"
   ]
 }
