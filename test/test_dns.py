@@ -108,6 +108,7 @@ create_tests()
 
 class TestParsingErrors(unittest.TestCase):
 
+    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS tests require the dnspython module")
     def test_invalid_host(self):
         self.assertRaisesRegex(
             ConfigurationError,
