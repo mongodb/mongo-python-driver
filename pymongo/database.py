@@ -513,7 +513,7 @@ class Database(common.BaseObject):
                 cmd.get_cursor, cmd.get_read_preference(s), s,
                 retryable=not cmd._performs_write)
 
-    def watch(self, pipeline=None, full_document='default', resume_after=None,
+    def watch(self, pipeline=None, full_document=None, resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
               start_at_operation_time=None, session=None, start_after=None):
         """Watch changes on this database.
@@ -561,8 +561,7 @@ class Database(common.BaseObject):
             pipeline stages are valid after a ``$changeStream`` stage, see the
             MongoDB documentation on change streams for the supported stages.
           - `full_document` (optional): The fullDocument to pass as an option
-            to the ``$changeStream`` stage. Allowed values: 'default',
-            'updateLookup'.  Defaults to 'default'.
+            to the ``$changeStream`` stage. Allowed values: 'updateLookup'.
             When set to 'updateLookup', the change notification for partial
             updates will include both a delta describing the changes to the
             document, as well as a copy of the entire document that was

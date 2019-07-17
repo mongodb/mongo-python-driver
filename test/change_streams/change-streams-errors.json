@@ -54,9 +54,7 @@
               "cursor": {},
               "pipeline": [
                 {
-                  "$changeStream": {
-                    "fullDocument": "default"
-                  }
+                  "$changeStream": {}
                 },
                 {
                   "$unsupported": "foo"

@@ -71,7 +71,7 @@
       ]
     },
     {
-      "description": "Count succeeds after InterruptedDueToStepDown",
+      "description": "Count succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

@@ -58,7 +58,7 @@
       ]
     },
     {
-      "description": "ListIndexNames succeeds after InterruptedDueToStepDown",
+      "description": "ListIndexNames succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

@@ -95,7 +95,7 @@
       ]
     },
     {
-      "description": "Distinct succeeds after InterruptedDueToStepDown",
+      "description": "Distinct succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

@@ -56,7 +56,7 @@
       ]
     },
     {
-      "description": "ListDatabaseObjects succeeds after InterruptedDueToStepDown",
+      "description": "ListDatabaseObjects succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

@@ -97,7 +97,7 @@
       ]
     },
     {
-      "description": "CountDocuments succeeds after InterruptedDueToStepDown",
+      "description": "CountDocuments succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

@@ -125,7 +125,7 @@
       ]
     },
     {
-      "description": "Aggregate succeeds after InterruptedDueToStepDown",
+      "description": "Aggregate succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

@@ -56,7 +56,7 @@
       ]
     },
     {
-      "description": "ListCollectionObjects succeeds after InterruptedDueToStepDown",
+      "description": "ListCollectionObjects succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

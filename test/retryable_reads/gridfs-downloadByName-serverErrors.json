@@ -115,7 +115,7 @@
       ]
     },
     {
-      "description": "DownloadByName succeeds after InterruptedDueToStepDown",
+      "description": "DownloadByName succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

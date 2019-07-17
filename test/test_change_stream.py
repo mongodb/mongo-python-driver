@@ -349,7 +349,7 @@ class TestCollectionChangeStream(IntegrationTest, ChangeStreamTryNextMixin):
         command = results['started'][0]
         self.assertEqual('aggregate', command.command_name)
         self.assertEqual([
-            {'$changeStream': {'fullDocument': 'default'}},
+            {'$changeStream': {}},
             {'$project': {'foo': 0}}], 
             command.command['pipeline'])
 

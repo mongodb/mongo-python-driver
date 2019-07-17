@@ -68,7 +68,7 @@
       ]
     },
     {
-      "description": "EstimatedDocumentCount succeeds after InterruptedDueToStepDown",
+      "description": "EstimatedDocumentCount succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

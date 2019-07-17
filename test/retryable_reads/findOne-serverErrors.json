@@ -94,7 +94,7 @@
       ]
     },
     {
-      "description": "FindOne succeeds after InterruptedDueToStepDown",
+      "description": "FindOne succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {

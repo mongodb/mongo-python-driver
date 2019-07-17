@@ -56,7 +56,7 @@
       ]
     },
     {
-      "description": "ListDatabaseNames succeeds after InterruptedDueToStepDown",
+      "description": "ListDatabaseNames succeeds after InterruptedDueToReplStateChange",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
