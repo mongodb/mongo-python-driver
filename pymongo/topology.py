@@ -431,7 +431,9 @@ class Topology(object):
 
             # Mark all servers Unknown.
             self._description = self._description.reset()
-            self._update_servers()
+            for address, sd in self._description.server_descriptions().items():
+                if address in self._servers:
+                    self._servers[address].description = sd
 
             # Stop SRV polling thread.
             if self._srv_monitor:

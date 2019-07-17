@@ -743,6 +743,13 @@ class TestClient(IntegrationTest):
         client.close()
         self.assertTrue(client._kill_cursors_executor._stopped)
 
+    def test_close_does_not_open_servers(self):
+        client = rs_client(connect=False)
+        topology = client._topology
+        self.assertEqual(topology._servers, {})
+        client.close()
+        self.assertEqual(topology._servers, {})
+
     def test_bad_uri(self):
         with self.assertRaises(InvalidURI):
             MongoClient("http://localhost")
