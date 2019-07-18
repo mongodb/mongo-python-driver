@@ -133,22 +133,25 @@ class Binary(bytes):
       directly to :class:`bytes`.
 
     :Parameters:
-      - `data`: the binary data to represent
+      - `data`: the binary data to represent. Can be any bytes-like type
+        that implements the buffer protocol.
       - `subtype` (optional): the `binary subtype
         <http://bsonspec.org/#/specification>`_
         to use
+
+    .. versionchanged:: 3.9
+      Support any bytes-like type that implements the buffer protocol.
     """
 
     _type_marker = 5
 
     def __new__(cls, data, subtype=BINARY_SUBTYPE):
-        if not isinstance(data, bytes):
-            raise TypeError("data must be an instance of bytes")
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
             raise ValueError("subtype must be contained in [0, 256)")
-        self = bytes.__new__(cls, data)
+        # Support any type that implements the buffer protocol.
+        self = bytes.__new__(cls, memoryview(data).tobytes())
         self.__subtype = subtype
         return self
 

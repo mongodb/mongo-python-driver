@@ -60,6 +60,8 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
   :meth:`~pymongo.collection.Collection.find_one_and_update`,
   :meth:`~pymongo.operations.UpdateOne`, and
   :meth:`~pymongo.operations.UpdateMany`.
+- :class:`~bson.binary.Binary` now supports any bytes-like type that implements
+  the buffer protocol.
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 

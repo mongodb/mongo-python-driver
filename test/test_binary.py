@@ -14,9 +14,11 @@
 
 """Tests for the Binary wrapper."""
 
+import array
 import base64
 import copy
 import pickle
+import platform
 import sys
 import uuid
 
@@ -26,6 +28,7 @@ import bson
 
 from bson.binary import *
 from bson.codec_options import CodecOptions
+from bson.py3compat import PY3
 from bson.son import SON
 from pymongo.mongo_client import MongoClient
 from test import client_context, unittest
@@ -81,7 +84,6 @@ class TestBinary(unittest.TestCase):
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Binary, None)
-        self.assertRaises(TypeError, Binary, u"hello")
         self.assertRaises(TypeError, Binary, 5)
         self.assertRaises(TypeError, Binary, 10.2)
         self.assertRaises(TypeError, Binary, b"hello", None)
@@ -90,6 +92,10 @@ class TestBinary(unittest.TestCase):
         self.assertRaises(ValueError, Binary, b"hello", 256)
         self.assertTrue(Binary(b"hello", 0))
         self.assertTrue(Binary(b"hello", 255))
+        if platform.python_implementation() != "Jython":
+            # Jython's memoryview accepts unicode strings...
+            # https://bugs.jython.org/issue2784
+            self.assertRaises(TypeError, Binary, u"hello")
 
     def test_subtype(self):
         one = Binary(b"hello")
@@ -355,6 +361,22 @@ class TestBinary(unittest.TestCase):
 
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             self.assertEqual(uul, pickle.loads(pickle.dumps(uul, proto)))
+
+    def test_buffer_protocol(self):
+        b0 = Binary(b'123', 2)
+
+        self.assertEqual(b0, Binary(memoryview(b'123'), 2))
+        self.assertEqual(b0, Binary(bytearray(b'123'), 2))
+        # mmap.mmap and array.array only expose the
+        # buffer interface in python 3.x
+        if PY3:
+            # No mmap module in Jython
+            import mmap
+            with mmap.mmap(-1, len(b'123')) as mm:
+                mm.write(b'123')
+                mm.seek(0)
+                self.assertEqual(b0, Binary(mm, 2))
+            self.assertEqual(b0, Binary(array.array('B', b'123'), 2))
 
 
 if __name__ == "__main__":
