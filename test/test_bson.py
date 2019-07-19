@@ -26,9 +26,11 @@ sys.path[0:0] = [""]
 
 import bson
 from bson import (BSON,
+                  decode,
                   decode_all,
                   decode_file_iter,
                   decode_iter,
+                  encode,
                   EPOCH_AWARE,
                   is_valid,
                   Regex)
@@ -124,6 +126,8 @@ class TestBSON(unittest.TestCase):
 
         def helper(doc):
             self.assertEqual(doc, (BSON.encode(doc_class(doc))).decode())
+            self.assertEqual(doc, decode(encode(doc)))
+
         helper({})
         helper({"test": u"hello"})
         self.assertTrue(isinstance(BSON.encode({"hello": "world"})
@@ -283,7 +287,7 @@ class TestBSON(unittest.TestCase):
                             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                             b"\x05\x00\x00\x00\x00"))))
 
-    def test_buffer_protocol(self):
+    def test_decode_all_buffer_protocol(self):
         docs = [{'foo': 'bar'}, {}]
         bs = b"".join(map(BSON.encode, docs))
         self.assertEqual(docs, decode_all(bytearray(bs)))
@@ -297,6 +301,20 @@ class TestBSON(unittest.TestCase):
                 mm.seek(0)
                 self.assertEqual(docs, decode_all(mm))
 
+    def test_decode_buffer_protocol(self):
+        doc = {'foo': 'bar'}
+        bs = encode(doc)
+        self.assertEqual(doc, decode(bs))
+        self.assertEqual(doc, decode(bytearray(bs)))
+        self.assertEqual(doc, decode(memoryview(bs)))
+        if PY3:
+            import array
+            import mmap
+            self.assertEqual(doc, decode(array.array('B', bs)))
+            with mmap.mmap(-1, len(bs)) as mm:
+                mm.write(bs)
+                mm.seek(0)
+                self.assertEqual(doc, decode(mm))
 
     def test_invalid_decodes(self):
         # Invalid object size (not enough bytes in document for even

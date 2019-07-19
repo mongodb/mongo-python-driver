@@ -903,7 +903,7 @@ def _millis_to_datetime(millis, opts):
     micros = diff * 1000
     if opts.tz_aware:
         dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds,
-                                               microseconds=micros)
+                                              microseconds=micros)
         if opts.tzinfo:
             dt = dt.astimezone(opts.tzinfo)
         return dt
@@ -924,6 +924,65 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError(
     "codec_options must be an instance of CodecOptions")
 
 
+def encode(document, check_keys=False, codec_options=DEFAULT_CODEC_OPTIONS):
+    """Encode a document to BSON.
+
+    A document can be any mapping type (like :class:`dict`).
+
+    Raises :class:`TypeError` if `document` is not a mapping type,
+    or contains keys that are not instances of
+    :class:`basestring` (:class:`str` in python 3). Raises
+    :class:`~bson.errors.InvalidDocument` if `document` cannot be
+    converted to :class:`BSON`.
+
+    :Parameters:
+      - `document`: mapping type representing a document
+      - `check_keys` (optional): check if keys start with '$' or
+        contain '.', raising :class:`~bson.errors.InvalidDocument` in
+        either case
+      - `codec_options` (optional): An instance of
+        :class:`~bson.codec_options.CodecOptions`.
+
+    .. versionadded:: 3.9
+    """
+    if not isinstance(codec_options, CodecOptions):
+        raise _CODEC_OPTIONS_TYPE_ERROR
+
+    return _dict_to_bson(document, check_keys, codec_options)
+
+
+def decode(data, codec_options=DEFAULT_CODEC_OPTIONS):
+    """Decode BSON to a document.
+
+    By default, returns a BSON document represented as a Python
+    :class:`dict`. To use a different :class:`MutableMapping` class,
+    configure a :class:`~bson.codec_options.CodecOptions`::
+
+        >>> import collections  # From Python standard library.
+        >>> import bson
+        >>> from bson.codec_options import CodecOptions
+        >>> data = bson.encode({'a': 1})
+        >>> decoded_doc = bson.decode(data)
+        <type 'dict'>
+        >>> options = CodecOptions(document_class=collections.OrderedDict)
+        >>> decoded_doc = bson.decode(data, codec_options=options)
+        >>> type(decoded_doc)
+        <class 'collections.OrderedDict'>
+
+    :Parameters:
+      - `data`: the BSON to decode. Any bytes-like object that implements
+        the buffer protocol.
+      - `codec_options` (optional): An instance of
+        :class:`~bson.codec_options.CodecOptions`.
+
+    .. versionadded:: 3.9
+    """
+    if not isinstance(codec_options, CodecOptions):
+        raise _CODEC_OPTIONS_TYPE_ERROR
+
+    return _bson_to_dict(data, codec_options)
+
+
 def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
     """Decode BSON data to multiple documents.
 
@@ -935,7 +994,7 @@ def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
       - `codec_options` (optional): An instance of
         :class:`~bson.codec_options.CodecOptions`.
 
-    .. versionchanges:: 3.9
+    .. versionchanged:: 3.9
        Supports bytes-like objects that implement the buffer protocol.
 
     .. versionchanged:: 3.0
@@ -1137,6 +1196,10 @@ def is_valid(bson):
 
 class BSON(bytes):
     """BSON (Binary JSON) data.
+
+    .. warning:: Using this class to encode and decode BSON adds a performance
+       cost. For better performance use the module level functions
+       :func:`encode` and :func:`decode` instead.
     """
 
     @classmethod
@@ -1163,10 +1226,7 @@ class BSON(bytes):
         .. versionchanged:: 3.0
            Replaced `uuid_subtype` option with `codec_options`.
         """
-        if not isinstance(codec_options, CodecOptions):
-            raise _CODEC_OPTIONS_TYPE_ERROR
-
-        return cls(_dict_to_bson(document, check_keys, codec_options))
+        return cls(encode(document, check_keys, codec_options))
 
     def decode(self, codec_options=DEFAULT_CODEC_OPTIONS):
         """Decode this BSON data.
@@ -1208,10 +1268,7 @@ class BSON(bytes):
 
         .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
         """
-        if not isinstance(codec_options, CodecOptions):
-            raise _CODEC_OPTIONS_TYPE_ERROR
-
-        return _bson_to_dict(self, codec_options)
+        return decode(self, codec_options)
 
 
 def has_c():
