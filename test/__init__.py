@@ -44,6 +44,14 @@ from test.version import Version
 if HAVE_SSL:
     import ssl
 
+try:
+    # Enable the fault handler to dump the traceback of each running thread
+    # after a segfault.
+    import faulthandler
+    faulthandler.enable()
+except ImportError:
+    pass
+
 # The host and port of a single mongod or mongos, or the seed host
 # for a replica set.
 host = os.environ.get("DB_IP", 'localhost')
