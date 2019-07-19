@@ -2848,35 +2848,52 @@ static PyObject* elements_to_dict(PyObject* self, const char* string,
     return result;
 }
 
+static int _get_buffer(PyObject *exporter, Py_buffer *view) {
+    if (PyObject_GetBuffer(exporter, view, PyBUF_SIMPLE) == -1) {
+        return 0;
+    }
+    if (!PyBuffer_IsContiguous(view, 'C')) {
+        PyErr_SetString(PyExc_ValueError,
+                        "must be a contiguous buffer");
+        goto fail;
+    }
+    if (!view->buf || view->len < 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid buffer");
+        goto fail;
+    }
+    if (view->itemsize != 1) {
+        PyErr_SetString(PyExc_ValueError,
+                        "buffer data must be ascii or utf8");
+        goto fail;
+    }
+    return 1;
+fail:
+    PyBuffer_Release(view);
+    return 0;
+}
+
 static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     int32_t size;
     Py_ssize_t total_size;
     const char* string;
     PyObject* bson;
     codec_options_t options;
-    PyObject* result;
+    PyObject* result = NULL;
     PyObject* options_obj;
+    Py_buffer view;
 
     if (! (PyArg_ParseTuple(args, "OO", &bson, &options_obj) &&
             convert_codec_options(options_obj, &options))) {
-        return NULL;
+        return result;
     }
 
-#if PY_MAJOR_VERSION >= 3
-    if (!PyBytes_Check(bson)) {
-        PyErr_SetString(PyExc_TypeError, "argument to _bson_to_dict must be a bytes object");
-#else
-    if (!PyString_Check(bson)) {
-        PyErr_SetString(PyExc_TypeError, "argument to _bson_to_dict must be a string");
-#endif
+    if (!_get_buffer(bson, &view)) {
         destroy_codec_options(&options);
-        return NULL;
+        return result;
     }
-#if PY_MAJOR_VERSION >= 3
-    total_size = PyBytes_Size(bson);
-#else
-    total_size = PyString_Size(bson);
-#endif
+
+    total_size = view.len;
+
     if (total_size < BSON_MIN_SIZE) {
         PyObject* InvalidBSON = _error("InvalidBSON");
         if (InvalidBSON) {
@@ -2884,19 +2901,10 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
                             "not enough data for a BSON document");
             Py_DECREF(InvalidBSON);
         }
-        destroy_codec_options(&options);
-        return NULL;
+        goto done;;
     }
 
-#if PY_MAJOR_VERSION >= 3
-    string = PyBytes_AsString(bson);
-#else
-    string = PyString_AsString(bson);
-#endif
-    if (!string) {
-        destroy_codec_options(&options);
-        return NULL;
-    }
+    string = (char*)view.buf;
 
     memcpy(&size, string, 4);
     size = (int32_t)BSON_UINT32_FROM_LE(size);
@@ -2906,8 +2914,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
             PyErr_SetString(InvalidBSON, "invalid message size");
             Py_DECREF(InvalidBSON);
         }
-        destroy_codec_options(&options);
-        return NULL;
+        goto done;
     }
 
     if (total_size < size || total_size > BSON_MAX_SIZE) {
@@ -2916,8 +2923,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
             PyErr_SetString(InvalidBSON, "objsize too large");
             Py_DECREF(InvalidBSON);
         }
-        destroy_codec_options(&options);
-        return NULL;
+        goto done;
     }
 
     if (size != total_size || string[size - 1]) {
@@ -2926,18 +2932,20 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
             PyErr_SetString(InvalidBSON, "bad eoo");
             Py_DECREF(InvalidBSON);
         }
-        destroy_codec_options(&options);
-        return NULL;
+        goto done;
     }
 
     /* No need to decode fields if using RawBSONDocument */
     if (options.is_raw_bson) {
-        return PyObject_CallFunction(
+        result = PyObject_CallFunction(
             options.document_class, BYTES_FORMAT_STRING "O", string, size,
             options_obj);
     }
-
-    result = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
+    else {
+        result = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
+    }
+done:
+    PyBuffer_Release(&view);
     destroy_codec_options(&options);
     return result;
 }
@@ -2948,9 +2956,10 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     const char* string;
     PyObject* bson;
     PyObject* dict;
-    PyObject* result;
+    PyObject* result = NULL;
     codec_options_t options;
     PyObject* options_obj;
+    Py_buffer view;
 
     if (!PyArg_ParseTuple(args, "O|O", &bson, &options_obj)) {
         return NULL;
@@ -2963,31 +2972,15 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-#if PY_MAJOR_VERSION >= 3
-    if (!PyBytes_Check(bson)) {
-        PyErr_SetString(PyExc_TypeError, "argument to decode_all must be a bytes object");
-#else
-    if (!PyString_Check(bson)) {
-        PyErr_SetString(PyExc_TypeError, "argument to decode_all must be a string");
-#endif
+    if (!_get_buffer(bson, &view)) {
         destroy_codec_options(&options);
         return NULL;
     }
-#if PY_MAJOR_VERSION >= 3
-    total_size = PyBytes_Size(bson);
-    string = PyBytes_AsString(bson);
-#else
-    total_size = PyString_Size(bson);
-    string = PyString_AsString(bson);
-#endif
-    if (!string) {
-        destroy_codec_options(&options);
-        return NULL;
-    }
+    total_size = view.len;
+    string = (char*)view.buf;
 
     if (!(result = PyList_New(0))) {
-        destroy_codec_options(&options);
-        return NULL;
+        goto fail;
     }
 
     while (total_size > 0) {
@@ -2998,9 +2991,8 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
                                 "not enough data for a BSON document");
                 Py_DECREF(InvalidBSON);
             }
-            destroy_codec_options(&options);
             Py_DECREF(result);
-            return NULL;
+            goto fail;
         }
 
         memcpy(&size, string, 4);
@@ -3011,9 +3003,8 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
                 PyErr_SetString(InvalidBSON, "invalid message size");
                 Py_DECREF(InvalidBSON);
             }
-            destroy_codec_options(&options);
             Py_DECREF(result);
-            return NULL;
+            goto fail;
         }
 
         if (total_size < size) {
@@ -3022,9 +3013,8 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
                 PyErr_SetString(InvalidBSON, "objsize too large");
                 Py_DECREF(InvalidBSON);
             }
-            destroy_codec_options(&options);
             Py_DECREF(result);
-            return NULL;
+            goto fail;
         }
 
         if (string[size - 1]) {
@@ -3033,9 +3023,8 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
                 PyErr_SetString(InvalidBSON, "bad eoo");
                 Py_DECREF(InvalidBSON);
             }
-            destroy_codec_options(&options);
             Py_DECREF(result);
-            return NULL;
+            goto fail;
         }
 
         /* No need to decode fields if using RawBSONDocument. */
@@ -3048,20 +3037,22 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
         }
         if (!dict) {
             Py_DECREF(result);
-            destroy_codec_options(&options);
-            return NULL;
+            goto fail;
         }
         if (PyList_Append(result, dict) < 0) {
             Py_DECREF(dict);
             Py_DECREF(result);
-            destroy_codec_options(&options);
-            return NULL;
+            goto fail;
         }
         Py_DECREF(dict);
         string += size;
         total_size -= size;
     }
-
+    goto done;
+fail:
+    result = NULL;
+done:
+    PyBuffer_Release(&view);
     destroy_codec_options(&options);
     return result;
 }
