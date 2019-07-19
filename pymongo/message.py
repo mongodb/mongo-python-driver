@@ -1439,6 +1439,11 @@ class _OpReply(object):
         assert self.number_returned == 1
         return docs[0]
 
+    def raw_command_response(self):
+        """Return the bytes of the command response."""
+        # This should never be called on _OpReply.
+        raise NotImplementedError
+
     @classmethod
     def unpack(cls, msg):
         """Construct an _OpReply from raw bytes."""
@@ -1484,6 +1489,10 @@ class _OpMsg(object):
     def command_response(self):
         """Unpack a command response."""
         return self.unpack_response()[0]
+
+    def raw_command_response(self):
+        """Return the bytes of the command response."""
+        return self.payload_document
 
     @classmethod
     def unpack(cls, msg):

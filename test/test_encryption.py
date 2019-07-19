@@ -14,20 +14,31 @@
 
 """Test client side encryption spec."""
 
+import os
 import socket
 import sys
 
 sys.path[0:0] = [""]
 
+from bson import BSON, json_util
+from bson.binary import STANDARD, Binary
+from bson.codec_options import CodecOptions
+from bson.json_util import JSONOptions
+from bson.raw_bson import RawBSONDocument
+from bson.son import SON
+
 from pymongo.errors import ConfigurationError
 from pymongo.mongo_client import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
 
-from test import unittest, PyMongoTestCase
+from test import unittest, IntegrationTest, PyMongoTestCase, client_context
 
 
 def get_client_opts(client):
     return client._MongoClient__options
+
+
+KMS_PROVIDERS = {'local': {'key': b'\x00'*96}}
 
 
 class TestAutoEncryptionOpts(PyMongoTestCase):
@@ -84,16 +95,108 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
 class TestClientOptions(PyMongoTestCase):
     def test_default(self):
         client = MongoClient(connect=False)
+        self.addCleanup(client.close)
         self.assertEqual(get_client_opts(client).auto_encryption_opts, None)
 
         client = MongoClient(auto_encryption_opts=None, connect=False)
+        self.addCleanup(client.close)
         self.assertEqual(get_client_opts(client).auto_encryption_opts, None)
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
     def test_kwargs(self):
-        opts = AutoEncryptionOpts({}, 'admin.datakeys')
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, 'admin.datakeys')
         client = MongoClient(auto_encryption_opts=opts, connect=False)
+        self.addCleanup(client.close)
         self.assertEqual(get_client_opts(client).auto_encryption_opts, opts)
+
+
+class EncryptionIntegrationTest(IntegrationTest):
+    """Base class for encryption integration tests."""
+
+    @classmethod
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
+    @client_context.require_version_min(4, 2, -1)
+    def setUpClass(cls):
+        super(EncryptionIntegrationTest, cls).setUpClass()
+
+
+# Location of JSON test files.
+TEST_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'client-side-encryption')
+
+OPTS = CodecOptions(uuid_representation=STANDARD)
+
+# Use SON to preserve the order of fields while parsing json.
+JSON_OPTS = JSONOptions(document_class=SON, uuid_representation=STANDARD)
+
+
+def read(filename):
+    with open(os.path.join(TEST_PATH, filename)) as fp:
+        return fp.read()
+
+
+def json_data(filename):
+    return json_util.loads(read(filename), json_options=JSON_OPTS)
+
+
+def bson_data(filename):
+    return BSON.encode(json_data(filename), codec_options=OPTS)
+
+
+class TestClientSimple(EncryptionIntegrationTest):
+
+    def _test_auto_encrypt(self, opts):
+        client = MongoClient(auto_encryption_opts=opts)
+        self.addCleanup(client.close)
+
+        # Create the encrypted field's data key.
+        key_vault = self.client.admin.get_collection(
+            'datakeys', codec_options=OPTS)
+        data_key = RawBSONDocument(bson_data('key-document-local.json'))
+        key_vault.insert_one(data_key)
+        self.addCleanup(key_vault.drop)
+
+        # Collection.insert_one auto encrypts.
+        encrypted_coll = client.pymongo_test.test
+        encrypted_coll.insert_one({'_id': 1, 'ssn': '123'})
+
+        # Database.command auto decrypts.
+        res = client.pymongo_test.command(
+            'find', 'test', filter={'ssn': '123'})
+        decrypted_docs = res['cursor']['firstBatch']
+        self.assertEqual(decrypted_docs, [{'_id': 1, 'ssn': '123'}])
+
+        # Collection.aggregate auto decrypts.
+        decrypted_docs = list(encrypted_coll.aggregate([]))
+        self.assertEqual(decrypted_docs, [{'_id': 1, 'ssn': '123'}])
+
+        # Collection.distinct auto decrypts.
+        decrypted_ssns = encrypted_coll.distinct('ssn')
+        self.assertEqual(decrypted_ssns, ['123'])
+
+        # Make sure the field is actually encrypted.
+        encrypted_doc = self.db.test.find_one()
+        self.assertEqual(encrypted_doc['_id'], 1)
+        self.assertIsInstance(encrypted_doc['ssn'], Binary)
+        self.assertEqual(encrypted_doc['ssn'].subtype, 6)
+
+    def test_auto_encrypt(self):
+        # Configure the encrypted field via jsonSchema.
+        json_schema = json_data('schema.json')
+        coll = self.db.create_collection(
+            'test', validator={'$jsonSchema': json_schema}, codec_options=OPTS)
+        self.addCleanup(coll.drop)
+
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, 'admin.datakeys')
+        self._test_auto_encrypt(opts)
+
+    def test_auto_encrypt_local_schema_map(self):
+        # Configure the encrypted field via the local schema_map option.
+        schemas = {'pymongo_test.test': json_data('schema.json')}
+        opts = AutoEncryptionOpts(
+            KMS_PROVIDERS, 'admin.datakeys', schema_map=schemas)
+
+        self._test_auto_encrypt(opts)
 
 
 if __name__ == "__main__":

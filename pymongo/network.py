@@ -34,6 +34,7 @@ try:
 except ImportError:
     _SELECT_ERROR = OSError
 
+from bson import _dict_to_bson, _decode_all_selective
 from bson.py3compat import PY3
 
 from pymongo import helpers, message
@@ -114,6 +115,18 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     if compression_ctx and name.lower() in _NO_COMPRESSION:
         compression_ctx = None
 
+    if (client and client._encrypter and
+            not client._encrypter._bypass_auto_encryption):
+        # Workaround for $clusterTime which is incompatible with check_keys.
+        if check_keys:
+            cluster_time = spec.pop('$clusterTime', None)
+        spec = orig = client._encrypter.encrypt(
+            dbname, _dict_to_bson(spec, check_keys, codec_options))
+        if check_keys and cluster_time:
+            spec['$clusterTime'] = cluster_time
+        # We already checked the keys, no need to do it again.
+        check_keys = False
+
     if use_op_msg:
         flags = 2 if unacknowledged else 0
         request_id, msg, size, max_doc_size = message._op_msg(
@@ -143,6 +156,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         sock.sendall(msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
+            reply = None
             response_doc = {"ok": 1}
         else:
             reply = receive_message(sock, request_id)
@@ -170,6 +184,12 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         duration = (datetime.datetime.now() - start) + encoding_duration
         listeners.publish_command_success(
             duration, response_doc, name, request_id, address)
+
+    if client and client._encrypter and reply:
+        decrypted = client._encrypter.decrypt(reply.raw_command_response())
+        response_doc = _decode_all_selective(decrypted, codec_options,
+                                             user_fields)[0]
+
     return response_doc
 
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack

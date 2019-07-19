@@ -95,8 +95,8 @@ class RawBSONDocument(abc.Mapping):
             # We already validated the object's size when this document was
             # created, so no need to do that again.
             # Use SON to preserve ordering of elements.
-            self.__inflated_doc = _raw_to_dict(
-                self.__raw, 4, len(self.__raw)-1, self.__codec_options, SON())
+            self.__inflated_doc = _inflate_bson(
+                self.__raw, self.__codec_options)
         return self.__inflated_doc
 
     def __getitem__(self, item):
@@ -116,6 +116,20 @@ class RawBSONDocument(abc.Mapping):
     def __repr__(self):
         return ("RawBSONDocument(%r, codec_options=%r)"
                 % (self.raw, self.__codec_options))
+
+
+def _inflate_bson(bson_bytes, codec_options):
+    """Inflates the top level fields of a BSON document.
+
+    :Parameters:
+      - `bson_bytes`: the BSON bytes that compose this document
+      - `codec_options`: An instance of
+        :class:`~bson.codec_options.CodecOptions` whose ``document_class``
+        must be :class:`RawBSONDocument`.
+    """
+    # Use SON to preserve ordering of elements.
+    return _raw_to_dict(
+        bson_bytes, 4, len(bson_bytes)-1, codec_options, SON())
 
 
 DEFAULT_RAW_BSON_OPTIONS = DEFAULT.with_options(document_class=RawBSONDocument)

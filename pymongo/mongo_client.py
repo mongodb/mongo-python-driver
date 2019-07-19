@@ -713,6 +713,12 @@ class MongoClient(common.BaseObject):
         self._kill_cursors_executor = executor
         executor.open()
 
+        self._encrypter = None
+        if self.__options.auto_encryption_opts:
+            from pymongo.encryption import _Encrypter
+            self._encrypter = _Encrypter.create(
+                self, self.__options.auto_encryption_opts)
+
     def _cache_credentials(self, source, credentials, connect=False):
         """Save a set of authentication credentials.
 
@@ -1152,6 +1158,9 @@ class MongoClient(common.BaseObject):
         self._kill_cursors_executor.close()
         self._process_periodic_tasks()
         self._topology.close()
+        if self._encrypter:
+            # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
+            self._encrypter.close()
 
     def set_cursor_manager(self, manager_class):
         """DEPRECATED - Set this client's cursor manager.
