@@ -2757,6 +2757,7 @@ static int _element_to_dict(PyObject* self, const char* string,
 }
 
 static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
+    /* TODO: Support buffer protocol */
     char* string;
     PyObject* bson;
     codec_options_t options;

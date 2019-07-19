@@ -1160,7 +1160,10 @@ buildvariants:
       # OSes that support versions of MongoDB>=2.6 and <3.6 with SSL.
       - ubuntu-12.04
     auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
+    # Ubuntu 12 ships Python 2.7.3. We want to test that version with
+    # and without C extensions
+    c-extensions: "*"
+  display_name: "${platform} ${auth-ssl} ${c-extensions}"
   tasks:
     - ".3.4"
     - ".3.2"
@@ -1173,7 +1176,10 @@ buildvariants:
       # OSes that support versions of MongoDB>=2.6 and <4.0 with SSL.
       - debian71
     auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
+    # Debian 7 ships Python 2.7.3. We want to test that version with
+    # and without C extensions
+    c-extensions: "*"
+  display_name: "${platform} ${auth-ssl} ${c-extensions}"
   tasks:
     - ".3.6"
     - ".3.4"
@@ -1330,6 +1336,21 @@ buildvariants:
      coverage: "*"
   display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
   tasks: *all-server-versions
+
+- matrix_name: "tests-python-version-ubuntu1604-without-c-extensions"
+  matrix_spec:
+    platform: ubuntu-16.04
+    python-version: &openssl-102-plus-pythons ["3.7"]
+    c-extensions: without-c-extensions
+    auth-ssl: noauth-nossl
+  display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
+  tasks:
+    - ".latest"
+    - ".4.2"
+    - ".4.0"
+    - ".3.6"
+    - ".3.4"
+    - ".3.2"
 
 - matrix_name: "tests-python-version-ubuntu16-compression"
   matrix_spec:

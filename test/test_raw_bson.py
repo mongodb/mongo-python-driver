@@ -22,9 +22,10 @@ from bson.errors import InvalidBSON
 from bson.raw_bson import RawBSONDocument, DEFAULT_RAW_BSON_OPTIONS
 from bson.son import SON
 from test import client_context, unittest
+from test.test_client import IntegrationTest
 
 
-class TestRawBSONDocument(unittest.TestCase):
+class TestRawBSONDocument(IntegrationTest):
 
     # {u'_id': ObjectId('556df68b6e32ab21a95e0785'),
     #  u'name': u'Sherlock',
@@ -38,6 +39,7 @@ class TestRawBSONDocument(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(TestRawBSONDocument, cls).setUpClass()
         cls.client = client_context.client
 
     def tearDown(self):

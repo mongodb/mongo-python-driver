@@ -283,6 +283,21 @@ class TestBSON(unittest.TestCase):
                             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                             b"\x05\x00\x00\x00\x00"))))
 
+    def test_buffer_protocol(self):
+        docs = [{'foo': 'bar'}, {}]
+        bs = b"".join(map(BSON.encode, docs))
+        self.assertEqual(docs, decode_all(bytearray(bs)))
+        self.assertEqual(docs, decode_all(memoryview(bs)))
+        if PY3:
+            import array
+            import mmap
+            self.assertEqual(docs, decode_all(array.array('B', bs)))
+            with mmap.mmap(-1, len(bs)) as mm:
+                mm.write(bs)
+                mm.seek(0)
+                self.assertEqual(docs, decode_all(mm))
+
+
     def test_invalid_decodes(self):
         # Invalid object size (not enough bytes in document for even
         # an object size of first object.
