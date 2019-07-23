@@ -42,6 +42,7 @@ Sub-modules:
    database
    driver_info
    errors
+   encryption_options
    message
    mongo_client
    mongo_replica_set_client

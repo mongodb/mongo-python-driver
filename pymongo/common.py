@@ -28,6 +28,7 @@ from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (validate_compressors,
                                          validate_zlib_compression_level)
 from pymongo.driver_info import DriverInfo
+from pymongo.encryption_options import validate_auto_encryption_opts_or_none
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
@@ -638,6 +639,7 @@ KW_VALIDATORS = {
     'username': validate_string_or_none,
     'password': validate_string_or_none,
     'server_selector': validate_is_callable_or_none,
+    'auto_encryption_opts': validate_auto_encryption_opts_or_none,
 }
 
 # Dictionary where keys are any URI option name, and values are the

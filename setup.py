@@ -317,7 +317,11 @@ ext_modules = [Extension('bson._cbson',
                          sources=['pymongo/_cmessagemodule.c',
                                   'bson/buffer.c'])]
 
-extras_require = {'snappy': ["python-snappy"], 'zstd': ["zstandard"]}
+extras_require = {
+    'snappy': ['python-snappy'],
+    'zstd': ['zstandard'],
+    'encryption': ['pymongocrypt'],  # For client side field level encryption.
+}
 vi = sys.version_info
 if vi[0] == 2:
     extras_require.update(

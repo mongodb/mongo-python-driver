@@ -475,6 +475,14 @@ class MongoClient(common.BaseObject):
             return data that has been written to a majority of nodes. If the
             level is left unspecified, the server default will be used.
 
+          | **Client side encryption options:**
+          | (If not set explicitly, client side encryption will not be enabled.)
+
+          - `auto_encryption_opts`: A
+            :class:`~pymongo.encryption.AutoEncryptionOpts` which configures
+            this client to automatically encrypt collection commands and
+            automatically decrypt results.
+
         .. mongodoc:: connections
 
         .. versionchanged:: 3.9

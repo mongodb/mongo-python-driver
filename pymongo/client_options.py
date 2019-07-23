@@ -167,6 +167,7 @@ class ClientOptions(object):
         self.__retry_reads = options.get('retryreads', common.RETRY_READS)
         self.__server_selector = options.get(
             'server_selector', any_server_selector)
+        self.__auto_encryption_opts = options.get('auto_encryption_opts')
 
     @property
     def _options(self):
@@ -241,3 +242,8 @@ class ClientOptions(object):
     def retry_reads(self):
         """If this instance should retry supported read operations."""
         return self.__retry_reads
+
+    @property
+    def auto_encryption_opts(self):
+        """A :class:`~pymongo.encryption.AutoEncryptionOpts` or None."""
+        return self.__auto_encryption_opts
