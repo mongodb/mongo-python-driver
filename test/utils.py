@@ -33,9 +33,10 @@ from bson.objectid import ObjectId
 
 from pymongo import (MongoClient,
                      monitoring)
-from pymongo.errors import OperationFailure
-from pymongo.monitoring import _SENSITIVE_COMMANDS
+from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.monitoring import _SENSITIVE_COMMANDS, ConnectionPoolListener
 from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.write_concern import WriteConcern
@@ -66,6 +67,51 @@ class WhiteListEventListener(monitoring.CommandListener):
     def failed(self, event):
         if event.command_name in self.commands:
             self.results['failed'].append(event)
+
+
+class CMAPListener(ConnectionPoolListener):
+    def __init__(self):
+        self.events = []
+
+    def reset(self):
+        self.events = []
+
+    def add_event(self, event):
+        self.events.append(event)
+
+    def event_count(self, event_type):
+        return len([event for event in self.events[:]
+                    if isinstance(event, event_type)])
+
+    def connection_created(self, event):
+        self.add_event(event)
+
+    def connection_ready(self, event):
+        self.add_event(event)
+
+    def connection_closed(self, event):
+        self.add_event(event)
+
+    def connection_check_out_started(self, event):
+        self.add_event(event)
+
+    def connection_check_out_failed(self, event):
+        self.add_event(event)
+
+    def connection_checked_out(self, event):
+        self.add_event(event)
+
+    def connection_checked_in(self, event):
+        self.add_event(event)
+
+    def pool_created(self, event):
+        self.add_event(event)
+
+    def pool_cleared(self, event):
+        self.add_event(event)
+
+    def pool_closed(self, event):
+        self.add_event(event)
 
 
 class EventListener(monitoring.CommandListener):
@@ -357,6 +403,29 @@ def rs_or_single_client(h=None, p=None, **kwargs):
     Authenticates if necessary.
     """
     return _mongo_client(h, p, **kwargs)
+
+
+def ensure_all_connected(client):
+    """Ensure that the client's connection pool has socket connections to all
+    members of a replica set. Raises ConfigurationError when called with a
+    non-replica set client.
+
+    Depending on the use-case, the caller may need to clear any event listeners
+    that are configured on the client.
+    """
+    ismaster = client.admin.command("isMaster")
+    if 'setName' not in ismaster:
+        raise ConfigurationError("cluster is not a replica set")
+
+    target_host_list = set(ismaster['hosts'])
+    connected_host_list = set([ismaster['me']])
+    admindb = client.get_database('admin')
+
+    # Run isMaster until we have connected to each host at least once.
+    while connected_host_list != target_host_list:
+        ismaster = admindb.command("isMaster",
+                                   read_preference=ReadPreference.SECONDARY)
+        connected_host_list.update([ismaster["me"]])
 
 
 def one(s):

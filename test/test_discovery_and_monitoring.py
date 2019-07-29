@@ -63,6 +63,9 @@ class MockPool(object):
     def close(self):
         self._reset()
 
+    def update_is_writable(self, is_writable):
+        pass
+
 
 class MockMonitor(object):
     def __init__(self, server_description, topology, pool, topology_settings):

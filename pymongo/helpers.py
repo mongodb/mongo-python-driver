@@ -29,17 +29,21 @@ from pymongo.errors import (CursorNotFound,
                             WriteConcernError,
                             WTimeoutError)
 
-# From the Server Discovery and Monitoring spec, the "not master" error codes
-# are combined with the "node is recovering" error codes.
+# From the SDAM spec, the "node is shutting down" codes.
+_SHUTDOWN_CODES = frozenset([
+    11600,  # InterruptedAtShutdown
+    91,     # ShutdownInProgress
+])
+# From the SDAM spec, the "not master" error codes are combined with the
+# "node is recovering" error codes (of which the "node is shutting down"
+# errors are a subset).
 _NOT_MASTER_CODES = frozenset([
     10107,  # NotMaster
     13435,  # NotMasterNoSlaveOk
-    11600,  # InterruptedAtShutdown
     11602,  # InterruptedDueToReplStateChange
     13436,  # NotMasterOrSecondary
     189,    # PrimarySteppedDown
-    91,     # ShutdownInProgress
-])
+]) | _SHUTDOWN_CODES
 # From the retryable writes spec.
 _RETRYABLE_ERROR_CODES = _NOT_MASTER_CODES | frozenset([
     7,     # HostNotFound

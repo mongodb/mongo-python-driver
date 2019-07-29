@@ -159,7 +159,6 @@ class ClientContext(object):
         """Create a client and grab essential information from the server."""
         self.connection_attempts = []
         self.connected = False
-        self.ismaster = {}
         self.w = None
         self.nodes = set()
         self.replica_set_name = None
@@ -183,6 +182,10 @@ class ClientContext(object):
 
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
+
+    @property
+    def ismaster(self):
+        return self.client.admin.command('isMaster')
 
     def _connect(self, host, port, **kwargs):
         # Jython takes a long time to connect.
@@ -253,7 +256,7 @@ class ClientContext(object):
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
 
             self.server_status = self.client.admin.command('serverStatus')
-            self.ismaster = ismaster = self.client.admin.command('isMaster')
+            ismaster = self.ismaster
             self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
 
             if 'setName' in ismaster:
@@ -276,18 +279,17 @@ class ClientContext(object):
                         **self.default_client_options)
 
                 # Get the authoritative ismaster result from the primary.
-                self.ismaster = self.client.admin.command('ismaster')
+                ismaster = self.ismaster
                 nodes = [partition_node(node.lower())
-                         for node in self.ismaster.get('hosts', [])]
+                         for node in ismaster.get('hosts', [])]
                 nodes.extend([partition_node(node.lower())
-                              for node in self.ismaster.get('passives', [])])
+                              for node in ismaster.get('passives', [])])
                 nodes.extend([partition_node(node.lower())
-                              for node in self.ismaster.get('arbiters', [])])
+                              for node in ismaster.get('arbiters', [])])
                 self.nodes = set(nodes)
             else:
-                self.ismaster = ismaster
                 self.nodes = set([(host, port)])
-            self.w = len(self.ismaster.get("hosts", [])) or 1
+            self.w = len(ismaster.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
 
             if 'enableTestCommands=1' in self.cmd_line['argv']:

@@ -65,6 +65,8 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
   the buffer protocol.
 - Resume tokens can now be accessed from a ``ChangeStream`` cursor using the
   :attr:`~pymongo.change_stream.ChangeStream.resume_token` attribute.
+- Connections now survive primary step-down. Applications should expect less
+  socket connection turnover during replica set elections.
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 

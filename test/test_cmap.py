@@ -24,8 +24,7 @@ sys.path[0:0] = [""]
 
 from pymongo.errors import (ConnectionFailure,
                             PyMongoError)
-from pymongo.monitoring import (ConnectionPoolListener,
-                                ConnectionCheckedInEvent,
+from pymongo.monitoring import (ConnectionCheckedInEvent,
                                 ConnectionCheckedOutEvent,
                                 ConnectionCheckOutFailedEvent,
                                 ConnectionCheckOutFailedReason,
@@ -44,6 +43,7 @@ from test import (IntegrationTest,
                   unittest)
 from test.utils import (camel_to_snake,
                         client_context,
+                        CMAPListener,
                         get_pool,
                         get_pools,
                         rs_or_single_client,
@@ -68,48 +68,6 @@ OBJECT_TYPES = {
     'PoolClosedError': _PoolClosedError,
     'WaitQueueTimeoutError': ConnectionFailure,
 }
-
-
-class CMAPListener(ConnectionPoolListener):
-    def __init__(self):
-        self.events = []
-
-    def add_event(self, event):
-        self.events.append(event)
-
-    def event_count(self, event_type):
-        return len([event for event in self.events[:]
-                    if isinstance(event, event_type)])
-
-    def connection_created(self, event):
-        self.add_event(event)
-
-    def connection_ready(self, event):
-        self.add_event(event)
-
-    def connection_closed(self, event):
-        self.add_event(event)
-
-    def connection_check_out_started(self, event):
-        self.add_event(event)
-
-    def connection_check_out_failed(self, event):
-        self.add_event(event)
-
-    def connection_checked_out(self, event):
-        self.add_event(event)
-
-    def connection_checked_in(self, event):
-        self.add_event(event)
-
-    def pool_created(self, event):
-        self.add_event(event)
-
-    def pool_cleared(self, event):
-        self.add_event(event)
-
-    def pool_closed(self, event):
-        self.add_event(event)
 
 
 class CMAPThread(threading.Thread):

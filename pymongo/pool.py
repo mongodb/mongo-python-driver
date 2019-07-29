@@ -651,7 +651,8 @@ class SocketInfo(object):
         """
         if unacknowledged and not self.is_writable:
             # Write won't succeed, bail as if we'd received a not master error.
-            raise NotMasterError("not master")
+            raise NotMasterError("not master", {
+                "ok": 0, "errmsg": "not master", "code": 10107})
 
     def legacy_write(self, request_id, msg, max_doc_size, with_last_error):
         """Send OP_INSERT, etc., optionally returning response as a dict.
@@ -767,6 +768,9 @@ class SocketInfo(object):
 
     def update_last_checkin_time(self):
         self.last_checkin_time = _time()
+
+    def update_is_writable(self, is_writable):
+        self.is_writable = is_writable
 
     def idle_time_seconds(self):
         """Seconds since this socket was last checked into its pool."""
@@ -958,6 +962,8 @@ class Pool:
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
         self.closed = False
+        # Track whether the sockets in this pool are writeable or not.
+        self.is_writable = None
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
@@ -1011,6 +1017,15 @@ class Pool:
                 listeners.publish_pool_cleared(self.address)
             for sock_info in sockets:
                 sock_info.close_socket(ConnectionClosedReason.STALE)
+
+    def update_is_writable(self, is_writable):
+        """Updates the is_writable attribute on all sockets currently in the
+        Pool.
+        """
+        self.is_writable = is_writable
+        with self.lock:
+            for socket in self.sockets:
+                socket.update_is_writable(self.is_writable)
 
     def reset(self):
         self._reset(close=False)
@@ -1075,6 +1090,7 @@ class Pool:
         sock_info = SocketInfo(sock, self, self.address, conn_id)
         if self.handshake:
             sock_info.ismaster(self.opts.metadata, None)
+            self.is_writable = sock_info.is_writable
 
         return sock_info
 
@@ -1194,6 +1210,7 @@ class Pool:
                 sock_info.close_socket(ConnectionClosedReason.STALE)
             elif not sock_info.closed:
                 sock_info.update_last_checkin_time()
+                sock_info.update_is_writable(self.is_writable)
                 with self.lock:
                     self.sockets.appendleft(sock_info)
 

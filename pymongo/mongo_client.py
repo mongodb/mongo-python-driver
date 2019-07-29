@@ -1195,9 +1195,11 @@ class MongoClient(common.BaseObject):
 
     @contextlib.contextmanager
     def _get_socket(self, server, session, exhaust=False):
-        with self._reset_on_error(server.description.address, session):
-            with server.get_socket(self.__all_credentials,
-                                   checkout=exhaust) as sock_info:
+        with _MongoClientErrorHandler(
+                self, server.description.address, session) as err_handler:
+            with server.get_socket(
+                    self.__all_credentials, checkout=exhaust) as sock_info:
+                err_handler.contribute_socket(sock_info)
                 yield sock_info
 
     def _select_server(self, server_selector, session, address=None):
@@ -1289,8 +1291,10 @@ class MongoClient(common.BaseObject):
             server = self._select_server(
                 operation.read_preference, operation.session, address=address)
 
-            with self._reset_on_error(server.description.address,
-                                      operation.session):
+            with _MongoClientErrorHandler(
+                    self, server.description.address,
+                    operation.session) as err_handler:
+                err_handler.contribute_socket(operation.exhaust_mgr.sock)
                 return server.run_operation_with_response(
                     operation.exhaust_mgr.sock,
                     operation,
@@ -1313,49 +1317,6 @@ class MongoClient(common.BaseObject):
             address=address,
             retryable=isinstance(operation, message._Query),
             exhaust=exhaust)
-
-    @contextlib.contextmanager
-    def _reset_on_error(self, server_address, session):
-        """On "not master" or "node is recovering" errors reset the server
-        according to the SDAM spec.
-
-        Unpin the session on transient transaction errors.
-        """
-        try:
-            try:
-                yield
-            except PyMongoError as exc:
-                if session and exc.has_error_label(
-                        "TransientTransactionError"):
-                    session._unpin_mongos()
-                raise
-        except NetworkTimeout:
-            # The socket has been closed. Don't reset the server.
-            # Server Discovery And Monitoring Spec: "When an application
-            # operation fails because of any network error besides a socket
-            # timeout...."
-            if session:
-                session._server_session.mark_dirty()
-            raise
-        except NotMasterError:
-            # "When the client sees a "not master" error it MUST replace the
-            # server's description with type Unknown. It MUST request an
-            # immediate check of the server."
-            self._reset_server_and_request_check(server_address)
-            raise
-        except ConnectionFailure:
-            # "Client MUST replace the server's description with type Unknown
-            # ... MUST NOT request an immediate check of the server."
-            self.__reset_server(server_address)
-            if session:
-                session._server_session.mark_dirty()
-            raise
-        except OperationFailure as exc:
-            if exc.code in helpers._RETRYABLE_ERROR_CODES:
-                # Do not request an immediate check since the server is likely
-                # shutting down.
-                self.__reset_server(server_address)
-            raise
 
     def _retry_with_session(self, retryable, func, session, bulk):
         """Execute an operation with at most one consecutive retries
@@ -1494,7 +1455,7 @@ class MongoClient(common.BaseObject):
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, None)
 
-    def __reset_server(self, address):
+    def _reset_server(self, address):
         """Clear our connection pool for a server and mark it Unknown."""
         self._topology.reset_server(address)
 
@@ -2158,3 +2119,69 @@ class MongoClient(common.BaseObject):
         raise TypeError("'MongoClient' object is not iterable")
 
     next = __next__
+
+
+class _MongoClientErrorHandler(object):
+    """Error handler for MongoClient."""
+    __slots__ = ('_client', '_server_address', '_session', '_max_wire_version')
+
+    def __init__(self, client, server_address, session):
+        self._client = client
+        self._server_address = server_address
+        self._session = session
+        self._max_wire_version = None
+
+    def contribute_socket(self, sock_info):
+        """Provide socket information to the error handler."""
+        # Currently, we only extract the max_wire_version information.
+        self._max_wire_version = sock_info.max_wire_version
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            return
+
+        if issubclass(exc_type, PyMongoError):
+            if self._session and exc_val.has_error_label(
+                    "TransientTransactionError"):
+                self._session._unpin_mongos()
+
+        if issubclass(exc_type, NetworkTimeout):
+            # The socket has been closed. Don't reset the server.
+            # Server Discovery And Monitoring Spec: "When an application
+            # operation fails because of any network error besides a socket
+            # timeout...."
+            if self._session:
+                self._session._server_session.mark_dirty()
+        elif issubclass(exc_type, NotMasterError):
+            # As per the SDAM spec if:
+            #   - the server sees a "not master" error, and
+            #   - the server is not shutting down, and
+            #   - the server version is >= 4.2, then
+            # we keep the existing connection pool, but mark the server type
+            # as Unknown and request an immediate check of the server.
+            # Otherwise, we clear the connection pool, mark the server as
+            # Unknown and request an immediate check of the server.
+            err_code = exc_val.details.get('code', -1)
+            is_shutting_down = err_code in helpers._SHUTDOWN_CODES
+            if (is_shutting_down or (self._max_wire_version is None) or
+                    (self._max_wire_version <= 7)):
+                # Clear the pool, mark server Unknown and request check.
+                self._client._reset_server_and_request_check(
+                    self._server_address)
+            else:
+                self._client._topology.mark_server_unknown_and_request_check(
+                    self._server_address)
+        elif issubclass(exc_type, ConnectionFailure):
+            # "Client MUST replace the server's description with type Unknown
+            # ... MUST NOT request an immediate check of the server."
+            self._client._reset_server(self._server_address)
+            if self._session:
+                self._session._server_session.mark_dirty()
+        elif issubclass(exc_type, OperationFailure):
+            # Do not request an immediate check since the server is likely
+            # shutting down.
+            if exc_val.code in helpers._RETRYABLE_ERROR_CODES:
+                self._client._reset_server(self._server_address)

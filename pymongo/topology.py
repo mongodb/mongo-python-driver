@@ -409,12 +409,18 @@ class Topology(object):
         Do *not* request an immediate check.
         """
         with self._lock:
-            self._reset_server(address)
+            self._reset_server(address, reset_pool=True)
 
     def reset_server_and_request_check(self, address):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
         with self._lock:
-            self._reset_server(address)
+            self._reset_server(address, reset_pool=True)
+            self._request_check(address)
+
+    def mark_server_unknown_and_request_check(self, address):
+        """Mark a server Unknown, and check it soon."""
+        with self._lock:
+            self._reset_server(address, reset_pool=False)
             self._request_check(address)
 
     def update_pool(self):
@@ -523,8 +529,8 @@ class Topology(object):
         for server in itervalues(self._servers):
             server.open()
 
-    def _reset_server(self, address):
-        """Clear our pool for a server and mark it Unknown.
+    def _reset_server(self, address, reset_pool):
+        """Mark a server Unknown and optionally reset it's pool.
 
         Hold the lock when calling this. Does *not* request an immediate check.
         """
@@ -532,7 +538,8 @@ class Topology(object):
 
         # "server" is None if another thread removed it from the topology.
         if server:
-            server.reset()
+            if reset_pool:
+                server.reset()
 
             # Mark this server Unknown.
             self._description = self._description.reset_server(address)
@@ -578,7 +585,14 @@ class Topology(object):
                 self._servers[address] = server
                 server.open()
             else:
+                # Cache old is_writable value.
+                was_writable = self._servers[address].description.is_writable
+                # Update server description.
                 self._servers[address].description = sd
+                # Update is_writable value of the pool, if it changed.
+                if was_writable != sd.is_writable:
+                    self._servers[address].pool.update_is_writable(
+                        sd.is_writable)
 
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):

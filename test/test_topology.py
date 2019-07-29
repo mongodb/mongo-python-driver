@@ -73,6 +73,9 @@ class MockPool(object):
     def close(self):
         self._reset()
 
+    def update_is_writable(self, is_writable):
+        pass
+
     def remove_stale_sockets(self):
         pass
 
