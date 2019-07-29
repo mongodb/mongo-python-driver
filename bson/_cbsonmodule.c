@@ -123,6 +123,11 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     unsigned char in_custom_call,
                                     unsigned char in_fallback_call);
 
+/* Write a RawBSONDocument to the buffer.
+ * Returns the number of bytes written or 0 on failure.
+ */
+static int write_raw_doc(buffer_t buffer, PyObject* raw);
+
 /* Date stuff */
 static PyObject* datetime_from_millis(long long millis) {
     /* To encode a datetime instance like datetime(9999, 12, 31, 23, 59, 59, 999999)
@@ -1031,39 +1036,10 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     case 101:
         {
             /* RawBSONDocument */
-            char* raw_bson_document_bytes;
-            Py_ssize_t raw_bson_document_bytes_len;
-            int raw_bson_document_bytes_len_int;
-            PyObject* raw_bson_document_bytes_obj = PyObject_GetAttrString(value, "raw");
-            if (!raw_bson_document_bytes_obj) {
-                return 0;
-            }
-
-#if PY_MAJOR_VERSION >= 3
-            if (-1 == PyBytes_AsStringAndSize(raw_bson_document_bytes_obj,
-                                              &raw_bson_document_bytes,
-                                              &raw_bson_document_bytes_len)) {
-#else
-            if (-1 == PyString_AsStringAndSize(raw_bson_document_bytes_obj,
-                                               &raw_bson_document_bytes,
-                                               &raw_bson_document_bytes_len)) {
-#endif
-                Py_DECREF(raw_bson_document_bytes_obj);
-                return 0;
-            }
-            raw_bson_document_bytes_len_int = _downcast_and_check(
-                raw_bson_document_bytes_len, 0);
-            if (-1 == raw_bson_document_bytes_len_int) {
-                Py_DECREF(raw_bson_document_bytes_obj);
-                return 0;
-            }
-            if(!buffer_write_bytes(buffer, raw_bson_document_bytes,
-                                   raw_bson_document_bytes_len_int)) {
-                Py_DECREF(raw_bson_document_bytes_obj);
+            if (!write_raw_doc(buffer, value)) {
                 return 0;
             }
             *(buffer_get_buffer(buffer) + type_byte) = 0x03;
-            Py_DECREF(raw_bson_document_bytes_obj);
             return 1;
         }
     case 255:
@@ -1619,6 +1595,38 @@ int decode_and_write_pair(PyObject* self, buffer_t buffer,
     return 1;
 }
 
+
+/* Write a RawBSONDocument to the buffer.
+ * Returns the number of bytes written or 0 on failure.
+ */
+static int write_raw_doc(buffer_t buffer, PyObject* raw) {
+    char* bytes;
+    Py_ssize_t len;
+    int len_int;
+    int bytes_written = 0;
+    PyObject* bytes_obj = NULL;
+
+    bytes_obj = PyObject_GetAttrString(raw, "raw");
+    if (!bytes_obj) {
+        goto fail;
+    }
+
+    if (-1 == PyBytes_AsStringAndSize(bytes_obj, &bytes, &len)) {
+        goto fail;
+    }
+    len_int = _downcast_and_check(len, 0);
+    if (-1 == len_int) {
+        goto fail;
+    }
+    if (!buffer_write_bytes(buffer, bytes, len_int)) {
+        goto fail;
+    }
+    bytes_written = len_int;
+fail:
+    Py_XDECREF(bytes_obj);
+    return bytes_written;
+}
+
 /* returns the number of bytes written or 0 on failure */
 int write_dict(PyObject* self, buffer_t buffer,
                PyObject* dict, unsigned char check_keys,
@@ -1629,12 +1637,23 @@ int write_dict(PyObject* self, buffer_t buffer,
     int length;
     int length_location;
     struct module_state *state = GETSTATE(self);
+    PyObject* mapping_type;
+    long type_marker;
+
+    /* check for RawBSONDocument */
+    type_marker = _type_marker(dict);
+    if (type_marker < 0) {
+        return 0;
+    }
+
+    if (101 == type_marker) {
+        return write_raw_doc(buffer, dict);
+    }
+
 #if PY_MAJOR_VERSION >= 3
-    PyObject* mapping_type = _get_object(state->Mapping,
-                                         "collections.abc", "Mapping");
+    mapping_type = _get_object(state->Mapping, "collections.abc", "Mapping");
 #else
-    PyObject* mapping_type = _get_object(state->Mapping,
-                                         "collections", "Mapping");
+    mapping_type = _get_object(state->Mapping, "collections", "Mapping");
 #endif
 
     if (mapping_type) {

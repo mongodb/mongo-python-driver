@@ -16,10 +16,10 @@ import datetime
 import uuid
 
 from bson import BSON
-from bson.binary import JAVA_LEGACY
+from bson.binary import Binary, JAVA_LEGACY
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidBSON
-from bson.raw_bson import RawBSONDocument
+from bson.raw_bson import RawBSONDocument, DEFAULT_RAW_BSON_OPTIONS
 from bson.son import SON
 from test import client_context, unittest
 
@@ -77,6 +77,21 @@ class TestRawBSONDocument(unittest.TestCase):
         result = db.test_raw.find_one(self.document['_id'])
         self.assertIsInstance(result, RawBSONDocument)
         self.assertEqual(dict(self.document.items()), dict(result.items()))
+
+    @client_context.require_connection
+    def test_round_trip_raw_uuid(self):
+        coll = self.client.get_database('pymongo_test').test_raw
+        uid = uuid.uuid4()
+        doc = {'_id': 1,
+               'bin4': Binary(uid.bytes, 4),
+               'bin3': Binary(uid.bytes, 3)}
+        raw = RawBSONDocument(BSON.encode(doc))
+        coll.insert_one(raw)
+        self.assertEqual(coll.find_one(), {'_id': 1, 'bin4': uid, 'bin3': uid})
+
+        # Test that the raw bytes haven't changed.
+        raw_coll = coll.with_options(codec_options=DEFAULT_RAW_BSON_OPTIONS)
+        self.assertEqual(raw_coll.find_one(), raw)
 
     def test_with_codec_options(self):
         # {u'date': datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
