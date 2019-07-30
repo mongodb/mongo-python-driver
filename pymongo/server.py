@@ -16,6 +16,8 @@
 
 from datetime import datetime
 
+from bson import _decode_all_selective
+
 from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception
@@ -163,6 +165,15 @@ class Server(object):
             listeners.publish_command_success(
                 duration, res, operation.name, request_id,
                 sock_info.address)
+
+        # Decrypt response.
+        client = operation.client
+        if client and client._encrypter:
+            if use_cmd:
+                decrypted = client._encrypter.decrypt(
+                    reply.raw_command_response())
+                docs = _decode_all_selective(
+                    decrypted, operation.codec_options, user_fields)
 
         if exhaust:
             response = ExhaustResponse(

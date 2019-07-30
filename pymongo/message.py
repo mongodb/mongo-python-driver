@@ -305,6 +305,12 @@ class _Query(object):
                     'readConcern', {})[
                     'afterClusterTime'] = session.operation_time
         sock_info.send_cluster_time(cmd, session, self.client)
+        # Support auto encryption
+        client = self.client
+        if (client._encrypter and
+                not client._encrypter._bypass_auto_encryption):
+            cmd = client._encrypter.encrypt(
+                self.db, cmd, False, self.codec_options)
         self._as_command = cmd, self.db
         return self._as_command
 
@@ -393,6 +399,12 @@ class _GetMore(object):
         if self.session:
             self.session._apply_to(cmd, False, self.read_preference)
         sock_info.send_cluster_time(cmd, self.session, self.client)
+        # Support auto encryption
+        client = self.client
+        if (client._encrypter and
+                not client._encrypter._bypass_auto_encryption):
+            cmd = client._encrypter.encrypt(
+                self.db, cmd, False, self.codec_options)
         self._as_command = cmd, self.db
         return self._as_command
 

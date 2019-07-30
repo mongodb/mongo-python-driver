@@ -157,8 +157,12 @@ class TestClientSimple(EncryptionIntegrationTest):
         self.addCleanup(key_vault.drop)
 
         # Collection.insert_one auto encrypts.
+        docs = [{'_id': 1, 'ssn': '123'},
+                {'_id': 2, 'ssn': '456'},
+                {'_id': 3, 'ssn': '789'}]
         encrypted_coll = client.pymongo_test.test
-        encrypted_coll.insert_one({'_id': 1, 'ssn': '123'})
+        for doc in docs:
+            encrypted_coll.insert_one(doc)
 
         # Database.command auto decrypts.
         res = client.pymongo_test.command(
@@ -166,13 +170,25 @@ class TestClientSimple(EncryptionIntegrationTest):
         decrypted_docs = res['cursor']['firstBatch']
         self.assertEqual(decrypted_docs, [{'_id': 1, 'ssn': '123'}])
 
+        # Collection.find auto decrypts.
+        decrypted_docs = list(encrypted_coll.find())
+        self.assertEqual(decrypted_docs, docs)
+
+        # Collection.find auto decrypts getMores.
+        decrypted_docs = list(encrypted_coll.find(batch_size=1))
+        self.assertEqual(decrypted_docs, docs)
+
         # Collection.aggregate auto decrypts.
         decrypted_docs = list(encrypted_coll.aggregate([]))
-        self.assertEqual(decrypted_docs, [{'_id': 1, 'ssn': '123'}])
+        self.assertEqual(decrypted_docs, docs)
+
+        # Collection.aggregate auto decrypts getMores.
+        decrypted_docs = list(encrypted_coll.aggregate([], batchSize=1))
+        self.assertEqual(decrypted_docs, docs)
 
         # Collection.distinct auto decrypts.
         decrypted_ssns = encrypted_coll.distinct('ssn')
-        self.assertEqual(decrypted_ssns, ['123'])
+        self.assertEqual(decrypted_ssns, ['123', '456', '789'])
 
         # Make sure the field is actually encrypted.
         encrypted_doc = self.db.test.find_one()

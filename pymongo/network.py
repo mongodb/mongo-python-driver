@@ -34,7 +34,7 @@ try:
 except ImportError:
     _SELECT_ERROR = OSError
 
-from bson import _dict_to_bson, _decode_all_selective
+from bson import _decode_all_selective
 from bson.py3compat import PY3
 
 from pymongo import helpers, message
@@ -117,13 +117,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
     if (client and client._encrypter and
             not client._encrypter._bypass_auto_encryption):
-        # Workaround for $clusterTime which is incompatible with check_keys.
-        if check_keys:
-            cluster_time = spec.pop('$clusterTime', None)
         spec = orig = client._encrypter.encrypt(
-            dbname, _dict_to_bson(spec, check_keys, codec_options))
-        if check_keys and cluster_time:
-            spec['$clusterTime'] = cluster_time
+            dbname, spec, check_keys, codec_options)
         # We already checked the keys, no need to do it again.
         check_keys = False
 

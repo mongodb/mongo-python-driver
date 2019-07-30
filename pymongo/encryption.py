@@ -197,19 +197,27 @@ class _Encrypter(object):
             opts._kms_providers, schema_map))
         self._bypass_auto_encryption = opts._bypass_auto_encryption
 
-    def encrypt(self, database, cmd):
+    def encrypt(self, database, cmd, check_keys, codec_options):
         """Encrypt a MongoDB command.
 
         :Parameters:
           - `database`: The database for this command.
-          - `cmd`: A command as BSON.
+          - `cmd`: A command document.
+          - `check_keys`: If True, check `cmd` for invalid keys.
+          - `codec_options`: The CodecOptions to use while encoding `cmd`.
 
         :Returns:
           The encrypted command to execute.
         """
-        encrypted_cmd = self._auto_encrypter.encrypt(database, cmd)
+        # Workaround for $clusterTime which is incompatible with check_keys.
+        cluster_time = check_keys and cmd.pop('$clusterTime', None)
+        encrypted_cmd = self._auto_encrypter.encrypt(
+            database, _dict_to_bson(cmd, check_keys, codec_options))
         # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
-        return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
+        encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
+        if cluster_time:
+            encrypt_cmd['$clusterTime'] = cluster_time
+        return encrypt_cmd
 
     def decrypt(self, response):
         """Decrypt a MongoDB command response.
