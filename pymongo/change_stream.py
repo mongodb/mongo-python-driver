@@ -198,14 +198,27 @@ class ChangeStream(object):
         all changes in the cursor. For example::
 
             try:
-                with db.collection.watch(
-                        [{'$match': {'operationType': 'insert'}}]) as stream:
+                resume_token = None
+                pipeline = [{'$match': {'operationType': 'insert'}}]
+                with db.collection.watch(pipeline) as stream:
                     for insert_change in stream:
                         print(insert_change)
+                        resume_token = stream.resume_token
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
-                logging.error('...')
+                if resume_token is None:
+                    # There is no usable resume token because there was a
+                    # failure during ChangeStream initialization.
+                    logging.error('...')
+                else:
+                    # Use the interrupted ChangeStream's resume token to create
+                    # a new ChangeStream. The new stream will continue from the
+                    # last seen insert change without missing any events.
+                    with db.collection.watch(
+                            pipeline, resume_after=resume_token) as stream:
+                        for insert_change in stream:
+                            print(insert_change)
 
         Raises :exc:`StopIteration` if this ChangeStream is closed.
         """
@@ -238,13 +251,17 @@ class ChangeStream(object):
             with db.collection.watch() as stream:
                 while stream.alive:
                     change = stream.try_next()
+                    # Note that the ChangeStream's resume token may be updated
+                    # even when no changes are returned.
+                    print("Current resume token: %r" % (stream.resume_token,))
                     if change is not None:
-                        print(change)
-                    elif stream.alive:
-                        # We end up here when there are no recent changes.
-                        # Sleep for a while to avoid flooding the server with
-                        # getMore requests when no changes are available.
-                        time.sleep(10)
+                        print("Change document: %r" % (change,))
+                        continue
+                    # We end up here when there are no recent changes.
+                    # Sleep for a while before trying again to avoid flooding
+                    # the server with getMore requests when no changes are
+                    # available.
+                    time.sleep(10)
 
         If no change document is cached locally then this method runs a single
         getMore command. If the getMore yields any documents, the next

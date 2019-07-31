@@ -689,7 +689,7 @@ class TestSampleShellCommands(unittest.TestCase):
             # End Changestream Example 2
 
             # Start Changestream Example 3
-            resume_token = document.get("_id")
+            resume_token = cursor.resume_token
             cursor = db.inventory.watch(resume_after=resume_token)
             document = next(cursor)
             # End Changestream Example 3
