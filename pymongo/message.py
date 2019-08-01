@@ -29,6 +29,7 @@ from bson import (CodecOptions,
                   _dict_to_bson,
                   _make_c_string)
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.raw_bson import _inflate_bson, DEFAULT_RAW_BSON_OPTIONS
 from bson.py3compat import b, StringIO
 from bson.son import SON
 
@@ -47,6 +48,7 @@ from pymongo.errors import (ConfigurationError,
                             ProtocolError)
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
+from pymongo.write_concern import WriteConcern
 
 
 MAX_INT32 = 2147483647
@@ -862,10 +864,10 @@ class _BulkWriteContext(object):
 
     __slots__ = ('db_name', 'command', 'sock_info', 'op_id',
                  'name', 'field', 'publish', 'start_time', 'listeners',
-                 'session', 'compress')
+                 'session', 'compress', 'op_type', 'codec')
 
     def __init__(self, database_name, command, sock_info, operation_id,
-                 listeners, session):
+                 listeners, session, op_type, codec):
         self.db_name = database_name
         self.command = command
         self.sock_info = sock_info
@@ -877,6 +879,38 @@ class _BulkWriteContext(object):
         self.start_time = datetime.datetime.now() if self.publish else None
         self.session = session
         self.compress = True if sock_info.compression_context else False
+        self.op_type = op_type
+        self.codec = codec
+
+    def _batch_command(self, docs):
+        namespace = self.db_name + '.$cmd'
+        request_id, msg, to_send = _do_bulk_write_command(
+            namespace, self.op_type, self.command, docs, self.check_keys,
+            self.codec, self)
+        if not to_send:
+            raise InvalidOperation("cannot do an empty bulk write")
+        return request_id, msg, to_send
+
+    def execute(self, docs, client):
+        request_id, msg, to_send = self._batch_command(docs)
+        result = self.write_command(request_id, msg, to_send)
+        client._process_response(result, self.session)
+        return result, to_send
+
+    def execute_unack(self, docs, client):
+        request_id, msg, to_send = self._batch_command(docs)
+        # Though this isn't strictly a "legacy" write, the helper
+        # handles publishing commands and sending our message
+        # without receiving a result. Send 0 for max_doc_size
+        # to disable size checking. Size checking is handled while
+        # the documents are encoded to BSON.
+        self.legacy_write(request_id, msg, 0, False, to_send)
+        return to_send
+
+    @property
+    def check_keys(self):
+        """Should we check keys for this operation type?"""
+        return self.op_type == _INSERT
 
     @property
     def max_bson_size(self):
@@ -973,6 +1007,54 @@ class _BulkWriteContext(object):
         self.listeners.publish_command_failure(
             duration, failure, self.name,
             request_id, self.sock_info.address, self.op_id)
+
+
+# 2MiB
+_MAX_ENC_BSON_SIZE = 2 * (1024 * 1024)
+# 6MB
+_MAX_ENC_MESSAGE_SIZE = 6 * (1000 * 1000)
+
+
+class _EncryptedBulkWriteContext(_BulkWriteContext):
+    __slots__ = ()
+
+    def _batch_command(self, docs):
+        namespace = self.db_name + '.$cmd'
+        msg, to_send = _encode_batched_write_command(
+            namespace, self.op_type, self.command, docs, self.check_keys,
+            self.codec, self)
+        if not to_send:
+            raise InvalidOperation("cannot do an empty bulk write")
+
+        # Chop off the OP_QUERY header to get a properly batched write command.
+        cmd_start = msg.index(b"\x00", 4) + 9
+        cmd = _inflate_bson(memoryview(msg)[cmd_start:],
+                            DEFAULT_RAW_BSON_OPTIONS)
+        return cmd, to_send
+
+    def execute(self, docs, client):
+        cmd, to_send = self._batch_command(docs)
+        result = self.sock_info.command(
+            self.db_name, cmd, codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            session=self.session, client=client)
+        return result, to_send
+
+    def execute_unack(self, docs, client):
+        cmd, to_send = self._batch_command(docs)
+        self.sock_info.command(
+            self.db_name, cmd, write_concern=WriteConcern(w=0),
+            session=self.session, client=client)
+        return to_send
+
+    @property
+    def max_bson_size(self):
+        """A proxy for SockInfo.max_bson_size."""
+        return min(self.sock_info.max_bson_size, _MAX_ENC_BSON_SIZE)
+
+    @property
+    def max_message_size(self):
+        """A proxy for SockInfo.max_message_size."""
+        return min(self.sock_info.max_message_size, _MAX_ENC_MESSAGE_SIZE)
 
 
 def _raise_document_too_large(operation, doc_size, max_size):

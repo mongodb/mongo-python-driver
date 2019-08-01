@@ -30,8 +30,16 @@ from bson.son import SON
 from pymongo.errors import ConfigurationError
 from pymongo.mongo_client import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
+from pymongo.write_concern import WriteConcern
 
 from test import unittest, IntegrationTest, PyMongoTestCase, client_context
+from test.utils import wait_until
+
+
+if _HAVE_PYMONGOCRYPT:
+    # Load the mongocrypt library.
+    from pymongocrypt.binding import init
+    init(os.environ.get('MONGOCRYPT_LIB', 'mongocrypt'))
 
 
 def get_client_opts(client):
@@ -156,19 +164,27 @@ class TestClientSimple(EncryptionIntegrationTest):
         key_vault.insert_one(data_key)
         self.addCleanup(key_vault.drop)
 
-        # Collection.insert_one auto encrypts.
-        docs = [{'_id': 1, 'ssn': '123'},
-                {'_id': 2, 'ssn': '456'},
-                {'_id': 3, 'ssn': '789'}]
+        # Collection.insert_one/insert_many auto encrypts.
+        docs = [{'_id': 0, 'ssn': '000'},
+                {'_id': 1, 'ssn': '111'},
+                {'_id': 2, 'ssn': '222'},
+                {'_id': 3, 'ssn': '333'},
+                {'_id': 4, 'ssn': '444'},
+                {'_id': 5, 'ssn': '555'}]
         encrypted_coll = client.pymongo_test.test
-        for doc in docs:
-            encrypted_coll.insert_one(doc)
+        encrypted_coll.insert_one(docs[0])
+        encrypted_coll.insert_many(docs[1:3])
+        unack = encrypted_coll.with_options(write_concern=WriteConcern(w=0))
+        unack.insert_one(docs[3])
+        unack.insert_many(docs[4:], ordered=False)
+        wait_until(lambda: self.db.test.count_documents({}) == len(docs),
+                   'insert documents with w=0')
 
         # Database.command auto decrypts.
         res = client.pymongo_test.command(
-            'find', 'test', filter={'ssn': '123'})
+            'find', 'test', filter={'ssn': '000'})
         decrypted_docs = res['cursor']['firstBatch']
-        self.assertEqual(decrypted_docs, [{'_id': 1, 'ssn': '123'}])
+        self.assertEqual(decrypted_docs, [{'_id': 0, 'ssn': '000'}])
 
         # Collection.find auto decrypts.
         decrypted_docs = list(encrypted_coll.find())
@@ -188,13 +204,13 @@ class TestClientSimple(EncryptionIntegrationTest):
 
         # Collection.distinct auto decrypts.
         decrypted_ssns = encrypted_coll.distinct('ssn')
-        self.assertEqual(decrypted_ssns, ['123', '456', '789'])
+        self.assertEqual(decrypted_ssns, [d['ssn'] for d in docs])
 
         # Make sure the field is actually encrypted.
-        encrypted_doc = self.db.test.find_one()
-        self.assertEqual(encrypted_doc['_id'], 1)
-        self.assertIsInstance(encrypted_doc['ssn'], Binary)
-        self.assertEqual(encrypted_doc['ssn'].subtype, 6)
+        for encrypted_doc in self.db.test.find():
+            self.assertIsInstance(encrypted_doc['_id'], int)
+            self.assertIsInstance(encrypted_doc['ssn'], Binary)
+            self.assertEqual(encrypted_doc['ssn'].subtype, 6)
 
     def test_auto_encrypt(self):
         # Configure the encrypted field via jsonSchema.

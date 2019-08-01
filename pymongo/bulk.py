@@ -36,9 +36,9 @@ from pymongo.errors import (BulkWriteError,
                             OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
                              _do_batched_insert,
-                             _do_bulk_write_command,
                              _randint,
-                             _BulkWriteContext)
+                             _BulkWriteContext,
+                             _EncryptedBulkWriteContext)
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -152,8 +152,6 @@ class _Bulk(object):
                 document_class=dict))
         self.ordered = ordered
         self.ops = []
-        self.name = "%s.%s" % (collection.database.name, collection.name)
-        self.namespace = collection.database.name + '.$cmd'
         self.executed = False
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
@@ -163,6 +161,14 @@ class _Bulk(object):
         self.started_retryable_write = False
         # Extra state so that we know where to pick up on a retry attempt.
         self.current_run = None
+
+    @property
+    def bulk_ctx_class(self):
+        encrypter = self.collection.database.client._encrypter
+        if encrypter and not encrypter._bypass_auto_encryption:
+            return _EncryptedBulkWriteContext
+        else:
+            return _BulkWriteContext
 
     def add_insert(self, document):
         """Add an insert document to the list of ops.
@@ -271,8 +277,9 @@ class _Bulk(object):
                 cmd['writeConcern'] = write_concern.document
             if self.bypass_doc_val and sock_info.max_wire_version >= 4:
                 cmd['bypassDocumentValidation'] = True
-            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
-                                    listeners, session)
+            bwc = self.bulk_ctx_class(
+                db_name, cmd, sock_info, op_id, listeners, session,
+                run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
                 if session:
@@ -283,16 +290,9 @@ class _Bulk(object):
                         self.started_retryable_write = True
                     session._apply_to(cmd, retryable, ReadPreference.PRIMARY)
                 sock_info.send_cluster_time(cmd, session, client)
-                check_keys = run.op_type == _INSERT
                 ops = islice(run.ops, run.idx_offset, None)
-                # Run as many ops as possible.
-                request_id, msg, to_send = _do_bulk_write_command(
-                    self.namespace, run.op_type, cmd, ops, check_keys,
-                    self.collection.codec_options, bwc)
-                if not to_send:
-                    raise InvalidOperation("cannot do an empty bulk write")
-                result = bwc.write_command(request_id, msg, to_send)
-                client._process_response(result, session)
+                # Run as many ops as possible in one command.
+                result, to_send = bwc.execute(ops, client)
 
                 # Retryable writeConcernErrors halt the execution of this run.
                 wce = result.get('writeConcernError', {})
@@ -361,7 +361,7 @@ class _Bulk(object):
         db = self.collection.database
         bwc = _BulkWriteContext(
             db.name, command, sock_info, op_id, db.client._event_listeners,
-            session=None)
+            None, _INSERT, self.collection.codec_options)
         # Legacy batched OP_INSERT.
         _do_batched_insert(
             self.collection.full_name, run.ops, True, acknowledged, concern,
@@ -383,25 +383,15 @@ class _Bulk(object):
             cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
                        ('ordered', False),
                        ('writeConcern', {'w': 0})])
-            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
-                                    listeners, None)
+            bwc = self.bulk_ctx_class(
+                db_name, cmd, sock_info, op_id, listeners, None,
+                run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
-                check_keys = run.op_type == _INSERT
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
-                request_id, msg, to_send = _do_bulk_write_command(
-                    self.namespace, run.op_type, cmd, ops, check_keys,
-                    self.collection.codec_options, bwc)
-                if not to_send:
-                    raise InvalidOperation("cannot do an empty bulk write")
+                to_send = bwc.execute_unack(ops, client)
                 run.idx_offset += len(to_send)
-                # Though this isn't strictly a "legacy" write, the helper
-                # handles publishing commands and sending our message
-                # without receiving a result. Send 0 for max_doc_size
-                # to disable size checking. Size checking is handled while
-                # the documents are encoded to BSON.
-                bwc.legacy_write(request_id, msg, 0, False, to_send)
             self.current_run = run = next(generator, None)
 
     def execute_command_no_results(self, sock_info, generator):
