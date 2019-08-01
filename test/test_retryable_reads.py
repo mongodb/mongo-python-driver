@@ -20,6 +20,7 @@ import sys
 sys.path[0:0] = [""]
 
 from pymongo.mongo_client import MongoClient
+from pymongo.write_concern import WriteConcern
 
 from test import unittest, client_context, PyMongoTestCase
 from test.utils import TestCreator
@@ -66,6 +67,28 @@ class TestSpec(SpecRunner):
             if name.lower() in test['description'].lower():
                 raise unittest.SkipTest(
                     'PyMongo does not support %s' % (name,))
+
+    def get_scenario_coll_name(self, scenario_def):
+        """Override a test's collection name to support GridFS tests."""
+        if 'bucket_name' in scenario_def:
+            return scenario_def['bucket_name']
+        return super(TestSpec, self).get_scenario_coll_name(scenario_def)
+
+    def setup_scenario(self, scenario_def):
+        """Override a test's setup to support GridFS tests."""
+        if 'bucket_name' in scenario_def:
+            db_name = self.get_scenario_db_name(scenario_def)
+            db = client_context.client.get_database(
+                db_name, write_concern=WriteConcern(w='majority'))
+            # Create a bucket for the retryable reads GridFS tests.
+            client_context.client.drop_database(db_name)
+            if scenario_def['data']:
+                data = scenario_def['data']
+                # Load data.
+                db['fs.chunks'].insert_many(data['fs.chunks'])
+                db['fs.files'].insert_many(data['fs.files'])
+        else:
+            super(TestSpec, self).setup_scenario(scenario_def)
 
 
 def create_test(scenario_def, test, name):

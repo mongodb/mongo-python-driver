@@ -247,3 +247,10 @@ class DocumentTooLarge(InvalidDocument):
     """Raised when an encoded document is too large for the connected server.
     """
     pass
+
+
+class EncryptionError(OperationFailure):
+    """Raised when encryption or decryption fails.
+
+    .. versionadded:: 3.9
+    """

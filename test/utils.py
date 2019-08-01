@@ -321,8 +321,12 @@ class TestCreator(object):
 
             for filename in filenames:
                 with open(os.path.join(dirpath, filename)) as scenario_stream:
+                    # Use tz_aware=False to match how CodecOptions decodes
+                    # dates.
+                    opts = json_util.JSONOptions(tz_aware=False)
                     scenario_def = ScenarioDict(
-                        json_util.loads(scenario_stream.read()))
+                        json_util.loads(scenario_stream.read(),
+                                        json_options=opts))
 
                 test_type = os.path.splitext(filename)[0]
 

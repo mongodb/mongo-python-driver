@@ -15,10 +15,14 @@
 """Utilities for testing driver specs."""
 
 import copy
+import sys
 
 
-from bson.binary import Binary
-from bson.py3compat import iteritems
+from bson import decode, encode
+from bson.binary import Binary, STANDARD
+from bson.codec_options import CodecOptions
+from bson.int64 import Int64
+from bson.py3compat import iteritems, abc, text_type
 from bson.son import SON
 
 from gridfs import GridFSBucket
@@ -65,6 +69,7 @@ class SpecRunner(IntegrationTest):
     def setUp(self):
         super(SpecRunner, self).setUp()
         self.listener = None
+        self.maxDiff = None
 
     def _set_fail_point(self, client, command_args):
         cmd = SON([('configureFailPoint', 'failCommand')])
@@ -309,12 +314,16 @@ class SpecRunner(IntegrationTest):
 
         return result
 
+    def allowable_errors(self, op):
+        """Allow encryption spec to override expected error classes."""
+        return (PyMongoError,)
+
     def run_operations(self, sessions, collection, ops,
                        in_with_transaction=False):
         for op in ops:
             expected_result = op.get('result')
             if expect_error(op):
-                with self.assertRaises(PyMongoError,
+                with self.assertRaises(self.allowable_errors(op),
                                        msg=op['name']) as context:
                     self.run_operation(sessions, collection, op.copy())
 
@@ -351,9 +360,10 @@ class SpecRunner(IntegrationTest):
         if not len(test['expectations']):
             return
 
-        cmd_names = [event.command_name for event in res['started']]
+        # Give a nicer message when there are missing or extra events
+        cmds = decode_raw([event.command for event in res['started']])
         self.assertEqual(
-            len(res['started']), len(test['expectations']), cmd_names)
+            len(res['started']), len(test['expectations']), cmds)
         for i, expectation in enumerate(test['expectations']):
             event_type = next(iter(expectation))
             event = res['started'][i]
@@ -361,9 +371,9 @@ class SpecRunner(IntegrationTest):
             # The tests substitute 42 for any number other than 0.
             if (event.command_name == 'getMore'
                     and event.command['getMore']):
-                event.command['getMore'] = 42
+                event.command['getMore'] = Int64(42)
             elif event.command_name == 'killCursors':
-                event.command['cursors'] = [42]
+                event.command['cursors'] = [Int64(42)]
             elif event.command_name == 'update':
                 # TODO: remove this once PYTHON-1744 is done.
                 # Add upsert and multi fields back into expectations.
@@ -396,6 +406,7 @@ class SpecRunner(IntegrationTest):
 
             for attr, expected in expectation[event_type].items():
                 actual = getattr(event, attr)
+                expected = wrap_types(expected)
                 if isinstance(expected, dict):
                     for key, val in expected.items():
                         if val is None:
@@ -406,7 +417,7 @@ class SpecRunner(IntegrationTest):
                             self.fail("Expected key [%s] in %r" % (
                                 key, actual))
                         else:
-                            self.assertEqual(val, actual[key],
+                            self.assertEqual(val, decode_raw(actual[key]),
                                              "Key [%s] in %s" % (key, actual))
                 else:
                     self.assertEqual(actual, expected)
@@ -432,13 +443,30 @@ class SpecRunner(IntegrationTest):
         operation."""
         self.run_operations(sessions, collection, test['operations'])
 
+    def parse_client_options(self, opts):
+        """Allow encryption spec to override a clientOptions parsing."""
+        # Convert test['clientOptions'] to dict to avoid a Jython bug using
+        # "**" with ScenarioDict.
+        return dict(opts)
+
+    def setup_scenario(self, scenario_def):
+        """Allow specs to override a test's setup."""
+        db_name = self.get_scenario_db_name(scenario_def)
+        coll_name = self.get_scenario_coll_name(scenario_def)
+        db = client_context.client.get_database(
+            db_name, write_concern=WriteConcern(w='majority'))
+        coll = db[coll_name]
+        coll.drop()
+        db.create_collection(coll_name)
+        if scenario_def['data']:
+            # Load data.
+            coll.insert_many(scenario_def['data'])
+
     def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
         listener = OvertCommandListener()
         # Create a new client, to avoid interference from pooled sessions.
-        # Convert test['clientOptions'] to dict to avoid a Jython bug using
-        # "**" with ScenarioDict.
-        client_options = dict(test['clientOptions'])
+        client_options = self.parse_client_options(test['clientOptions'])
         use_multi_mongos = test['useMultipleMongoses']
         if client_context.is_mongos and use_multi_mongos:
             client = rs_client(client_context.mongos_seeds(),
@@ -456,25 +484,8 @@ class SpecRunner(IntegrationTest):
         self.addCleanup(self.kill_all_sessions)
 
         database_name = self.get_scenario_db_name(scenario_def)
-        write_concern_db = client_context.client.get_database(
-            database_name, write_concern=WriteConcern(w='majority'))
-        if 'bucket_name' in scenario_def:
-            # Create a bucket for the retryable reads GridFS tests.
-            collection_name = scenario_def['bucket_name']
-            client_context.client.drop_database(database_name)
-            if scenario_def['data']:
-                data = scenario_def['data']
-                # Load data.
-                write_concern_db['fs.chunks'].insert_many(data['fs.chunks'])
-                write_concern_db['fs.files'].insert_many(data['fs.files'])
-        else:
-            collection_name = self.get_scenario_coll_name(scenario_def)
-            write_concern_coll = write_concern_db[collection_name]
-            write_concern_coll.drop()
-            write_concern_db.create_collection(collection_name)
-            if scenario_def['data']:
-                # Load data.
-                write_concern_coll.insert_many(scenario_def['data'])
+        collection_name = self.get_scenario_coll_name(scenario_def)
+        self.setup_scenario(scenario_def)
 
         # SPEC-1245 workaround StaleDbVersion on distinct
         for c in self.mongos_clients:
@@ -530,11 +541,16 @@ class SpecRunner(IntegrationTest):
 
             # Read from the primary with local read concern to ensure causal
             # consistency.
-            outcome_coll = collection.database.get_collection(
+            outcome_coll = client_context.client[
+                collection.database.name].get_collection(
                 outcome_coll_name,
                 read_preference=ReadPreference.PRIMARY,
                 read_concern=ReadConcern('local'))
-            self.assertEqual(list(outcome_coll.find()), expected_c['data'])
+
+            # The expected data needs to be the left hand side here otherwise
+            # CompareType(Binary) doesn't work.
+            self.assertEqual(
+                wrap_types(expected_c['data']), list(outcome_coll.find()))
 
 
 def expect_any_error(op):
@@ -546,7 +562,7 @@ def expect_any_error(op):
 
 def expect_error_message(expected_result):
     if isinstance(expected_result, dict):
-        return expected_result['errorContains']
+        return isinstance(expected_result['errorContains'], text_type)
 
     return False
 
@@ -585,3 +601,38 @@ def end_sessions(sessions):
     for s in sessions.values():
         # Aborts the transaction if it's open.
         s.end_session()
+
+
+if sys.version_info[:2] >= (3, 6):
+    DOC_CLASS = dict
+else:
+    DOC_CLASS = SON
+OPTS = CodecOptions(document_class=DOC_CLASS, uuid_representation=STANDARD)
+
+
+def decode_raw(val):
+    """Decode RawBSONDocuments in the given container."""
+    if isinstance(val, (list, abc.Mapping)):
+        return decode(encode({'v': val}, codec_options=OPTS), OPTS)['v']
+    return val
+
+
+TYPES = {
+    'binData': Binary,
+    'long': Int64,
+}
+
+
+def wrap_types(val):
+    """Support $$type assertion in command results."""
+    if isinstance(val, list):
+        return [wrap_types(v) for v in val]
+    if isinstance(val, abc.Mapping):
+        typ = val.get('$$type')
+        if typ:
+            return CompareType(TYPES[typ])
+        d = {}
+        for key in val:
+            d[key] = wrap_types(val[key])
+        return d
+    return val

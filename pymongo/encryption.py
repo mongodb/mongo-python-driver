@@ -30,7 +30,8 @@ from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
                            _inflate_bson)
 from bson.son import SON
 
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import (EncryptionError,
+                            ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
 from pymongo.ssl_support import get_ssl_context
@@ -210,8 +211,11 @@ class _Encrypter(object):
         """
         # Workaround for $clusterTime which is incompatible with check_keys.
         cluster_time = check_keys and cmd.pop('$clusterTime', None)
-        encrypted_cmd = self._auto_encrypter.encrypt(
-            database, _dict_to_bson(cmd, check_keys, codec_options))
+        encoded_cmd = _dict_to_bson(cmd, check_keys, codec_options)
+        try:
+            encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
+        except MongoCryptError as exc:
+            raise EncryptionError(exc)
         # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
         encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
         if cluster_time:
@@ -227,7 +231,10 @@ class _Encrypter(object):
         :Returns:
           The decrypted command response.
         """
-        return self._auto_encrypter.decrypt(response)
+        try:
+            return self._auto_encrypter.decrypt(response)
+        except MongoCryptError as exc:
+            raise EncryptionError(exc)
 
     def close(self):
         """Cleanup resources."""

@@ -33,7 +33,8 @@ from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
 from pymongo.write_concern import WriteConcern
 
 from test import unittest, IntegrationTest, PyMongoTestCase, client_context
-from test.utils import wait_until
+from test.utils import TestCreator, camel_to_snake_args, wait_until
+from test.utils_spec_runner import SpecRunner
 
 
 if _HAVE_PYMONGOCRYPT:
@@ -129,8 +130,10 @@ class EncryptionIntegrationTest(IntegrationTest):
 
 
 # Location of JSON test files.
-TEST_PATH = os.path.join(
+BASE = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'client-side-encryption')
+CUSTOM_PATH = os.path.join(BASE, 'custom')
+SPEC_PATH = os.path.join(BASE, 'spec')
 
 OPTS = CodecOptions(uuid_representation=STANDARD)
 
@@ -139,7 +142,7 @@ JSON_OPTS = JSONOptions(document_class=SON, uuid_representation=STANDARD)
 
 
 def read(filename):
-    with open(os.path.join(TEST_PATH, filename)) as fp:
+    with open(os.path.join(CUSTOM_PATH, filename)) as fp:
         return fp.read()
 
 
@@ -229,6 +232,105 @@ class TestClientSimple(EncryptionIntegrationTest):
             KMS_PROVIDERS, 'admin.datakeys', schema_map=schemas)
 
         self._test_auto_encrypt(opts)
+
+
+# Spec tests
+
+AWS_CREDS = {
+    'accessKeyId': os.environ.get('FLE_AWS_KEY', ''),
+    'secretAccessKey': os.environ.get('FLE_AWS_SECRET', '')
+}
+
+
+class TestSpec(SpecRunner):
+
+    @classmethod
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
+    def setUpClass(cls):
+        super(TestSpec, cls).setUpClass()
+
+    def parse_auto_encrypt_opts(self, opts):
+        """Parse clientOptions.autoEncryptOpts."""
+        opts = camel_to_snake_args(opts)
+        kms_providers = opts['kms_providers']
+        if 'aws' in kms_providers:
+            kms_providers['aws'] = AWS_CREDS
+            if not any(AWS_CREDS.values()):
+                self.skipTest('AWS environment credentials are not set')
+        if 'key_vault_namespace' not in opts:
+            opts['key_vault_namespace'] = 'admin.datakeys'
+        opts = dict(opts)
+        return AutoEncryptionOpts(**opts)
+
+    def parse_client_options(self, opts):
+        """Override clientOptions parsing to support autoEncryptOpts."""
+        encrypt_opts = opts.pop('autoEncryptOpts')
+        if encrypt_opts:
+            opts['auto_encryption_opts'] = self.parse_auto_encrypt_opts(
+                encrypt_opts)
+
+        return super(TestSpec, self).parse_client_options(opts)
+
+    def get_object_name(self, op):
+        """Default object is collection."""
+        return op.get('object', 'collection')
+
+    def maybe_skip_scenario(self, test):
+        super(TestSpec, self).maybe_skip_scenario(test)
+        if 'type=symbol' in test['description'].lower():
+            raise unittest.SkipTest(
+                'PyMongo does not support the symbol type')
+
+    def setup_scenario(self, scenario_def):
+        """Override a test's setup."""
+        key_vault_data = scenario_def['key_vault_data']
+        if key_vault_data:
+            coll = client_context.client.get_database(
+                'admin',
+                write_concern=WriteConcern(w='majority'),
+                codec_options=OPTS)['datakeys']
+            coll.drop()
+            coll.insert_many(key_vault_data)
+
+        db_name = self.get_scenario_db_name(scenario_def)
+        coll_name = self.get_scenario_coll_name(scenario_def)
+        db = client_context.client.get_database(
+            db_name, write_concern=WriteConcern(w='majority'),
+            codec_options=OPTS)
+        coll = db[coll_name]
+        coll.drop()
+        json_schema = scenario_def['json_schema']
+        if json_schema:
+            db.create_collection(
+                coll_name,
+                validator={'$jsonSchema': json_schema}, codec_options=OPTS)
+        else:
+            db.create_collection(coll_name)
+
+        if scenario_def['data']:
+            # Load data.
+            coll.insert_many(scenario_def['data'])
+
+    def allowable_errors(self, op):
+        """Override expected error classes."""
+        errors = super(TestSpec, self).allowable_errors(op)
+        # An updateOne test expects encryption to error when no $ operator
+        # appears but pymongo raises a client side ValueError in this case.
+        if op['name'] == 'updateOne':
+            errors += (ValueError,)
+        return errors
+
+
+def create_test(scenario_def, test, name):
+    @client_context.require_test_commands
+    def run_scenario(self):
+        self.run_scenario(scenario_def, test)
+
+    return run_scenario
+
+
+test_creator = TestCreator(create_test, TestSpec, SPEC_PATH)
+test_creator.create_tests()
 
 
 if __name__ == "__main__":
