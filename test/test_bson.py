@@ -292,6 +292,7 @@ class TestBSON(unittest.TestCase):
         bs = b"".join(map(BSON.encode, docs))
         self.assertEqual(docs, decode_all(bytearray(bs)))
         self.assertEqual(docs, decode_all(memoryview(bs)))
+        self.assertEqual(docs, decode_all(memoryview(b'1' + bs + b'1')[1:-1]))
         if PY3:
             import array
             import mmap
@@ -307,6 +308,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(doc, decode(bs))
         self.assertEqual(doc, decode(bytearray(bs)))
         self.assertEqual(doc, decode(memoryview(bs)))
+        self.assertEqual(doc, decode(memoryview(b'1' + bs + b'1')[1:-1]))
         if PY3:
             import array
             import mmap

@@ -177,10 +177,6 @@ else:
     def get_data_and_view(data):
         if isinstance(data, _supported_buffer_types):
             return data, memoryview(data)
-        elif isinstance(data, memoryview):
-            if isinstance(
-                    getattr(data, 'obj', None), _supported_buffer_types):
-                return data.obj, data
         view = memoryview(data)
         return view.tobytes(), view
 
