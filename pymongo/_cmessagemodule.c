@@ -1565,30 +1565,29 @@ _batched_write_command(
         /* We have enough data, return this batch.
          * max_cmd_size accounts for the two trailing null bytes.
          */
+        cur_size = buffer_get_position(buffer) - cur_doc_begin;
         enough_data = (buffer_get_position(buffer) > max_cmd_size);
-        if (enough_data) {
-            cur_size = buffer_get_position(buffer) - cur_doc_begin;
-
-            /* This single document is too large for the command. */
-            if (!idx) {
-                if (op == _INSERT) {
-                    _set_document_too_large(cur_size, max_bson_size);
-                } else {
-                    PyObject* DocumentTooLarge = _error("DocumentTooLarge");
-                    if (DocumentTooLarge) {
-                        /*
-                         * There's nothing intelligent we can say
-                         * about size for update and delete.
-                         */
-                        PyErr_Format(
-                            DocumentTooLarge,
-                            "%s command document too large",
-                            (op == _UPDATE) ? "update": "delete");
-                        Py_DECREF(DocumentTooLarge);
-                    }
+        /* This single document is too large for the command. */
+        if (cur_size > max_cmd_size) {
+            if (op == _INSERT) {
+                _set_document_too_large(cur_size, max_bson_size);
+            } else {
+                PyObject* DocumentTooLarge = _error("DocumentTooLarge");
+                if (DocumentTooLarge) {
+                    /*
+                     * There's nothing intelligent we can say
+                     * about size for update and delete.
+                     */
+                    PyErr_Format(
+                        DocumentTooLarge,
+                        "%s command document too large",
+                        (op == _UPDATE) ? "update": "delete");
+                    Py_DECREF(DocumentTooLarge);
                 }
-                goto fail;
             }
+            goto fail;
+        }
+        if (enough_data) {
             /*
              * Roll the existing buffer back to the beginning
              * of the last document encoded.

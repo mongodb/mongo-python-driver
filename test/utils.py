@@ -132,6 +132,10 @@ class EventListener(monitoring.CommandListener):
         """Return list of command names started."""
         return [event.command_name for event in self.results['started']]
 
+    def reset(self):
+        """Reset the state of this listener."""
+        self.results.clear()
+
 
 class OvertCommandListener(EventListener):
     """A CommandListener that ignores sensitive commands."""

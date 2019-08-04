@@ -1421,13 +1421,14 @@ def _batched_write_command_impl(
         value = bson.BSON.encode(doc, check_keys, opts)
         # Is there enough room to add this document? max_cmd_size accounts for
         # the two trailing null bytes.
+        doc_too_large = len(value) > max_cmd_size
         enough_data = (buf.tell() + len(key) + len(value)) >= max_cmd_size
         enough_documents = (idx >= max_write_batch_size)
+        if doc_too_large:
+            write_op = list(_FIELD_MAP.keys())[operation]
+            _raise_document_too_large(
+                write_op, len(value), max_bson_size)
         if enough_data or enough_documents:
-            if not idx:
-                write_op = list(_FIELD_MAP.keys())[operation]
-                _raise_document_too_large(
-                    write_op, len(value), max_bson_size)
             break
         buf.write(_BSONOBJ)
         buf.write(key)

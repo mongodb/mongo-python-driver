@@ -40,7 +40,9 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure)
 from pymongo.encryption import (Algorithm,
                                 ClientEncryption)
+from pymongo.errors import ConfigurationError, DocumentTooLarge
 from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
+from pymongo.message import _COMMAND_OVERHEAD
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 from pymongo.write_concern import WriteConcern
@@ -48,6 +50,7 @@ from pymongo.write_concern import WriteConcern
 from test import unittest, IntegrationTest, PyMongoTestCase, client_context
 from test.utils import (TestCreator,
                         camel_to_snake_args,
+                        OvertCommandListener,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
@@ -902,6 +905,97 @@ class TestCorpus(EncryptionIntegrationTest):
         opts = AutoEncryptionOpts(
             self.kms_providers(), 'admin.datakeys', schema_map=schemas)
         self._test_corpus(opts)
+
+
+class TestBsonSizeBatches(EncryptionIntegrationTest):
+    """Prose tests for BSON size limits and batch splitting."""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestBsonSizeBatches, cls).setUpClass()
+        db = client_context.client.db
+        cls.coll = db.coll
+        cls.coll.drop()
+        # Configure the encrypted 'db.coll' collection via jsonSchema.
+        json_schema = json_data('limits', 'limits-schema.json')
+        db.create_collection(
+            'coll', validator={'$jsonSchema': json_schema}, codec_options=OPTS,
+            write_concern=WriteConcern(w='majority'))
+
+        # Create the key vault.
+        coll = client_context.client.get_database(
+            'admin',
+            write_concern=WriteConcern(w='majority'),
+            codec_options=OPTS)['datakeys']
+        coll.drop()
+        coll.insert_one(json_data('limits', 'limits-key.json'))
+
+        opts = AutoEncryptionOpts(
+            {'local': {'key': LOCAL_MASTER_KEY}}, 'admin.datakeys')
+        cls.listener = OvertCommandListener()
+        cls.client_encrypted = rs_or_single_client(
+            auto_encryption_opts=opts, event_listeners=[cls.listener])
+        cls.coll_encrypted = cls.client_encrypted.db.coll
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.coll_encrypted.drop()
+        cls.client_encrypted.close()
+        super(TestBsonSizeBatches, cls).tearDownClass()
+
+    def test_01_insert_succeeds_under_2MiB(self):
+        doc = {'_id': 'no_encryption_under_2mib',
+               'unencrypted': 'a' * ((2**21) - 1000)}
+        self.coll_encrypted.insert_one(doc)
+
+        # Same with bulk_write.
+        doc = {'_id': 'no_encryption_under_2mib_bulk',
+               'unencrypted': 'a' * ((2**21) - 1000)}
+        self.coll_encrypted.bulk_write([InsertOne(doc)])
+
+    def test_02_insert_fails_over_2MiB(self):
+        doc = {'_id': 'no_encryption_over_2mib',
+               'unencrypted': 'a' * (2**21 + _COMMAND_OVERHEAD)}
+
+        with self.assertRaises(DocumentTooLarge):
+            self.coll_encrypted.insert_one(doc)
+        with self.assertRaises(DocumentTooLarge):
+            self.coll_encrypted.insert_many([doc])
+        with self.assertRaises(DocumentTooLarge):
+            self.coll_encrypted.bulk_write([InsertOne(doc)])
+
+    def test_03_insert_succeeds_over_2MiB_post_encryption(self):
+        doc = {'_id': 'encryption_exceeds_2mib',
+               'unencrypted': 'a' * ((2**21) - 2000)}
+        doc.update(json_data('limits', 'limits-doc.json'))
+        self.coll_encrypted.insert_one(doc)
+
+        # Same with bulk_write.
+        doc['_id'] = 'encryption_exceeds_2mib_bulk'
+        self.coll_encrypted.bulk_write([InsertOne(doc)])
+
+    def test_04_bulk_batch_split(self):
+        doc1 = {'_id': 'no_encryption_under_2mib_1',
+                'unencrypted': 'a' * ((2**21) - 1000)}
+        doc2 = {'_id': 'no_encryption_under_2mib_2',
+                'unencrypted': 'a' * ((2**21) - 1000)}
+        self.listener.reset()
+        self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
+        self.assertEqual(
+            self.listener.started_command_names(), ['insert', 'insert'])
+
+    def test_05_bulk_batch_split(self):
+        limits_doc = json_data('limits', 'limits-doc.json')
+        doc1 = {'_id': 'encryption_exceeds_2mib_1',
+                'unencrypted': 'a' * ((2**21) - 2000)}
+        doc1.update(limits_doc)
+        doc2 = {'_id': 'encryption_exceeds_2mib_2',
+                'unencrypted': 'a' * ((2**21) - 2000)}
+        doc2.update(limits_doc)
+        self.listener.reset()
+        self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
+        self.assertEqual(
+            self.listener.started_command_names(), ['insert', 'insert'])
 
 
 if __name__ == "__main__":

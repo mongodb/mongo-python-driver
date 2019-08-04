@@ -49,6 +49,9 @@ from pymongo.errors import (ConfigurationError,
                             EncryptionError,
                             InvalidOperation,
                             ServerSelectionTimeoutError)
+from pymongo.message import (_COMMAND_OVERHEAD,
+                             _MAX_ENC_BSON_SIZE,
+                             _raise_document_too_large)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
 from pymongo.read_concern import ReadConcern
@@ -265,11 +268,15 @@ class _Encrypter(object):
           The encrypted command to execute.
         """
         self._check_closed()
+        # Workaround for $clusterTime which is incompatible with
+        # check_keys.
+        cluster_time = check_keys and cmd.pop('$clusterTime', None)
+        encoded_cmd = _dict_to_bson(cmd, check_keys, codec_options)
+        max_cmd_size = _MAX_ENC_BSON_SIZE + _COMMAND_OVERHEAD
+        if len(encoded_cmd) > max_cmd_size:
+            raise _raise_document_too_large(
+                next(iter(cmd)), len(encoded_cmd), max_cmd_size)
         with _wrap_encryption_errors():
-            # Workaround for $clusterTime which is incompatible with
-            # check_keys.
-            cluster_time = check_keys and cmd.pop('$clusterTime', None)
-            encoded_cmd = _dict_to_bson(cmd, check_keys, codec_options)
             encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             encrypt_cmd = _inflate_bson(
