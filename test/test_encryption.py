@@ -17,6 +17,7 @@
 import os
 import socket
 import sys
+import uuid
 
 sys.path[0:0] = [""]
 
@@ -28,8 +29,8 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 
 from pymongo.errors import ConfigurationError
-from pymongo.mongo_client import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
+from pymongo.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 from test import unittest, IntegrationTest, PyMongoTestCase, client_context
@@ -41,6 +42,10 @@ if _HAVE_PYMONGOCRYPT:
     # Load the mongocrypt library.
     from pymongocrypt.binding import init
     init(os.environ.get('MONGOCRYPT_LIB', 'mongocrypt'))
+
+# This has to be imported after calling init().
+from pymongo.encryption import (Algorithm,
+                                ClientEncryption)
 
 
 def get_client_opts(client):
@@ -233,6 +238,43 @@ class TestClientSimple(EncryptionIntegrationTest):
 
         self._test_auto_encrypt(opts)
 
+
+class TestExplicitSimple(EncryptionIntegrationTest):
+
+    def test_encrypt_decrypt(self):
+        client_encryption = ClientEncryption(
+            KMS_PROVIDERS, 'admin.datakeys', client_context.client)
+        self.addCleanup(client_encryption.close)
+        # Use standard UUID representation.
+        key_vault = client_context.client.admin.get_collection(
+            'datakeys', codec_options=OPTS)
+        self.addCleanup(key_vault.drop)
+
+        # Create the encrypted field's data key.
+        key_id = client_encryption.create_data_key(
+            'local', key_alt_names=['name'])
+        self.assertIsInstance(key_id, uuid.UUID)
+        self.assertTrue(key_vault.find_one({'_id': key_id}))
+
+        # Create an unused data key to make sure filtering works.
+        unused_key_id = client_encryption.create_data_key(
+            'local', key_alt_names=['unused'])
+        self.assertIsInstance(unused_key_id, uuid.UUID)
+        self.assertTrue(key_vault.find_one({'_id': unused_key_id}))
+
+        doc = {'_id': 0, 'ssn': '000'}
+        encrypted_ssn = client_encryption.encrypt(
+            doc['ssn'], Algorithm.Deterministic, key_id=key_id)
+
+        # Ensure encryption via key_alt_name for the same key produces the
+        # same output.
+        encrypted_ssn2 = client_encryption.encrypt(
+            doc['ssn'], Algorithm.Deterministic, key_alt_name='name')
+        self.assertEqual(encrypted_ssn, encrypted_ssn2)
+
+        # Test decryption.
+        decrypted_ssn = client_encryption.decrypt(encrypted_ssn)
+        self.assertEqual(decrypted_ssn, doc['ssn'])
 
 # Spec tests
 

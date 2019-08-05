@@ -12,17 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Client side encryption implementation."""
+"""Client side encryption."""
 
 import subprocess
+import uuid
 import weakref
 
-from pymongocrypt.auto_encrypter import AutoEncrypter
-from pymongocrypt.errors import MongoCryptError
-from pymongocrypt.mongocrypt import MongoCryptOptions
-from pymongocrypt.state_machine import MongoCryptCallback
+try:
+    from pymongocrypt.auto_encrypter import AutoEncrypter
+    from pymongocrypt.errors import MongoCryptError
+    from pymongocrypt.explicit_encrypter import ExplicitEncrypter
+    from pymongocrypt.mongocrypt import MongoCryptOptions
+    from pymongocrypt.state_machine import MongoCryptCallback
+    _HAVE_PYMONGOCRYPT = True
+except ImportError:
+    _HAVE_PYMONGOCRYPT = False
+    MongoCryptCallback = object
 
-from bson import _bson_to_dict, _dict_to_bson
+from bson import _bson_to_dict, _dict_to_bson, decode, encode
 from bson.binary import STANDARD
 from bson.codec_options import CodecOptions
 from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
@@ -30,7 +37,8 @@ from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
                            _inflate_bson)
 from bson.son import SON
 
-from pymongo.errors import (EncryptionError,
+from pymongo.errors import (ConfigurationError,
+                            EncryptionError,
                             ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
@@ -52,7 +60,10 @@ class _EncryptionIO(MongoCryptCallback):
     def __init__(self, client, key_vault_coll, mongocryptd_client, opts):
         """Internal class to perform I/O on behalf of pymongocrypt."""
         # Use a weak ref to break reference cycle.
-        self.client_ref = weakref.ref(client)
+        if client is not None:
+            self.client_ref = weakref.ref(client)
+        else:
+            self.client_ref = None
         self.key_vault_coll = key_vault_coll.with_options(
             codec_options=_KEY_VAULT_OPTS)
         self.mongocryptd_client = mongocryptd_client
@@ -167,6 +178,19 @@ class _EncryptionIO(MongoCryptCallback):
         res = self.key_vault_coll.insert_one(doc)
         return res.inserted_id
 
+    def bson_encode(self, doc):
+        """Encode a document to BSON.
+
+        A document can be any mapping type (like :class:`dict`).
+
+        :Parameters:
+          - `doc`: mapping type representing a document
+
+        :Returns:
+          The encoded BSON bytes.
+        """
+        return encode(doc)
+
     def close(self):
         """Release resources.
 
@@ -174,8 +198,9 @@ class _EncryptionIO(MongoCryptCallback):
         """
         self.client_ref = None
         self.key_vault_coll = None
-        self.mongocryptd_client.close()
-        self.mongocryptd_client = None
+        if self.mongocryptd_client:
+            self.mongocryptd_client.close()
+            self.mongocryptd_client = None
 
 
 class _Encrypter(object):
@@ -262,3 +287,147 @@ class _Encrypter(object):
         io_callbacks = _EncryptionIO(
             client, key_vault_coll, mongocryptd_client, opts)
         return _Encrypter(io_callbacks, opts)
+
+
+class Algorithm(object):
+    """An enum that defines the supported encryption algorithms."""
+    Deterministic = "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
+    Random = "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
+
+
+class ClientEncryption(object):
+    """Explicit client side encryption."""
+
+    def __init__(self, kms_providers, key_vault_namespace, key_vault_client):
+        """Explicit client side encryption.
+
+        The ClientEncryption class encapsulates explicit operations on a key
+        vault collection that cannot be done directly on a MongoClient. Similar
+        to configuring auto encryption on a MongoClient, it is constructed with
+        a MongoClient (to a MongoDB cluster containing the key vault
+        collection), KMS provider configuration, and keyVaultNamespace. It
+        provides an API for explicitly encrypting and decrypting values, and
+        creating data keys. It does not provide an API to query keys from the
+        key vault collection, as this can be done directly on the MongoClient.
+
+        :Parameters:
+          - `kms_providers`: Map of KMS provider options. Two KMS providers
+            are supported: "aws" and "local". The kmsProviders map values
+            differ by provider:
+
+              - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
+                These are the AWS access key ID and AWS secret access key used
+                to generate KMS messages.
+              - `local`: Map with "key" as a 96-byte array or string. "key"
+                is the master key used to encrypt/decrypt data keys. This key
+                should be generated and stored as securely as possible.
+
+          - `key_vault_namespace`: The namespace for the key vault collection.
+            The key vault collection contains all data keys used for encryption
+            and decryption. Data keys are stored as documents in this MongoDB
+            collection. Data keys are protected with encryption by a KMS
+            provider.
+          - `key_vault_client`: A MongoClient connected to a MongoDB cluster
+            containing the `key_vault_namespace` collection.
+
+        .. versionadded:: 3.9
+        """
+        if not _HAVE_PYMONGOCRYPT:
+            raise ConfigurationError(
+                "client side encryption requires the pymongocrypt library: "
+                "install a compatible version with: "
+                "python -m pip install pymongo['encryption']")
+
+        self._kms_providers = kms_providers
+        self._key_vault_namespace = key_vault_namespace
+        self._key_vault_client = key_vault_client
+
+        db, coll = key_vault_namespace.split('.', 1)
+        key_vault_coll = key_vault_client[db][coll]
+
+        self._io_callbacks = _EncryptionIO(None, key_vault_coll, None, None)
+        self._encryption = ExplicitEncrypter(
+            self._io_callbacks, MongoCryptOptions(kms_providers, None))
+
+    def create_data_key(self, kms_provider, master_key=None,
+                        key_alt_names=None):
+        """Create and insert a new data key into the key vault collection.
+
+        :Parameters:
+          - `kms_provider`: The KMS provider to use. Supported values are
+            "aws" and "local".
+          - `master_key`: The `master_key` identifies a KMS-specific key used
+            to encrypt the new data key. If the kmsProvider is "local" the
+            `master_key` is not applicable and may be omitted.
+            If the `kms_provider` is "aws", `master_key` is required and must
+            have the following fields:
+
+              - `region` (string): The AWS region as a string.
+              - `key` (string): The Amazon Resource Name (ARN) to the AWS
+                customer master key (CMK).
+
+          - `key_alt_names` (optional): An optional list of string alternate
+            names used to reference a key. If a key is created with alternate
+            names, then encryption may refer to the key by the unique alternate
+            name instead of by ``key_id``. The following example shows creating
+            and referring to a data key by alternate name::
+
+              client_encryption.create_data_key("local", keyAltNames=["name1"])
+              # reference the key with the alternate name
+              client_encryption.encrypt("457-55-5462", keyAltName="name1",
+                                        algorithm=Algorithm.Random)
+
+        :Returns:
+          The ``_id`` of the created data key document.
+        """
+        return self._encryption.create_data_key(
+            kms_provider, master_key=master_key, key_alt_names=key_alt_names)
+
+    def encrypt(self, value, algorithm, key_id=None, key_alt_name=None):
+        """Encrypt a BSON value with a given key and algorithm.
+
+        Note that exactly one of ``key_id`` or  ``key_alt_name`` must be
+        provided.
+
+        :Parameters:
+          - `value`: The BSON value to encrypt.
+          - `algorithm` (string): The encryption algorithm to use. See
+            :class:`Algorithm` for some valid options.
+          - `key_id`: Identifies a data key by ``_id`` which must be a UUID
+            or a :class:`~bson.binary.Binary` with subtype 4.
+          - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
+
+        :Returns:
+          The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+        """
+        # TODO: Add a required codec_options argument for encoding?
+        doc = encode({'v': value})
+        if isinstance(key_id, uuid.UUID):
+            raw_key_id = key_id.bytes
+        else:
+            raw_key_id = key_id
+        encrypted_doc = self._encryption.encrypt(
+            doc, algorithm, key_id=raw_key_id, key_alt_name=key_alt_name)
+        return decode(encrypted_doc)['v']
+
+    def decrypt(self, value):
+        """Decrypt an encrypted value.
+
+        :Parameters:
+          - `value` (Binary): The encrypted value, a
+            :class:`~bson.binary.Binary` with subtype 6.
+
+        :Returns:
+          The decrypted BSON value.
+        """
+        doc = encode({'v': value})
+        decrypted_doc = self._encryption.decrypt(doc)
+        # TODO: Add a required codec_options argument for decoding?
+        return decode(decrypted_doc)['v']
+
+    def close(self):
+        """Release resources."""
+        self._io_callbacks.close()
+        self._encryption.close()
+        self._io_callbacks = None
+        self._encryption = None

@@ -41,8 +41,9 @@ Sub-modules:
    cursor_manager
    database
    driver_info
-   errors
+   encryption
    encryption_options
+   errors
    message
    mongo_client
    mongo_replica_set_client
