@@ -54,6 +54,8 @@ class TestSpec(SpecRunner):
 
     @classmethod
     @client_context.require_version_min(4, 0)
+    # TODO: remove this once PYTHON-1948 is done.
+    @client_context.require_no_mmap
     def setUpClass(cls):
         super(TestSpec, cls).setUpClass()
         if client_context.is_mongos and client_context.version[:2] <= (4, 0):
@@ -65,8 +67,13 @@ class TestSpec(SpecRunner):
             'listCollectionObjects', 'listIndexNames', 'listDatabaseObjects']
         for name in skip_names:
             if name.lower() in test['description'].lower():
-                raise unittest.SkipTest(
-                    'PyMongo does not support %s' % (name,))
+                self.skipTest('PyMongo does not support %s' % (name,))
+
+        # Skip changeStream related tests on MMAPv1.
+        test_name = self.id().rsplit('.')[-1]
+        if ('changestream' in test_name.lower() and
+                client_context.storage_engine == 'mmapv1'):
+            self.skipTest("MMAPv1 does not support change streams.")
 
     def get_scenario_coll_name(self, scenario_def):
         """Override a test's collection name to support GridFS tests."""

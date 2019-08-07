@@ -663,6 +663,7 @@ class TestSampleShellCommands(unittest.TestCase):
 
     @client_context.require_version_min(3, 5, 11)
     @client_context.require_replica_set
+    @client_context.require_no_mmap
     def test_change_streams(self):
         db = client_context.client.pymongo_test
         done = False
@@ -1117,6 +1118,7 @@ class TestTransactionExamples(IntegrationTest):
 class TestCausalConsistencyExamples(IntegrationTest):
     @client_context.require_version_min(3, 6, 0)
     @client_context.require_secondaries_count(1)
+    @client_context.require_no_mmap
     def test_causal_consistency(self):
         # Causal consistency examples
         client = self.client

@@ -256,6 +256,10 @@ class ClientContext(object):
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
 
             self.server_status = self.client.admin.command('serverStatus')
+            if self.storage_engine == "mmapv1":
+                # MMAPv1 does not support retryWrites=True.
+                self.default_client_options['retryWrites'] = False
+
             ismaster = self.ismaster
             self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
 
@@ -348,6 +352,14 @@ class ClientContext(object):
         if not self.client:
             return False
         return bool(len(self.client.secondaries))
+
+    @property
+    def storage_engine(self):
+        try:
+            return self.server_status.get("storageEngine", {}).get("name")
+        except AttributeError:
+            # Raised if self.server_status is None.
+            return None
 
     def _check_user_provided(self):
         """Return True if db_user/db_password is already an admin user."""
@@ -449,14 +461,7 @@ class ClientContext(object):
         def is_not_mmap():
             if self.is_mongos:
                 return True
-            try:
-                storage_engine = self.server_status.get(
-                    'storageEngine').get('name')
-            except AttributeError:
-                # Raised if the storageEngine key does not exist or if
-                # self.server_status is None.
-                return False
-            return storage_engine != 'mmapv1'
+            return self.storage_engine != 'mmapv1'
 
         return self._require(
             is_not_mmap, "Storage engine must not be MMAPv1", func=func)
@@ -618,11 +623,15 @@ class ClientContext(object):
                              func=func)
 
     def supports_transactions(self):
+        if self.storage_engine == 'mmapv1':
+            return False
+
         if self.version.at_least(4, 1, 8):
             return self.is_mongos or self.is_rs
 
         if self.version.at_least(4, 0):
             return self.is_rs
+
         return False
 
     def require_transactions(self, func):

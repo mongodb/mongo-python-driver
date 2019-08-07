@@ -1397,6 +1397,14 @@ class MongoClient(common.BaseObject):
                     retrying = True
                 last_error = exc
             except OperationFailure as exc:
+                # retryWrites on MMAPv1 should raise an actionable error.
+                if (exc.code == 20 and
+                        str(exc).startswith("Transaction numbers")):
+                    errmsg = (
+                        "This MongoDB deployment does not support "
+                        "retryable writes. Please add retryWrites=false "
+                        "to your connection string.")
+                    raise OperationFailure(errmsg, exc.code, exc.details)
                 if not retryable or is_retrying():
                     raise
                 if exc.code not in helpers._RETRYABLE_ERROR_CODES:

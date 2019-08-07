@@ -467,6 +467,10 @@ class SpecRunner(IntegrationTest):
         listener = OvertCommandListener()
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test['clientOptions'])
+        # MMAPv1 does not support retryable writes.
+        if (client_options.get('retryWrites') is True and
+                client_context.storage_engine == 'mmapv1'):
+            self.skipTest("MMAPv1 does not support retryWrites=True")
         use_multi_mongos = test['useMultipleMongoses']
         if client_context.is_mongos and use_multi_mongos:
             client = rs_client(client_context.mongos_seeds(),
