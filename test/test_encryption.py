@@ -609,6 +609,27 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
         self._test_external_key_vault(False)
 
 
+class TestViews(EncryptionIntegrationTest):
+
+    @staticmethod
+    def kms_providers():
+        return {'local': {'key': LOCAL_MASTER_KEY}}
+
+    def test_views_are_prohibited(self):
+        self.client.db.view.drop()
+        self.client.db.create_collection('view', viewOn='coll')
+        self.addCleanup(self.client.db.view.drop)
+
+        opts = AutoEncryptionOpts(self.kms_providers(), 'admin.datakeys')
+        client_encrypted = rs_or_single_client(
+            auto_encryption_opts=opts, uuidRepresentation='standard')
+        self.addCleanup(client_encrypted.close)
+
+        with self.assertRaisesRegex(
+                EncryptionError, 'cannot auto encrypt a view'):
+            client_encrypted.db.view.insert_one({})
+
+
 class TestCorpus(EncryptionIntegrationTest):
 
     @classmethod
