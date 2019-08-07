@@ -30,7 +30,7 @@ except ImportError:
     MongoCryptCallback = object
 
 from bson import _bson_to_dict, _dict_to_bson, decode, encode
-from bson.binary import STANDARD
+from bson.binary import STANDARD, Binary
 from bson.codec_options import CodecOptions
 from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument,
@@ -401,7 +401,7 @@ class ClientEncryption(object):
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
         """
         # TODO: Add a required codec_options argument for encoding?
-        doc = encode({'v': value})
+        doc = encode({'v': value}, codec_options=_DATA_KEY_OPTS)
         if isinstance(key_id, uuid.UUID):
             raw_key_id = key_id.bytes
         else:
@@ -420,10 +420,13 @@ class ClientEncryption(object):
         :Returns:
           The decrypted BSON value.
         """
+        if not (isinstance(value, Binary) and value.subtype == 6):
+            raise TypeError(
+                'value to decrypt must be a bson.binary.Binary with subtype 6')
         doc = encode({'v': value})
         decrypted_doc = self._encryption.decrypt(doc)
         # TODO: Add a required codec_options argument for decoding?
-        return decode(decrypted_doc)['v']
+        return decode(decrypted_doc, codec_options=_DATA_KEY_OPTS)['v']
 
     def close(self):
         """Release resources."""
