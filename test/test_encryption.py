@@ -446,6 +446,106 @@ def create_key_vault(vault, *data_keys):
     return vault
 
 
+class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
+
+    @classmethod
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
+    def setUpClass(cls):
+        super(TestDataKeyDoubleEncryption, cls).setUpClass()
+
+    @staticmethod
+    def kms_providers():
+        return {'aws': AWS_CREDS, 'local': {'key': LOCAL_MASTER_KEY}}
+
+    def test_data_key(self):
+        self.client.db.coll.drop()
+        vault = create_key_vault(self.client.admin.datakeys)
+        self.addCleanup(vault.drop)
+
+        # Configure the encrypted field via the local schema_map option.
+        schemas = {
+          "db.coll": {
+            "bsonType": "object",
+            "properties": {
+              "encrypted_placeholder": {
+                "encrypt": {
+                  "keyId": "/placeholder",
+                  "bsonType": "string",
+                  "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
+                }
+              }
+            }
+          }
+        }
+        opts = AutoEncryptionOpts(
+            self.kms_providers(), 'admin.datakeys', schema_map=schemas)
+        client_encrypted = rs_or_single_client(
+            auto_encryption_opts=opts, uuidRepresentation='standard')
+        self.addCleanup(client_encrypted.close)
+
+        client_encryption = ClientEncryption(
+            self.kms_providers(), 'admin.datakeys', client_context.client)
+        self.addCleanup(client_encryption.close)
+
+        # Local create data key.
+        local_datakey_id = client_encryption.create_data_key(
+            'local', key_alt_names=['local_altname'])
+        self.assertIsInstance(local_datakey_id, uuid.UUID)
+        docs = list(vault.find({'_id': local_datakey_id}))
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0]['masterKey']['provider'], 'local')
+
+        # Local encrypt by key_id.
+        local_encrypted = client_encryption.encrypt(
+            'hello local', Algorithm.Deterministic, key_id=local_datakey_id)
+        self.assertEncrypted(local_encrypted)
+        client_encrypted.db.coll.insert_one(
+            {'_id': 'local', 'value': local_encrypted})
+        doc_decrypted = client_encrypted.db.coll.find_one({'_id': 'local'})
+        self.assertEqual(doc_decrypted['value'], 'hello local')
+
+        # Local encrypt by key_alt_name.
+        local_encrypted_altname = client_encryption.encrypt(
+            'hello local', Algorithm.Deterministic,
+            key_alt_name='local_altname')
+        self.assertEqual(local_encrypted_altname, local_encrypted)
+
+        # AWS create data key.
+        master_key = {
+            'region': 'us-east-1',
+            'key': 'arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-'
+                   '9f25-e30687b580d0'
+        }
+        aws_datakey_id = client_encryption.create_data_key(
+            'aws', master_key=master_key, key_alt_names=['aws_altname'])
+        self.assertIsInstance(aws_datakey_id, uuid.UUID)
+        docs = list(vault.find({'_id': aws_datakey_id}))
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0]['masterKey']['provider'], 'aws')
+
+        # AWS encrypt by key_id.
+        aws_encrypted = client_encryption.encrypt(
+            'hello aws', Algorithm.Deterministic, key_id=aws_datakey_id)
+        self.assertEncrypted(aws_encrypted)
+        client_encrypted.db.coll.insert_one(
+            {'_id': 'aws', 'value': aws_encrypted})
+        doc_decrypted = client_encrypted.db.coll.find_one({'_id': 'aws'})
+        self.assertEqual(doc_decrypted['value'], 'hello aws')
+
+        # AWS encrypt by key_alt_name.
+        aws_encrypted_altname = client_encryption.encrypt(
+            'hello aws', Algorithm.Deterministic, key_alt_name='aws_altname')
+        self.assertEqual(aws_encrypted_altname, aws_encrypted)
+
+        # Explicitly encrypting an auto encrypted field.
+        msg = ('Cannot encrypt element of type binData because schema '
+               'requires that type is one of: \[ string \]')
+        with self.assertRaisesRegex(EncryptionError, msg):
+            client_encrypted.db.coll.insert_one(
+                {'encrypted_placeholder': local_encrypted})
+
+
 class TestExternalKeyVault(EncryptionIntegrationTest):
 
     @staticmethod
