@@ -14,6 +14,7 @@
 
 """Client side encryption."""
 
+import functools
 import subprocess
 import uuid
 import weakref
@@ -30,8 +31,9 @@ except ImportError:
     MongoCryptCallback = object
 
 from bson import _bson_to_dict, _dict_to_bson, decode, encode
-from bson.binary import STANDARD, Binary
 from bson.codec_options import CodecOptions
+from bson.binary import STANDARD, Binary
+from bson.errors import BSONError
 from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument,
                            _inflate_bson)
@@ -54,6 +56,22 @@ _DATA_KEY_OPTS = CodecOptions(document_class=SON, uuid_representation=STANDARD)
 # documents from the key vault.
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument,
                                uuid_representation=STANDARD)
+
+
+def _wrap_encryption_errors(encryption_func=None):
+    """Decorator to wrap encryption related errors with EncryptionError."""
+    @functools.wraps(encryption_func)
+    def wrap_encryption_errors(*args, **kwargs):
+        try:
+            return encryption_func(*args, **kwargs)
+        except BSONError:
+            # BSON encoding/decoding errors are unrelated to encryption so
+            # we should propagate them unchanged.
+            raise
+        except Exception as exc:
+            raise EncryptionError(exc)
+
+    return wrap_encryption_errors
 
 
 class _EncryptionIO(MongoCryptCallback):
@@ -85,14 +103,11 @@ class _EncryptionIO(MongoCryptCallback):
         opts = PoolOptions(connect_timeout=_KMS_CONNECT_TIMEOUT,
                            socket_timeout=_KMS_CONNECT_TIMEOUT,
                            ssl_context=ctx)
-        try:
-            with _configured_socket((endpoint, _HTTPS_PORT), opts) as conn:
-                conn.sendall(message)
-                while kms_context.bytes_needed > 0:
-                    data = conn.recv(kms_context.bytes_needed)
-                    kms_context.feed(data)
-        except Exception as exc:
-            raise MongoCryptError(str(exc))
+        with _configured_socket((endpoint, _HTTPS_PORT), opts) as conn:
+            conn.sendall(message)
+            while kms_context.bytes_needed > 0:
+                data = conn.recv(kms_context.bytes_needed)
+                kms_context.feed(data)
 
     def collection_info(self, database, filter):
         """Get the collection info for a namespace.
@@ -222,6 +237,7 @@ class _Encrypter(object):
             opts._kms_providers, schema_map))
         self._bypass_auto_encryption = opts._bypass_auto_encryption
 
+    @_wrap_encryption_errors
     def encrypt(self, database, cmd, check_keys, codec_options):
         """Encrypt a MongoDB command.
 
@@ -237,16 +253,14 @@ class _Encrypter(object):
         # Workaround for $clusterTime which is incompatible with check_keys.
         cluster_time = check_keys and cmd.pop('$clusterTime', None)
         encoded_cmd = _dict_to_bson(cmd, check_keys, codec_options)
-        try:
-            encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
-        except MongoCryptError as exc:
-            raise EncryptionError(exc)
+        encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
         # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
         encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
         if cluster_time:
             encrypt_cmd['$clusterTime'] = cluster_time
         return encrypt_cmd
 
+    @_wrap_encryption_errors
     def decrypt(self, response):
         """Decrypt a MongoDB command response.
 
@@ -256,10 +270,7 @@ class _Encrypter(object):
         :Returns:
           The decrypted command response.
         """
-        try:
-            return self._auto_encrypter.decrypt(response)
-        except MongoCryptError as exc:
-            raise EncryptionError(exc)
+        return self._auto_encrypter.decrypt(response)
 
     def close(self):
         """Cleanup resources."""
@@ -349,6 +360,7 @@ class ClientEncryption(object):
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None))
 
+    @_wrap_encryption_errors
     def create_data_key(self, kms_provider, master_key=None,
                         key_alt_names=None):
         """Create and insert a new data key into the key vault collection.
@@ -383,6 +395,7 @@ class ClientEncryption(object):
         return self._encryption.create_data_key(
             kms_provider, master_key=master_key, key_alt_names=key_alt_names)
 
+    @_wrap_encryption_errors
     def encrypt(self, value, algorithm, key_id=None, key_alt_name=None):
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -410,6 +423,14 @@ class ClientEncryption(object):
             doc, algorithm, key_id=raw_key_id, key_alt_name=key_alt_name)
         return decode(encrypted_doc)['v']
 
+    @_wrap_encryption_errors
+    def _decrypt(self, value):
+        """Internal decrypt helper."""
+        doc = encode({'v': value})
+        decrypted_doc = self._encryption.decrypt(doc)
+        # TODO: Add a required codec_options argument for decoding?
+        return decode(decrypted_doc, codec_options=_DATA_KEY_OPTS)['v']
+
     def decrypt(self, value):
         """Decrypt an encrypted value.
 
@@ -423,10 +444,8 @@ class ClientEncryption(object):
         if not (isinstance(value, Binary) and value.subtype == 6):
             raise TypeError(
                 'value to decrypt must be a bson.binary.Binary with subtype 6')
-        doc = encode({'v': value})
-        decrypted_doc = self._encryption.decrypt(doc)
-        # TODO: Add a required codec_options argument for decoding?
-        return decode(decrypted_doc, codec_options=_DATA_KEY_OPTS)['v']
+
+        return self._decrypt(value)
 
     def close(self):
         """Release resources."""

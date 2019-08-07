@@ -249,8 +249,20 @@ class DocumentTooLarge(InvalidDocument):
     pass
 
 
-class EncryptionError(OperationFailure):
+class EncryptionError(PyMongoError):
     """Raised when encryption or decryption fails.
+
+    This error always wraps another exception which can be retrieved via the
+    :attr:`cause` property.
 
     .. versionadded:: 3.9
     """
+
+    def __init__(self, cause):
+        super(EncryptionError, self).__init__(str(cause))
+        self.__cause = cause
+
+    @property
+    def cause(self):
+        """The exception that caused this encryption or decryption error."""
+        return self.__cause

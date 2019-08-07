@@ -27,11 +27,14 @@ sys.path[0:0] = [""]
 from bson import BSON, json_util
 from bson.binary import STANDARD, Binary, UUID_SUBTYPE
 from bson.codec_options import CodecOptions
+from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 
-from pymongo.errors import ConfigurationError
+from pymongo.errors import (ConfigurationError,
+                            EncryptionError,
+                            OperationFailure)
 from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
 from pymongo.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
@@ -231,6 +234,10 @@ class TestClientSimple(EncryptionIntegrationTest):
             self.assertIsInstance(encrypted_doc['_id'], int)
             self.assertEncrypted(encrypted_doc['ssn'])
 
+        # Attempt to encrypt an unencodable object.
+        with self.assertRaises(BSONError):
+            encrypted_coll.insert_one({'unencodeable': object()})
+
     def test_auto_encrypt(self):
         # Configure the encrypted field via jsonSchema.
         json_schema = json_data('custom', 'schema.json')
@@ -297,6 +304,19 @@ class TestExplicitSimple(EncryptionIntegrationTest):
             client_encryption.decrypt('str')
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.decrypt(Binary(b'123'))
+
+    def test_bson_errors(self):
+        client_encryption = ClientEncryption(
+            KMS_PROVIDERS, 'admin.datakeys', client_context.client)
+        self.addCleanup(client_encryption.close)
+
+        # Attempt to encrypt an unencodable object.
+        unencodable_value = object()
+        with self.assertRaises(BSONError):
+            client_encryption.encrypt(
+                unencodable_value, Algorithm.Deterministic,
+                key_id=Binary(uuid.uuid4().bytes, UUID_SUBTYPE))
+
 
 # Spec tests
 
@@ -424,6 +444,69 @@ def create_key_vault(vault, *data_keys):
     if data_keys:
         vault.insert_many(data_keys)
     return vault
+
+
+class TestExternalKeyVault(EncryptionIntegrationTest):
+
+    @staticmethod
+    def kms_providers():
+        return {'local': {'key': LOCAL_MASTER_KEY}}
+
+    def _test_external_key_vault(self, with_external_key_vault):
+        self.client.db.coll.drop()
+        vault = create_key_vault(
+            self.client.admin.datakeys,
+            json_data('corpus', 'corpus-key-local.json'),
+            json_data('corpus', 'corpus-key-aws.json'))
+        self.addCleanup(vault.drop)
+
+        # Configure the encrypted field via the local schema_map option.
+        schemas = {'db.coll': json_data('external', 'external-schema.json')}
+        if with_external_key_vault:
+            key_vault_client = rs_or_single_client(
+                username='fake-user', password='fake-pwd')
+            self.addCleanup(key_vault_client.close)
+        else:
+            key_vault_client = client_context.client
+        opts = AutoEncryptionOpts(
+            self.kms_providers(), 'admin.datakeys', schema_map=schemas,
+            key_vault_client=key_vault_client)
+
+        client_encrypted = rs_or_single_client(
+            auto_encryption_opts=opts, uuidRepresentation='standard')
+        self.addCleanup(client_encrypted.close)
+
+        client_encryption = ClientEncryption(
+            self.kms_providers(), 'admin.datakeys', key_vault_client)
+        self.addCleanup(client_encryption.close)
+
+        if with_external_key_vault:
+            # Authentication error.
+            with self.assertRaises(EncryptionError) as ctx:
+                client_encrypted.db.coll.insert_one({"encrypted": "test"})
+            # AuthenticationFailed error.
+            self.assertIsInstance(ctx.exception.cause, OperationFailure)
+            self.assertEqual(ctx.exception.cause.code, 18)
+        else:
+            client_encrypted.db.coll.insert_one({"encrypted": "test"})
+
+        if with_external_key_vault:
+            # Authentication error.
+            with self.assertRaises(EncryptionError) as ctx:
+                client_encryption.encrypt(
+                    "test", Algorithm.Deterministic, key_id=LOCAL_KEY_ID)
+            # AuthenticationFailed error.
+            self.assertIsInstance(ctx.exception.cause, OperationFailure)
+            self.assertEqual(ctx.exception.cause.code, 18)
+        else:
+            client_encryption.encrypt(
+                "test", Algorithm.Deterministic, key_id=LOCAL_KEY_ID)
+
+    def test_external_key_vault_1(self):
+        self._test_external_key_vault(True)
+
+    def test_external_key_vault_2(self):
+        self._test_external_key_vault(False)
 
 
 class TestCorpus(EncryptionIntegrationTest):
