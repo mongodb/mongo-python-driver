@@ -2065,7 +2065,7 @@ class MongoClient(common.BaseObject):
         are blocked, although read operations may still be allowed.
         Use :meth:`unlock` to unlock.
         """
-        ops = self._database_default_options('admin').current_op()
+        ops = self._database_default_options('admin')._current_op()
         return bool(ops.get('fsyncLock', 0))
 
     def fsync(self, **kwargs):

@@ -979,6 +979,21 @@ class Database(common.BaseObject):
 
         return result
 
+    def _current_op(self, include_all=False, session=None):
+        """Helper for running $currentOp."""
+        cmd = SON([("currentOp", 1), ("$all", include_all)])
+        with self.__client._socket_for_writes(session) as sock_info:
+            if sock_info.max_wire_version >= 4:
+                return self.__client.admin._command(
+                    sock_info, cmd, codec_options=self.codec_options,
+                    session=session)
+            else:
+                spec = {"$all": True} if include_all else {}
+                return _first_batch(sock_info, "admin", "$cmd.sys.inprog",
+                                    spec, -1, True, self.codec_options,
+                                    ReadPreference.PRIMARY, cmd,
+                                    self.client._event_listeners)
+
     def current_op(self, include_all=False, session=None):
         """**DEPRECATED**: Get information on operations currently running.
 
@@ -1015,21 +1030,10 @@ class Database(common.BaseObject):
         .. _$currentOp aggregation pipeline stage: https://docs.mongodb.com/manual/reference/operator/aggregation/currentOp/
         .. _currentOp command: https://docs.mongodb.com/manual/reference/command/currentOp/
         """
-        warnings.warn("current_op() is deprecated. See the documentation for"
+        warnings.warn("current_op() is deprecated. See the documentation for "
                       "more information",
                       DeprecationWarning, stacklevel=2)
-        cmd = SON([("currentOp", 1), ("$all", include_all)])
-        with self.__client._socket_for_writes(session) as sock_info:
-            if sock_info.max_wire_version >= 4:
-                return self.__client.admin._command(
-                    sock_info, cmd, codec_options=self.codec_options,
-                    session=session)
-            else:
-                spec = {"$all": True} if include_all else {}
-                return _first_batch(sock_info, "admin", "$cmd.sys.inprog",
-                                    spec, -1, True, self.codec_options,
-                                    ReadPreference.PRIMARY, cmd,
-                                    self.client._event_listeners)
+        return self._current_op(include_all, session)
 
     def profiling_level(self, session=None):
         """Get the database's current profiling level.

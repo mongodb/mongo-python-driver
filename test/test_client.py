@@ -1064,6 +1064,14 @@ class TestClient(IntegrationTest):
             time.sleep(1)
         self.assertFalse(locked)
 
+    def test_is_locked_does_not_raise_warning(self):
+        client = rs_or_single_client()
+        with warnings.catch_warnings(record=True) as ctx:
+            warnings.simplefilter("always")
+            _ = client.is_locked
+            self.assertFalse(
+                any(issubclass(w.category, DeprecationWarning) for w in ctx))
+
     def test_contextlib(self):
         client = rs_or_single_client()
         client.pymongo_test.drop_collection("test")
