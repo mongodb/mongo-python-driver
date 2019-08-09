@@ -14,6 +14,7 @@
 
 """Client side encryption."""
 
+import contextlib
 import functools
 import subprocess
 import uuid
@@ -32,7 +33,9 @@ except ImportError:
 
 from bson import _bson_to_dict, _dict_to_bson, decode, encode
 from bson.codec_options import CodecOptions
-from bson.binary import STANDARD, Binary
+from bson.binary import (Binary,
+                         STANDARD,
+                         UUID_SUBTYPE)
 from bson.errors import BSONError
 from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument,
@@ -58,20 +61,30 @@ _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument,
                                uuid_representation=STANDARD)
 
 
-def _wrap_encryption_errors(encryption_func=None):
-    """Decorator to wrap encryption related errors with EncryptionError."""
-    @functools.wraps(encryption_func)
-    def wrap_encryption_errors(*args, **kwargs):
-        try:
-            return encryption_func(*args, **kwargs)
-        except BSONError:
-            # BSON encoding/decoding errors are unrelated to encryption so
-            # we should propagate them unchanged.
-            raise
-        except Exception as exc:
-            raise EncryptionError(exc)
+@contextlib.contextmanager
+def _wrap_encryption_errors_ctx():
+    """Context manager to wrap encryption related errors."""
+    try:
+        yield
+    except BSONError:
+        # BSON encoding/decoding errors are unrelated to encryption so
+        # we should propagate them unchanged.
+        raise
+    except Exception as exc:
+        raise EncryptionError(exc)
 
-    return wrap_encryption_errors
+
+def _wrap_encryption_errors(encryption_func=None):
+    """Decorator or context manager to wrap encryption related errors."""
+    if encryption_func:
+        @functools.wraps(encryption_func)
+        def wrap_encryption_errors(*args, **kwargs):
+            with _wrap_encryption_errors_ctx():
+                return encryption_func(*args, **kwargs)
+
+        return wrap_encryption_errors
+    else:
+        return _wrap_encryption_errors_ctx()
 
 
 class _EncryptionIO(MongoCryptCallback):
@@ -190,8 +203,11 @@ class _EncryptionIO(MongoCryptCallback):
         """
         # insert does not return the inserted _id when given a RawBSONDocument.
         doc = _bson_to_dict(data_key, _DATA_KEY_OPTS)
+        if not isinstance(doc.get('_id'), uuid.UUID):
+            raise TypeError(
+                'data_key _id must be a bson.binary.Binary with subtype 4')
         res = self.key_vault_coll.insert_one(doc)
-        return res.inserted_id
+        return Binary(res.inserted_id.bytes, subtype=UUID_SUBTYPE)
 
     def bson_encode(self, doc):
         """Encode a document to BSON.
@@ -406,7 +422,6 @@ class ClientEncryption(object):
         return self._encryption.create_data_key(
             kms_provider, master_key=master_key, key_alt_names=key_alt_names)
 
-    @_wrap_encryption_errors
     def encrypt(self, value, algorithm, key_id=None, key_alt_name=None):
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -417,28 +432,25 @@ class ClientEncryption(object):
           - `value`: The BSON value to encrypt.
           - `algorithm` (string): The encryption algorithm to use. See
             :class:`Algorithm` for some valid options.
-          - `key_id`: Identifies a data key by ``_id`` which must be a UUID
-            or a :class:`~bson.binary.Binary` with subtype 4.
+          - `key_id`: Identifies a data key by ``_id`` which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
 
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
         """
-        doc = encode({'v': value}, codec_options=self._codec_options)
-        if isinstance(key_id, uuid.UUID):
-            raw_key_id = key_id.bytes
-        else:
-            raw_key_id = key_id
-        encrypted_doc = self._encryption.encrypt(
-            doc, algorithm, key_id=raw_key_id, key_alt_name=key_alt_name)
-        return decode(encrypted_doc)['v']
+        if (key_id is not None and not (
+                isinstance(key_id, Binary) and
+                key_id.subtype == UUID_SUBTYPE)):
+            raise TypeError(
+                'key_id must be a bson.binary.Binary with subtype 4')
 
-    @_wrap_encryption_errors
-    def _decrypt(self, value):
-        """Internal decrypt helper."""
-        doc = encode({'v': value})
-        decrypted_doc = self._encryption.decrypt(doc)
-        return decode(decrypted_doc, codec_options=self._codec_options)['v']
+        doc = encode({'v': value}, codec_options=self._codec_options)
+        with _wrap_encryption_errors_ctx():
+            encrypted_doc = self._encryption.encrypt(
+                doc, algorithm, key_id=key_id, key_alt_name=key_alt_name)
+            return decode(encrypted_doc)['v']
 
     def decrypt(self, value):
         """Decrypt an encrypted value.
@@ -454,7 +466,11 @@ class ClientEncryption(object):
             raise TypeError(
                 'value to decrypt must be a bson.binary.Binary with subtype 6')
 
-        return self._decrypt(value)
+        with _wrap_encryption_errors_ctx():
+            doc = encode({'v': value})
+            decrypted_doc = self._encryption.decrypt(doc)
+            return decode(decrypted_doc,
+                          codec_options=self._codec_options)['v']
 
     def close(self):
         """Release resources."""

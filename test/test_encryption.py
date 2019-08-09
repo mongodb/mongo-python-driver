@@ -141,6 +141,10 @@ class EncryptionIntegrationTest(IntegrationTest):
         self.assertIsInstance(val, Binary)
         self.assertEqual(val.subtype, 6)
 
+    def assertBinaryUUID(self, val):
+        self.assertIsInstance(val, Binary)
+        self.assertEqual(val.subtype, UUID_SUBTYPE)
+
 
 # Location of JSON test files.
 BASE = os.path.join(
@@ -266,13 +270,13 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         # Create the encrypted field's data key.
         key_id = client_encryption.create_data_key(
             'local', key_alt_names=['name'])
-        self.assertIsInstance(key_id, uuid.UUID)
+        self.assertBinaryUUID(key_id)
         self.assertTrue(key_vault.find_one({'_id': key_id}))
 
         # Create an unused data key to make sure filtering works.
         unused_key_id = client_encryption.create_data_key(
             'local', key_alt_names=['unused'])
-        self.assertIsInstance(unused_key_id, uuid.UUID)
+        self.assertBinaryUUID(unused_key_id)
         self.assertTrue(key_vault.find_one({'_id': unused_key_id}))
 
         doc = {'_id': 0, 'ssn': '000'}
@@ -301,6 +305,13 @@ class TestExplicitSimple(EncryptionIntegrationTest):
             client_encryption.decrypt('str')
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.decrypt(Binary(b'123'))
+
+        msg = 'key_id must be a bson.binary.Binary with subtype 4'
+        algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
+        with self.assertRaisesRegex(TypeError, msg):
+            client_encryption.encrypt('str', algo, key_id=uuid.uuid4())
+        with self.assertRaisesRegex(TypeError, msg):
+            client_encryption.encrypt('str', algo, key_id=Binary(b'123'))
 
     def test_bson_errors(self):
         client_encryption = ClientEncryption(
@@ -529,7 +540,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         # Local create data key.
         local_datakey_id = client_encryption.create_data_key(
             'local', key_alt_names=['local_altname'])
-        self.assertIsInstance(local_datakey_id, uuid.UUID)
+        self.assertBinaryUUID(local_datakey_id)
         docs = list(vault.find({'_id': local_datakey_id}))
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0]['masterKey']['provider'], 'local')
@@ -560,7 +571,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         }
         aws_datakey_id = client_encryption.create_data_key(
             'aws', master_key=master_key, key_alt_names=['aws_altname'])
-        self.assertIsInstance(aws_datakey_id, uuid.UUID)
+        self.assertBinaryUUID(aws_datakey_id)
         docs = list(vault.find({'_id': aws_datakey_id}))
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0]['masterKey']['provider'], 'aws')
