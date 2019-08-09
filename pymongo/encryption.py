@@ -44,6 +44,7 @@ from bson.son import SON
 
 from pymongo.errors import (ConfigurationError,
                             EncryptionError,
+                            InvalidOperation,
                             ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
@@ -387,7 +388,6 @@ class ClientEncryption(object):
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None))
 
-    @_wrap_encryption_errors
     def create_data_key(self, kms_provider, master_key=None,
                         key_alt_names=None):
         """Create and insert a new data key into the key vault collection.
@@ -419,8 +419,11 @@ class ClientEncryption(object):
         :Returns:
           The ``_id`` of the created data key document.
         """
-        return self._encryption.create_data_key(
-            kms_provider, master_key=master_key, key_alt_names=key_alt_names)
+        self._check_closed()
+        with _wrap_encryption_errors_ctx():
+            return self._encryption.create_data_key(
+                kms_provider, master_key=master_key,
+                key_alt_names=key_alt_names)
 
     def encrypt(self, value, algorithm, key_id=None, key_alt_name=None):
         """Encrypt a BSON value with a given key and algorithm.
@@ -440,6 +443,7 @@ class ClientEncryption(object):
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
         """
+        self._check_closed()
         if (key_id is not None and not (
                 isinstance(key_id, Binary) and
                 key_id.subtype == UUID_SUBTYPE)):
@@ -462,6 +466,7 @@ class ClientEncryption(object):
         :Returns:
           The decrypted BSON value.
         """
+        self._check_closed()
         if not (isinstance(value, Binary) and value.subtype == 6):
             raise TypeError(
                 'value to decrypt must be a bson.binary.Binary with subtype 6')
@@ -472,9 +477,29 @@ class ClientEncryption(object):
             return decode(decrypted_doc,
                           codec_options=self._codec_options)['v']
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def _check_closed(self):
+        if self._encryption is None:
+            raise InvalidOperation("Cannot use closed ClientEncryption")
+
     def close(self):
-        """Release resources."""
-        self._io_callbacks.close()
-        self._encryption.close()
-        self._io_callbacks = None
-        self._encryption = None
+        """Release resources.
+
+        Note that using this class in a with-statement will automatically call
+        :meth:`close`::
+
+            with ClientEncryption(...) as client_encryption:
+                encrypted = client_encryption.encrypt(value, ...)
+                decrypted = client_encryption.decrypt(encrypted)
+
+        """
+        if self._io_callbacks:
+            self._io_callbacks.close()
+            self._encryption.close()
+            self._io_callbacks = None
+            self._encryption = None

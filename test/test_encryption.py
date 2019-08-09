@@ -37,6 +37,7 @@ from bson.son import SON
 
 from pymongo.errors import (ConfigurationError,
                             EncryptionError,
+                            InvalidOperation,
                             OperationFailure)
 from pymongo.encryption import (Algorithm,
                                 ClientEncryption)
@@ -365,6 +366,31 @@ class TestExplicitSimple(EncryptionIntegrationTest):
             client_encryption_legacy.decrypt(encrypted_standard), value)
         self.assertNotEqual(
             client_encryption.decrypt(encrypted_legacy), value)
+
+    def test_close(self):
+        client_encryption = ClientEncryption(
+            KMS_PROVIDERS, 'admin.datakeys', client_context.client, OPTS)
+        client_encryption.close()
+        # Close can be called multiple times.
+        client_encryption.close()
+        algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
+        msg = 'Cannot use closed ClientEncryption'
+        with self.assertRaisesRegex(InvalidOperation, msg):
+            client_encryption.create_data_key('local')
+        with self.assertRaisesRegex(InvalidOperation, msg):
+            client_encryption.encrypt('val', algo, key_alt_name='name')
+        with self.assertRaisesRegex(InvalidOperation, msg):
+            client_encryption.decrypt(Binary(b'', 6))
+
+    def test_with_statement(self):
+        with ClientEncryption(
+                KMS_PROVIDERS, 'admin.datakeys',
+                client_context.client, OPTS) as client_encryption:
+            pass
+        with self.assertRaisesRegex(
+                InvalidOperation, 'Cannot use closed ClientEncryption'):
+            client_encryption.create_data_key('local')
+
 
 # Spec tests
 
