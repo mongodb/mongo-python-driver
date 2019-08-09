@@ -592,6 +592,16 @@ class MongoClient(common.BaseObject):
         if not isinstance(port, int):
             raise TypeError("port must be an instance of int")
 
+        # _pool_class, _monitor_class, and _condition_class are for deep
+        # customization of PyMongo, e.g. Motor.
+        pool_class = kwargs.pop('_pool_class', None)
+        monitor_class = kwargs.pop('_monitor_class', None)
+        condition_class = kwargs.pop('_condition_class', None)
+
+        # Parse options passed as kwargs.
+        keyword_opts = common._CaseInsensitiveDictionary(kwargs)
+        keyword_opts['document_class'] = document_class
+
         seeds = set()
         username = None
         password = None
@@ -600,8 +610,14 @@ class MongoClient(common.BaseObject):
         fqdn = None
         for entity in host:
             if "://" in entity:
+                # Determine connection timeout from kwargs.
+                timeout = keyword_opts.get("connecttimeoutms")
+                if timeout is not None:
+                    timeout = common.validate_timeout_or_none(
+                        keyword_opts.cased_key("connecttimeoutms"), timeout)
                 res = uri_parser.parse_uri(
-                    entity, port, validate=True, warn=True, normalize=False)
+                    entity, port, validate=True, warn=True, normalize=False,
+                    connect_timeout=timeout)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
@@ -613,14 +629,7 @@ class MongoClient(common.BaseObject):
         if not seeds:
             raise ConfigurationError("need to specify at least one host")
 
-        # _pool_class, _monitor_class, and _condition_class are for deep
-        # customization of PyMongo, e.g. Motor.
-        pool_class = kwargs.pop('_pool_class', None)
-        monitor_class = kwargs.pop('_monitor_class', None)
-        condition_class = kwargs.pop('_condition_class', None)
-
-        keyword_opts = common._CaseInsensitiveDictionary(kwargs)
-        keyword_opts['document_class'] = document_class
+        # Add options with named keyword arguments to the parsed kwarg options.
         if type_registry is not None:
             keyword_opts['type_registry'] = type_registry
         if tz_aware is None:

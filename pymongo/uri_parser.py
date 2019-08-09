@@ -325,7 +325,7 @@ _ALLOWED_TXT_OPTS = frozenset(
 
 
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
-              normalize=True):
+              normalize=True, connect_timeout=None):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -355,6 +355,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
           invalid. Default: ``False``.
         - `normalize` (optional): If ``True``, convert names of URI options
           to their internally-used names. Default: ``True``.
+        - `connect_timeout` (optional): The maximum time in milliseconds to
+          wait for a response from the DNS server.
 
     .. versionchanged:: 3.9
         Added the ``normalize`` parameter.
@@ -400,6 +402,25 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         raise InvalidURI("A '/' is required between "
                          "the host list and any options.")
 
+    if path_part:
+        if path_part[0] == '?':
+            opts = unquote_plus(path_part[1:])
+        else:
+            dbase, _, opts = map(unquote_plus, path_part.partition('?'))
+            if '.' in dbase:
+                dbase, collection = dbase.split('.', 1)
+
+            if _BAD_DB_CHARS.search(dbase):
+                raise InvalidURI('Bad database name "%s"' % dbase)
+
+        if opts:
+            options.update(split_options(opts, validate, warn, normalize))
+
+    if dbase is not None:
+        dbase = unquote_plus(dbase)
+    if collection is not None:
+        collection = unquote_plus(collection)
+
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
@@ -424,36 +445,25 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             raise InvalidURI(
                 "%s URIs must not include a port number" % (SRV_SCHEME,))
 
-        dns_resolver = _SrvResolver(fqdn)
+        # Use the connection timeout. connectTimeoutMS passed as a keyword
+        # argument overrides the same option passed in the connection string.
+        connect_timeout = connect_timeout or options.get("connectTimeoutMS")
+        dns_resolver = _SrvResolver(fqdn, connect_timeout=connect_timeout)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
         if dns_options:
-            options = split_options(dns_options, validate, warn, normalize)
-            if set(options) - _ALLOWED_TXT_OPTS:
+            parsed_dns_options = split_options(
+                dns_options, validate, warn, normalize)
+            if set(parsed_dns_options) - _ALLOWED_TXT_OPTS:
                 raise ConfigurationError(
                     "Only authSource and replicaSet are supported from DNS")
-        options["ssl"] = True if validate else 'true'
+            for opt, val in parsed_dns_options.items():
+                if opt not in options:
+                    options[opt] = val
+        if "ssl" not in options:
+            options["ssl"] = True if validate else 'true'
     else:
         nodes = split_hosts(hosts, default_port=default_port)
-
-    if path_part:
-        if path_part[0] == '?':
-            opts = unquote_plus(path_part[1:])
-        else:
-            dbase, _, opts = map(unquote_plus, path_part.partition('?'))
-            if '.' in dbase:
-                dbase, collection = dbase.split('.', 1)
-
-            if _BAD_DB_CHARS.search(dbase):
-                raise InvalidURI('Bad database name "%s"' % dbase)
-
-        if opts:
-            options.update(split_options(opts, validate, warn, normalize))
-
-    if dbase is not None:
-        dbase = unquote_plus(dbase)
-    if collection is not None:
-        collection = unquote_plus(collection)
 
     return {
         'nodelist': nodes,

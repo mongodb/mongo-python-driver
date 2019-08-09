@@ -216,19 +216,28 @@ class CompareType(object):
         return not self.__eq__(other)
 
 
-class FunctionCallCounter(object):
-    """Class that wraps a function and keeps count of invocations."""
+class FunctionCallRecorder(object):
+    """Utility class to wrap a callable and record its invocations."""
     def __init__(self, function):
         self._function = function
-        self._call_count = 0
+        self._call_list = []
 
     def __call__(self, *args, **kwargs):
-        self._call_count += 1
+        self._call_list.append((args, kwargs))
         return self._function(*args, **kwargs)
+
+    def reset(self):
+        """Wipes the call list."""
+        self._call_list = []
+
+    def call_list(self):
+        """Returns a copy of the call list."""
+        return self._call_list[:]
 
     @property
     def call_count(self):
-        return self._call_count
+        """Returns the number of times the function has been called."""
+        return len(self._call_list)
 
 
 class TestCreator(object):

@@ -33,8 +33,9 @@ from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
 from bson.py3compat import thread
 from bson.son import SON
 from bson.tz_util import utc
+import pymongo
 from pymongo import auth, message
-from pymongo.common import _UUID_REPRESENTATIONS
+from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.command_cursor import CommandCursor
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.cursor import Cursor, CursorType
@@ -56,6 +57,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
+from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
@@ -70,6 +72,7 @@ from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         connected,
                         delay,
+                        FunctionCallRecorder,
                         get_pool,
                         gevent_monkey_patched,
                         ignore_deprecations,
@@ -357,6 +360,43 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(clopts.replica_set_name, "newname")
         self.assertEqual(
             clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
+
+    @unittest.skipUnless(
+        _HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
+    def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
+        # Patch the resolver.
+        from pymongo.srv_resolver import resolver
+        patched_resolver = FunctionCallRecorder(resolver.query)
+        pymongo.srv_resolver.resolver.query = patched_resolver
+        def reset_resolver():
+            pymongo.srv_resolver.resolver.query = resolver.query
+        self.addCleanup(reset_resolver)
+
+        # Setup.
+        base_uri = "mongodb+srv://test5.test.build.10gen.cc"
+        connectTimeoutMS = 5000
+        expected_kw_value = 5.0
+        uri_with_timeout = base_uri + "/?connectTimeoutMS=6000"
+        expected_uri_value = 6.0
+
+        def test_scenario(args, kwargs, expected_value):
+            patched_resolver.reset()
+            MongoClient(*args, **kwargs)
+            for _, kw in patched_resolver.call_list():
+                self.assertAlmostEqual(kw['lifetime'], expected_value)
+
+        # No timeout specified.
+        test_scenario((base_uri,), {}, CONNECT_TIMEOUT)
+
+        # Timeout only specified in connection string.
+        test_scenario((uri_with_timeout,), {}, expected_uri_value)
+
+        # Timeout only specified in keyword arguments.
+        kwarg = {'connectTimeoutMS': connectTimeoutMS}
+        test_scenario((base_uri,), kwarg, expected_kw_value)
+
+        # Timeout specified in both kwargs and connection string.
+        test_scenario((uri_with_timeout,), kwarg, expected_kw_value)
 
     def test_uri_security_options(self):
         # Ensure that we don't silently override security-related options.

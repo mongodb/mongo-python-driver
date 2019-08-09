@@ -27,7 +27,7 @@ from pymongo.errors import ConfigurationError
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.mongo_client import MongoClient
 from test import client_knobs, unittest
-from test.utils import wait_until, FunctionCallCounter
+from test.utils import wait_until, FunctionCallRecorder
 
 
 WAIT_TIME = 0.1
@@ -62,7 +62,7 @@ class SrvPollingKnobs(object):
             return nodes, ttl
 
         if self.count_resolver_calls:
-            patch_func = FunctionCallCounter(mock_get_hosts_and_min_ttl)
+            patch_func = FunctionCallRecorder(mock_get_hosts_and_min_ttl)
         else:
             patch_func = mock_get_hosts_and_min_ttl
 

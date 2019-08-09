@@ -78,6 +78,11 @@ Unavoidable breaking changes:
   to avoid running into :class:`~pymongo.errors.OperationFailure` exceptions
   during write operations. The MMAPv1 storage engine is deprecated and does
   not support retryable writes which are now turned on by default.
+- In order to ensure that the ``connectTimeoutMS`` URI option is honored when
+  connecting to clusters with a ``mongodb+srv://`` connection string, the
+  minimum required version of the optional ``dnspython`` dependency has been
+  bumped to 1.16.0. This is a breaking change for applications that use
+  PyMongo's SRV support with a version of ``dnspython`` older than 1.16.0.
 
 .. _URI options specification: https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst
 

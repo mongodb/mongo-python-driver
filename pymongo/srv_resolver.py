@@ -22,6 +22,7 @@ except ImportError:
 
 from bson.py3compat import PY3
 
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
 
@@ -38,8 +39,9 @@ else:
 
 
 class _SrvResolver(object):
-    def __init__(self, fqdn):
+    def __init__(self, fqdn, connect_timeout=None):
         self.__fqdn = fqdn
+        self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
 
         # Validate the fully qualified domain name.
         try:
@@ -52,7 +54,8 @@ class _SrvResolver(object):
 
     def get_options(self):
         try:
-            results = resolver.query(self.__fqdn, 'TXT')
+            results = resolver.query(self.__fqdn, 'TXT',
+                                     lifetime=self.__connect_timeout)
         except (resolver.NoAnswer, resolver.NXDOMAIN):
             # No TXT records
             return None
@@ -66,7 +69,8 @@ class _SrvResolver(object):
 
     def _resolve_uri(self, encapsulate_errors):
         try:
-            results = resolver.query('_mongodb._tcp.' + self.__fqdn, 'SRV')
+            results = resolver.query('_mongodb._tcp.' + self.__fqdn, 'SRV',
+                                     lifetime=self.__connect_timeout)
         except Exception as exc:
             if not encapsulate_errors:
                 # Raise the original error.

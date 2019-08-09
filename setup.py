@@ -318,17 +318,16 @@ ext_modules = [Extension('bson._cbson',
                                   'bson/buffer.c'])]
 
 extras_require = {
-    'snappy': ['python-snappy'],
-    'zstd': ['zstandard'],
     'encryption': ['pymongocrypt'],  # For client side field level encryption.
+    'snappy': ['python-snappy'],
+    'srv': ["dnspython>=1.16.0,<2.0.0"],
+    'zstd': ['zstandard'],
 }
 vi = sys.version_info
 if vi[0] == 2:
-    extras_require.update(
-        {'tls': ["ipaddress"], 'srv': ["dnspython>=1.8.0,<2.0.0"]})
+    extras_require.update({'tls': ["ipaddress"]})
 else:
-    extras_require.update(
-        {'tls': [], 'srv': ["dnspython>=1.13.0,<2.0.0"]})
+    extras_require.update({'tls': []})
 if sys.platform == 'win32':
     extras_require['gssapi'] = ["winkerberos>=0.5.0"]
     if vi < (2, 7, 9):

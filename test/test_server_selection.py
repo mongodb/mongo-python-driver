@@ -28,7 +28,7 @@ sys.path[0:0] = [""]
 
 from test import client_context, unittest, IntegrationTest
 from test.utils import (rs_or_single_client, wait_until, EventListener,
-                        FunctionCallCounter)
+                        FunctionCallRecorder)
 from test.utils_selection_tests import (
     create_selection_tests, get_addresses, get_topology_settings_dict,
     make_server_description)
@@ -105,7 +105,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
     @client_context.require_replica_set
     def test_selector_called(self):
-        selector = FunctionCallCounter(lambda x: x)
+        selector = FunctionCallRecorder(lambda x: x)
 
         # Client setup.
         mongo_client = rs_or_single_client(server_selector=selector)
@@ -169,7 +169,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
     @client_context.require_replica_set
     def test_server_selector_bypassed(self):
-        selector = FunctionCallCounter(lambda x: x)
+        selector = FunctionCallRecorder(lambda x: x)
 
         scenario_def = {
             'topology_description': {
