@@ -28,7 +28,7 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from bson import BSON
+from bson import encode
 from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
 from bson.py3compat import thread
 from bson.son import SON
@@ -1512,7 +1512,7 @@ class TestExhaustCursor(IntegrationTest):
 
             # responseFlags bit 1 is QueryFailure.
             msg = struct.pack('<iiiii', 1 << 1, 0, 0, 0, 0)
-            msg += BSON.encode({'$err': 'mock err', 'code': 0})
+            msg += encode({'$err': 'mock err', 'code': 0})
             return message._OpReply.unpack(msg)
 
         saved = sock_info.receive_message

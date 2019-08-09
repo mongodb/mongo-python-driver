@@ -27,7 +27,7 @@ from itertools import product
 
 sys.path[0:0] = ['']
 
-from bson import BSON, ObjectId, SON, Timestamp, json_util
+from bson import ObjectId, SON, Timestamp, encode, json_util
 from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          Binary,
                          STANDARD,
@@ -965,7 +965,7 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin,
         raw_coll = self.watched_collection(
             codec_options=DEFAULT_RAW_BSON_OPTIONS)
         with raw_coll.watch() as change_stream:
-            raw_doc = RawBSONDocument(BSON.encode({'_id': 1}))
+            raw_doc = RawBSONDocument(encode({'_id': 1}))
             self.watched_collection().insert_one(raw_doc)
             change = next(change_stream)
             self.assertIsInstance(change, RawBSONDocument)

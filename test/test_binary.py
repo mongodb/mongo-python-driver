@@ -26,6 +26,7 @@ sys.path[0:0] = [""]
 
 import bson
 
+from bson import decode, encode
 from bson.binary import *
 from bson.codec_options import CodecOptions
 from bson.py3compat import PY3
@@ -146,10 +147,10 @@ class TestBinary(unittest.TestCase):
         """uuid_representation should be ignored when decoding subtype 4."""
         expected_uuid = uuid.uuid4()
         doc = {"uuid": Binary(expected_uuid.bytes, 4)}
-        encoded = bson.BSON.encode(doc)
+        encoded = encode(doc)
         for uuid_representation in ALL_UUID_REPRESENTATIONS:
             options = CodecOptions(uuid_representation=uuid_representation)
-            self.assertEqual(expected_uuid, encoded.decode(options)["uuid"])
+            self.assertEqual(expected_uuid, decode(encoded, options)["uuid"])
 
     def test_legacy_java_uuid(self):
         # Test decoding
@@ -172,31 +173,23 @@ class TestBinary(unittest.TestCase):
 
         # Test encoding
         encoded = b''.join([
-            bson.BSON.encode(doc,
-                             False,
-                             CodecOptions(uuid_representation=PYTHON_LEGACY))
+            encode(doc, False, CodecOptions(uuid_representation=PYTHON_LEGACY))
             for doc in docs])
         self.assertNotEqual(data, encoded)
 
-        encoded = b''.join(
-            [bson.BSON.encode(doc,
-                              False,
-                              CodecOptions(uuid_representation=STANDARD))
-             for doc in docs])
+        encoded = b''.join([
+            encode(doc, False, CodecOptions(uuid_representation=STANDARD))
+            for doc in docs])
         self.assertNotEqual(data, encoded)
 
-        encoded = b''.join(
-            [bson.BSON.encode(doc,
-                              False,
-                              CodecOptions(uuid_representation=CSHARP_LEGACY))
-             for doc in docs])
+        encoded = b''.join([
+            encode(doc, False, CodecOptions(uuid_representation=CSHARP_LEGACY))
+            for doc in docs])
         self.assertNotEqual(data, encoded)
 
-        encoded = b''.join(
-            [bson.BSON.encode(doc,
-                              False,
-                              CodecOptions(uuid_representation=JAVA_LEGACY))
-             for doc in docs])
+        encoded = b''.join([
+            encode(doc, False, CodecOptions(uuid_representation=JAVA_LEGACY))
+            for doc in docs])
         self.assertEqual(data, encoded)
 
     @client_context.require_connection
@@ -242,31 +235,23 @@ class TestBinary(unittest.TestCase):
 
         # Test encoding
         encoded = b''.join([
-            bson.BSON.encode(doc,
-                             False,
-                             CodecOptions(uuid_representation=PYTHON_LEGACY))
+            encode(doc, False, CodecOptions(uuid_representation=PYTHON_LEGACY))
             for doc in docs])
         self.assertNotEqual(data, encoded)
 
         encoded = b''.join([
-            bson.BSON.encode(doc,
-                             False,
-                             CodecOptions(uuid_representation=STANDARD))
+            encode(doc, False, CodecOptions(uuid_representation=STANDARD))
             for doc in docs])
         self.assertNotEqual(data, encoded)
 
-        encoded = b''.join(
-            [bson.BSON.encode(doc,
-                              False,
-                              CodecOptions(uuid_representation=JAVA_LEGACY))
-             for doc in docs])
+        encoded = b''.join([
+            encode(doc, False, CodecOptions(uuid_representation=JAVA_LEGACY))
+            for doc in docs])
         self.assertNotEqual(data, encoded)
 
-        encoded = b''.join(
-            [bson.BSON.encode(doc,
-                              False,
-                              CodecOptions(uuid_representation=CSHARP_LEGACY))
-             for doc in docs])
+        encoded = b''.join([
+            encode(doc, False, CodecOptions(uuid_representation=CSHARP_LEGACY))
+            for doc in docs])
         self.assertEqual(data, encoded)
 
     @client_context.require_connection

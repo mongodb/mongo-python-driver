@@ -26,6 +26,8 @@ import struct
 
 import bson
 from bson import (CodecOptions,
+                  decode,
+                  encode,
                   _dict_to_bson,
                   _make_c_string)
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -1397,7 +1399,7 @@ def _batched_write_command_impl(
 
     # Where to write command document length
     command_start = buf.tell()
-    buf.write(bson.BSON.encode(command))
+    buf.write(encode(command))
 
     # Start of payload
     buf.seek(-1, 2)
@@ -1418,7 +1420,7 @@ def _batched_write_command_impl(
     for doc in docs:
         # Encode the current operation
         key = b(str(idx))
-        value = bson.BSON.encode(doc, check_keys, opts)
+        value = encode(doc, check_keys, opts)
         # Is there enough room to add this document? max_cmd_size accounts for
         # the two trailing null bytes.
         doc_too_large = len(value) > max_cmd_size

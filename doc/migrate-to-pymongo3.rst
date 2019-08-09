@@ -492,7 +492,10 @@ BSON
 ......................................................
 
 The `as_class`, `tz_aware`, and `uuid_subtype` parameters have been
-removed from the functions provided in :mod:`bson`. Code like this::
+removed from the functions provided in :mod:`bson`. Furthermore, the
+:func:`~bson.encode` and :func:`~bson.decode` functions have been added
+as more performant alternatives to the :meth:`bson.BSON.encode` and
+:meth:`bson.BSON.decode` methods. Code like this::
 
   >>> from bson import BSON
   >>> from bson.son import SON
@@ -502,10 +505,10 @@ can be replaced by this in PyMongo 2.9 or later:
 
 .. doctest::
 
-  >>> from bson import BSON
+  >>> from bson import encode
   >>> from bson.codec_options import CodecOptions
   >>> from bson.son import SON
-  >>> encoded = BSON.encode({"a": 1}, codec_options=CodecOptions(SON))
+  >>> encoded = encode({"a": 1}, codec_options=CodecOptions(SON))
 
 Removed features with no migration path
 ---------------------------------------

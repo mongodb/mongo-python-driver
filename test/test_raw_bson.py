@@ -15,7 +15,7 @@
 import datetime
 import uuid
 
-from bson import BSON
+from bson import decode, encode
 from bson.binary import Binary, JAVA_LEGACY
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidBSON
@@ -56,17 +56,17 @@ class TestRawBSONDocument(IntegrationTest):
         self.assertEqual(self.bson_string, self.document.raw)
 
     def test_empty_doc(self):
-        doc = RawBSONDocument(BSON.encode({}))
+        doc = RawBSONDocument(encode({}))
         with self.assertRaises(KeyError):
             doc['does-not-exist']
 
     def test_invalid_bson_sequence(self):
-        bson_byte_sequence = BSON.encode({'a': 1})+BSON.encode({})
+        bson_byte_sequence = encode({'a': 1})+encode({})
         with self.assertRaisesRegex(InvalidBSON, 'invalid object length'):
             RawBSONDocument(bson_byte_sequence)
 
     def test_invalid_bson_eoo(self):
-        invalid_bson_eoo = BSON.encode({'a': 1})[:-1] + b'\x01'
+        invalid_bson_eoo = encode({'a': 1})[:-1] + b'\x01'
         with self.assertRaisesRegex(InvalidBSON, 'bad eoo'):
             RawBSONDocument(invalid_bson_eoo)
 
@@ -87,7 +87,7 @@ class TestRawBSONDocument(IntegrationTest):
         doc = {'_id': 1,
                'bin4': Binary(uid.bytes, 4),
                'bin3': Binary(uid.bytes, 3)}
-        raw = RawBSONDocument(BSON.encode(doc))
+        raw = RawBSONDocument(encode(doc))
         coll.insert_one(raw)
         self.assertEqual(coll.find_one(), {'_id': 1, 'bin4': uid, 'bin3': uid})
 
@@ -127,7 +127,7 @@ class TestRawBSONDocument(IntegrationTest):
                                        document_class=RawBSONDocument)
         coll = db.get_collection('test_raw', codec_options=raw_java_legacy)
         self.assertEqual(
-            RawBSONDocument(BSON.encode(doc, codec_options=raw_java_legacy)),
+            RawBSONDocument(encode(doc, codec_options=raw_java_legacy)),
             coll.find_one())
 
     @client_context.require_connection
@@ -136,7 +136,7 @@ class TestRawBSONDocument(IntegrationTest):
         db = self.client.pymongo_test
         db.test_raw.insert_one(doc)
         result = db.test_raw.find_one()
-        self.assertEqual(BSON(self.document.raw).decode(), result['embedded'])
+        self.assertEqual(decode(self.document.raw), result['embedded'])
 
         # Make sure that CodecOptions are preserved.
         # {'embedded': [
@@ -178,7 +178,7 @@ class TestRawBSONDocument(IntegrationTest):
 
     def test_preserve_key_ordering(self):
         keyvaluepairs = [('a', 1), ('b', 2), ('c', 3),]
-        rawdoc = RawBSONDocument(BSON.encode(SON(keyvaluepairs)))
+        rawdoc = RawBSONDocument(encode(SON(keyvaluepairs)))
 
         for rkey, elt in zip(rawdoc, keyvaluepairs):
             self.assertEqual(rkey, elt[0])

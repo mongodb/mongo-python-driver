@@ -26,8 +26,7 @@ from collections import defaultdict
 
 sys.path[0:0] = [""]
 
-import bson
-
+from bson import encode
 from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
 from bson.code import Code
@@ -765,7 +764,7 @@ class TestCollection(IntegrationTest):
                    'forcing duplicate key error')
 
         document = RawBSONDocument(
-            bson.BSON.encode({'_id': ObjectId(), 'foo': 'bar'}))
+            encode({'_id': ObjectId(), 'foo': 'bar'}))
         result = db.test.insert_one(document)
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertEqual(result.inserted_id, None)
@@ -798,7 +797,7 @@ class TestCollection(IntegrationTest):
             self.assertEqual(1, db.test.count_documents({"_id": _id}))
         self.assertTrue(result.acknowledged)
 
-        docs = [RawBSONDocument(bson.BSON.encode({"_id": i + 5}))
+        docs = [RawBSONDocument(encode({"_id": i + 5}))
                 for i in range(5)]
         result = db.test.insert_many(docs)
         self.assertTrue(isinstance(result, InsertManyResult))
@@ -1397,7 +1396,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count_documents({"x": 1}))
         self.assertEqual(db.test.find_one(id1)["y"], 1)
 
-        replacement = RawBSONDocument(bson.BSON.encode({"_id": id1, "z": 1}))
+        replacement = RawBSONDocument(encode({"_id": id1, "z": 1}))
         result = db.test.replace_one({"y": 1}, replacement, True)
         self.assertTrue(isinstance(result, UpdateResult))
         self.assertEqual(1, result.matched_count)

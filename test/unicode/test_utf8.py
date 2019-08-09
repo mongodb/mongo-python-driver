@@ -2,7 +2,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from bson import BSON
+from bson import encode
 from bson.errors import InvalidStringData
 from bson.py3compat import PY3
 from test import unittest
@@ -19,7 +19,7 @@ class TestUTF8(unittest.TestCase):
             py_is_legal = False
 
         try:
-            BSON.encode({'x': data})
+            encode({'x': data})
             bson_is_legal = True 
         except InvalidStringData:
             bson_is_legal = False

@@ -45,7 +45,8 @@ class RawBSONDocument(abc.Mapping):
         class from the standard library so it can be used like a read-only
         ``dict``::
 
-            >>> raw_doc = RawBSONDocument(BSON.encode({'_id': 'my_doc'}))
+            >>> from bson import encode
+            >>> raw_doc = RawBSONDocument(encode({'_id': 'my_doc'}))
             >>> raw_doc.raw
             b'...'
             >>> raw_doc['_id']

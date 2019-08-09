@@ -23,7 +23,7 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from bson import BSON, json_util
+from bson import encode, json_util
 from bson.binary import (Binary,
                          JAVA_LEGACY,
                          STANDARD,
@@ -166,7 +166,7 @@ def json_data(*paths):
 
 
 def bson_data(*paths):
-    return BSON.encode(json_data(*paths), codec_options=OPTS)
+    return encode(json_data(*paths), codec_options=OPTS)
 
 
 class TestClientSimple(EncryptionIntegrationTest):

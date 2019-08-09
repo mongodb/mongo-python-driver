@@ -23,11 +23,12 @@ from random import random
 
 sys.path[0:0] = [""]
 
-from bson import (BSON,
-                  Decimal128,
+from bson import (Decimal128,
+                  decode,
                   decode_all,
                   decode_file_iter,
                   decode_iter,
+                  encode,
                   RE_TYPE,
                   _BUILT_IN_TYPES,
                   _dict_to_bson,
@@ -128,8 +129,8 @@ def type_obfuscating_decoder_factory(rt_type):
 
 class CustomBSONTypeTests(object):
     def roundtrip(self, doc):
-        bsonbytes = BSON().encode(doc, codec_options=self.codecopts)
-        rt_document = BSON(bsonbytes).decode(codec_options=self.codecopts)
+        bsonbytes = encode(doc, codec_options=self.codecopts)
+        rt_document = decode(bsonbytes, codec_options=self.codecopts)
         self.assertEqual(doc, rt_document)
 
     def test_encode_decode_roundtrip(self):
@@ -146,20 +147,20 @@ class CustomBSONTypeTests(object):
 
         bsonstream = bytes()
         for doc in documents:
-            bsonstream += BSON.encode(doc, codec_options=self.codecopts)
+            bsonstream += encode(doc, codec_options=self.codecopts)
 
         self.assertEqual(
             decode_all(bsonstream, self.codecopts), documents)
 
     def test__bson_to_dict(self):
         document = {'average': Decimal('56.47')}
-        rawbytes = BSON.encode(document, codec_options=self.codecopts)
+        rawbytes = encode(document, codec_options=self.codecopts)
         decoded_document = _bson_to_dict(rawbytes, self.codecopts)
         self.assertEqual(document, decoded_document)
 
     def test__dict_to_bson(self):
         document = {'average': Decimal('56.47')}
-        rawbytes = BSON.encode(document, codec_options=self.codecopts)
+        rawbytes = encode(document, codec_options=self.codecopts)
         encoded_document = _dict_to_bson(document, False, self.codecopts)
         self.assertEqual(encoded_document, rawbytes)
 
@@ -169,7 +170,7 @@ class CustomBSONTypeTests(object):
         edocs = [{'n': Decimal(dec)} for dec in inp_num]
         bsonstream = b""
         for doc in docs:
-            bsonstream += BSON.encode(doc)
+            bsonstream += encode(doc)
         return edocs, bsonstream
 
     def test_decode_iter(self):
@@ -215,30 +216,30 @@ class TestBSONFallbackEncoder(unittest.TestCase):
     def test_simple(self):
         codecopts = self._get_codec_options(lambda x: Decimal128(x))
         document = {'average': Decimal('56.47')}
-        bsonbytes = BSON().encode(document, codec_options=codecopts)
+        bsonbytes = encode(document, codec_options=codecopts)
 
         exp_document = {'average': Decimal128('56.47')}
-        exp_bsonbytes = BSON().encode(exp_document)
+        exp_bsonbytes = encode(exp_document)
         self.assertEqual(bsonbytes, exp_bsonbytes)
 
     def test_erroring_fallback_encoder(self):
         codecopts = self._get_codec_options(lambda _: 1/0)
 
         # fallback converter should not be invoked when encoding known types.
-        BSON().encode(
+        encode(
             {'a': 1, 'b': Decimal128('1.01'), 'c': {'arr': ['abc', 3.678]}},
             codec_options=codecopts)
 
         # expect an error when encoding a custom type.
         document = {'average': Decimal('56.47')}
         with self.assertRaises(ZeroDivisionError):
-            BSON().encode(document, codec_options=codecopts)
+            encode(document, codec_options=codecopts)
 
     def test_noop_fallback_encoder(self):
         codecopts = self._get_codec_options(lambda x: x)
         document = {'average': Decimal('56.47')}
         with self.assertRaises(InvalidDocument):
-            BSON().encode(document, codec_options=codecopts)
+            encode(document, codec_options=codecopts)
 
     def test_type_unencodable_by_fallback_encoder(self):
         def fallback_encoder(value):
@@ -249,7 +250,7 @@ class TestBSONFallbackEncoder(unittest.TestCase):
         codecopts = self._get_codec_options(fallback_encoder)
         document = {'average': Decimal}
         with self.assertRaises(TypeError):
-            BSON().encode(document, codec_options=codecopts)
+            encode(document, codec_options=codecopts)
 
 
 class TestBSONTypeEnDeCodecs(unittest.TestCase):
@@ -347,18 +348,18 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
         codecopts = CodecOptions(type_registry=TypeRegistry(
             [self.B2BSON()], fallback_encoder=self.fallback_encoder_A2B))
         testdoc = {'x': self.TypeA(123)}
-        expected_bytes = BSON.encode({'x': 123})
+        expected_bytes = encode({'x': 123})
 
-        self.assertEqual(BSON.encode(testdoc, codec_options=codecopts),
+        self.assertEqual(encode(testdoc, codec_options=codecopts),
                          expected_bytes)
 
     def test_encode_custom_then_fallback(self):
         codecopts = CodecOptions(type_registry=TypeRegistry(
             [self.B2A()], fallback_encoder=self.fallback_encoder_A2BSON))
         testdoc = {'x': self.TypeB(123)}
-        expected_bytes = BSON.encode({'x': 123})
+        expected_bytes = encode({'x': 123})
 
-        self.assertEqual(BSON.encode(testdoc, codec_options=codecopts),
+        self.assertEqual(encode(testdoc, codec_options=codecopts),
                          expected_bytes)
 
     def test_chaining_encoders_fails(self):
@@ -366,7 +367,7 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
             [self.A2B(), self.B2BSON()]))
 
         with self.assertRaises(InvalidDocument):
-            BSON.encode({'x': self.TypeA(123)}, codec_options=codecopts)
+            encode({'x': self.TypeA(123)}, codec_options=codecopts)
 
     def test_infinite_loop_exceeds_max_recursion_depth(self):
         codecopts = CodecOptions(type_registry=TypeRegistry(
@@ -374,7 +375,7 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
 
         # Raises max recursion depth exceeded error
         with self.assertRaises(RuntimeError):
-            BSON.encode({'x': self.TypeA(100)}, codec_options=codecopts)
+            encode({'x': self.TypeA(100)}, codec_options=codecopts)
 
 
 class TestTypeRegistry(unittest.TestCase):

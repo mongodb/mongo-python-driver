@@ -26,7 +26,7 @@ from decimal import DecimalException
 
 sys.path[0:0] = [""]
 
-from bson import BSON, json_util
+from bson import decode, encode, json_util
 from bson.binary import STANDARD
 from bson.codec_options import CodecOptions
 from bson.decimal128 import Decimal128
@@ -81,10 +81,10 @@ to_extjson_iso8601 = functools.partial(json_util.dumps,
                                        json_options=json_options_iso8601)
 to_relaxed_extjson = functools.partial(
     json_util.dumps, json_options=json_util.RELAXED_JSON_OPTIONS)
-to_bson_uuid_04 = functools.partial(BSON.encode,
+to_bson_uuid_04 = functools.partial(encode,
                                     codec_options=codec_options_uuid_04)
-to_bson = functools.partial(BSON.encode, codec_options=codec_options)
-decode_bson = lambda bbytes: BSON(bbytes).decode(codec_options=codec_options)
+to_bson = functools.partial(encode, codec_options=codec_options)
+decode_bson = lambda bbytes: decode(bbytes, codec_options=codec_options)
 decode_extjson = functools.partial(
     json_util.loads,
     json_options=json_util.JSONOptions(json_mode=JSONMode.CANONICAL,
