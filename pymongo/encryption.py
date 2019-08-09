@@ -302,8 +302,10 @@ class _Encrypter(object):
 
 class Algorithm(object):
     """An enum that defines the supported encryption algorithms."""
-    Deterministic = "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
-    Random = "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
+    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = (
+        "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic")
+    AEAD_AES_256_CBC_HMAC_SHA_512_Random = (
+        "AEAD_AES_256_CBC_HMAC_SHA_512-Random")
 
 
 class ClientEncryption(object):

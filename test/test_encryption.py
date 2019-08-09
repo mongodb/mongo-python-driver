@@ -277,12 +277,14 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
         doc = {'_id': 0, 'ssn': '000'}
         encrypted_ssn = client_encryption.encrypt(
-            doc['ssn'], Algorithm.Deterministic, key_id=key_id)
+            doc['ssn'], Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=key_id)
 
         # Ensure encryption via key_alt_name for the same key produces the
         # same output.
         encrypted_ssn2 = client_encryption.encrypt(
-            doc['ssn'], Algorithm.Deterministic, key_alt_name='name')
+            doc['ssn'], Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_alt_name='name')
         self.assertEqual(encrypted_ssn, encrypted_ssn2)
 
         # Test decryption.
@@ -309,7 +311,8 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         unencodable_value = object()
         with self.assertRaises(BSONError):
             client_encryption.encrypt(
-                unencodable_value, Algorithm.Deterministic,
+                unencodable_value,
+                Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
                 key_id=Binary(uuid.uuid4().bytes, UUID_SUBTYPE))
 
     def test_codec_options(self):
@@ -328,7 +331,8 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         # Encrypt a UUID with JAVA_LEGACY codec options.
         value = uuid.uuid4()
         encrypted_legacy = client_encryption_legacy.encrypt(
-            value, Algorithm.Deterministic, key_id=key_id)
+            value, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=key_id)
         decrypted_value_legacy = client_encryption_legacy.decrypt(
             encrypted_legacy)
         self.assertEqual(decrypted_value_legacy, value)
@@ -338,7 +342,8 @@ class TestExplicitSimple(EncryptionIntegrationTest):
             KMS_PROVIDERS, 'admin.datakeys', client_context.client, OPTS)
         self.addCleanup(client_encryption.close)
         encrypted_standard = client_encryption.encrypt(
-            value, Algorithm.Deterministic, key_id=key_id)
+            value, Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=key_id)
         decrypted_standard = client_encryption.decrypt(encrypted_standard)
         self.assertEqual(decrypted_standard, value)
 
@@ -531,7 +536,9 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
         # Local encrypt by key_id.
         local_encrypted = client_encryption.encrypt(
-            'hello local', Algorithm.Deterministic, key_id=local_datakey_id)
+            'hello local',
+            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=local_datakey_id)
         self.assertEncrypted(local_encrypted)
         client_encrypted.db.coll.insert_one(
             {'_id': 'local', 'value': local_encrypted})
@@ -540,7 +547,8 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
         # Local encrypt by key_alt_name.
         local_encrypted_altname = client_encryption.encrypt(
-            'hello local', Algorithm.Deterministic,
+            'hello local',
+            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
             key_alt_name='local_altname')
         self.assertEqual(local_encrypted_altname, local_encrypted)
 
@@ -559,7 +567,9 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
         # AWS encrypt by key_id.
         aws_encrypted = client_encryption.encrypt(
-            'hello aws', Algorithm.Deterministic, key_id=aws_datakey_id)
+            'hello aws',
+            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=aws_datakey_id)
         self.assertEncrypted(aws_encrypted)
         client_encrypted.db.coll.insert_one(
             {'_id': 'aws', 'value': aws_encrypted})
@@ -568,7 +578,9 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
         # AWS encrypt by key_alt_name.
         aws_encrypted_altname = client_encryption.encrypt(
-            'hello aws', Algorithm.Deterministic, key_alt_name='aws_altname')
+            'hello aws',
+            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_alt_name='aws_altname')
         self.assertEqual(aws_encrypted_altname, aws_encrypted)
 
         # Explicitly encrypting an auto encrypted field.
@@ -627,13 +639,16 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
             # Authentication error.
             with self.assertRaises(EncryptionError) as ctx:
                 client_encryption.encrypt(
-                    "test", Algorithm.Deterministic, key_id=LOCAL_KEY_ID)
+                    "test",
+                    Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+                    key_id=LOCAL_KEY_ID)
             # AuthenticationFailed error.
             self.assertIsInstance(ctx.exception.cause, OperationFailure)
             self.assertEqual(ctx.exception.cause.code, 18)
         else:
             client_encryption.encrypt(
-                "test", Algorithm.Deterministic, key_id=LOCAL_KEY_ID)
+                "test", Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+                key_id=LOCAL_KEY_ID)
 
     def test_external_key_vault_1(self):
         self._test_external_key_vault(True)
@@ -744,9 +759,10 @@ class TestCorpus(EncryptionIntegrationTest):
 
                 self.assertIn(value['algo'], ('det', 'rand'))
                 if value['algo'] == 'det':
-                    algo = Algorithm.Deterministic
+                    algo = (Algorithm.
+                            AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic)
                 else:
-                    algo = Algorithm.Random
+                    algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random
 
                 try:
                     encrypted_val = client_encryption.encrypt(
