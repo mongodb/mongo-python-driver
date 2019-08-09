@@ -25,7 +25,10 @@ import uuid
 sys.path[0:0] = [""]
 
 from bson import BSON, json_util
-from bson.binary import STANDARD, Binary, UUID_SUBTYPE
+from bson.binary import (Binary,
+                         JAVA_LEGACY,
+                         STANDARD,
+                         UUID_SUBTYPE)
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
@@ -35,6 +38,8 @@ from bson.son import SON
 from pymongo.errors import (ConfigurationError,
                             EncryptionError,
                             OperationFailure)
+from pymongo.encryption import (Algorithm,
+                                ClientEncryption)
 from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
 from pymongo.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
@@ -45,16 +50,6 @@ from test.utils import (TestCreator,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
-
-
-if _HAVE_PYMONGOCRYPT:
-    # Load the mongocrypt library.
-    from pymongocrypt.binding import init
-    init(os.environ.get('MONGOCRYPT_LIB', 'mongocrypt'))
-
-# This has to be imported after calling init().
-from pymongo.encryption import (Algorithm,
-                                ClientEncryption)
 
 
 def get_client_opts(client):
@@ -261,7 +256,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
     def test_encrypt_decrypt(self):
         client_encryption = ClientEncryption(
-            KMS_PROVIDERS, 'admin.datakeys', client_context.client)
+            KMS_PROVIDERS, 'admin.datakeys', client_context.client, OPTS)
         self.addCleanup(client_encryption.close)
         # Use standard UUID representation.
         key_vault = client_context.client.admin.get_collection(
@@ -296,7 +291,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
     def test_validation(self):
         client_encryption = ClientEncryption(
-            KMS_PROVIDERS, 'admin.datakeys', client_context.client)
+            KMS_PROVIDERS, 'admin.datakeys', client_context.client, OPTS)
         self.addCleanup(client_encryption.close)
 
         msg = 'value to decrypt must be a bson.binary.Binary with subtype 6'
@@ -307,7 +302,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
     def test_bson_errors(self):
         client_encryption = ClientEncryption(
-            KMS_PROVIDERS, 'admin.datakeys', client_context.client)
+            KMS_PROVIDERS, 'admin.datakeys', client_context.client, OPTS)
         self.addCleanup(client_encryption.close)
 
         # Attempt to encrypt an unencodable object.
@@ -317,6 +312,43 @@ class TestExplicitSimple(EncryptionIntegrationTest):
                 unencodable_value, Algorithm.Deterministic,
                 key_id=Binary(uuid.uuid4().bytes, UUID_SUBTYPE))
 
+    def test_codec_options(self):
+        with self.assertRaisesRegex(TypeError, 'codec_options must be'):
+            ClientEncryption(
+                KMS_PROVIDERS, 'admin.datakeys', client_context.client, None)
+
+        opts = CodecOptions(uuid_representation=JAVA_LEGACY)
+        client_encryption_legacy = ClientEncryption(
+            KMS_PROVIDERS, 'admin.datakeys', client_context.client, opts)
+        self.addCleanup(client_encryption_legacy.close)
+
+        # Create the encrypted field's data key.
+        key_id = client_encryption_legacy.create_data_key('local')
+
+        # Encrypt a UUID with JAVA_LEGACY codec options.
+        value = uuid.uuid4()
+        encrypted_legacy = client_encryption_legacy.encrypt(
+            value, Algorithm.Deterministic, key_id=key_id)
+        decrypted_value_legacy = client_encryption_legacy.decrypt(
+            encrypted_legacy)
+        self.assertEqual(decrypted_value_legacy, value)
+
+        # Encrypt the same UUID with STANDARD codec options.
+        client_encryption = ClientEncryption(
+            KMS_PROVIDERS, 'admin.datakeys', client_context.client, OPTS)
+        self.addCleanup(client_encryption.close)
+        encrypted_standard = client_encryption.encrypt(
+            value, Algorithm.Deterministic, key_id=key_id)
+        decrypted_standard = client_encryption.decrypt(encrypted_standard)
+        self.assertEqual(decrypted_standard, value)
+
+        # Test that codec_options is applied during encryption.
+        self.assertNotEqual(encrypted_standard, encrypted_legacy)
+        # Test that codec_options is applied during decryption.
+        self.assertEqual(
+            client_encryption_legacy.decrypt(encrypted_standard), value)
+        self.assertNotEqual(
+            client_encryption.decrypt(encrypted_legacy), value)
 
 # Spec tests
 
@@ -485,7 +517,8 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         self.addCleanup(client_encrypted.close)
 
         client_encryption = ClientEncryption(
-            self.kms_providers(), 'admin.datakeys', client_context.client)
+            self.kms_providers(), 'admin.datakeys', client_context.client,
+            OPTS)
         self.addCleanup(client_encryption.close)
 
         # Local create data key.
@@ -577,7 +610,7 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
         self.addCleanup(client_encrypted.close)
 
         client_encryption = ClientEncryption(
-            self.kms_providers(), 'admin.datakeys', key_vault_client)
+            self.kms_providers(), 'admin.datakeys', key_vault_client, OPTS)
         self.addCleanup(client_encryption.close)
 
         if with_external_key_vault:
@@ -684,7 +717,8 @@ class TestCorpus(EncryptionIntegrationTest):
         self.addCleanup(client_encrypted.close)
 
         client_encryption = ClientEncryption(
-            self.kms_providers(), 'admin.datakeys', client_context.client)
+            self.kms_providers(), 'admin.datakeys', client_context.client,
+            OPTS)
         self.addCleanup(client_encryption.close)
 
         corpus = self.fix_up_curpus(json_data('corpus', 'corpus.json'))

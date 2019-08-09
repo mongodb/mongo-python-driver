@@ -309,7 +309,8 @@ class Algorithm(object):
 class ClientEncryption(object):
     """Explicit client side encryption."""
 
-    def __init__(self, kms_providers, key_vault_namespace, key_vault_client):
+    def __init__(self, kms_providers, key_vault_namespace, key_vault_client,
+                 codec_options):
         """Explicit client side encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
@@ -340,6 +341,9 @@ class ClientEncryption(object):
             provider.
           - `key_vault_client`: A MongoClient connected to a MongoDB cluster
             containing the `key_vault_namespace` collection.
+          - `codec_options`: An instance of
+            :class:`~bson.codec_options.CodecOptions` to use when encoding a
+            value for encryption and decoding the decrypted BSON value.
 
         .. versionadded:: 3.9
         """
@@ -349,9 +353,14 @@ class ClientEncryption(object):
                 "install a compatible version with: "
                 "python -m pip install pymongo['encryption']")
 
+        if not isinstance(codec_options, CodecOptions):
+            raise TypeError("codec_options must be an instance of "
+                            "bson.codec_options.CodecOptions")
+
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
         self._key_vault_client = key_vault_client
+        self._codec_options = codec_options
 
         db, coll = key_vault_namespace.split('.', 1)
         key_vault_coll = key_vault_client[db][coll]
@@ -413,8 +422,7 @@ class ClientEncryption(object):
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
         """
-        # TODO: Add a required codec_options argument for encoding?
-        doc = encode({'v': value}, codec_options=_DATA_KEY_OPTS)
+        doc = encode({'v': value}, codec_options=self._codec_options)
         if isinstance(key_id, uuid.UUID):
             raw_key_id = key_id.bytes
         else:
@@ -428,8 +436,7 @@ class ClientEncryption(object):
         """Internal decrypt helper."""
         doc = encode({'v': value})
         decrypted_doc = self._encryption.decrypt(doc)
-        # TODO: Add a required codec_options argument for decoding?
-        return decode(decrypted_doc, codec_options=_DATA_KEY_OPTS)['v']
+        return decode(decrypted_doc, codec_options=self._codec_options)['v']
 
     def decrypt(self, value):
         """Decrypt an encrypted value.
