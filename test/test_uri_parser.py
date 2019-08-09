@@ -485,6 +485,15 @@ class TestURI(unittest.TestCase):
             "fsync": True, "wtimeoutms": 10}
         self.assertEqual(res, parse_uri(uri)["options"])
 
+    def test_waitQueueMultiple_deprecated(self):
+        uri = "mongodb://example.com/?waitQueueMultiple=5"
+        with warnings.catch_warnings(record=True) as ctx:
+            warnings.simplefilter('always')
+            parse_uri(uri)
+
+        self.assertEqual(len(ctx), 1)
+        self.assertTrue(issubclass(ctx[0].category, DeprecationWarning))
+
 
 if __name__ == "__main__":
     unittest.main()

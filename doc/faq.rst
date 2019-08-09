@@ -98,21 +98,12 @@ process, increase ``maxPoolSize``::
 
     client = MongoClient(host, port, maxPoolSize=None)
 
-By default, any number of threads are allowed to wait for sockets to become
-available, and they can wait any length of time. Override ``waitQueueMultiple``
-to cap the number of waiting threads. E.g., to keep the number of waiters less
-than or equal to 500::
-
-    client = MongoClient(host, port, maxPoolSize=50, waitQueueMultiple=10)
-
-When 500 threads are waiting for a socket, the 501st that needs a socket
-raises :exc:`~pymongo.errors.ExceededMaxWaiters`. Use this option to
-bound the amount of queueing in your application during a load spike, at the
-cost of additional exceptions.
-
-Once the pool reaches its max size, additional threads are allowed to wait
-indefinitely for sockets to become available, unless you set
-``waitQueueTimeoutMS``::
+Once the pool reaches its maximum size, additional threads have to wait for
+sockets to become available. PyMongo does not limit the number of threads
+that can wait for sockets to become available and it is the application's
+responsibility to limit the size of its thread pool to bound queuing during a
+load spike. Threads are allowed to wait for any length of time unless
+``waitQueueTimeoutMS`` is defined::
 
     client = MongoClient(host, port, waitQueueTimeoutMS=100)
 

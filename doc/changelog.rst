@@ -32,6 +32,9 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
     - ``ssl_ca_certs`` has been deprecated in favor of ``tlsCAFile``.
     - ``ssl_certfile`` has been deprecated in favor of ``tlsCertificateKeyFile``.
     - ``ssl_pem_passphrase`` has been deprecated in favor of ``tlsCertificateKeyFilePassword``.
+    - ``waitQueueMultiple`` has been deprecated without replacement. This option
+      was a poor solution for putting an upper bound on queuing since it didn't
+      affect queuing in other parts of the driver.
 - The ``retryWrites`` URI option now defaults to ``True``. Supported write
   operations that fail with a retryable error will automatically be retried one
   time, with at-most-once semantics.

@@ -195,16 +195,27 @@ def _handle_option_deprecations(options):
     """
     for optname in list(options):
         if optname in URI_OPTIONS_DEPRECATION_MAP:
-            newoptname = URI_OPTIONS_DEPRECATION_MAP[optname]
-            if newoptname in options:
-                warn_msg = "Deprecated option '%s' ignored in favor of '%s'."
-                warnings.warn(warn_msg % (options.cased_key(optname),
-                                          options.cased_key(newoptname)))
-                options.pop(optname)
-                continue
-            warn_msg = "Option '%s' is deprecated, use '%s' instead."
-            warnings.warn(warn_msg % (options.cased_key(optname),
-                                      newoptname))
+            mode, message = URI_OPTIONS_DEPRECATION_MAP[optname]
+            if mode == 'renamed':
+                newoptname = message
+                if newoptname in options:
+                    warn_msg = ("Deprecated option '%s' ignored in favor of "
+                                "'%s'.")
+                    warnings.warn(
+                        warn_msg % (options.cased_key(optname),
+                                    options.cased_key(newoptname)),
+                        DeprecationWarning, stacklevel=2)
+                    options.pop(optname)
+                    continue
+                warn_msg = "Option '%s' is deprecated, use '%s' instead."
+                warnings.warn(
+                    warn_msg % (options.cased_key(optname), newoptname),
+                    DeprecationWarning, stacklevel=2)
+            elif mode == 'removed':
+                warn_msg = "Option '%s' is deprecated. %s."
+                warnings.warn(
+                    warn_msg % (options.cased_key(optname), message),
+                    DeprecationWarning, stacklevel=2)
 
     return options
 

@@ -658,16 +658,26 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'tlscertificatekeyfilepassword': 'ssl_pem_passphrase',
 }
 
-# Map from deprecated URI option names to the updated option names.
-# Case is preserved for updated option names as they are part of user warnings.
+# Map from deprecated URI option names to a tuple indicating the method of
+# their deprecation and any additional information that may be needed to
+# construct the warning message.
 URI_OPTIONS_DEPRECATION_MAP = {
-    'j': 'journal',
-    'wtimeout': 'wTimeoutMS',
-    'ssl_cert_reqs': 'tlsAllowInvalidCertificates',
-    'ssl_match_hostname': 'tlsAllowInvalidHostnames',
-    'ssl_crlfile': 'tlsCRLFile',
-    'ssl_ca_certs': 'tlsCAFile',
-    'ssl_pem_passphrase': 'tlsCertificateKeyFilePassword',
+    # format: <deprecated option name>: (<mode>, <message>),
+    # Supported <mode> values:
+    # - 'renamed': <message> should be the new option name. Note that case is
+    #   preserved for renamed options as they are part of user warnings.
+    # - 'removed': <message> may suggest the rationale for deprecating the
+    #   option and/or recommend remedial action.
+    'j': ('renamed', 'journal'),
+    'wtimeout': ('renamed', 'wTimeoutMS'),
+    'ssl_cert_reqs': ('renamed', 'tlsAllowInvalidCertificates'),
+    'ssl_match_hostname': ('renamed', 'tlsAllowInvalidHostnames'),
+    'ssl_crlfile': ('renamed', 'tlsCRLFile'),
+    'ssl_ca_certs': ('renamed', 'tlsCAFile'),
+    'ssl_pem_passphrase': ('renamed', 'tlsCertificateKeyFilePassword'),
+    'waitqueuemultiple': ('removed', (
+        'Instead of using waitQueueMultiple to bound queuing, limit the size '
+        'of the thread pool in your application server'))
 }
 
 # Augment the option validator map with pymongo-specific option information.
