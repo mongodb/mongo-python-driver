@@ -17,7 +17,6 @@
 import base64
 import copy
 import os
-import socket
 import traceback
 import sys
 import uuid
@@ -74,14 +73,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         self.assertEqual(opts._key_vault_client, None)
         self.assertEqual(opts._schema_map, None)
         self.assertEqual(opts._bypass_auto_encryption, False)
-
-        if hasattr(socket, 'AF_UNIX'):
-            self.assertEqual(
-                opts._mongocryptd_uri, 'mongodb://%2Ftmp%2Fmongocryptd.sock')
-        else:
-            self.assertEqual(
-                opts._mongocryptd_uri, 'mongodb://localhost:27020')
-
+        self.assertEqual(opts._mongocryptd_uri, 'mongodb://localhost:27020')
         self.assertEqual(opts._mongocryptd_bypass_spawn, False)
         self.assertEqual(opts._mongocryptd_spawn_path, 'mongocryptd')
         self.assertEqual(

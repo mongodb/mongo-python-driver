@@ -15,7 +15,6 @@
 """Options to configure client side encryption."""
 
 import copy
-import socket
 
 try:
     import pymongocrypt
@@ -32,7 +31,7 @@ class AutoEncryptionOpts(object):
     def __init__(self, kms_providers, key_vault_namespace,
                  key_vault_client=None, schema_map=None,
                  bypass_auto_encryption=False,
-                 mongocryptd_uri=None,
+                 mongocryptd_uri='mongodb://localhost:27020',
                  mongocryptd_bypass_spawn=False,
                  mongocryptd_spawn_path='mongocryptd',
                  mongocryptd_spawn_args=None):
@@ -90,8 +89,7 @@ class AutoEncryptionOpts(object):
             enabled. Defaults to ``False``.
           - `mongocryptd_uri` (optional): The MongoDB URI used to connect
             to the *local* mongocryptd process. Defaults to
-            ``"mongodb://%2Ftmp%2Fmongocryptd.sock"`` if domain sockets are
-            available or ``"mongodb://localhost:27020"`` otherwise.
+            ``'mongodb://localhost:27020'``.
           - `mongocryptd_bypass_spawn` (optional): If ``True``, the encrypted
             MongoClient will not attempt to spawn the mongocryptd process.
             Defaults to ``False``.
@@ -117,11 +115,6 @@ class AutoEncryptionOpts(object):
         self._key_vault_client = key_vault_client
         self._schema_map = schema_map
         self._bypass_auto_encryption = bypass_auto_encryption
-        if mongocryptd_uri is None:
-            if hasattr(socket, 'AF_UNIX'):
-                mongocryptd_uri = 'mongodb://%2Ftmp%2Fmongocryptd.sock'
-            else:
-                mongocryptd_uri = 'mongodb://localhost:27020'
         self._mongocryptd_uri = mongocryptd_uri
         self._mongocryptd_bypass_spawn = mongocryptd_bypass_spawn
         self._mongocryptd_spawn_path = mongocryptd_spawn_path
