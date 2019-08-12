@@ -50,6 +50,12 @@ class TestSpec(SpecRunner):
         """Crud spec says outcome has an optional 'collection.name'."""
         return outcome['collection'].get('name', collection.name)
 
+    def setup_scenario(self, scenario_def):
+        """Allow specs to override a test's setup."""
+        # PYTHON-1935 Only create the collection if there is data to insert.
+        if scenario_def['data']:
+            super(TestSpec, self).setup_scenario(scenario_def)
+
 
 def create_test(scenario_def, test, name):
     def run_scenario(self):
