@@ -794,7 +794,7 @@ class SocketInfo(object):
         if isinstance(error, socket.error):
             _raise_connection_failure(self.address, error)
         else:
-            raise error
+            raise
 
     def __eq__(self, other):
         return self.sock == other.sock

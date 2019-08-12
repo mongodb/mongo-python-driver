@@ -31,7 +31,6 @@ from bson.binary import (Binary,
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
-from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 
 from pymongo.errors import (ConfigurationError,
@@ -172,11 +171,9 @@ class TestClientSimple(EncryptionIntegrationTest):
         self.addCleanup(client.close)
 
         # Create the encrypted field's data key.
-        key_vault = self.client.admin.get_collection(
-            'datakeys', codec_options=OPTS)
-        data_key = RawBSONDocument(
-            bson_data('custom', 'key-document-local.json'))
-        key_vault.insert_one(data_key)
+        key_vault = create_key_vault(
+            self.client.admin.datakeys,
+            json_data('custom', 'key-document-local.json'))
         self.addCleanup(key_vault.drop)
 
         # Collection.insert_one/insert_many auto encrypts.
@@ -219,7 +216,7 @@ class TestClientSimple(EncryptionIntegrationTest):
 
         # Collection.distinct auto decrypts.
         decrypted_ssns = encrypted_coll.distinct('ssn')
-        self.assertEqual(decrypted_ssns, [d['ssn'] for d in docs])
+        self.assertEqual(set(decrypted_ssns), set(d['ssn'] for d in docs))
 
         # Make sure the field is actually encrypted.
         for encrypted_doc in self.db.test.find():
@@ -233,9 +230,8 @@ class TestClientSimple(EncryptionIntegrationTest):
     def test_auto_encrypt(self):
         # Configure the encrypted field via jsonSchema.
         json_schema = json_data('custom', 'schema.json')
-        coll = self.db.create_collection(
-            'test', validator={'$jsonSchema': json_schema}, codec_options=OPTS)
-        self.addCleanup(coll.drop)
+        create_with_schema(self.db.test, json_schema)
+        self.addCleanup(self.db.test.drop)
 
         opts = AutoEncryptionOpts(KMS_PROVIDERS, 'admin.datakeys')
         self._test_auto_encrypt(opts)
@@ -427,9 +423,14 @@ class TestSpec(SpecRunner):
 
     def maybe_skip_scenario(self, test):
         super(TestSpec, self).maybe_skip_scenario(test)
-        if 'type=symbol' in test['description'].lower():
-            raise unittest.SkipTest(
-                'PyMongo does not support the symbol type')
+        desc = test['description'].lower()
+        if 'type=symbol' in desc:
+            self.skipTest('PyMongo does not support the symbol type')
+        if desc == 'explain a find with deterministic encryption':
+            # PyPy and Python 3.6+ have ordered dict.
+            if sys.version_info[:2] < (3, 6) and 'PyPy' not in sys.version:
+                self.skipTest(
+                    'explain test does not work without ordered dict')
 
     def setup_scenario(self, scenario_def):
         """Override a test's setup."""
@@ -496,7 +497,7 @@ AWS_KEY_ID = Binary(
 
 def create_with_schema(coll, json_schema):
     """Create and return a Collection with a jsonSchema."""
-    coll.drop()
+    coll.with_options(write_concern=WriteConcern(w='majority')).drop()
     return coll.database.create_collection(
         coll.name, validator={'$jsonSchema': json_schema}, codec_options=OPTS)
 

@@ -117,11 +117,14 @@ class _EncryptionIO(MongoCryptCallback):
         opts = PoolOptions(connect_timeout=_KMS_CONNECT_TIMEOUT,
                            socket_timeout=_KMS_CONNECT_TIMEOUT,
                            ssl_context=ctx)
-        with _configured_socket((endpoint, _HTTPS_PORT), opts) as conn:
+        conn = _configured_socket((endpoint, _HTTPS_PORT), opts)
+        try:
             conn.sendall(message)
             while kms_context.bytes_needed > 0:
                 data = conn.recv(kms_context.bytes_needed)
                 kms_context.feed(data)
+        finally:
+            conn.close()
 
     def collection_info(self, database, filter):
         """Get the collection info for a namespace.

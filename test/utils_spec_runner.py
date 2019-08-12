@@ -607,11 +607,7 @@ def end_sessions(sessions):
         s.end_session()
 
 
-if sys.version_info[:2] >= (3, 6):
-    DOC_CLASS = dict
-else:
-    DOC_CLASS = SON
-OPTS = CodecOptions(document_class=DOC_CLASS, uuid_representation=STANDARD)
+OPTS = CodecOptions(document_class=dict, uuid_representation=STANDARD)
 
 
 def decode_raw(val):
