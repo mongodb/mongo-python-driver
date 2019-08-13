@@ -19,7 +19,6 @@ may be made before the final release.**
 """
 
 import contextlib
-import functools
 import subprocess
 import uuid
 import weakref
@@ -52,7 +51,9 @@ from pymongo.errors import (ConfigurationError,
                             ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
+from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
+from pymongo.write_concern import WriteConcern
 
 
 _HTTPS_PORT = 443
@@ -88,7 +89,9 @@ class _EncryptionIO(MongoCryptCallback):
         else:
             self.client_ref = None
         self.key_vault_coll = key_vault_coll.with_options(
-            codec_options=_KEY_VAULT_OPTS)
+            codec_options=_KEY_VAULT_OPTS,
+            read_concern=ReadConcern(level='majority'),
+            write_concern=WriteConcern(w='majority'))
         self.mongocryptd_client = mongocryptd_client
         self.opts = opts
         self._spawned = False
