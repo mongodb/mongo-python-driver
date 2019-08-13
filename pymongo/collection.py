@@ -40,6 +40,7 @@ from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
                             InvalidName,
+                            InvalidOperation,
                             OperationFailure)
 from pymongo.helpers import (_check_write_command_response,
                              _raise_last_error)
@@ -1474,7 +1475,8 @@ class Collection(common.BaseObject):
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
-        .. note:: find_raw_batches does not support sessions.
+        .. note:: find_raw_batches does not support sessions or auto
+           encryption.
 
         .. versionadded:: 3.6
         """
@@ -1483,6 +1485,12 @@ class Collection(common.BaseObject):
         if "session" in kwargs:
             raise ConfigurationError(
                 "find_raw_batches does not support sessions")
+
+        # OP_MSG is required to support encryption.
+        if self.__database.client._encrypter:
+            raise InvalidOperation(
+                "find_raw_batches does not support auto encryption")
+
         return RawBatchCursor(self, *args, **kwargs)
 
     def parallel_scan(self, num_cursors, session=None, **kwargs):
@@ -2388,7 +2396,8 @@ class Collection(common.BaseObject):
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
-        .. note:: aggregate_raw_batches does not support sessions.
+        .. note:: aggregate_raw_batches does not support sessions or auto
+           encryption.
 
         .. versionadded:: 3.6
         """
@@ -2397,6 +2406,11 @@ class Collection(common.BaseObject):
         if "session" in kwargs:
             raise ConfigurationError(
                 "aggregate_raw_batches does not support sessions")
+
+        # OP_MSG is required to support encryption.
+        if self.__database.client._encrypter:
+            raise InvalidOperation(
+                "aggregate_raw_batches does not support auto encryption")
 
         return self._aggregate(_CollectionRawAggregationCommand,
                                pipeline,

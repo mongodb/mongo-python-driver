@@ -944,6 +944,10 @@ class Cursor(object):
         Can raise ConnectionFailure.
         """
         client = self.__collection.database.client
+        # OP_MSG is required to support exhaust cursors with encryption.
+        if client._encrypter and self.__exhaust:
+            raise InvalidOperation(
+                "exhaust cursors do not support auto encryption")
 
         try:
             response = client._run_operation_with_response(

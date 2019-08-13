@@ -1119,9 +1119,8 @@ buildvariants:
   display_name: "Encryption ${platform} ${auth-ssl}"
   tasks: &encryption-server-versions
     - ".4.2"
-    # TODO:	PYTHON-1926
-    # - ".4.0"
-    # - ".2.6"
+    - ".4.0"
+    - ".2.6"
 
 - matrix_name: "tests-no-36-plus"
   matrix_spec:

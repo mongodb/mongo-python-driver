@@ -1222,6 +1222,12 @@ class MongoClient(common.BaseObject):
             with server.get_socket(
                     self.__all_credentials, checkout=exhaust) as sock_info:
                 err_handler.contribute_socket(sock_info)
+                if (self._encrypter and
+                        not self._encrypter._bypass_auto_encryption and
+                        sock_info.max_wire_version < 8):
+                    raise ConfigurationError(
+                        'Auto-encryption requires a minimum MongoDB version '
+                        'of 4.2')
                 yield sock_info
 
     def _select_server(self, server_selector, session, address=None):

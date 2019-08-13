@@ -33,6 +33,7 @@ from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
 
+from pymongo.cursor import CursorType
 from pymongo.errors import (ConfigurationError,
                             EncryptionError,
                             InvalidOperation,
@@ -41,6 +42,7 @@ from pymongo.encryption import (Algorithm,
                                 ClientEncryption)
 from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
 from pymongo.mongo_client import MongoClient
+from pymongo.operations import InsertOne
 from pymongo.write_concern import WriteConcern
 
 from test import unittest, IntegrationTest, PyMongoTestCase, client_context
@@ -256,6 +258,48 @@ class TestClientSimple(EncryptionIntegrationTest):
             client.admin.command('isMaster')
 
 
+class TestClientMaxWireVersion(IntegrationTest):
+
+    @classmethod
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
+    def setUpClass(cls):
+        super(TestClientMaxWireVersion, cls).setUpClass()
+
+    @client_context.require_version_max(4, 0, 99)
+    def test_raise_max_wire_version_error(self):
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, 'admin.datakeys')
+        client = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client.close)
+        msg = 'Auto-encryption requires a minimum MongoDB version of 4.2'
+        with self.assertRaisesRegex(ConfigurationError, msg):
+            client.test.test.insert_one({})
+        with self.assertRaisesRegex(ConfigurationError, msg):
+            client.admin.command('isMaster')
+        with self.assertRaisesRegex(ConfigurationError, msg):
+            client.test.test.find_one({})
+        with self.assertRaisesRegex(ConfigurationError, msg):
+            client.test.test.bulk_write([InsertOne({})])
+
+    def test_raise_unsupported_error(self):
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, 'admin.datakeys')
+        client = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client.close)
+        msg = 'find_raw_batches does not support auto encryption'
+        with self.assertRaisesRegex(InvalidOperation, msg):
+            client.test.test.find_raw_batches({})
+
+        msg = 'aggregate_raw_batches does not support auto encryption'
+        with self.assertRaisesRegex(InvalidOperation, msg):
+            client.test.test.aggregate_raw_batches([])
+
+        if client_context.is_mongos:
+            msg = 'Exhaust cursors are not supported by mongos'
+        else:
+            msg = 'exhaust cursors do not support auto encryption'
+        with self.assertRaisesRegex(InvalidOperation, msg):
+            next(client.test.test.find(cursor_type=CursorType.EXHAUST))
+
+
 class TestExplicitSimple(EncryptionIntegrationTest):
 
     def test_encrypt_decrypt(self):
@@ -403,6 +447,7 @@ class TestSpec(SpecRunner):
 
     @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
+    @client_context.require_version_min(3, 6)  # SpecRunner requires sessions.
     def setUpClass(cls):
         super(TestSpec, cls).setUpClass()
 
