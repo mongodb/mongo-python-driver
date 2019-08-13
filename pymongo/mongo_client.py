@@ -479,11 +479,11 @@ class MongoClient(common.BaseObject):
           | (If not set explicitly, client side encryption will not be enabled.)
 
           - `auto_encryption_opts`: A
-            :class:`~pymongo.encryption.AutoEncryptionOpts` which configures
-            this client to automatically encrypt collection commands and
-            automatically decrypt results. **Support for client side encryption
-            is in beta. Backwards-breaking changes may be made before the
-            final release.**
+            :class:`~pymongo.encryption_options.AutoEncryptionOpts` which
+            configures this client to automatically encrypt collection commands
+            and automatically decrypt results. **Support for client side
+            encryption is in beta. Backwards-breaking changes may be made
+            before the final release.**
 
         .. mongodoc:: connections
 

@@ -11,6 +11,12 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
 - New method :meth:`pymongo.client_session.ClientSession.with_transaction` to
   support conveniently running a transaction in a session with automatic
   retries and at-most-once semantics.
+- Initial support for client side field level encyption. See the docstring for
+  :class:`~pymongo.mongo_client.MongoClient`,
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  and :mod:`~pymongo.encryption` for details. **Note: Support for client side
+  encryption is in beta. Backwards-breaking changes may be made before the
+  final release.**
 - Added the ``max_commit_time_ms`` parameter to
   :meth:`~pymongo.client_session.ClientSession.start_transaction`.
 - Implement the `URI options specification`_ in the
@@ -68,8 +74,9 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
   the buffer protocol.
 - Resume tokens can now be accessed from a ``ChangeStream`` cursor using the
   :attr:`~pymongo.change_stream.ChangeStream.resume_token` attribute.
-- Connections now survive primary step-down. Applications should expect less
-  socket connection turnover during replica set elections.
+- Connections now survive primary step-down when using MongoDB 4.2+.
+  Applications should expect less socket connection turnover during
+  replica set elections.
 
 Unavoidable breaking changes:
 

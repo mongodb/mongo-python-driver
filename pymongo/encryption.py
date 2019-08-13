@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Client side encryption.
+"""Support for explicit client side encryption.
 
 **Support for client side encryption is in beta. Backwards-breaking changes
 may be made before the final release.**

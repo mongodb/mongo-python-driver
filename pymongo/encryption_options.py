@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Options to configure client side encryption."""
+"""Support for automatic client side encryption.
+
+**Support for client side encryption is in beta. Backwards-breaking changes
+may be made before the final release.**
+"""
 
 import copy
 
