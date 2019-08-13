@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Client side encryption."""
+"""Client side encryption.
+
+**Support for client side encryption is in beta. Backwards-breaking changes
+may be made before the final release.**
+"""
 
 import contextlib
 import functools
@@ -343,6 +347,9 @@ class ClientEncryption(object):
         provides an API for explicitly encrypting and decrypting values, and
         creating data keys. It does not provide an API to query keys from the
         key vault collection, as this can be done directly on the MongoClient.
+
+        .. note:: Support for client side encryption is in beta.
+           Backwards-breaking changes may be made before the final release.
 
         :Parameters:
           - `kms_providers`: Map of KMS provider options. Two KMS providers

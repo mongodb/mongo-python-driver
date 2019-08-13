@@ -48,6 +48,9 @@ class AutoEncryptionOpts(object):
         community feature. A MongoClient configured with
         bypassAutoEncryption=true will still automatically decrypt.
 
+        .. note:: Support for client side encryption is in beta.
+           Backwards-breaking changes may be made before the final release.
+
         :Parameters:
           - `kms_providers`: Map of KMS provider options. Two KMS providers
             are supported: "aws" and "local". The kmsProviders map values
