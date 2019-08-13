@@ -67,7 +67,7 @@ _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument,
 
 
 @contextlib.contextmanager
-def _wrap_encryption_errors_ctx():
+def _wrap_encryption_errors():
     """Context manager to wrap encryption related errors."""
     try:
         yield
@@ -77,19 +77,6 @@ def _wrap_encryption_errors_ctx():
         raise
     except Exception as exc:
         raise EncryptionError(exc)
-
-
-def _wrap_encryption_errors(encryption_func=None):
-    """Decorator or context manager to wrap encryption related errors."""
-    if encryption_func:
-        @functools.wraps(encryption_func)
-        def wrap_encryption_errors(*args, **kwargs):
-            with _wrap_encryption_errors_ctx():
-                return encryption_func(*args, **kwargs)
-
-        return wrap_encryption_errors
-    else:
-        return _wrap_encryption_errors_ctx()
 
 
 class _EncryptionIO(MongoCryptCallback):
@@ -260,8 +247,8 @@ class _Encrypter(object):
         self._auto_encrypter = AutoEncrypter(io_callbacks, MongoCryptOptions(
             opts._kms_providers, schema_map))
         self._bypass_auto_encryption = opts._bypass_auto_encryption
+        self._closed = False
 
-    @_wrap_encryption_errors
     def encrypt(self, database, cmd, check_keys, codec_options):
         """Encrypt a MongoDB command.
 
@@ -274,17 +261,20 @@ class _Encrypter(object):
         :Returns:
           The encrypted command to execute.
         """
-        # Workaround for $clusterTime which is incompatible with check_keys.
-        cluster_time = check_keys and cmd.pop('$clusterTime', None)
-        encoded_cmd = _dict_to_bson(cmd, check_keys, codec_options)
-        encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
-        # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
-        encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
-        if cluster_time:
-            encrypt_cmd['$clusterTime'] = cluster_time
-        return encrypt_cmd
+        self._check_closed()
+        with _wrap_encryption_errors():
+            # Workaround for $clusterTime which is incompatible with
+            # check_keys.
+            cluster_time = check_keys and cmd.pop('$clusterTime', None)
+            encoded_cmd = _dict_to_bson(cmd, check_keys, codec_options)
+            encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
+            # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
+            encrypt_cmd = _inflate_bson(
+                encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
+            if cluster_time:
+                encrypt_cmd['$clusterTime'] = cluster_time
+            return encrypt_cmd
 
-    @_wrap_encryption_errors
     def decrypt(self, response):
         """Decrypt a MongoDB command response.
 
@@ -294,10 +284,17 @@ class _Encrypter(object):
         :Returns:
           The decrypted command response.
         """
-        return self._auto_encrypter.decrypt(response)
+        self._check_closed()
+        with _wrap_encryption_errors():
+            return self._auto_encrypter.decrypt(response)
+
+    def _check_closed(self):
+        if self._closed:
+            raise InvalidOperation("Cannot use MongoClient after close")
 
     def close(self):
         """Cleanup resources."""
+        self._closed = True
         self._auto_encrypter.close()
 
     @staticmethod
@@ -430,7 +427,7 @@ class ClientEncryption(object):
           The ``_id`` of the created data key document.
         """
         self._check_closed()
-        with _wrap_encryption_errors_ctx():
+        with _wrap_encryption_errors():
             return self._encryption.create_data_key(
                 kms_provider, master_key=master_key,
                 key_alt_names=key_alt_names)
@@ -461,7 +458,7 @@ class ClientEncryption(object):
                 'key_id must be a bson.binary.Binary with subtype 4')
 
         doc = encode({'v': value}, codec_options=self._codec_options)
-        with _wrap_encryption_errors_ctx():
+        with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
                 doc, algorithm, key_id=key_id, key_alt_name=key_alt_name)
             return decode(encrypted_doc)['v']
@@ -481,7 +478,7 @@ class ClientEncryption(object):
             raise TypeError(
                 'value to decrypt must be a bson.binary.Binary with subtype 6')
 
-        with _wrap_encryption_errors_ctx():
+        with _wrap_encryption_errors():
             doc = encode({'v': value})
             decrypted_doc = self._encryption.decrypt(doc)
             return decode(decrypted_doc,

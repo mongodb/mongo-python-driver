@@ -244,6 +244,17 @@ class TestClientSimple(EncryptionIntegrationTest):
 
         self._test_auto_encrypt(opts)
 
+    def test_use_after_close(self):
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, 'admin.datakeys')
+        client = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client.close)
+
+        client.admin.command('isMaster')
+        client.close()
+        with self.assertRaisesRegex(InvalidOperation,
+                                    'Cannot use MongoClient after close'):
+            client.admin.command('isMaster')
+
 
 class TestExplicitSimple(EncryptionIntegrationTest):
 
