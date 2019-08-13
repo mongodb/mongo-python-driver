@@ -106,6 +106,8 @@ if [ -n "$TEST_ENCRYPTION" ]; then
 
     git clone --branch master git@github.com:mongodb/libmongocrypt.git libmongocrypt_git
     $PYTHON -m pip install --upgrade ./libmongocrypt_git/bindings/python
+    # TODO: use a virtualenv
+    trap "$PYTHON -m pip uninstall -y pymongocrypt" EXIT HUP
     $PYTHON -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     $PYTHON -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is set by PREPARE_SHELL.
