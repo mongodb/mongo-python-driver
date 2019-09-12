@@ -27,7 +27,7 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from bson import encode
+from bson import decode, encode
 from bson.json_util import loads
 from gridfs import GridFSBucket
 from pymongo import MongoClient
@@ -146,7 +146,7 @@ class BsonDecodingTest(PerformanceTest):
 
     def do_task(self):
         for _ in range(NUM_DOCS):
-            self.document.decode()
+            decode(self.document)
 
 
 class TestFlatEncoding(BsonEncodingTest, unittest.TestCase):
