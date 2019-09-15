@@ -243,14 +243,18 @@ class GridFS(object):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`
 
+        :Returns:
+          - An instance of :class:`~pymongo.results.DeleteResult`.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
         .. versionchanged:: 3.1
            ``delete`` no longer ensures indexes.
         """
-        self.__files.delete_one({"_id": file_id}, session=session)
+        res = self.__files.delete_one({"_id": file_id}, session=session)
         self.__chunks.delete_many({"files_id": file_id}, session=session)
+        return res
 
     def list(self, session=None):
         """List the names of all files stored in this instance of
