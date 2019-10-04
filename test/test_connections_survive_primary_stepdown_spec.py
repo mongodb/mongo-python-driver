@@ -117,19 +117,23 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         self.coll.insert_one({"test": 1})
 
     @client_context.require_version_min(4, 2, -1)
+    @client_context.require_test_commands
     def test_not_master_keep_connection_pool(self):
         self.run_scenario(10107, True, self.verify_pool_not_cleared)
 
     @client_context.require_version_min(4, 0, 0)
     @client_context.require_version_max(4, 1, 0, -1)
+    @client_context.require_test_commands
     def test_not_master_reset_connection_pool(self):
         self.run_scenario(10107, False, self.verify_pool_cleared)
 
     @client_context.require_version_min(4, 0, 0)
+    @client_context.require_test_commands
     def test_shutdown_in_progress(self):
         self.run_scenario(91, False, self.verify_pool_cleared)
 
     @client_context.require_version_min(4, 0, 0)
+    @client_context.require_test_commands
     def test_interrupted_at_shutdown(self):
         self.run_scenario(11600, False, self.verify_pool_cleared)
 
