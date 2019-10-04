@@ -142,7 +142,7 @@
             "batchSize": 2,
             "filter": {}
           },
-          "results": [
+          "result": [
             {
               "_id": 1,
               "encrypted_string": "string0"

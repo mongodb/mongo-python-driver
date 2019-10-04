@@ -148,16 +148,8 @@
                 "name": "deleteOne",
                 "arguments": {
                   "filter": {
-                    "$and": [
-                      {
-                        "encrypted_string": "string1"
-                      },
-                      {
-                        "_id": {
-                          "$eq": 2
-                        }
-                      }
-                    ]
+                    "encrypted_string": "string1",
+                    "_id": 2
                   }
                 }
               }
