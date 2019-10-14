@@ -19,6 +19,7 @@ may be made before the final release.**
 """
 
 import contextlib
+import os
 import subprocess
 import uuid
 import weakref
@@ -150,7 +151,9 @@ class _EncryptionIO(MongoCryptCallback):
         self._spawned = True
         args = [self.opts._mongocryptd_spawn_path or 'mongocryptd']
         args.extend(self.opts._mongocryptd_spawn_args)
-        subprocess.Popen(args)
+        # Silence mongocryptd output, users should pass --logpath.
+        with open(os.devnull, 'wb') as devnull:
+            subprocess.Popen(args, stdout=devnull, stderr=devnull)
 
     def mark_command(self, database, cmd):
         """Mark a command for encryption.
