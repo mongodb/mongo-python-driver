@@ -863,8 +863,9 @@ class TestCollectionChangeStreamsWCustomTypes(
         self.watched_target = self.db.get_collection(
             'test', *args, **kwargs)
         self.input_target = self.watched_target
-        # Insert a record to ensure db, coll are created.
-        self.input_target.insert_one({'data': 'dummy'})
+        # Ensure the collection exists and is empty.
+        self.input_target.insert_one({})
+        self.input_target.delete_many({})
 
 
 class TestDatabaseChangeStreamsWCustomTypes(
