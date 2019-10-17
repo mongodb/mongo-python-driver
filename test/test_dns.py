@@ -31,7 +31,7 @@ from test.utils import wait_until
 
 
 _TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'dns')
+    os.path.dirname(os.path.realpath(__file__)), 'srv_seedlist')
 
 class TestDNS(unittest.TestCase):
     pass
