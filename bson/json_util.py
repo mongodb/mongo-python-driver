@@ -699,7 +699,7 @@ def _parse_canonical_decimal128(doc):
 
 def _parse_canonical_minkey(doc):
     """Decode a JSON MinKey to bson.min_key.MinKey."""
-    if doc['$minKey'] is not 1:
+    if type(doc['$minKey']) is not int or doc['$minKey'] != 1:
         raise TypeError('$minKey value must be 1: %s' % (doc,))
     if len(doc) != 1:
         raise TypeError('Bad $minKey, extra field(s): %s' % (doc,))
@@ -708,7 +708,7 @@ def _parse_canonical_minkey(doc):
 
 def _parse_canonical_maxkey(doc):
     """Decode a JSON MaxKey to bson.max_key.MaxKey."""
-    if doc['$maxKey'] is not 1:
+    if type(doc['$maxKey']) is not int or doc['$maxKey'] != 1:
         raise TypeError('$maxKey value must be 1: %s', (doc,))
     if len(doc) != 1:
         raise TypeError('Bad $minKey, extra field(s): %s' % (doc,))
