@@ -146,6 +146,8 @@ def create_test(scenario_def):
             converted_args = dict((camel_to_snake(c), v)
                                   for c, v in args.items())
 
+            expect_error = test['assert'].get("error", False)
+            result = None
             error = None
             try:
                 result = operation(**converted_args)
@@ -153,6 +155,8 @@ def create_test(scenario_def):
                 if 'download' in test['act']['operation']:
                     result = Binary(result.read())
             except Exception as exc:
+                if not expect_error:
+                    raise
                 error = exc
 
             self.init_expected_db(test, result)
@@ -164,7 +168,7 @@ def create_test(scenario_def):
                       "ChunkIsWrongSize": CorruptGridFile,
                       "RevisionNotFound": NoFile}
 
-            if test['assert'].get("error", False):
+            if expect_error:
                 self.assertIsNotNone(error)
                 self.assertIsInstance(error, errors[test['assert']['error']],
                                       test['description'])
