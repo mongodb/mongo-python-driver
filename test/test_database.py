@@ -1036,20 +1036,28 @@ class TestDatabaseAggregation(IntegrationTest):
     @client_context.require_version_min(3, 6, 0)
     @client_context.require_no_mongos
     def test_database_aggregation_fake_cursor(self):
-        admin = self.admin.with_options(write_concern=WriteConcern(w=0))
-        test_collection_name = "test_output"
-        admin.drop_collection(test_collection_name)
-        self.addCleanup(admin.drop_collection, test_collection_name)
+        coll_name = "test_output"
+        if client_context.version < (4, 3):
+            db_name = "admin"
+            write_stage = {"$out": coll_name}
+        else:
+            # SERVER-43287 disallows writing with $out to the admin db, use
+            # $merge instead.
+            db_name = "pymongo_test"
+            write_stage = {
+                "$merge": {"into": {"db": db_name, "coll": coll_name}}}
+        output_coll = self.client[db_name][coll_name]
+        output_coll.drop()
+        self.addCleanup(output_coll.drop)
 
+        admin = self.admin.with_options(write_concern=WriteConcern(w=0))
         pipeline = self.pipeline[:]
-        pipeline.append({"$out": "test_output"})
+        pipeline.append(write_stage)
         with admin.aggregate(pipeline) as cursor:
             with self.assertRaises(StopIteration):
                 next(cursor)
 
-        result = wait_until(
-            admin[test_collection_name].find_one,
-            "read unacknowledged write")
+        result = wait_until(output_coll.find_one, "read unacknowledged write")
         self.assertEqual(result["dummy"], self.result["dummy"])
 
     @client_context.require_version_max(3, 6, 0, -1)
