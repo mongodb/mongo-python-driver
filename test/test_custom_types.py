@@ -512,8 +512,8 @@ class TestTypeRegistry(unittest.TestCase):
 
     def test_builtin_types_override_fails(self):
         def run_test(base, attrs):
-            msg = ("TypeEncoders cannot change how built-in types "
-                   "are encoded \(encoder .* transforms type .*\)")
+            msg = (r"TypeEncoders cannot change how built-in types "
+                   r"are encoded \(encoder .* transforms type .*\)")
             for pytype in _BUILT_IN_TYPES:
                 attrs.update({'python_type': pytype,
                               'transform_python': lambda x: x})

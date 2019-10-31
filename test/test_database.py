@@ -1062,7 +1062,7 @@ class TestDatabaseAggregation(IntegrationTest):
 
     @client_context.require_version_max(3, 6, 0, -1)
     def test_database_aggregation_unsupported(self):
-        err_msg = "Database.aggregate\(\) is only supported on MongoDB 3.6\+."
+        err_msg = r"Database.aggregate\(\) is only supported on MongoDB 3.6\+."
         with self.assertRaisesRegex(ConfigurationError, err_msg):
             with self.admin.aggregate(self.pipeline) as _:
                 pass

@@ -579,7 +579,7 @@ def joinall(threads):
     """Join threads with a 5-minute timeout, assert joins succeeded"""
     for t in threads:
         t.join(300)
-        assert not t.isAlive(), "Thread %s hung" % t
+        assert not t.is_alive(), "Thread %s hung" % t
 
 
 def connected(client):
@@ -708,7 +708,7 @@ def run_threads(collection, target):
 
     for t in threads:
         t.join(60)
-        assert not t.isAlive()
+        assert not t.is_alive()
 
 
 @contextlib.contextmanager

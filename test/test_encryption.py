@@ -673,8 +673,8 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         self.assertEqual(aws_encrypted_altname, aws_encrypted)
 
         # Explicitly encrypting an auto encrypted field.
-        msg = ('Cannot encrypt element of type binData because schema '
-               'requires that type is one of: \[ string \]')
+        msg = (r'Cannot encrypt element of type binData because schema '
+               r'requires that type is one of: \[ string \]')
         with self.assertRaisesRegex(EncryptionError, msg):
             client_encrypted.db.coll.insert_one(
                 {'encrypted_placeholder': local_encrypted})

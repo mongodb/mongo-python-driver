@@ -823,7 +823,7 @@ class Database(common.BaseObject):
 
         For example, to list all non-system collections::
 
-            filter = {"name": {"$regex": r"^(?!system\.)"}}
+            filter = {"name": {"$regex": r"^(?!system\\.)"}}
             db.list_collection_names(filter=filter)
 
         :Parameters:
