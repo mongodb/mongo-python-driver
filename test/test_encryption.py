@@ -586,8 +586,11 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         return {'aws': AWS_CREDS, 'local': {'key': LOCAL_MASTER_KEY}}
 
     def test_data_key(self):
-        self.client.db.coll.drop()
-        vault = create_key_vault(self.client.admin.datakeys)
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        client.db.coll.drop()
+        vault = create_key_vault(client.admin.datakeys)
         self.addCleanup(vault.drop)
 
         # Configure the encrypted field via the local schema_map option.
@@ -612,14 +615,17 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         self.addCleanup(client_encrypted.close)
 
         client_encryption = ClientEncryption(
-            self.kms_providers(), 'admin.datakeys', client_context.client,
-            OPTS)
+            self.kms_providers(), 'admin.datakeys', client, OPTS)
         self.addCleanup(client_encryption.close)
 
         # Local create data key.
+        listener.reset()
         local_datakey_id = client_encryption.create_data_key(
             'local', key_alt_names=['local_altname'])
         self.assertBinaryUUID(local_datakey_id)
+        cmd = listener.results['started'][-1]
+        self.assertEqual('insert', cmd.command_name)
+        self.assertEqual({'w': 'majority'}, cmd.command.get('writeConcern'))
         docs = list(vault.find({'_id': local_datakey_id}))
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0]['masterKey']['provider'], 'local')
@@ -643,6 +649,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         self.assertEqual(local_encrypted_altname, local_encrypted)
 
         # AWS create data key.
+        listener.reset()
         master_key = {
             'region': 'us-east-1',
             'key': 'arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-'
@@ -651,6 +658,9 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         aws_datakey_id = client_encryption.create_data_key(
             'aws', master_key=master_key, key_alt_names=['aws_altname'])
         self.assertBinaryUUID(aws_datakey_id)
+        cmd = listener.results['started'][-1]
+        self.assertEqual('insert', cmd.command_name)
+        self.assertEqual({'w': 'majority'}, cmd.command.get('writeConcern'))
         docs = list(vault.find({'_id': aws_datakey_id}))
         self.assertEqual(len(docs), 1)
         self.assertEqual(docs[0]['masterKey']['provider'], 'aws')
