@@ -57,6 +57,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
+from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 
@@ -111,11 +112,12 @@ class _EncryptionIO(MongoCryptCallback):
         """
         endpoint = kms_context.endpoint
         message = kms_context.message
+        host, port = parse_host(endpoint, _HTTPS_PORT)
         ctx = get_ssl_context(None, None, None, None, None, None, True)
         opts = PoolOptions(connect_timeout=_KMS_CONNECT_TIMEOUT,
                            socket_timeout=_KMS_CONNECT_TIMEOUT,
                            ssl_context=ctx)
-        conn = _configured_socket((endpoint, _HTTPS_PORT), opts)
+        conn = _configured_socket((host, port), opts)
         try:
             conn.sendall(message)
             while kms_context.bytes_needed > 0:

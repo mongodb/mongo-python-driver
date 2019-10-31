@@ -18,6 +18,7 @@ import base64
 import copy
 import os
 import traceback
+import socket
 import sys
 import uuid
 
@@ -996,6 +997,87 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
         self.assertEqual(
             self.listener.started_command_names(), ['insert', 'insert'])
+
+
+class TestCustomEndpoint(EncryptionIntegrationTest):
+    """Prose tests for creating data keys with a custom endpoint."""
+
+    @classmethod
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
+    def setUpClass(cls):
+        super(TestCustomEndpoint, cls).setUpClass()
+        cls.client_encryption = ClientEncryption(
+            {'aws': AWS_CREDS}, 'admin.datakeys', client_context.client, OPTS)
+
+    def _test_create_data_key(self, master_key):
+        data_key_id = self.client_encryption.create_data_key(
+            'aws', master_key=master_key)
+        encrypted = self.client_encryption.encrypt(
+            'test', Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=data_key_id)
+        self.assertEqual('test', self.client_encryption.decrypt(encrypted))
+
+    def test_02_aws_region_key(self):
+        self._test_create_data_key({
+            "region": "us-east-1",
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0")
+        })
+
+    def test_03_aws_region_key_endpoint(self):
+        self._test_create_data_key({
+            "region": "us-east-1",
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+            "endpoint": "kms.us-east-1.amazonaws.com"
+        })
+
+    def test_04_aws_region_key_endpoint_port(self):
+        self._test_create_data_key({
+            "region": "us-east-1",
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+            "endpoint": "kms.us-east-1.amazonaws.com:443"
+        })
+
+    def test_05_endpoint_invalid_port(self):
+        master_key = {
+            "region": "us-east-1",
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+            "endpoint": "kms.us-east-1.amazonaws.com:12345"
+        }
+        with self.assertRaises(EncryptionError) as ctx:
+            self.client_encryption.create_data_key(
+                'aws', master_key=master_key)
+        self.assertIsInstance(ctx.exception.cause, socket.error)
+
+    def test_05_endpoint_wrong_region(self):
+        master_key = {
+            "region": "us-east-1",
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+            "endpoint": "kms.us-east-2.amazonaws.com"
+        }
+        # The full error should be something like:
+        # "Credential should be scoped to a valid region, not 'us-east-1'"
+        # but we only check for "us-east-1" to avoid breaking on slight
+        # changes to AWS' error message.
+        with self.assertRaisesRegex(EncryptionError, 'us-east-1'):
+            self.client_encryption.create_data_key(
+                'aws', master_key=master_key)
+
+    def test_05_endpoint_invalid_host(self):
+        master_key = {
+            "region": "us-east-1",
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+            "endpoint": "example.com"
+        }
+        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+            self.client_encryption.create_data_key(
+                'aws', master_key=master_key)
 
 
 if __name__ == "__main__":
