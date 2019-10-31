@@ -1441,6 +1441,7 @@ _batched_write_command(
     long max_bson_size;
     long max_cmd_size;
     long max_write_batch_size;
+    long max_split_size;
     int idx = 0;
     int cmd_len_loc;
     int lst_len_loc;
@@ -1448,6 +1449,7 @@ _batched_write_command(
     int length;
     PyObject* max_bson_size_obj = NULL;
     PyObject* max_write_batch_size_obj = NULL;
+    PyObject* max_split_size_obj = NULL;
     PyObject* doc = NULL;
     PyObject* iterator = NULL;
 
@@ -1475,6 +1477,20 @@ _batched_write_command(
 #endif
     Py_XDECREF(max_write_batch_size_obj);
     if (max_write_batch_size == -1) {
+        return 0;
+    }
+
+    // max_split_size is the size at which to perform a batch split.
+    // Normally this this value is equal to max_bson_size (16MiB). However,
+    // when auto encryption is enabled max_split_size is reduced to 2MiB.
+    max_split_size_obj = PyObject_GetAttrString(ctx, "max_split_size");
+#if PY_MAJOR_VERSION >= 3
+    max_split_size = PyLong_AsLong(max_split_size_obj);
+#else
+    max_split_size = PyInt_AsLong(max_split_size_obj);
+#endif
+    Py_XDECREF(max_split_size_obj);
+    if (max_split_size == -1) {
         return 0;
     }
 
@@ -1570,7 +1586,6 @@ _batched_write_command(
          * max_cmd_size accounts for the two trailing null bytes.
          */
         cur_size = buffer_get_position(buffer) - cur_doc_begin;
-        enough_data = (buffer_get_position(buffer) > max_cmd_size);
         /* This single document is too large for the command. */
         if (cur_size > max_cmd_size) {
             if (op == _INSERT) {
@@ -1591,6 +1606,8 @@ _batched_write_command(
             }
             goto fail;
         }
+        enough_data = (idx >= 1 &&
+                       (buffer_get_position(buffer) > max_split_size));
         if (enough_data) {
             /*
              * Roll the existing buffer back to the beginning

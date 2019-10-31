@@ -35,15 +35,15 @@ from bson.json_util import JSONOptions
 from bson.son import SON
 
 from pymongo.cursor import CursorType
-from pymongo.errors import (ConfigurationError,
-                            EncryptionError,
-                            InvalidOperation,
-                            OperationFailure)
 from pymongo.encryption import (Algorithm,
                                 ClientEncryption)
-from pymongo.errors import ConfigurationError, DocumentTooLarge
 from pymongo.encryption_options import AutoEncryptionOpts, _HAVE_PYMONGOCRYPT
-from pymongo.message import _COMMAND_OVERHEAD
+from pymongo.errors import (BulkWriteError,
+                            ConfigurationError,
+                            EncryptionError,
+                            InvalidOperation,
+                            OperationFailure,
+                            WriteError)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 from pymongo.write_concern import WriteConcern
@@ -918,6 +918,10 @@ class TestCorpus(EncryptionIntegrationTest):
         self._test_corpus(opts)
 
 
+_2_MiB = 2097152
+_16_MiB = 16777216
+
+
 class TestBsonSizeBatches(EncryptionIntegrationTest):
     """Prose tests for BSON size limits and batch splitting."""
 
@@ -955,27 +959,14 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         super(TestBsonSizeBatches, cls).tearDownClass()
 
     def test_01_insert_succeeds_under_2MiB(self):
-        doc = {'_id': 'no_encryption_under_2mib',
-               'unencrypted': 'a' * ((2**21) - 1000)}
+        doc = {'_id': 'over_2mib_under_16mib', 'unencrypted': 'a' * _2_MiB}
         self.coll_encrypted.insert_one(doc)
 
         # Same with bulk_write.
-        doc = {'_id': 'no_encryption_under_2mib_bulk',
-               'unencrypted': 'a' * ((2**21) - 1000)}
+        doc['_id'] = 'over_2mib_under_16mib_bulk'
         self.coll_encrypted.bulk_write([InsertOne(doc)])
 
-    def test_02_insert_fails_over_2MiB(self):
-        doc = {'_id': 'no_encryption_over_2mib',
-               'unencrypted': 'a' * (2**21 + _COMMAND_OVERHEAD)}
-
-        with self.assertRaises(DocumentTooLarge):
-            self.coll_encrypted.insert_one(doc)
-        with self.assertRaises(DocumentTooLarge):
-            self.coll_encrypted.insert_many([doc])
-        with self.assertRaises(DocumentTooLarge):
-            self.coll_encrypted.bulk_write([InsertOne(doc)])
-
-    def test_03_insert_succeeds_over_2MiB_post_encryption(self):
+    def test_02_insert_succeeds_over_2MiB_post_encryption(self):
         doc = {'_id': 'encryption_exceeds_2mib',
                'unencrypted': 'a' * ((2**21) - 2000)}
         doc.update(json_data('limits', 'limits-doc.json'))
@@ -985,28 +976,52 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         doc['_id'] = 'encryption_exceeds_2mib_bulk'
         self.coll_encrypted.bulk_write([InsertOne(doc)])
 
-    def test_04_bulk_batch_split(self):
-        doc1 = {'_id': 'no_encryption_under_2mib_1',
-                'unencrypted': 'a' * ((2**21) - 1000)}
-        doc2 = {'_id': 'no_encryption_under_2mib_2',
-                'unencrypted': 'a' * ((2**21) - 1000)}
+    def test_03_bulk_batch_split(self):
+        doc1 = {'_id': 'over_2mib_1', 'unencrypted': 'a' * _2_MiB}
+        doc2 = {'_id': 'over_2mib_2', 'unencrypted': 'a' * _2_MiB}
         self.listener.reset()
         self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
         self.assertEqual(
             self.listener.started_command_names(), ['insert', 'insert'])
 
-    def test_05_bulk_batch_split(self):
+    def test_04_bulk_batch_split(self):
         limits_doc = json_data('limits', 'limits-doc.json')
         doc1 = {'_id': 'encryption_exceeds_2mib_1',
-                'unencrypted': 'a' * ((2**21) - 2000)}
+                'unencrypted': 'a' * (_2_MiB - 2000)}
         doc1.update(limits_doc)
         doc2 = {'_id': 'encryption_exceeds_2mib_2',
-                'unencrypted': 'a' * ((2**21) - 2000)}
+                'unencrypted': 'a' * (_2_MiB - 2000)}
         doc2.update(limits_doc)
         self.listener.reset()
         self.coll_encrypted.bulk_write([InsertOne(doc1), InsertOne(doc2)])
         self.assertEqual(
             self.listener.started_command_names(), ['insert', 'insert'])
+
+    def test_05_insert_succeeds_just_under_16MiB(self):
+        doc = {'_id': 'under_16mib', 'unencrypted': 'a' * (_16_MiB - 2000)}
+        self.coll_encrypted.insert_one(doc)
+
+        # Same with bulk_write.
+        doc['_id'] = 'under_16mib_bulk'
+        self.coll_encrypted.bulk_write([InsertOne(doc)])
+
+    def test_06_insert_fails_over_16MiB(self):
+        limits_doc = json_data('limits', 'limits-doc.json')
+        doc = {'_id': 'encryption_exceeds_16mib',
+               'unencrypted': 'a' * (_16_MiB - 2000)}
+        doc.update(limits_doc)
+
+        with self.assertRaisesRegex(WriteError, 'object to insert too large'):
+            self.coll_encrypted.insert_one(doc)
+
+        # Same with bulk_write.
+        doc['_id'] = 'encryption_exceeds_16mib_bulk'
+        with self.assertRaises(BulkWriteError) as ctx:
+            self.coll_encrypted.bulk_write([InsertOne(doc)])
+        err = ctx.exception.details['writeErrors'][0]
+        self.assertEqual(2, err['code'])
+        self.assertIn('object to insert too large', err['errmsg'])
+
 
 
 class TestCustomEndpoint(EncryptionIntegrationTest):

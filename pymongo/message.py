@@ -929,6 +929,11 @@ class _BulkWriteContext(object):
         """A proxy for SockInfo.max_write_batch_size."""
         return self.sock_info.max_write_batch_size
 
+    @property
+    def max_split_size(self):
+        """The maximum size of a BSON command before batch splitting."""
+        return self.max_bson_size
+
     def legacy_bulk_insert(
             self, request_id, msg, max_doc_size, acknowledged, docs, compress):
         if compress:
@@ -1011,10 +1016,11 @@ class _BulkWriteContext(object):
             request_id, self.sock_info.address, self.op_id)
 
 
-# 2MiB
-_MAX_ENC_BSON_SIZE = 2 * (1024 * 1024)
-# 6MB
-_MAX_ENC_MESSAGE_SIZE = 6 * (1000 * 1000)
+# From the Client Side Encryption spec:
+# Because automatic encryption increases the size of commands, the driver
+# MUST split bulk writes at a reduced size limit before undergoing automatic
+# encryption. The write payload MUST be split at 2MiB (2097152).
+_MAX_SPLIT_SIZE_ENC = 2097152
 
 
 class _EncryptedBulkWriteContext(_BulkWriteContext):
@@ -1049,14 +1055,9 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         return to_send
 
     @property
-    def max_bson_size(self):
-        """A proxy for SockInfo.max_bson_size."""
-        return min(self.sock_info.max_bson_size, _MAX_ENC_BSON_SIZE)
-
-    @property
-    def max_message_size(self):
-        """A proxy for SockInfo.max_message_size."""
-        return min(self.sock_info.max_message_size, _MAX_ENC_MESSAGE_SIZE)
+    def max_split_size(self):
+        """Reduce the batch splitting size."""
+        return _MAX_SPLIT_SIZE_ENC
 
 
 def _raise_document_too_large(operation, doc_size, max_size):
@@ -1388,6 +1389,7 @@ def _batched_write_command_impl(
     # Max BSON object size + 16k - 2 bytes for ending NUL bytes.
     # Server guarantees there is enough room: SERVER-10643.
     max_cmd_size = max_bson_size + _COMMAND_OVERHEAD
+    max_split_size = ctx.max_split_size
 
     # No options
     buf.write(_ZERO_32)
@@ -1424,12 +1426,13 @@ def _batched_write_command_impl(
         # Is there enough room to add this document? max_cmd_size accounts for
         # the two trailing null bytes.
         doc_too_large = len(value) > max_cmd_size
-        enough_data = (buf.tell() + len(key) + len(value)) >= max_cmd_size
-        enough_documents = (idx >= max_write_batch_size)
         if doc_too_large:
             write_op = list(_FIELD_MAP.keys())[operation]
             _raise_document_too_large(
                 write_op, len(value), max_bson_size)
+        enough_data = (idx >= 1 and
+                       (buf.tell() + len(key) + len(value)) >= max_split_size)
+        enough_documents = (idx >= max_write_batch_size)
         if enough_data or enough_documents:
             break
         buf.write(_BSONOBJ)
