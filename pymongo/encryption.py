@@ -387,7 +387,7 @@ class ClientEncryption(object):
             raise ConfigurationError(
                 "client side encryption requires the pymongocrypt library: "
                 "install a compatible version with: "
-                "python -m pip install pymongo['encryption']")
+                "python -m pip install 'pymongo[encryption]'")
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of "

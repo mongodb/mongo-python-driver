@@ -115,7 +115,7 @@ class AutoEncryptionOpts(object):
             raise ConfigurationError(
                 "client side encryption requires the pymongocrypt library: "
                 "install a compatible version with: "
-                "python -m pip install pymongo['encryption']")
+                "python -m pip install 'pymongo[encryption]'")
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
