@@ -1892,7 +1892,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (options->is_raw_bson) {
                 value = PyObject_CallFunction(
                     options->document_class, BYTES_FORMAT_STRING "O",
-                    buffer + *position, size, options->options_obj);
+                    buffer + *position, (Py_ssize_t)size, options->options_obj);
                 if (!value) {
                     goto invalid;
                 }
@@ -2548,7 +2548,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                                             "from_bid",
                                             BYTES_FORMAT_STRING,
                                             buffer + *position,
-                                            16);
+                                            (Py_ssize_t)16);
                 Py_DECREF(dec128);
             }
             *position += 16;
