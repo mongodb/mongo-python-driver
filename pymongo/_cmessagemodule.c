@@ -629,7 +629,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     unsigned int flags;
     PyObject* command;
     char* identifier = NULL;
-    int identifier_length = 0;
+    Py_ssize_t identifier_length = 0;
     PyObject* docs;
     PyObject* doc;
     unsigned char check_keys = 0;
