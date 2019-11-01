@@ -267,7 +267,7 @@ class _TransactionContext(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.__session._in_transaction:
+        if self.__session.in_transaction:
             if exc_val is None:
                 self.__session.commit_transaction()
             else:
@@ -356,7 +356,7 @@ class ClientSession(object):
     def _end_session(self, lock):
         if self._server_session is not None:
             try:
-                if self._in_transaction:
+                if self.in_transaction:
                     self.abort_transaction()
             finally:
                 self._client._return_server_session(self._server_session, lock)
@@ -505,7 +505,7 @@ class ClientSession(object):
             try:
                 ret = callback(self)
             except Exception as exc:
-                if self._in_transaction:
+                if self.in_transaction:
                     self.abort_transaction()
                 if (isinstance(exc, PyMongoError) and
                         exc.has_error_label("TransientTransactionError") and
@@ -514,8 +514,7 @@ class ClientSession(object):
                     continue
                 raise
 
-            if self._transaction.state in (
-                    _TxnState.NONE, _TxnState.COMMITTED, _TxnState.ABORTED):
+            if not self.in_transaction:
                 # Assume callback intentionally ended the transaction.
                 return ret
 
@@ -551,7 +550,7 @@ class ClientSession(object):
         """
         self._check_ended()
 
-        if self._in_transaction:
+        if self.in_transaction:
             raise InvalidOperation("Transaction already in progress")
 
         read_concern = self._inherit_option("read_concern", read_concern)
@@ -589,7 +588,7 @@ class ClientSession(object):
                 "Cannot call commitTransaction after calling abortTransaction")
         elif state is _TxnState.COMMITTED:
             # We're explicitly retrying the commit, move the state back to
-            # "in progress" so that _in_transaction returns true.
+            # "in progress" so that in_transaction returns true.
             self._transaction.state = _TxnState.IN_PROGRESS
             retry = True
 
@@ -750,7 +749,7 @@ class ClientSession(object):
         """Process a response to a command that was run with this session."""
         self._advance_cluster_time(reply.get('$clusterTime'))
         self._advance_operation_time(reply.get('operationTime'))
-        if self._in_transaction and self._transaction.sharded:
+        if self.in_transaction and self._transaction.sharded:
             recovery_token = reply.get('recoveryToken')
             if recovery_token:
                 self._transaction.recovery_token = recovery_token
@@ -761,8 +760,11 @@ class ClientSession(object):
         return self._server_session is None
 
     @property
-    def _in_transaction(self):
-        """True if this session has an active multi-statement transaction."""
+    def in_transaction(self):
+        """True if this session has an active multi-statement transaction.
+
+        .. versionadded:: 3.10
+        """
         return self._transaction.active()
 
     @property
@@ -783,7 +785,7 @@ class ClientSession(object):
 
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""
-        if self._in_transaction:
+        if self.in_transaction:
             return self._transaction.opts.read_preference
         return None
 
@@ -793,14 +795,14 @@ class ClientSession(object):
         self._server_session.last_use = monotonic.time()
         command['lsid'] = self._server_session.session_id
 
-        if not self._in_transaction:
+        if not self.in_transaction:
             self._transaction.reset()
 
         if is_retryable:
             command['txnNumber'] = self._server_session.transaction_id
             return
 
-        if self._in_transaction:
+        if self.in_transaction:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
                     'read preference in a transaction must be primary, not: '

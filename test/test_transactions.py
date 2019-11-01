@@ -334,6 +334,42 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         self.assertEqual(listener.started_command_names(),
                          ['insert', 'commitTransaction', 'commitTransaction'])
 
+    # Tested here because this supports Motor's convenient transactions API.
+    @client_context.require_transactions
+    def test_in_transaction_property(self):
+        client = client_context.client
+        coll = client.test.testcollection
+        coll.insert_one({})
+        self.addCleanup(coll.drop)
+
+        with client.start_session() as s:
+            self.assertFalse(s.in_transaction)
+            s.start_transaction()
+            self.assertTrue(s.in_transaction)
+            coll.insert_one({}, session=s)
+            self.assertTrue(s.in_transaction)
+            s.commit_transaction()
+            self.assertFalse(s.in_transaction)
+
+        with client.start_session() as s:
+            s.start_transaction()
+            # commit empty transaction
+            s.commit_transaction()
+            self.assertFalse(s.in_transaction)
+
+        with client.start_session() as s:
+            s.start_transaction()
+            s.abort_transaction()
+            self.assertFalse(s.in_transaction)
+
+        # Using a callback
+        def callback(session):
+            self.assertTrue(session.in_transaction)
+        with client.start_session() as s:
+            self.assertFalse(s.in_transaction)
+            s.with_transaction(callback)
+            self.assertFalse(s.in_transaction)
+
 
 def create_test(scenario_def, test, name):
     @client_context.require_test_commands

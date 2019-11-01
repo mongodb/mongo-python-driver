@@ -824,7 +824,7 @@ class BaseObject(object):
         """Read only access to the write concern of this instance or session.
         """
         # Override this operation's write concern with the transaction's.
-        if session and session._in_transaction:
+        if session and session.in_transaction:
             return DEFAULT_WRITE_CONCERN
         return self.write_concern
 

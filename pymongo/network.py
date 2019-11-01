@@ -98,7 +98,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     orig = spec
     if is_mongos and not use_op_msg:
         spec = message._maybe_add_read_preference(spec, read_preference)
-    if read_concern and not (session and session._in_transaction):
+    if read_concern and not (session and session.in_transaction):
         if read_concern.level:
             spec['readConcern'] = read_concern.document
         if (session and session.options.causal_consistency
