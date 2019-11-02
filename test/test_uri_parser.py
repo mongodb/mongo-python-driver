@@ -18,17 +18,21 @@ import copy
 import sys
 import warnings
 
+try:
+    from ssl import CERT_NONE
+except ImportError:
+    CERT_NONE = 0
+
 sys.path[0:0] = [""]
 
+from bson.binary import JAVA_LEGACY
+from bson.py3compat import string_type, _unicode
+from pymongo import ReadPreference
+from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.uri_parser import (parse_userinfo,
                                 split_hosts,
                                 split_options,
                                 parse_uri)
-from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.ssl_support import ssl
-from pymongo import ReadPreference
-from bson.binary import JAVA_LEGACY
-from bson.py3compat import string_type, _unicode
 from test import unittest
 
 
@@ -465,7 +469,7 @@ class TestURI(unittest.TestCase):
         # check that tlsInsecure is expanded correctly.
         uri = "mongodb://example.com/?tlsInsecure=true"
         res = {
-            "ssl_match_hostname": False, "ssl_cert_reqs": ssl.CERT_NONE,
+            "ssl_match_hostname": False, "ssl_cert_reqs": CERT_NONE,
             "tlsinsecure": True}
         self.assertEqual(res, parse_uri(uri)["options"])
 

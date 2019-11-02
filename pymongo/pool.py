@@ -21,21 +21,11 @@ import sys
 import threading
 import collections
 
-try:
-    import ssl
-    from ssl import SSLError
-    _HAVE_SNI = getattr(ssl, 'HAS_SNI', False)
-except ImportError:
-    _HAVE_SNI = False
-    class SSLError(socket.error):
-        pass
 
-try:
-    from ssl import CertificateError as _SSLCertificateError
-except ImportError:
-    class _SSLCertificateError(ValueError):
-        pass
-
+from pymongo.ssl_support import (
+    SSLError as _SSLError,
+    HAS_SNI as _HAVE_SNI,
+    IPADDR_SAFE as _IPADDR_SAFE)
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import imap, itervalues, _unicode, integer_types
@@ -52,6 +42,7 @@ from pymongo.common import (MAX_BSON_SIZE,
                             ORDERED_TYPES,
                             WAIT_QUEUE_TIMEOUT)
 from pymongo.errors import (AutoReconnect,
+                            CertificateError,
                             ConnectionFailure,
                             ConfigurationError,
                             InvalidOperation,
@@ -65,12 +56,12 @@ from pymongo.monotonic import time as _time
 from pymongo.monitoring import (ConnectionCheckOutFailedReason,
                                 ConnectionClosedReason)
 from pymongo.network import (command,
-                             receive_message,
-                             SocketChecker)
+                             receive_message)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
+from pymongo.socket_checker import SocketChecker
 # Always use our backport so we always have support for IP address matching
-from pymongo.ssl_match_hostname import match_hostname, CertificateError
+from pymongo.ssl_match_hostname import match_hostname
 
 # For SNI support. According to RFC6066, section 3, IPv4 and IPv6 literals are
 # not permitted for SNI hostname.
@@ -279,7 +270,7 @@ def _raise_connection_failure(address, error, msg_prefix=None):
         msg = msg_prefix + msg
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg)
-    elif isinstance(error, SSLError) and 'timed out' in str(error):
+    elif isinstance(error, _SSLError) and 'timed out' in str(error):
         # CPython 2.7 and PyPy 2.x do not distinguish network
         # timeouts from other SSLErrors (https://bugs.python.org/issue10272).
         # Luckily, we can work around this limitation because the phrase
@@ -791,7 +782,8 @@ class SocketInfo(object):
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.
         self.close_socket(ConnectionClosedReason.ERROR)
-        if isinstance(error, socket.error):
+        # SSLError from PyOpenSSL inherits directly from Exception.
+        if isinstance(error, (IOError, OSError, _SSLError)):
             _raise_connection_failure(self.address, error)
         else:
             raise
@@ -882,9 +874,6 @@ def _create_connection(address, options):
         raise socket.error('getaddrinfo failed')
 
 
-_PY37PLUS = sys.version_info[:2] >= (3, 7)
-
-
 def _configured_socket(address, options):
     """Given (host, port) and PoolOptions, return a configured socket.
 
@@ -905,11 +894,11 @@ def _configured_socket(address, options):
             # https://bugs.python.org/issue32185
             # We have to pass hostname / ip address to wrap_socket
             # to use SSLContext.check_hostname.
-            if _HAVE_SNI and (not is_ip_address(host) or _PY37PLUS):
+            if _HAVE_SNI and (not is_ip_address(host) or _IPADDR_SAFE):
                 sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
                 sock = ssl_context.wrap_socket(sock)
-        except _SSLCertificateError:
+        except CertificateError:
             sock.close()
             # Raise CertificateError directly like we do after match_hostname
             # below.

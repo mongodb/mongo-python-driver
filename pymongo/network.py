@@ -16,23 +16,7 @@
 
 import datetime
 import errno
-import select
 import struct
-import threading
-
-_HAS_POLL = True
-_EVENT_MASK = 0
-try:
-    from select import poll
-    _EVENT_MASK = (
-        select.POLLIN | select.POLLPRI | select.POLLERR | select.POLLHUP)
-except ImportError:
-    _HAS_POLL = False
-
-try:
-    from select import error as _SELECT_ERROR
-except ImportError:
-    _SELECT_ERROR = OSError
 
 from bson import _decode_all_selective
 from bson.py3compat import PY3
@@ -45,6 +29,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             ProtocolError)
 from pymongo.message import _UNPACK_REPLY
+from pymongo.socket_checker import _errno_from_exception
 
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
@@ -263,58 +248,3 @@ else:
             bytes_read += chunk_length
 
         return mv
-
-
-def _errno_from_exception(exc):
-    if hasattr(exc, 'errno'):
-        return exc.errno
-    elif exc.args:
-        return exc.args[0]
-    else:
-        return None
-
-
-class SocketChecker(object):
-
-    def __init__(self):
-        if _HAS_POLL:
-            self._lock = threading.Lock()
-            self._poller = poll()
-        else:
-            self._lock = None
-            self._poller = None
-
-    def socket_closed(self, sock):
-        """Return True if we know socket has been closed, False otherwise.
-        """
-        while True:
-            try:
-                if self._poller:
-                    with self._lock:
-                        self._poller.register(sock, _EVENT_MASK)
-                        try:
-                            rd = self._poller.poll(0)
-                        finally:
-                            self._poller.unregister(sock)
-                else:
-                    rd, _, _ = select.select([sock], [], [], 0)
-            except (RuntimeError, KeyError):
-                # RuntimeError is raised during a concurrent poll. KeyError
-                # is raised by unregister if the socket is not in the poller.
-                # These errors should not be possible since we protect the
-                # poller with a mutex.
-                raise
-            except ValueError:
-                # ValueError is raised by register/unregister/select if the
-                # socket file descriptor is negative or outside the range for
-                # select (> 1023).
-                return True
-            except (_SELECT_ERROR, IOError) as exc:
-                if _errno_from_exception(exc) in (errno.EINTR, errno.EAGAIN):
-                    continue
-                return True
-            except Exception:
-                # Any other exceptions should be attributed to a closed
-                # or invalid socket.
-                return True
-            return len(rd) > 0

@@ -338,6 +338,16 @@ functions:
            ${PREPARE_SHELL}
            PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-cdecimal-tests.sh
 
+  "run pyopenssl tests":
+     - command: shell.exec
+       type: test
+       params:
+         working_dir: "src"
+         script: |
+           set -o xtrace
+           ${PREPARE_SHELL}
+           PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-pyopenssl-tests.sh
+
   "run doctests":
      - command: shell.exec
        type: test
@@ -795,6 +805,17 @@ tasks:
             VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run cdecimal tests"
+
+    # Use latest for this, since we're
+    # adding this to support OCSP stapling
+    - name: "pyopenssl"
+      tags: ["pyopenssl"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run pyopenssl tests"
 
     - name: "no-server"
       tags: ["no-server"]
@@ -1373,6 +1394,27 @@ buildvariants:
   display_name: "${python-version} ${platform} ${auth} ${ssl} ${coverage}"
   tasks: *all-server-versions
 
+- matrix_name: "tests-pyopenssl"
+  matrix_spec:
+    platform: ubuntu-16.04
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "pypy", "pypy3.5"]
+    auth: "*"
+    ssl: "ssl"
+  display_name: "PyOpenSSL ${python-version} ${platform} ${auth}"
+  tasks:
+    - "pyopenssl"
+
+- matrix_name: "test-pyopenssl-old-py27"
+  matrix_spec:
+    platform:
+      # Supported OSes with pre-2.7.9 CPython versions.
+      - rhel70 # CPython 2.7.5
+    auth: "*"
+    ssl: "ssl"
+  display_name: "PyOpenSSL Pre-2.7.9 Python ${platform} ${auth}"
+  tasks:
+    - "pyopenssl"
+
 - matrix_name: "tests-python-version-rhel62-test-encryption"
   matrix_spec:
     platform: rhel62
@@ -1705,6 +1747,13 @@ buildvariants:
      - name: "coverage-report"
   expansions:
     set_xtrace_on: on
+
+- matrix_name: "atlas-connect-pre-279"
+  matrix_spec:
+    platform: rhel70
+  display_name: "Atlas connect Pre-2.7.9 Python ${platform}"
+  tasks:
+    - name: "atlas-connect"
 
 - matrix_name: "atlas-connect"
   matrix_spec:

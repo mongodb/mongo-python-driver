@@ -317,26 +317,31 @@ ext_modules = [Extension('bson._cbson',
                          sources=['pymongo/_cmessagemodule.c',
                                   'bson/buffer.c'])]
 
+# PyOpenSSL 17.0.0 introduced support for OCSP. 17.2.0 fixes a bug
+# in set_default_verify_paths we should really avoid.
+# service_identity 18.1.0 introduced support for IP addr matching.
+pyopenssl_reqs = ["pyopenssl>=17.2.0", "service_identity>=18.1.0"]
+
 extras_require = {
     'encryption': ['pymongocrypt<2.0.0'],
     'snappy': ['python-snappy'],
     'zstd': ['zstandard'],
 }
-vi = sys.version_info
-if vi[0] == 2:
-    extras_require.update({'tls': ["ipaddress"]})
+
+if sys.version_info[0] == 2:
     extras_require.update({'srv': ["dnspython>=1.16.0,<1.17.0"]})
+    extras_require.update({'tls': ["ipaddress"]})
+    for req in pyopenssl_reqs:
+        extras_require['tls'].append("%s ; python_full_version < '2.7.9'" % (req,))
 else:
-    extras_require.update({'tls': []})
     extras_require.update({'srv': ["dnspython>=1.16.0,<2.0.0"]})
+    extras_require.update({'tls': []})
 if sys.platform == 'win32':
     extras_require['gssapi'] = ["winkerberos>=0.5.0"]
-    if vi < (2, 7, 9):
-        extras_require['tls'].append("wincertstore>=0.2")
+    extras_require['tls'].append("wincertstore>=0.2 ; python_full_version < '2.7.9'")
 else:
     extras_require['gssapi'] = ["pykerberos"]
-    if vi < (2, 7, 9):
-        extras_require['tls'].append("certifi")
+    extras_require['tls'].append("certifi ; python_full_version < '2.7.9'")
 
 extra_opts = {
     "packages": ["bson", "pymongo", "gridfs"]

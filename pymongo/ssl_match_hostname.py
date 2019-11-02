@@ -16,10 +16,7 @@ if sys.version_info[0] < 3:
 else:
     _unicode = lambda value: value
 
-
-class CertificateError(ValueError):
-    pass
-
+from pymongo.errors import CertificateError
 
 def _dnsname_match(dn, hostname, max_wildcards=1):
     """Matching according to RFC 6125, section 6.4.3

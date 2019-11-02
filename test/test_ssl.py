@@ -30,7 +30,7 @@ from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
-from pymongo.ssl_support import HAVE_SSL, get_ssl_context, validate_cert_reqs
+from pymongo.ssl_support import HAVE_SSL, get_ssl_context, validate_cert_reqs, _ssl
 from pymongo.write_concern import WriteConcern
 from test import (IntegrationTest,
                   client_context,
@@ -40,6 +40,13 @@ from test import (IntegrationTest,
                   unittest,
                   HAVE_IPADDRESS)
 from test.utils import remove_all_users, connected
+
+_HAVE_PYOPENSSL = False
+try:
+    import OpenSSL
+    _HAVE_PYOPENSSL = True
+except ImportError:
+    pass
 
 if HAVE_SSL:
     import ssl
@@ -143,6 +150,10 @@ class TestClientSSL(unittest.TestCase):
             validate_cert_reqs('ssl_cert_reqs', 'CERT_REQUIRED'),
             ssl.CERT_REQUIRED)
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    def test_use_openssl_when_available(self):
+        self.assertTrue(_ssl.IS_PYOPENSSL)
+
 
 class TestSSL(IntegrationTest):
 
@@ -180,7 +191,7 @@ class TestSSL(IntegrationTest):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         vi = sys.version_info
-        if vi[0] == 2 and vi < (2, 7, 9) or vi[0] == 3 and vi < (3, 3):
+        if vi[0] == 2 and vi < (2, 7, 9) and not _ssl.IS_PYOPENSSL:
             self.assertRaises(
                 ConfigurationError,
                 MongoClient,
@@ -378,7 +389,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     def test_ssl_crlfile_support(self):
-        if not hasattr(ssl, 'VERIFY_CRL_CHECK_LEAF'):
+        if not hasattr(ssl, 'VERIFY_CRL_CHECK_LEAF') or _ssl.IS_PYOPENSSL:
             self.assertRaises(
                 ConfigurationError,
                 MongoClient,

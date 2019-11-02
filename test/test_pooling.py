@@ -29,8 +29,8 @@ from pymongo.errors import (AutoReconnect,
 
 sys.path[0:0] = [""]
 
-from pymongo.network import SocketChecker
 from pymongo.pool import Pool, PoolOptions
+from pymongo.socket_checker import SocketChecker
 from test import client_context, unittest
 from test.utils import (get_pool,
                         joinall,

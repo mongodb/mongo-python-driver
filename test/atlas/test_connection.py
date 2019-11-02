@@ -15,13 +15,13 @@
 """Test connections to various Atlas cluster types."""
 
 import os
-import ssl
 import sys
 import unittest
 
 sys.path[0:0] = [""]
 
 import pymongo
+from pymongo.ssl_support import HAS_SNI
 
 
 _REPL = os.environ.get("ATLAS_REPL")
@@ -54,7 +54,7 @@ class TestAtlasConnect(unittest.TestCase):
         _connect(_SHRD)
 
     def test_free_tier(self):
-        if not getattr(ssl, 'HAS_SNI', False):
+        if not HAS_SNI:
             raise unittest.SkipTest("Free tier requires SNI support.")
         _connect(_FREE)
 

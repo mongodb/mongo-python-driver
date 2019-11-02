@@ -18,11 +18,18 @@ import atexit
 import sys
 import threading
 
+from bson.py3compat import string_type
+from pymongo.errors import ConfigurationError
+
 HAVE_SSL = True
+
 try:
-    import ssl
+    import pymongo.pyopenssl_context as _ssl
 except ImportError:
-    HAVE_SSL = False
+    try:
+        import pymongo.ssl_context as _ssl
+    except ImportError:
+        HAVE_SSL = False
 
 HAVE_CERTIFI = False
 try:
@@ -38,21 +45,19 @@ try:
 except ImportError:
     pass
 
-from bson.py3compat import string_type
-from pymongo.errors import ConfigurationError
-
 _WINCERTSLOCK = threading.Lock()
 _WINCERTS = None
 
-_PY37PLUS = sys.version_info[:2] >= (3, 7)
-
 if HAVE_SSL:
-    try:
-        # Python 2.7.9+, PyPy 2.5.1+, etc.
-        from ssl import SSLContext
-    except ImportError:
-        from pymongo.ssl_context import SSLContext
-
+    # Note: The validate* functions below deal with users passing
+    # CPython ssl module constants to configure certificate verification
+    # at a high level. This is legacy behavior, but requires us to
+    # import the ssl module even if we're only using it for this purpose.
+    import ssl as _stdlibssl
+    from ssl import CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
+    HAS_SNI = _ssl.HAS_SNI
+    IPADDR_SAFE = _ssl.IS_PYOPENSSL or sys.version_info[:2] >= (3, 7)
+    SSLError = _ssl.SSLError
     def validate_cert_reqs(option, value):
         """Validate the cert reqs are valid. It must be None or one of the
         three values ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL`` or
@@ -60,10 +65,10 @@ if HAVE_SSL:
         """
         if value is None:
             return value
-        elif isinstance(value, string_type) and hasattr(ssl, value):
-            value = getattr(ssl, value)
+        if isinstance(value, string_type) and hasattr(_stdlibssl, value):
+            value = getattr(_stdlibssl, value)
 
-        if value in (ssl.CERT_NONE, ssl.CERT_OPTIONAL, ssl.CERT_REQUIRED):
+        if value in (CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED):
             return value
         raise ValueError("The value of %s must be one of: "
                          "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
@@ -75,8 +80,8 @@ if HAVE_SSL:
         from pymongo.common import validate_boolean_or_string
         boolean_cert_reqs = validate_boolean_or_string(option, value)
         if boolean_cert_reqs:
-            return ssl.CERT_NONE
-        return ssl.CERT_REQUIRED
+            return CERT_NONE
+        return CERT_REQUIRED
 
     def _load_wincerts():
         """Set _WINCERTS to an instance of wincertstore.Certfile."""
@@ -89,13 +94,6 @@ if HAVE_SSL:
 
         _WINCERTS = certfile
 
-    # XXX: Possible future work.
-    # - OCSP? Not supported by python at all.
-    #   http://bugs.python.org/issue17123
-    # - Adding an ssl_context keyword argument to MongoClient? This might
-    #   be useful for sites that have unusual requirements rather than
-    #   trying to expose every SSLContext option through a keyword/uri
-    #   parameter.
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
         (certfile,
@@ -105,25 +103,11 @@ if HAVE_SSL:
          cert_reqs,
          crlfile,
          match_hostname) = args
-        verify_mode = ssl.CERT_REQUIRED if cert_reqs is None else cert_reqs
-        # Note PROTOCOL_SSLv23 is about the most misleading name imaginable.
-        # This configures the server and client to negotiate the
-        # highest protocol version they both support. A very good thing.
-        # PROTOCOL_TLS_CLIENT was added in CPython 3.6, deprecating
-        # PROTOCOL_SSLv23.
-        ctx = SSLContext(
-            getattr(ssl, "PROTOCOL_TLS_CLIENT", ssl.PROTOCOL_SSLv23))
+        verify_mode = CERT_REQUIRED if cert_reqs is None else cert_reqs
+        ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         # SSLContext.check_hostname was added in CPython 2.7.9 and 3.4.
-        # PROTOCOL_TLS_CLIENT (added in Python 3.6) enables it by default.
         if hasattr(ctx, "check_hostname"):
-            if _PY37PLUS and verify_mode != ssl.CERT_NONE:
-                # Python 3.7 uses OpenSSL's hostname matching implementation
-                # making it the obvious version to start using this with.
-                # Python 3.6 might have been a good version, but it suffers
-                # from https://bugs.python.org/issue32185.
-                # We'll use our bundled match_hostname for older Python
-                # versions, which also supports IP address matching
-                # with Python < 3.5.
+            if _ssl.CHECK_HOSTNAME_SAFE and verify_mode != CERT_NONE:
                 ctx.check_hostname = match_hostname
             else:
                 ctx.check_hostname = False
@@ -131,42 +115,31 @@ if HAVE_SSL:
             # Explicitly disable SSLv2, SSLv3 and TLS compression. Note that
             # up to date versions of MongoDB 2.4 and above already disable
             # SSLv2 and SSLv3, python disables SSLv2 by default in >= 2.7.7
-            # and >= 3.3.4 and SSLv3 in >= 3.4.3. There is no way for us to do
-            # any of this explicitly for python 2.7 before 2.7.9.
-            ctx.options |= getattr(ssl, "OP_NO_SSLv2", 0)
-            ctx.options |= getattr(ssl, "OP_NO_SSLv3", 0)
-            # OpenSSL >= 1.0.0
-            ctx.options |= getattr(ssl, "OP_NO_COMPRESSION", 0)
-            # Python 3.7+ with OpenSSL >= 1.1.0h
-            ctx.options |= getattr(ssl, "OP_NO_RENEGOTIATION", 0)
+            # and >= 3.3.4 and SSLv3 in >= 3.4.3.
+            ctx.options |= _ssl.OP_NO_SSLv2
+            ctx.options |= _ssl.OP_NO_SSLv3
+            ctx.options |= _ssl.OP_NO_COMPRESSION
+            ctx.options |= _ssl.OP_NO_RENEGOTIATION
         if certfile is not None:
             try:
-                if passphrase is not None:
-                    vi = sys.version_info
-                    # Since python just added a new parameter to an existing method
-                    # this seems to be about the best we can do.
-                    if (vi[0] == 2 and vi < (2, 7, 9) or
-                            vi[0] == 3 and vi < (3, 3)):
-                        raise ConfigurationError(
-                            "Support for ssl_pem_passphrase requires "
-                            "python 2.7.9+ (pypy 2.5.1+) or 3.3+")
-                    ctx.load_cert_chain(certfile, keyfile, passphrase)
-                else:
-                    ctx.load_cert_chain(certfile, keyfile)
-            except ssl.SSLError as exc:
+                ctx.load_cert_chain(certfile, keyfile, passphrase)
+            except _ssl.SSLError as exc:
                 raise ConfigurationError(
                     "Private key doesn't match certificate: %s" % (exc,))
         if crlfile is not None:
+            if _ssl.IS_PYOPENSSL:
+                raise ConfigurationError(
+                    "ssl_crlfile cannot be used with PyOpenSSL")
             if not hasattr(ctx, "verify_flags"):
                 raise ConfigurationError(
                     "Support for ssl_crlfile requires "
                     "python 2.7.9+ (pypy 2.5.1+) or  3.4+")
             # Match the server's behavior.
-            ctx.verify_flags = ssl.VERIFY_CRL_CHECK_LEAF
+            ctx.verify_flags = getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
-        elif cert_reqs != ssl.CERT_NONE:
+        elif cert_reqs != CERT_NONE:
             # CPython >= 2.7.9 or >= 3.4.0, pypy >= 2.5.1
             if hasattr(ctx, "load_default_certs"):
                 ctx.load_default_certs()
@@ -189,6 +162,10 @@ if HAVE_SSL:
         ctx.verify_mode = verify_mode
         return ctx
 else:
+    class SSLError(Exception):
+        pass
+    HAS_SNI = False
+    IPADDR_SAFE = False
     def validate_cert_reqs(option, dummy):
         """No ssl module, raise ConfigurationError."""
         raise ConfigurationError("The value of %s is set but can't be "
