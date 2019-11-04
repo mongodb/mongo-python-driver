@@ -191,8 +191,12 @@ static long long millis_from_datetime(PyObject* datetime) {
 }
 
 /* Just make this compatible w/ the old API. */
-int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
-    if (buffer_write(buffer, data, size)) {
+int buffer_write_bytes(buffer_t buffer, const char* data, Py_ssize_t size) {
+    int downsize = _downcast_and_check(size, 0);
+    if (size == -1) {
+        return 0;
+    }
+    if (buffer_write(buffer, data, downsize)) {
         PyErr_NoMemory();
         return 0;
     }

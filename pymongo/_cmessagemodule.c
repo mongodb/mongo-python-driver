@@ -59,7 +59,7 @@ static PyObject* _error(char* name) {
 /* add a lastError message on the end of the buffer.
  * returns 0 on failure */
 static int add_last_error(PyObject* self, buffer_t buffer,
-                          int request_id, char* ns, int nslen,
+                          int request_id, char* ns, Py_ssize_t nslen,
                           codec_options_t* options, PyObject* args) {
     struct module_state *state = GETSTATE(self);
 
@@ -137,7 +137,7 @@ static int add_last_error(PyObject* self, buffer_t buffer,
 }
 
 static int init_insert_buffer(buffer_t buffer, int request_id, int options,
-                              const char* coll_name, int coll_name_len,
+                              const char* coll_name, Py_ssize_t coll_name_len,
                               int compress) {
     int length_location = 0;
     if (!compress) {
@@ -758,7 +758,7 @@ _set_document_too_large(int size, long max) {
 static PyObject*
 _send_insert(PyObject* self, PyObject* ctx,
              PyObject* gle_args, buffer_t buffer,
-             char* coll_name, int coll_len, int request_id, int safe,
+             char* coll_name, Py_ssize_t coll_len, int request_id, int safe,
              codec_options_t* options, PyObject* to_publish, int compress) {
 
     if (safe) {
