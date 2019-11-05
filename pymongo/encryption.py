@@ -19,6 +19,7 @@ may be made before the final release.**
 """
 
 import contextlib
+import os
 import subprocess
 import uuid
 import weakref
@@ -56,6 +57,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
+from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 
@@ -110,11 +112,12 @@ class _EncryptionIO(MongoCryptCallback):
         """
         endpoint = kms_context.endpoint
         message = kms_context.message
+        host, port = parse_host(endpoint, _HTTPS_PORT)
         ctx = get_ssl_context(None, None, None, None, None, None, True)
         opts = PoolOptions(connect_timeout=_KMS_CONNECT_TIMEOUT,
                            socket_timeout=_KMS_CONNECT_TIMEOUT,
                            ssl_context=ctx)
-        conn = _configured_socket((endpoint, _HTTPS_PORT), opts)
+        conn = _configured_socket((host, port), opts)
         try:
             conn.sendall(message)
             while kms_context.bytes_needed > 0:
@@ -150,7 +153,9 @@ class _EncryptionIO(MongoCryptCallback):
         self._spawned = True
         args = [self.opts._mongocryptd_spawn_path or 'mongocryptd']
         args.extend(self.opts._mongocryptd_spawn_args)
-        subprocess.Popen(args)
+        # Silence mongocryptd output, users should pass --logpath.
+        with open(os.devnull, 'wb') as devnull:
+            subprocess.Popen(args, stdout=devnull, stderr=devnull)
 
     def mark_command(self, database, cmd):
         """Mark a command for encryption.
@@ -412,15 +417,17 @@ class ClientEncryption(object):
         :Parameters:
           - `kms_provider`: The KMS provider to use. Supported values are
             "aws" and "local".
-          - `master_key`: The `master_key` identifies a KMS-specific key used
-            to encrypt the new data key. If the kmsProvider is "local" the
-            `master_key` is not applicable and may be omitted.
-            If the `kms_provider` is "aws", `master_key` is required and must
-            have the following fields:
+          - `master_key`: Identifies a KMS-specific key used to encrypt the
+            new data key. If the kmsProvider is "local" the `master_key` is
+            not applicable and may be omitted. If the `kms_provider` is "aws"
+            it is required and has the following fields::
 
-              - `region` (string): The AWS region as a string.
-              - `key` (string): The Amazon Resource Name (ARN) to the AWS
-                customer master key (CMK).
+              - `region` (string): Required. The AWS region, e.g. "us-east-1".
+              - `key` (string): Required. The Amazon Resource Name (ARN) to
+                 the AWS customer.
+              - `endpoint` (string): Optional. An alternate host to send KMS
+                requests to. May include port number, e.g.
+                "kms.us-east-1.amazonaws.com:443".
 
           - `key_alt_names` (optional): An optional list of string alternate
             names used to reference a key. If a key is created with alternate
@@ -434,7 +441,9 @@ class ClientEncryption(object):
                                         algorithm=Algorithm.Random)
 
         :Returns:
-          The ``_id`` of the created data key document.
+          The ``_id`` of the created data key document as a
+          :class:`~bson.binary.Binary` with subtype
+          :data:`~bson.binary.UUID_SUBTYPE`.
         """
         self._check_closed()
         with _wrap_encryption_errors():
