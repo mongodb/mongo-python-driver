@@ -99,7 +99,8 @@ static PyObject* _error(char* name) {
 
 /* Safely downcast from Py_ssize_t to int, setting an
  * exception and returning -1 on error. */
-int _downcast_and_check(Py_ssize_t size, uint8_t extra) {
+static int
+_downcast_and_check(Py_ssize_t size, uint8_t extra) {
     if (size > BSON_MAX_SIZE || ((BSON_MAX_SIZE - extra) < size)) {
         PyObject* InvalidStringData = _error("InvalidStringData");
         if (InvalidStringData) {
@@ -3128,6 +3129,7 @@ init_cbson(void)
     _cbson_API[_cbson_buffer_write_int64_INDEX] = (void *) buffer_write_int64;
     _cbson_API[_cbson_buffer_write_int32_at_position_INDEX] =
         (void *) buffer_write_int32_at_position;
+    _cbson_API[_cbson_downcast_and_check_INDEX] = (void *) _downcast_and_check;
 
 #if PY_VERSION_HEX >= 0x03010000
     /* PyCapsule is new in python 3.1 */

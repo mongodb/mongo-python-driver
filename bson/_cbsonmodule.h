@@ -72,8 +72,6 @@ typedef struct codec_options_t {
     unsigned char is_raw_bson;
 } codec_options_t;
 
-int _downcast_and_check(Py_ssize_t size, uint8_t extra);
-
 /* C API functions */
 #define _cbson_buffer_write_bytes_INDEX 0
 #define _cbson_buffer_write_bytes_RETURN int
@@ -115,8 +113,12 @@ int _downcast_and_check(Py_ssize_t size, uint8_t extra);
 #define _cbson_buffer_write_int32_at_position_RETURN void
 #define _cbson_buffer_write_int32_at_position_PROTO (buffer_t buffer, int position, int32_t data)
 
+#define _cbson_downcast_and_check_INDEX 10
+#define _cbson_downcast_and_check_RETURN int
+#define _cbson_downcast_and_check_PROTO (Py_ssize_t size, uint8_t extra)
+
 /* Total number of C API pointers */
-#define _cbson_API_POINTER_COUNT 10
+#define _cbson_API_POINTER_COUNT 11
 
 #ifdef _CBSON_MODULE
 /* This section is used when compiling _cbsonmodule */
@@ -140,6 +142,8 @@ static _cbson_buffer_write_int32_RETURN buffer_write_int32 _cbson_buffer_write_i
 static _cbson_buffer_write_int64_RETURN buffer_write_int64 _cbson_buffer_write_int64_PROTO;
 
 static _cbson_buffer_write_int32_at_position_RETURN buffer_write_int32_at_position _cbson_buffer_write_int32_at_position_PROTO;
+
+static _cbson_downcast_and_check_RETURN _downcast_and_check _cbson_downcast_and_check_PROTO;
 
 #else
 /* This section is used in modules that use _cbsonmodule's API */
@@ -165,6 +169,8 @@ static void **_cbson_API;
 #define buffer_write_int64 (*(_cbson_buffer_write_int64_RETURN (*)_cbson_buffer_write_int64_PROTO) _cbson_API[_cbson_buffer_write_int64_INDEX])
 
 #define buffer_write_int32_at_position (*(_cbson_buffer_write_int32_at_position_RETURN (*)_cbson_buffer_write_int32_at_position_PROTO) _cbson_API[_cbson_buffer_write_int32_at_position_INDEX])
+
+#define _downcast_and_check (*(_cbson_downcast_and_check_RETURN (*)_cbson_downcast_and_check_PROTO) _cbson_API[_cbson_downcast_and_check_INDEX])
 
 #define _cbson_IMPORT _cbson_API = (void **)PyCapsule_Import("_cbson._C_API", 0)
 
