@@ -99,8 +99,7 @@ static PyObject* _error(char* name) {
 
 /* Safely downcast from Py_ssize_t to int, setting an
  * exception and returning -1 on error. */
-static int
-_downcast_and_check(Py_ssize_t size, uint8_t extra) {
+int _downcast_and_check(Py_ssize_t size, uint8_t extra) {
     if (size > BSON_MAX_SIZE || ((BSON_MAX_SIZE - extra) < size)) {
         PyObject* InvalidStringData = _error("InvalidStringData");
         if (InvalidStringData) {
@@ -191,12 +190,8 @@ static long long millis_from_datetime(PyObject* datetime) {
 }
 
 /* Just make this compatible w/ the old API. */
-int buffer_write_bytes(buffer_t buffer, const char* data, Py_ssize_t size) {
-    int downsize = _downcast_and_check(size, 0);
-    if (size == -1) {
-        return 0;
-    }
-    if (buffer_write(buffer, data, downsize)) {
+int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
+    if (buffer_write(buffer, data, size)) {
         PyErr_NoMemory();
         return 0;
     }

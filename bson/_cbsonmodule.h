@@ -72,10 +72,12 @@ typedef struct codec_options_t {
     unsigned char is_raw_bson;
 } codec_options_t;
 
+int _downcast_and_check(Py_ssize_t size, uint8_t extra);
+
 /* C API functions */
 #define _cbson_buffer_write_bytes_INDEX 0
 #define _cbson_buffer_write_bytes_RETURN int
-#define _cbson_buffer_write_bytes_PROTO (buffer_t buffer, const char* data, Py_ssize_t size)
+#define _cbson_buffer_write_bytes_PROTO (buffer_t buffer, const char* data, int size)
 
 #define _cbson_write_dict_INDEX 1
 #define _cbson_write_dict_RETURN int
