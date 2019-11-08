@@ -20,6 +20,7 @@
  * should be used to speed up BSON encoding and decoding.
  */
 
+#define PY_SSIZE_T_CLEAN
 #include "Python.h"
 #include "datetime.h"
 
@@ -1818,13 +1819,8 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     }
 
     /* objectify buffer */
-#if PY_MAJOR_VERSION >= 3
-    result = Py_BuildValue("y#", buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
-#else
-    result = Py_BuildValue("s#", buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
-#endif
+    result = Py_BuildValue(BYTES_FORMAT_STRING, buffer_get_buffer(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer));
     destroy_codec_options(&options);
     buffer_free(buffer);
     return result;
@@ -1896,7 +1892,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (options->is_raw_bson) {
                 value = PyObject_CallFunction(
                     options->document_class, BYTES_FORMAT_STRING "O",
-                    buffer + *position, size, options->options_obj);
+                    buffer + *position, (Py_ssize_t)size, options->options_obj);
                 if (!value) {
                     goto invalid;
                 }
@@ -2175,11 +2171,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
             if ((objectid_type = _get_object(state->ObjectId, "bson.objectid", "ObjectId"))) {
-#if PY_MAJOR_VERSION >= 3
-                value = PyObject_CallFunction(objectid_type, "y#", buffer + *position, 12);
-#else
-                value = PyObject_CallFunction(objectid_type, "s#", buffer + *position, 12);
-#endif
+                value = PyObject_CallFunction(objectid_type, BYTES_FORMAT_STRING,
+                                              buffer + *position, (Py_ssize_t)12);
                 Py_DECREF(objectid_type);
             }
             *position += 12;
@@ -2365,11 +2358,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             *position += coll_length;
 
             if ((objectid_type = _get_object(state->ObjectId, "bson.objectid", "ObjectId"))) {
-#if PY_MAJOR_VERSION >= 3
-                id = PyObject_CallFunction(objectid_type, "y#", buffer + *position, 12);
-#else
-                id = PyObject_CallFunction(objectid_type, "s#", buffer + *position, 12);
-#endif
+                id = PyObject_CallFunction(objectid_type, BYTES_FORMAT_STRING,
+                                           buffer + *position, (Py_ssize_t)12);
                 Py_DECREF(objectid_type);
             }
             if (!id) {
@@ -2556,13 +2546,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                                       "Decimal128"))) {
                 value = PyObject_CallMethod(dec128,
                                             "from_bid",
-#if PY_MAJOR_VERSION >= 3
-                                            "y#",
-#else
-                                            "s#",
-#endif
+                                            BYTES_FORMAT_STRING,
                                             buffer + *position,
-                                            16);
+                                            (Py_ssize_t)16);
                 Py_DECREF(dec128);
             }
             *position += 16;
@@ -2939,7 +2925,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     /* No need to decode fields if using RawBSONDocument */
     if (options.is_raw_bson) {
         result = PyObject_CallFunction(
-            options.document_class, BYTES_FORMAT_STRING "O", string, size,
+            options.document_class, BYTES_FORMAT_STRING "O", string, (Py_ssize_t)size,
             options_obj);
     }
     else {
@@ -3031,7 +3017,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
         /* No need to decode fields if using RawBSONDocument. */
         if (options.is_raw_bson) {
             dict = PyObject_CallFunction(
-                options.document_class, BYTES_FORMAT_STRING "O", string, size,
+                options.document_class, BYTES_FORMAT_STRING "O", string, (Py_ssize_t)size,
                 options_obj);
         } else {
             dict = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
@@ -3143,6 +3129,7 @@ init_cbson(void)
     _cbson_API[_cbson_buffer_write_int64_INDEX] = (void *) buffer_write_int64;
     _cbson_API[_cbson_buffer_write_int32_at_position_INDEX] =
         (void *) buffer_write_int32_at_position;
+    _cbson_API[_cbson_downcast_and_check_INDEX] = (void *) _downcast_and_check;
 
 #if PY_VERSION_HEX >= 0x03010000
     /* PyCapsule is new in python 3.1 */

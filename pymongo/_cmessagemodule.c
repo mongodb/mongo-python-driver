@@ -20,6 +20,7 @@
  * should be used to speed up message creation.
  */
 
+#define PY_SSIZE_T_CLEAN
 #include "Python.h"
 
 #include "_cbsonmodule.h"
@@ -35,12 +36,6 @@ struct module_state {
 #else
 #define GETSTATE(m) (&_state)
 static struct module_state _state;
-#endif
-
-#if PY_MAJOR_VERSION >= 3
-#define BYTES_FORMAT_STRING "y#"
-#else
-#define BYTES_FORMAT_STRING "s#"
 #endif
 
 #define DOC_TOO_LARGE_FMT "BSON document too large (%d bytes)" \
@@ -61,10 +56,21 @@ static PyObject* _error(char* name) {
     return error;
 }
 
+/* The same as buffer_write_bytes except that it also validates
+ * "size" will fit in an int.
+ * Returns 0 on failure */
+static int buffer_write_bytes_ssize_t(buffer_t buffer, const char* data, Py_ssize_t size) {
+    int downsize = _downcast_and_check(size, 0);
+    if (size == -1) {
+        return 0;
+    }
+    return buffer_write_bytes(buffer, data, downsize);
+}
+
 /* add a lastError message on the end of the buffer.
  * returns 0 on failure */
 static int add_last_error(PyObject* self, buffer_t buffer,
-                          int request_id, char* ns, int nslen,
+                          int request_id, char* ns, Py_ssize_t nslen,
                           codec_options_t* options, PyObject* args) {
     struct module_state *state = GETSTATE(self);
 
@@ -91,8 +97,7 @@ static int add_last_error(PyObject* self, buffer_t buffer,
                             "\xd4\x07\x00\x00"  /* opcode */
                             "\x00\x00\x00\x00", /* options */
                             12) ||
-        !buffer_write_bytes(buffer,
-                            ns, nslen) ||       /* database */
+        !buffer_write_bytes_ssize_t(buffer, ns, nslen) || /* database */
         !buffer_write_bytes(buffer,
                             ".$cmd\x00"         /* collection name */
                             "\x00\x00\x00\x00"  /* skip */
@@ -142,7 +147,7 @@ static int add_last_error(PyObject* self, buffer_t buffer,
 }
 
 static int init_insert_buffer(buffer_t buffer, int request_id, int options,
-                              const char* coll_name, int coll_name_len,
+                              const char* coll_name, Py_ssize_t coll_name_len,
                               int compress) {
     int length_location = 0;
     if (!compress) {
@@ -161,9 +166,9 @@ static int init_insert_buffer(buffer_t buffer, int request_id, int options,
         }
     }
     if (!buffer_write_int32(buffer, (int32_t)options) ||
-        !buffer_write_bytes(buffer,
-                            coll_name,
-                            coll_name_len + 1)) {
+        !buffer_write_bytes_ssize_t(buffer,
+                                    coll_name,
+                                    coll_name_len + 1)) {
         return -1;
     }
     return length_location;
@@ -177,7 +182,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
     int request_id = rand();
     char* collection_name = NULL;
-    int collection_name_length;
+    Py_ssize_t collection_name_length;
     PyObject* docs;
     PyObject* doc;
     PyObject* iterator;
@@ -293,7 +298,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
     destroy_codec_options(&options);
     buffer_free(buffer);
@@ -306,7 +311,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
 
     int request_id = rand();
     char* collection_name = NULL;
-    int collection_name_length;
+    Py_ssize_t collection_name_length;
     int before, cur_size, max_size = 0;
     PyObject* doc;
     PyObject* spec;
@@ -360,9 +365,9 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
                             "\xd1\x07\x00\x00"
                             "\x00\x00\x00\x00",
                             12) ||
-        !buffer_write_bytes(buffer,
-                            collection_name,
-                            collection_name_length + 1) ||
+        !buffer_write_bytes_ssize_t(buffer,
+                                    collection_name,
+                                    collection_name_length + 1) ||
         !buffer_write_int32(buffer, (int32_t)flags)) {
         destroy_codec_options(&options);
         buffer_free(buffer);
@@ -409,7 +414,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
     destroy_codec_options(&options);
     buffer_free(buffer);
@@ -424,7 +429,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     PyObject* cluster_time = NULL;
     unsigned int flags;
     char* collection_name = NULL;
-    int collection_name_length;
+    Py_ssize_t collection_name_length;
     int begin, cur_size, max_size = 0;
     int num_to_skip;
     int num_to_return;
@@ -490,8 +495,8 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer, "\x00\x00\x00\x00\xd4\x07\x00\x00", 8) ||
         !buffer_write_int32(buffer, (int32_t)flags) ||
-        !buffer_write_bytes(buffer, collection_name,
-                            collection_name_length + 1) ||
+        !buffer_write_bytes_ssize_t(buffer, collection_name,
+                                    collection_name_length + 1) ||
         !buffer_write_int32(buffer, (int32_t)num_to_skip) ||
         !buffer_write_int32(buffer, (int32_t)num_to_return)) {
         goto fail;
@@ -548,7 +553,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
 
 fail:
@@ -563,7 +568,7 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
     int request_id = rand();
     char* collection_name = NULL;
-    int collection_name_length;
+    Py_ssize_t collection_name_length;
     int num_to_return;
     long long cursor_id;
     buffer_t buffer;
@@ -597,9 +602,9 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
                             "\x00\x00\x00\x00"
                             "\xd5\x07\x00\x00"
                             "\x00\x00\x00\x00", 12) ||
-        !buffer_write_bytes(buffer,
-                            collection_name,
-                            collection_name_length + 1) ||
+        !buffer_write_bytes_ssize_t(buffer,
+                                    collection_name,
+                                    collection_name_length + 1) ||
         !buffer_write_int32(buffer, (int32_t)num_to_return) ||
         !buffer_write_int64(buffer, (int64_t)cursor_id)) {
         buffer_free(buffer);
@@ -616,7 +621,7 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
+                           (Py_ssize_t)buffer_get_position(buffer));
     buffer_free(buffer);
     return result;
 }
@@ -634,7 +639,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     unsigned int flags;
     PyObject* command;
     char* identifier = NULL;
-    int identifier_length = 0;
+    Py_ssize_t identifier_length = 0;
     PyObject* docs;
     PyObject* doc;
     unsigned char check_keys = 0;
@@ -696,7 +701,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
         /* save space for payload 0 length */
         payload_one_length_location = buffer_save_space(buffer, 4);
         /* C string identifier */
-        if (!buffer_write_bytes(buffer, identifier, identifier_length + 1)) {
+        if (!buffer_write_bytes_ssize_t(buffer, identifier, identifier_length + 1)) {
             goto encodefail;
         }
         iterator = PyObject_GetIter(docs);
@@ -730,7 +735,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "ii", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer),
                            total_size,
                            max_doc_size);
 encodefail:
@@ -763,7 +768,7 @@ _set_document_too_large(int size, long max) {
 static PyObject*
 _send_insert(PyObject* self, PyObject* ctx,
              PyObject* gle_args, buffer_t buffer,
-             char* coll_name, int coll_len, int request_id, int safe,
+             char* coll_name, Py_ssize_t coll_len, int request_id, int safe,
              codec_options_t* options, PyObject* to_publish, int compress) {
 
     if (safe) {
@@ -779,7 +784,7 @@ _send_insert(PyObject* self, PyObject* ctx,
                                "i" BYTES_FORMAT_STRING "iNOi",
                                request_id,
                                buffer_get_buffer(buffer),
-                               buffer_get_position(buffer),
+                               (Py_ssize_t)buffer_get_position(buffer),
                                0,
                                PyBool_FromLong((long)safe),
                                to_publish, compress);
@@ -792,7 +797,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     int request_id = rand();
     int send_safe, flags = 0;
     int length_location, message_length;
-    int collection_name_length;
+    Py_ssize_t collection_name_length;
     int compress;
     char* collection_name = NULL;
     PyObject* docs;
@@ -1344,7 +1349,7 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
 
     result = Py_BuildValue(BYTES_FORMAT_STRING "O",
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer),
                            to_publish);
 fail:
     destroy_codec_options(&options);
@@ -1415,7 +1420,7 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "O", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer),
                            to_publish);
 fail:
     destroy_codec_options(&options);
@@ -1428,7 +1433,7 @@ fail:
 
 static int
 _batched_write_command(
-        char* ns, int ns_len, unsigned char op, int check_keys,
+        char* ns, Py_ssize_t ns_len, unsigned char op, int check_keys,
         PyObject* command, PyObject* docs, PyObject* ctx,
         PyObject* to_publish, codec_options_t options,
         buffer_t buffer, struct module_state *state) {
@@ -1476,8 +1481,7 @@ _batched_write_command(
     if (!buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00", /* flags */
                             4) ||
-        !buffer_write_bytes(buffer,
-                            ns, ns_len + 1) ||  /* namespace */
+        !buffer_write_bytes_ssize_t(buffer, ns, ns_len + 1) || /* namespace */
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"  /* skip */
                             "\xFF\xFF\xFF\xFF", /* limit (-1) */
@@ -1634,7 +1638,7 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     char *ns = NULL;
     unsigned char op;
     unsigned char check_keys;
-    int ns_len;
+    Py_ssize_t ns_len;
     PyObject* command;
     PyObject* docs;
     PyObject* ctx = NULL;
@@ -1677,7 +1681,7 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
 
     result = Py_BuildValue(BYTES_FORMAT_STRING "O",
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer),
                            to_publish);
 fail:
     PyMem_Free(ns);
@@ -1692,7 +1696,7 @@ _cbson_batched_write_command(PyObject* self, PyObject* args) {
     char *ns = NULL;
     unsigned char op;
     unsigned char check_keys;
-    int ns_len;
+    Py_ssize_t ns_len;
     int request_id;
     int position;
     PyObject* command;
@@ -1752,7 +1756,7 @@ _cbson_batched_write_command(PyObject* self, PyObject* args) {
     buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "O", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
+                           (Py_ssize_t)buffer_get_position(buffer),
                            to_publish);
 fail:
     PyMem_Free(ns);

@@ -53,7 +53,7 @@ def gc_collect_until_done(threads, timeout=60):
         assert (time.time() - start) < timeout, "Threads timed out"
         for t in running:
             t.join(0.1)
-            if not t.isAlive():
+            if not t.is_alive():
                 running.remove(t)
         gc.collect()
 
