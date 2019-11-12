@@ -969,6 +969,10 @@ axes:
         display_name: "Python 3.7"
         variables:
           PYTHON_BINARY: "/opt/python/3.7/bin/python3"
+      - id: "3.8"
+        display_name: "Python 3.8"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.8/bin/python3"
       - id: "pypy"
         display_name: "PyPy"
         variables:
@@ -1333,7 +1337,7 @@ buildvariants:
 - matrix_name: "tests-python-version-ubuntu1604-without-c-extensions"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: &openssl-102-plus-pythons ["3.7"]
+    python-version: &openssl-102-plus-pythons ["3.7", "3.8"]
     c-extensions: without-c-extensions
     auth-ssl: noauth-nossl
   display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
@@ -1349,7 +1353,7 @@ buildvariants:
   matrix_spec:
     # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "pypy", "pypy3.5", "jython2.7"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "pypy", "pypy3.5", "jython2.7"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
@@ -1363,6 +1367,11 @@ buildvariants:
      python-version: ["jython2.7"]
      c-extensions: "*"
      compression: ["snappy", "zstd"]
+  # Some tests fail with CPython 3.8 and python-snappy
+   - platform: ubuntu-16.04
+     python-version: ["3.8"]
+     c-extensions: "*"
+     compression: ["snappy"]
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
   tasks:
     - "test-latest-standalone"
@@ -1416,7 +1425,7 @@ buildvariants:
 - matrix_name: "tests-python-version-requires-openssl-102-plus-test-ssl"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: &openssl-102-plus-pythons ["3.7"]
+    python-version: &openssl-102-plus-pythons ["3.7", "3.8"]
     auth-ssl: "*"
   display_name: "${python-version} OpenSSL 1.0.2 ${platform} ${auth-ssl}"
   tasks:
