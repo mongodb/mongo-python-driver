@@ -981,6 +981,10 @@ axes:
         display_name: "PyPy 3.5"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.5/bin/pypy3"
+      - id: "pypy3.6"
+        display_name: "PyPy 3.6"
+        variables:
+           PYTHON_BINARY: "/opt/python/pypy3.6/bin/pypy3"
       - id: "jython2.7"
         display_name: "Jython 2.7"
         batchtime: 10080  # 7 days
@@ -1279,7 +1283,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: &rhel62-pythons ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5", "jython2.7"]
+    python-version: &rhel62-pythons ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5", "pypy3.6", "jython2.7"]
     auth: "*"
     ssl: "*"
     coverage: "*"
@@ -1308,7 +1312,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5", "pypy3.6"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
@@ -1327,7 +1331,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: rhel62
-     python-version: ["pypy", "pypy3.5", "jython2.7"]
+     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
      c-extensions: "*"
      auth-ssl: "*"
      coverage: "*"
@@ -1353,13 +1357,13 @@ buildvariants:
   matrix_spec:
     # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "pypy", "pypy3.5", "jython2.7"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "pypy", "pypy3.5", "pypy3.6", "jython2.7"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: ubuntu-16.04
-     python-version: ["pypy", "pypy3.5", "jython2.7"]
+     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
      c-extensions: "with-c-extensions"
      compression: "*"
   # Jython doesn't support some compression types.
@@ -1396,7 +1400,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: rhel62
-     python-version: ["pypy", "pypy3.5", "jython2.7"]
+     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
