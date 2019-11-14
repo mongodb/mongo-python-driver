@@ -25,6 +25,9 @@ everything you need to know to use **PyMongo**.
 :doc:`examples/tls`
   Using PyMongo with TLS / SSL.
 
+:doc:`examples/encryption`
+  Using PyMongo with client side encryption.
+
 :doc:`faq`
   Some questions that come up often.
 

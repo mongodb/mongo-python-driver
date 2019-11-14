@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Support for explicit client side encryption.
-
-**Support for client side encryption is in beta. Backwards-breaking changes
-may be made before the final release.**
-"""
+"""Support for explicit client-side field level encryption."""
 
 import contextlib
 import os
@@ -35,7 +31,7 @@ except ImportError:
     _HAVE_PYMONGOCRYPT = False
     MongoCryptCallback = object
 
-from bson import _bson_to_dict, _dict_to_bson, decode, encode
+from bson import _dict_to_bson, decode, encode
 from bson.codec_options import CodecOptions
 from bson.binary import (Binary,
                          STANDARD,
@@ -204,13 +200,13 @@ class _EncryptionIO(MongoCryptCallback):
         :Returns:
           The _id of the inserted data key document.
         """
-        # insert does not return the inserted _id when given a RawBSONDocument.
-        doc = _bson_to_dict(data_key, _DATA_KEY_OPTS)
-        if not isinstance(doc.get('_id'), uuid.UUID):
-            raise TypeError(
-                'data_key _id must be a bson.binary.Binary with subtype 4')
-        res = self.key_vault_coll.insert_one(doc)
-        return Binary(res.inserted_id.bytes, subtype=UUID_SUBTYPE)
+        raw_doc = RawBSONDocument(data_key)
+        data_key_id = raw_doc.get('_id')
+        if not isinstance(data_key_id, uuid.UUID):
+            raise TypeError('data_key _id must be a UUID')
+
+        self.key_vault_coll.insert_one(raw_doc)
+        return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
 
     def bson_encode(self, doc):
         """Encode a document to BSON.
@@ -338,11 +334,11 @@ class Algorithm(object):
 
 
 class ClientEncryption(object):
-    """Explicit client side encryption."""
+    """Explicit client-side field level encryption."""
 
     def __init__(self, kms_providers, key_vault_namespace, key_vault_client,
                  codec_options):
-        """Explicit client side encryption.
+        """Explicit client-side field level encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
         vault collection that cannot be done directly on a MongoClient. Similar
@@ -353,8 +349,7 @@ class ClientEncryption(object):
         creating data keys. It does not provide an API to query keys from the
         key vault collection, as this can be done directly on the MongoClient.
 
-        .. note:: Support for client side encryption is in beta.
-           Backwards-breaking changes may be made before the final release.
+        See :ref:`explicit-client-side-encryption` for an example.
 
         :Parameters:
           - `kms_providers`: Map of KMS provider options. Two KMS providers
@@ -377,14 +372,17 @@ class ClientEncryption(object):
             containing the `key_vault_namespace` collection.
           - `codec_options`: An instance of
             :class:`~bson.codec_options.CodecOptions` to use when encoding a
-            value for encryption and decoding the decrypted BSON value.
+            value for encryption and decoding the decrypted BSON value. This
+            should be the same CodecOptions instance configured on the
+            MongoClient, Database, or Collection used to access application
+            data.
 
         .. versionadded:: 3.9
         """
         if not _HAVE_PYMONGOCRYPT:
             raise ConfigurationError(
-                "client side encryption requires the pymongocrypt library: "
-                "install a compatible version with: "
+                "client-side field level encryption requires the pymongocrypt "
+                "library: install a compatible version with: "
                 "python -m pip install 'pymongo[encryption]'")
 
         if not isinstance(codec_options, CodecOptions):

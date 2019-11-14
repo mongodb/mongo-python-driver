@@ -318,7 +318,7 @@ ext_modules = [Extension('bson._cbson',
                                   'bson/buffer.c'])]
 
 extras_require = {
-    'encryption': ['pymongocrypt'],  # For client side field level encryption.
+    'encryption': ['pymongocrypt<2.0.0'],
     'snappy': ['python-snappy'],
     'zstd': ['zstandard'],
 }

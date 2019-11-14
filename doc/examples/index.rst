@@ -31,3 +31,4 @@ MongoDB, you can start it like so:
    server_selection
    tailable
    tls
+   encryption

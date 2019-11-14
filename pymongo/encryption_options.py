@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Support for automatic client side encryption.
-
-**Support for client side encryption is in beta. Backwards-breaking changes
-may be made before the final release.**
-"""
+"""Support for automatic client-side field level encryption."""
 
 import copy
 
@@ -30,7 +26,7 @@ from pymongo.errors import ConfigurationError
 
 
 class AutoEncryptionOpts(object):
-    """Options to configure automatic encryption."""
+    """Options to configure automatic client-side field level encryption."""
 
     def __init__(self, kms_providers, key_vault_namespace,
                  key_vault_client=None, schema_map=None,
@@ -39,21 +35,21 @@ class AutoEncryptionOpts(object):
                  mongocryptd_bypass_spawn=False,
                  mongocryptd_spawn_path='mongocryptd',
                  mongocryptd_spawn_args=None):
-        """Options to configure automatic encryption.
+        """Options to configure automatic client-side field level encryption.
 
-        Automatic encryption is an enterprise only feature that only
-        applies to operations on a collection. Automatic encryption is not
+        Automatic client-side field level encryption requires MongoDB 4.2
+        enterprise or a MongoDB 4.2 Atlas cluster. Automatic encryption is not
         supported for operations on a database or view and will result in
-        error. To bypass automatic encryption (but enable automatic
-        decryption), set ``bypass_auto_encryption=True`` in
-        AutoEncryptionOpts.
+        error.
 
-        Explicit encryption/decryption and automatic decryption is a
-        community feature. A MongoClient configured with
-        bypassAutoEncryption=true will still automatically decrypt.
+        Although automatic encryption requires MongoDB 4.2 enterprise or a
+        MongoDB 4.2 Atlas cluster, automatic *decryption* is supported for all
+        users. To configure automatic *decryption* without automatic
+        *encryption* set ``bypass_auto_encryption=True``. Explicit
+        encryption and explicit decryption is also supported for all users
+        with the :class:`~pymongo.encryption.ClientEncryption` class.
 
-        .. note:: Support for client side encryption is in beta.
-           Backwards-breaking changes may be made before the final release.
+        See :ref:`automatic-client-side-encryption` for an example.
 
         :Parameters:
           - `kms_providers`: Map of KMS provider options. Two KMS providers
