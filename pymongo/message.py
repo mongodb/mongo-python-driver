@@ -922,6 +922,9 @@ class _BulkWriteContext(object):
     @property
     def max_message_size(self):
         """A proxy for SockInfo.max_message_size."""
+        if self.compress:
+            # Subtract 16 bytes for the message header.
+            return self.sock_info.max_message_size - 16
         return self.sock_info.max_message_size
 
     @property

@@ -308,6 +308,24 @@ class TestBulk(BulkTestBase):
         self.assertEqual(n_docs, result.inserted_count)
         self.assertEqual(n_docs, self.coll.count_documents({}))
 
+    @client_context.require_version_min(3, 6)
+    def test_bulk_max_message_size(self):
+        self.coll.delete_many({})
+        self.addCleanup(self.coll.delete_many, {})
+        _16_MB = 16 * 1000 * 1000
+        # Generate a list of documents such that the first batched OP_MSG is
+        # as close as possible to the 48MB limit.
+        docs = [
+            {'_id': 1, 'l': 's' * _16_MB},
+            {'_id': 2, 'l': 's' * _16_MB},
+            {'_id': 3, 'l': 's' * (_16_MB - 10000)},
+        ]
+        # Fill in the remaining ~10000 bytes with small documents.
+        for i in range(4, 10000):
+            docs.append({'_id': i})
+        result = self.coll.insert_many(docs)
+        self.assertEqual(len(docs), len(result.inserted_ids))
+
     def test_generator_insert(self):
         def gen():
             yield {'a': 1, 'b': 1}
