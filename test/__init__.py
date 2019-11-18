@@ -29,6 +29,7 @@ try:
 except ImportError:
     HAVE_IPADDRESS = False
 
+from contextlib import contextmanager
 from functools import wraps
 from unittest import SkipTest
 
@@ -585,6 +586,13 @@ class ClientContext(object):
                              "Test commands must be enabled",
                              func=func)
 
+    def require_failCommand_fail_point(self, func):
+        """Run a test only if the server supports the failCommand fail
+        point."""
+        return self._require(lambda: self.supports_failCommand_fail_point,
+                             "failCommand fail point must be supported",
+                             func=func)
+
     def require_ssl(self, func):
         """Run a test only if the client can connect over SSL."""
         return self._require(lambda: self.ssl,
@@ -657,6 +665,17 @@ class ClientContext(object):
         return not (self.version.at_least(4, 1, 0) or self.is_mongos)
 
     @property
+    def supports_failCommand_fail_point(self):
+        """Does the server support the failCommand fail point?"""
+        if self.is_mongos:
+            return (self.version.at_least(4, 1, 5) and
+                    self.test_commands_enabled)
+        else:
+            return (self.version.at_least(4, 0) and
+                    self.test_commands_enabled)
+
+
+    @property
     def requires_hint_with_min_max_queries(self):
         """Does the server require a hint with min/max queries."""
         # Changed in SERVER-39567.
@@ -713,6 +732,17 @@ class IntegrationTest(PyMongoTestCase):
         else:
             cls.credentials = {}
 
+    @contextmanager
+    def fail_point(self, command_args):
+        cmd_on = SON([('configureFailPoint', 'failCommand')])
+        cmd_on.update(command_args)
+        self.client.admin.command(cmd_on)
+        try:
+            yield
+        finally:
+            cmd_off = {'configureFailPoint': cmd_on['configureFailPoint'],
+                       'mode': 'off'}
+            self.client.admin.command(cmd_off)
 
 # Use assertRaisesRegex if available, otherwise use Python 2.7's
 # deprecated assertRaisesRegexp, with a 'p'.
