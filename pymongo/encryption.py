@@ -52,6 +52,7 @@ from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
+from pymongo.daemon import _spawn_daemon
 
 
 _HTTPS_PORT = 443
@@ -146,9 +147,7 @@ class _EncryptionIO(MongoCryptCallback):
         self._spawned = True
         args = [self.opts._mongocryptd_spawn_path or 'mongocryptd']
         args.extend(self.opts._mongocryptd_spawn_args)
-        # Silence mongocryptd output, users should pass --logpath.
-        with open(os.devnull, 'wb') as devnull:
-            subprocess.Popen(args, stdout=devnull, stderr=devnull)
+        _spawn_daemon(args)
 
     def mark_command(self, database, cmd):
         """Mark a command for encryption.
