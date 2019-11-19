@@ -88,7 +88,6 @@ class TestSrvPolling(unittest.TestCase):
 
     CONNECTION_STRING = "mongodb+srv://test1.test.build.10gen.cc"
 
-    @unittest.skipIf(sys.version_info[0] < 3, "PYTHON-2002 fails on python 2")
     def setUp(self):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("SRV polling tests require the dnspython "

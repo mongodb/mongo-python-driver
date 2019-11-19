@@ -39,7 +39,6 @@ class TestDNS(unittest.TestCase):
 
 def create_test(test_case):
 
-    @unittest.skipIf(sys.version_info[0] < 3, "PYTHON-2002 fails on python 2")
     @client_context.require_replica_set
     @client_context.require_ssl
     def run_test(self):
