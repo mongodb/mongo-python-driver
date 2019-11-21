@@ -46,10 +46,16 @@ class PyMongoError(Exception):
         """Remove the given label from this error."""
         self._error_labels.remove(label)
 
-    def __str__(self):
-        if sys.version_info[0] == 2 and isinstance(self._message, unicode):
-            return self._message.encode('utf-8', errors='replace')
-        return str(self._message)
+    if sys.version_info[0] == 2:
+        def __str__(self):
+            if isinstance(self._message, unicode):
+                return self._message.encode('utf-8', errors='replace')
+            return str(self._message)
+
+        def __unicode__(self):
+            if isinstance(self._message, unicode):
+                return self._message
+            return unicode(self._message, 'utf-8', errors='replace')
 
 
 class ProtocolError(PyMongoError):

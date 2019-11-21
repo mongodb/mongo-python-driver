@@ -1335,6 +1335,12 @@ class TestCollection(IntegrationTest):
         self.assertIn('E11000 duplicate key error',
                       str(ctx.exception))
 
+        if sys.version_info[0] == 2:
+            # Test unicode(error) conversion.
+            self.assertIn('E11000 duplicate key error',
+                          unicode(ctx.exception))
+
+
     def test_wtimeout(self):
         # Ensure setting wtimeout doesn't disable write concern altogether.
         # See SERVER-12596.
