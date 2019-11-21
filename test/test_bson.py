@@ -18,8 +18,10 @@
 
 import collections
 import datetime
+import os
 import re
 import sys
+import tempfile
 import uuid
 
 sys.path[0:0] = [""]
@@ -350,45 +352,40 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidBSON, list,
                           decode_file_iter(StrictStringIO(b"\x1B")))
 
-        # An object size that's too small to even include the object size,
-        # but is correctly encoded, along with a correct EOO (and no data).
-        data = b"\x01\x00\x00\x00\x00"
-        self.assertRaises(InvalidBSON, decode_all, data)
-        self.assertRaises(InvalidBSON, list, decode_iter(data))
-        self.assertRaises(
-            InvalidBSON, list, decode_file_iter(StrictStringIO(data)))
-
-        # One object, but with object size listed smaller than it is in the
-        # data.
-        data = (b"\x1A\x00\x00\x00\x0E\x74\x65\x73\x74"
-                b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
-                b"\x05\x00\x00\x00\x00")
-        self.assertRaises(InvalidBSON, decode_all, data)
-        self.assertRaises(InvalidBSON, list, decode_iter(data))
-        self.assertRaises(
-            InvalidBSON, list, decode_file_iter(StrictStringIO(data)))
-
-        # One object, missing the EOO at the end.
-        data = (b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-                b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
-                b"\x05\x00\x00\x00")
-        self.assertRaises(InvalidBSON, decode_all, data)
-        self.assertRaises(InvalidBSON, list, decode_iter(data))
-        self.assertRaises(
-            InvalidBSON, list, decode_file_iter(StrictStringIO(data)))
-
-        # One object, sized correctly, with a spot for an EOO, but the EOO
-        # isn't 0x00.
-        data = (b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-                b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
-                b"\x05\x00\x00\x00\xFF")
-        self.assertRaises(InvalidBSON, decode_all, data)
-        self.assertRaises(InvalidBSON, list, decode_iter(data))
-        self.assertRaises(
-            InvalidBSON, list, decode_file_iter(StrictStringIO(data)))
+        bad_bsons = [
+          # An object size that's too small to even include the object size,
+          # but is correctly encoded, along with a correct EOO (and no data).
+          b"\x01\x00\x00\x00\x00",
+          # One object, but with object size listed smaller than it is in the
+          # data.
+          (b"\x1A\x00\x00\x00\x0E\x74\x65\x73\x74"
+           b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+           b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+           b"\x05\x00\x00\x00\x00"),
+          # One object, missing the EOO at the end.
+          (b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+           b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+           b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+           b"\x05\x00\x00\x00"),
+          # One object, sized correctly, with a spot for an EOO, but the EOO
+          # isn't 0x00.
+          (b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+           b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+           b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+           b"\x05\x00\x00\x00\xFF"),
+        ]
+        for data in bad_bsons:
+          with self.assertRaises(InvalidBSON):
+            decode_all(data)
+          with self.assertRaises(InvalidBSON):
+            list(decode_iter(data))
+          with self.assertRaises(InvalidBSON):
+            list(decode_file_iter(StrictStringIO(data)))
+          with tempfile.TemporaryFile() as scratch:
+            scratch.write(data)
+            scratch.seek(0, os.SEEK_SET)
+            with self.assertRaises(InvalidBSON):
+              list(decode_file_iter(scratch))
 
     def test_data_timestamp(self):
         self.assertEqual({"test": Timestamp(4, 20)},
