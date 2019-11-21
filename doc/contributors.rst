@@ -86,3 +86,4 @@ The following is a list of people who have contributed to
 - Shrey Batra(shreybatra)
 - Felipe Rodrigues(fbidu)
 - Terence Honles (terencehonles)
+- Paul Fisher (thetorpedodog)
