@@ -740,9 +740,8 @@ class IntegrationTest(PyMongoTestCase):
         try:
             yield
         finally:
-            cmd_off = {'configureFailPoint': cmd_on['configureFailPoint'],
-                       'mode': 'off'}
-            self.client.admin.command(cmd_off)
+            self.client.admin.command(
+                'configureFailPoint', cmd_on['configureFailPoint'], mode='off')
 
 # Use assertRaisesRegex if available, otherwise use Python 2.7's
 # deprecated assertRaisesRegexp, with a 'p'.
