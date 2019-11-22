@@ -1166,7 +1166,7 @@ def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):
         elif len(size_data) != 4:
             raise InvalidBSON("cut off in middle of objsize")
         obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - 4
-        elements = size_data + file_obj.read(obj_size)
+        elements = size_data + file_obj.read(max(0, obj_size))
         yield _bson_to_dict(elements, codec_options)
 
 
