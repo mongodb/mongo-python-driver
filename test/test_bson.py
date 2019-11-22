@@ -60,21 +60,6 @@ if PY3:
     long = int
 
 
-class StrictStringIO(object):
-    """Read-only buffer enforcing non-negative read sizes, like real files."""
-
-    def __init__(self, contents):
-        self.buffer = StringIO(contents)
-
-    def read(self, size=-1):
-        if size is not None and size < -1:
-            raise ValueError("read length must be non-negative or -1")
-        return self.buffer.read(size)
-
-    # Only .read() is implemented, because that is the only method
-    # that bson reading calls.
-
-
 class NotADict(abc.MutableMapping):
     """Non-dict type that implements the mapping protocol."""
 
@@ -308,7 +293,7 @@ class TestBSON(unittest.TestCase):
                             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                             b"\x05\x00\x00\x00\x00")))
         self.assertEqual([{"test": u"hello world"}, {}],
-                         list(decode_file_iter(StrictStringIO(
+                         list(decode_file_iter(StringIO(
                             b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
                             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
                             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
@@ -350,42 +335,43 @@ class TestBSON(unittest.TestCase):
         # an object size of first object.
         # NOTE: decode_all and decode_iter don't care, not sure if they should?
         self.assertRaises(InvalidBSON, list,
-                          decode_file_iter(StrictStringIO(b"\x1B")))
+                          decode_file_iter(StringIO(b"\x1B")))
 
         bad_bsons = [
-          # An object size that's too small to even include the object size,
-          # but is correctly encoded, along with a correct EOO (and no data).
-          b"\x01\x00\x00\x00\x00",
-          # One object, but with object size listed smaller than it is in the
-          # data.
-          (b"\x1A\x00\x00\x00\x0E\x74\x65\x73\x74"
-           b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-           b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
-           b"\x05\x00\x00\x00\x00"),
-          # One object, missing the EOO at the end.
-          (b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-           b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-           b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
-           b"\x05\x00\x00\x00"),
-          # One object, sized correctly, with a spot for an EOO, but the EOO
-          # isn't 0x00.
-          (b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-           b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-           b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
-           b"\x05\x00\x00\x00\xFF"),
+            # An object size that's too small to even include the object size,
+            # but is correctly encoded, along with a correct EOO (and no data).
+            b"\x01\x00\x00\x00\x00",
+            # One object, but with object size listed smaller than it is in the
+            # data.
+            (b"\x1A\x00\x00\x00\x0E\x74\x65\x73\x74"
+             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+             b"\x05\x00\x00\x00\x00"),
+            # One object, missing the EOO at the end.
+            (b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+             b"\x05\x00\x00\x00"),
+            # One object, sized correctly, with a spot for an EOO, but the EOO
+            # isn't 0x00.
+            (b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+             b"\x05\x00\x00\x00\xFF"),
         ]
-        for data in bad_bsons:
-          with self.assertRaises(InvalidBSON):
-            decode_all(data)
-          with self.assertRaises(InvalidBSON):
-            list(decode_iter(data))
-          with self.assertRaises(InvalidBSON):
-            list(decode_file_iter(StrictStringIO(data)))
-          with tempfile.TemporaryFile() as scratch:
-            scratch.write(data)
-            scratch.seek(0, os.SEEK_SET)
-            with self.assertRaises(InvalidBSON):
-              list(decode_file_iter(scratch))
+        for i, data in enumerate(bad_bsons):
+            msg = "bad_bson[{}]".format(i)
+            with self.assertRaises(InvalidBSON, msg=msg):
+                decode_all(data)
+            with self.assertRaises(InvalidBSON, msg=msg):
+                list(decode_iter(data))
+            with self.assertRaises(InvalidBSON, msg=msg):
+                list(decode_file_iter(StringIO(data)))
+            with tempfile.TemporaryFile() as scratch:
+                scratch.write(data)
+                scratch.seek(0, os.SEEK_SET)
+                with self.assertRaises(InvalidBSON, msg=msg):
+                    list(decode_file_iter(scratch))
 
     def test_data_timestamp(self):
         self.assertEqual({"test": Timestamp(4, 20)},
