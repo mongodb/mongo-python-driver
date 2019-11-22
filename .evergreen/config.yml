@@ -339,6 +339,9 @@ functions:
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
           fi
+          if [ -n "${SETDEFAULTENCODING}" ]; then
+            export SETDEFAULTENCODING="${SETDEFAULTENCODING}"
+          fi
 
           PYTHON_BINARY=${PYTHON_BINARY} \
             GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
@@ -1097,6 +1100,16 @@ axes:
         variables:
           test_encryption: true
 
+  # Run setdefaultencoding before running the test suite?
+  - id: setdefaultencoding
+    display_name: "setdefaultencoding"
+    values:
+      - id: "setdefaultencoding"
+        display_name: "setdefaultencoding"
+        tags: ["setdefaultencoding_tag"]
+        variables:
+          SETDEFAULTENCODING: "cp1251"
+
 buildvariants:
 - matrix_name: "tests-all"
   matrix_spec:
@@ -1528,6 +1541,16 @@ buildvariants:
   display_name: "Disable test commands ${python-version} ${platform}"
   tasks:
      - ".latest"
+
+# setdefaultencoding tests on RHEL 6.2 (x86_64) with Python 2.7.
+- matrix_name: "test-setdefaultencoding"
+  matrix_spec:
+    platform: rhel62
+    setdefaultencoding: "*"
+    python-version: "2.7"
+  display_name: "setdefaultencoding ${python-version} ${platform}"
+  tasks:
+     - "test-latest-standalone"
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:

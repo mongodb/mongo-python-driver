@@ -38,6 +38,13 @@ class TestClientContext(unittest.TestCase):
                          'enableTestCommands must be disabled when '
                          'PYMONGO_DISABLE_TEST_COMMANDS is set.')
 
+    def test_setdefaultencoding_worked(self):
+        if 'SETDEFAULTENCODING' not in os.environ:
+            raise SkipTest('SETDEFAULTENCODING is not set')
+
+        self.assertEqual(
+            sys.getdefaultencoding(), os.environ['SETDEFAULTENCODING'])
+
 
 if __name__ == "__main__":
     unittest.main()

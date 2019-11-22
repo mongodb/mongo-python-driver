@@ -2,15 +2,16 @@
 set -o errexit  # Exit the script with error if any of the commands fail
 
 # Supported/used environment variables:
-#  SET_XTRACE_ON     Set to non-empty to write all commands first to stderr.
-#  AUTH              Set to enable authentication. Defaults to "noauth"
-#  SSL               Set to enable SSL. Defaults to "nossl"
-#  PYTHON_BINARY     The Python version to use. Defaults to whatever is available
-#  GREEN_FRAMEWORK   The green framework to test with, if any.
-#  C_EXTENSIONS      Pass --no_ext to setup.py, or not.
-#  COVERAGE          If non-empty, run the test suite with coverage.
-#  TEST_ENCRYPTION   If non-empty, install pymongocrypt.
-#  LIBMONGOCRYPT_URL The URL to download libmongocrypt.
+#  SET_XTRACE_ON      Set to non-empty to write all commands first to stderr.
+#  AUTH               Set to enable authentication. Defaults to "noauth"
+#  SSL                Set to enable SSL. Defaults to "nossl"
+#  PYTHON_BINARY      The Python version to use. Defaults to whatever is available
+#  GREEN_FRAMEWORK    The green framework to test with, if any.
+#  C_EXTENSIONS       Pass --no_ext to setup.py, or not.
+#  COVERAGE           If non-empty, run the test suite with coverage.
+#  TEST_ENCRYPTION    If non-empty, install pymongocrypt.
+#  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
+#  SETDEFAULTENCODING The encoding to set via sys.setdefaultencoding.
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace
@@ -28,6 +29,7 @@ COVERAGE=${COVERAGE:-}
 COMPRESSORS=${COMPRESSORS:-}
 TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
 LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
+SETDEFAULTENCODING=${SETDEFAULTENCODING:-}
 
 if [ -n "$COMPRESSORS" ]; then
     export COMPRESSORS=$COMPRESSORS
@@ -71,6 +73,17 @@ elif [ "$COMPRESSORS" = "zstd" ]; then
     . zstdtest/bin/activate
     trap "deactivate; rm -rf zstdtest" EXIT HUP
     pip install zstandard
+    PYTHON=python
+elif [ -n "$SETDEFAULTENCODING" ]; then
+    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download encodingtest
+    . encodingtest/bin/activate
+    trap "deactivate; rm -rf encodingtest" EXIT HUP
+    mkdir test-sitecustomize
+    cat <<EOT > test-sitecustomize/sitecustomize.py
+import sys
+sys.setdefaultencoding("$SETDEFAULTENCODING")
+EOT
+    export PYTHONPATH="$(pwd)/test-sitecustomize"
     PYTHON=python
 else
     PYTHON="$PYTHON_BINARY"
