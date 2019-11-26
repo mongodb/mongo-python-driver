@@ -22,6 +22,13 @@ import threading
 import collections
 
 try:
+    from dns import resolver
+    from dns.exception import DNSException
+    _HAVE_DNSPYTHON = True
+except ImportError:
+    _HAVE_DNSPYTHON = False
+
+try:
     import ssl
     from ssl import SSLError
     _HAVE_SNI = getattr(ssl, 'HAS_SNI', False)
@@ -813,6 +820,31 @@ class SocketInfo(object):
         )
 
 
+def _getaddrinfo(host, port, family, options):
+    """Given host, port, socket family and PoolOptions, return host address info.
+    On failure falls back to dnspython to get FQDN with respect to system resolver
+    configuration (e.g. /etc/resolv.conf search domain).
+
+    Can raise socket.error.
+    """
+    try:
+        return socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        if not _HAVE_DNSPYTHON:
+            raise exc
+
+        try:
+            host_fqdn = resolver.query(
+                host,
+                lifetime=options.socket_timeout
+            ).qname.to_unicode()
+        except DNSException:
+            # Attempt to resolve FQDN failed. Raise original socket.gaierror exception.
+            raise exc
+
+        return socket.getaddrinfo(host_fqdn, port, family, socket.SOCK_STREAM)
+
+
 def _create_connection(address, options):
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
@@ -845,7 +877,7 @@ def _create_connection(address, options):
         family = socket.AF_UNSPEC
 
     err = None
-    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+    for res in _getaddrinfo(host, port, family, options):
         af, socktype, proto, dummy, sa = res
         # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
         # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
