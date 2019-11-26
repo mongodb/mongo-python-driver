@@ -30,41 +30,12 @@ from pymongo.server_description import ServerDescription, SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import parse_uri
 from test import unittest
+from test.utils import MockPool
 
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'discovery_and_monitoring')
-
-
-class MockSocketInfo(object):
-    def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-
-class MockPool(object):
-    def __init__(self, *args, **kwargs):
-        self.pool_id = 0
-        self._lock = threading.Lock()
-
-    def _reset(self):
-        with self._lock:
-            self.pool_id += 1
-
-    def reset(self):
-        self._reset()
-
-    def close(self):
-        self._reset()
-
-    def update_is_writable(self, is_writable):
-        pass
 
 
 class MockMonitor(object):
@@ -81,7 +52,7 @@ class MockMonitor(object):
     def close(self):
         pass
 
-    def remove_stale_sockets(self):
+    def remove_stale_sockets(self, reference_pool_id):
         pass
 
 

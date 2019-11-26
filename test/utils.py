@@ -32,9 +32,10 @@ from bson import json_util, py3compat
 from bson.objectid import ObjectId
 
 from pymongo import (MongoClient,
-                     monitoring)
+                     monitoring, read_preferences)
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS, ConnectionPoolListener
+from pymongo.pool import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
@@ -44,8 +45,6 @@ from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   db_user,
                   db_pwd)
-from test.utils_selection_tests import parse_read_preference
-
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=1000)
 
@@ -183,6 +182,46 @@ class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
 
     def failed(self, event):
         self.results.append(event)
+
+
+class MockSocketInfo(object):
+    def close(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class MockPool(object):
+    def __init__(self, *args, **kwargs):
+        self.pool_id = 0
+        self._lock = threading.Lock()
+        self.opts = PoolOptions()
+
+    def get_socket(self, all_credentials):
+        return MockSocketInfo()
+
+    def return_socket(self, *args, **kwargs):
+        pass
+
+    def _reset(self):
+        with self._lock:
+            self.pool_id += 1
+
+    def reset(self):
+        self._reset()
+
+    def close(self):
+        self._reset()
+
+    def update_is_writable(self, is_writable):
+        pass
+
+    def remove_stale_sockets(self, reference_pool_id):
+        pass
 
 
 class ScenarioDict(dict):
@@ -811,3 +850,14 @@ class ExceptionCatchingThread(threading.Thread):
         except BaseException as exc:
             self.exc = exc
             raise
+
+
+def parse_read_preference(pref):
+    # Make first letter lowercase to match read_pref's modes.
+    mode_string = pref.get('mode', 'primary')
+    mode_string = mode_string[:1].lower() + mode_string[1:]
+    mode = read_preferences.read_pref_mode_from_name(mode_string)
+    max_staleness = pref.get('maxStalenessSeconds', -1)
+    tag_sets = pref.get('tag_sets')
+    return read_preferences.make_read_preference(
+        mode, tag_sets=tag_sets, max_staleness=max_staleness)

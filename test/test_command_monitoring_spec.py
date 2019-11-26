@@ -26,8 +26,7 @@ from bson import json_util
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context
-from test.utils import single_client, wait_until, EventListener
-from test.utils_selection_tests import parse_read_preference
+from test.utils import single_client, wait_until, EventListener, parse_read_preference
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(

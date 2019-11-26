@@ -37,47 +37,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.settings import TopologySettings
 from test import client_knobs, unittest
-from test.utils import wait_until
-
-
-class MockSocketInfo(object):
-    def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-
-class MockPool(object):
-    def __init__(self, *args, **kwargs):
-        self.pool_id = 0
-        self._lock = threading.Lock()
-        self.opts = PoolOptions()
-
-    def get_socket(self, all_credentials):
-        return MockSocketInfo()
-
-    def return_socket(self, *args, **kwargs):
-        pass
-
-    def _reset(self):
-        with self._lock:
-            self.pool_id += 1
-
-    def reset(self):
-        self._reset()
-
-    def close(self):
-        self._reset()
-
-    def update_is_writable(self, is_writable):
-        pass
-
-    def remove_stale_sockets(self):
-        pass
+from test.utils import MockPool, wait_until
 
 
 class MockMonitor(object):

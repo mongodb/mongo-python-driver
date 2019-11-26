@@ -429,9 +429,13 @@ class Topology(object):
 
     def update_pool(self):
         # Remove any stale sockets and add new sockets if pool is too small.
+        servers = []
         with self._lock:
             for server in self._servers.values():
-                server._pool.remove_stale_sockets()
+                servers.append((server, server._pool.pool_id))
+
+        for server, pool_id in servers:
+            server._pool.remove_stale_sockets(pool_id)
 
     def close(self):
         """Clear pools and terminate monitors. Topology reopens on demand."""

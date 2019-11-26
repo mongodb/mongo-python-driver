@@ -46,8 +46,7 @@ from test.utils import (camel_to_snake,
                         camel_to_upper_camel,
                         CompareType,
                         OvertCommandListener,
-                        rs_client)
-from test.utils_selection_tests import parse_read_preference
+                        rs_client, parse_read_preference)
 
 
 class SpecRunner(IntegrationTest):

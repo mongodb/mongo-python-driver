@@ -22,49 +22,9 @@ sys.path[0:0] = [""]
 from pymongo.errors import ConnectionFailure
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
-from pymongo.pool import PoolOptions
 from test import unittest, client_knobs
-from test.utils import HeartbeatEventListener, single_client, wait_until
-
-
-class MockSocketInfo(object):
-    def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-
-class MockPool(object):
-    def __init__(self, *args, **kwargs):
-        self.pool_id = 0
-        self._lock = threading.Lock()
-        self.opts = PoolOptions()
-
-    def get_socket(self, all_credentials):
-        return MockSocketInfo()
-
-    def return_socket(self, *args, **kwargs):
-        pass
-
-    def _reset(self):
-        with self._lock:
-            self.pool_id += 1
-
-    def reset(self):
-        self._reset()
-
-    def close(self):
-        self._reset()
-
-    def update_is_writable(self, is_writable):
-        pass
-
-    def remove_stale_sockets(self):
-        pass
+from test.utils import (HeartbeatEventListener, MockPool, single_client,
+                        wait_until)
 
 
 class TestHeartbeatMonitoring(unittest.TestCase):

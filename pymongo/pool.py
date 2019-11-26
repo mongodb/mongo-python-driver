@@ -1033,14 +1033,19 @@ class Pool:
     def close(self):
         self._reset(close=True)
 
-    def remove_stale_sockets(self):
-        """Removes stale sockets then adds new ones if pool is too small."""
+    def remove_stale_sockets(self, reference_pool_id):
+        """Removes stale sockets then adds new ones if pool is too small and
+        has not been reset. The `reference_pool_id` argument specifies the
+        `pool_id` at the point in time this operation was requested on the
+        pool.
+        """
         if self.opts.max_idle_time_seconds is not None:
             with self.lock:
                 while (self.sockets and
                        self.sockets[-1].idle_time_seconds() > self.opts.max_idle_time_seconds):
                     sock_info = self.sockets.pop()
                     sock_info.close_socket(ConnectionClosedReason.IDLE)
+
         while True:
             with self.lock:
                 if (len(self.sockets) + self.active_sockets >=
@@ -1054,6 +1059,11 @@ class Pool:
             try:
                 sock_info = self.connect()
                 with self.lock:
+                    # Close connection and return if the pool was reset during
+                    # socket creation or while acquiring the pool lock.
+                    if self.pool_id != reference_pool_id:
+                        sock_info.close_socket()
+                        break
                     self.sockets.appendleft(sock_info)
             finally:
                 self._socket_semaphore.release()
