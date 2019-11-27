@@ -422,7 +422,7 @@ class _GetMore(object):
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
                 request_id, msg, size, _ = _op_msg(
-                    0, spec, self.db, ReadPreference.PRIMARY,
+                    0, spec, self.db, None,
                     False, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size
@@ -685,7 +685,8 @@ def _op_msg(flags, command, dbname, read_preference, slave_ok, check_keys,
             opts, ctx=None):
     """Get a OP_MSG message."""
     command['$db'] = dbname
-    if "$readPreference" not in command:
+    # getMore commands do not send $readPreference.
+    if read_preference is not None and "$readPreference" not in command:
         if slave_ok and not read_preference.mode:
             command["$readPreference"] = (
                 ReadPreference.PRIMARY_PREFERRED.document)

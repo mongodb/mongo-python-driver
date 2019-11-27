@@ -40,6 +40,7 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
 from test import (client_context,
                   unittest,
                   IntegrationTest)
@@ -1406,6 +1407,26 @@ class TestCursor(IntegrationTest):
         # but will still call __del__, eg test.find(invalidKwarg=1).
         cursor = Cursor.__new__(Cursor)  # Skip calling __init__
         cursor.__del__()  # no error
+
+    @client_context.require_version_min(3, 6)
+    def test_getMore_does_not_send_readPreference(self):
+        listener = WhiteListEventListener('find', 'getMore')
+        client = rs_or_single_client(
+            event_listeners=[listener])
+        self.addCleanup(client.close)
+        coll = client[self.db.name].test
+
+        coll.delete_many({})
+        coll.insert_many([{} for _ in range(5)])
+        self.addCleanup(coll.drop)
+
+        list(coll.find(batch_size=3))
+        started = listener.results['started']
+        self.assertEqual(2, len(started))
+        self.assertEqual('find', started[0].command_name)
+        self.assertIn('$readPreference', started[0].command)
+        self.assertEqual('getMore', started[1].command_name)
+        self.assertNotIn('$readPreference', started[1].command)
 
 
 class TestRawBatchCursor(IntegrationTest):
