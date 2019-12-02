@@ -156,6 +156,10 @@ class Topology(object):
                     "after forking. See PyMongo's documentation for details: "
                     "http://api.mongodb.org/python/current/faq.html#"
                     "is-pymongo-fork-safe")
+                with self._lock:
+                    # Reset the session pool to avoid duplicate sessions in
+                    # the child process.
+                    self._session_pool.reset()
 
         with self._lock:
             self._ensure_opened()
