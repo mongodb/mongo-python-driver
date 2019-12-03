@@ -886,6 +886,12 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
+      - id: windows-vs2017
+        display_name: "Windows 64 Visual Studio 2017"
+        run_on: windows-64-vs2017-test
+        batchtime: 10080  # 7 days
+        variables:
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
 
   # Test with authentication?
   - id: auth
@@ -1419,15 +1425,21 @@ buildvariants:
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
   tasks: *all-server-versions
 
-# Test CPython 3.4 against all versions on MongoDB >= 2.6
-# on Windows with Visual Studio 2010.
+# Test CPython 3.4 against MongoDB 2.6-4.2 on Windows with Visual Studio 2010.
 - matrix_name: "tests-windows-vs2010-python-version"
   matrix_spec:
     platform: windows-vs2010
     python-version: &win-vs2010-pythons ["win-vs2010-3.4"]
     auth-ssl: "*"
   display_name: "${platform} ${python-version} ${auth-ssl}"
-  tasks: *all-server-versions
+  tasks:
+    - ".4.2"
+    - ".4.0"
+    - ".3.6"
+    - ".3.4"
+    - ".3.2"
+    - ".3.0"
+    - ".2.6"
 
 # windows-vs2010 3.4 is unable to dlopen the libmongocrypt ddl built on 2016
 #- matrix_name: "tests-windows-vs2010-python-version-encryption"
@@ -1471,7 +1483,7 @@ buildvariants:
   tasks:
      - ".latest"
 
-# Test CPython 2.7, 3.5 and 3.6 against all versions on MongoDB >= 2.6
+# Test CPython 2.7, 3.5 and 3.6 against MongoDB 2.6-4.2
 # on Windows with the Microsoft Visual C++ Compiler for Python 2.7 or Visual Studio 2015.
 - matrix_name: "tests-windows-vs2015-python-version-27plus"
   matrix_spec:
@@ -1479,7 +1491,14 @@ buildvariants:
     python-version: &win-vs2015-pythons ["win-vs2015-2.7", "win-vs2015-3.5", "win-vs2015-3.6", "win-vs2015-3.7"]
     auth-ssl: "*"
   display_name: "${platform} ${python-version} ${auth-ssl}"
-  tasks: *all-server-versions
+  tasks:
+    - ".4.2"
+    - ".4.0"
+    - ".3.6"
+    - ".3.4"
+    - ".3.2"
+    - ".3.0"
+    - ".2.6"
 
 - matrix_name: "tests-windows-vs2015-python-version-encryption"
   matrix_spec:
@@ -1489,6 +1508,16 @@ buildvariants:
     encryption: "*"
   display_name: "Encryption ${platform} ${python-version} ${auth-ssl}"
   tasks: *encryption-server-versions
+
+# Test CPython 3.7 against MongoDB >= 4.3 on Windows 2017+.
+- matrix_name: "tests-windows-vs2017"
+  matrix_spec:
+    platform: windows-vs2017
+    python-version: ["win-vs2015-3.7"]
+    auth-ssl: "*"
+  display_name: "${platform} ${python-version} ${auth-ssl}"
+  tasks:
+    - .latest
 
 # Storage engine tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
