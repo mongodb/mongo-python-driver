@@ -46,13 +46,13 @@ class MockMonitor(object):
     def open(self):
         pass
 
-    def request_check(self):
-        pass
-
     def close(self):
         pass
 
-    def remove_stale_sockets(self, reference_pool_id):
+    def join(self):
+        pass
+
+    def request_check(self):
         pass
 
 
