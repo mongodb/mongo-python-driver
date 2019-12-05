@@ -1,6 +1,33 @@
 Changelog
 =========
 
+Changes in Version 3.10.0
+-------------------------
+
+Version 3.10 includes a number of improvements and bug fixes. Highlights
+include:
+
+- Support for Client-Side Field Level Encryption with MongoDB 4.2. See
+  :doc:`examples/encryption` for examples.
+- Support for Python 3.8.
+- Added :attr:`pymongo.client_session.ClientSession.in_transaction`.
+- Do not hold the Topology lock while creating connections in a MongoClient's
+  background thread. This change fixes a bug where application operations would
+  block while the background thread ensures that all server pools have
+  minPoolSize connections.
+- Fix a UnicodeDecodeError bug when coercing a PyMongoError with a non-ascii
+  error message to unicode on Python 2.
+- Fix an edge case bug where PyMongo could exceed the server's
+  maxMessageSizeBytes when generating a compressed bulk write command.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.10 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.10 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=23944
+
 Changes in Version 3.9.0
 ------------------------
 
@@ -11,7 +38,7 @@ Version 3.9 adds support for MongoDB 4.2. Highlights include:
 - New method :meth:`pymongo.client_session.ClientSession.with_transaction` to
   support conveniently running a transaction in a session with automatic
   retries and at-most-once semantics.
-- Initial support for client side field level encyption. See the docstring for
+- Initial support for client side field level encryption. See the docstring for
   :class:`~pymongo.mongo_client.MongoClient`,
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
   and :mod:`~pymongo.encryption` for details. **Note: Support for client side
