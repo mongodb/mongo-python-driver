@@ -32,7 +32,8 @@ from test import IntegrationTest, client_context, db_user, db_pwd, unittest, Ski
 from test.utils import (ignore_deprecations,
                         rs_or_single_client,
                         EventListener,
-                        TestCreator)
+                        TestCreator,
+                        wait_until)
 from test.utils_spec_runner import SpecRunner
 
 # Ignore auth commands like saslStart, so we can assert lsid is in all commands.
@@ -760,6 +761,19 @@ class TestSession(IntegrationTest):
         ]
         ops.extend(self.collection_write_ops(coll))
         self._test_unacknowledged_ops(client, *ops)
+
+        def drop_db():
+            try:
+                self.client.drop_database(db.name)
+                return True
+            except OperationFailure as exc:
+                # Try again on BackgroundOperationInProgressForDatabase and
+                # BackgroundOperationInProgressForNamespace.
+                if exc.code in (12586, 12587):
+                    return False
+                raise
+
+        wait_until(drop_db, 'dropped database after w=0 writes')
 
 
 class TestCausalConsistency(unittest.TestCase):
