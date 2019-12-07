@@ -32,7 +32,7 @@ SCRAM-SHA-256 (RFC 7677)
 SCRAM-SHA-256 is the default authentication mechanism supported by a cluster
 configured for authentication with MongoDB 4.0 or later. Authentication
 requires a username, a password, and a database name. The default database
-name is "admin", this can be overidden with the ``authSource`` option.
+name is "admin", this can be overridden with the ``authSource`` option.
 Credentials can be specified as arguments to
 :class:`~pymongo.mongo_client.MongoClient`::
 
@@ -55,7 +55,7 @@ SCRAM-SHA-1 (RFC 5802)
 SCRAM-SHA-1 is the default authentication mechanism supported by a cluster
 configured for authentication with MongoDB 3.0 or later. Authentication
 requires a username, a password, and a database name. The default database
-name is "admin", this can be overidden with the ``authSource`` option.
+name is "admin", this can be overridden with the ``authSource`` option.
 Credentials can be specified as arguments to
 :class:`~pymongo.mongo_client.MongoClient`::
 
