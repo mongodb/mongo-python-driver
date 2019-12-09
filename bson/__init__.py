@@ -1141,7 +1141,7 @@ def decode_iter(data, codec_options=DEFAULT_CODEC_OPTIONS):
         yield _bson_to_dict(elements, codec_options)
 
 
-def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):
+def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS, yield_errors=False):
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -1151,6 +1151,13 @@ def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):
       - `file_obj`: A file object containing BSON data.
       - `codec_options` (optional): An instance of
         :class:`~bson.codec_options.CodecOptions`.
+      - `yield_errors`: If True, don't stop on read/decode error but continue
+        the processing of the file. When enabled, this yields over (dict, exc) where:
+        - dict_ is the decoded object as dict
+        - exc is None in the normal case or the encountered exception, if any.
+
+    .. versionchanged:: 3.10
+       Added yield_errors.
 
     .. versionchanged:: 3.0
        Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
@@ -1163,11 +1170,22 @@ def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):
         size_data = file_obj.read(4)
         if not size_data:
             break  # Finished with file normaly.
-        elif len(size_data) != 4:
-            raise InvalidBSON("cut off in middle of objsize")
-        obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - 4
-        elements = size_data + file_obj.read(max(0, obj_size))
-        yield _bson_to_dict(elements, codec_options)
+        try:
+            if len(size_data) != 4:
+                raise InvalidBSON("cut off in middle of objsize")
+            obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - 4
+            elements = size_data + file_obj.read(max(0, obj_size))
+            dict_ = _bson_to_dict(elements, codec_options)
+            if yield_errors is True:
+                yield dict_, None
+            else:
+                # Keep the legacy iterator.
+                yield dict_
+        except InvalidBSON as e:
+            if yield_errors is True:
+                yield dict_, e
+            else:
+                raise
 
 
 def is_valid(bson):
