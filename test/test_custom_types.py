@@ -663,7 +663,10 @@ class TestCollectionWCustomType(IntegrationTest):
 
         full_result = test.inline_map_reduce(map, reduce,
                                              full_response=True)
-        self.assertEqual(3, full_result["counts"]["emit"])
+        result = full_result['results']
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0]["_id"], 'ABCD')
 
     def test_find_one_and__w_custom_type_decoder(self):
         db = self.db

@@ -30,9 +30,13 @@ class TestReadConcern(PyMongoTestCase):
         cls.listener = OvertCommandListener()
         cls.client = single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
+        client_context.client.pymongo_test.create_collection('coll')
+
+    @classmethod
+    def tearDownClass(cls):
+        client_context.client.pymongo_test.drop_collection('coll')
 
     def tearDown(self):
-        self.db.coll.drop()
         self.listener.results.clear()
 
     def test_read_concern(self):
@@ -104,12 +108,8 @@ class TestReadConcern(PyMongoTestCase):
 
     def test_aggregate_out(self):
         coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        try:
-            tuple(coll.aggregate([{'$match': {'field': 'value'}},
-                                  {'$out': 'output_collection'}]))
-        except OperationFailure:
-            # "ns doesn't exist"
-            pass
+        tuple(coll.aggregate([{'$match': {'field': 'value'}},
+                              {'$out': 'output_collection'}]))
 
         # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
         if client_context.version >= (4, 1):
@@ -121,26 +121,18 @@ class TestReadConcern(PyMongoTestCase):
 
     def test_map_reduce_out(self):
         coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        try:
-            tuple(coll.map_reduce('function() { emit(this._id, this.value); }',
-                                  'function(key, values) { return 42; }',
-                                  out='output_collection'))
-        except OperationFailure:
-            # "ns doesn't exist"
-            pass
+        coll.map_reduce('function() { emit(this._id, this.value); }',
+                        'function(key, values) { return 42; }',
+                        out='output_collection')
         self.assertNotIn('readConcern',
                          self.listener.results['started'][0].command)
 
         if client_context.version.at_least(3, 1, 9, -1):
             self.listener.results.clear()
-            try:
-                tuple(coll.map_reduce(
-                    'function() { emit(this._id, this.value); }',
-                    'function(key, values) { return 42; }',
-                    out={'inline': 1}))
-            except OperationFailure:
-                # "ns doesn't exist"
-                pass
+            coll.map_reduce(
+                'function() { emit(this._id, this.value); }',
+                'function(key, values) { return 42; }',
+                out={'inline': 1})
             self.assertEqual(
                 {'level': 'local'},
                 self.listener.results['started'][0].command['readConcern'])
@@ -148,13 +140,9 @@ class TestReadConcern(PyMongoTestCase):
     @client_context.require_version_min(3, 1, 9, -1)
     def test_inline_map_reduce(self):
         coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        try:
-            tuple(coll.inline_map_reduce(
-                'function() { emit(this._id, this.value); }',
-                'function(key, values) { return 42; }'))
-        except OperationFailure:
-            # "ns doesn't exist"
-            pass
+        tuple(coll.inline_map_reduce(
+            'function() { emit(this._id, this.value); }',
+            'function(key, values) { return 42; }'))
         self.assertEqual(
             {'level': 'local'},
             self.listener.results['started'][0].command['readConcern'])

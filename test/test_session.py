@@ -857,14 +857,17 @@ class TestCausalConsistency(unittest.TestCase):
         map_reduce_exc = None
         if client_context.version.at_least(4, 1, 12):
             map_reduce_exc = OperationFailure
-        self._test_reads(
-            lambda coll, session: coll.map_reduce(
-                'function() {}', 'function() {}', 'inline', session=session),
-            exception=map_reduce_exc)
-        self._test_reads(
-            lambda coll, session: coll.inline_map_reduce(
-                'function() {}', 'function() {}', session=session),
-            exception=map_reduce_exc)
+        # SERVER-44635 The mapReduce in aggregation project added back
+        # support for casually consistent mapReduce.
+        if client_context.version < (4, 3):
+            self._test_reads(
+                lambda coll, session: coll.map_reduce(
+                    'function() {}', 'function() {}', 'inline', session=session),
+                exception=map_reduce_exc)
+            self._test_reads(
+                lambda coll, session: coll.inline_map_reduce(
+                    'function() {}', 'function() {}', session=session),
+                exception=map_reduce_exc)
         if (not client_context.is_mongos and
                 not client_context.version.at_least(4, 1, 0)):
             def scan(coll, session):

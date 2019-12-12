@@ -2079,6 +2079,8 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
 
+        # Create the output database.
+        db.client.mrtestdb.mrunittests.insert_one({})
         result = db.test.map_reduce(map, reduce,
                                     out=SON([('replace', 'mrunittests'),
                                              ('db', 'mrtestdb')
@@ -2090,7 +2092,9 @@ class TestCollection(IntegrationTest):
 
         full_result = db.test.map_reduce(map, reduce,
                                          out='mrunittests', full_response=True)
-        self.assertEqual(6, full_result["counts"]["emit"])
+        self.assertEqual('mrunittests', full_result["result"])
+        if client_context.version < (4, 3):
+            self.assertEqual(6, full_result["counts"]["emit"])
 
         result = db.test.map_reduce(map, reduce, out='mrunittests', limit=2)
         self.assertEqual(2, result.find_one({"_id": "cat"})["value"])
@@ -2111,7 +2115,9 @@ class TestCollection(IntegrationTest):
 
         full_result = db.test.inline_map_reduce(map, reduce,
                                                 full_response=True)
-        self.assertEqual(6, full_result["counts"]["emit"])
+        self.assertEqual(3, len(full_result["results"]))
+        if client_context.version < (4, 3):
+            self.assertEqual(6, full_result["counts"]["emit"])
 
         with self.write_concern_collection() as coll:
             coll.map_reduce(map, reduce, 'output')
