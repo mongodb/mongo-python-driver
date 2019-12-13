@@ -446,7 +446,7 @@ class ServerListener(_EventListener):
 
 def _to_micros(dur):
     """Convert duration 'dur' to microseconds."""
-    return int(dur.total_seconds() * 10e5)
+    return int(dur.total_seconds() * 10e3)
 
 
 def _validate_event_listeners(option, listeners):
