@@ -1062,7 +1062,7 @@ class Pool:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
                     if self.pool_id != reference_pool_id:
-                        sock_info.close_socket()
+                        sock_info.close_socket(ConnectionClosedReason.STALE)
                         break
                     self.sockets.appendleft(sock_info)
             finally:

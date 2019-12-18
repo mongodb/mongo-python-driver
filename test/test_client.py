@@ -24,6 +24,7 @@ import socket
 import struct
 import sys
 import time
+import threading
 import warnings
 
 sys.path[0:0] = [""]
@@ -51,6 +52,7 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
 from pymongo.mongo_client import MongoClient
+from pymongo.monotonic import time as monotonic_time
 from pymongo.driver_info import DriverInfo
 from pymongo.pool import SocketInfo, _METADATA
 from pymongo.read_preferences import ReadPreference
@@ -1454,6 +1456,75 @@ class TestClient(IntegrationTest):
                 client = single_client(zlibcompressionlevel=level)
                 # No error
                 client.pymongo_test.test.find_one()
+
+    def test_reset_during_update_pool(self):
+        client = rs_or_single_client(minPoolSize=10)
+        self.addCleanup(client.close)
+        client.admin.command('ping')
+        pool = get_pool(client)
+        pool_id = pool.pool_id
+
+        # Continuously reset the pool.
+        class ResetPoolThread(threading.Thread):
+            def __init__(self, pool):
+                super(ResetPoolThread, self).__init__()
+                self.running = True
+                self.pool = pool
+
+            def stop(self):
+                self.running = False
+
+            def run(self):
+                while self.running:
+                    self.pool.reset()
+                    time.sleep(0.001)
+
+        t = ResetPoolThread(pool)
+        t.start()
+
+        # Ensure that update_pool completes without error even when the pool
+        # is reset concurrently.
+        try:
+            while True:
+                for _ in range(10):
+                    client._topology.update_pool()
+                if pool_id != pool.pool_id:
+                    break
+        finally:
+            t.stop()
+            t.join()
+        client.admin.command('ping')
+
+    def test_background_connections_do_not_hold_locks(self):
+        min_pool_size = 10
+        client = rs_or_single_client(
+            serverSelectionTimeoutMS=3000, minPoolSize=min_pool_size,
+            connect=False)
+        self.addCleanup(client.close)
+
+        # Create a single connection in the pool.
+        client.admin.command('ping')
+
+        # Cause new connections stall for a few seconds.
+        pool = get_pool(client)
+        original_connect = pool.connect
+
+        def stall_connect(*args, **kwargs):
+            time.sleep(2)
+            return original_connect(*args, **kwargs)
+
+        pool.connect = stall_connect
+
+        # Wait for the background thread to start creating connections
+        wait_until(lambda: len(pool.sockets) > 1, 'start creating connections')
+
+        # Assert that application operations do not block.
+        for _ in range(10):
+            start = monotonic_time()
+            client.admin.command('ping')
+            total = monotonic_time() - start
+            # Each ping command should not take more than 2 seconds
+            self.assertLess(total, 2)
 
 
 class TestExhaustCursor(IntegrationTest):
