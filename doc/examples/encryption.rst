@@ -387,7 +387,7 @@ Explicit encryption is a MongoDB community feature and does not use the
           # on MongoClient, Database, or Collection.
           coll.codec_options)
 
-      # Create a new data key and json schema for the encryptedField.
+      # Create a new data key for the encryptedField.
       data_key_id = client_encryption.create_data_key(
           'local', key_alt_names=['pymongo_encryption_example_3'])
 
@@ -472,7 +472,7 @@ To configure automatic *decryption* without automatic *encryption* set
           # on MongoClient, Database, or Collection.
           coll.codec_options)
 
-      # Create a new data key and json schema for the encryptedField.
+      # Create a new data key for the encryptedField.
       data_key_id = client_encryption.create_data_key(
           'local', key_alt_names=['pymongo_encryption_example_4'])
 
