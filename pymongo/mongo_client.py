@@ -1165,10 +1165,10 @@ class MongoClient(common.BaseObject):
         session_ids = self._topology.pop_all_sessions()
         if session_ids:
             self._end_sessions(session_ids)
-        # Stop the periodic task thread and then run _process_periodic_tasks
-        # to send pending killCursor requests before closing the topology.
+        # Stop the periodic task thread and then send pending killCursor
+        # requests before closing the topology.
         self._kill_cursors_executor.close()
-        self._process_periodic_tasks()
+        self._process_kill_cursors()
         self._topology.close()
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
@@ -1717,10 +1717,8 @@ class MongoClient(common.BaseObject):
                         duration, reply, 'killCursors', request_id,
                         tuple(address))
 
-    # This method is run periodically by a background thread.
-    def _process_periodic_tasks(self):
-        """Process any pending kill cursors requests and
-        maintain connection pool parameters."""
+    def _process_kill_cursors(self):
+        """Process any pending kill cursors requests."""
         address_to_cursor_ids = defaultdict(list)
 
         # Other threads or the GC may append to the queue concurrently.
@@ -1741,6 +1739,12 @@ class MongoClient(common.BaseObject):
                         cursor_ids, address, topology, session=None)
                 except Exception:
                     helpers._handle_exception()
+
+    # This method is run periodically by a background thread.
+    def _process_periodic_tasks(self):
+        """Process any pending kill cursors requests and
+        maintain connection pool parameters."""
+        self._process_kill_cursors()
         try:
             self._topology.update_pool()
         except Exception:
