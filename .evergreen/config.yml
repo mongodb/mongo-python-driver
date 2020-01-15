@@ -861,9 +861,9 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/debian92/master/latest/libmongocrypt.tar.gz
-      - id: macos-1012
-        display_name: "macOS 10.12"
-        run_on: macos-1012
+      - id: macos-1014
+        display_name: "macOS 10.14"
+        run_on: macos-1014
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel62
@@ -1267,12 +1267,12 @@ buildvariants:
     platform:
       # MacOS introduced SSL support with MongoDB >= 3.2.
       # Older server versions (2.6, 3.0) are supported without SSL.
-      - macos-1012
+      - macos-1014
     auth: "*"
     ssl: "*"
   exclude_spec:
     # No point testing with SSL without auth.
-    - platform: macos-1012
+    - platform: macos-1014
       auth: "noauth"
       ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
@@ -1285,7 +1285,7 @@ buildvariants:
     - ".3.2"
   rules:
     - if:
-        platform: macos-1012
+        platform: macos-1014
         auth: "*"
         ssl: "nossl"
       then:
@@ -1296,7 +1296,7 @@ buildvariants:
 - matrix_name: "test-macos-encryption"
   matrix_spec:
     platform:
-      - macos-1012
+      - macos-1014
     auth: "auth"
     ssl: "nossl"
     encryption: "*"
