@@ -24,15 +24,18 @@ sys.path[0:0] = [""]
 from bson.json_util import object_hook
 from pymongo import monitoring
 from pymongo import periodic_executor
+from pymongo.errors import (ConnectionFailure,
+                            NotMasterError)
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TOPOLOGY_TYPE
-from test import unittest, client_context, client_knobs
+from test import unittest, client_context, client_knobs, IntegrationTest
 from test.utils import (ServerAndTopologyEventListener,
                         single_client,
+                        rs_or_single_client,
                         wait_until)
 
 # Location of JSON test specifications.
@@ -277,6 +280,90 @@ def create_tests():
 
 
 create_tests()
+
+
+class TestSdamMonitoring(IntegrationTest):
+
+    @classmethod
+    @client_context.require_failCommand_fail_point
+    def setUpClass(cls):
+        super(TestSdamMonitoring, cls).setUpClass()
+        # Speed up the tests by decreasing the event publish frequency.
+        cls.knobs = client_knobs(events_queue_frequency=0.1)
+        cls.knobs.enable()
+        cls.listener = ServerAndTopologyEventListener()
+        retry_writes = client_context.supports_transactions()
+        cls.test_client = rs_or_single_client(
+            event_listeners=[cls.listener], retryWrites=retry_writes)
+        cls.coll = cls.test_client[cls.client.db.name].test
+        cls.coll.insert_one({})
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.test_client.close()
+        cls.knobs.disable()
+        super(TestSdamMonitoring, cls).tearDownClass()
+
+    def setUp(self):
+        self.listener.reset()
+
+    def _test_app_error(self, fail_command_opts, expected_error):
+        address = self.test_client.address
+
+        # Test that an application error causes a ServerDescriptionChangedEvent
+        # to be published.
+        data = {'failCommands': ['insert']}
+        data.update(fail_command_opts)
+        fail_insert = {
+            'configureFailPoint': 'failCommand',
+            'mode': {'times': 1},
+            'data': data,
+        }
+        with self.fail_point(fail_insert):
+            if self.test_client.retry_writes:
+                self.coll.insert_one({})
+            else:
+                with self.assertRaises(expected_error):
+                    self.coll.insert_one({})
+                self.coll.insert_one({})
+
+        def marked_unknown(event):
+            return (
+                isinstance(event, monitoring.ServerDescriptionChangedEvent)
+                and event.server_address == address
+                and not event.new_description.is_server_type_known)
+
+        def discovered_node(event):
+            return (
+                isinstance(event, monitoring.ServerDescriptionChangedEvent)
+                and event.server_address == address
+                and not event.previous_description.is_server_type_known
+                and event.new_description.is_server_type_known)
+
+        def marked_unknown_and_rediscovered():
+            return (len(self.listener.matching(marked_unknown)) >= 1 and
+                    len(self.listener.matching(discovered_node)) >= 1)
+
+        # Topology events are published asynchronously
+        wait_until(marked_unknown_and_rediscovered, 'rediscover node')
+
+        # Expect a single ServerDescriptionChangedEvent for the network error.
+        marked_unknown_events = self.listener.matching(marked_unknown)
+        self.assertEqual(len(marked_unknown_events), 1)
+        self.assertIsInstance(
+            marked_unknown_events[0].new_description.error, expected_error)
+
+    def test_network_error_publishes_events(self):
+        self._test_app_error({'closeConnection': True}, ConnectionFailure)
+
+    def test_not_master_error_publishes_events(self):
+        self._test_app_error({'errorCode': 10107, 'closeConnection': False},
+                             NotMasterError)
+
+    def test_shutdown_error_publishes_events(self):
+        self._test_app_error({'errorCode': 91, 'closeConnection': False},
+                             NotMasterError)
+
 
 if __name__ == "__main__":
     unittest.main()

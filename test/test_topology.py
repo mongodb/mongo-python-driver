@@ -423,7 +423,7 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        t.reset_server(('a', 27017))
+        t.reset_server(('a', 27017), None)
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.RSSecondary, get_type(t, 'b'))
         self.assertEqual('rs', t.description.replica_set_name)
@@ -440,7 +440,7 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
                          t.description.topology_type)
 
-        t.reset_server(('b', 27017))
+        t.reset_server(('b', 27017), None)
         self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))
         self.assertEqual('rs', t.description.replica_set_name)
@@ -451,7 +451,7 @@ class TestMultiServerTopology(TopologyTest):
         t = create_mock_topology(replica_set_name='rs')
 
         # No error resetting a server not in the TopologyDescription.
-        t.reset_server(('b', 27017))
+        t.reset_server(('b', 27017), None)
 
         # Server was *not* added as type Unknown.
         self.assertFalse(t.has_server(('b', 27017)))

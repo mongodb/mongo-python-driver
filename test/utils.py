@@ -167,6 +167,14 @@ class ServerAndTopologyEventListener(monitoring.ServerListener,
     def closed(self, event):
         self.results.append(event)
 
+    def matching(self, matcher):
+        """Return the matching events."""
+        results = self.results[:]
+        return [event for event in results if matcher(event)]
+
+    def reset(self):
+        self.results = []
+
 
 class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
     """Listens to only server heartbeat events."""

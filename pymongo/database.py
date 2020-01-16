@@ -29,6 +29,7 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
+                            NotMasterError,
                             OperationFailure)
 from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
@@ -1135,7 +1136,8 @@ class Database(common.BaseObject):
             # doing so already.
             primary = self.__client.primary
             if primary:
-                self.__client._reset_server_and_request_check(primary)
+                self.__client._reset_server_and_request_check(
+                    primary, NotMasterError(error_msg, error))
         return error
 
     def last_status(self):

@@ -1490,13 +1490,9 @@ class MongoClient(common.BaseObject):
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, None)
 
-    def _reset_server(self, address):
-        """Clear our connection pool for a server and mark it Unknown."""
-        self._topology.reset_server(address)
-
-    def _reset_server_and_request_check(self, address):
+    def _reset_server_and_request_check(self, address, error):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
-        self._topology.reset_server_and_request_check(address)
+        self._topology.reset_server_and_request_check(address, error)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -2168,7 +2164,7 @@ class _MongoClientErrorHandler(object):
         self._client = client
         self._server_address = server_address
         self._session = session
-        self._max_wire_version = None
+        self._max_wire_version = common.MIN_WIRE_VERSION
 
     def contribute_socket(self, sock_info):
         """Provide socket information to the error handler."""
@@ -2205,22 +2201,22 @@ class _MongoClientErrorHandler(object):
             # Unknown and request an immediate check of the server.
             err_code = exc_val.details.get('code', -1)
             is_shutting_down = err_code in helpers._SHUTDOWN_CODES
-            if (is_shutting_down or (self._max_wire_version is None) or
-                    (self._max_wire_version <= 7)):
+            if is_shutting_down or (self._max_wire_version <= 7):
                 # Clear the pool, mark server Unknown and request check.
                 self._client._reset_server_and_request_check(
-                    self._server_address)
+                    self._server_address, exc_val)
             else:
                 self._client._topology.mark_server_unknown_and_request_check(
-                    self._server_address)
+                    self._server_address, exc_val)
         elif issubclass(exc_type, ConnectionFailure):
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
-            self._client._reset_server(self._server_address)
+            self._client._topology.reset_server(self._server_address, exc_val)
             if self._session:
                 self._session._server_session.mark_dirty()
         elif issubclass(exc_type, OperationFailure):
             # Do not request an immediate check since the server is likely
             # shutting down.
             if exc_val.code in helpers._RETRYABLE_ERROR_CODES:
-                self._client._reset_server(self._server_address)
+                self._client._topology.reset_server(
+                    self._server_address, exc_val)

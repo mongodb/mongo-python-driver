@@ -37,6 +37,7 @@ from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
 from pymongo.monitor import SrvMonitor
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
+from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       arbiter_server_selector,
                                       secondary_server_selector,
@@ -407,24 +408,24 @@ class Topology(object):
             if server:
                 server.pool.reset()
 
-    def reset_server(self, address):
+    def reset_server(self, address, error):
         """Clear our pool for a server and mark it Unknown.
 
         Do *not* request an immediate check.
         """
         with self._lock:
-            self._reset_server(address, reset_pool=True)
+            self._reset_server(address, reset_pool=True, error=error)
 
-    def reset_server_and_request_check(self, address):
+    def reset_server_and_request_check(self, address, error):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
         with self._lock:
-            self._reset_server(address, reset_pool=True)
+            self._reset_server(address, reset_pool=True, error=error)
             self._request_check(address)
 
-    def mark_server_unknown_and_request_check(self, address):
+    def mark_server_unknown_and_request_check(self, address, error):
         """Mark a server Unknown, and check it soon."""
         with self._lock:
-            self._reset_server(address, reset_pool=False)
+            self._reset_server(address, reset_pool=False, error=error)
             self._request_check(address)
 
     def update_pool(self):
@@ -537,7 +538,7 @@ class Topology(object):
         for server in itervalues(self._servers):
             server.open()
 
-    def _reset_server(self, address, reset_pool):
+    def _reset_server(self, address, reset_pool, error):
         """Mark a server Unknown and optionally reset it's pool.
 
         Hold the lock when calling this. Does *not* request an immediate check.
@@ -550,8 +551,7 @@ class Topology(object):
                 server.reset()
 
             # Mark this server Unknown.
-            self._description = self._description.reset_server(address)
-            self._update_servers()
+            self._process_change(ServerDescription(address, error=error))
 
     def _request_check(self, address):
         """Wake one monitor. Hold the lock when calling this."""
