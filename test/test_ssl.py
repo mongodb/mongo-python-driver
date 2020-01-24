@@ -428,6 +428,12 @@ class TestSSL(IntegrationTest):
         if sys.version_info < (2, 7, 9):
             raise SkipTest("Can't load system CA certificates.")
 
+        if (ssl.OPENSSL_VERSION.lower().startswith('libressl') and
+                sys.platform == 'darwin'):
+            raise SkipTest(
+                "LibreSSL on OSX doesn't support setting CA certificates "
+                "using SSL_CERT_FILE environment variable.")
+
         # Tell OpenSSL where CA certificates live.
         os.environ['SSL_CERT_FILE'] = CA_PEM
         try:
