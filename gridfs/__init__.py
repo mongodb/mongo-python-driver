@@ -134,7 +134,9 @@ class GridFS(object):
         return grid_file._id
 
     def get(self, file_id, session=None):
-        """Get a file from GridFS by ``"_id"``.
+        """Get a file from GridFS by ``"_id"``. The id needs to be an instance 
+        of :class: `~bson.objectid.ObjectId`
+        `see <https://api.mongodb.com/python/current/api/bson/objectid.html>`_
 
         Returns an instance of :class:`~gridfs.grid_file.GridOut`,
         which provides a file-like interface for reading.
