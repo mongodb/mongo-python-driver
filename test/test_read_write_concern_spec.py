@@ -34,7 +34,9 @@ from test import client_context, unittest
 from test.utils import (EventListener,
                         disable_replication,
                         enable_replication,
-                        rs_or_single_client)
+                        rs_or_single_client,
+                        TestCreator)
+from test.utils_spec_runner import SpecRunner
 
 
 _TEST_PATH = os.path.join(
@@ -252,7 +254,10 @@ def create_tests():
     for dirpath, _, filenames in os.walk(_TEST_PATH):
         dirname = os.path.split(dirpath)[-1]
 
-        if dirname == 'connection-string':
+        if dirname == 'operation':
+            # This directory is tested by TestOperations.
+            continue
+        elif dirname == 'connection-string':
             create_test = create_connection_string_test
         else:
             create_test = create_document_test
@@ -274,6 +279,28 @@ def create_tests():
 
 
 create_tests()
+
+
+class TestOperation(SpecRunner):
+    # Location of JSON test specifications.
+    TEST_PATH = os.path.join(_TEST_PATH, 'operation')
+
+    def get_outcome_coll_name(self, outcome, collection):
+        """Spec says outcome has an optional 'collection.name'."""
+        return outcome['collection'].get('name', collection.name)
+
+
+def create_operation_test(scenario_def, test, name):
+    @client_context.require_test_commands
+    def run_scenario(self):
+        self.run_scenario(scenario_def, test)
+
+    return run_scenario
+
+
+test_creator = TestCreator(
+    create_operation_test, TestOperation, TestOperation.TEST_PATH)
+test_creator.create_tests()
 
 
 if __name__ == '__main__':

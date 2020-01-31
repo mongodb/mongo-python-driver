@@ -336,6 +336,8 @@ class SpecRunner(IntegrationTest):
                 arguments['name'] = arguments.pop(arg_name)
             elif name == 'create_index' and arg_name == 'keys':
                 arguments['keys'] = list(arguments.pop(arg_name).items())
+            elif name == 'drop_index' and arg_name == 'name':
+                arguments['index_or_name'] = arguments.pop(arg_name)
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
