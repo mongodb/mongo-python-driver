@@ -498,6 +498,43 @@ class TestURI(unittest.TestCase):
         self.assertEqual(len(ctx), 1)
         self.assertTrue(issubclass(ctx[0].category, DeprecationWarning))
 
+    def test_unquote_after_parsing(self):
+        quoted_val = "val%21%40%23%24%25%5E%26%2A%28%29_%2B%2C%3A+etc"
+        unquoted_val = "val!@#$%^&*()_+,: etc"
+        uri = ("mongodb://user:password@localhost/?authMechanism=MONGODB-AWS"
+               "&authMechanismProperties=AWS_SESSION_TOKEN:"+quoted_val)
+        res = parse_uri(uri)
+        options = {
+            'authmechanism': 'MONGODB-AWS',
+            'authmechanismproperties': {
+                'AWS_SESSION_TOKEN': unquoted_val}}
+        self.assertEqual(options, res['options'])
+
+        uri = (("mongodb://localhost/foo?readpreference=secondary&"
+                "readpreferencetags=dc:west,"+quoted_val+":"+quoted_val+"&"
+                "readpreferencetags=dc:east,use:"+quoted_val))
+        res = parse_uri(uri)
+        options = {
+            'readpreference': ReadPreference.SECONDARY.mongos_mode,
+            'readpreferencetags': [
+                {'dc': 'west', unquoted_val: unquoted_val},
+                {'dc': 'east', 'use': unquoted_val}
+            ]
+        }
+        self.assertEqual(options, res['options'])
+
+    def test_redact_AWS_SESSION_TOKEN(self):
+        unquoted_colon = "token:"
+        uri = ("mongodb://user:password@localhost/?authMechanism=MONGODB-AWS"
+               "&authMechanismProperties=AWS_SESSION_TOKEN:"+unquoted_colon)
+        with self.assertRaisesRegex(
+                ValueError,
+                'auth mechanism properties must be key:value pairs like '
+                'SERVICE_NAME:mongodb, not AWS_SESSION_TOKEN:<redacted token>'
+                ', did you forget to percent-escape the token with '
+                'quote_plus?'):
+            parse_uri(uri)
+
 
 if __name__ == "__main__":
     unittest.main()

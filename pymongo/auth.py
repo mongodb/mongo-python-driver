@@ -43,6 +43,7 @@ from collections import namedtuple
 from bson.binary import Binary
 from bson.py3compat import string_type, _unicode, PY3
 from bson.son import SON
+from pymongo.auth_aws import _HAVE_MONGODB_AWS, _auth_aws, _AWSCredential
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
@@ -51,6 +52,7 @@ MECHANISMS = frozenset(
     ['GSSAPI',
      'MONGODB-CR',
      'MONGODB-X509',
+     'MONGODB-AWS',
      'PLAIN',
      'SCRAM-SHA-1',
      'SCRAM-SHA-256',
@@ -100,10 +102,14 @@ GSSAPIProperties = namedtuple('GSSAPIProperties',
 """Mechanism properties for GSSAPI authentication."""
 
 
+_AWSProperties = namedtuple('AWSProperties', ['aws_session_token'])
+"""Mechanism properties for MONGODB-AWS authentication."""
+
+
 def _build_credentials_tuple(mech, source, user, passwd, extra, database):
     """Build and return a mechanism specific credentials tuple.
     """
-    if mech != 'MONGODB-X509' and user is None:
+    if mech not in ('MONGODB-X509', 'MONGODB-AWS') and user is None:
         raise ConfigurationError("%s requires a username." % (mech,))
     if mech == 'GSSAPI':
         if source is not None and source != '$external':
@@ -126,8 +132,22 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
             raise ValueError(
                 "authentication source must be "
                 "$external or None for MONGODB-X509")
-        # user can be None.
+        # Source is always $external, user can be None.
         return MongoCredential(mech, '$external', user, None, None, None)
+    elif mech == 'MONGODB-AWS':
+        if user is not None and passwd is None:
+            raise ConfigurationError(
+                "username without a password is not supported by MONGODB-AWS")
+        if source is not None and source != '$external':
+            raise ConfigurationError(
+                "authentication source must be "
+                "$external or None for MONGODB-AWS")
+
+        properties = extra.get('authmechanismproperties', {})
+        aws_session_token = properties.get('AWS_SESSION_TOKEN')
+        props = _AWSProperties(aws_session_token=aws_session_token)
+        # user can be None for temporary link-local EC2 credentials.
+        return MongoCredential(mech, '$external', user, passwd, props, None)
     elif mech == 'PLAIN':
         source_database = source or database or '$external'
         return MongoCredential(mech, source_database, user, passwd, None, None)
@@ -507,6 +527,20 @@ def _authenticate_x509(credentials, sock_info):
     sock_info.command('$external', query)
 
 
+def _authenticate_aws(credentials, sock_info):
+    """Authenticate using MONGODB-AWS.
+    """
+    if not _HAVE_MONGODB_AWS:
+        raise ConfigurationError(
+            "MONGODB-AWS authentication requires botocore and requests: "
+            "install these libraries with: "
+            "python -m pip install 'pymongo[aws]'")
+
+    _auth_aws(_AWSCredential(
+        credentials.username, credentials.password,
+        credentials.mechanism_properties.aws_session_token), sock_info)
+
+
 def _authenticate_mongo_cr(credentials, sock_info):
     """Authenticate using MONGODB-CR.
     """
@@ -549,6 +583,7 @@ _AUTH_MAP = {
     'GSSAPI': _authenticate_gssapi,
     'MONGODB-CR': _authenticate_mongo_cr,
     'MONGODB-X509': _authenticate_x509,
+    'MONGODB-AWS': _authenticate_aws,
     'PLAIN': _authenticate_plain,
     'SCRAM-SHA-1': functools.partial(
         _authenticate_scram, mechanism='SCRAM-SHA-1'),

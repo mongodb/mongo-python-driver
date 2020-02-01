@@ -1437,7 +1437,9 @@ class Database(common.BaseObject):
           - `authMechanismProperties` (optional): Used to specify
             authentication mechanism specific options. To specify the service
             name for GSSAPI authentication pass
-            authMechanismProperties='SERVICE_NAME:<service name>'
+            ``authMechanismProperties='SERVICE_NAME:<service name>'``.
+            To specify the session token for MONGODB-AWS authentication pass
+            ``authMechanismProperties='AWS_SESSION_TOKEN:<session token>'``.
 
         .. versionchanged:: 3.7
            Added support for SCRAM-SHA-256 with MongoDB 4.0 and later.

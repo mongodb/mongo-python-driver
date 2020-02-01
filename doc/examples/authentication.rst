@@ -5,6 +5,8 @@ MongoDB supports several different authentication mechanisms. These examples
 cover all authentication methods currently supported by PyMongo, documenting
 Python module and MongoDB version dependencies.
 
+.. _percent escaped:
+
 Percent-Escaping Username and Password
 --------------------------------------
 
@@ -252,3 +254,120 @@ the SASL PLAIN mechanism::
   ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
   ...                      ssl_ca_certs='/path/to/ca.pem')
   >>>
+
+.. _MONGODB-AWS:
+
+MONGODB-AWS
+-----------
+.. versionadded:: 3.11
+
+The MONGODB-AWS authentication mechanism is available in MongoDB 4.4+ and
+requires extra pymongo dependencies. To use it, install pymongo with the
+``aws`` extra::
+
+  $ python -m pip install 'pymongo[aws]'
+
+The MONGODB-AWS mechanism authenticates using AWS IAM credentials (an access
+key ID and a secret access key), `temporary AWS IAM credentials`_ obtained
+from an `AWS Security Token Service (STS)`_ `Assume Role`_ request,
+AWS Lambda `environment variables`_, or temporary AWS IAM credentials assigned
+to an `EC2 instance`_ or ECS task. The use of temporary credentials, in
+addition to an access key ID and a secret access key, also requires a
+security (or session) token.
+
+Credentials can be configured through the MongoDB URI, environment variables,
+or the local EC2 or ECS endpoint. The order in which the client searches for
+credentials is:
+
+#. Credentials passed through the URI
+#. Environment variables
+#. ECS endpoint if and only if ``AWS_CONTAINER_CREDENTIALS_RELATIVE_URI`` is set.
+#. EC2 endpoint
+
+MONGODB-AWS authenticates against the "$external" virtual database, so none of
+the URIs in this section need to include the ``authSource`` URI option.
+
+AWS IAM credentials
+~~~~~~~~~~~~~~~~~~~
+
+Applications can authenticate using AWS IAM credentials by providing a valid
+access key id and secret access key pair as the username and password,
+respectively, in the MongoDB URI. A sample URI would be::
+
+  >>> from pymongo import MongoClient
+  >>> uri = "mongodb://<access_key_id>:<secret_access_key>@localhost/?authMechanism=MONGODB-AWS"
+  >>> client = MongoClient(uri)
+
+.. note:: The access_key_id and secret_access_key passed into the URI MUST
+          be `percent escaped`_.
+
+AssumeRole
+~~~~~~~~~~
+
+Applications can authenticate using temporary credentials returned from an
+assume role request. These temporary credentials consist of an access key
+ID, a secret access key, and a security token passed into the URI.
+A sample URI would be::
+
+  >>> from pymongo import MongoClient
+  >>> uri = "mongodb://<access_key_id>:<secret_access_key>@example.com/?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN:<session_token>"
+  >>> client = MongoClient(uri)
+
+.. note:: The access_key_id, secret_access_key, and session_token passed into
+          the URI MUST be `percent escaped`_.
+
+AWS Lambda (Environment Variables)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When the username and password are not provided and the MONGODB-AWS mechanism
+is set, the client will fallback to using the `environment variables`_
+``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``, and ``AWS_SESSION_TOKEN``
+for the access key ID, secret access key, and session token, respectively::
+
+  $ export AWS_ACCESS_KEY_ID=<access_key_id>
+  $ export AWS_SECRET_ACCESS_KEY=<secret_access_key>
+  $ export AWS_SESSION_TOKEN=<session_token>
+  $ python
+  >>> from pymongo import MongoClient
+  >>> uri = "mongodb://example.com/?authMechanism=MONGODB-AWS"
+  >>> client = MongoClient(uri)
+
+.. note:: No username, password, or session token is passed into the URI.
+          PyMongo will use credentials set via the environment variables.
+          These environment variables MUST NOT be `percent escaped`_.
+
+ECS Container
+~~~~~~~~~~~~~
+
+Applications can authenticate from an ECS container via temporary
+credentials assigned to the machine. A sample URI on an ECS container
+would be::
+
+  >>> from pymongo import MongoClient
+  >>> uri = "mongodb://localhost/?authMechanism=MONGODB-AWS"
+  >>> client = MongoClient(uri)
+
+.. note:: No username, password, or session token is passed into the URI.
+          PyMongo will query the ECS container endpoint to obtain these
+          credentials.
+
+EC2 Instance
+~~~~~~~~~~~~
+
+Applications can authenticate from an EC2 instance via temporary
+credentials assigned to the machine. A sample URI on an EC2 machine
+would be::
+
+  >>> from pymongo import MongoClient
+  >>> uri = "mongodb://localhost/?authMechanism=MONGODB-AWS"
+  >>> client = MongoClient(uri)
+
+.. note:: No username, password, or session token is passed into the URI.
+          PyMongo will query the EC2 instance endpoint to obtain these
+          credentials.
+
+.. _temporary AWS IAM credentials: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html
+.. _AWS Security Token Service (STS): https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html
+.. _Assume Role: https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html
+.. _EC2 instance: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html
+.. _environment variables: https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime

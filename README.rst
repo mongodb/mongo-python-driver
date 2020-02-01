@@ -99,6 +99,12 @@ dependency can be installed automatically along with PyMongo::
 
   $ python -m pip install pymongo[gssapi]
 
+MONGODB-AWS authentication requires `botocore
+<https://pypi.org/project/botocore/>`_ and `requests
+<https://pypi.org/project/requests/>`_::
+
+  $ python -m pip install pymongo[aws]
+
 Support for mongodb+srv:// URIs requires `dnspython
 <https://pypi.python.org/pypi/dnspython>`_::
 
@@ -116,7 +122,7 @@ PyMongo::
 .. note:: Users of Python versions older than 2.7.9 will also
   receive the dependencies for OCSP when using the tls extra.
 
-:ref:`OCSP` requires `PyOpenSSL
+OCSP (Online Certificate Status Protocol) requires `PyOpenSSL
 <https://pypi.org/project/pyOpenSSL/>`_, `requests
 <https://pypi.org/project/requests/>`_ and `service_identity
 <https://pypi.org/project/service_identity/>`_::
@@ -133,10 +139,15 @@ Wire protocol compression with zstandard requires `zstandard
 
   $ python -m pip install pymongo[zstd]
 
+Client-Side Field Level Encryption requires `pymongocrypt
+<https://pypi.org/project/pymongocrypt/>`_::
+
+  $ python -m pip install pymongo[encryption]
+
 You can install all dependencies automatically with the following
 command::
 
-  $ python -m pip install pymongo[gssapi,ocsp,snappy,srv,tls,zstd]
+  $ python -m pip install pymongo[gssapi,aws,ocsp,snappy,srv,tls,zstd,encryption]
 
 Other optional packages:
 

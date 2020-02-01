@@ -329,6 +329,7 @@ extras_require = {
     'snappy': ['python-snappy'],
     'tls': [],
     'zstd': ['zstandard'],
+    'aws': ['requests<3.0.0', 'botocore'],
 }
 
 # https://jira.mongodb.org/browse/PYTHON-2117

@@ -22,7 +22,7 @@ from bson import SON
 from bson.binary import (STANDARD, PYTHON_LEGACY,
                          JAVA_LEGACY, CSHARP_LEGACY)
 from bson.codec_options import CodecOptions, TypeRegistry
-from bson.py3compat import abc, integer_types, iteritems, string_type
+from bson.py3compat import abc, integer_types, iteritems, string_type, PY3
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (validate_compressors,
@@ -43,6 +43,10 @@ try:
 except ImportError:
     ORDERED_TYPES = (SON,)
 
+if PY3:
+    from urllib.parse import unquote_plus
+else:
+    from urllib import unquote_plus
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
@@ -391,8 +395,11 @@ def validate_read_preference_tags(name, value):
             tag_sets.append({})
             continue
         try:
-            tag_sets.append(dict([tag.split(":")
-                                  for tag in tag_set.split(",")]))
+            tags = {}
+            for tag in tag_set.split(","):
+                key, val = tag.split(":")
+                tags[unquote_plus(key)] = unquote_plus(val)
+            tag_sets.append(tags)
         except Exception:
             raise ValueError("%r not a valid "
                              "value for %s" % (tag_set, name))
@@ -401,7 +408,8 @@ def validate_read_preference_tags(name, value):
 
 _MECHANISM_PROPS = frozenset(['SERVICE_NAME',
                               'CANONICALIZE_HOST_NAME',
-                              'SERVICE_REALM'])
+                              'SERVICE_REALM',
+                              'AWS_SESSION_TOKEN'])
 
 
 def validate_auth_mechanism_properties(option, value):
@@ -412,6 +420,10 @@ def validate_auth_mechanism_properties(option, value):
         try:
             key, val = opt.split(':')
         except ValueError:
+            # Try not to leak the token.
+            if 'AWS_SESSION_TOKEN' in opt:
+                opt = ('AWS_SESSION_TOKEN:<redacted token>, did you forget '
+                       'to percent-escape the token with quote_plus?')
             raise ValueError("auth mechanism properties must be "
                              "key:value pairs like SERVICE_NAME:"
                              "mongodb, not %s." % (opt,))
@@ -422,7 +434,7 @@ def validate_auth_mechanism_properties(option, value):
         if key == 'CANONICALIZE_HOST_NAME':
             props[key] = validate_boolean_or_string(key, val)
         else:
-            props[key] = val
+            props[key] = unquote_plus(val)
 
     return props
 

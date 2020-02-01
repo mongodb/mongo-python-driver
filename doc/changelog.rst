@@ -6,16 +6,17 @@ Changes in Version 3.11.0
 
 Version 3.11 adds support for MongoDB 4.4. Highlights include:
 
-- Added the ``allow_disk_use`` parameters to
-  :meth:`pymongo.collection.Collection.find`.
 - Support for :ref:`OCSP` (Online Certificate Status Protocol)
 - Support for `PyOpenSSL <https://pypi.org/project/pyOpenSSL/>`_ as an
   alternative TLS implementation. PyOpenSSL is required for :ref:`OCSP`
   support. It will also be installed when using the "tls" extra if the
   version of Python in use is older than 2.7.9.
+- Support for the :ref:`MONGODB-AWS` authentication mechanism.
 - Added the ``background`` parameter to
   :meth:`pymongo.database.Database.validate_collection`. For a description
   of this parameter see the MongoDB documentation for the `validate command`_.
+- Added the ``allow_disk_use`` parameters to
+  :meth:`pymongo.collection.Collection.find`.
 
 .. _validate command: https://docs.mongodb.com/manual/reference/command/validate/
 

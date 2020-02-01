@@ -146,7 +146,11 @@ def _parse_options(opts, delim):
         else:
             if key in options:
                 warnings.warn("Duplicate URI option '%s'." % (key,))
-            options[key] = unquote_plus(value)
+            if key.lower() == 'authmechanismproperties':
+                val = value
+            else:
+                val = unquote_plus(value)
+            options[key] = val
 
     return options
 
@@ -417,23 +421,18 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                          "the host list and any options.")
 
     if path_part:
-        if path_part[0] == '?':
-            opts = unquote_plus(path_part[1:])
-        else:
-            dbase, _, opts = map(unquote_plus, path_part.partition('?'))
+        dbase, _, opts = path_part.partition('?')
+        if dbase:
+            dbase = unquote_plus(dbase)
             if '.' in dbase:
                 dbase, collection = dbase.split('.', 1)
-
             if _BAD_DB_CHARS.search(dbase):
                 raise InvalidURI('Bad database name "%s"' % dbase)
+        else:
+            dbase = None
 
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
-
-    if dbase is not None:
-        dbase = unquote_plus(dbase)
-    if collection is not None:
-        collection = unquote_plus(collection)
 
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')

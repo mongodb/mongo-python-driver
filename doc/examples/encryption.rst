@@ -1,3 +1,5 @@
+.. _Client-Side Field Level Encryption:
+
 Client-Side Field Level Encryption
 ==================================
 
