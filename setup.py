@@ -18,11 +18,11 @@ except ImportError:
 # Don't force people to install setuptools unless
 # we have to.
 try:
-    from setuptools import setup
+    from setuptools import setup, __version__ as _setuptools_version
 except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
-    from setuptools import setup
+    from setuptools import setup, __version__ as _setuptools_version
 
 from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
@@ -317,6 +317,7 @@ ext_modules = [Extension('bson._cbson',
                          sources=['pymongo/_cmessagemodule.c',
                                   'bson/buffer.c'])]
 
+
 # PyOpenSSL 17.0.0 introduced support for OCSP. 17.2.0 fixes a bug
 # in set_default_verify_paths we should really avoid.
 # service_identity 18.1.0 introduced support for IP addr matching.
@@ -325,23 +326,50 @@ pyopenssl_reqs = ["pyopenssl>=17.2.0", "service_identity>=18.1.0"]
 extras_require = {
     'encryption': ['pymongocrypt<2.0.0'],
     'snappy': ['python-snappy'],
+    'tls': [],
     'zstd': ['zstandard'],
 }
 
+# https://jira.mongodb.org/browse/PYTHON-2117
+# Environment marker support didn't settle down until version 20.10
+# https://setuptools.readthedocs.io/en/latest/history.html#v20-10-0
+_use_env_markers = tuple(map(int, _setuptools_version.split('.')[:2])) > (20, 9)
+
+# TLS and DNS extras
+# We install PyOpenSSL and service_identity for Python < 2.7.9 to
+# get support for SNI, which is required to connection to Altas
+# free and shared tier.
 if sys.version_info[0] == 2:
+    if _use_env_markers:
+        # For building wheels on Python versions >= 2.7.9
+        for req in pyopenssl_reqs:
+            extras_require['tls'].append(
+                "%s ; python_full_version < '2.7.9'" % (req,))
+        if sys.platform == 'win32':
+            extras_require['tls'].append(
+                "wincertstore>=0.2 ; python_full_version < '2.7.9'")
+        else:
+            extras_require['tls'].append(
+                "certifi ; python_full_version < '2.7.9'")
+    elif sys.version_info < (2, 7, 9):
+        # For installing from source or egg files on Python versions
+        # older than 2.7.9, or systems that have setuptools versions
+        # older than 20.10.
+        extras_require['tls'].extend(pyopenssl_reqs)
+        if sys.platform == 'win32':
+            extras_require['tls'].append("wincertstore>=0.2")
+        else:
+            extras_require['tls'].append("certifi")
     extras_require.update({'srv': ["dnspython>=1.16.0,<1.17.0"]})
     extras_require.update({'tls': ["ipaddress"]})
-    for req in pyopenssl_reqs:
-        extras_require['tls'].append("%s ; python_full_version < '2.7.9'" % (req,))
 else:
     extras_require.update({'srv': ["dnspython>=1.16.0,<2.0.0"]})
-    extras_require.update({'tls': []})
+
+# GSSAPI extras
 if sys.platform == 'win32':
     extras_require['gssapi'] = ["winkerberos>=0.5.0"]
-    extras_require['tls'].append("wincertstore>=0.2 ; python_full_version < '2.7.9'")
 else:
     extras_require['gssapi'] = ["pykerberos"]
-    extras_require['tls'].append("certifi ; python_full_version < '2.7.9'")
 
 extra_opts = {
     "packages": ["bson", "pymongo", "gridfs"]
