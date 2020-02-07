@@ -289,6 +289,7 @@ functions:
             SSL=${SSL} \
             STORAGE_ENGINE=${STORAGE_ENGINE} \
             DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS} \
+            ORCHESTRATION_FILE=${ORCHESTRATION_FILE} \
             sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
@@ -487,6 +488,55 @@ functions:
           file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
           # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
           [ -f "$file" ] && sh $file || echo "$file not available, skipping"
+
+  "run-ocsp-test":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/rsa/ca.pem" \
+          OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
+          sh ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
+
+  "run-valid-ocsp-server":
+    - command: shell.exec
+      params:
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
+          /opt/mongodbtoolchain/v3/bin/python3 -m venv ./venv
+          ./venv/bin/pip3 install asn1crypto oscrypto bottle
+    - command: shell.exec
+      params:
+        background: true
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
+          nohup ./venv/bin/python3 ocsp_mock.py \
+          --ca_file rsa/ca.pem \
+          --ocsp_responder_cert rsa/ca.crt \
+          --ocsp_responder_key rsa/ca.key \
+          -p 8100 -v
+
+  "run-revoked-ocsp-server":
+    - command: shell.exec
+      params:
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
+          /opt/mongodbtoolchain/v3/bin/python3 -m venv ./venv
+          ./venv/bin/pip3 install asn1crypto oscrypto bottle
+    - command: shell.exec
+      params:
+        background: true
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
+          nohup ./venv/bin/python3 ocsp_mock.py \
+          --ca_file rsa/ca.pem \
+          --ocsp_responder_cert rsa/ca.crt \
+          --ocsp_responder_key rsa/ca.key \
+          -p 8100 \
+          -v \
+          --fault revoked
 
 pre:
   - func: "fetch source"
@@ -828,6 +878,95 @@ tasks:
       tags: ["atlas-connect"]
       commands:
         - func: "run atlas tests"
+
+    - name: "test-ocsp-valid-cert-server-staples"
+      tags: ["ocsp"]
+      commands:
+        - func: "run-valid-ocsp-server"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run-ocsp-test"
+          vars:
+            OCSP_TLS_SHOULD_SUCCEED: "1"
+
+    - name: "test-ocsp-invalid-cert-server-staples"
+      tags: ["ocsp"]
+      commands:
+        - func: "run-revoked-ocsp-server"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run-ocsp-test"
+          vars:
+            OCSP_TLS_SHOULD_SUCCEED: "0"
+
+    - name: "test-ocsp-valid-cert-server-does-not-staple"
+      tags: ["ocsp"]
+      commands:
+        - func: "run-valid-ocsp-server"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run-ocsp-test"
+          vars:
+            OCSP_TLS_SHOULD_SUCCEED: "1"
+
+    - name: "test-ocsp-invalid-cert-server-does-not-staple"
+      tags: ["ocsp"]
+      commands:
+        - func: "run-revoked-ocsp-server"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run-ocsp-test"
+          vars:
+            OCSP_TLS_SHOULD_SUCCEED: "0"
+
+    - name: "test-ocsp-soft-fail"
+      tags: ["ocsp"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run-ocsp-test"
+          vars:
+            OCSP_TLS_SHOULD_SUCCEED: "1"
+
+    - name: "test-ocsp-malicious-invalid-cert-mustStaple-server-does-not-staple"
+      tags: ["ocsp"]
+      commands:
+        - func: "run-revoked-ocsp-server"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run-ocsp-test"
+          vars:
+            OCSP_TLS_SHOULD_SUCCEED: "0"
+
+    - name: "test-ocsp-malicious-no-responder-mustStaple-server-does-not-staple"
+      tags: ["ocsp"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run-ocsp-test"
+          vars:
+            OCSP_TLS_SHOULD_SUCCEED: "0"
 
 # }}}
     - name: "coverage-report"
@@ -1770,6 +1909,16 @@ buildvariants:
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
     - name: "atlas-connect"
+
+- matrix_name: "ocsp-test"
+  matrix_spec:
+    platform: ubuntu-16.04
+    python-version: ["2.7", "3.4", "3.8", "pypy", "pypy3.5"]
+    auth: "noauth"
+    ssl: "ssl"
+  display_name: "OCSP test ${python-version} ${platform}"
+  tasks:
+    - name: ".ocsp"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available

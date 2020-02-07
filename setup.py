@@ -317,14 +317,15 @@ ext_modules = [Extension('bson._cbson',
                          sources=['pymongo/_cmessagemodule.c',
                                   'bson/buffer.c'])]
 
-
-# PyOpenSSL 17.0.0 introduced support for OCSP. 17.2.0 fixes a bug
+# PyOpenSSL 17.0.0 introduced support for OCSP. 17.1.0 introduced
+# a related feature we need. 17.2.0 fixes a bug
 # in set_default_verify_paths we should really avoid.
 # service_identity 18.1.0 introduced support for IP addr matching.
-pyopenssl_reqs = ["pyopenssl>=17.2.0", "service_identity>=18.1.0"]
+pyopenssl_reqs = ["pyopenssl>=17.2.0", "requests<3.0.0", "service_identity>=18.1.0"]
 
 extras_require = {
     'encryption': ['pymongocrypt<2.0.0'],
+    'ocsp': pyopenssl_reqs,
     'snappy': ['python-snappy'],
     'tls': [],
     'zstd': ['zstandard'],

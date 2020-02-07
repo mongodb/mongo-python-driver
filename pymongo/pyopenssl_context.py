@@ -35,6 +35,7 @@ from service_identity import (
 from bson.py3compat import _unicode
 from pymongo.errors import CertificateError as _CertificateError
 from pymongo.monotonic import time as _time
+from pymongo.ocsp_support import ocsp_callback as _ocsp_callback
 from pymongo.socket_checker import (
     _errno_from_exception, SocketChecker as _SocketChecker)
 
@@ -143,6 +144,12 @@ class SSLContext(object):
         self._protocol = protocol
         self._ctx = _SSL.Context(self._protocol)
         self._check_hostname = True
+        # OCSP
+        # XXX: Find a better place to do this someday, since this is client
+        # side configuration and wrap_socket tries to support both client and
+        # server side sockets.
+        self._ctx.set_ocsp_client_callback(
+            callback=_ocsp_callback, data=None)
 
     @property
     def protocol(self):
@@ -248,6 +255,9 @@ class SSLContext(object):
                 # XXX: Do this in a callback registered with
                 # SSLContext.set_info_callback? See Twisted for an example.
                 ssl_conn.set_tlsext_host_name(server_hostname.encode('idna'))
+            if self.verify_mode != _stdlibssl.CERT_NONE:
+                # Request a stapled OCSP response.
+                ssl_conn.request_ocsp()
             ssl_conn.set_connect_state()
         # If this wasn't true the caller of wrap_socket would call
         # do_handshake()
