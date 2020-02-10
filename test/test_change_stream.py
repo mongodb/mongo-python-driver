@@ -517,6 +517,7 @@ class ProseSpecTestsMixin(object):
         self._test_update_resume_token(self._get_expected_resume_token_legacy)
 
     # Prose test no. 2
+    @client_context.require_version_max(4, 3, 3)  # PYTHON-2120
     @client_context.require_version_min(4, 1, 8)
     def test_raises_error_on_missing_id_418plus(self):
         # Server returns an error on 4.1.8+
