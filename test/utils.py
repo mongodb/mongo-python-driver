@@ -49,25 +49,6 @@ from test import (client_context,
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
 
-class WhiteListEventListener(monitoring.CommandListener):
-
-    def __init__(self, *commands):
-        self.commands = set(commands)
-        self.results = defaultdict(list)
-
-    def started(self, event):
-        if event.command_name in self.commands:
-            self.results['started'].append(event)
-
-    def succeeded(self, event):
-        if event.command_name in self.commands:
-            self.results['succeeded'].append(event)
-
-    def failed(self, event):
-        if event.command_name in self.commands:
-            self.results['failed'].append(event)
-
-
 class CMAPListener(ConnectionPoolListener):
     def __init__(self):
         self.events = []
@@ -134,6 +115,25 @@ class EventListener(monitoring.CommandListener):
     def reset(self):
         """Reset the state of this listener."""
         self.results.clear()
+
+
+class WhiteListEventListener(EventListener):
+
+    def __init__(self, *commands):
+        self.commands = set(commands)
+        super(WhiteListEventListener, self).__init__()
+
+    def started(self, event):
+        if event.command_name in self.commands:
+            super(WhiteListEventListener, self).started(event)
+
+    def succeeded(self, event):
+        if event.command_name in self.commands:
+            super(WhiteListEventListener, self).succeeded(event)
+
+    def failed(self, event):
+        if event.command_name in self.commands:
+            super(WhiteListEventListener, self).failed(event)
 
 
 class OvertCommandListener(EventListener):

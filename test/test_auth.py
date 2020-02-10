@@ -409,6 +409,31 @@ class TestSCRAM(unittest.TestCase):
         client_context.client.testscram.command("dropAllUsersFromDatabase")
         client_context.client.drop_database("testscram")
 
+    def test_scram_skip_empty_exchange(self):
+        listener = WhiteListEventListener("saslStart", "saslContinue")
+        client_context.create_user(
+            'testscram', 'sha256', 'pwd', roles=['dbOwner'],
+            mechanisms=['SCRAM-SHA-256'])
+
+        client = rs_or_single_client_noauth(
+            username='sha256', password='pwd', authSource='testscram',
+            event_listeners=[listener])
+        client.admin.command('isMaster')
+
+        # Assert we sent the skipEmptyExchange option.
+        first_event = listener.results['started'][0]
+        self.assertEqual(first_event.command_name, 'saslStart')
+        self.assertEqual(
+            first_event.command['options'], {'skipEmptyExchange': True})
+
+        # Assert the third exchange was skipped on servers that support it.
+        started = listener.started_command_names()
+        if client_context.version.at_least(4, 3, 3):
+            self.assertEqual(started, ['saslStart', 'saslContinue'])
+        else:
+            self.assertEqual(
+                started, ['saslStart', 'saslContinue', 'saslContinue'])
+
     @ignore_deprecations
     def test_scram(self):
         host, port = client_context.host, client_context.port

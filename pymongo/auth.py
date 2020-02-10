@@ -259,7 +259,8 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     cmd = SON([('saslStart', 1),
                ('mechanism', mechanism),
                ('payload', Binary(b"n,," + first_bare)),
-               ('autoAuthorize', 1)])
+               ('autoAuthorize', 1),
+               ('options', {'skipEmptyExchange': True})])
     res = sock_info.command(source, cmd)
 
     server_first = res['payload']
@@ -304,8 +305,8 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     if not compare_digest(parsed[b'v'], server_sig):
         raise OperationFailure("Server returned an invalid signature.")
 
-    # Depending on how it's configured, Cyrus SASL (which the server uses)
-    # requires a third empty challenge.
+    # A third empty challenge may be required if the server does not support
+    # skipEmptyExchange: SERVER-44857.
     if not res['done']:
         cmd = SON([('saslContinue', 1),
                    ('conversationId', res['conversationId']),
