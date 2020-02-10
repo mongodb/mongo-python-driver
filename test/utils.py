@@ -46,7 +46,7 @@ from test import (client_context,
                   db_user,
                   db_pwd)
 
-IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=1000)
+IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
 
 class WhiteListEventListener(monitoring.CommandListener):

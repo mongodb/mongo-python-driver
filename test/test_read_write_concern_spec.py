@@ -31,8 +31,7 @@ from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 from test import client_context, unittest
-from test.utils import (IMPOSSIBLE_WRITE_CONCERN,
-                        EventListener,
+from test.utils import (EventListener,
                         disable_replication,
                         enable_replication,
                         rs_or_single_client)
