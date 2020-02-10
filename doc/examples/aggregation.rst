@@ -120,7 +120,7 @@ iterate over the result collection:
 .. doctest::
 
   >>> result = db.things.map_reduce(mapper, reducer, "myresults")
-  >>> for doc in result.find():
+  >>> for doc in result.find().sort("_id"):
   ...   pprint.pprint(doc)
   ...
   {u'_id': u'cat', u'value': 3.0}
@@ -140,10 +140,7 @@ response to the map/reduce command, rather than just the result collection:
 
   >>> pprint.pprint(
   ...     db.things.map_reduce(mapper, reducer, "myresults", full_response=True))
-  {...u'counts': {u'emit': 6, u'input': 4, u'output': 3, u'reduce': 2},
-   u'ok': ...,
-   u'result': u'...',
-   u'timeMillis': ...}
+  {...u'ok': 1.0,... u'result': u'myresults'...}
 
 All of the optional map/reduce parameters are also supported, simply pass them
 as keyword arguments. In this example we use the `query` parameter to limit the
@@ -153,7 +150,7 @@ documents that will be mapped over:
 
   >>> results = db.things.map_reduce(
   ...     mapper, reducer, "myresults", query={"x": {"$lt": 2}})
-  >>> for doc in results.find():
+  >>> for doc in results.find().sort("_id"):
   ...   pprint.pprint(doc)
   ...
   {u'_id': u'cat', u'value': 1.0}
@@ -171,9 +168,6 @@ specify a different database to store the result collection:
   ...         reducer,
   ...         out=SON([("replace", "results"), ("db", "outdb")]),
   ...         full_response=True))
-  {...u'counts': {u'emit': 6, u'input': 4, u'output': 3, u'reduce': 2},
-   u'ok': ...,
-   u'result': {u'collection': ..., u'db': ...},
-   u'timeMillis': ...}
+  {...u'ok': 1.0,... u'result': {u'collection': u'results', u'db': u'outdb'}...}
 
 .. seealso:: The full list of options for MongoDB's `map reduce engine <http://www.mongodb.org/display/DOCS/MapReduce>`_
