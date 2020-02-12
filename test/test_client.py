@@ -1514,6 +1514,8 @@ class TestClient(IntegrationTest):
             return original_connect(*args, **kwargs)
 
         pool.connect = stall_connect
+        # Un-patch Pool.connect to break the cyclic reference.
+        self.addCleanup(delattr, pool, 'connect')
 
         # Wait for the background thread to start creating connections
         wait_until(lambda: len(pool.sockets) > 1, 'start creating connections')

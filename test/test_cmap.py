@@ -376,6 +376,8 @@ class TestCMAP(IntegrationTest):
             sock_info.check_auth = functools.partial(mock_check_auth, sock_info)
             return sock_info
         pool.connect = mock_connect
+        # Un-patch Pool.connect to break the cyclic reference.
+        self.addCleanup(delattr, pool, 'connect')
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(ConnectionFailure, 'auth failed'):

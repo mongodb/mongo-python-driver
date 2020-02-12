@@ -15,6 +15,7 @@
 """Test suite for pymongo, bson, and gridfs.
 """
 
+import gc
 import os
 import socket
 import sys
@@ -22,6 +23,12 @@ import threading
 import time
 import unittest
 import warnings
+
+try:
+    from xmlrunner import XMLTestRunner
+    HAVE_XML = True
+except ImportError:
+    HAVE_XML = False
 
 try:
     import ipaddress
@@ -52,6 +59,13 @@ try:
     faulthandler.enable()
 except ImportError:
     pass
+
+# Enable debug output for uncollectable objects. PyPy does not have set_debug.
+if hasattr(gc, 'set_debug'):
+    gc.set_debug(
+        gc.DEBUG_UNCOLLECTABLE |
+        getattr(gc, 'DEBUG_OBJECTS', 0) |
+        getattr(gc, 'DEBUG_INSTANCES', 0))
 
 # The host and port of a single mongod or mongos, or the seed host
 # for a replica set.
@@ -779,22 +793,38 @@ def setup():
 
 
 def teardown():
+    garbage = []
+    for g in gc.garbage:
+        garbage.append('GARBAGE: %r' % (g,))
+        garbage.append('  gc.get_referents: %r' % (gc.get_referents(g),))
+        garbage.append('  gc.get_referrers: %r' % (gc.get_referrers(g),))
+    if garbage:
+        assert False, '\n'.join(garbage)
     c = client_context.client
-    c.drop_database("pymongo-pooling-tests")
-    c.drop_database("pymongo_test")
-    c.drop_database("pymongo_test1")
-    c.drop_database("pymongo_test2")
-    c.drop_database("pymongo_test_mike")
-    c.drop_database("pymongo_test_bernie")
+    if c:
+        c.drop_database("pymongo-pooling-tests")
+        c.drop_database("pymongo_test")
+        c.drop_database("pymongo_test1")
+        c.drop_database("pymongo_test2")
+        c.drop_database("pymongo_test_mike")
+        c.drop_database("pymongo_test_bernie")
+        c.close()
 
 
 class PymongoTestRunner(unittest.TextTestRunner):
     def run(self, test):
         setup()
         result = super(PymongoTestRunner, self).run(test)
-        try:
+        teardown()
+        return result
+
+
+if HAVE_XML:
+    class PymongoXMLTestRunner(XMLTestRunner):
+        def run(self, test):
+            setup()
+            result = super(PymongoXMLTestRunner, self).run(test)
             teardown()
-        finally:
             return result
 
 

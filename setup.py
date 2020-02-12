@@ -122,9 +122,9 @@ class test(Command):
             suite = unittest.defaultTestLoader.loadTestsFromName(
                 self.test_suite)
         if self.xunit_output:
-            from xmlrunner import XMLTestRunner
-            runner = XMLTestRunner(verbosity=2, failfast=self.failfast,
-                                   output=self.xunit_output)
+            from test import PymongoXMLTestRunner
+            runner = PymongoXMLTestRunner(verbosity=2, failfast=self.failfast,
+                                          output=self.xunit_output)
         else:
             runner = PymongoTestRunner(verbosity=2, failfast=self.failfast)
         result = runner.run(suite)

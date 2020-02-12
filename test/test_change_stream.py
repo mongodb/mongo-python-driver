@@ -575,12 +575,13 @@ class ProseSpecTestsMixin(object):
                     change_stream._cursor.close()
                     raise OperationFailure('Mock server error', code=code)
 
-                original_try_next = change_stream._cursor._try_next
+                original_cursor = change_stream._cursor
                 change_stream._cursor._try_next = mock_try_next
                 try:
                     yield
                 finally:
-                    change_stream._cursor._try_next = original_try_next
+                    # Un patch the instance.
+                    del original_cursor._try_next
 
         for code in TEST_ERROR_CODES:
             with self.change_stream() as change_stream:
