@@ -181,39 +181,11 @@ def create_test(scenario_def):
     def run_scenario(self):
         responses = (r for r in scenario_def['phases'][0]['responses'])
 
-        with client_knobs(events_queue_frequency=0.1):
+        with client_knobs(events_queue_frequency=0.1,
+                          heartbeat_frequency=0.1,
+                          min_heartbeat_interval=0.1):
             class MockMonitor(Monitor):
-                def __init__(self, server_description, topology, pool,
-                             topology_settings):
-                    """Have to copy entire constructor from Monitor so that we
-                    can override _run and change the periodic executor's
-                     interval."""
-
-                    self._server_description = server_description
-                    self._pool = pool
-                    self._settings = topology_settings
-                    self._avg_round_trip_time = MovingAverage()
-                    options = self._settings._pool_options
-                    self._listeners = options.event_listeners
-                    self._publish = self._listeners is not None
-
-                    def target():
-                        monitor = self_ref()
-                        if monitor is None:
-                            return False
-                        MockMonitor._run(monitor)  # Change target to subclass
-                        return True
-
-                    # Shorten interval
-                    executor = periodic_executor.PeriodicExecutor(
-                        interval=0.1,
-                        min_interval=0.1,
-                        target=target,
-                        name="pymongo_server_monitor_thread")
-                    self._executor = executor
-                    self_ref = weakref.ref(self, executor.close)
-                    self._topology = weakref.proxy(topology, executor.close)
-
+                """Override the _run method"""
                 def _run(self):
                     try:
                         if self._server_description.address != ('a', 27017):

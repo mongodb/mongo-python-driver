@@ -26,9 +26,32 @@ from pymongo.srv_resolver import _SrvResolver
 
 
 class MonitorBase(object):
-    def __init__(self, *args, **kwargs):
-        """Override this method to create an executor."""
-        raise NotImplementedError
+    def __init__(self, topology, name, interval, min_interval):
+        """Base class to do periodic work on a background thread.
+
+        The the background thread is signaled to stop when the Topology or
+        this instance is freed.
+        """
+        # We strongly reference the executor and it weakly references us via
+        # this closure. When the monitor is freed, stop the executor soon.
+        def target():
+            monitor = self_ref()
+            if monitor is None:
+                return False  # Stop the executor.
+            monitor._run()
+            return True
+
+        executor = periodic_executor.PeriodicExecutor(
+            interval=interval,
+            min_interval=min_interval,
+            target=target,
+            name=name)
+
+        self._executor = executor
+
+        # Avoid cycles. When self or topology is freed, stop executor soon.
+        self_ref = weakref.ref(self, executor.close)
+        self._topology = weakref.proxy(topology, executor.close)
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -68,6 +91,11 @@ class Monitor(MonitorBase):
         The Topology is weakly referenced. The Pool must be exclusive to this
         Monitor.
         """
+        super(Monitor, self).__init__(
+            topology,
+            "pymongo_server_monitor_thread",
+            topology_settings.heartbeat_frequency,
+            common.MIN_HEARTBEAT_INTERVAL)
         self._server_description = server_description
         self._pool = pool
         self._settings = topology_settings
@@ -75,27 +103,6 @@ class Monitor(MonitorBase):
         self._listeners = self._settings._pool_options.event_listeners
         pub = self._listeners is not None
         self._publish = pub and self._listeners.enabled_for_server_heartbeat
-
-        # We strongly reference the executor and it weakly references us via
-        # this closure. When the monitor is freed, stop the executor soon.
-        def target():
-            monitor = self_ref()
-            if monitor is None:
-                return False  # Stop the executor.
-            Monitor._run(monitor)
-            return True
-
-        executor = periodic_executor.PeriodicExecutor(
-            interval=self._settings.heartbeat_frequency,
-            min_interval=common.MIN_HEARTBEAT_INTERVAL,
-            target=target,
-            name="pymongo_server_monitor_thread")
-
-        self._executor = executor
-
-        # Avoid cycles. When self or topology is freed, stop executor soon.
-        self_ref = weakref.ref(self, executor.close)
-        self._topology = weakref.proxy(topology, executor.close)
 
     def close(self):
         super(Monitor, self).close()
@@ -203,30 +210,14 @@ class SrvMonitor(MonitorBase):
 
         The Topology is weakly referenced.
         """
+        super(SrvMonitor, self).__init__(
+            topology,
+            "pymongo_srv_polling_thread",
+            common.MIN_SRV_RESCAN_INTERVAL,
+            topology_settings.heartbeat_frequency)
         self._settings = topology_settings
         self._seedlist = self._settings._seeds
         self._fqdn = self._settings.fqdn
-
-        # We strongly reference the executor and it weakly references us via
-        # this closure. When the monitor is freed, stop the executor soon.
-        def target():
-            monitor = self_ref()
-            if monitor is None:
-                return False  # Stop the executor.
-            SrvMonitor._run(monitor)
-            return True
-
-        executor = periodic_executor.PeriodicExecutor(
-            interval=common.MIN_SRV_RESCAN_INTERVAL,
-            min_interval=self._settings.heartbeat_frequency,
-            target=target,
-            name="pymongo_srv_polling_thread")
-
-        self._executor = executor
-
-        # Avoid cycles. When self or topology is freed, stop executor soon.
-        self_ref = weakref.ref(self, executor.close)
-        self._topology = weakref.proxy(topology, executor.close)
 
     def _run(self):
         seedlist = self._get_seedlist()
