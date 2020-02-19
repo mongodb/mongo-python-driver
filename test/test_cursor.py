@@ -817,6 +817,7 @@ class TestCursor(IntegrationTest):
             self.assertEqual(2, collection.find().hint("x_1").count())
             self.assertEqual(2, collection.find().hint([("x", 1)]).count())
 
+    @client_context.require_version_max(4, 3, 2)  # PYTHON-2130
     @ignore_deprecations
     def test_where(self):
         db = self.db
