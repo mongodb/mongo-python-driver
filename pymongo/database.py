@@ -915,7 +915,7 @@ class Database(common.BaseObject):
         with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
                 sock_info, 'drop', value=_unicode(name),
-                allowable_errors=['ns not found'],
+                allowable_errors=['ns not found', 26],
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
                 session=session)

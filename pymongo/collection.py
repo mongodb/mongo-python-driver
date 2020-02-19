@@ -54,7 +54,6 @@ from pymongo.results import (BulkWriteResult,
                              UpdateResult)
 from pymongo.write_concern import WriteConcern
 
-_NO_OBJ_ERROR = "No matching object found"
 _UJOIN = u"%s.%s"
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
 
@@ -1582,6 +1581,8 @@ class Collection(common.BaseObject):
 
     def _count(self, cmd, collation=None, session=None):
         """Internal count helper."""
+        # XXX: "ns missing" checks can be removed when we drop support for
+        # MongoDB 3.0, see SERVER-17051.
         def _cmd(session, server, sock_info, slave_ok):
             res = self._command(
                 sock_info,
@@ -2111,7 +2112,7 @@ class Collection(common.BaseObject):
             self._command(sock_info,
                           cmd,
                           read_preference=ReadPreference.PRIMARY,
-                          allowable_errors=["ns not found"],
+                          allowable_errors=["ns not found", 26],
                           write_concern=self._write_concern_for(session),
                           session=session)
 
@@ -2873,7 +2874,6 @@ class Collection(common.BaseObject):
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,
                                 write_concern=write_concern,
-                                allowable_errors=[_NO_OBJ_ERROR],
                                 collation=collation, session=session,
                                 retryable_write=retryable_write,
                                 user_fields=_FIND_AND_MODIFY_DOC_FIELDS)
@@ -3295,7 +3295,7 @@ class Collection(common.BaseObject):
                 cmd['writeConcern'] = write_concern.document
             result = self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                allowable_errors=[_NO_OBJ_ERROR], collation=collation,
+                collation=collation,
                 session=session, retryable_write=retryable_write,
                 user_fields=_FIND_AND_MODIFY_DOC_FIELDS)
 
@@ -3304,13 +3304,6 @@ class Collection(common.BaseObject):
 
         out = self.__database.client._retryable_write(
             write_concern.acknowledged, _find_and_modify, None)
-
-        if not out['ok']:
-            if out["errmsg"] == _NO_OBJ_ERROR:
-                return None
-            else:
-                # Should never get here b/c of allowable_errors
-                raise ValueError("Unexpected Error: %s" % (out,))
 
         if full_response:
             return out

@@ -128,7 +128,9 @@ def _check_command_response(response, msg=None, allowable_errors=None,
                     break
 
         errmsg = details["errmsg"]
-        if allowable_errors is None or errmsg not in allowable_errors:
+        if (allowable_errors is None
+                or (errmsg not in allowable_errors
+                    and details.get("code") not in allowable_errors)):
 
             code = details.get("code")
             # Server is "not master" or "recovering"
