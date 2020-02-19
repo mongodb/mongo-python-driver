@@ -40,6 +40,7 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
+from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
 from test import (client_context,
@@ -869,3 +870,13 @@ def parse_read_preference(pref):
     tag_sets = pref.get('tag_sets')
     return read_preferences.make_read_preference(
         mode, tag_sets=tag_sets, max_staleness=max_staleness)
+
+
+def server_name_to_type(name):
+    """Convert a ServerType name to the corresponding value. For SDAM tests."""
+    # Special case, some tests in the spec include the PossiblePrimary
+    # type, but only single-threaded drivers need that type. We call
+    # possible primaries Unknown.
+    if name == 'PossiblePrimary':
+        return SERVER_TYPE.Unknown
+    return getattr(SERVER_TYPE, name)

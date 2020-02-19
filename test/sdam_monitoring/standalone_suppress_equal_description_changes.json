@@ -1,6 +1,6 @@
 {
-  "description": "Monitoring a topology that is a replica set with a primary connected",
-  "uri": "mongodb://a,b",
+  "description": "Monitoring a standalone connection - suppress update events for equal server descriptions",
+  "uri": "mongodb://a:27017",
   "phases": [
     {
       "responses": [
@@ -9,13 +9,15 @@
           {
             "ok": 1,
             "ismaster": true,
-            "setName": "rs",
-            "setVersion": 1,
-            "primary": "a:27017",
-            "hosts": [
-              "a:27017",
-              "b:27017"
-            ],
+            "minWireVersion": 0,
+            "maxWireVersion": 4
+          }
+        ],
+        [
+          "a:27017",
+          {
+            "ok": 1,
+            "ismaster": true,
             "minWireVersion": 0,
             "maxWireVersion": 4
           }
@@ -36,17 +38,10 @@
                 "servers": []
               },
               "newDescription": {
-                "topologyType": "Unknown",
+                "topologyType": "Single",
                 "servers": [
                   {
                     "address": "a:27017",
-                    "arbiters": [],
-                    "hosts": [],
-                    "passives": [],
-                    "type": "Unknown"
-                  },
-                  {
-                    "address": "b:27017",
                     "arbiters": [],
                     "hosts": [],
                     "passives": [],
@@ -63,12 +58,6 @@
             }
           },
           {
-            "server_opening_event": {
-              "topologyId": "42",
-              "address": "b:27017"
-            }
-          },
-          {
             "server_description_changed_event": {
               "topologyId": "42",
               "address": "a:27017",
@@ -82,14 +71,9 @@
               "newDescription": {
                 "address": "a:27017",
                 "arbiters": [],
-                "hosts": [
-                  "a:27017",
-                  "b:27017"
-                ],
+                "hosts": [],
                 "passives": [],
-                "primary": "a:27017",
-                "setName": "rs",
-                "type": "RSPrimary"
+                "type": "Standalone"
               }
             }
           },
@@ -97,17 +81,10 @@
             "topology_description_changed_event": {
               "topologyId": "42",
               "previousDescription": {
-                "topologyType": "Unknown",
+                "topologyType": "Single",
                 "servers": [
                   {
                     "address": "a:27017",
-                    "arbiters": [],
-                    "hosts": [],
-                    "passives": [],
-                    "type": "Unknown"
-                  },
-                  {
-                    "address": "b:27017",
                     "arbiters": [],
                     "hosts": [],
                     "passives": [],
@@ -116,27 +93,14 @@
                 ]
               },
               "newDescription": {
-                "topologyType": "ReplicaSetWithPrimary",
-                "setName": "rs",
+                "topologyType": "Single",
                 "servers": [
                   {
                     "address": "a:27017",
                     "arbiters": [],
-                    "hosts": [
-                      "a:27017",
-                      "b:27017"
-                    ],
-                    "passives": [],
-                    "primary": "a:27017",
-                    "setName": "rs",
-                    "type": "RSPrimary"
-                  },
-                  {
-                    "address": "b:27017",
-                    "arbiters": [],
                     "hosts": [],
                     "passives": [],
-                    "type": "Unknown"
+                    "type": "Standalone"
                   }
                 ]
               }

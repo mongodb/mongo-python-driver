@@ -17,24 +17,23 @@
 import json
 import os
 import sys
-import weakref
+import time
 
 sys.path[0:0] = [""]
 
 from bson.json_util import object_hook
 from pymongo import monitoring
-from pymongo import periodic_executor
+from pymongo.common import clean_node
 from pymongo.errors import (ConnectionFailure,
                             NotMasterError)
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
-from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
-from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TOPOLOGY_TYPE
 from test import unittest, client_context, client_knobs, IntegrationTest
 from test.utils import (ServerAndTopologyEventListener,
                         single_client,
+                        server_name_to_type,
                         rs_or_single_client,
                         wait_until)
 
@@ -46,7 +45,7 @@ _TEST_PATH = os.path.join(
 
 def compare_server_descriptions(expected, actual):
     if ((not expected['address'] == "%s:%s" % actual.address) or
-            (not SERVER_TYPE.__getattribute__(expected['type']) ==
+            (not server_name_to_type(expected['type']) ==
                 actual.server_type)):
         return False
     expected_hosts = set(
@@ -179,62 +178,56 @@ class TestAllScenarios(unittest.TestCase):
 
 def create_test(scenario_def):
     def run_scenario(self):
-        responses = (r for r in scenario_def['phases'][0]['responses'])
+        with client_knobs(events_queue_frequency=0.1):
+            _run_scenario(self)
 
-        with client_knobs(events_queue_frequency=0.1,
-                          heartbeat_frequency=0.1,
-                          min_heartbeat_interval=0.1):
-            class MockMonitor(Monitor):
-                """Override the _run method"""
-                def _run(self):
-                    try:
-                        if self._server_description.address != ('a', 27017):
-                            # Because PyMongo doesn't keep information about
-                            # the order of addresses, we might accidentally
-                            # start a MockMonitor on the wrong server first,
-                            # so we need to only mock responses for the server
-                            # the test's response is supposed to come from.
-                            return
-                        response = next(responses)[1]
-                        isMaster = IsMaster(response)
-                        self._server_description = ServerDescription(
-                            address=self._server_description.address,
-                            ismaster=isMaster)
-                        self._topology.on_change(self._server_description)
-                    except (ReferenceError, StopIteration):
-                        # Topology was garbage-collected.
-                        self.close()
+    def _run_scenario(self):
+        class NoopMonitor(Monitor):
+            """Override the _run method to do nothing."""
+            def _run(self):
+                time.sleep(0.05)
 
-            m = single_client(h=scenario_def['uri'], p=27017,
-                              event_listeners=(self.all_listener,),
-                              _monitor_class=MockMonitor)
-
-            expected_results = scenario_def['phases'][0]['outcome']['events']
-
-            expected_len = len(expected_results)
-            wait_until(lambda: len(self.all_listener.results) >= expected_len,
-                       "publish all events", timeout=15)
+        m = single_client(h=scenario_def['uri'], p=27017,
+                          event_listeners=[self.all_listener],
+                          _monitor_class=NoopMonitor)
+        topology = m._get_topology()
 
         try:
-            i = 0
-            while i < expected_len:
-                result = self.all_listener.results[i] if len(
-                    self.all_listener.results) > i else None
-                # The order of ServerOpening/ClosedEvents doesn't matter
-                if (isinstance(result,
-                               monitoring.ServerOpeningEvent) or
-                        isinstance(result,
-                                   monitoring.ServerClosedEvent)):
-                    i, passed, message = compare_multiple_events(
-                        i, expected_results, self.all_listener.results)
-                    self.assertTrue(passed, message)
-                else:
-                    self.assertTrue(
-                        *compare_events(expected_results[i], result))
-                    i += 1
+            for phase in scenario_def['phases']:
+                for (source, response) in phase['responses']:
+                    source_address = clean_node(source)
+                    topology.on_change(ServerDescription(
+                        address=source_address,
+                        ismaster=IsMaster(response),
+                        round_trip_time=0))
 
+                expected_results = phase['outcome']['events']
+                expected_len = len(expected_results)
+                wait_until(
+                    lambda: len(self.all_listener.results) >= expected_len,
+                    "publish all events", timeout=15)
+
+                i = 0
+                while i < expected_len:
+                    result = self.all_listener.results[i] if len(
+                        self.all_listener.results) > i else None
+                    # The order of ServerOpening/ClosedEvents doesn't matter
+                    if (isinstance(result,
+                                   monitoring.ServerOpeningEvent) or
+                            isinstance(result,
+                                       monitoring.ServerClosedEvent)):
+                        i, passed, message = compare_multiple_events(
+                            i, expected_results, self.all_listener.results)
+                        self.assertTrue(passed, message)
+                    else:
+                        self.assertTrue(
+                            *compare_events(expected_results[i], result))
+                        i += 1
+
+                self.all_listener.reset()
         finally:
             m.close()
+
     return run_scenario
 
 

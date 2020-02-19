@@ -30,7 +30,8 @@ from pymongo.server_description import ServerDescription, SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import parse_uri
 from test import unittest
-from test.utils import MockPool
+from test.utils import (MockPool,
+                        server_name_to_type)
 
 
 # Location of JSON test specifications.
@@ -121,15 +122,7 @@ def check_outcome(self, topology, outcome):
         self.assertTrue(topology.has_server(node))
         actual_server = topology.get_server_by_address(node)
         actual_server_description = actual_server.description
-
-        if expected_server['type'] == 'PossiblePrimary':
-            # Special case, some tests in the spec include the PossiblePrimary
-            # type, but only single-threaded drivers need that type. We call
-            # possible primaries Unknown.
-            expected_server_type = SERVER_TYPE.Unknown
-        else:
-            expected_server_type = getattr(
-                SERVER_TYPE, expected_server['type'])
+        expected_server_type = server_name_to_type(expected_server['type'])
 
         self.assertEqual(
             server_type_name(expected_server_type),
