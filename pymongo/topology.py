@@ -264,9 +264,11 @@ class Topology(object):
         Hold the lock when calling this.
         """
         td_old = self._description
-        if self._publish_server:
-            old_server_description = td_old._server_descriptions[
-                server_description.address]
+        old_server_description = td_old._server_descriptions[
+            server_description.address]
+        suppress_event = ((self._publish_server or self._publish_tp)
+                          and old_server_description == server_description)
+        if self._publish_server and not suppress_event:
             self._events.put((
                 self._listeners.publish_server_description_changed,
                 (old_server_description, server_description,
@@ -278,7 +280,7 @@ class Topology(object):
         self._update_servers()
         self._receive_cluster_time_no_lock(server_description.cluster_time)
 
-        if self._publish_tp:
+        if self._publish_tp and not suppress_event:
             self._events.put((
                 self._listeners.publish_topology_description_changed,
                 (td_old, self._description, self._topology_id)))

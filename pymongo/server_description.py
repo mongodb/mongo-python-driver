@@ -207,5 +207,26 @@ class ServerDescription(object):
         """Checks if this server supports retryable writes."""
         return self._max_wire_version >= 6
 
+    def __eq__(self, other):
+        if isinstance(other, ServerDescription):
+            return ((self._address == other.address) and
+                    (self._server_type == other.server_type) and
+                    (self._min_wire_version == other.min_wire_version) and
+                    (self._max_wire_version == other.max_wire_version) and
+                    (self._me == other.me) and
+                    (self._all_hosts == other.all_hosts) and
+                    (self._tags == other.tags) and
+                    (self._replica_set_name == other.replica_set_name) and
+                    (self._set_version == other.set_version) and
+                    (self._election_id == other.election_id) and
+                    (self._primary == other.primary) and
+                    (self._ls_timeout_minutes ==
+                     other.logical_session_timeout_minutes))
+
+        return NotImplemented
+
+    def __ne__(self, other):
+        return not self == other
+
     # For unittesting only. Use under no circumstances!
     _host_to_round_trip_time = {}

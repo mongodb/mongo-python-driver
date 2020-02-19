@@ -207,15 +207,16 @@ def create_test(scenario_def):
                     lambda: len(self.all_listener.results) >= expected_len,
                     "publish all events", timeout=15)
 
+                # Wait some time to catch possible lagging extra events.
+                time.sleep(0.5)
+
                 i = 0
                 while i < expected_len:
                     result = self.all_listener.results[i] if len(
                         self.all_listener.results) > i else None
                     # The order of ServerOpening/ClosedEvents doesn't matter
-                    if (isinstance(result,
-                                   monitoring.ServerOpeningEvent) or
-                            isinstance(result,
-                                       monitoring.ServerClosedEvent)):
+                    if isinstance(result, (monitoring.ServerOpeningEvent,
+                                           monitoring.ServerClosedEvent)):
                         i, passed, message = compare_multiple_events(
                             i, expected_results, self.all_listener.results)
                         self.assertTrue(passed, message)
@@ -223,6 +224,11 @@ def create_test(scenario_def):
                         self.assertTrue(
                             *compare_events(expected_results[i], result))
                         i += 1
+
+                # Assert no extra events.
+                extra_events = self.all_listener.results[expected_len:]
+                if extra_events:
+                    self.fail('Extra events %r' % (extra_events,))
 
                 self.all_listener.reset()
         finally:
