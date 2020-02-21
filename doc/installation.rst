@@ -70,6 +70,16 @@ PyMongo::
 
   $ python -m pip install pymongo[tls]
 
+.. note:: Users of Python versions older than 2.7.9 will also
+  receive the dependencies for OCSP when using the tls extra.
+
+:ref:`OCSP` requires `PyOpenSSL
+<https://pypi.org/project/pyOpenSSL/>`_, `requests
+<https://pypi.org/project/requests/>`_ and `service_identity
+<https://pypi.org/project/service_identity/>`_::
+
+  $ python -m pip install pymongo[ocsp]
+
 Wire protocol compression with snappy requires `python-snappy
 <https://pypi.org/project/python-snappy>`_::
 
@@ -83,7 +93,7 @@ Wire protocol compression with zstandard requires `zstandard
 You can install all dependencies automatically with the following
 command::
 
-  $ python -m pip install pymongo[snappy,gssapi,srv,tls,zstd]
+  $ python -m pip install pymongo[gssapi,ocsp,snappy,srv,tls,zstd]
 
 Other optional packages:
 

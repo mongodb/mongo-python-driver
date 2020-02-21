@@ -1,6 +1,25 @@
 Changelog
 =========
 
+Changes in Version 3.11.0
+-------------------------
+
+Version 3.11 adds support for MongoDB 4.4. Highlights include:
+
+- Support for :ref:`OCSP` (Online Certificate Status Protocol)
+- Support for `PyOpenSSL <https://pypi.org/project/pyOpenSSL/>`_ as an
+  alternative TLS implementation. PyOpenSSL is required for :ref:`OCSP`
+  support. It will also be installed when using the "tls" extra if the
+  version of Python in use is older than 2.7.9.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.11.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.11.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=24799
+
 Changes in Version 3.10.1
 -------------------------
 

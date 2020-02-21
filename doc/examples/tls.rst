@@ -16,6 +16,14 @@ command::
 
   $ python -m pip install pymongo[tls]
 
+Starting with PyMongo 3.11 this installs `PyOpenSSL
+<https://pypi.org/project/pyOpenSSL/>`_, `requests`_
+and `service_identity
+<https://pypi.org/project/service_identity/>`_
+for users of Python versions older than 2.7.9. PyOpenSSL supports SNI for these
+old Python versions allowing applictions to connect to Altas free and shared
+tier instances.
+
 Earlier versions of PyMongo require you to manually install the dependencies
 listed below.
 
@@ -103,8 +111,9 @@ Specifying a CA file
 ....................
 
 In some cases you may want to configure PyMongo to use a specific set of CA
-certificates. This is most often the case when using "self-signed" server
-certificates. The `ssl_ca_certs` option takes a path to a CA file. It can be
+certificates. This is most often the case when you are acting as your own
+certificate authority rather than using server certificates signed by a well
+known authority. The `ssl_ca_certs` option takes a path to a CA file. It can be
 passed as a keyword argument::
 
   >>> client = pymongo.MongoClient('example.com',
@@ -131,6 +140,8 @@ Or, in the URI::
 
   >>> uri = 'mongodb://example.com/?ssl=true&ssl_crlfile=/path/to/crl.pem'
   >>> client = pymongo.MongoClient(uri)
+
+.. note:: Certificate revocation lists and :ref:`OCSP` cannot be used together.
 
 Client certificates
 ...................
@@ -162,12 +173,37 @@ to decrypt encrypted private keys. Use the `ssl_pem_passphrase` option::
 
 These options can also be passed as part of the MongoDB URI.
 
+.. _OCSP:
+
+OCSP
+....
+
+Starting with PyMongo 3.11, if PyMongo was installed with the "ocsp" extra::
+
+  python -m pip install pymongo[ocsp]
+
+certificate revocation checking is enabled by way of `OCSP (Online Certification
+Status Protocol) <https://en.wikipedia.org/wiki/Online_Certificate_Status_Protocol>`_.
+MongoDB 4.4+ `staples OCSP responses <https://en.wikipedia.org/wiki/OCSP_stapling>`_
+to the TLS handshake which PyMongo will verify, failing the TLS handshake if
+the stapled OCSP response is invalid or indicates that the peer certificate is
+revoked.
+
+When connecting to a server version older than 4.4, or when a 4.4+ version of
+MongoDB does not staple an OCSP response, PyMongo will attempt to connect
+directly to an OCSP endpoint if the peer certificate specified one. The TLS
+handshake will only fail in this case if the response indicates that the
+certificate is revoked. Invalid or malformed responses will be ignored,
+favoring availability over maximum security.
+
+
 Troubleshooting TLS Errors
 ..........................
 
-TLS errors often fall into two categories, certificate verification failure or
-protocol version mismatch. An error message similar to the following means that
-OpenSSL was not able to verify the server's certificate::
+TLS errors often fall into three categories - certificate verification failure,
+protocol version mismatch or certificate revocation checking failure. An error
+message similar to the following means that OpenSSL was not able to verify the
+server's certificate::
 
   [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed
 
@@ -200,3 +236,9 @@ TLS protocols be disabled in some MongoDB deployments. Some deployments may
 disable TLS 1.0, others may disable TLS 1.0 and TLS 1.1. See the warning
 earlier in this document for troubleshooting steps and solutions.
 
+An error message similar to the following message means that certificate
+revocation checking failed::
+
+  [('SSL routines', 'tls_process_initial_server_flight', 'invalid status response')]
+
+See :ref:`OCSP` for more details.

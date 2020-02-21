@@ -14,13 +14,21 @@ dependencies using the following pip command::
 
   $ python -m pip install pymongo[tls]
 
+Starting with PyMongo 3.11 this installs `PyOpenSSL
+<https://pypi.org/project/pyOpenSSL/>`_, `requests`_
+and `service_identity
+<https://pypi.org/project/service_identity/>`_
+for users of Python versions older than 2.7.9. PyOpenSSL supports SNI for these
+old Python versions, allowing applictions to connect to Altas free and shared
+tier instances.
+
 Earlier versions of PyMongo require you to manually install the dependencies.
 For a list of TLS/SSL-related dependencies, see :doc:`examples/tls`.
 
 .. note:: Connecting to Atlas "Free Tier" or "Shared Cluster" instances
   requires Server Name Indication (SNI) support. SNI support requires CPython
-  2.7.9 / PyPy 2.5.1 or newer. To check if your version of Python supports
-  SNI run the following command::
+  2.7.9 / PyPy 2.5.1 or newer or PyMongo 3.11+ with PyOpenSSL.
+  To check if your version of Python supports SNI run the following command::
 
     $ python -c "import ssl; print(getattr(ssl, 'HAS_SNI', False))"
 
