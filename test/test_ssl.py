@@ -43,7 +43,10 @@ from test.utils import remove_all_users, connected
 
 _HAVE_PYOPENSSL = False
 try:
+    # All of these must be available to use PyOpenSSL
     import OpenSSL
+    import requests
+    import service_identity
     _HAVE_PYOPENSSL = True
 except ImportError:
     pass
@@ -190,8 +193,7 @@ class TestSSL(IntegrationTest):
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
-        vi = sys.version_info
-        if vi[0] == 2 and vi < (2, 7, 9) and not _ssl.IS_PYOPENSSL:
+        if not hasattr(ssl, 'SSLContext') and not _ssl.IS_PYOPENSSL:
             self.assertRaises(
                 ConfigurationError,
                 MongoClient,

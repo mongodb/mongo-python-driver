@@ -21,7 +21,7 @@ fi
 $PYTHON -m virtualenv pyopenssltest
 trap "deactivate; rm -rf pyopenssltest" EXIT HUP
 . pyopenssltest/bin/activate
-pip install pyopenssl>=17.2.0 service_identity>=18.1.0
+pip install pyopenssl>=17.2.0 "requests<3.0.0" service_identity>=18.1.0
 pip list
 python -c 'import sys; print(sys.version)'
 python setup.py test
