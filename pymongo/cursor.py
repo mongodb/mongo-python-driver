@@ -114,7 +114,8 @@ class Cursor(object):
                  modifiers=None, batch_size=0, manipulate=True,
                  collation=None, hint=None, max_scan=None, max_time_ms=None,
                  max=None, min=None, return_key=False, show_record_id=False,
-                 snapshot=False, comment=None, session=None):
+                 snapshot=False, comment=None, session=None,
+                 allow_disk_use=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -159,6 +160,9 @@ class Cursor(object):
             raise TypeError("batch_size must be an integer")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
+        # Only set if allow_disk_use is provided by the user, else None.
+        if allow_disk_use is not None:
+            allow_disk_use = validate_boolean("allow_disk_use", allow_disk_use)
 
         if projection is not None:
             if not projection:
@@ -184,6 +188,7 @@ class Cursor(object):
         self.__collation = validate_collation_or_none(collation)
         self.__return_key = return_key
         self.__show_record_id = show_record_id
+        self.__allow_disk_use = allow_disk_use
         self.__snapshot = snapshot
         self.__set_hint(hint)
 
@@ -424,6 +429,26 @@ class Cursor(object):
             self.__exhaust = False
 
         self.__query_flags &= ~mask
+        return self
+
+    def allow_disk_use(self, allow_disk_use):
+        """Specifies whether MongoDB can use temporary disk files while
+        processing a blocking sort operation.
+
+        Raises :exc:`TypeError` is `allow_disk_use` is not a boolean.
+
+        :Parameters:
+          - `allow_disk_use`: if True, MongoDB may use temporary
+            disk files to store data exceeding the system memory limit while
+            processing a blocking sort operation.
+
+        .. versionadded:: 3.11
+        """
+        if not isinstance(allow_disk_use, bool):
+            raise TypeError('allow_disk_use must be a bool')
+        self.__check_okay_to_chain()
+
+        self.__allow_disk_use = allow_disk_use
         return self
 
     def limit(self, limit):
@@ -1069,7 +1094,8 @@ class Cursor(object):
                                   self.__read_concern,
                                   self.__collation,
                                   self.__session,
-                                  self.__collection.database.client)
+                                  self.__collection.database.client,
+                                  self.__allow_disk_use)
             self.__send_message(q)
         elif self.__id:  # Get More
             if self.__limit:

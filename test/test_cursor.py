@@ -146,6 +146,18 @@ class TestCursor(IntegrationTest):
             self.assertEqual(0, cursor._Cursor__query_flags)
             self.assertFalse(cursor._Cursor__exhaust)
 
+    def test_allow_disk_use(self):
+        db = self.db
+        db.pymongo_test.drop()
+        coll = db.pymongo_test
+
+        self.assertRaises(TypeError, coll.find().allow_disk_use, 'baz')
+
+        cursor = coll.find().allow_disk_use(True)
+        self.assertEqual(True, cursor._Cursor__allow_disk_use)
+        cursor = coll.find().allow_disk_use(False)
+        self.assertEqual(False, cursor._Cursor__allow_disk_use)
+
     def test_max_time_ms(self):
         db = self.db
         db.pymongo_test.drop()

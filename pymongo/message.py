@@ -182,7 +182,8 @@ _MODIFIERS = SON([
 
 
 def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
-                      read_concern, collation=None, session=None):
+                      read_concern, collation=None, session=None,
+                      allow_disk_use=None):
     """Generate a find command document."""
     cmd = SON([('find', coll)])
     if '$query' in spec:
@@ -209,10 +210,13 @@ def _gen_find_command(coll, spec, projection, skip, limit, batch_size, options,
         cmd['readConcern'] = read_concern.document
     if collation:
         cmd['collation'] = collation
+    if allow_disk_use is not None:
+        cmd['allowDiskUse'] = allow_disk_use
     if options:
         cmd.update([(opt, True)
                     for opt, val in _OPTIONS.items()
                     if options & val])
+
     return cmd
 
 
@@ -233,7 +237,7 @@ class _Query(object):
     __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
                  'batch_size', 'name', 'read_concern', 'collation',
-                 'session', 'client', '_as_command')
+                 'session', 'client', 'allow_disk_use', '_as_command')
 
     # For compatibility with the _GetMore class.
     exhaust_mgr = None
@@ -241,7 +245,8 @@ class _Query(object):
 
     def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
-                 batch_size, read_concern, collation, session, client):
+                 batch_size, read_concern, collation, session, client,
+                 allow_disk_use):
         self.flags = flags
         self.db = db
         self.coll = coll
@@ -256,6 +261,7 @@ class _Query(object):
         self.collation = collation
         self.session = session
         self.client = client
+        self.allow_disk_use = allow_disk_use
         self.name = 'find'
         self._as_command = None
 
@@ -279,6 +285,10 @@ class _Query(object):
                 'Specifying a collation is unsupported with a max wire '
                 'version of %d.' % (sock_info.max_wire_version,))
 
+        if sock_info.max_wire_version < 4 and self.allow_disk_use is not None:
+            # Ignore allowDiskUse for MongoDB < 3.2.
+            self.allow_disk_use = None
+
         sock_info.validate_session(self.client, self.session)
 
         return use_find_cmd
@@ -294,7 +304,7 @@ class _Query(object):
         cmd = _gen_find_command(
             self.coll, self.spec, self.fields, self.ntoskip,
             self.limit, self.batch_size, self.flags, self.read_concern,
-            self.collation, self.session)
+            self.collation, self.session, self.allow_disk_use)
         if explain:
             self.name = 'explain'
             cmd = SON([('explain', cmd)])
@@ -1629,7 +1639,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     query = _Query(
         0, db, coll, 0, query, None, codec_options,
         read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, None,
-        None)
+        None, None)
 
     name = next(iter(cmd))
     publish = listeners.enabled_for_commands

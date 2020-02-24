@@ -1412,6 +1412,11 @@ class Collection(common.BaseObject):
           - `modifiers` (optional): **DEPRECATED** - A dict specifying
             additional MongoDB query modifiers. Use the keyword arguments listed
             above instead.
+          - `allow_disk_use` (optional): if True, MongoDB may use temporary
+            disk files to store data exceeding the system memory limit while
+            processing a blocking sort operation. The option has no effect if
+            MongoDB can satisfy the specified sort using an index, or if the
+            blocking sort requires less memory than the 100 MiB limit.
 
         .. note:: There are a number of caveats to using
           :attr:`~pymongo.cursor.CursorType.EXHAUST` as cursor_type:
@@ -1429,48 +1434,55 @@ class Collection(common.BaseObject):
             connection will be closed and discarded without being returned to
             the connection pool.
 
-        .. versionchanged:: 3.7
-           Deprecated the `snapshot` option, which is deprecated in MongoDB
-           3.6 and removed in MongoDB 4.0.
-           Deprecated the `max_scan` option. Support for this option is
-           deprecated in MongoDB 4.0. Use `max_time_ms` instead to limit server
-           side execution time.
+        .. versionchanged:: 3.11
+           Added the ``allow_disk_use`` option.
 
+        .. versionchanged:: 3.7
+           Deprecated the ``snapshot`` option, which is deprecated in MongoDB
+           3.6 and removed in MongoDB 4.0.
+           Deprecated the ``max_scan`` option. Support for this option is
+           deprecated in MongoDB 4.0. Use ``max_time_ms`` instead to limit
+           server-side execution time.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
         .. versionchanged:: 3.5
-           Added the options `return_key`, `show_record_id`, `snapshot`,
-           `hint`, `max_time_ms`, `max_scan`, `min`, `max`, and `comment`.
-           Deprecated the option `modifiers`.
+           Added the options ``return_key``, ``show_record_id``, ``snapshot``,
+           ``hint``, ``max_time_ms``, ``max_scan``, ``min``, ``max``, and
+           ``comment``.
+           Deprecated the ``modifiers`` option.
 
         .. versionchanged:: 3.4
-           Support the `collation` option.
+           Added support for the ``collation`` option.
 
         .. versionchanged:: 3.0
-           Changed the parameter names `spec`, `fields`, `timeout`, and
-           `partial` to `filter`, `projection`, `no_cursor_timeout`, and
-           `allow_partial_results` respectively.
-           Added the `cursor_type`, `oplog_replay`, and `modifiers` options.
-           Removed the `network_timeout`, `read_preference`, `tag_sets`,
-           `secondary_acceptable_latency_ms`, `max_scan`, `snapshot`,
-           `tailable`, `await_data`, `exhaust`, `as_class`, and slave_okay
-           parameters. Removed `compile_re` option: PyMongo now always
+           Changed the parameter names ``spec``, ``fields``, ``timeout``, and
+           ``partial`` to ``filter``, ``projection``, ``no_cursor_timeout``,
+           and ``allow_partial_results`` respectively.
+           Added the ``cursor_type``, ``oplog_replay``, and ``modifiers``
+           options.
+           Removed the ``network_timeout``, ``read_preference``, ``tag_sets``,
+           ``secondary_acceptable_latency_ms``, ``max_scan``, ``snapshot``,
+           ``tailable``, ``await_data``, ``exhaust``, ``as_class``, and
+           slave_okay parameters.
+           Removed ``compile_re`` option: PyMongo now always
            represents BSON regular expressions as :class:`~bson.regex.Regex`
            objects. Use :meth:`~bson.regex.Regex.try_compile` to attempt to
            convert from a BSON regular expression to a Python regular
-           expression object. Soft deprecated the `manipulate` option.
+           expression object.
+           Soft deprecated the ``manipulate`` option.
 
         .. versionchanged:: 2.7
-           Added `compile_re` option. If set to False, PyMongo represented BSON
-           regular expressions as :class:`~bson.regex.Regex` objects instead of
-           attempting to compile BSON regular expressions as Python native
-           regular expressions, thus preventing errors for some incompatible
-           patterns, see `PYTHON-500`_.
+           Added ``compile_re`` option. If set to False, PyMongo represented
+           BSON regular expressions as :class:`~bson.regex.Regex` objects
+           instead of attempting to compile BSON regular expressions as Python
+           native regular expressions, thus preventing errors for some
+           incompatible patterns, see `PYTHON-500`_.
 
-        .. versionadded:: 2.3
-           The `tag_sets` and `secondary_acceptable_latency_ms` parameters.
+        .. versionchanged:: 2.3
+           Added the ``tag_sets`` and ``secondary_acceptable_latency_ms``
+           parameters.
 
         .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
 

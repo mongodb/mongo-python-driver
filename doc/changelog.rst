@@ -6,6 +6,8 @@ Changes in Version 3.11.0
 
 Version 3.11 adds support for MongoDB 4.4. Highlights include:
 
+- Added the ``allow_disk_use`` parameters to
+  :meth:`pymongo.collection.Collection.find`.
 - Support for :ref:`OCSP` (Online Certificate Status Protocol)
 - Support for `PyOpenSSL <https://pypi.org/project/pyOpenSSL/>`_ as an
   alternative TLS implementation. PyOpenSSL is required for :ref:`OCSP`
