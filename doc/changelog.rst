@@ -11,6 +11,11 @@ Version 3.11 adds support for MongoDB 4.4. Highlights include:
   alternative TLS implementation. PyOpenSSL is required for :ref:`OCSP`
   support. It will also be installed when using the "tls" extra if the
   version of Python in use is older than 2.7.9.
+- Added the ``background`` parameter to
+  :meth:`pymongo.database.Database.validate_collection`. For a description
+  of this parameter see the MongoDB documentation for the `validate command`_.
+
+.. _validate command: https://docs.mongodb.com/manual/reference/command/validate/
 
 Issues Resolved
 ...............

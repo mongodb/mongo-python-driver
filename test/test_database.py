@@ -367,6 +367,16 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(db.validate_collection(db.test, scandata=True))
         self.assertTrue(db.validate_collection(db.test, scandata=True, full=True))
         self.assertTrue(db.validate_collection(db.test, True, True))
+        if client_context.version.at_least(4, 3, 3):
+            self.assertTrue(db.validate_collection(db.test, background=True))
+            self.assertTrue(db.validate_collection(db.test, background=False))
+            self.assertTrue(
+                db.validate_collection(db.test, scandata=True, background=True))
+            # The server does not support background=True with full=True.
+            # Assert that we actually send the background option by checking
+            # that this combination fails.
+            with self.assertRaises(OperationFailure):
+                db.validate_collection(db.test, full=True, background=True)
 
     @client_context.require_no_mongos
     def test_profiling_levels(self):

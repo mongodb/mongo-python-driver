@@ -921,11 +921,14 @@ class Database(common.BaseObject):
                 session=session)
 
     def validate_collection(self, name_or_collection,
-                            scandata=False, full=False, session=None):
+                            scandata=False, full=False, session=None,
+                            background=None):
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if
         validation fails.
+
+        See also the MongoDB documentation on the `validate command`_.
 
         :Parameters:
           - `name_or_collection`: A Collection object or the name of a
@@ -938,9 +941,16 @@ class Database(common.BaseObject):
             documents.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `background` (optional): A boolean flag that determines whether
+            the command runs in the background. Requires MongoDB 4.4+.
+
+        .. versionchanged:: 3.11
+           Added ``background`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
+
+        .. _validate command: https://docs.mongodb.com/manual/reference/command/validate/
         """
         name = name_or_collection
         if isinstance(name, Collection):
@@ -950,8 +960,13 @@ class Database(common.BaseObject):
             raise TypeError("name_or_collection must be an instance of "
                             "%s or Collection" % (string_type.__name__,))
 
-        result = self.command("validate", _unicode(name),
-                              scandata=scandata, full=full, session=session)
+        cmd = SON([("validate", _unicode(name)),
+                   ("scandata", scandata),
+                   ("full", full)])
+        if background is not None:
+            cmd["background"] = background
+
+        result = self.command(cmd, session=session)
 
         valid = True
         # Pre 1.9 results
