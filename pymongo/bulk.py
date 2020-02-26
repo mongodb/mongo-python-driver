@@ -156,6 +156,7 @@ class _Bulk(object):
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
         self.uses_array_filters = False
+        self.uses_hint = False
         self.is_retryable = True
         self.retrying = False
         self.started_retryable_write = False
@@ -180,7 +181,7 @@ class _Bulk(object):
         self.ops.append((_INSERT, document))
 
     def add_update(self, selector, update, multi=False, upsert=False,
-                   collation=None, array_filters=None):
+                   collation=None, array_filters=None, hint=None):
         """Create an update document and add it to the list of ops.
         """
         validate_ok_for_update(update)
@@ -193,13 +194,16 @@ class _Bulk(object):
         if array_filters is not None:
             self.uses_array_filters = True
             cmd['arrayFilters'] = array_filters
+        if hint is not None:
+            self.uses_hint = True
+            cmd['hint'] = hint
         if multi:
             # A bulk_write containing an update_many is not retryable.
             self.is_retryable = False
         self.ops.append((_UPDATE, cmd))
 
     def add_replace(self, selector, replacement, upsert=False,
-                    collation=None):
+                    collation=None, hint=None):
         """Create a replace document and add it to the list of ops.
         """
         validate_ok_for_replace(replacement)
@@ -209,6 +213,9 @@ class _Bulk(object):
         if collation is not None:
             self.uses_collation = True
             cmd['collation'] = collation
+        if hint is not None:
+            self.uses_hint = True
+            cmd['hint'] = hint
         self.ops.append((_UPDATE, cmd))
 
     def add_delete(self, selector, limit, collation=None):
@@ -252,9 +259,13 @@ class _Bulk(object):
 
     def _execute_command(self, generator, write_concern, session,
                          sock_info, op_id, retryable, full_result):
-        if sock_info.max_wire_version < 5 and self.uses_collation:
-            raise ConfigurationError(
-                'Must be connected to MongoDB 3.4+ to use a collation.')
+        if sock_info.max_wire_version < 5:
+            if self.uses_collation:
+                raise ConfigurationError(
+                    'Must be connected to MongoDB 3.4+ to use a collation.')
+            if self.uses_hint:
+                raise ConfigurationError(
+                    'Must be connected to MongoDB 3.4+ to use hint.')
         if sock_info.max_wire_version < 6 and self.uses_array_filters:
             raise ConfigurationError(
                 'Must be connected to MongoDB 3.6+ to use arrayFilters.')
@@ -428,6 +439,9 @@ class _Bulk(object):
         if self.uses_array_filters:
             raise ConfigurationError(
                 'arrayFilters is unsupported for unacknowledged writes.')
+        if self.uses_hint:
+            raise ConfigurationError(
+                'hint is unsupported for unacknowledged writes.')
         # Cannot have both unacknowledged writes and bypass document validation.
         if self.bypass_doc_val and sock_info.max_wire_version >= 4:
             raise OperationFailure("Cannot set bypass_document_validation with"

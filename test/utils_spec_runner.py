@@ -22,12 +22,13 @@ from bson import decode, encode
 from bson.binary import Binary, STANDARD
 from bson.codec_options import CodecOptions
 from bson.int64 import Int64
-from bson.py3compat import iteritems, abc, text_type
+from bson.py3compat import iteritems, abc, string_type, text_type
 from bson.son import SON
 
 from gridfs import GridFSBucket
 
 from pymongo import (client_session,
+                     helpers,
                      operations)
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
@@ -203,6 +204,25 @@ class SpecRunner(IntegrationTest):
 
         if 'maxCommitTimeMS' in opts:
             opts['max_commit_time_ms'] = opts.pop('maxCommitTimeMS')
+
+        if 'hint' in opts:
+            hint = opts.pop('hint')
+            if not isinstance(hint, string_type):
+                hint = list(iteritems(hint))
+            opts['hint'] = hint
+
+        # Properly format 'hint' arguments for the Bulk API tests.
+        if 'requests' in opts:
+            reqs = opts.pop('requests')
+            for req in reqs:
+                args = req.pop('arguments')
+                if 'hint' in args:
+                    hint = args.pop('hint')
+                    if not isinstance(hint, string_type):
+                        hint = list(iteritems(hint))
+                    args['hint'] = hint
+                req['arguments'] = args
+            opts['requests'] = reqs
 
         return dict(opts)
 

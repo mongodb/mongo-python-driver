@@ -761,7 +761,7 @@ class Collection(common.BaseObject):
                 check_keys=True, multi=False, manipulate=False,
                 write_concern=None, op_id=None, ordered=True,
                 bypass_doc_val=False, collation=None, array_filters=None,
-                session=None, retryable_write=False):
+                hint=None, session=None, retryable_write=False):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         if manipulate:
@@ -791,6 +791,17 @@ class Collection(common.BaseObject):
                     'arrayFilters is unsupported for unacknowledged writes.')
             else:
                 update_doc['arrayFilters'] = array_filters
+        if hint is not None:
+            if sock_info.max_wire_version < 5:
+                raise ConfigurationError(
+                    'Must be connected to MongoDB 3.4+ to use hint.')
+            elif not acknowledged:
+                raise ConfigurationError(
+                    'hint is unsupported for unacknowledged writes.')
+            if not isinstance(hint, string_type):
+                hint = helpers._index_document(hint)
+            update_doc['hint'] = hint
+
         command = SON([('update', self.name),
                        ('ordered', ordered),
                        ('updates', [update_doc])])
@@ -839,7 +850,7 @@ class Collection(common.BaseObject):
             check_keys=True, multi=False, manipulate=False,
             write_concern=None, op_id=None, ordered=True,
             bypass_doc_val=False, collation=None, array_filters=None,
-            session=None):
+            hint=None, session=None):
         """Internal update / replace helper."""
         def _update(session, sock_info, retryable_write):
             return self._update(
@@ -847,7 +858,7 @@ class Collection(common.BaseObject):
                 check_keys=check_keys, multi=multi, manipulate=manipulate,
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 bypass_doc_val=bypass_doc_val, collation=collation,
-                array_filters=array_filters, session=session,
+                array_filters=array_filters, hint=hint, session=session,
                 retryable_write=retryable_write)
 
         return self.__database.client._retryable_write(
@@ -856,7 +867,7 @@ class Collection(common.BaseObject):
 
     def replace_one(self, filter, replacement, upsert=False,
                     bypass_document_validation=False, collation=None,
-                    session=None):
+                    hint=None, session=None):
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -893,27 +904,30 @@ class Collection(common.BaseObject):
             match the filter.
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
-            ``False``.
+            ``False``. This option is only supported on MongoDB 3.2 and above.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
-        .. note:: `bypass_document_validation` requires server version
-          **>= 3.2**
-
+        .. versionchanged:: 3.11
+           Added ``hint`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
-
         .. versionchanged:: 3.4
           Added the `collation` option.
-
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_document_validation support.
 
         .. versionadded:: 3.0
         """
@@ -926,12 +940,13 @@ class Collection(common.BaseObject):
                 filter, replacement, upsert,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
-                collation=collation, session=session),
+                collation=collation, hint=hint, session=session),
             write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
-                   collation=None, array_filters=None, session=None):
+                   collation=None, array_filters=None, hint=None,
+                   session=None):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -959,32 +974,35 @@ class Collection(common.BaseObject):
             match the filter.
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
-            ``False``.
+            ``False``. This option is only supported on MongoDB 3.2 and above.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. Requires MongoDB 3.6+.
+            array elements an update should apply. This option is only
+            supported on MongoDB 3.6 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
-        .. note:: `bypass_document_validation` requires server version
-          **>= 3.2**
-
+        .. versionchanged:: 3.11
+           Added ``hint`` parameter.
         .. versionchanged:: 3.9
-           Added the ability to accept a pipeline as the `update`.
-
+           Added the ability to accept a pipeline as the ``update``.
         .. versionchanged:: 3.6
-           Added the `array_filters` and ``session`` parameters.
-
+           Added the ``array_filters`` and ``session`` parameters.
         .. versionchanged:: 3.4
-          Added the `collation` option.
-
+          Added the ``collation`` option.
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added ``bypass_document_validation`` support.
 
         .. versionadded:: 3.0
         """
@@ -999,12 +1017,12 @@ class Collection(common.BaseObject):
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
-                session=session),
+                hint=hint, session=session),
             write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False, array_filters=None,
                     bypass_document_validation=False, collation=None,
-                    session=None):
+                    hint=None, session=None):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -1032,32 +1050,35 @@ class Collection(common.BaseObject):
             match the filter.
           - `bypass_document_validation` (optional): If ``True``, allows the
             write to opt-out of document level validation. Default is
-            ``False``.
+            ``False``. This option is only supported on MongoDB 3.2 and above.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. Requires MongoDB 3.6+.
+            array elements an update should apply. This option is only
+            supported on MongoDB 3.6 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
-        .. note:: `bypass_document_validation` requires server version
-          **>= 3.2**
-
+        .. versionchanged:: 3.11
+           Added ``hint`` parameter.
         .. versionchanged:: 3.9
            Added the ability to accept a pipeline as the `update`.
-
         .. versionchanged:: 3.6
            Added ``array_filters`` and ``session`` parameters.
-
         .. versionchanged:: 3.4
           Added the `collation` option.
-
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_document_validation support.
 
         .. versionadded:: 3.0
         """
@@ -1072,7 +1093,7 @@ class Collection(common.BaseObject):
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
-                session=session),
+                hint=hint, session=session),
             write_concern.acknowledged)
 
     def drop(self, session=None):
@@ -2834,7 +2855,8 @@ class Collection(common.BaseObject):
 
     def __find_and_modify(self, filter, projection, sort, upsert=None,
                           return_document=ReturnDocument.BEFORE,
-                          array_filters=None, session=None, **kwargs):
+                          array_filters=None, hint=None, session=None,
+                          **kwargs):
         """Internal findAndModify helper."""
 
         common.validate_is_mapping("filter", filter)
@@ -2854,6 +2876,9 @@ class Collection(common.BaseObject):
         if upsert is not None:
             common.validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
+        if hint is not None:
+            if not isinstance(hint, string_type):
+                hint = helpers._index_document(hint)
 
         write_concern = self._write_concern_for_cmd(cmd, session)
 
@@ -2868,6 +2893,11 @@ class Collection(common.BaseObject):
                         'arrayFilters is unsupported for unacknowledged '
                         'writes.')
                 cmd["arrayFilters"] = array_filters
+            if hint is not None:
+                if sock_info.max_wire_version < 8:
+                    raise ConfigurationError(
+                        'Must be connected to MongoDB 4.2+ to use hint.')
+                cmd['hint'] = hint
             if (sock_info.max_wire_version >= 4 and
                     not write_concern.is_server_default):
                 cmd['writeConcern'] = write_concern.document
@@ -2952,7 +2982,7 @@ class Collection(common.BaseObject):
     def find_one_and_replace(self, filter, replacement,
                              projection=None, sort=None, upsert=False,
                              return_document=ReturnDocument.BEFORE,
-                             session=None, **kwargs):
+                             hint=None, session=None, **kwargs):
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -2994,16 +3024,24 @@ class Collection(common.BaseObject):
             if no document matches. If
             :attr:`ReturnDocument.AFTER`, returns the replaced
             or inserted document.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.11
+           Added the ``hint`` option.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         .. versionchanged:: 3.4
-           Added the `collation` option.
+           Added the ``collation`` option.
         .. versionchanged:: 3.2
            Respects write concern.
 
@@ -3019,12 +3057,13 @@ class Collection(common.BaseObject):
         kwargs['update'] = replacement
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document,
-                                      session=session, **kwargs)
+                                      hint=hint, session=session, **kwargs)
 
     def find_one_and_update(self, filter, update,
                             projection=None, sort=None, upsert=False,
                             return_document=ReturnDocument.BEFORE,
-                            array_filters=None, session=None, **kwargs):
+                            array_filters=None, hint=None, session=None,
+                            **kwargs):
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -3104,19 +3143,28 @@ class Collection(common.BaseObject):
             :attr:`ReturnDocument.AFTER`, returns the updated
             or inserted document.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. Requires MongoDB 3.6+.
+            array elements an update should apply. This option is only
+            supported on MongoDB 3.6 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.11
+           Added the ``hint`` option.
         .. versionchanged:: 3.9
-           Added the ability to accept a pipeline as the `update`.
+           Added the ability to accept a pipeline as the ``update``.
         .. versionchanged:: 3.6
-           Added the `array_filters` and `session` options.
+           Added the ``array_filters`` and ``session`` options.
         .. versionchanged:: 3.4
-           Added the `collation` option.
+           Added the ``collation`` option.
         .. versionchanged:: 3.2
            Respects write concern.
 
@@ -3133,7 +3181,8 @@ class Collection(common.BaseObject):
         kwargs['update'] = update
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document,
-                                      array_filters, session=session, **kwargs)
+                                      array_filters, hint=hint,
+                                      session=session, **kwargs)
 
     def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
         """Save a document in this collection.

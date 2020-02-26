@@ -14,6 +14,9 @@
 
 """Operation class definitions."""
 
+from bson.py3compat import string_type
+
+from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.collation import validate_collation_or_none
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
@@ -136,9 +139,10 @@ class DeleteMany(object):
 class ReplaceOne(object):
     """Represents a replace_one operation."""
 
-    __slots__ = ("_filter", "_doc", "_upsert", "_collation")
+    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
 
-    def __init__(self, filter, replacement, upsert=False, collation=None):
+    def __init__(self, filter, replacement, upsert=False, collation=None,
+                 hint=None):
         """Create a ReplaceOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -151,65 +155,43 @@ class ReplaceOne(object):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only
             supported on MongoDB 3.4 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.2 and above.
 
+        .. versionchanged:: 3.11
+           Added the ``hint`` option.
         .. versionchanged:: 3.5
-           Added the `collation` option.
+           Added the ``collation`` option.
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
         if upsert is not None:
             validate_boolean("upsert", upsert)
+        if hint is not None:
+            if not isinstance(hint, string_type):
+                hint = helpers._index_document(hint)
+
         self._filter = filter
         self._doc = replacement
         self._upsert = upsert
         self._collation = collation
+        self._hint = hint
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_replace(self._filter, self._doc, self._upsert,
-                            collation=self._collation)
-
-    def __eq__(self, other):
-        if type(other) == type(self):
-            return (
-                (other._filter, other._doc, other._upsert, other._collation) ==
-                (self._filter, self._doc, self._upsert, self._collation))
-        return NotImplemented
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __repr__(self):
-        return "%s(%r, %r, %r, %r)" % (
-            self.__class__.__name__, self._filter, self._doc, self._upsert,
-            self._collation)
-
-
-class _UpdateOp(object):
-    """Private base class for update operations."""
-
-    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters")
-
-    def __init__(self, filter, doc, upsert, collation, array_filters):
-        if filter is not None:
-            validate_is_mapping("filter", filter)
-        if upsert is not None:
-            validate_boolean("upsert", upsert)
-        if array_filters is not None:
-            validate_list("array_filters", array_filters)
-        self._filter = filter
-        self._doc = doc
-        self._upsert = upsert
-        self._collation = collation
-        self._array_filters = array_filters
+                            collation=self._collation, hint=self._hint)
 
     def __eq__(self, other):
         if type(other) == type(self):
             return (
                 (other._filter, other._doc, other._upsert, other._collation,
-                 other._array_filters) ==
-                (self._filter, self._doc, self._upsert, self._collation,
-                 self._array_filters))
+                 other._hint) == (self._filter, self._doc, self._upsert,
+                                  self._collation, other._hint))
         return NotImplemented
 
     def __ne__(self, other):
@@ -218,7 +200,50 @@ class _UpdateOp(object):
     def __repr__(self):
         return "%s(%r, %r, %r, %r, %r)" % (
             self.__class__.__name__, self._filter, self._doc, self._upsert,
-            self._collation, self._array_filters)
+            self._collation, self._hint)
+
+
+class _UpdateOp(object):
+    """Private base class for update operations."""
+
+    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters",
+                 "_hint")
+
+    def __init__(self, filter, doc, upsert, collation, array_filters, hint):
+        if filter is not None:
+            validate_is_mapping("filter", filter)
+        if upsert is not None:
+            validate_boolean("upsert", upsert)
+        if array_filters is not None:
+            validate_list("array_filters", array_filters)
+        if hint is not None:
+            if not isinstance(hint, string_type):
+                hint = helpers._index_document(hint)
+
+
+        self._filter = filter
+        self._doc = doc
+        self._upsert = upsert
+        self._collation = collation
+        self._array_filters = array_filters
+        self._hint = hint
+
+    def __eq__(self, other):
+        if type(other) == type(self):
+            return (
+                (other._filter, other._doc, other._upsert, other._collation,
+                 other._array_filters, other._hint) ==
+                (self._filter, self._doc, self._upsert, self._collation,
+                 self._array_filters, self._hint))
+        return NotImplemented
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return "%s(%r, %r, %r, %r, %r, %r)" % (
+            self.__class__.__name__, self._filter, self._doc, self._upsert,
+            self._collation, self._array_filters, self._hint)
 
 
 class UpdateOne(_UpdateOp):
@@ -227,7 +252,7 @@ class UpdateOne(_UpdateOp):
     __slots__ = ()
 
     def __init__(self, filter, update, upsert=False, collation=None,
-                 array_filters=None):
+                 array_filters=None, hint=None):
         """Represents an update_one operation.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -242,7 +267,15 @@ class UpdateOne(_UpdateOp):
             supported on MongoDB 3.4 and above.
           - `array_filters` (optional): A list of filters specifying which
             array elements an update should apply. Requires MongoDB 3.6+.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.2 and above.
 
+        .. versionchanged:: 3.11
+           Added the `hint` option.
         .. versionchanged:: 3.9
            Added the ability to accept a pipeline as the `update`.
         .. versionchanged:: 3.6
@@ -251,13 +284,14 @@ class UpdateOne(_UpdateOp):
            Added the `collation` option.
         """
         super(UpdateOne, self).__init__(filter, update, upsert, collation,
-                                        array_filters)
+                                        array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_update(self._filter, self._doc, False, self._upsert,
                            collation=self._collation,
-                           array_filters=self._array_filters)
+                           array_filters=self._array_filters,
+                           hint=self._hint)
 
 
 class UpdateMany(_UpdateOp):
@@ -266,7 +300,7 @@ class UpdateMany(_UpdateOp):
     __slots__ = ()
 
     def __init__(self, filter, update, upsert=False, collation=None,
-                 array_filters=None):
+                 array_filters=None, hint=None):
         """Create an UpdateMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -281,7 +315,15 @@ class UpdateMany(_UpdateOp):
             supported on MongoDB 3.4 and above.
           - `array_filters` (optional): A list of filters specifying which
             array elements an update should apply. Requires MongoDB 3.6+.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.2 and above.
 
+        .. versionchanged:: 3.11
+           Added the `hint` option.
         .. versionchanged:: 3.9
            Added the ability to accept a pipeline as the `update`.
         .. versionchanged:: 3.6
@@ -290,13 +332,14 @@ class UpdateMany(_UpdateOp):
            Added the `collation` option.
         """
         super(UpdateMany, self).__init__(filter, update, upsert, collation,
-                                         array_filters)
+                                         array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_update(self._filter, self._doc, True, self._upsert,
                            collation=self._collation,
-                           array_filters=self._array_filters)
+                           array_filters=self._array_filters,
+                           hint=self._hint)
 
 
 class IndexModel(object):
