@@ -32,10 +32,14 @@ from service_identity import (
     CertificateError as _SICertificateError,
     VerificationError as _SIVerificationError)
 
+from cryptography.hazmat.backends import default_backend as _default_backend
+
 from bson.py3compat import _unicode
 from pymongo.errors import CertificateError as _CertificateError
 from pymongo.monotonic import time as _time
-from pymongo.ocsp_support import ocsp_callback as _ocsp_callback
+from pymongo.ocsp_support import (
+    _load_trusted_ca_certs,
+    _ocsp_callback)
 from pymongo.socket_checker import (
     _errno_from_exception, SocketChecker as _SocketChecker)
 
@@ -133,23 +137,31 @@ class _sslConn(_SSL.Connection):
             total_sent += sent
 
 
+class _CallbackData(object):
+    """Data class which is passed to the OCSP callback."""
+    def __init__(self):
+        self.trusted_ca_certs = None
+
+
 class SSLContext(object):
     """A CPython compatible SSLContext implementation wrapping PyOpenSSL's
     context.
     """
 
-    __slots__ = ('_protocol', '_ctx', '_check_hostname')
+    __slots__ = ('_protocol', '_ctx', '_check_hostname', '_callback_data')
 
     def __init__(self, protocol):
         self._protocol = protocol
         self._ctx = _SSL.Context(self._protocol)
         self._check_hostname = True
+        self._callback_data = _CallbackData()
         # OCSP
         # XXX: Find a better place to do this someday, since this is client
         # side configuration and wrap_socket tries to support both client and
         # server side sockets.
         self._ctx.set_ocsp_client_callback(
-            callback=_ocsp_callback, data=None)
+            callback=_ocsp_callback, data=self._callback_data)
+
 
     @property
     def protocol(self):
@@ -229,6 +241,7 @@ class SSLContext(object):
         ssl.CERT_NONE.
         """
         self._ctx.load_verify_locations(cafile, capath)
+        self._callback_data.trusted_ca_certs = _load_trusted_ca_certs(cafile)
 
     def set_default_verify_paths(self):
         """Specify that the platform provided CA certificates are to be used

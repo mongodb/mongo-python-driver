@@ -20,6 +20,7 @@ import contextlib
 import functools
 import os
 import re
+import shutil
 import sys
 import threading
 import time
@@ -880,3 +881,11 @@ def server_name_to_type(name):
     if name == 'PossiblePrimary':
         return SERVER_TYPE.Unknown
     return getattr(SERVER_TYPE, name)
+
+
+def cat_files(dest, *sources):
+    """Cat multiple files into dest."""
+    with open(dest, 'wb') as fdst:
+        for src in sources:
+            with open(src, 'rb') as fsrc:
+                shutil.copyfileobj(fsrc, fdst)

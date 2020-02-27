@@ -39,7 +39,9 @@ from test import (IntegrationTest,
                   SkipTest,
                   unittest,
                   HAVE_IPADDRESS)
-from test.utils import remove_all_users, connected
+from test.utils import (remove_all_users,
+                        cat_files,
+                        connected)
 
 _HAVE_PYOPENSSL = False
 try:
@@ -51,6 +53,11 @@ try:
 except ImportError:
     pass
 
+if _HAVE_PYOPENSSL:
+    from pymongo.ocsp_support import _load_trusted_ca_certs
+else:
+    _load_trusted_ca_certs = None
+
 if HAVE_SSL:
     import ssl
 
@@ -59,6 +66,7 @@ CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 CLIENT_PEM = os.path.join(CERT_PATH, 'client.pem')
 CLIENT_ENCRYPTED_PEM = os.path.join(CERT_PATH, 'password_protected.pem')
 CA_PEM = os.path.join(CERT_PATH, 'ca.pem')
+CA_BUNDLE_PEM = os.path.join(CERT_PATH, 'trusted-ca.pem')
 CRL_PEM = os.path.join(CERT_PATH, 'crl.pem')
 MONGODB_X509_USERNAME = (
     "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=client")
@@ -156,6 +164,11 @@ class TestClientSSL(unittest.TestCase):
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_use_openssl_when_available(self):
         self.assertTrue(_ssl.IS_PYOPENSSL)
+
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "Cannot test without PyOpenSSL")
+    def test_load_trusted_ca_certs(self):
+        trusted_ca_certs = _load_trusted_ca_certs(CA_BUNDLE_PEM)
+        self.assertEqual(2, len(trusted_ca_certs))
 
 
 class TestSSL(IntegrationTest):
@@ -643,6 +656,23 @@ class TestSSL(IntegrationTest):
             pass
         else:
             self.fail("Invalid certificate accepted.")
+
+    def test_connect_with_ca_bundle(self):
+        def remove(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+        temp_ca_bundle = os.path.join(CERT_PATH, 'trusted-ca-bundle.pem')
+        self.addCleanup(remove, temp_ca_bundle)
+        # Add the CA cert file to the bundle.
+        cat_files(temp_ca_bundle, CA_BUNDLE_PEM, CA_PEM)
+        with MongoClient('localhost',
+                         tls=True,
+                         tlsCertificateKeyFile=CLIENT_PEM,
+                         tlsCAFile=temp_ca_bundle) as client:
+            self.assertTrue(client.admin.command('ismaster'))
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@
 """Support for requesting and verifying OCSP responses."""
 
 import logging as _logging
+import re as _re
 
 from datetime import datetime as _datetime
 
@@ -39,6 +40,7 @@ from cryptography.x509 import (
     AuthorityInformationAccess as _AuthorityInformationAccess,
     ExtendedKeyUsage as _ExtendedKeyUsage,
     ExtensionNotFound as _ExtensionNotFound,
+    load_pem_x509_certificate as _load_pem_x509_certificate,
     TLSFeature as _TLSFeature,
     TLSFeatureType as _TLSFeatureType)
 from cryptography.x509.oid import (
@@ -59,12 +61,39 @@ from requests.exceptions import RequestException as _RequestException
 
 _LOGGER = _logging.getLogger(__name__)
 
+_CERT_REGEX = _re.compile(
+    b'-----BEGIN CERTIFICATE[^\r\n]+.+?-----END CERTIFICATE[^\r\n]+',
+    _re.DOTALL)
 
-def _get_issuer_cert(cert, chain):
+
+def _load_trusted_ca_certs(cafile):
+    """Parse the tlsCAFile into a list of certificates."""
+    with open(cafile, 'rb') as f:
+        data = f.read()
+
+    # Load all the certs in the file.
+    trusted_ca_certs = []
+    backend = _default_backend()
+    for cert_data in _re.findall(_CERT_REGEX, data):
+        trusted_ca_certs.append(
+            _load_pem_x509_certificate(cert_data, backend))
+    return trusted_ca_certs
+
+
+def _get_issuer_cert(cert, chain, trusted_ca_certs):
     issuer_name = cert.issuer
     for candidate in chain:
         if candidate.subject == issuer_name:
             return candidate
+
+    # Depending on the server's TLS library, the peer's cert chain may not
+    # include the self signed root CA. In this case we check the user
+    # provided tlsCAFile (ssl_ca_certs) for the issuer.
+    # Remove once we use the verified peer cert chain in PYTHON-2147.
+    if trusted_ca_certs:
+        for candidate in trusted_ca_certs:
+            if candidate.subject == issuer_name:
+                return candidate
     return None
 
 
@@ -232,11 +261,19 @@ def _verify_response(issuer, response):
     return 1
 
 
-def ocsp_callback(conn, ocsp_bytes, user_data):
+def _ocsp_callback(conn, ocsp_bytes, user_data):
     """Callback for use with OpenSSL.SSL.Context.set_ocsp_client_callback."""
-    cert = conn.get_peer_certificate().to_cryptography()
-    chain = [cer.to_cryptography() for cer in conn.get_peer_cert_chain()]
-    issuer = _get_issuer_cert(cert, chain)
+    cert = conn.get_peer_certificate()
+    if cert is None:
+        _LOGGER.debug("No peer cert?")
+        return 0
+    cert = cert.to_cryptography()
+    chain = conn.get_peer_cert_chain()
+    if not chain:
+        _LOGGER.debug("No peer cert chain?")
+        return 0
+    chain = [cer.to_cryptography() for cer in chain]
+    issuer = _get_issuer_cert(cert, chain, user_data.trusted_ca_certs)
     must_staple = False
     # https://tools.ietf.org/html/rfc7633#section-4.2.3.1
     ext = _get_extension(cert, _TLSFeature)
