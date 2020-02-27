@@ -237,9 +237,6 @@ def ocsp_callback(conn, ocsp_bytes, user_data):
     cert = conn.get_peer_certificate().to_cryptography()
     chain = [cer.to_cryptography() for cer in conn.get_peer_cert_chain()]
     issuer = _get_issuer_cert(cert, chain)
-    if issuer is None:
-        _LOGGER.debug("No issuer cert?")
-        return 0
     must_staple = False
     # https://tools.ietf.org/html/rfc7633#section-4.2.3.1
     ext = _get_extension(cert, _TLSFeature)
@@ -268,6 +265,9 @@ def ocsp_callback(conn, ocsp_bytes, user_data):
             _LOGGER.debug("No OCSP URI, soft fail")
             # No responder URI, soft fail.
             return 1
+        if issuer is None:
+            _LOGGER.debug("No issuer cert?")
+            return 0
         _LOGGER.debug("Requesting OCSP data")
         # When requesting data from an OCSP endpoint we only fail on
         # successful, valid responses with a certificate status of REVOKED.
@@ -291,6 +291,9 @@ def ocsp_callback(conn, ocsp_bytes, user_data):
         return 1
 
     _LOGGER.debug("Peer stapled an OCSP response")
+    if issuer is None:
+        _LOGGER.debug("No issuer cert?")
+        return 0
     response = _load_der_ocsp_response(ocsp_bytes)
     _LOGGER.debug(
         "OCSP response status: %r", response.response_status)

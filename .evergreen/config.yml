@@ -347,6 +347,9 @@ functions:
          script: |
            set -o xtrace
            ${PREPARE_SHELL}
+           if [ -n "${MONGODB_STARTED}" ]; then
+             export PYMONGO_MUST_CONNECT=1
+           fi
            PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-pyopenssl-tests.sh
 
   "run doctests":
@@ -662,6 +665,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/rsa/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
           sh ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
@@ -1737,6 +1741,15 @@ buildvariants:
     auth: "*"
     ssl: "ssl"
   display_name: "PyOpenSSL Pre-2.7.9 Python ${platform} ${auth}"
+  tasks:
+    - "pyopenssl"
+
+- matrix_name: "tests-pyopenssl-macOS"
+  matrix_spec:
+    platform: macos-1014
+    auth: "*"
+    ssl: "ssl"
+  display_name: "PyOpenSSL ${platform} ${auth}"
   tasks:
     - "pyopenssl"
 

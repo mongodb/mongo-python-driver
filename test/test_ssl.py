@@ -442,7 +442,7 @@ class TestSSL(IntegrationTest):
             raise SkipTest("Can't load system CA certificates.")
 
         if (ssl.OPENSSL_VERSION.lower().startswith('libressl') and
-                sys.platform == 'darwin'):
+                sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL):
             raise SkipTest(
                 "LibreSSL on OSX doesn't support setting CA certificates "
                 "using SSL_CERT_FILE environment variable.")

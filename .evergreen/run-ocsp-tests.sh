@@ -13,9 +13,15 @@ if [ -z "$PYTHON_BINARY" ]; then
 fi
 
 $PYTHON_BINARY -m virtualenv --never-download --no-wheel ocsptest
-    . ocsptest/bin/activate
-    trap "deactivate; rm -rf ocsptest" EXIT HUP
-    pip install pyopenssl requests service_identity
-    PYTHON=python
+. ocsptest/bin/activate
+trap "deactivate; rm -rf ocsptest" EXIT HUP
 
-OCSP_TLS_SHOULD_SUCCEED=${OCSP_TLS_SHOULD_SUCCEED} CA_FILE=${CA_FILE} $PYTHON test/ocsp/test_ocsp.py
+IS_PYTHON_2=$(python -c "import sys; sys.stdout.write('1' if sys.version_info < (3,) else '0')")
+if [ $IS_PYTHON_2 = "1" ]; then
+    echo "Using a Python 2"
+    pip install --upgrade 'setuptools<45'
+fi
+
+pip install pyopenssl requests service_identity
+
+OCSP_TLS_SHOULD_SUCCEED=${OCSP_TLS_SHOULD_SUCCEED} CA_FILE=${CA_FILE} python test/ocsp/test_ocsp.py

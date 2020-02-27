@@ -19,9 +19,15 @@ else
 fi
 
 $PYTHON -m virtualenv pyopenssltest
-trap "deactivate; rm -rf pyopenssltest" EXIT HUP
 . pyopenssltest/bin/activate
-pip install pyopenssl>=17.2.0 "requests<3.0.0" service_identity>=18.1.0
-pip list
+trap "deactivate; rm -rf pyopenssltest" EXIT HUP
+
+IS_PYTHON_2=$(python -c "import sys; sys.stdout.write('1' if sys.version_info < (3,) else '0')")
+if [ $IS_PYTHON_2 = "1" ]; then
+    echo "Using a Python 2"
+    pip install --upgrade 'setuptools<45'
+fi
+
+pip install pyopenssl requests service_identity
 python -c 'import sys; print(sys.version)'
 python setup.py test
