@@ -38,37 +38,44 @@ def create_test(test_case):
     def run_test(self):
         uri = test_case['uri']
         valid = test_case['valid']
-        auth = test_case['auth']
-        options = test_case['options']
+        credential = test_case.get('credential')
 
         if not valid:
             self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
             client = MongoClient(uri, connect=False)
             credentials = client._MongoClient__options.credentials
-            if auth is not None:
-                self.assertEqual(credentials.username, auth['username'])
-                self.assertEqual(credentials.password, auth['password'])
-                self.assertEqual(credentials.source, auth['db'])
-            if options is not None:
-                if 'authmechanism' in options:
+            if credential is None:
+                self.assertIsNone(credentials)
+            else:
+                self.assertIsNotNone(credentials)
+                self.assertEqual(credentials.username, credential['username'])
+                self.assertEqual(credentials.password, credential['password'])
+                self.assertEqual(credentials.source, credential['source'])
+                if credential['mechanism'] is not None:
                     self.assertEqual(
-                        credentials.mechanism, options['authmechanism'])
+                        credentials.mechanism, credential['mechanism'])
                 else:
                     self.assertEqual(credentials.mechanism, 'DEFAULT')
-                if 'authmechanismproperties' in options:
-                    expected = options['authmechanismproperties']
+                expected = credential['mechanism_properties']
+                if expected is not None:
                     actual = credentials.mechanism_properties
-                    if 'SERVICE_NAME' in expected:
-                        self.assertEqual(
-                            actual.service_name, expected['SERVICE_NAME'])
-                    if 'CANONICALIZE_HOST_NAME' in expected:
-                        self.assertEqual(
-                            actual.canonicalize_host_name,
-                            expected['CANONICALIZE_HOST_NAME'])
-                    if 'SERVICE_REALM' in expected:
-                        self.assertEqual(
-                            actual.service_realm, expected['SERVICE_REALM'])
+                    for key, val in expected.items():
+                        if 'SERVICE_NAME' in expected:
+                            self.assertEqual(
+                                actual.service_name, expected['SERVICE_NAME'])
+                        elif 'CANONICALIZE_HOST_NAME' in expected:
+                            self.assertEqual(
+                                actual.canonicalize_host_name,
+                                expected['CANONICALIZE_HOST_NAME'])
+                        elif 'SERVICE_REALM' in expected:
+                            self.assertEqual(
+                                actual.service_realm,
+                                expected['SERVICE_REALM'])
+                        else:
+                            self.fail('Unhandled property: %s' % (key,))
+                else:
+                    self.assertIsNone(credentials.mechanism_properties)
 
     return run_test
 
