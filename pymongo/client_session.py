@@ -65,10 +65,13 @@ transaction automatically calls :meth:`ClientSession.commit_transaction`.
 If the block exits with an exception, the transaction automatically calls
 :meth:`ClientSession.abort_transaction`.
 
-For multi-document transactions, you can only specify read/write (CRUD)
-operations on existing collections. For example, a multi-document transaction
-cannot include a create or drop collection/index operations, including an
+In general, multi-document transactions only support read/write (CRUD)
+operations on existing collections. However, MongoDB 4.4 adds support for
+creating collections and indexes with some limitations, including an
 insert operation that would result in the creation of a new collection.
+For a complete description of all the supported and unsupported operations
+see the `MongoDB server's documentation for transactions
+<http://dochub.mongodb.org/core/transactions>`_.
 
 A session may only have a single active transaction at a time, multiple
 transactions on the same session can be executed in sequence.

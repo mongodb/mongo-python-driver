@@ -390,6 +390,10 @@ class Database(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
+        .. versionchanged:: 3.11
+           This method is now supported inside multi-document transactions
+           with MongoDB 4.4+.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -403,8 +407,11 @@ class Database(common.BaseObject):
            Removed deprecated argument: options
         """
         with self.__client._tmp_session(session) as s:
-            if name in self.list_collection_names(
-                    filter={"name": name}, session=s):
+            # Skip this check in a transaction where listCollections is not
+            # supported.
+            if ((not s or not s.in_transaction) and
+                    name in self.list_collection_names(
+                        filter={"name": name}, session=s)):
                 raise CollectionInvalid("collection %s already exists" % name)
 
             return Collection(self, name, True, codec_options,

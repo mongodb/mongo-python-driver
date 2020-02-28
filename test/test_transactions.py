@@ -21,7 +21,8 @@ sys.path[0:0] = [""]
 
 from pymongo import client_session, WriteConcern
 from pymongo.client_session import TransactionOptions
-from pymongo.errors import (ConfigurationError,
+from pymongo.errors import (CollectionInvalid,
+                            ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
 from pymongo.operations import IndexModel, InsertOne
@@ -91,7 +92,6 @@ class TestTransactions(TransactionsBase):
                 TypeError, "max_commit_time_ms must be an integer or None"):
             TransactionOptions(max_commit_time_ms="10000")
 
-
     @client_context.require_transactions
     def test_transaction_write_concern_override(self):
         """Test txn overrides Client/Database/Collection write_concern."""
@@ -121,7 +121,6 @@ class TestTransactions(TransactionsBase):
 
         unsupported_txn_writes = [
             (client.drop_database, [db.name], {}),
-            (db.create_collection, ['collection'], {}),
             (db.drop_collection, ['collection'], {}),
             (coll.drop, [], {}),
             (coll.map_reduce,
@@ -135,6 +134,12 @@ class TestTransactions(TransactionsBase):
             (coll.drop_indexes, [], {}),
             (coll.aggregate, [[{"$out": "aggout"}]], {}),
         ]
+        # Creating a collection in a transaction requires MongoDB 4.4+.
+        if client_context.version < (4, 3, 4):
+            unsupported_txn_writes.extend([
+                (db.create_collection, ['collection'], {}),
+            ])
+
         for op in unsupported_txn_writes:
             op, args, kwargs = op
             with client.start_session() as s:
@@ -200,6 +205,30 @@ class TestTransactions(TransactionsBase):
                     break
 
             self.assertGreater(len(addresses), 1)
+
+    @client_context.require_transactions
+    @client_context.require_version_min(4, 3, 4)
+    def test_create_collection(self):
+        client = rs_client()
+        self.addCleanup(client.close)
+        db = client.pymongo_test
+        coll = db.test_create_collection
+        self.addCleanup(coll.drop)
+        with client.start_session() as s, s.start_transaction():
+            coll2 = db.create_collection(coll.name, session=s)
+            self.assertEqual(coll, coll2)
+            coll.insert_one({}, session=s)
+
+        # Outside a transaction we raise CollectionInvalid on existing colls.
+        with self.assertRaises(CollectionInvalid):
+            db.create_collection(coll.name)
+
+        # Inside a transaction we raise the OperationFailure from create.
+        with client.start_session() as s:
+            s.start_transaction()
+            with self.assertRaises(OperationFailure) as ctx:
+                db.create_collection(coll.name, session=s)
+            self.assertEqual(ctx.exception.code, 48)  # NamespaceExists
 
 
 class PatchSessionTimeout(object):

@@ -108,6 +108,26 @@ class SpecRunner(IntegrationTest):
         self.assertIsNone(session._pinned_address)
         self.assertIsNone(session._transaction.pinned_address)
 
+    def assert_collection_exists(self, database, collection):
+        """Run the assertCollectionExists test operation."""
+        db = self.client[database]
+        self.assertIn(collection, db.list_collection_names())
+
+    def assert_collection_not_exists(self, database, collection):
+        """Run the assertCollectionNotExists test operation."""
+        db = self.client[database]
+        self.assertNotIn(collection, db.list_collection_names())
+
+    def assert_index_exists(self, database, collection, index):
+        """Run the assertIndexExists test operation."""
+        coll = self.client[database][collection]
+        self.assertIn(index, [doc['name'] for doc in coll.list_indexes()])
+
+    def assert_index_not_exists(self, database, collection, index):
+        """Run the assertIndexNotExists test operation."""
+        coll = self.client[database][collection]
+        self.assertNotIn(index, [doc['name'] for doc in coll.list_indexes()])
+
     def assertErrorLabelsContain(self, exc, expected_labels):
         labels = [l for l in expected_labels if exc.has_error_label(l)]
         self.assertEqual(labels, expected_labels)
@@ -310,6 +330,12 @@ class SpecRunner(IntegrationTest):
                 arguments['callback'] = lambda _: self.run_operations(
                     sessions, original_collection, copy.deepcopy(callback_ops),
                     in_with_transaction=True)
+            elif name == 'drop_collection' and arg_name == 'collection':
+                arguments['name_or_collection'] = arguments.pop(arg_name)
+            elif name == 'create_collection' and arg_name == 'collection':
+                arguments['name'] = arguments.pop(arg_name)
+            elif name == 'create_index' and arg_name == 'keys':
+                arguments['keys'] = list(arguments.pop(arg_name).items())
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
