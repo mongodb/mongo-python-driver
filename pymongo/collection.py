@@ -1366,12 +1366,12 @@ class Collection(common.BaseObject):
           - `allow_partial_results` (optional): if True, mongos will return
             partial results if some shards are down instead of returning an
             error.
-          - `oplog_replay` (optional): If True, set the oplogReplay query
-            flag.
+          - `oplog_replay` (optional): **DEPRECATED** - if True, set the
+            oplogReplay query flag. Default: False.
           - `batch_size` (optional): Limits the number of documents returned in
             a single batch.
-          - `manipulate` (optional): **DEPRECATED** - If True (the default),
-            apply any outgoing SON manipulators before returning.
+          - `manipulate` (optional): **DEPRECATED** - If True, apply any
+            outgoing SON manipulators before returning. Default: True.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
@@ -1436,6 +1436,10 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.11
            Added the ``allow_disk_use`` option.
+           Deprecated the ``oplog_replay`` option. Support for this option is
+           deprecated in MongoDB 4.4. The query engine now automatically
+           optimizes queries against the oplog without requiring this
+           option to be set.
 
         .. versionchanged:: 3.7
            Deprecated the ``snapshot`` option, which is deprecated in MongoDB

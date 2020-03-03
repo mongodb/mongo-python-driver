@@ -6,6 +6,10 @@ Changes in Version 3.11.0
 
 Version 3.11 adds support for MongoDB 4.4. Highlights include:
 
+- Deprecated the ``oplog_replay`` parameter to
+  :meth:`pymongo.collection.Collection.find`. Starting in MongoDB 4.4, the
+  server optimizes queries against the oplog collection without requiring
+  the user to set this flag.
 - Added index hinting support to the
   :meth:`pymongo.collection.Collection.replace_one`,
   :meth:`pymongo.collection.Collection.update_one`,

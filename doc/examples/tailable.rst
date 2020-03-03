@@ -24,9 +24,11 @@ of a replica set member::
   while True:
       # For a regular capped collection CursorType.TAILABLE_AWAIT is the
       # only option required to create a tailable cursor. When querying the
-      # oplog the oplog_replay option enables an optimization to quickly
+      # oplog, the oplog_replay option enables an optimization to quickly
       # find the 'ts' value we're looking for. The oplog_replay option
-      # can only be used when querying the oplog.
+      # can only be used when querying the oplog. Starting in MongoDB 4.4
+      # this option is ignored by the server as queries against the oplog
+      # are optimized automatically by the MongoDB query engine.
       cursor = oplog.find({'ts': {'$gt': ts}},
                           cursor_type=pymongo.CursorType.TAILABLE_AWAIT,
                           oplog_replay=True)
