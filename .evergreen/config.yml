@@ -1288,6 +1288,12 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
+      - id: windows-64-vsMulti-small
+        display_name: "Windows 64"
+        run_on: windows-64-vsMulti-small
+        batchtime: 10080  # 7 days
+        variables:
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
 
   # Test with authentication?
   - id: auth
@@ -1399,23 +1405,27 @@ axes:
       - id: "win-vs2010-3.4"
         display_name: "Python 3.4"
         variables:
-          PYTHON_BINARY: "/cygdrive/c/python/Python34/python.exe"
+          PYTHON_BINARY: "C:/python/Python34/python.exe"
       - id: "win-vs2015-2.7"
         display_name: "Python 2.7"
         variables:
-          PYTHON_BINARY: "/cygdrive/c/python/Python27/python.exe"
+          PYTHON_BINARY: "C:/python/Python27/python.exe"
       - id: "win-vs2015-3.5"
         display_name: "Python 3.5"
         variables:
-          PYTHON_BINARY: "/cygdrive/c/python/Python35/python.exe"
+          PYTHON_BINARY: "C:/python/Python35/python.exe"
       - id: "win-vs2015-3.6"
         display_name: "Python 3.6"
         variables:
-          PYTHON_BINARY: "/cygdrive/c/python/Python36/python.exe"
+          PYTHON_BINARY: "C:/python/Python36/python.exe"
       - id: "win-vs2015-3.7"
         display_name: "Python 3.7"
         variables:
-          PYTHON_BINARY: "/cygdrive/c/python/Python37/python.exe"
+          PYTHON_BINARY: "C:/python/Python37/python.exe"
+      - id: "win-vs2015-3.8"
+        display_name: "Python 3.8"
+        variables:
+          PYTHON_BINARY: "C:/python/Python38/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -1729,7 +1739,7 @@ buildvariants:
     python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "pypy", "pypy3.5"]
     auth: "*"
     ssl: "ssl"
-  display_name: "PyOpenSSL ${python-version} ${platform} ${auth}"
+  display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
     - "pyopenssl"
 
@@ -1740,7 +1750,7 @@ buildvariants:
       - rhel70 # CPython 2.7.5
     auth: "*"
     ssl: "ssl"
-  display_name: "PyOpenSSL Pre-2.7.9 Python ${platform} ${auth}"
+  display_name: "PyOpenSSL ${platform}  Pre-2.7.9 Python ${auth}"
   tasks:
     - "pyopenssl"
 
@@ -1750,6 +1760,16 @@ buildvariants:
     auth: "*"
     ssl: "ssl"
   display_name: "PyOpenSSL ${platform} ${auth}"
+  tasks:
+    - "pyopenssl"
+
+- matrix_name: "tests-pyopenssl-windows"
+  matrix_spec:
+    platform: windows-64-vsMulti-small
+    python-version: ["win-vs2015-2.7", "win-vs2010-3.4", "win-vs2015-3.5", "win-vs2015-3.6", "win-vs2015-3.7", "win-vs2015-3.8"]
+    auth: "*"
+    ssl: "ssl"
+  display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
     - "pyopenssl"
 
