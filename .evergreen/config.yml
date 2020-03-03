@@ -476,7 +476,7 @@ functions:
         silent: true
         script: |
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='python -c "import sys, urllib as ul; print ul.quote_plus(sys.argv[1])"'
+            alias urlencode='python -c "import sys, urllib as ul; sys.stdout.write(ul.quote_plus(sys.argv[1]))"'
             USER=$(urlencode ${iam_auth_ecs_account})
             PASS=$(urlencode ${iam_auth_ecs_secret_access_key})
             MONGODB_URI="mongodb://$USER:$PASS@localhost"
@@ -487,7 +487,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with assume role credentials":
     - command: shell.exec
@@ -496,6 +496,14 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          # The aws_e2e_assume_role script requires python3 with boto3.
+          virtualenv -p ${python3_binary} mongovenv
+          if [ "Windows_NT" = "$OS" ]; then
+            . mongovenv/Scripts/activate
+          else
+            . mongovenv/bin/activate
+          fi
+          pip install boto3
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           mongo aws_e2e_assume_role.js
     - command: shell.exec
@@ -506,12 +514,13 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='python -c "import sys, urllib as ul; print ul.quote_plus(sys.argv[1])"'
-            USER=$(jq -r '.AccessKeyId' ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json)
+            alias urlencode='python -c "import sys, urllib as ul; sys.stdout.write(ul.quote_plus(sys.argv[1]))"'
+            alias jsonkey='python -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
+            USER=$(jsonkey AccessKeyId)
             USER=$(urlencode $USER)
-            PASS=$(jq -r '.SecretAccessKey' ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json)
+            PASS=$(jsonkey SecretAccessKey)
             PASS=$(urlencode $PASS)
-            SESSION_TOKEN=$(jq -r '.SessionToken' ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json)
+            SESSION_TOKEN=$(jsonkey SessionToken)
             SESSION_TOKEN=$(urlencode $SESSION_TOKEN)
             MONGODB_URI="mongodb://$USER:$PASS@localhost"
           EOF
@@ -521,7 +530,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws EC2 credentials":
     - command: shell.exec
@@ -530,6 +539,16 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          if [ "${skip_EC2_auth_test}" == "true" ]; then
+             echo "This platform does not support the EC2 auth test, skipping..."
+             exit 0
+          fi
+          # The mongovenv was created earlier in "run aws auth test with assume role credentials".
+          if [ "Windows_NT" = "$OS" ]; then
+            . mongovenv/Scripts/activate
+          else
+            . mongovenv/bin/activate
+          fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           mongo aws_e2e_ec2.js
     - command: shell.exec
@@ -538,7 +557,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -558,7 +577,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: shell.exec
@@ -569,9 +588,10 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            export AWS_ACCESS_KEY_ID=$(jq -r '.AccessKeyId' ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json)
-            export AWS_SECRET_ACCESS_KEY=$(jq -r '.SecretAccessKey' ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json)
-            export AWS_SESSION_TOKEN=$(jq -r '.SessionToken' ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json)
+            alias jsonkey='python -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
+            export AWS_ACCESS_KEY_ID=$(jsonkey AccessKeyId)
+            export AWS_SECRET_ACCESS_KEY=$(jsonkey SecretAccessKey)
+            export AWS_SESSION_TOKEN=$(jsonkey SessionToken)
           EOF
     - command: shell.exec
       type: test
@@ -579,7 +599,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
 
   "run aws ECS auth test":
     - command: shell.exec
@@ -588,8 +608,11 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          if [ "${skip_ECS_auth_test}" == "true" ]; then
+             echo "This platform does not support the ECS auth test, skipping..."
+             exit 0
+          fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-
           cat <<EOF > setup.js
           const mongo_binaries = "$MONGODB_BINARIES";
           const project_dir = "$PROJECT_DIRECTORY";
@@ -1211,6 +1234,9 @@ axes:
         display_name: "macOS 10.14"
         run_on: macos-1014
         variables:
+          skip_EC2_auth_test: true
+          skip_ECS_auth_test: true
+          python3_binary: python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel62
         display_name: "RHEL 6.2 (x86_64)"
@@ -1254,6 +1280,8 @@ axes:
         display_name: "Ubuntu 18.04"
         run_on: ubuntu1804-test
         batchtime: 10080  # 7 days
+        variables:
+          python3_binary: python3
       - id: ubuntu1604-arm64-small
         display_name: "Ubuntu 16.04 (ARM64)"
         run_on: ubuntu1604-arm64-small
@@ -1293,6 +1321,8 @@ axes:
         run_on: windows-64-vsMulti-small
         batchtime: 10080  # 7 days
         variables:
+          skip_ECS_auth_test: true
+          python3_binary: "C:/python/Python38/python.exe"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
 
   # Test with authentication?
@@ -1426,6 +1456,15 @@ axes:
         display_name: "Python 3.8"
         variables:
           PYTHON_BINARY: "C:/python/Python38/python.exe"
+      # System python
+      - id: "system-python"
+        display_name: "Python"
+        variables:
+          PYTHON_BINARY: "python"
+      - id: "system-python3"
+        display_name: "Python3"
+        variables:
+          PYTHON_BINARY: "python3"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2141,9 +2180,17 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: ubuntu-18.04
-  display_name: "MONGODB-AWS Auth test"
-  run_on: ubuntu1804-test
+    platform: [ubuntu-18.04, macos-1014]
+    python-version: ["system-python", "system-python3"]
+  display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
+  tasks:
+    - name: "aws-auth-test"
+
+- matrix_name: "aws-auth-test-windows"
+  matrix_spec:
+    platform: [windows-64-vsMulti-small]
+    python-version: ["win-vs2015-2.7", "win-vs2010-3.4", "win-vs2015-3.5", "win-vs2015-3.6", "win-vs2015-3.7", "win-vs2015-3.8"]
+  display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
     - name: "aws-auth-test"
 
