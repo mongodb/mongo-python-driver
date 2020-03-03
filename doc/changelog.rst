@@ -6,6 +6,16 @@ Changes in Version 3.11.0
 
 Version 3.11 adds support for MongoDB 4.4. Highlights include:
 
+- Added index hinting support to the
+  :meth:`pymongo.collection.Collection.replace_one`,
+  :meth:`pymongo.collection.Collection.update_one`,
+  :meth:`pymongo.collection.Collection.update_many`,
+  :meth:`pymongo.collection.Collection.find_one_and_replace`,
+  and :meth:`pymongo.collection.Collection.find_one_and_update` commands.
+- Added index hinting support to the
+  :class:`pymongo.operations.ReplaceOne`,
+  :class:`pymongo.operations.UpdateOne`,
+  and :class:`pymongo.operations.UpdateMany` bulk operations.
 - Support for :ref:`OCSP` (Online Certificate Status Protocol)
 - Support for `PyOpenSSL <https://pypi.org/project/pyOpenSSL/>`_ as an
   alternative TLS implementation. PyOpenSSL is required for :ref:`OCSP`
