@@ -97,7 +97,10 @@ class TestReadWriteConcernSpec(unittest.TestCase):
                         name, event.command_name))
 
     def assertWriteOpsRaise(self, write_concern, expected_exception):
-        client = rs_or_single_client(**write_concern.document)
+        wc = write_concern.document
+        # Set socket timeout to avoid indefinite stalls
+        client = rs_or_single_client(
+            w=wc['w'], wTimeoutMS=wc['wtimeout'], socketTimeoutMS=30000)
         db = client.get_database('pymongo_test')
         coll = db.test
 
@@ -119,18 +122,25 @@ class TestReadWriteConcernSpec(unittest.TestCase):
         ]
         ops_require_34 = [
             ('aggregate', lambda: coll.aggregate([{'$out': 'out'}])),
-            ('create_index', lambda: coll.create_index([('a', DESCENDING)])),
-            ('create_indexes', lambda: coll.create_indexes([IndexModel('b')])),
-            ('drop_index', lambda: coll.drop_index([('a', DESCENDING)])),
             ('create', lambda: db.create_collection('new')),
             ('rename', lambda: coll.rename('new')),
             ('drop', lambda: db.new.drop()),
         ]
         if client_context.version > (3, 4):
             ops.extend(ops_require_34)
-            # SERVER-34776: Drop database does not respect wtimeout in 4.0.
-            if client_context.version <= (3, 6):
+            # SERVER-34776: dropDatabase does not respect wtimeout in 3.6.
+            if client_context.version[:2] != (3, 6):
                 ops.append(('drop_database', lambda: client.drop_database(db)))
+            # SERVER-46668: createIndexes does not respect wtimeout in 4.4+.
+            if client_context.version <= (4, 3):
+                ops.extend([
+                    ('create_index',
+                     lambda: coll.create_index([('a', DESCENDING)])),
+                    ('create_indexes',
+                     lambda: coll.create_indexes([IndexModel('b')])),
+                    ('drop_index',
+                     lambda: coll.drop_index([('a', DESCENDING)])),
+                ])
 
         for name, f in ops:
             # Ensure insert_many and bulk_write still raise BulkWriteError.

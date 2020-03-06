@@ -850,6 +850,7 @@ class TestTransactionExamples(IntegrationTest):
         super(TestTransactionExamples, cls).setUpClass()
         cls.client = rs_or_single_client(w="majority")
 
+    @client_context.require_version_max(4, 4, 99)  # PYTHON-2154 skip on 4.5+
     @client_context.require_transactions
     def test_transactions(self):
         # Transaction examples
