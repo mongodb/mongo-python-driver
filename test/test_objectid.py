@@ -189,9 +189,14 @@ class TestObjectId(unittest.TestCase):
 
         for tstamp, exp_datetime_args in TEST_DATA.items():
             oid = generate_objectid_with_timestamp(tstamp)
-            self.assertEqual(
-                oid.generation_time,
-                datetime.datetime(*exp_datetime_args, tzinfo=utc))
+            if tstamp > 0x7FFFFFFF and sys.maxsize < 2**32:
+                # 32-bit platforms will overflow in datetime.fromtimestamp.
+                with self.assertRaises((OverflowError, ValueError)):
+                    oid.generation_time
+            else:
+                self.assertEqual(
+                    oid.generation_time,
+                    datetime.datetime(*exp_datetime_args, tzinfo=utc))
 
     def test_random_regenerated_on_pid_change(self):
         # Test that change of pid triggers new random number generation.
