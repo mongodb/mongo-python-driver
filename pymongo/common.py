@@ -617,6 +617,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'tlscafile': validate_readable,
     'tlscertificatekeyfile': validate_readable,
     'tlscertificatekeyfilepassword': validate_string_or_none,
+    'tlsdisableocspendpointcheck': validate_boolean_or_string,
     'tlsinsecure': validate_boolean_or_string,
     'w': validate_non_negative_int_or_basestring,
     'wtimeoutms': validate_non_negative_integer,
@@ -668,6 +669,7 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'tlscafile': 'ssl_ca_certs',
     'tlscertificatekeyfile': 'ssl_certfile',
     'tlscertificatekeyfilepassword': 'ssl_pem_passphrase',
+    'tlsdisableocspendpointcheck': 'ssl_check_ocsp_endpoint',
 }
 
 # Map from deprecated URI option names to a tuple indicating the method of
@@ -726,7 +728,7 @@ def validate_auth_option(option, value):
     if lower not in _AUTH_OPTIONS:
         raise ConfigurationError('Unknown '
                                  'authentication option: %s' % (option,))
-    return lower, value
+    return option, value
 
 
 def validate(option, value):
@@ -735,7 +737,7 @@ def validate(option, value):
     lower = option.lower()
     validator = VALIDATORS.get(lower, raise_config_error)
     value = validator(option, value)
-    return lower, value
+    return option, value
 
 
 def get_validated_options(options, warn=True):

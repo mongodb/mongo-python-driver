@@ -470,7 +470,7 @@ class TestURI(unittest.TestCase):
         uri = "mongodb://example.com/?tlsInsecure=true"
         res = {
             "ssl_match_hostname": False, "ssl_cert_reqs": CERT_NONE,
-            "tlsinsecure": True}
+            "tlsinsecure": True, 'ssl_check_ocsp_endpoint': False}
         self.assertEqual(res, parse_uri(uri)["options"])
 
     def test_tlsinsecure_legacy_conflict(self):

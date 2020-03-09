@@ -141,6 +141,7 @@ class _CallbackData(object):
     """Data class which is passed to the OCSP callback."""
     def __init__(self):
         self.trusted_ca_certs = None
+        self.check_ocsp_endpoint = None
 
 
 class SSLContext(object):
@@ -148,20 +149,20 @@ class SSLContext(object):
     context.
     """
 
-    __slots__ = ('_protocol', '_ctx', '_check_hostname', '_callback_data')
+    __slots__ = ('_protocol', '_ctx', '_callback_data', '_check_hostname')
 
     def __init__(self, protocol):
         self._protocol = protocol
         self._ctx = _SSL.Context(self._protocol)
-        self._check_hostname = True
         self._callback_data = _CallbackData()
+        self._check_hostname = True
         # OCSP
         # XXX: Find a better place to do this someday, since this is client
         # side configuration and wrap_socket tries to support both client and
         # server side sockets.
+        self._callback_data.check_ocsp_endpoint = True
         self._ctx.set_ocsp_client_callback(
             callback=_ocsp_callback, data=self._callback_data)
-
 
     @property
     def protocol(self):
@@ -198,6 +199,17 @@ class SSLContext(object):
         self._check_hostname = value
 
     check_hostname = property(__get_check_hostname, __set_check_hostname)
+
+    def __get_check_ocsp_endpoint(self):
+        return self._callback_data.check_ocsp_endpoint
+
+    def __set_check_ocsp_endpoint(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("check_ocsp must be True or False")
+        self._callback_data.check_ocsp_endpoint = value
+
+    check_ocsp_endpoint = property(__get_check_ocsp_endpoint,
+                                   __set_check_ocsp_endpoint)
 
     def __get_options(self):
         # Calling set_options adds the option to the existing bitmask and

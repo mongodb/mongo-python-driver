@@ -1471,7 +1471,7 @@ class Database(common.BaseObject):
                             "instance of %s" % (string_type.__name__,))
         common.validate_auth_mechanism('mechanism', mechanism)
 
-        validated_options = {}
+        validated_options = common._CaseInsensitiveDictionary()
         for option, value in iteritems(kwargs):
             normalized, val = common.validate_auth_option(option, value)
             validated_options[normalized] = val

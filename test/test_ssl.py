@@ -345,17 +345,17 @@ class TestSSL(IntegrationTest):
         # Python > 2.7.9. If SSLContext doesn't have load_default_certs
         # it also doesn't have check_hostname.
         ctx = get_ssl_context(
-            None, None, None, None, ssl.CERT_NONE, None, False)
+            None, None, None, None, ssl.CERT_NONE, None, False, True)
         if hasattr(ctx, 'load_default_certs'):
             self.assertFalse(ctx.check_hostname)
             ctx = get_ssl_context(
-                None, None, None, None, ssl.CERT_NONE, None, True)
+                None, None, None, None, ssl.CERT_NONE, None, True, True)
             self.assertFalse(ctx.check_hostname)
             ctx = get_ssl_context(
-                None, None, None, None, ssl.CERT_REQUIRED, None, False)
+                None, None, None, None, ssl.CERT_REQUIRED, None, False, True)
             self.assertFalse(ctx.check_hostname)
             ctx = get_ssl_context(
-                None, None, None, None, ssl.CERT_REQUIRED, None, True)
+                None, None, None, None, ssl.CERT_REQUIRED, None, True, True)
             if _PY37PLUS:
                 self.assertTrue(ctx.check_hostname)
             else:
@@ -493,7 +493,7 @@ class TestSSL(IntegrationTest):
 
     def test_system_certs_config_error(self):
         ctx = get_ssl_context(
-            None, None, None, None, ssl.CERT_NONE, None, False)
+            None, None, None, None, ssl.CERT_NONE, None, False, True)
         if ((sys.platform != "win32"
              and hasattr(ctx, "set_default_verify_paths"))
                 or hasattr(ctx, "load_default_certs")):
@@ -526,11 +526,11 @@ class TestSSL(IntegrationTest):
         ssl_support.HAVE_WINCERTSTORE = False
         try:
             ctx = get_ssl_context(
-                None, None, None, CA_PEM, ssl.CERT_REQUIRED, None, True)
+                None, None, None, CA_PEM, ssl.CERT_REQUIRED, None, True, True)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-            ctx = get_ssl_context(None, None, None, None, None, None, True)
+            ctx = get_ssl_context(None, None, None, None, None, None, True, True)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, ssl_support.certifi.where())
         finally:
@@ -548,11 +548,11 @@ class TestSSL(IntegrationTest):
             raise SkipTest("Need wincertstore to test wincertstore.")
 
         ctx = get_ssl_context(
-            None, None, None, CA_PEM, ssl.CERT_REQUIRED, None, True)
+            None, None, None, CA_PEM, ssl.CERT_REQUIRED, None, True, True)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-        ctx = get_ssl_context(None, None, None, None, None, None, True)
+        ctx = get_ssl_context(None, None, None, None, None, None, True, True)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 

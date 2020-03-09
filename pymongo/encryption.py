@@ -107,7 +107,7 @@ class _EncryptionIO(MongoCryptCallback):
         endpoint = kms_context.endpoint
         message = kms_context.message
         host, port = parse_host(endpoint, _HTTPS_PORT)
-        ctx = get_ssl_context(None, None, None, None, None, None, True)
+        ctx = get_ssl_context(None, None, None, None, None, None, True, True)
         opts = PoolOptions(connect_timeout=_KMS_CONNECT_TIMEOUT,
                            socket_timeout=_KMS_CONNECT_TIMEOUT,
                            ssl_context=ctx)

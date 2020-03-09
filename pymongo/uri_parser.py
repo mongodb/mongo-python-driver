@@ -126,12 +126,16 @@ def parse_host(entity, default_port=DEFAULT_PORT):
     return host.lower(), port
 
 
-_IMPLICIT_TLSINSECURE_OPTS = {"tlsallowinvalidcertificates",
-                              "tlsallowinvalidhostnames"}
+# Options whose values are implicitly determined by tlsInsecure.
+_IMPLICIT_TLSINSECURE_OPTS = {
+    "tlsallowinvalidcertificates",
+    "tlsallowinvalidhostnames",
+    "tlsdisableocspendpointcheck",}
 
-_TLSINSECURE_EXCLUDE_OPTS = (_IMPLICIT_TLSINSECURE_OPTS |
-                             {INTERNAL_URI_OPTION_NAME_MAP[k] for k in
-                              _IMPLICIT_TLSINSECURE_OPTS})
+# Options that cannot be specified when tlsInsecure is also specified.
+_TLSINSECURE_EXCLUDE_OPTS = (
+        {k for k in _IMPLICIT_TLSINSECURE_OPTS} |
+        {INTERNAL_URI_OPTION_NAME_MAP[k] for k in _IMPLICIT_TLSINSECURE_OPTS})
 
 
 def _parse_options(opts, delim):
@@ -171,6 +175,33 @@ def _handle_security_options(options):
                            "simultaneously.")
                 raise InvalidURI(err_msg % (
                     options.cased_key('tlsinsecure'), options.cased_key(opt)))
+
+    # Convenience function to retrieve option values based on public or private names.
+    def _getopt(opt):
+        return (options.get(opt) or
+                options.get(INTERNAL_URI_OPTION_NAME_MAP[opt]))
+
+    # Handle co-occurence of OCSP & tlsAllowInvalidCertificates options.
+    tlsallowinvalidcerts = _getopt('tlsallowinvalidcertificates')
+    if tlsallowinvalidcerts is not None:
+        if 'tlsdisableocspendpointcheck' in options:
+            err_msg = ("URI options %s and %s cannot be specified "
+                       "simultaneously.")
+            raise InvalidURI(err_msg % (
+                'tlsallowinvalidcertificates', options.cased_key(
+                    'tlsdisableocspendpointcheck')))
+        if tlsallowinvalidcerts is True:
+            options['tlsdisableocspendpointcheck'] = True
+
+    # Handle co-occurence of CRL and OCSP-related options.
+    tlscrlfile = _getopt('tlscrlfile')
+    if tlscrlfile is not None:
+        for opt in ('tlsinsecure', 'tlsallowinvalidcertificates',
+                    'tlsdisableocspendpointcheck'):
+            if options.get(opt) is True:
+                err_msg = ("URI option %s=True cannot be specified when "
+                           "CRL checking is enabled.")
+                raise InvalidURI(err_msg % (opt,))
 
     if 'ssl' in options and 'tls' in options:
         def truth_value(val):
@@ -235,7 +266,7 @@ def _normalize_options(options):
     tlsinsecure = options.get('tlsinsecure')
     if tlsinsecure is not None:
         for opt in _IMPLICIT_TLSINSECURE_OPTS:
-            intname = INTERNAL_URI_OPTION_NAME_MAP.get(opt, None)
+            intname = INTERNAL_URI_OPTION_NAME_MAP[opt]
             # Internal options are logical inverse of public options.
             options[intname] = not tlsinsecure
 

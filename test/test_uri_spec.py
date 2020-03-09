@@ -37,7 +37,33 @@ URI_OPTIONS_TEST_PATH = os.path.join(
 
 TEST_DESC_SKIP_LIST = [
     "Valid options specific to single-threaded drivers are parsed correctly",
-    "Invalid serverSelectionTryOnce causes a warning"]
+    "Invalid serverSelectionTryOnce causes a warning",
+    "tlsDisableCertificateRevocationCheck can be set to true",
+    "tlsDisableCertificateRevocationCheck can be set to false",
+    "tlsAllowInvalidCertificates and tlsDisableCertificateRevocationCheck both present (and true) raises an error",
+    "tlsAllowInvalidCertificates=true and tlsDisableCertificateRevocationCheck=false raises an error",
+    "tlsAllowInvalidCertificates=false and tlsDisableCertificateRevocationCheck=true raises an error",
+    "tlsAllowInvalidCertificates and tlsDisableCertificateRevocationCheck both present (and false) raises an error",
+    "tlsDisableCertificateRevocationCheck and tlsAllowInvalidCertificates both present (and true) raises an error",
+    "tlsDisableCertificateRevocationCheck=true and tlsAllowInvalidCertificates=false raises an error",
+    "tlsDisableCertificateRevocationCheck=false and tlsAllowInvalidCertificates=true raises an error",
+    "tlsDisableCertificateRevocationCheck and tlsAllowInvalidCertificates both present (and false) raises an error",
+    "tlsInsecure and tlsDisableCertificateRevocationCheck both present (and true) raises an error",
+    "tlsInsecure=true and tlsDisableCertificateRevocationCheck=false raises an error",
+    "tlsInsecure=false and tlsDisableCertificateRevocationCheck=true raises an error",
+    "tlsInsecure and tlsDisableCertificateRevocationCheck both present (and false) raises an error",
+    "tlsDisableCertificateRevocationCheck and tlsInsecure both present (and true) raises an error",
+    "tlsDisableCertificateRevocationCheck=true and tlsInsecure=false raises an error",
+    "tlsDisableCertificateRevocationCheck=false and tlsInsecure=true raises an error",
+    "tlsDisableCertificateRevocationCheck and tlsInsecure both present (and false) raises an error",
+    "tlsDisableCertificateRevocationCheck and tlsDisableOCSPEndpointCheck both present (and true) raises an error",
+    "tlsDisableCertificateRevocationCheck=true and tlsDisableOCSPEndpointCheck=false raises an error",
+    "tlsDisableCertificateRevocationCheck=false and tlsDisableOCSPEndpointCheck=true raises an error",
+    "tlsDisableCertificateRevocationCheck and tlsDisableOCSPEndpointCheck both present (and false) raises an error",
+    "tlsDisableOCSPEndpointCheck and tlsDisableCertificateRevocationCheck both present (and true) raises an error",
+    "tlsDisableOCSPEndpointCheck=true and tlsDisableCertificateRevocationCheck=false raises an error",
+    "tlsDisableOCSPEndpointCheck=false and tlsDisableCertificateRevocationCheck=true raises an error",
+    "tlsDisableOCSPEndpointCheck and tlsDisableCertificateRevocationCheck both present (and false) raises an error"]
 
 
 class TestAllScenarios(unittest.TestCase):

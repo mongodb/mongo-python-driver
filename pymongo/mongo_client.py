@@ -459,6 +459,9 @@ class MongoClient(common.BaseObject):
             ``ssl_keyfile``. Only necessary if the private key is encrypted.
             Only supported by python 2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults
             to ``None``.
+          - `tlsDisableOCSPEndpointCheck`: (boolean) If ``True``, disables
+            certificate revocation status checking via the OCSP responder
+            specified on the server certificate. Defaults to ``False``.
           - `ssl`: (boolean) Alias for ``tls``.
           - `ssl_certfile`: The certificate file used to identify the local
             connection against mongod. Implies ``tls=True``. Defaults to
@@ -487,6 +490,10 @@ class MongoClient(common.BaseObject):
             :ref:`automatic-client-side-encryption` for an example.
 
         .. mongodoc:: connections
+
+        .. versionchanged:: 3.11
+           Added the ``tlsDisableOCSPEndpointCheck`` keyword argument and
+           URI option.
 
         .. versionchanged:: 3.9
            Added the ``retryReads`` keyword argument and URI option.
@@ -645,8 +652,8 @@ class MongoClient(common.BaseObject):
         # Handle deprecated options in kwarg options.
         keyword_opts = _handle_option_deprecations(keyword_opts)
         # Validate kwarg options.
-        keyword_opts = common._CaseInsensitiveDictionary(
-            dict(common.validate(k, v) for k, v in keyword_opts.items()))
+        keyword_opts = common._CaseInsensitiveDictionary(dict(common.validate(
+            keyword_opts.cased_key(k), v) for k, v in keyword_opts.items()))
 
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
