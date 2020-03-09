@@ -189,7 +189,8 @@ class TestObjectId(unittest.TestCase):
 
         for tstamp, exp_datetime_args in TEST_DATA.items():
             oid = generate_objectid_with_timestamp(tstamp)
-            if tstamp > 0x7FFFFFFF and sys.maxsize < 2**32:
+            if (not sys.platform.startswith("java") and
+                    tstamp > 0x7FFFFFFF and sys.maxsize < 2**32):
                 # 32-bit platforms will overflow in datetime.fromtimestamp.
                 with self.assertRaises((OverflowError, ValueError)):
                     oid.generation_time
