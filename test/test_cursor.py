@@ -829,7 +829,6 @@ class TestCursor(IntegrationTest):
             self.assertEqual(2, collection.find().hint("x_1").count())
             self.assertEqual(2, collection.find().hint([("x", 1)]).count())
 
-    @client_context.require_version_max(4, 3, 2)  # PYTHON-2130
     @ignore_deprecations
     def test_where(self):
         db = self.db
@@ -845,8 +844,20 @@ class TestCursor(IntegrationTest):
         self.assertEqual(3, len(list(db.test.find().where('this.x < 3'))))
         self.assertEqual(3,
                          len(list(db.test.find().where(Code('this.x < 3')))))
-        self.assertEqual(3, len(list(db.test.find().where(Code('this.x < i',
-                                                               {"i": 3})))))
+
+        code_with_scope = Code('this.x < i', {"i": 3})
+        if client_context.version.at_least(4, 3, 3):
+            # MongoDB 4.4 removed support for Code with scope.
+            with self.assertRaises(OperationFailure):
+                list(db.test.find().where(code_with_scope))
+
+            code_with_empty_scope = Code('this.x < 3', {})
+            with self.assertRaises(OperationFailure):
+                list(db.test.find().where(code_with_empty_scope))
+        else:
+            self.assertEqual(
+                3, len(list(db.test.find().where(code_with_scope))))
+
         self.assertEqual(10, len(list(db.test.find())))
 
         self.assertEqual(3, db.test.find().where('this.x < 3').count())

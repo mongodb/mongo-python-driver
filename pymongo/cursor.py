@@ -915,7 +915,7 @@ class Cursor(object):
         return self
 
     def where(self, code):
-        """Adds a $where clause to this query.
+        """Adds a `$where`_ clause to this query.
 
         The `code` argument must be an instance of :class:`basestring`
         (:class:`str` in python 3) or :class:`~bson.code.Code`
@@ -923,7 +923,11 @@ class Cursor(object):
         evaluated for each document scanned. Only those documents
         for which the expression evaluates to *true* will be returned
         as results. The keyword *this* refers to the object currently
-        being scanned.
+        being scanned. For example::
+
+            # Find all documents where field "a" is less than "b" plus "c".
+            for doc in db.test.find().where('this.a < (this.b + this.c)'):
+                print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
         :class:`basestring` (:class:`str` in python 3). Raises
@@ -931,8 +935,14 @@ class Cursor(object):
         :class:`Cursor` has already been used. Only the last call to
         :meth:`where` applied to a :class:`Cursor` has any effect.
 
+        .. note:: MongoDB 4.4 drops support for :class:`~bson.code.Code`
+          with scope variables. Consider using `$expr`_ instead.
+
         :Parameters:
           - `code`: JavaScript expression to use as a filter
+
+        .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
+        .. _$where: https://docs.mongodb.com/manual/reference/operator/query/where/
         """
         self.__check_okay_to_chain()
         if not isinstance(code, Code):
