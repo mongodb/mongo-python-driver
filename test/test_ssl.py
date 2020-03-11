@@ -657,6 +657,7 @@ class TestSSL(IntegrationTest):
         else:
             self.fail("Invalid certificate accepted.")
 
+    @client_context.require_ssl_certfile
     def test_connect_with_ca_bundle(self):
         def remove(path):
             try:
