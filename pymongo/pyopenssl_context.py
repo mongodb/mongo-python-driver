@@ -83,14 +83,20 @@ _RETRY_ERRORS = (
     _SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
 
 
+def _ragged_eof(exc):
+    """Return True if the OpenSSL.SSL.SysCallError is a ragged EOF."""
+    return exc.args == (-1, 'Unexpected EOF')
+
+
 # https://github.com/pyca/pyopenssl/issues/168
 # https://github.com/pyca/pyopenssl/issues/176
 # https://docs.python.org/3/library/ssl.html#notes-on-non-blocking-sockets
 class _sslConn(_SSL.Connection):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ctx, sock, suppress_ragged_eofs):
         self.socket_checker = _SocketChecker()
-        super(_sslConn, self).__init__(*args, **kwargs)
+        self.suppress_ragged_eofs = suppress_ragged_eofs
+        super(_sslConn, self).__init__(ctx, sock)
 
     def _call(self, call, *args, **kwargs):
         timeout = self.gettimeout()
@@ -110,10 +116,22 @@ class _sslConn(_SSL.Connection):
         return self._call(super(_sslConn, self).do_handshake, *args, **kwargs)
 
     def recv(self, *args, **kwargs):
-        return self._call(super(_sslConn, self).recv, *args, **kwargs)
+        try:
+            return self._call(super(_sslConn, self).recv, *args, **kwargs)
+        except _SSL.SysCallError as exc:
+            # Suppress ragged EOFs to match the stdlib.
+            if self.suppress_ragged_eofs and _ragged_eof(exc):
+                return b""
+            raise
 
     def recv_into(self, *args, **kwargs):
-        return self._call(super(_sslConn, self).recv_into, *args, **kwargs)
+        try:
+            return self._call(super(_sslConn, self).recv_into, *args, **kwargs)
+        except _SSL.SysCallError as exc:
+            # Suppress ragged EOFs to match the stdlib.
+            if self.suppress_ragged_eofs and _ragged_eof(exc):
+                return 0
+            raise
 
     def sendall(self, buf, flags=0):
         view = memoryview(buf)
@@ -266,12 +284,13 @@ class SSLContext(object):
 
     def wrap_socket(self, sock, server_side=False,
                     do_handshake_on_connect=True,
-                    suppress_ragged_eofs=True, # TODO: Add support to _sslConn.
+                    suppress_ragged_eofs=True,
                     server_hostname=None, session=None):
         """Wrap an existing Python socket sock and return a TLS socket
         object.
         """
-        ssl_conn = _sslConn(self._ctx, sock)
+        ssl_conn = _sslConn(
+            self._ctx, sock, suppress_ragged_eofs=suppress_ragged_eofs)
         if session:
             ssl_conn.set_session(session)
         if server_side is True:

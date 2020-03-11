@@ -1007,7 +1007,7 @@ def _configured_socket(address, options):
             # Raise CertificateError directly like we do after match_hostname
             # below.
             raise
-        except IOError as exc:
+        except (IOError, OSError, _SSLError) as exc:
             sock.close()
             # We raise AutoReconnect for transient and permanent SSL handshake
             # failures alike. Permanent handshake failures, like protocol
@@ -1176,15 +1176,17 @@ class Pool:
         if self.enabled_for_cmap:
             listeners.publish_connection_created(self.address, conn_id)
 
-        sock = None
         try:
             sock = _configured_socket(self.address, self.opts)
-        except socket.error as error:
+        except Exception as error:
             if self.enabled_for_cmap:
                 listeners.publish_connection_closed(
                     self.address, conn_id, ConnectionClosedReason.ERROR)
 
-            _raise_connection_failure(self.address, error)
+            if isinstance(error, (IOError, OSError, _SSLError)):
+                _raise_connection_failure(self.address, error)
+
+            raise
 
         sock_info = SocketInfo(sock, self, self.address, conn_id)
         if self.handshake:
