@@ -207,37 +207,11 @@ def _verify_response_signature(issuer, response):
     return ret
 
 
-def _request_ocsp(cert, issuer, uri):
+def _build_ocsp_request(cert, issuer):
     # https://cryptography.io/en/latest/x509/ocsp/#creating-requests
     builder = _OCSPRequestBuilder()
-    # add_certificate returns a new instance
     builder = builder.add_certificate(cert, issuer, _SHA1())
-    ocsp_request = builder.build()
-    try:
-        response = _post(
-            uri,
-            data=ocsp_request.public_bytes(_Encoding.DER),
-            headers={'Content-Type': 'application/ocsp-request'},
-            timeout=5)
-    except _RequestException:
-        _LOGGER.debug("HTTP request failed")
-        return None
-    if response.status_code != 200:
-        _LOGGER.debug("HTTP request returned %d", response.status_code)
-        return None
-    ocsp_response = _load_der_ocsp_response(response.content)
-    _LOGGER.debug(
-        "OCSP response status: %r", ocsp_response.response_status)
-    if ocsp_response.response_status != _OCSPResponseStatus.SUCCESSFUL:
-        return None
-    # RFC6960, Section 3.2, Number 1. Only relevant if we need to
-    # talk to the responder directly.
-    # Accessing response.serial_number raises if response status is not
-    # SUCCESSFUL.
-    if ocsp_response.serial_number != ocsp_request.serial_number:
-        _LOGGER.debug("Response serial number does not match request")
-        return None
-    return ocsp_response
+    return builder.build()
 
 
 def _verify_response(issuer, response):
@@ -259,6 +233,45 @@ def _verify_response(issuer, response):
         _LOGGER.debug("nextUpdate is in the past")
         return 0
     return 1
+
+
+def _get_ocsp_response(cert, issuer, uri, ocsp_response_cache):
+    ocsp_request = _build_ocsp_request(cert, issuer)
+    try:
+        ocsp_response = ocsp_response_cache[ocsp_request]
+        _LOGGER.debug("Using cached OCSP response.")
+    except KeyError:
+        try:
+            response = _post(
+                uri,
+                data=ocsp_request.public_bytes(_Encoding.DER),
+                headers={'Content-Type': 'application/ocsp-request'},
+                timeout=5)
+        except _RequestException:
+            _LOGGER.debug("HTTP request failed")
+            return None
+        if response.status_code != 200:
+            _LOGGER.debug("HTTP request returned %d", response.status_code)
+            return None
+        ocsp_response = _load_der_ocsp_response(response.content)
+        _LOGGER.debug(
+            "OCSP response status: %r", ocsp_response.response_status)
+        if ocsp_response.response_status != _OCSPResponseStatus.SUCCESSFUL:
+            return None
+        # RFC6960, Section 3.2, Number 1. Only relevant if we need to
+        # talk to the responder directly.
+        # Accessing response.serial_number raises if response status is not
+        # SUCCESSFUL.
+        if ocsp_response.serial_number != ocsp_request.serial_number:
+            _LOGGER.debug("Response serial number does not match request")
+            return None
+        if not _verify_response(issuer, ocsp_response):
+            # The response failed verification.
+            return None
+        _LOGGER.debug("Caching OCSP response.")
+        ocsp_response_cache[ocsp_request] = ocsp_response
+
+    return ocsp_response
 
 
 def _ocsp_callback(conn, ocsp_bytes, user_data):
@@ -283,6 +296,8 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
                 _LOGGER.debug("Peer presented a must-staple cert")
                 must_staple = True
                 break
+    ocsp_response_cache = user_data.ocsp_response_cache
+
     # No stapled OCSP response
     if ocsp_bytes == b'':
         _LOGGER.debug("Peer did not staple an OCSP response")
@@ -314,13 +329,12 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
         # successful, valid responses with a certificate status of REVOKED.
         for uri in uris:
             _LOGGER.debug("Trying %s", uri)
-            response = _request_ocsp(cert, issuer, uri)
+            response = _get_ocsp_response(
+                cert, issuer, uri, ocsp_response_cache)
             if response is None:
                 # The endpoint didn't respond in time, or the response was
-                # unsuccessful or didn't match the request.
-                continue
-            if not _verify_response(issuer, response):
-                # The response failed verification.
+                # unsuccessful or didn't match the request, or the response
+                # failed verification.
                 continue
             _LOGGER.debug("OCSP cert status: %r", response.certificate_status)
             if response.certificate_status == _OCSPCertStatus.GOOD:
@@ -344,6 +358,8 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
         return 0
     if not _verify_response(issuer, response):
         return 0
+    # Cache the verified, stapled response.
+    ocsp_response_cache[_build_ocsp_request(cert, issuer)] = response
     _LOGGER.debug("OCSP cert status: %r", response.certificate_status)
     if response.certificate_status == _OCSPCertStatus.REVOKED:
         return 0

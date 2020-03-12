@@ -40,6 +40,7 @@ from pymongo.monotonic import time as _time
 from pymongo.ocsp_support import (
     _load_trusted_ca_certs,
     _ocsp_callback)
+from pymongo.ocsp_cache import _OCSPCache
 from pymongo.socket_checker import (
     _errno_from_exception, SocketChecker as _SocketChecker)
 
@@ -142,6 +143,7 @@ class _CallbackData(object):
     def __init__(self):
         self.trusted_ca_certs = None
         self.check_ocsp_endpoint = None
+        self.ocsp_response_cache = _OCSPCache()
 
 
 class SSLContext(object):
