@@ -1298,24 +1298,6 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-arm64/master/latest/libmongocrypt.tar.gz
-      - id: windows-vs2010
-        display_name: "Windows 64 Visual Studio 2010"
-        run_on: windows-64-vs2010-test
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
-      - id: windows-vs2015
-        display_name: "Windows 64 Visual Studio 2015"
-        run_on: windows-64-vs2015-test
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
-      - id: windows-vs2017
-        display_name: "Windows 64 Visual Studio 2017"
-        run_on: windows-64-vs2017-test
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
       - id: windows-64-vsMulti-small
         display_name: "Windows 64"
         run_on: windows-64-vsMulti-small
@@ -1431,31 +1413,6 @@ axes:
         batchtime: 10080  # 7 days
         variables:
            PYTHON_BINARY: "/opt/python/jython2.7/bin/jython"
-      # Windows
-      - id: "win-vs2010-3.4"
-        display_name: "Python 3.4"
-        variables:
-          PYTHON_BINARY: "C:/python/Python34/python.exe"
-      - id: "win-vs2015-2.7"
-        display_name: "Python 2.7"
-        variables:
-          PYTHON_BINARY: "C:/python/Python27/python.exe"
-      - id: "win-vs2015-3.5"
-        display_name: "Python 3.5"
-        variables:
-          PYTHON_BINARY: "C:/python/Python35/python.exe"
-      - id: "win-vs2015-3.6"
-        display_name: "Python 3.6"
-        variables:
-          PYTHON_BINARY: "C:/python/Python36/python.exe"
-      - id: "win-vs2015-3.7"
-        display_name: "Python 3.7"
-        variables:
-          PYTHON_BINARY: "C:/python/Python37/python.exe"
-      - id: "win-vs2015-3.8"
-        display_name: "Python 3.8"
-        variables:
-          PYTHON_BINARY: "C:/python/Python38/python.exe"
       # System python
       - id: "system-python"
         display_name: "Python"
@@ -1465,6 +1422,62 @@ axes:
         display_name: "Python3"
         variables:
           PYTHON_BINARY: "python3"
+
+  - id: python-version-windows
+    display_name: "Python"
+    values:
+      - id: "2.7"
+        display_name: "Python 2.7"
+        variables:
+          PYTHON_BINARY: "C:/python/Python27/python.exe"
+      - id: "3.4"
+        display_name: "Python 3.4"
+        variables:
+          PYTHON_BINARY: "C:/python/Python34/python.exe"
+      - id: "3.5"
+        display_name: "Python 3.5"
+        variables:
+          PYTHON_BINARY: "C:/python/Python35/python.exe"
+      - id: "3.6"
+        display_name: "Python 3.6"
+        variables:
+          PYTHON_BINARY: "C:/python/Python36/python.exe"
+      - id: "3.7"
+        display_name: "Python 3.7"
+        variables:
+          PYTHON_BINARY: "C:/python/Python37/python.exe"
+      - id: "3.8"
+        display_name: "Python 3.8"
+        variables:
+          PYTHON_BINARY: "C:/python/Python38/python.exe"
+
+  - id: python-version-windows-32
+    display_name: "Python"
+    values:
+      - id: "2.7"
+        display_name: "32-bit Python 2.7"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python27/python.exe"
+      - id: "3.4"
+        display_name: "32-bit Python 3.4"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python34/python.exe"
+      - id: "3.5"
+        display_name: "32-bit Python 3.5"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python35/python.exe"
+      - id: "3.6"
+        display_name: "32-bit Python 3.6"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python36/python.exe"
+      - id: "3.7"
+        display_name: "32-bit Python 3.7"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python37/python.exe"
+      - id: "3.8"
+        display_name: "32-bit Python 3.8"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python38/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -1590,6 +1603,7 @@ buildvariants:
     encryption: "*"
   display_name: "Encryption ${platform} ${auth-ssl}"
   tasks: &encryption-server-versions
+    - ".latest"
     - ".4.2"
     - ".4.0"
     - ".2.6"
@@ -1805,10 +1819,10 @@ buildvariants:
 - matrix_name: "tests-pyopenssl-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version: ["win-vs2015-2.7", "win-vs2010-3.4", "win-vs2015-3.5", "win-vs2015-3.6", "win-vs2015-3.7", "win-vs2015-3.8"]
+    python-version-windows: "*"
     auth: "*"
     ssl: "ssl"
-  display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
+  display_name: "PyOpenSSL ${platform} ${python-version-windows} ${auth}"
   tasks:
     - "pyopenssl"
 
@@ -1910,14 +1924,14 @@ buildvariants:
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
   tasks: *all-server-versions
 
-# Test CPython 3.4 against MongoDB 2.6-4.2 on Windows with Visual Studio 2010.
-- matrix_name: "tests-windows-vs2010-python-version"
+- matrix_name: "tests-windows-python-version"
   matrix_spec:
-    platform: windows-vs2010
-    python-version: &win-vs2010-pythons ["win-vs2010-3.4"]
+    platform: windows-64-vsMulti-small
+    python-version-windows: "*"
     auth-ssl: "*"
-  display_name: "${platform} ${python-version} ${auth-ssl}"
+  display_name: "${platform} ${python-version-windows} ${auth-ssl}"
   tasks:
+    - ".latest"
     - ".4.2"
     - ".4.0"
     - ".3.6"
@@ -1926,15 +1940,21 @@ buildvariants:
     - ".3.0"
     - ".2.6"
 
-# windows-vs2010 3.4 is unable to dlopen the libmongocrypt ddl built on 2016
-#- matrix_name: "tests-windows-vs2010-python-version-encryption"
-#  matrix_spec:
-#    platform: windows-vs2010
-#    python-version: *win-vs2010-pythons
-#    auth-ssl: "*"
-#    encryption: "*"
-#  display_name: "Encryption ${platform} ${python-version} ${auth-ssl}"
-#  tasks: *encryption-server-versions
+- matrix_name: "tests-windows-python-version-32-bit"
+  matrix_spec:
+    platform: windows-64-vsMulti-small
+    python-version-windows-32: "*"
+    auth-ssl: "*"
+  display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
+  tasks:
+    - ".latest"
+    - ".4.2"
+    - ".4.0"
+    - ".3.6"
+    - ".3.4"
+    - ".3.2"
+    - ".3.0"
+    - ".2.6"
 
 - matrix_name: "tests-python-version-requires-openssl-102-plus-test-ssl"
   matrix_spec:
@@ -1968,41 +1988,14 @@ buildvariants:
   tasks:
      - ".latest"
 
-# Test CPython 2.7, 3.5 and 3.6 against MongoDB 2.6-4.2
-# on Windows with the Microsoft Visual C++ Compiler for Python 2.7 or Visual Studio 2015.
-- matrix_name: "tests-windows-vs2015-python-version-27plus"
+- matrix_name: "tests-windows-encryption"
   matrix_spec:
-    platform: windows-vs2015
-    python-version: &win-vs2015-pythons ["win-vs2015-2.7", "win-vs2015-3.5", "win-vs2015-3.6", "win-vs2015-3.7"]
-    auth-ssl: "*"
-  display_name: "${platform} ${python-version} ${auth-ssl}"
-  tasks:
-    - ".4.2"
-    - ".4.0"
-    - ".3.6"
-    - ".3.4"
-    - ".3.2"
-    - ".3.0"
-    - ".2.6"
-
-- matrix_name: "tests-windows-vs2015-python-version-encryption"
-  matrix_spec:
-    platform: windows-vs2015
-    python-version: *win-vs2015-pythons
+    platform: windows-64-vsMulti-small
+    python-version-windows: "*"
     auth-ssl: "*"
     encryption: "*"
-  display_name: "Encryption ${platform} ${python-version} ${auth-ssl}"
+  display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
-
-# Test CPython 3.7 against MongoDB >= 4.3 on Windows 2017+.
-- matrix_name: "tests-windows-vs2017"
-  matrix_spec:
-    platform: windows-vs2017
-    python-version: ["win-vs2015-3.7"]
-    auth-ssl: "*"
-  display_name: "${platform} ${python-version} ${auth-ssl}"
-  tasks:
-    - .latest
 
 # Storage engine tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
@@ -2075,21 +2068,12 @@ buildvariants:
   tasks:
      - name: "test-enterprise-auth"
 
-- matrix_name: "tests-windows-vs2010-enterprise-auth"
+- matrix_name: "tests-windows-enterprise-auth"
   matrix_spec:
-    platform: windows-vs2010
-    python-version: *win-vs2010-pythons
+    platform: windows-64-vsMulti-small
+    python-version-windows: "*"
     auth: "auth"
-  display_name: "Enterprise ${auth} ${platform} ${python-version}"
-  tasks:
-     - name: "test-enterprise-auth"
-
-- matrix_name: "tests-windows-vs2015-enterprise-auth"
-  matrix_spec:
-    platform: windows-vs2015
-    python-version: *win-vs2015-pythons
-    auth: "auth"
-  display_name: "Enterprise ${auth} ${platform} ${python-version}"
+  display_name: "Enterprise ${auth} ${platform} ${python-version-windows}"
   tasks:
      - name: "test-enterprise-auth"
 
@@ -2189,8 +2173,8 @@ buildvariants:
 - matrix_name: "aws-auth-test-windows"
   matrix_spec:
     platform: [windows-64-vsMulti-small]
-    python-version: ["win-vs2015-2.7", "win-vs2010-3.4", "win-vs2015-3.5", "win-vs2015-3.6", "win-vs2015-3.7", "win-vs2015-3.8"]
-  display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
+    python-version-windows: "*"
+  display_name: "MONGODB-AWS Auth ${platform} ${python-version-windows}"
   tasks:
     - name: "aws-auth-test"
 
