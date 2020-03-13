@@ -29,6 +29,13 @@ fi
 
 export MONGODB_URI="$MONGODB_URI"
 
+if [ "$ASSERT_NO_URI_CREDS" = "true" ]; then
+    if echo "$MONGODB_URI" | grep -q "@"; then
+        echo "MONGODB_URI unexpectedly contains user credentials!";
+        exit 1
+    fi
+fi
+
 # show test output
 set -x
 

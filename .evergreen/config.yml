@@ -274,7 +274,7 @@ functions:
             fi
           fi
 
-          if [ $(uname -s) == "Darwin" ]; then
+          if [ $(uname -s) = "Darwin" ]; then
               core_pattern_mac=$(/usr/sbin/sysctl -n "kern.corefile")
               if [ "$core_pattern_mac" = "dump_%N.%P.core" ]; then
                 echo "Enabling coredumps"
@@ -539,7 +539,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" == "true" ]; then
+          if [ "${skip_EC2_auth_test}" = "true" ]; then
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
@@ -557,7 +557,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -577,7 +577,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials and session token as environment variables":
     - command: shell.exec
@@ -599,7 +599,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} .evergreen/run-mongodb-aws-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws ECS auth test":
     - command: shell.exec
@@ -608,7 +608,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          if [ "${skip_ECS_auth_test}" == "true" ]; then
+          if [ "${skip_ECS_auth_test}" = "true" ]; then
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
