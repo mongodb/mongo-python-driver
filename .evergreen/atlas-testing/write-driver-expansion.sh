@@ -5,6 +5,6 @@ export PYMONGO_VIRTUALENV_NAME="pymongotestvenv"
 cat <<EOT > driver-expansion.yml
 PREPARE_SHELL_DRIVER: |
   set -o errexit
-  export PYTHON_BINARY="${PYTHON_BINARY}"
+  export PYTHON_BINARY="$PYTHON_BINARY"
   export PYMONGO_VIRTUALENV_NAME="$PYMONGO_VIRTUALENV_NAME"
 EOT
