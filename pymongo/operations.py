@@ -57,9 +57,9 @@ class InsertOne(object):
 class DeleteOne(object):
     """Represents a delete_one operation."""
 
-    __slots__ = ("_filter", "_collation")
+    __slots__ = ("_filter", "_collation", "_hint")
 
-    def __init__(self, filter, collation=None):
+    def __init__(self, filter, collation=None, hint=None):
         """Create a DeleteOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -69,18 +69,31 @@ class DeleteOne(object):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only
             supported on MongoDB 3.4 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.4 and above.
 
+        .. versionchanged:: 3.11
+           Added the ``hint`` option.
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
+        if hint is not None:
+            if not isinstance(hint, string_type):
+                hint = helpers._index_document(hint)
         self._filter = filter
         self._collation = collation
+        self._hint = hint
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 1, collation=self._collation)
+        bulkobj.add_delete(self._filter, 1, collation=self._collation,
+                           hint=self._hint)
 
     def __repr__(self):
         return "DeleteOne(%r, %r)" % (self._filter, self._collation)
@@ -98,9 +111,9 @@ class DeleteOne(object):
 class DeleteMany(object):
     """Represents a delete_many operation."""
 
-    __slots__ = ("_filter", "_collation")
+    __slots__ = ("_filter", "_collation", "_hint")
 
-    def __init__(self, filter, collation=None):
+    def __init__(self, filter, collation=None, hint=None):
         """Create a DeleteMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -110,18 +123,31 @@ class DeleteMany(object):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only
             supported on MongoDB 3.4 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.4 and above.
 
+        .. versionchanged:: 3.11
+           Added the ``hint`` option.
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
+        if hint is not None:
+            if not isinstance(hint, string_type):
+                hint = helpers._index_document(hint)
         self._filter = filter
         self._collation = collation
+        self._hint = hint
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 0, collation=self._collation)
+        bulkobj.add_delete(self._filter, 0, collation=self._collation,
+                           hint=self._hint)
 
     def __repr__(self):
         return "DeleteMany(%r, %r)" % (self._filter, self._collation)

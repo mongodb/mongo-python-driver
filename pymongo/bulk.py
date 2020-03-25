@@ -218,7 +218,7 @@ class _Bulk(object):
             cmd['hint'] = hint
         self.ops.append((_UPDATE, cmd))
 
-    def add_delete(self, selector, limit, collation=None):
+    def add_delete(self, selector, limit, collation=None, hint=None):
         """Create a delete document and add it to the list of ops.
         """
         cmd = SON([('q', selector), ('limit', limit)])
@@ -226,6 +226,9 @@ class _Bulk(object):
         if collation is not None:
             self.uses_collation = True
             cmd['collation'] = collation
+        if hint is not None:
+            self.uses_hint = True
+            cmd['hint'] = hint
         if limit == _DELETE_ALL:
             # A bulk_write containing a delete_many is not retryable.
             self.is_retryable = False

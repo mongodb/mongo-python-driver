@@ -518,6 +518,10 @@ class SpecRunner(IntegrationTest):
         sessions = {}
         session_ids = {}
         for i in range(2):
+            # Don't attempt to create sessions if they are not supported by
+            # the running server version.
+            if not client_context.sessions_enabled:
+                break
             session_name = 'session%d' % i
             opts = camel_to_snake_args(test['sessionOptions'][session_name])
             if 'default_transaction_options' in opts:

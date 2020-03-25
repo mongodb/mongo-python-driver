@@ -1125,7 +1125,7 @@ class Collection(common.BaseObject):
     def _delete(
             self, sock_info, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
-            collation=None, session=None, retryable_write=False):
+            collation=None, hint=None, session=None, retryable_write=False):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
@@ -1142,6 +1142,16 @@ class Collection(common.BaseObject):
                     'Collation is unsupported for unacknowledged writes.')
             else:
                 delete_doc['collation'] = collation
+        if hint is not None:
+            if sock_info.max_wire_version < 5:
+                raise ConfigurationError(
+                    'Must be connected to MongoDB 3.4+ to use hint.')
+            elif not acknowledged:
+                raise ConfigurationError(
+                    'hint is unsupported for unacknowledged writes.')
+            if not isinstance(hint, string_type):
+                hint = helpers._index_document(hint)
+            delete_doc['hint'] = hint
         command = SON([('delete', self.name),
                        ('ordered', ordered),
                        ('deletes', [delete_doc])])
@@ -1171,20 +1181,20 @@ class Collection(common.BaseObject):
     def _delete_retryable(
             self, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
-            collation=None, session=None):
+            collation=None, hint=None, session=None):
         """Internal delete helper."""
         def _delete(session, sock_info, retryable_write):
             return self._delete(
                 sock_info, criteria, multi,
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
-                collation=collation, session=session,
+                collation=collation, hint=hint, session=session,
                 retryable_write=retryable_write)
 
         return self.__database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
             _delete, session)
 
-    def delete_one(self, filter, collation=None, session=None):
+    def delete_one(self, filter, collation=None, hint=None, session=None):
         """Delete a single document matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1200,18 +1210,24 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
+        .. versionchanged:: 3.11
+           Added ``hint`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
-
         .. versionchanged:: 3.4
           Added the `collation` option.
-
         .. versionadded:: 3.0
         """
         write_concern = self._write_concern_for(session)
@@ -1219,10 +1235,10 @@ class Collection(common.BaseObject):
             self._delete_retryable(
                 filter, False,
                 write_concern=write_concern,
-                collation=collation, session=session),
+                collation=collation, hint=hint, session=session),
             write_concern.acknowledged)
 
-    def delete_many(self, filter, collation=None, session=None):
+    def delete_many(self, filter, collation=None, hint=None, session=None):
         """Delete one or more documents matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1238,18 +1254,24 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `hint` (optional): An index to use to support the query
+            predicate specified either by its string name, or in the same
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            ``[('field', ASCENDING)]``). This option is only supported on
+            MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
+        .. versionchanged:: 3.11
+           Added ``hint`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
-
         .. versionchanged:: 3.4
           Added the `collation` option.
-
         .. versionadded:: 3.0
         """
         write_concern = self._write_concern_for(session)
@@ -1257,7 +1279,7 @@ class Collection(common.BaseObject):
             self._delete_retryable(
                 filter, True,
                 write_concern=write_concern,
-                collation=collation, session=session),
+                collation=collation, hint=hint, session=session),
             write_concern.acknowledged)
 
     def find_one(self, filter=None, *args, **kwargs):
@@ -2849,10 +2871,8 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
-
         .. versionchanged:: 3.4
            Added the `collation` option.
-
         """
         res = self._map_reduce(map, reduce, {"inline": 1}, session,
                                self.read_preference, **kwargs)
@@ -2931,7 +2951,8 @@ class Collection(common.BaseObject):
             write_concern.acknowledged, _find_and_modify, session)
 
     def find_one_and_delete(self, filter,
-                            projection=None, sort=None, session=None, **kwargs):
+                            projection=None, sort=None, hint=None,
+                            session=None, **kwargs):
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
@@ -2968,15 +2989,21 @@ class Collection(common.BaseObject):
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for the query. If multiple documents
             match the query, they are sorted and the first is deleted.
+          - `hint` (optional): An index to use to support the query predicate
+            specified either by its string name, or in the same format as
+            passed to :meth:`~pymongo.collection.Collection.create_index`
+            (e.g. ``[('field', ASCENDING)]``). This option is only supported
+            on MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 3.11
+           Added ``hint`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
-
         .. versionchanged:: 3.2
            Respects write concern.
 
@@ -2989,11 +3016,10 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.4
            Added the `collation` option.
         .. versionadded:: 3.0
-
         """
         kwargs['remove'] = True
         return self.__find_and_modify(filter, projection, sort,
-                                      session=session, **kwargs)
+                                      hint=hint, session=session, **kwargs)
 
     def find_one_and_replace(self, filter, replacement,
                              projection=None, sort=None, upsert=False,
