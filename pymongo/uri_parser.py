@@ -479,6 +479,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     fqdn = None
 
     if is_srv:
+        if options.get('directConnection'):
+            raise ConfigurationError(
+                "Cannot specify directConnection=true with "
+                "%s URIs" % (SRV_SCHEME,))
         nodes = split_hosts(hosts, default_port=None)
         if len(nodes) != 1:
             raise InvalidURI(
@@ -508,6 +512,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             options["ssl"] = True if validate else 'true'
     else:
         nodes = split_hosts(hosts, default_port=default_port)
+        if len(nodes) > 1 and options.get('directConnection'):
+            raise ConfigurationError(
+                "Cannot specify multiple hosts with directConnection=true")
 
     return {
         'nodelist': nodes,

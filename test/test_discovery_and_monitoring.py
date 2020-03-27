@@ -21,20 +21,17 @@ import threading
 sys.path[0:0] = [""]
 
 from bson import json_util, Timestamp
-from pymongo import common
+from pymongo import common, MongoClient
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure)
 from pymongo.helpers import _check_command_response
-from pymongo.topology import (Topology,
-                              _ErrorContext)
+from pymongo.topology import _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.server_description import ServerDescription, SERVER_TYPE
-from pymongo.settings import TopologySettings
-from pymongo.uri_parser import parse_uri
 from test import unittest, IntegrationTest
 from test.utils import (assertion_context,
                         Barrier,
@@ -68,25 +65,13 @@ class MockMonitor(object):
 
 
 def create_mock_topology(uri, monitor_class=MockMonitor):
-    parsed_uri = parse_uri(uri)
-    replica_set_name = None
-    if 'replicaset' in parsed_uri['options']:
-        replica_set_name = parsed_uri['options']['replicaset']
-
-    topology_settings = TopologySettings(
-        parsed_uri['nodelist'],
-        replica_set_name=replica_set_name,
-        monitor_class=monitor_class)
-
-    c = Topology(topology_settings)
-    c.open()
-    return c
+    mc = MongoClient(uri, _monitor_class=monitor_class)
+    return mc._get_topology()
 
 
 def got_ismaster(topology, server_address, ismaster_response):
     server_description = ServerDescription(
         server_address, IsMaster(ismaster_response), 0)
-
     topology.on_change(server_description)
 
 
@@ -185,8 +170,9 @@ def check_outcome(self, topology, outcome):
                 actual_server.pool.generation)
 
     self.assertEqual(outcome['setName'], topology.description.replica_set_name)
-    self.assertEqual(outcome['logicalSessionTimeoutMinutes'],
+    self.assertEqual(outcome.get('logicalSessionTimeoutMinutes'),
                      topology.description.logical_session_timeout_minutes)
+
     expected_topology_type = getattr(TOPOLOGY_TYPE, outcome['topologyType'])
     self.assertEqual(topology_type_name(expected_topology_type),
                      topology_type_name(topology.description.topology_type))

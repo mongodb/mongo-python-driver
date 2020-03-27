@@ -1,5 +1,5 @@
 {
-  "description": "Discover secondary with directConnection URI option",
+  "description": "Discover RSOther with directConnection URI option",
   "uri": "mongodb://b/?directConnection=false",
   "phases": [
     {
@@ -9,12 +9,12 @@
           {
             "ok": 1,
             "ismaster": false,
-            "secondary": true,
-            "setName": "rs",
+            "secondary": false,
             "hosts": [
-              "a:27017",
-              "b:27017"
+              "c:27017",
+              "d:27017"
             ],
+            "setName": "rs",
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -22,13 +22,17 @@
       ],
       "outcome": {
         "servers": {
-          "a:27017": {
+          "b:27017": {
+            "type": "RSOther",
+            "setName": "rs"
+          },
+          "c:27017": {
             "type": "Unknown",
             "setName": null
           },
-          "b:27017": {
-            "type": "RSSecondary",
-            "setName": "rs"
+          "d:27017": {
+            "type": "Unknown",
+            "setName": null
           }
         },
         "topologyType": "ReplicaSetNoPrimary",

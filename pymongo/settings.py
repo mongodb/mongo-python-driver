@@ -38,7 +38,8 @@ class TopologySettings(object):
                  server_selection_timeout=SERVER_SELECTION_TIMEOUT,
                  heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
                  server_selector=None,
-                 fqdn=None):
+                 fqdn=None,
+                 direct_connection=None):
         """Represent MongoClient's configuration.
 
         Take a list of (host, port) pairs and optional replica set name.
@@ -59,7 +60,12 @@ class TopologySettings(object):
         self._server_selector = server_selector
         self._fqdn = fqdn
         self._heartbeat_frequency = heartbeat_frequency
-        self._direct = (len(self._seeds) == 1 and not replica_set_name)
+
+        if direct_connection is None:
+            self._direct = (len(self._seeds) == 1 and not self.replica_set_name)
+        else:
+            self._direct = direct_connection
+
         self._topology_id = ObjectId()
         # Store the allocation traceback to catch unclosed clients in the
         # test suite.

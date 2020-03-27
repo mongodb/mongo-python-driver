@@ -1,23 +1,18 @@
 {
-  "description": "Direct connection to slave",
+  "description": "Direct connection to unavailable seed",
   "uri": "mongodb://a/?directConnection=true",
   "phases": [
     {
       "responses": [
         [
           "a:27017",
-          {
-            "ok": 1,
-            "ismaster": false,
-            "minWireVersion": 0,
-            "maxWireVersion": 6
-          }
+          {}
         ]
       ],
       "outcome": {
         "servers": {
           "a:27017": {
-            "type": "Standalone",
+            "type": "Unknown",
             "setName": null
           }
         },

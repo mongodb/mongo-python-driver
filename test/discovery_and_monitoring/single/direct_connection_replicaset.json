@@ -1,6 +1,6 @@
 {
-  "description": "Direct connection to RSSecondary",
-  "uri": "mongodb://a/?directConnection=true",
+  "description": "Direct connection with replicaSet URI option",
+  "uri": "mongodb://a/?replicaSet=rs&directConnection=true",
   "phases": [
     {
       "responses": [
@@ -8,12 +8,7 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": false,
-            "secondary": true,
-            "hosts": [
-              "a:27017",
-              "b:27017"
-            ],
+            "ismaster": true,
             "setName": "rs",
             "minWireVersion": 0,
             "maxWireVersion": 6
@@ -23,13 +18,13 @@
       "outcome": {
         "servers": {
           "a:27017": {
-            "type": "RSSecondary",
+            "type": "RSPrimary",
             "setName": "rs"
           }
         },
         "topologyType": "Single",
         "logicalSessionTimeoutMinutes": null,
-        "setName": null
+        "setName": "rs"
       }
     }
   ]

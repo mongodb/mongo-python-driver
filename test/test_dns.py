@@ -52,16 +52,9 @@ def create_test(test_case):
             seeds = split_hosts(','.join(seeds))
         if hosts:
             hosts = frozenset(split_hosts(','.join(hosts)))
-        if options:
-            for key, value in options.items():
-                # Convert numbers / booleans to strings for comparison
-                if isinstance(value, bool):
-                    options[key] = 'true' if value else 'false'
-                elif isinstance(value, (int, float)):
-                    options[key] = str(value)
 
         if seeds:
-            result = parse_uri(uri, validate=False)
+            result = parse_uri(uri, validate=True)
             self.assertEqual(sorted(result['nodelist']), sorted(seeds))
             if options:
                 opts = result['options']

@@ -594,6 +594,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'authsource': validate_string,
     'compressors': validate_compressors,
     'connecttimeoutms': validate_timeout_or_none,
+    'directconnection': validate_boolean_or_string,
     'heartbeatfrequencyms': validate_timeout_or_none,
     'journal': validate_boolean_or_string,
     'localthresholdms': validate_positive_float_or_zero,

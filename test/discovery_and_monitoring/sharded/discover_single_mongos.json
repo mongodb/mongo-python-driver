@@ -1,6 +1,6 @@
 {
-  "description": "Direct connection to slave",
-  "uri": "mongodb://a/?directConnection=true",
+  "description": "Discover single mongos",
+  "uri": "mongodb://a/?directConnection=false",
   "phases": [
     {
       "responses": [
@@ -8,7 +8,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": false,
+            "ismaster": true,
+            "msg": "isdbgrid",
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -17,12 +18,11 @@
       "outcome": {
         "servers": {
           "a:27017": {
-            "type": "Standalone",
+            "type": "Mongos",
             "setName": null
           }
         },
-        "topologyType": "Single",
-        "logicalSessionTimeoutMinutes": null,
+        "topologyType": "Sharded",
         "setName": null
       }
     }

@@ -1,14 +1,15 @@
 {
-  "description": "Direct connection to slave",
-  "uri": "mongodb://a/?directConnection=true",
+  "description": "Discover ghost with directConnection URI option",
+  "uri": "mongodb://b/?directConnection=false",
   "phases": [
     {
       "responses": [
         [
-          "a:27017",
+          "b:27017",
           {
             "ok": 1,
             "ismaster": false,
+            "isreplicaset": true,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -16,12 +17,12 @@
       ],
       "outcome": {
         "servers": {
-          "a:27017": {
-            "type": "Standalone",
+          "b:27017": {
+            "type": "RSGhost",
             "setName": null
           }
         },
-        "topologyType": "Single",
+        "topologyType": "Unknown",
         "logicalSessionTimeoutMinutes": null,
         "setName": null
       }

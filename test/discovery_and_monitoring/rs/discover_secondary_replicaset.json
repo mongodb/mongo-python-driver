@@ -1,6 +1,6 @@
 {
-  "description": "Discover secondary with directConnection URI option",
-  "uri": "mongodb://b/?directConnection=false",
+  "description": "Discover secondary with replicaSet URI option",
+  "uri": "mongodb://b/?replicaSet=rs",
   "phases": [
     {
       "responses": [

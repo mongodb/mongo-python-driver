@@ -151,6 +151,7 @@ class ClientOptions(object):
         self.__codec_options = _parse_codec_options(options)
         self.__credentials = _parse_credentials(
             username, password, database, options)
+        self.__direct_connection = options.get('directconnection')
         self.__local_threshold_ms = options.get(
             'localthresholdms', common.LOCAL_THRESHOLD_MS)
         # self.__server_selection_timeout is in seconds. Must use full name for
@@ -190,6 +191,11 @@ class ClientOptions(object):
     def credentials(self):
         """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
         return self.__credentials
+
+    @property
+    def direct_connection(self):
+        """Whether to connect to the deployment in 'Single' topology."""
+        return self.__direct_connection
 
     @property
     def local_threshold_ms(self):

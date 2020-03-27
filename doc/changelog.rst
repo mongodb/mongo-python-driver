@@ -12,6 +12,8 @@ Version 3.11 adds support for MongoDB 4.4. Highlights include:
   support. It will also be installed when using the "tls" extra if the
   version of Python in use is older than 2.7.9.
 - Support for the :ref:`MONGODB-AWS` authentication mechanism.
+- Support for the ``directConnection`` URI option and kwarg to
+  :class:`~pymongo.mongo_client.MongoClient`.
 - Added index hinting support to the
   :meth:`~pymongo.collection.Collection.replace_one`,
   :meth:`~pymongo.collection.Collection.update_one`,

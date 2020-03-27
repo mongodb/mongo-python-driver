@@ -1,6 +1,6 @@
 {
-  "description": "Direct connection to mongos",
-  "uri": "mongodb://a/?directConnection=true",
+  "description": "replicaSet URI option causes starting topology to be RSNP",
+  "uri": "mongodb://a/?replicaSet=rs&directConnection=false",
   "phases": [
     {
       "responses": [
@@ -9,22 +9,16 @@
           {
             "ok": 1,
             "ismaster": true,
-            "msg": "isdbgrid",
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
         ]
       ],
       "outcome": {
-        "servers": {
-          "a:27017": {
-            "type": "Mongos",
-            "setName": null
-          }
-        },
-        "topologyType": "Single",
+        "servers": {},
+        "topologyType": "ReplicaSetNoPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": null
+        "setName": "rs"
       }
     }
   ]

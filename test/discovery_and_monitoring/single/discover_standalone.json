@@ -1,6 +1,6 @@
 {
-  "description": "Direct connection to RSSecondary",
-  "uri": "mongodb://a/?directConnection=true",
+  "description": "Discover standalone",
+  "uri": "mongodb://a/?directConnection=false",
   "phases": [
     {
       "responses": [
@@ -8,13 +8,7 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": false,
-            "secondary": true,
-            "hosts": [
-              "a:27017",
-              "b:27017"
-            ],
-            "setName": "rs",
+            "ismaster": true,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -23,8 +17,8 @@
       "outcome": {
         "servers": {
           "a:27017": {
-            "type": "RSSecondary",
-            "setName": "rs"
+            "type": "Standalone",
+            "setName": null
           }
         },
         "topologyType": "Single",

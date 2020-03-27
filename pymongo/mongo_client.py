@@ -205,6 +205,12 @@ class MongoClient(common.BaseObject):
           - `connect` (optional): if ``True`` (the default), immediately
             begin connecting to MongoDB in the background. Otherwise connect
             on the first operation.
+          - `directConnection` (optional): if ``True``, forces this client to
+             connect directly to the specified MongoDB host as a standalone.
+             If ``false``, the client connects to the entire replica set of
+             which the given MongoDB host(s) is a part. If this is ``True``
+             and a mongodb+srv:// URI or a URI containing multiple seeds is
+             provided, an exception will be raised.
 
           | **Other optional parameters can be passed as keyword arguments:**
 
@@ -492,8 +498,10 @@ class MongoClient(common.BaseObject):
         .. mongodoc:: connections
 
         .. versionchanged:: 3.11
-           Added the ``tlsDisableOCSPEndpointCheck`` keyword argument and
-           URI option.
+           Added the following keyword arguments and URI options:
+
+             - ``tlsDisableOCSPEndpointCheck``
+             - ``directConnection``
 
         .. versionchanged:: 3.9
            Added the ``retryReads`` keyword argument and URI option.
@@ -707,7 +715,8 @@ class MongoClient(common.BaseObject):
             server_selection_timeout=options.server_selection_timeout,
             server_selector=options.server_selector,
             heartbeat_frequency=options.heartbeat_frequency,
-            fqdn=fqdn)
+            fqdn=fqdn,
+            direct_connection=options.direct_connection)
 
         self._topology = Topology(self._topology_settings)
         if connect:

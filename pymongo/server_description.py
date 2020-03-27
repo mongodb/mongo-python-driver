@@ -216,8 +216,8 @@ class ServerDescription(object):
     def topology_version(self):
         return self._topology_version
 
-    def to_unknown(self):
-        unknown = ServerDescription(self.address)
+    def to_unknown(self, error=None):
+        unknown = ServerDescription(self.address, error=error)
         unknown._topology_version = self.topology_version
         return unknown
 

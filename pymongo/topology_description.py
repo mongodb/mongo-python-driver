@@ -337,6 +337,14 @@ def updated_topology_description(topology_description, server_description):
     sds[address] = server_description
 
     if topology_type == TOPOLOGY_TYPE.Single:
+        # Set server type to Unknown if replica set name does not match.
+        if (set_name is not None and
+                set_name != server_description.replica_set_name):
+            error = ConfigurationError(
+                "client is configured to connect to a replica set named "
+                "'%s' but this node belongs to a set named '%s'" % (
+                    set_name, server_description.replica_set_name))
+            sds[address] = server_description.to_unknown(error=error)
         # Single type never changes.
         return TopologyDescription(
             TOPOLOGY_TYPE.Single,
@@ -348,8 +356,11 @@ def updated_topology_description(topology_description, server_description):
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type == SERVER_TYPE.Standalone:
-            sds.pop(address)
-
+            if len(topology_description._topology_settings.seeds) == 1:
+                topology_type = TOPOLOGY_TYPE.Single
+            else:
+                # Remove standalone from Topology when given multiple seeds.
+                sds.pop(address)
         elif server_type not in (SERVER_TYPE.Unknown, SERVER_TYPE.RSGhost):
             topology_type = _SERVER_TYPE_TO_TOPOLOGY_TYPE[server_type]
 
