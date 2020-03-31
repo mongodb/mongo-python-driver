@@ -122,25 +122,21 @@ class TestReadWriteConcernSpec(unittest.TestCase):
         ]
         ops_require_34 = [
             ('aggregate', lambda: coll.aggregate([{'$out': 'out'}])),
+            # SERVER-46668 Delete all the documents in the collection to
+            # workaround a hang in createIndexes.
+            ('delete_many', lambda: coll.delete_many({})),
+            ('create_index', lambda: coll.create_index([('a', DESCENDING)])),
+            ('create_indexes', lambda: coll.create_indexes([IndexModel('b')])),
+            ('drop_index', lambda: coll.drop_index([('a', DESCENDING)])),
             ('create', lambda: db.create_collection('new')),
             ('rename', lambda: coll.rename('new')),
             ('drop', lambda: db.new.drop()),
         ]
         if client_context.version > (3, 4):
             ops.extend(ops_require_34)
-            # SERVER-34776: dropDatabase does not respect wtimeout in 3.6.
+            # SERVER-47194: dropDatabase does not respect wtimeout in 3.6.
             if client_context.version[:2] != (3, 6):
                 ops.append(('drop_database', lambda: client.drop_database(db)))
-            # SERVER-46668: createIndexes does not respect wtimeout in 4.4+.
-            if client_context.version <= (4, 3):
-                ops.extend([
-                    ('create_index',
-                     lambda: coll.create_index([('a', DESCENDING)])),
-                    ('create_indexes',
-                     lambda: coll.create_indexes([IndexModel('b')])),
-                    ('drop_index',
-                     lambda: coll.drop_index([('a', DESCENDING)])),
-                ])
 
         for name, f in ops:
             # Ensure insert_many and bulk_write still raise BulkWriteError.
