@@ -2933,6 +2933,9 @@ class Collection(common.BaseObject):
                 if sock_info.max_wire_version < 8:
                     raise ConfigurationError(
                         'Must be connected to MongoDB 4.2+ to use hint.')
+                if not write_concern.acknowledged:
+                    raise ConfigurationError(
+                        'hint is unsupported for unacknowledged writes.')
                 cmd['hint'] = hint
             if (sock_info.max_wire_version >= 4 and
                     not write_concern.is_server_default):
