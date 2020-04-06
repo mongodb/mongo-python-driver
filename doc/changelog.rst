@@ -1,36 +1,43 @@
 Changelog
 =========
 
-Changes in Version 3.11.0
--------------------------
+Changes in Version 3.11.0b0
+---------------------------
 
 Version 3.11 adds support for MongoDB 4.4. Highlights include:
 
-- Deprecated the ``oplog_replay`` parameter to
-  :meth:`pymongo.collection.Collection.find`. Starting in MongoDB 4.4, the
-  server optimizes queries against the oplog collection without requiring
-  the user to set this flag.
-- Added index hinting support to the
-  :meth:`pymongo.collection.Collection.replace_one`,
-  :meth:`pymongo.collection.Collection.update_one`,
-  :meth:`pymongo.collection.Collection.update_many`,
-  :meth:`pymongo.collection.Collection.find_one_and_replace`,
-  and :meth:`pymongo.collection.Collection.find_one_and_update` commands.
-- Added index hinting support to the
-  :class:`pymongo.operations.ReplaceOne`,
-  :class:`pymongo.operations.UpdateOne`,
-  and :class:`pymongo.operations.UpdateMany` bulk operations.
-- Support for :ref:`OCSP` (Online Certificate Status Protocol)
+- Support for :ref:`OCSP` (Online Certificate Status Protocol).
 - Support for `PyOpenSSL <https://pypi.org/project/pyOpenSSL/>`_ as an
   alternative TLS implementation. PyOpenSSL is required for :ref:`OCSP`
   support. It will also be installed when using the "tls" extra if the
   version of Python in use is older than 2.7.9.
 - Support for the :ref:`MONGODB-AWS` authentication mechanism.
+- Added index hinting support to the
+  :meth:`~pymongo.collection.Collection.replace_one`,
+  :meth:`~pymongo.collection.Collection.update_one`,
+  :meth:`~pymongo.collection.Collection.update_many`,
+  :meth:`~pymongo.collection.Collection.find_one_and_replace`,
+  :meth:`~pymongo.collection.Collection.find_one_and_update`,
+  :meth:`~pymongo.collection.Collection.delete_one`,
+  :meth:`~pymongo.collection.Collection.delete_many`, and
+  :meth:`~pymongo.collection.Collection.find_one_and_delete` commands.
+- Added index hinting support to the
+  :class:`~pymongo.operations.ReplaceOne`,
+  :class:`~pymongo.operations.UpdateOne`,
+  :class:`~pymongo.operations.UpdateMany`,
+  :class:`~pymongo.operations.DeleteOne`, and
+  :class:`~pymongo.operations.DeleteMany` bulk operations.
 - Added the ``background`` parameter to
   :meth:`pymongo.database.Database.validate_collection`. For a description
   of this parameter see the MongoDB documentation for the `validate command`_.
 - Added the ``allow_disk_use`` parameters to
   :meth:`pymongo.collection.Collection.find`.
+- Support for creating collections in multi-document transactions with
+  :meth:`~pymongo.database.Database.create_collection` on MongoDB 4.4+.
+- Deprecated the ``oplog_replay`` parameter to
+  :meth:`pymongo.collection.Collection.find`. Starting in MongoDB 4.4, the
+  server optimizes queries against the oplog collection without requiring
+  the user to set this flag.
 
 .. _validate command: https://docs.mongodb.com/manual/reference/command/validate/
 
