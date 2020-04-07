@@ -53,7 +53,10 @@ int buffer_free(buffer_t buffer) {
     if (buffer == NULL) {
         return 1;
     }
-    free(buffer->buffer);
+    /* Buffer will be NULL when buffer_grow fails. */
+    if (buffer->buffer != NULL) {
+        free(buffer->buffer);
+    }
     free(buffer);
     return 0;
 }
@@ -79,7 +82,6 @@ static int buffer_grow(buffer_t buffer, int min_length) {
     buffer->buffer = (char*)realloc(buffer->buffer, sizeof(char) * size);
     if (buffer->buffer == NULL) {
         free(old_buffer);
-        free(buffer);
         return 1;
     }
     buffer->size = size;
