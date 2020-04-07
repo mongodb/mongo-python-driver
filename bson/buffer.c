@@ -17,6 +17,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Include Python.h so we can set Python's error indicator. */
+#define PY_SSIZE_T_CLEAN
+#include "Python.h"
+
 #include "buffer.h"
 
 #define INITIAL_BUFFER_SIZE 256
@@ -27,12 +31,19 @@ struct buffer {
     int position;
 };
 
+/* Set Python's error indicator to MemoryError.
+ * Called after allocation failures. */
+static void set_memory_error() {
+    PyErr_NoMemory();
+}
+
 /* Allocate and return a new buffer.
- * Return NULL on allocation failure. */
+ * Return NULL and sets MemoryError on allocation failure. */
 buffer_t buffer_new(void) {
     buffer_t buffer;
     buffer = (buffer_t)malloc(sizeof(struct buffer));
     if (buffer == NULL) {
+        set_memory_error();
         return NULL;
     }
 
@@ -41,6 +52,7 @@ buffer_t buffer_new(void) {
     buffer->buffer = (char*)malloc(sizeof(char) * INITIAL_BUFFER_SIZE);
     if (buffer->buffer == NULL) {
         free(buffer);
+        set_memory_error();
         return NULL;
     }
 
@@ -62,7 +74,7 @@ int buffer_free(buffer_t buffer) {
 }
 
 /* Grow `buffer` to at least `min_length`.
- * Return non-zero on allocation failure. */
+ * Return non-zero and sets MemoryError on allocation failure. */
 static int buffer_grow(buffer_t buffer, int min_length) {
     int old_size = 0;
     int size = buffer->size;
@@ -82,6 +94,7 @@ static int buffer_grow(buffer_t buffer, int min_length) {
     buffer->buffer = (char*)realloc(buffer->buffer, sizeof(char) * size);
     if (buffer->buffer == NULL) {
         free(old_buffer);
+        set_memory_error();
         return 1;
     }
     buffer->size = size;
@@ -89,11 +102,14 @@ static int buffer_grow(buffer_t buffer, int min_length) {
 }
 
 /* Assure that `buffer` has at least `size` free bytes (and grow if needed).
- * Return non-zero on allocation failure. */
+ * Return non-zero and sets MemoryError on allocation failure.
+ * Return non-zero and sets ValueError if `size` would exceed 2GiB. */
 static int buffer_assure_space(buffer_t buffer, int size) {
     int new_size = buffer->position + size;
     /* Check for overflow. */
     if (new_size < buffer->position) {
+        PyErr_SetString(PyExc_ValueError,
+                        "Document would overflow BSON size limit");
         return 1;
     }
 
@@ -104,7 +120,8 @@ static int buffer_assure_space(buffer_t buffer, int size) {
 }
 
 /* Save `size` bytes from the current position in `buffer` (and grow if needed).
- * Return offset for writing, or -1 on allocation failure. */
+ * Return offset for writing, or -1 on failure.
+ * Sets MemoryError or ValueError on failure. */
 buffer_position buffer_save_space(buffer_t buffer, int size) {
     int position = buffer->position;
     if (buffer_assure_space(buffer, size) != 0) {
@@ -115,7 +132,8 @@ buffer_position buffer_save_space(buffer_t buffer, int size) {
 }
 
 /* Write `size` bytes from `data` to `buffer` (and grow if needed).
- * Return non-zero on allocation failure. */
+ * Return non-zero on failure.
+ * Sets MemoryError or ValueError on failure. */
 int buffer_write(buffer_t buffer, const char* data, int size) {
     if (buffer_assure_space(buffer, size) != 0) {
         return 1;

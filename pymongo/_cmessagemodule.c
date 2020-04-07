@@ -88,7 +88,6 @@ static int add_last_error(PyObject* self, buffer_t buffer,
 
     message_start = buffer_save_space(buffer, 4);
     if (message_start == -1) {
-        PyErr_NoMemory();
         return 0;
     }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
@@ -109,7 +108,6 @@ static int add_last_error(PyObject* self, buffer_t buffer,
     /* save space for length */
     document_start = buffer_save_space(buffer, 4);
     if (document_start == -1) {
-        PyErr_NoMemory();
         return 0;
     }
 
@@ -154,7 +152,6 @@ static int init_insert_buffer(buffer_t buffer, int request_id, int options,
         /* Save space for message length */
         int length_location = buffer_save_space(buffer, 4);
         if (length_location == -1) {
-            PyErr_NoMemory();
             return length_location;
         }
         if (!buffer_write_int32(buffer, (int32_t)request_id) ||
@@ -212,7 +209,6 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        PyErr_NoMemory();
         destroy_codec_options(&options);
         PyMem_Free(collection_name);
         return NULL;
@@ -346,7 +342,6 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     buffer = buffer_new();
     if (!buffer) {
         destroy_codec_options(&options);
-        PyErr_NoMemory();
         PyMem_Free(collection_name);
         return NULL;
     }
@@ -356,7 +351,6 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     if (length_location == -1) {
         destroy_codec_options(&options);
         PyMem_Free(collection_name);
-        PyErr_NoMemory();
         return NULL;
     }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
@@ -454,7 +448,6 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        PyErr_NoMemory();
         destroy_codec_options(&options);
         PyMem_Free(collection_name);
         return NULL;
@@ -465,7 +458,6 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     if (length_location == -1) {
         destroy_codec_options(&options);
         PyMem_Free(collection_name);
-        PyErr_NoMemory();
         return NULL;
     }
 
@@ -585,7 +577,6 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        PyErr_NoMemory();
         PyMem_Free(collection_name);
         return NULL;
     }
@@ -594,7 +585,6 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     length_location = buffer_save_space(buffer, 4);
     if (length_location == -1) {
         PyMem_Free(collection_name);
-        PyErr_NoMemory();
         return NULL;
     }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
@@ -665,14 +655,12 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        PyErr_NoMemory();
         goto bufferfail;
     }
 
     // save space for message length
     length_location = buffer_save_space(buffer, 4);
     if (length_location == -1) {
-        PyErr_NoMemory();
         goto bufferfail;
     }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
@@ -879,7 +867,6 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     buffer = buffer_new();
     if (!buffer) {
         destroy_codec_options(&options);
-        PyErr_NoMemory();
         PyMem_Free(collection_name);
         return NULL;
     }
@@ -944,7 +931,6 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             int message_start;
             buffer_t new_buffer = buffer_new();
             if (!new_buffer) {
-                PyErr_NoMemory();
                 goto iterfail;
             }
             message_start = init_insert_buffer(new_buffer,
@@ -1181,7 +1167,6 @@ _batched_op_msg(
     /* Save space for size */
     size_location = buffer_save_space(buffer, 4);
     if (size_location == -1) {
-        PyErr_NoMemory();
         return 0;
     }
 
@@ -1325,7 +1310,6 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
         return NULL;
     }
     if (!(buffer = buffer_new())) {
-        PyErr_NoMemory();
         destroy_codec_options(&options);
         return NULL;
     }
@@ -1381,13 +1365,11 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
         return NULL;
     }
     if (!(buffer = buffer_new())) {
-        PyErr_NoMemory();
         destroy_codec_options(&options);
         return NULL;
     }
     /* Save space for message length and request id */
     if ((buffer_save_space(buffer, 8)) == -1) {
-        PyErr_NoMemory();
         goto fail;
     }
     if (!buffer_write_bytes(buffer,
@@ -1552,7 +1534,6 @@ _batched_write_command(
     /* Save space for list document */
     lst_len_loc = buffer_save_space(buffer, 4);
     if (lst_len_loc == -1) {
-        PyErr_NoMemory();
         return 0;
     }
 
@@ -1672,7 +1653,6 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
         return NULL;
     }
     if (!(buffer = buffer_new())) {
-        PyErr_NoMemory();
         PyMem_Free(ns);
         destroy_codec_options(&options);
         return NULL;
@@ -1732,14 +1712,12 @@ _cbson_batched_write_command(PyObject* self, PyObject* args) {
         return NULL;
     }
     if (!(buffer = buffer_new())) {
-        PyErr_NoMemory();
         PyMem_Free(ns);
         destroy_codec_options(&options);
         return NULL;
     }
     /* Save space for message length and request id */
     if ((buffer_save_space(buffer, 8)) == -1) {
-        PyErr_NoMemory();
         goto fail;
     }
     if (!buffer_write_bytes(buffer,

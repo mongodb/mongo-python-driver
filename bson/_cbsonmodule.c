@@ -193,7 +193,6 @@ static long long millis_from_datetime(PyObject* datetime) {
 /* Just make this compatible w/ the old API. */
 int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
     if (buffer_write(buffer, data, size)) {
-        PyErr_NoMemory();
         return 0;
     }
     return 1;
@@ -923,7 +922,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             /* save space for length */
             length_location = buffer_save_space(buffer, 4);
             if (length_location == -1) {
-                PyErr_NoMemory();
                 Py_DECREF(scope);
                 return 0;
             }
@@ -1121,7 +1119,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         /* save space for length */
         length_location = buffer_save_space(buffer, 4);
         if (length_location == -1) {
-            PyErr_NoMemory();
             return 0;
         }
 
@@ -1140,7 +1137,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             PyObject* item_value;
 
             if (list_type_byte == -1) {
-                PyErr_NoMemory();
                 return 0;
             }
             INT2STRING(name, (int)i);
@@ -1454,7 +1450,6 @@ int write_pair(PyObject* self, buffer_t buffer, const char* name, int name_lengt
 
     type_byte = buffer_save_space(buffer, 1);
     if (type_byte == -1) {
-        PyErr_NoMemory();
         return 0;
     }
     if (check_keys && !check_key_name(name, name_length)) {
@@ -1704,7 +1699,6 @@ int write_dict(PyObject* self, buffer_t buffer,
 
     length_location = buffer_save_space(buffer, 4);
     if (length_location == -1) {
-        PyErr_NoMemory();
         return 0;
     }
 
@@ -1808,7 +1802,6 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     buffer = buffer_new();
     if (!buffer) {
         destroy_codec_options(&options);
-        PyErr_NoMemory();
         return NULL;
     }
 
