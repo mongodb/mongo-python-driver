@@ -89,10 +89,16 @@ static int buffer_grow(buffer_t buffer, int min_length) {
 /* Assure that `buffer` has at least `size` free bytes (and grow if needed).
  * Return non-zero on allocation failure. */
 static int buffer_assure_space(buffer_t buffer, int size) {
-    if (buffer->position + size <= buffer->size) {
+    int new_size = buffer->position + size;
+    /* Check for overflow. */
+    if (new_size < buffer->position) {
+        return 1;
+    }
+
+    if (new_size <= buffer->size) {
         return 0;
     }
-    return buffer_grow(buffer, buffer->position + size);
+    return buffer_grow(buffer, new_size);
 }
 
 /* Save `size` bytes from the current position in `buffer` (and grow if needed).
@@ -117,21 +123,6 @@ int buffer_write(buffer_t buffer, const char* data, int size) {
     buffer->position += size;
     return 0;
 }
-
-/* Write `size` bytes from `data` to `buffer` at position `position`.
- * Does not change the internal position of `buffer`.
- * Return non-zero if buffer isn't large enough for write. */
-int buffer_write_at_position(buffer_t buffer, buffer_position position,
-                             const char* data, int size) {
-    if (position + size > buffer->size) {
-        buffer_free(buffer);
-        return 1;
-    }
-
-    memcpy(buffer->buffer + position, data, size);
-    return 0;
-}
-
 
 int buffer_get_position(buffer_t buffer) {
     return buffer->position;

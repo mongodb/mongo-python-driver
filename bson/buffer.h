@@ -41,11 +41,6 @@ buffer_position buffer_save_space(buffer_t buffer, int size);
  * Return non-zero on allocation failure. */
 int buffer_write(buffer_t buffer, const char* data, int size);
 
-/* Write `size` bytes from `data` to `buffer` at position `position`.
- * Does not change the internal position of `buffer`.
- * Return non-zero if buffer isn't large enough for write. */
-int buffer_write_at_position(buffer_t buffer, buffer_position position, const char* data, int size);
-
 /* Getters for the internals of a buffer_t.
  * Should try to avoid using these as much as possible
  * since they break the abstraction. */
