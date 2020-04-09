@@ -190,9 +190,9 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     unsigned char continue_on_error;
     codec_options_t options;
     PyObject* last_error_args;
-    buffer_t buffer;
+    buffer_t buffer = NULL;
     int length_location, message_length;
-    PyObject* result;
+    PyObject* result = NULL;
 
     if (!PyArg_ParseTuple(args, "et#ObbObO&",
                           "utf-8",
@@ -209,9 +209,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        destroy_codec_options(&options);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
 
     length_location = init_insert_buffer(buffer,
@@ -221,10 +219,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
                                          collection_name_length,
                                          0);
     if (length_location == -1) {
-        destroy_codec_options(&options);
-        PyMem_Free(collection_name);
-        buffer_free(buffer);
-        return NULL;
+        goto fail;
     }
 
     iterator = PyObject_GetIter(docs);
@@ -234,10 +229,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
             PyErr_SetString(InvalidOperation, "input is not iterable");
             Py_DECREF(InvalidOperation);
         }
-        destroy_codec_options(&options);
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
     while ((doc = PyIter_Next(iterator)) != NULL) {
         before = buffer_get_position(buffer);
@@ -245,10 +237,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
                         &options, 1)) {
             Py_DECREF(doc);
             Py_DECREF(iterator);
-            destroy_codec_options(&options);
-            buffer_free(buffer);
-            PyMem_Free(collection_name);
-            return NULL;
+            goto fail;
         }
         Py_DECREF(doc);
         cur_size = buffer_get_position(buffer) - before;
@@ -257,10 +246,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     Py_DECREF(iterator);
 
     if (PyErr_Occurred()) {
-        destroy_codec_options(&options);
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
 
     if (!max_size) {
@@ -269,10 +255,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
             PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
             Py_DECREF(InvalidOperation);
         }
-        destroy_codec_options(&options);
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
 
     message_length = buffer_get_position(buffer) - length_location;
@@ -282,22 +265,21 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     if (safe) {
         if (!add_last_error(self, buffer, request_id, collection_name,
                             collection_name_length, &options, last_error_args)) {
-            destroy_codec_options(&options);
-            buffer_free(buffer);
-            PyMem_Free(collection_name);
-            return NULL;
+            goto fail;
         }
     }
-
-    PyMem_Free(collection_name);
 
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
+fail:
+    PyMem_Free(collection_name);
     destroy_codec_options(&options);
-    buffer_free(buffer);
+    if (buffer) {
+        buffer_free(buffer);
+    }
     return result;
 }
 
@@ -318,9 +300,9 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     codec_options_t options;
     PyObject* last_error_args;
     int flags;
-    buffer_t buffer;
+    buffer_t buffer = NULL;
     int length_location, message_length;
-    PyObject* result;
+    PyObject* result = NULL;
 
     if (!PyArg_ParseTuple(args, "et#bbOObObO&",
                           "utf-8",
@@ -341,17 +323,13 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        destroy_codec_options(&options);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
 
     // save space for message length
     length_location = buffer_save_space(buffer, 4);
     if (length_location == -1) {
-        destroy_codec_options(&options);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer,
@@ -363,28 +341,19 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
                                     collection_name,
                                     collection_name_length + 1) ||
         !buffer_write_int32(buffer, (int32_t)flags)) {
-        destroy_codec_options(&options);
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
 
     before = buffer_get_position(buffer);
     if (!write_dict(state->_cbson, buffer, spec, 0, &options, 1)) {
-        destroy_codec_options(&options);
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
     max_size = buffer_get_position(buffer) - before;
 
     before = buffer_get_position(buffer);
     if (!write_dict(state->_cbson, buffer, doc, check_keys,
                     &options, 1)) {
-        destroy_codec_options(&options);
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
     cur_size = buffer_get_position(buffer) - before;
     max_size = (cur_size > max_size) ? cur_size : max_size;
@@ -396,22 +365,21 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     if (safe) {
         if (!add_last_error(self, buffer, request_id, collection_name,
                             collection_name_length, &options, last_error_args)) {
-            destroy_codec_options(&options);
-            buffer_free(buffer);
-            PyMem_Free(collection_name);
-            return NULL;
+            goto fail;
         }
     }
-
-    PyMem_Free(collection_name);
 
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
+fail:
+    PyMem_Free(collection_name);
     destroy_codec_options(&options);
-    buffer_free(buffer);
+    if (buffer) {
+        buffer_free(buffer);
+    }
     return result;
 }
 
@@ -430,7 +398,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     PyObject* query;
     PyObject* field_selector;
     codec_options_t options;
-    buffer_t buffer;
+    buffer_t buffer = NULL;
     int length_location, message_length;
     unsigned char check_keys = 0;
     PyObject* result = NULL;
@@ -448,17 +416,13 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        destroy_codec_options(&options);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
 
     // save space for message length
     length_location = buffer_save_space(buffer, 4);
     if (length_location == -1) {
-        destroy_codec_options(&options);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
 
     /* Pop $clusterTime from dict and write it at the end, avoiding an error
@@ -547,11 +511,12 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
-
 fail:
     PyMem_Free(collection_name);
     destroy_codec_options(&options);
-    buffer_free(buffer);
+    if (buffer) {
+        buffer_free(buffer);
+    }
     Py_XDECREF(cluster_time);
     return result;
 }
@@ -563,9 +528,9 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     Py_ssize_t collection_name_length;
     int num_to_return;
     long long cursor_id;
-    buffer_t buffer;
+    buffer_t buffer = NULL;
     int length_location, message_length;
-    PyObject* result;
+    PyObject* result = NULL;
 
     if (!PyArg_ParseTuple(args, "et#iL",
                           "utf-8",
@@ -577,15 +542,13 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
 
     // save space for message length
     length_location = buffer_save_space(buffer, 4);
     if (length_location == -1) {
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer,
@@ -597,12 +560,8 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
                                     collection_name_length + 1) ||
         !buffer_write_int32(buffer, (int32_t)num_to_return) ||
         !buffer_write_int64(buffer, (int64_t)cursor_id)) {
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
+        goto fail;
     }
-
-    PyMem_Free(collection_name);
 
     message_length = buffer_get_position(buffer) - length_location;
     buffer_write_int32_at_position(
@@ -612,7 +571,11 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer));
-    buffer_free(buffer);
+fail:
+    PyMem_Free(collection_name);
+    if (buffer) {
+        buffer_free(buffer);
+    }
     return result;
 }
 
@@ -634,7 +597,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     PyObject* doc;
     unsigned char check_keys = 0;
     codec_options_t options;
-    buffer_t buffer;
+    buffer_t buffer = NULL;
     int length_location, message_length;
     int total_size = 0;
     int max_doc_size = 0;
@@ -655,46 +618,46 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
-        goto bufferfail;
+        goto fail;
     }
 
     // save space for message length
     length_location = buffer_save_space(buffer, 4);
     if (length_location == -1) {
-        goto bufferfail;
+        goto fail;
     }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00" /* responseTo */
                             "\xdd\x07\x00\x00" /* 2013 */, 8)) {
-        goto encodefail;
+        goto fail;
     }
 
     if (!buffer_write_int32(buffer, (int32_t)flags) ||
         !buffer_write_bytes(buffer, "\x00", 1) /* Payload type 0 */) {
-        goto encodefail;
+        goto fail;
     }
     total_size = write_dict(state->_cbson, buffer, command, 0,
                           &options, 1);
     if (!total_size) {
-        goto encodefail;
+        goto fail;
     }
 
     if (identifier_length) {
         int payload_one_length_location, payload_length;
         /* Payload type 1 */
         if (!buffer_write_bytes(buffer, "\x01", 1)) {
-            goto encodefail;
+            goto fail;
         }
         /* save space for payload 0 length */
         payload_one_length_location = buffer_save_space(buffer, 4);
         /* C string identifier */
         if (!buffer_write_bytes_ssize_t(buffer, identifier, identifier_length + 1)) {
-            goto encodefail;
+            goto fail;
         }
         iterator = PyObject_GetIter(docs);
         if (iterator == NULL) {
-            goto encodefail;
+            goto fail;
         }
         while ((doc = PyIter_Next(iterator)) != NULL) {
             int encoded_doc_size = write_dict(
@@ -702,7 +665,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
                       &options, 1);
             if (!encoded_doc_size) {
                 Py_CLEAR(doc);
-                goto encodefail;
+                goto fail;
             }
             if (encoded_doc_size > max_doc_size) {
                 max_doc_size = encoded_doc_size;
@@ -726,10 +689,11 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
                            (Py_ssize_t)buffer_get_position(buffer),
                            total_size,
                            max_doc_size);
-encodefail:
+fail:
     Py_XDECREF(iterator);
-    buffer_free(buffer);
-bufferfail:
+    if (buffer) {
+        buffer_free(buffer);
+    }
     PyMem_Free(identifier);
     destroy_codec_options(&options);
     return result;
