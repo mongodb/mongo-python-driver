@@ -145,7 +145,12 @@ class ChangeStream(object):
             if (self._start_at_operation_time is None and
                     self.resume_token is None and
                     sock_info.max_wire_version >= 7):
-                self._start_at_operation_time = result["operationTime"]
+                self._start_at_operation_time = result.get("operationTime")
+                # PYTHON-2181: informative error on missing operationTime.
+                if self._start_at_operation_time is None:
+                    raise OperationFailure(
+                        "Expected field 'operationTime' missing from command "
+                        "response : %r" % (result, ))
 
     def _run_aggregation_cmd(self, session, explicit_session):
         """Run the full aggregation pipeline for this ChangeStream and return
