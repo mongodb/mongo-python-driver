@@ -168,3 +168,7 @@ class IsMaster(object):
 
         """
         return self._doc.get('saslSupportedMechs', [])
+
+    @property
+    def topology_version(self):
+        return self._doc.get('topologyVersion')

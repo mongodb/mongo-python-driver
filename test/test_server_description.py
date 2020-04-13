@@ -18,6 +18,8 @@ import sys
 
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
+from bson.int64 import Int64
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.server_description import ServerDescription
@@ -165,6 +167,28 @@ class TestServerDescription(unittest.TestCase):
         self.assertEqual(repr(s),
                          "<ServerDescription ('localhost', 27017)"
                          " server_type: Mongos, rtt: None>")
+
+    def test_topology_version(self):
+        topology_version = {'processId': ObjectId(), 'counter': Int64('0')}
+        s = parse_ismaster_response(
+            {'ok': 1, 'ismaster': True, 'setName': 'rs',
+             'topologyVersion': topology_version})
+
+        self.assertEqual(SERVER_TYPE.RSPrimary, s.server_type)
+        self.assertEqual(topology_version, s.topology_version)
+
+        # Resetting a server to unknown preserves topology_version.
+        s_unknown = s.to_unknown()
+        self.assertEqual(SERVER_TYPE.Unknown, s_unknown.server_type)
+        self.assertEqual(topology_version, s_unknown.topology_version)
+
+    def test_topology_version_not_present(self):
+        # No topologyVersion field.
+        s = parse_ismaster_response(
+            {'ok': 1, 'ismaster': True, 'setName': 'rs'})
+
+        self.assertEqual(SERVER_TYPE.RSPrimary, s.server_type)
+        self.assertEqual(None, s.topology_version)
 
 
 if __name__ == "__main__":

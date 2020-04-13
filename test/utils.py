@@ -48,6 +48,13 @@ from test import (client_context,
                   db_user,
                   db_pwd)
 
+if sys.version_info[0] < 3:
+    # Python 2.7, use our backport.
+    from test.barrier import Barrier
+else:
+    from threading import Barrier
+
+
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
 
@@ -889,3 +896,13 @@ def cat_files(dest, *sources):
         for src in sources:
             with open(src, 'rb') as fsrc:
                 shutil.copyfileobj(fsrc, fdst)
+
+
+@contextlib.contextmanager
+def assertion_context(msg):
+    """A context manager that adds info to an assertion failure."""
+    try:
+        yield
+    except AssertionError as exc:
+        msg = '%s (%s)' % (exc, msg)
+        py3compat.reraise(type(exc), msg, sys.exc_info()[2])

@@ -26,14 +26,20 @@ if PY3:
 else:
     import Queue
 
-from pymongo import common
-from pymongo import periodic_executor
+from pymongo import (common,
+                     helpers,
+                     periodic_executor)
 from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           _updated_topology_description_srv_polling,
                                           TopologyDescription,
                                           SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE)
-from pymongo.errors import ServerSelectionTimeoutError, ConfigurationError
+from pymongo.errors import (ConnectionFailure,
+                            ConfigurationError,
+                            NetworkTimeout,
+                            NotMasterError,
+                            OperationFailure,
+                            ServerSelectionTimeoutError)
 from pymongo.monitor import SrvMonitor
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
@@ -264,14 +270,17 @@ class Topology(object):
         Hold the lock when calling this.
         """
         td_old = self._description
-        old_server_description = td_old._server_descriptions[
-            server_description.address]
+        sd_old = td_old._server_descriptions[server_description.address]
+        if _is_stale_server_description(sd_old, server_description):
+            # This is a stale isMaster response. Ignore it.
+            return
+
         suppress_event = ((self._publish_server or self._publish_tp)
-                          and old_server_description == server_description)
+                          and sd_old == server_description)
         if self._publish_server and not suppress_event:
             self._events.put((
                 self._listeners.publish_server_description_changed,
-                (old_server_description, server_description,
+                (sd_old, server_description,
                  server_description.address, self._topology_id)))
 
         self._description = updated_topology_description(
@@ -410,25 +419,15 @@ class Topology(object):
             if server:
                 server.pool.reset()
 
-    def reset_server(self, address, error):
-        """Clear our pool for a server and mark it Unknown.
-
-        Do *not* request an immediate check.
-        """
-        with self._lock:
-            self._reset_server(address, reset_pool=True, error=error)
-
-    def reset_server_and_request_check(self, address, error):
+    def handle_getlasterror(self, address, error_msg):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
+        error = NotMasterError(error_msg, {'code': 10107, 'errmsg': error_msg})
         with self._lock:
-            self._reset_server(address, reset_pool=True, error=error)
-            self._request_check(address)
-
-    def mark_server_unknown_and_request_check(self, address, error):
-        """Mark a server Unknown, and check it soon."""
-        with self._lock:
-            self._reset_server(address, reset_pool=False, error=error)
-            self._request_check(address)
+            server = self._servers.get(address)
+            if server:
+                self._process_change(ServerDescription(address, error=error))
+                server.pool.reset()
+                server.request_check()
 
     def update_pool(self, all_credentials):
         # Remove any stale sockets and add new sockets if pool is too small.
@@ -540,28 +539,78 @@ class Topology(object):
         for server in itervalues(self._servers):
             server.open()
 
-    def _reset_server(self, address, reset_pool, error):
-        """Mark a server Unknown and optionally reset it's pool.
-
-        Hold the lock when calling this. Does *not* request an immediate check.
-        """
+    def _is_stale_error(self, address, err_ctx):
         server = self._servers.get(address)
+        if server is None:
+            # Another thread removed this server from the topology.
+            return True
 
-        # "server" is None if another thread removed it from the topology.
-        if server:
-            if reset_pool:
+        if err_ctx.sock_generation != server._pool.generation:
+            # This is an outdated error from a previous pool version.
+            return True
+
+        # topologyVersion check, ignore error when cur_tv >= error_tv:
+        cur_tv = server.description.topology_version
+        error = err_ctx.error
+        error_tv = None
+        if error and hasattr(error, 'details'):
+            if isinstance(error.details, dict):
+                error_tv = error.details.get('topologyVersion')
+
+        return _is_stale_error_topology_version(cur_tv, error_tv)
+
+    def _handle_error(self, address, err_ctx):
+        if self._is_stale_error(address, err_ctx):
+            return
+
+        server = self._servers[address]
+        error = err_ctx.error
+        exc_type = type(error)
+        if issubclass(exc_type, NetworkTimeout):
+            # The socket has been closed. Don't reset the server.
+            # Server Discovery And Monitoring Spec: "When an application
+            # operation fails because of any network error besides a socket
+            # timeout...."
+            return
+        elif issubclass(exc_type, NotMasterError):
+            # As per the SDAM spec if:
+            #   - the server sees a "not master" error, and
+            #   - the server is not shutting down, and
+            #   - the server version is >= 4.2, then
+            # we keep the existing connection pool, but mark the server type
+            # as Unknown and request an immediate check of the server.
+            # Otherwise, we clear the connection pool, mark the server as
+            # Unknown and request an immediate check of the server.
+            err_code = error.details.get('code', -1)
+            is_shutting_down = err_code in helpers._SHUTDOWN_CODES
+            # Mark server Unknown, clear the pool, and request check.
+            self._process_change(ServerDescription(address, error=error))
+            if is_shutting_down or (err_ctx.max_wire_version <= 7):
+                # Clear the pool.
+                server.reset()
+            server.request_check()
+        elif issubclass(exc_type, ConnectionFailure):
+            # "Client MUST replace the server's description with type Unknown
+            # ... MUST NOT request an immediate check of the server."
+            self._process_change(ServerDescription(address, error=error))
+            # Clear the pool.
+            server.reset()
+        elif issubclass(exc_type, OperationFailure):
+            # Do not request an immediate check since the server is likely
+            # shutting down.
+            if error.code in helpers._NOT_MASTER_CODES:
+                self._process_change(ServerDescription(address, error=error))
+                # Clear the pool.
                 server.reset()
 
-            # Mark this server Unknown.
-            self._process_change(ServerDescription(address, error=error))
+    def handle_error(self, address, err_ctx):
+        """Handle an application error.
 
-    def _request_check(self, address):
-        """Wake one monitor. Hold the lock when calling this."""
-        server = self._servers.get(address)
-
-        # "server" is None if another thread removed it from the topology.
-        if server:
-            server.request_check()
+        May reset the server to Unknown, clear the pool, and request an
+        immediate check depending on the error and the context.
+        """
+        with self._lock:
+            self._handle_error(address, err_ctx)
 
     def _request_check_all(self):
         """Wake all monitors. Hold the lock when calling this."""
@@ -692,3 +741,30 @@ class Topology(object):
         if not self._opened:
             msg = 'CLOSED '
         return '<%s %s%r>' % (self.__class__.__name__, msg, self._description)
+
+
+class _ErrorContext(object):
+    """An error with context for SDAM error handling."""
+    def __init__(self, error, max_wire_version, sock_generation):
+        self.error = error
+        self.max_wire_version = max_wire_version
+        self.sock_generation = sock_generation
+
+
+def _is_stale_error_topology_version(current_tv, error_tv):
+    """Return True if the error's topologyVersion is <= current."""
+    if current_tv is None or error_tv is None:
+        return False
+    if current_tv['processId'] != error_tv['processId']:
+        return False
+    return current_tv['counter'] >= error_tv['counter']
+
+
+def _is_stale_server_description(current_sd, new_sd):
+    """Return True if the new topologyVersion is < current."""
+    current_tv, new_tv = current_sd.topology_version, new_sd.topology_version
+    if current_tv is None or new_tv is None:
+        return False
+    if current_tv['processId'] != new_tv['processId']:
+        return False
+    return current_tv['counter'] > new_tv['counter']

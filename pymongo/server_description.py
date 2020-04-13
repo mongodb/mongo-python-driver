@@ -36,7 +36,8 @@ class ServerDescription(object):
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable',
         '_ls_timeout_minutes', '_error', '_set_version', '_election_id',
-        '_cluster_time', '_last_write_date', '_last_update_time')
+        '_cluster_time', '_last_write_date', '_last_update_time',
+        '_topology_version')
 
     def __init__(
             self,
@@ -68,6 +69,10 @@ class ServerDescription(object):
         self._me = ismaster.me
         self._last_update_time = _time()
         self._error = error
+        self._topology_version = ismaster.topology_version
+        if error:
+            if hasattr(error, 'details') and isinstance(error.details, dict):
+                self._topology_version = error.details.get('topologyVersion')
 
         if ismaster.last_write_date:
             # Convert from datetime to seconds.
@@ -206,6 +211,15 @@ class ServerDescription(object):
     def retryable_reads_supported(self):
         """Checks if this server supports retryable writes."""
         return self._max_wire_version >= 6
+
+    @property
+    def topology_version(self):
+        return self._topology_version
+
+    def to_unknown(self):
+        unknown = ServerDescription(self.address)
+        unknown._topology_version = self.topology_version
+        return unknown
 
     def __eq__(self, other):
         if isinstance(other, ServerDescription):

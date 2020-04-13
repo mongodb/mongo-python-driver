@@ -327,6 +327,9 @@ class TestSdamMonitoring(IntegrationTest):
     def test_network_error_publishes_events(self):
         self._test_app_error({'closeConnection': True}, ConnectionFailure)
 
+    # In 4.4+, NotMaster errors from failCommand don't cause SDAM state
+    # changes because topologyVersion is not incremented.
+    @client_context.require_version_max(4, 3)
     def test_not_master_error_publishes_events(self):
         self._test_app_error({'errorCode': 10107, 'closeConnection': False},
                              NotMasterError)

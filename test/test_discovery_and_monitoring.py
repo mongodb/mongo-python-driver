@@ -22,16 +22,26 @@ sys.path[0:0] = [""]
 
 from bson import json_util, Timestamp
 from pymongo import common
-from pymongo.errors import ConfigurationError
-from pymongo.topology import Topology
+from pymongo.errors import (AutoReconnect,
+                            ConfigurationError,
+                            NetworkTimeout,
+                            NotMasterError,
+                            OperationFailure)
+from pymongo.helpers import _check_command_response
+from pymongo.topology import (Topology,
+                              _ErrorContext)
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.server_description import ServerDescription, SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import parse_uri
-from test import unittest
-from test.utils import (MockPool,
-                        server_name_to_type)
+from test import unittest, IntegrationTest
+from test.utils import (assertion_context,
+                        Barrier,
+                        get_pool,
+                        server_name_to_type,
+                        rs_or_single_client,
+                        wait_until)
 
 
 # Location of JSON test specifications.
@@ -58,9 +68,7 @@ class MockMonitor(object):
 
 
 def create_mock_topology(uri, monitor_class=MockMonitor):
-    # Some tests in the spec include URIs like mongodb://A/?connect=direct,
-    # but PyMongo considers any single-seed URI with no setName to be "direct".
-    parsed_uri = parse_uri(uri.replace('connect=direct', ''))
+    parsed_uri = parse_uri(uri)
     replica_set_name = None
     if 'replicaset' in parsed_uri['options']:
         replica_set_name = parsed_uri['options']['replicaset']
@@ -68,7 +76,6 @@ def create_mock_topology(uri, monitor_class=MockMonitor):
     topology_settings = TopologySettings(
         parsed_uri['nodelist'],
         replica_set_name=replica_set_name,
-        pool_class=MockPool,
         monitor_class=monitor_class)
 
     c = Topology(topology_settings)
@@ -81,6 +88,33 @@ def got_ismaster(topology, server_address, ismaster_response):
         server_address, IsMaster(ismaster_response), 0)
 
     topology.on_change(server_description)
+
+
+def got_app_error(topology, app_error):
+    server_address = common.partition_node(app_error['address'])
+    server = topology.get_server_by_address(server_address)
+    error_type = app_error['type']
+    generation = app_error.get('generation', server.pool.generation)
+    when = app_error['when']
+    max_wire_version = app_error['maxWireVersion']
+    # XXX: We could get better test coverage by mocking the errors on the
+    # Pool/SocketInfo.
+    try:
+        if error_type == 'command':
+            _check_command_response(app_error['response'])
+        elif error_type == 'network':
+            raise AutoReconnect('mock non-timeout network error')
+        elif error_type == 'timeout':
+            raise NetworkTimeout('mock network timeout error')
+        else:
+            raise AssertionError('unknown error type: %s' % (error_type,))
+        assert False
+    except (AutoReconnect, NotMasterError, OperationFailure) as e:
+        if when == 'beforeHandshakeCompletes' and error_type == 'timeout':
+            raise unittest.SkipTest('PYTHON-2211')
+
+        topology.handle_error(
+            server_address, _ErrorContext(e, max_wire_version, generation))
 
 
 def get_type(topology, hostname):
@@ -140,6 +174,16 @@ def check_outcome(self, topology, outcome):
             expected_server.get('electionId'),
             actual_server_description.election_id)
 
+        self.assertEqual(
+            expected_server.get('topologyVersion'),
+            actual_server_description.topology_version)
+
+        expected_pool = expected_server.get('pool')
+        if expected_pool:
+            self.assertEqual(
+                expected_pool.get('generation'),
+                actual_server.pool.generation)
+
     self.assertEqual(outcome['setName'], topology.description.replica_set_name)
     self.assertEqual(outcome['logicalSessionTimeoutMinutes'],
                      topology.description.logical_session_timeout_minutes)
@@ -152,13 +196,18 @@ def create_test(scenario_def):
     def run_scenario(self):
         c = create_mock_topology(scenario_def['uri'])
 
-        for phase in scenario_def['phases']:
-            for response in phase['responses']:
-                got_ismaster(c,
-                             common.partition_node(response[0]),
-                             response[1])
+        for i, phase in enumerate(scenario_def['phases']):
+            # Including the phase description makes failures easier to debug.
+            description = phase.get('description', str(i))
+            with assertion_context('phase: %s' % (description,)):
+                for response in phase.get('responses', []):
+                    got_ismaster(
+                        c, common.partition_node(response[0]), response[1])
 
-            check_outcome(self, c, phase['outcome'])
+                for app_error in phase.get('applicationErrors', []):
+                    got_app_error(c, app_error)
+
+                check_outcome(self, c, phase['outcome'])
 
     return run_scenario
 
@@ -208,6 +257,49 @@ class TestClusterTimeComparison(unittest.TestCase):
         send_cluster_time(2, 1, False)
         send_cluster_time(1, 3, False)
         send_cluster_time(2, 3, True)
+
+
+class TestIgnoreStaleErrors(IntegrationTest):
+
+    def test_ignore_stale_connection_errors(self):
+        N_THREADS = 5
+        barrier = Barrier(N_THREADS, timeout=30)
+        client = rs_or_single_client(minPoolSize=N_THREADS)
+        self.addCleanup(client.close)
+
+        # Wait for initial discovery.
+        client.admin.command('ping')
+        pool = get_pool(client)
+        starting_generation = pool.generation
+        wait_until(lambda: len(pool.sockets) == N_THREADS, 'created sockets')
+
+        def mock_command(*args, **kwargs):
+            # Synchronize all threads to ensure they use the same generation.
+            barrier.wait()
+            raise AutoReconnect('mock SocketInfo.command error')
+
+        for sock in pool.sockets:
+            sock.command = mock_command
+
+        def insert_command(i):
+            try:
+                client.test.command('insert', 'test', documents=[{'i': i}])
+            except AutoReconnect as exc:
+                pass
+
+        threads = []
+        for i in range(N_THREADS):
+            threads.append(threading.Thread(target=insert_command, args=(i,)))
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # Expect a single pool reset for the network error
+        self.assertEqual(starting_generation+1, pool.generation)
+
+        # Server should be selectable.
+        client.admin.command('ping')
 
 
 if __name__ == "__main__":
