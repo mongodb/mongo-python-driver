@@ -247,7 +247,7 @@ although they do result in significant speed improvements.
 
 Please see the installation docs for solutions to build issues:
 
-http://api.mongodb.org/python/current/installation.html
+https://pymongo.readthedocs.io/en/stable/installation.html
 
 Here are some hints for popular operating systems:
 
@@ -269,7 +269,7 @@ PyMongo using pip. Modern versions of pip will install PyMongo
 from binary wheels available on pypi. If you must install from
 source read the documentation here:
 
-https://api.mongodb.com/python/current/installation.html#installing-from-source-on-windows
+https://pymongo.readthedocs.io/en/stable/installation.html#installing-from-source-on-windows
 
 If you are seeing this message on macOS / OSX please install PyMongo
 using pip. Modern versions of pip will install PyMongo from binary
@@ -277,7 +277,7 @@ wheels available on pypi. If wheels are not available for your version
 of macOS / OSX, or you must install from source read the documentation
 here:
 
-http://api.mongodb.org/python/current/installation.html#osx
+https://pymongo.readthedocs.io/en/stable/installation.html#osx
 ********************************************************************
 """
 

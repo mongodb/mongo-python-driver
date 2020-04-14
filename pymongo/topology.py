@@ -155,7 +155,7 @@ class Topology(object):
                 warnings.warn(
                     "MongoClient opened before fork. Create MongoClient only "
                     "after forking. See PyMongo's documentation for details: "
-                    "http://api.mongodb.org/python/current/faq.html#"
+                    "https://pymongo.readthedocs.io/en/stable/faq.html#"
                     "is-pymongo-fork-safe")
                 with self._lock:
                     # Reset the session pool to avoid duplicate sessions in
