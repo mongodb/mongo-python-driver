@@ -882,6 +882,7 @@ def _configured_socket(address, options):
     Sets socket's SSL and timeout options.
     """
     sock = _create_connection(address, options)
+    sock.settimeout(options.socket_timeout)
     ssl_context = options.ssl_context
 
     if ssl_context is not None:
@@ -918,7 +919,6 @@ def _configured_socket(address, options):
                 sock.close()
                 raise
 
-    sock.settimeout(options.socket_timeout)
     return sock
 
 
