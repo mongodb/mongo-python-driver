@@ -660,11 +660,11 @@ class TestTopologyErrors(TopologyTest):
         t = create_mock_topology(monitor_class=TestMonitor)
         server = wait_for_master(t)
         self.assertEqual(1, ismaster_count[0])
-        pool_id = server.pool.pool_id
+        generation = server.pool.generation
 
         # Pool is reset by ismaster failure.
         t.request_check_all()
-        self.assertNotEqual(pool_id, server.pool.pool_id)
+        self.assertNotEqual(generation, server.pool.generation)
 
     def test_ismaster_retry(self):
         # ismaster succeeds at first, then raises socket error, then succeeds.

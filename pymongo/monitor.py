@@ -107,7 +107,7 @@ class Monitor(MonitorBase):
     def close(self):
         super(Monitor, self).close()
 
-        # Increment the pool_id and maybe close the socket. If the executor
+        # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
         self._pool.reset()
 

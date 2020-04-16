@@ -488,9 +488,9 @@ class SocketInfo(object):
         self.compression_settings = pool.opts.compression_settings
         self.compression_context = None
 
-        # The pool's pool_id changes with each reset() so we can close sockets
-        # created before the last reset.
-        self.pool_id = pool.pool_id
+        # The pool's generation changes with each reset() so we can close
+        # sockets created before the last reset.
+        self.generation = pool.generation
         self.ready = False
 
     def ismaster(self, metadata, cluster_time):
@@ -956,7 +956,7 @@ class Pool:
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
-        self.pool_id = 0
+        self.generation = 0
         self.pid = os.getpid()
         self.address = address
         self.opts = options
@@ -985,7 +985,7 @@ class Pool:
         with self.lock:
             if self.closed:
                 return
-            self.pool_id += 1
+            self.generation += 1
             self.pid = os.getpid()
             sockets, self.sockets = self.sockets, collections.deque()
             self.active_sockets = 0
@@ -1022,10 +1022,10 @@ class Pool:
     def close(self):
         self._reset(close=True)
 
-    def remove_stale_sockets(self, reference_pool_id):
+    def remove_stale_sockets(self, reference_generation):
         """Removes stale sockets then adds new ones if pool is too small and
-        has not been reset. The `reference_pool_id` argument specifies the
-        `pool_id` at the point in time this operation was requested on the
+        has not been reset. The `reference_generation` argument specifies the
+        `generation` at the point in time this operation was requested on the
         pool.
         """
         if self.opts.max_idle_time_seconds is not None:
@@ -1050,7 +1050,7 @@ class Pool:
                 with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
-                    if self.pool_id != reference_pool_id:
+                    if self.generation != reference_generation:
                         sock_info.close_socket(ConnectionClosedReason.STALE)
                         break
                     self.sockets.appendleft(sock_info)
@@ -1205,7 +1205,7 @@ class Pool:
         else:
             if self.closed:
                 sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)
-            elif sock_info.pool_id != self.pool_id:
+            elif sock_info.generation != self.generation:
                 sock_info.close_socket(ConnectionClosedReason.STALE)
             elif not sock_info.closed:
                 sock_info.update_last_checkin_time()

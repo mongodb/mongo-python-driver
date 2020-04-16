@@ -838,13 +838,13 @@ class ClientSession(object):
 
 
 class _ServerSession(object):
-    def __init__(self, pool_id):
+    def __init__(self, generation):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
         self.session_id = {'id': Binary(uuid.uuid4().bytes, 4)}
         self.last_use = monotonic.time()
         self._transaction_id = 0
         self.dirty = False
-        self.pool_id = pool_id
+        self.generation = generation
 
     def mark_dirty(self):
         """Mark this session as dirty.
@@ -876,10 +876,10 @@ class _ServerSessionPool(collections.deque):
     """
     def __init__(self, *args, **kwargs):
         super(_ServerSessionPool, self).__init__(*args, **kwargs)
-        self.pool_id = 0
+        self.generation = 0
 
     def reset(self):
-        self.pool_id += 1
+        self.generation += 1
         self.clear()
 
     def pop_all(self):
@@ -902,7 +902,7 @@ class _ServerSessionPool(collections.deque):
             if not s.timed_out(session_timeout_minutes):
                 return s
 
-        return _ServerSession(self.pool_id)
+        return _ServerSession(self.generation)
 
     def return_server_session(self, server_session, session_timeout_minutes):
         self._clear_stale(session_timeout_minutes)
@@ -912,7 +912,8 @@ class _ServerSessionPool(collections.deque):
     def return_server_session_no_lock(self, server_session):
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
-        if server_session.pool_id == self.pool_id and not server_session.dirty:
+        if (server_session.generation == self.generation and
+                not server_session.dirty):
             self.appendleft(server_session)
 
     def _clear_stale(self, session_timeout_minutes):

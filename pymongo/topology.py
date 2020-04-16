@@ -435,10 +435,10 @@ class Topology(object):
         servers = []
         with self._lock:
             for server in self._servers.values():
-                servers.append((server, server._pool.pool_id))
+                servers.append((server, server._pool.generation))
 
-        for server, pool_id in servers:
-            server._pool.remove_stale_sockets(pool_id)
+        for server, generation in servers:
+            server._pool.remove_stale_sockets(generation)
 
     def close(self):
         """Clear pools and terminate monitors. Topology reopens on demand."""

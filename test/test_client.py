@@ -1462,7 +1462,7 @@ class TestClient(IntegrationTest):
         self.addCleanup(client.close)
         client.admin.command('ping')
         pool = get_pool(client)
-        pool_id = pool.pool_id
+        generation = pool.generation
 
         # Continuously reset the pool.
         class ResetPoolThread(threading.Thread):
@@ -1488,7 +1488,7 @@ class TestClient(IntegrationTest):
             while True:
                 for _ in range(10):
                     client._topology.update_pool()
-                if pool_id != pool.pool_id:
+                if generation != pool.generation:
                     break
         finally:
             t.stop()

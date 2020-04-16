@@ -207,7 +207,7 @@ class MockSocketInfo(object):
 
 class MockPool(object):
     def __init__(self, *args, **kwargs):
-        self.pool_id = 0
+        self.generation = 0
         self._lock = threading.Lock()
         self.opts = PoolOptions()
 
@@ -219,7 +219,7 @@ class MockPool(object):
 
     def _reset(self):
         with self._lock:
-            self.pool_id += 1
+            self.generation += 1
 
     def reset(self):
         self._reset()
@@ -230,7 +230,7 @@ class MockPool(object):
     def update_is_writable(self, is_writable):
         pass
 
-    def remove_stale_sockets(self, reference_pool_id):
+    def remove_stale_sockets(self, reference_generation):
         pass
 
 
