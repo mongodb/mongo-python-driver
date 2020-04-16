@@ -1205,22 +1205,27 @@ class Pool:
         else:
             if self.closed:
                 sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)
-            elif sock_info.generation != self.generation:
-                sock_info.close_socket(ConnectionClosedReason.STALE)
             elif not sock_info.closed:
-                sock_info.update_last_checkin_time()
-                sock_info.update_is_writable(self.is_writable)
                 with self.lock:
-                    self.sockets.appendleft(sock_info)
+                    # Hold the lock to ensure this section does not race with
+                    # Pool.reset().
+                    if sock_info.generation != self.generation:
+                        sock_info.close_socket(ConnectionClosedReason.STALE)
+                    else:
+                        sock_info.update_last_checkin_time()
+                        sock_info.update_is_writable(self.is_writable)
+                        self.sockets.appendleft(sock_info)
 
         self._socket_semaphore.release()
         with self.lock:
             self.active_sockets -= 1
 
     def _perished(self, sock_info):
-        """This side-effecty function checks if this socket has been idle for
+        """Return True and close the connection if it is "perished".
+
+        This side-effecty function checks if this socket has been idle for
         for longer than the max idle time, or if the socket has been closed by
-        some external network error.
+        some external network error, or if the socket's generation is outdated.
 
         Checking sockets lets us avoid seeing *some*
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
@@ -1242,6 +1247,10 @@ class Pool:
             if self.socket_checker.socket_closed(sock_info.sock):
                 sock_info.close_socket(ConnectionClosedReason.ERROR)
                 return True
+
+        if sock_info.generation != self.generation:
+            sock_info.close_socket(ConnectionClosedReason.STALE)
+            return True
 
         return False
 
