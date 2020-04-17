@@ -404,7 +404,13 @@ def create_test(scenario_def, test, name):
     @client_context.require_test_commands
     @client_context.require_transactions
     def run_scenario(self):
-        self.run_scenario(scenario_def, test)
+        try:
+            self.run_scenario(scenario_def, test)
+        except OperationFailure as exc:
+            if (client_context.version.at_least(4, 5) and
+                    client_context.is_mongos and exc.code == 13388):
+                self.skipTest('PYTHON-2189 Ignoring StaleConfig error: %r' % (
+                    exc.details))
 
     return run_scenario
 
