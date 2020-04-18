@@ -1347,5 +1347,91 @@ class TestGlobalListener(PyMongoTestCase):
         self.assertTrue(isinstance(started.request_id, int))
 
 
+class TestEventClasses(PyMongoTestCase):
+
+    def test_command_event_repr(self):
+        request_id, connection_id, operation_id = 1, ('localhost', 27017), 2
+        event = monitoring.CommandStartedEvent(
+            {'isMaster': 1}, 'admin', request_id, connection_id, operation_id)
+        self.assertEqual(
+            repr(event),
+            "<CommandStartedEvent ('localhost', 27017) db: 'admin', "
+            "command: 'isMaster', operation_id: 2>")
+        delta = datetime.timedelta(milliseconds=100)
+        event = monitoring.CommandSucceededEvent(
+            delta, {'ok': 1}, 'isMaster', request_id, connection_id,
+            operation_id)
+        self.assertEqual(
+            repr(event),
+            "<CommandSucceededEvent ('localhost', 27017) "
+            "command: 'isMaster', operation_id: 2, duration_micros: 100000>")
+        event = monitoring.CommandFailedEvent(
+            delta, {'ok': 0}, 'isMaster', request_id, connection_id,
+            operation_id)
+        self.assertEqual(
+            repr(event),
+            "<CommandFailedEvent ('localhost', 27017) "
+            "command: 'isMaster', operation_id: 2, duration_micros: 100000, "
+            "failure: {'ok': 0}>")
+
+    def test_server_heartbeat_event_repr(self):
+        connection_id = ('localhost', 27017)
+        event = monitoring.ServerHeartbeatStartedEvent(connection_id)
+        self.assertEqual(
+            repr(event),
+            "<ServerHeartbeatStartedEvent ('localhost', 27017)>")
+        delta = 0.1
+        event = monitoring.ServerHeartbeatSucceededEvent(
+            delta, {'ok': 1}, connection_id)
+        self.assertEqual(
+            repr(event),
+            "<ServerHeartbeatSucceededEvent ('localhost', 27017) "
+            "duration: 0.1, reply: {'ok': 1}>")
+        event = monitoring.ServerHeartbeatFailedEvent(
+            delta, 'ERROR', connection_id)
+        self.assertEqual(
+            repr(event),
+            "<ServerHeartbeatFailedEvent ('localhost', 27017) "
+            "duration: 0.1, reply: 'ERROR'>")
+
+    def test_server_event_repr(self):
+        server_address = ('localhost', 27017)
+        topology_id = ObjectId('000000000000000000000001')
+        event = monitoring.ServerOpeningEvent(server_address, topology_id)
+        self.assertEqual(
+            repr(event),
+            "<ServerOpeningEvent ('localhost', 27017) "
+            "topology_id: 000000000000000000000001>")
+        event = monitoring.ServerDescriptionChangedEvent(
+            'PREV', 'NEW', server_address, topology_id)
+        self.assertEqual(
+            repr(event),
+            "<ServerDescriptionChangedEvent ('localhost', 27017) "
+            "changed from: PREV, to: NEW>")
+        event = monitoring.ServerClosedEvent(server_address, topology_id)
+        self.assertEqual(
+            repr(event),
+            "<ServerClosedEvent ('localhost', 27017) "
+            "topology_id: 000000000000000000000001>")
+
+    def test_topology_event_repr(self):
+        topology_id = ObjectId('000000000000000000000001')
+        event = monitoring.TopologyOpenedEvent(topology_id)
+        self.assertEqual(
+            repr(event),
+            "<TopologyOpenedEvent topology_id: 000000000000000000000001>")
+        event = monitoring.TopologyDescriptionChangedEvent(
+            'PREV', 'NEW', topology_id)
+        self.assertEqual(
+            repr(event),
+            "<TopologyDescriptionChangedEvent "
+            "topology_id: 000000000000000000000001 "
+            "changed from: PREV, to: NEW>")
+        event = monitoring.TopologyClosedEvent(topology_id)
+        self.assertEqual(
+            repr(event),
+            "<TopologyClosedEvent topology_id: 000000000000000000000001>")
+
+
 if __name__ == "__main__":
     unittest.main()

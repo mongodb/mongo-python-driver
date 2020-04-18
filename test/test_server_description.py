@@ -160,6 +160,12 @@ class TestServerDescription(unittest.TestCase):
             [('a', 27017), ('b', 27018), ('c', 27017)],
             sorted(s.all_hosts))
 
+    def test_repr(self):
+        s = parse_ismaster_response({'ok': 1, 'msg': 'isdbgrid'})
+        self.assertEqual(repr(s),
+                         "<ServerDescription ('localhost', 27017)"
+                         " server_type: Mongos, rtt: None>")
+
 
 if __name__ == "__main__":
     unittest.main()

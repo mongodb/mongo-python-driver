@@ -686,3 +686,9 @@ class Topology(object):
             else:
                 return ','.join(str(server.error) for server in servers
                                 if server.error)
+
+    def __repr__(self):
+        msg = ''
+        if not self._opened:
+            msg = 'CLOSED '
+        return '<%s %s%r>' % (self.__class__.__name__, msg, self._description)

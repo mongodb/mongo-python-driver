@@ -288,6 +288,11 @@ class TopologyDescription(object):
         """
         return self.has_readable_server(ReadPreference.PRIMARY)
 
+    def __repr__(self):
+        return "<%s id: %s, topology_type: %s, servers: %r>" % (
+            self.__class__.__name__, self._topology_settings._topology_id,
+            self.topology_type_name, list(self._server_descriptions.values()))
+
 
 # If topology type is Unknown and we receive an ismaster response, what should
 # the new topology type be?

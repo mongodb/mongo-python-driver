@@ -114,12 +114,6 @@ class TopologyTest(unittest.TestCase):
         self.addCleanup(self.client_knobs.disable)
 
 
-# Use assertRaisesRegex if available, otherwise use Python 2.7's
-# deprecated assertRaisesRegexp, with a 'p'.
-if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
-    TopologyTest.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
-
-
 class TestTopologyConfiguration(TopologyTest):
     def test_timeout_configuration(self):
         pool_options = PoolOptions(connect_timeout=1, socket_timeout=2)
@@ -622,6 +616,22 @@ class TestMultiServerTopology(TopologyTest):
             'maxWriteBatchSize': 2})
 
         self.assertEqual(2, write_batch_size())
+
+    def test_topology_repr(self):
+        t = create_mock_topology(replica_set_name='rs')
+        self.addCleanup(t.close)
+        got_ismaster(t, ('a', 27017), {
+            'ok': 1,
+            'ismaster': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+        self.assertEqual(
+            repr(t.description),
+            "<TopologyDescription id: %s, "
+            "topology_type: ReplicaSetWithPrimary, servers: ["
+            "<ServerDescription ('a', 27017) server_type: RSPrimary, rtt: 0>, "
+            "<ServerDescription ('b', 27017) server_type: Unknown,"
+            " rtt: None>]>" % (t._topology_id,))
 
 
 def wait_for_master(topology):

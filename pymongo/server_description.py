@@ -228,5 +228,13 @@ class ServerDescription(object):
     def __ne__(self, other):
         return not self == other
 
+    def __repr__(self):
+        errmsg = ''
+        if self.error:
+            errmsg = ', error=%r' % (self.error,)
+        return "<%s %s server_type: %s, rtt: %s%s>" % (
+            self.__class__.__name__, self.address, self.server_type_name,
+            self.round_trip_time, errmsg)
+
     # For unittesting only. Use under no circumstances!
     _host_to_round_trip_time = {}

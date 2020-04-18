@@ -561,6 +561,11 @@ class CommandStartedEvent(_CommandEvent):
         """The name of the database this command was run against."""
         return self.__db
 
+    def __repr__(self):
+        return "<%s %s db: %r, command: %r, operation_id: %s>" % (
+            self.__class__.__name__, self.connection_id, self.database_name,
+            self.command_name, self.operation_id)
+
 
 class CommandSucceededEvent(_CommandEvent):
     """Event published when a command succeeds.
@@ -596,6 +601,11 @@ class CommandSucceededEvent(_CommandEvent):
         """The server failure document for this operation."""
         return self.__reply
 
+    def __repr__(self):
+        return "<%s %s command: %r, operation_id: %s, duration_micros: %s>" % (
+            self.__class__.__name__, self.connection_id,
+            self.command_name, self.operation_id, self.duration_micros)
+
 
 class CommandFailedEvent(_CommandEvent):
     """Event published when a command fails.
@@ -625,6 +635,13 @@ class CommandFailedEvent(_CommandEvent):
     def failure(self):
         """The server failure document for this operation."""
         return self.__failure
+
+    def __repr__(self):
+        return (
+            "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
+            "failure: %r>" % (
+                self.__class__.__name__, self.connection_id, self.command_name,
+                self.operation_id, self.duration_micros, self.failure))
 
 
 class _PoolEvent(object):
@@ -928,6 +945,10 @@ class _ServerEvent(object):
         """A unique identifier for the topology this server is a part of."""
         return self.__topology_id
 
+    def __repr__(self):
+        return "<%s %s topology_id: %s>" % (
+            self.__class__.__name__, self.server_address, self.topology_id)
+
 
 class ServerDescriptionChangedEvent(_ServerEvent):
     """Published when server description changes.
@@ -953,6 +974,11 @@ class ServerDescriptionChangedEvent(_ServerEvent):
         """The new
         :class:`~pymongo.server_description.ServerDescription`."""
         return self.__new_description
+
+    def __repr__(self):
+        return "<%s %s changed from: %s, to: %s>" % (
+            self.__class__.__name__, self.server_address,
+            self.previous_description, self.new_description)
 
 
 class ServerOpeningEvent(_ServerEvent):
@@ -986,6 +1012,10 @@ class TopologyEvent(object):
         """A unique identifier for the topology this server is a part of."""
         return self.__topology_id
 
+    def __repr__(self):
+        return "<%s topology_id: %s>" % (
+            self.__class__.__name__, self.topology_id)
+
 
 class TopologyDescriptionChangedEvent(TopologyEvent):
     """Published when the topology description changes.
@@ -1011,6 +1041,11 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
         """The new
         :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__new_description
+
+    def __repr__(self):
+        return "<%s topology_id: %s changed from: %s, to: %s>" % (
+            self.__class__.__name__, self.topology_id,
+            self.previous_description, self.new_description)
 
 
 class TopologyOpenedEvent(TopologyEvent):
@@ -1045,6 +1080,9 @@ class _ServerHeartbeatEvent(object):
         to."""
         return self.__connection_id
 
+    def __repr__(self):
+        return "<%s %s>" % (self.__class__.__name__, self.connection_id)
+
 
 class ServerHeartbeatStartedEvent(_ServerHeartbeatEvent):
     """Published when a heartbeat is started.
@@ -1078,6 +1116,11 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         """An instance of :class:`~pymongo.ismaster.IsMaster`."""
         return self.__reply
 
+    def __repr__(self):
+        return "<%s %s duration: %s, reply: %s>" % (
+            self.__class__.__name__, self.connection_id,
+            self.duration, self.reply)
+
 
 class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
     """Fired when the server heartbeat fails, either with an "ok: 0"
@@ -1102,6 +1145,11 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
     def reply(self):
         """A subclass of :exc:`Exception`."""
         return self.__reply
+
+    def __repr__(self):
+        return "<%s %s duration: %s, reply: %r>" % (
+            self.__class__.__name__, self.connection_id,
+            self.duration, self.reply)
 
 
 class _EventListeners(object):
