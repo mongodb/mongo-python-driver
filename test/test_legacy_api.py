@@ -105,6 +105,9 @@ class TestDeprecations(IntegrationTest):
         finally:
             self.db.test.drop()
 
+    def test_reindex_deprecation(self):
+        self.assertRaises(DeprecationWarning, lambda: self.db.test.reindex())
+
 
 class TestLegacy(IntegrationTest):
 

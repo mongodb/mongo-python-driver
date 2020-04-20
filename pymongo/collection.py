@@ -2178,6 +2178,15 @@ class Collection(common.BaseObject):
     def reindex(self, session=None, **kwargs):
         """Rebuilds all indexes on this collection.
 
+        **DEPRECATED** - The :meth:`~reindex` method is deprecated and will be
+        removed in PyMongo 4.0. Use :meth:`~pymongo.database.Database.command`
+        to run the ``reIndex`` command directly instead::
+
+          db.command({"reIndex": "<collection_name>"})
+
+        .. note:: Starting in MongoDB 4.6, the `reIndex` command can only be
+          run when connected to a standalone mongod.
+
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
@@ -2188,19 +2197,26 @@ class Collection(common.BaseObject):
            are built in the foreground) and will be slow for large
            collections.
 
+        .. versionchanged:: 3.11
+           Deprecated.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
            arguments.
-
-        .. versionchanged:: 3.4
-           Apply this collection's write concern automatically to this operation
-           when connected to MongoDB >= 3.4.
 
         .. versionchanged:: 3.5
            We no longer apply this collection's write concern to this operation.
            MongoDB 3.4 silently ignored the write concern. MongoDB 3.6+ returns
            an error if we include the write concern.
+
+        .. versionchanged:: 3.4
+           Apply this collection's write concern automatically to this operation
+           when connected to MongoDB >= 3.4.
         """
+        warnings.warn("The reindex method is deprecated and will be removed in "
+                      "PyMongo 4.0. Use the Database.command method to run the "
+                      "reIndex command instead.",
+                      DeprecationWarning, stacklevel=2)
         cmd = SON([("reIndex", self.__name)])
         cmd.update(kwargs)
         with self._socket_for_writes(session) as sock_info:

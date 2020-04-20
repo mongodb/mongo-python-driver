@@ -671,7 +671,9 @@ class ClientContext(object):
     @property
     def supports_reindex(self):
         """Does the connected server support reindex?"""
-        return not (self.version.at_least(4, 1, 0) and self.is_mongos)
+        return not ((self.version.at_least(4, 1, 0) and self.is_mongos) or
+                    (self.version.at_least(4, 5, 0) and (
+                            self.is_mongos or self.is_rs)))
 
     @property
     def supports_getpreverror(self):

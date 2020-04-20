@@ -38,6 +38,9 @@ Version 3.11 adds support for MongoDB 4.4. Highlights include:
   :meth:`pymongo.collection.Collection.find`. Starting in MongoDB 4.4, the
   server optimizes queries against the oplog collection without requiring
   the user to set this flag.
+- Deprecated :meth:`pymongo.collection.Collection.reindex`. Use
+  :meth:`~pymongo.database.Database.command` to run the ``reIndex`` command
+  instead.
 
 .. _validate command: https://docs.mongodb.com/manual/reference/command/validate/
 
