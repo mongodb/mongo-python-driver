@@ -289,9 +289,12 @@ class TopologyDescription(object):
         return self.has_readable_server(ReadPreference.PRIMARY)
 
     def __repr__(self):
+        # Sort the servers by address.
+        servers = sorted(self._server_descriptions.values(),
+                         key=lambda sd: sd.address)
         return "<%s id: %s, topology_type: %s, servers: %r>" % (
             self.__class__.__name__, self._topology_settings._topology_id,
-            self.topology_type_name, list(self._server_descriptions.values()))
+            self.topology_type_name, servers)
 
 
 # If topology type is Unknown and we receive an ismaster response, what should

@@ -624,13 +624,15 @@ class TestMultiServerTopology(TopologyTest):
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
-            'hosts': ['a', 'b']})
+            'hosts': ['a', 'c', 'b']})
         self.assertEqual(
             repr(t.description),
             "<TopologyDescription id: %s, "
             "topology_type: ReplicaSetWithPrimary, servers: ["
             "<ServerDescription ('a', 27017) server_type: RSPrimary, rtt: 0>, "
             "<ServerDescription ('b', 27017) server_type: Unknown,"
+            " rtt: None>, "
+            "<ServerDescription ('c', 27017) server_type: Unknown,"
             " rtt: None>]>" % (t._topology_id,))
 
 
