@@ -230,7 +230,7 @@ class MockPool(object):
     def update_is_writable(self, is_writable):
         pass
 
-    def remove_stale_sockets(self, reference_generation):
+    def remove_stale_sockets(self, *args, **kwargs):
         pass
 
 

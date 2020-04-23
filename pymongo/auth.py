@@ -562,12 +562,16 @@ def _authenticate_mongo_cr(credentials, sock_info):
 
 def _authenticate_default(credentials, sock_info):
     if sock_info.max_wire_version >= 7:
-        source = credentials.source
-        cmd = SON([
-            ('ismaster', 1),
-            ('saslSupportedMechs', source + '.' + credentials.username)])
-        mechs = sock_info.command(
-            source, cmd, publish_events=False).get('saslSupportedMechs', [])
+        if credentials in sock_info.negotiated_mechanisms:
+            mechs = sock_info.negotiated_mechanisms[credentials]
+        else:
+            source = credentials.source
+            cmd = SON([
+                ('ismaster', 1),
+                ('saslSupportedMechs', source + '.' + credentials.username)])
+            mechs = sock_info.command(
+                source, cmd, publish_events=False).get(
+                'saslSupportedMechs', [])
         if 'SCRAM-SHA-256' in mechs:
             return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-256')
         else:

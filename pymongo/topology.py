@@ -430,7 +430,7 @@ class Topology(object):
             self._reset_server(address, reset_pool=False, error=error)
             self._request_check(address)
 
-    def update_pool(self):
+    def update_pool(self, all_credentials):
         # Remove any stale sockets and add new sockets if pool is too small.
         servers = []
         with self._lock:
@@ -438,7 +438,7 @@ class Topology(object):
                 servers.append((server, server._pool.generation))
 
         for server, generation in servers:
-            server._pool.remove_stale_sockets(generation)
+            server._pool.remove_stale_sockets(generation, all_credentials)
 
     def close(self):
         """Clear pools and terminate monitors. Topology reopens on demand."""

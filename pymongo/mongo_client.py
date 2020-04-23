@@ -1751,7 +1751,7 @@ class MongoClient(common.BaseObject):
         maintain connection pool parameters."""
         self._process_kill_cursors()
         try:
-            self._topology.update_pool()
+            self._topology.update_pool(self.__all_credentials)
         except Exception:
             helpers._handle_exception()
 

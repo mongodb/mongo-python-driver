@@ -1487,7 +1487,8 @@ class TestClient(IntegrationTest):
         try:
             while True:
                 for _ in range(10):
-                    client._topology.update_pool()
+                    client._topology.update_pool(
+                        client._MongoClient__all_credentials)
                 if generation != pool.generation:
                     break
         finally:

@@ -156,3 +156,15 @@ class IsMaster(object):
     @property
     def compressors(self):
         return self._doc.get('compression')
+
+    @property
+    def sasl_supported_mechs(self):
+        """Supported authentication mechanisms for the current user.
+
+        For example::
+
+            >>> ismaster.sasl_supported_mechs
+            ["SCRAM-SHA-1", "SCRAM-SHA-256"]
+
+        """
+        return self._doc.get('saslSupportedMechs', [])
