@@ -54,9 +54,9 @@ everything you need to know to use **PyMongo**.
 Getting Help
 ------------
 If you're having trouble or have questions about PyMongo, ask your question in
-our `MongoDB Community Forums <https://community.mongodb.com/>`_.  Once you
-get an answer, it'd be great if you could work it back into this documentation
-and contribute!
+our `MongoDB Community Forums <https://developer.mongodb.com/community/forums/tags/c/drivers-odms-connectors/7/python-driver>`_.
+Once you get an answer, it'd be great if you could work it back into this
+documentation and contribute!
 
 Issues
 ------

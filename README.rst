@@ -22,10 +22,10 @@ Support / Feedback
 ==================
 
 For issues with, questions about, or feedback for PyMongo, please look into
-our `support channels <http://www.mongodb.org/about/support>`_. Please
+our `support channels <https://docs.mongodb.com/manual/support>`_. Please
 do not email any of the PyMongo developers directly with issues or
 questions - you're more likely to get an answer on the `MongoDB Community
-Forums <https://community.mongodb.com/>`_.
+Forums <https://developer.mongodb.com/community/forums/tags/c/drivers-odms-connectors/7/python-driver>`_.
 
 Bugs / Feature Requests
 =======================
