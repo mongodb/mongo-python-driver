@@ -619,11 +619,6 @@ class TestCollection(IntegrationTest):
                           partialFilterExpression={"x": {"$asdasd": 3}})
         self.assertRaises(OperationFailure, db.test.create_index, "x",
                           partialFilterExpression={"$and": 5})
-        self.assertRaises(OperationFailure, db.test.create_index, "x",
-                          partialFilterExpression={
-                              "$and": [{"$and":  [{"x": {"$lt": 2}},
-                                                  {"x": {"$gt": 0}}]},
-                                       {"x": {"$exists": True}}]})
 
         self.assertEqual("x_1", db.test.create_index(
             [('x', ASCENDING)], partialFilterExpression={"a": {"$lte": 1.5}}))
