@@ -236,8 +236,7 @@ class TestPooling(_TestPoolingBase):
             # Simulate a closed socket without telling the SocketInfo it's
             # closed.
             sock_info.sock.close()
-            self.assertTrue(
-                cx_pool.socket_checker.socket_closed(sock_info.sock))
+            self.assertTrue(sock_info.socket_closed())
 
         with cx_pool.get_socket({}) as new_sock_info:
             self.assertEqual(0, len(cx_pool.sockets))
@@ -256,25 +255,6 @@ class TestPooling(_TestPoolingBase):
         self.assertFalse(socket_checker.socket_closed(s))
         s.close()
         self.assertTrue(socket_checker.socket_closed(s))
-
-    def test_socket_closed_thread_safe(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((client_context.host, client_context.port))
-        self.addCleanup(s.close)
-        socket_checker = SocketChecker()
-
-        def check_socket():
-            for _ in range(1000):
-                self.assertFalse(socket_checker.socket_closed(s))
-
-        threads = []
-        for i in range(3):
-            thread = threading.Thread(target=check_socket)
-            thread.start()
-            threads.append(thread)
-
-        for thread in threads:
-            thread.join()
 
     def test_return_socket_after_reset(self):
         pool = self.create_pool()

@@ -16,7 +16,6 @@
 
 import errno
 import select
-import threading
 
 _HAVE_POLL = hasattr(select, "poll")
 _SelectError = getattr(select, "error", OSError)
@@ -34,10 +33,8 @@ class SocketChecker(object):
 
     def __init__(self):
         if _HAVE_POLL:
-            self._lock = threading.Lock()
             self._poller = select.poll()
         else:
-            self._lock = None
             self._poller = None
 
     def select(self, sock, read=False, write=False, timeout=0):
@@ -50,14 +47,13 @@ class SocketChecker(object):
                         mask = mask | select.POLLIN | select.POLLPRI
                     if write:
                         mask = mask | select.POLLOUT
-                    with self._lock:
-                        self._poller.register(sock, mask)
-                        try:
-                            # poll() timeout is in milliseconds. select()
-                            # timeout is in seconds.
-                            res = self._poller.poll(timeout * 1000)
-                        finally:
-                            self._poller.unregister(sock)
+                    self._poller.register(sock, mask)
+                    try:
+                        # poll() timeout is in milliseconds. select()
+                        # timeout is in seconds.
+                        res = self._poller.poll(timeout * 1000)
+                    finally:
+                        self._poller.unregister(sock)
                 else:
                     rlist = [sock] if read else []
                     wlist = [sock] if write else []

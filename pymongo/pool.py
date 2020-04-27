@@ -487,6 +487,7 @@ class SocketInfo(object):
         self.enabled_for_cmap = pool.enabled_for_cmap
         self.compression_settings = pool.opts.compression_settings
         self.compression_context = None
+        self.socket_checker = SocketChecker()
 
         # The pool's generation changes with each reset() so we can close
         # sockets created before the last reset.
@@ -752,6 +753,10 @@ class SocketInfo(object):
             self.listeners.publish_connection_closed(
                 self.address, self.id, reason)
 
+    def socket_closed(self):
+        """Return True if we know socket has been closed, False otherwise."""
+        return self.socket_checker.socket_closed(self.sock)
+
     def send_cluster_time(self, command, session, client):
         """Add cluster time for MongoDB >= 3.6."""
         if self.max_wire_version >= 6 and client:
@@ -976,7 +981,6 @@ class Pool:
 
         self._socket_semaphore = thread_util.create_semaphore(
             self.opts.max_pool_size, max_waiters)
-        self.socket_checker = SocketChecker()
         if self.enabled_for_cmap:
             self.opts.event_listeners.publish_pool_created(
                 self.address, self.opts.non_default_options)
@@ -1244,7 +1248,7 @@ class Pool:
         if (self._check_interval_seconds is not None and (
                 0 == self._check_interval_seconds or
                 idle_time_seconds > self._check_interval_seconds)):
-            if self.socket_checker.socket_closed(sock_info.sock):
+            if sock_info.socket_closed():
                 sock_info.close_socket(ConnectionClosedReason.ERROR)
                 return True
 
