@@ -1900,6 +1900,7 @@ class Collection(common.BaseObject):
         names = []
         with self._socket_for_writes(session) as sock_info:
             supports_collations = sock_info.max_wire_version >= 5
+            supports_quorum = sock_info.max_wire_version >= 9
             def gen_indexes():
                 for index in indexes:
                     if not isinstance(index, IndexModel):
@@ -1916,6 +1917,11 @@ class Collection(common.BaseObject):
             cmd = SON([('createIndexes', self.name),
                        ('indexes', list(gen_indexes()))])
             cmd.update(kwargs)
+            if 'commitQuorum' in kwargs and not supports_quorum:
+                raise ConfigurationError(
+                            "Must be connected to MongoDB 4.4+ to use the "
+                            "commitQuorum option for createIndexes")
+
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
