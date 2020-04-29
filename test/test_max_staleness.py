@@ -122,15 +122,21 @@ class TestMaxStaleness(unittest.TestCase):
         # From max-staleness-tests.rst, "Parse lastWriteDate".
         client = rs_or_single_client(heartbeatFrequencyMS=500)
         client.pymongo_test.test.insert_one({})
-        time.sleep(2)
+        # Wait for the server description to be updated.
+        time.sleep(1)
         server = client._topology.select_server(writable_server_selector)
-        last_write = server.description.last_write_date
-        self.assertTrue(last_write)
+        first = server.description.last_write_date
+        self.assertTrue(first)
+        # The first last_write_date may correspond to a internal server write,
+        # sleep so that the next write does not occur within the same second.
+        time.sleep(1)
         client.pymongo_test.test.insert_one({})
-        time.sleep(2)
+        # Wait for the server description to be updated.
+        time.sleep(1)
         server = client._topology.select_server(writable_server_selector)
-        self.assertGreater(server.description.last_write_date, last_write)
-        self.assertLess(server.description.last_write_date, last_write + 10)
+        second = server.description.last_write_date
+        self.assertGreater(second, first)
+        self.assertLess(second, first + 10)
 
     @client_context.require_version_max(3, 3)
     def test_last_write_date_absent(self):
