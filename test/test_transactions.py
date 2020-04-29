@@ -214,10 +214,15 @@ class TestTransactions(TransactionsBase):
         db = client.pymongo_test
         coll = db.test_create_collection
         self.addCleanup(coll.drop)
-        with client.start_session() as s, s.start_transaction():
-            coll2 = db.create_collection(coll.name, session=s)
+
+        # Use with_transaction to avoid StaleConfig errors on sharded clusters.
+        def create_and_insert(session):
+            coll2 = db.create_collection(coll.name, session=session)
             self.assertEqual(coll, coll2)
-            coll.insert_one({}, session=s)
+            coll.insert_one({}, session=session)
+
+        with client.start_session() as s:
+            s.with_transaction(create_and_insert)
 
         # Outside a transaction we raise CollectionInvalid on existing colls.
         with self.assertRaises(CollectionInvalid):
