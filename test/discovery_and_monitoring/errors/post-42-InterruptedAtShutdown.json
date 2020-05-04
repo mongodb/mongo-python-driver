@@ -1,5 +1,5 @@
 {
-  "description": "Pre-4.2 ShutdownInProgress error",
+  "description": "Post-4.2 InterruptedAtShutdown error",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -15,7 +15,7 @@
             ],
             "setName": "rs",
             "minWireVersion": 0,
-            "maxWireVersion": 7
+            "maxWireVersion": 8
           }
         ]
       ],
@@ -36,17 +36,17 @@
       }
     },
     {
-      "description": "Pre-4.2 ShutdownInProgress error marks server Unknown and clears the pool",
+      "description": "Post-4.2 InterruptedAtShutdown error marks server Unknown",
       "applicationErrors": [
         {
           "address": "a:27017",
           "when": "afterHandshakeCompletes",
-          "maxWireVersion": 7,
+          "maxWireVersion": 8,
           "type": "command",
           "response": {
             "ok": 0,
-            "errmsg": "ShutdownInProgress",
-            "code": 91
+            "errmsg": "InterruptedAtShutdown",
+            "code": 11600
           }
         }
       ],

@@ -1,5 +1,5 @@
 {
-  "description": "Post-4.2 NotMasterOrSecondary error",
+  "description": "Pre-4.2 NotMasterOrSecondary error",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -15,7 +15,7 @@
             ],
             "setName": "rs",
             "minWireVersion": 0,
-            "maxWireVersion": 8
+            "maxWireVersion": 7
           }
         ]
       ],
@@ -36,12 +36,12 @@
       }
     },
     {
-      "description": "Post-4.2 NotMasterOrSecondary error marks server Unknown",
+      "description": "Pre-4.2 NotMasterOrSecondary error marks server Unknown and clears the pool",
       "applicationErrors": [
         {
           "address": "a:27017",
           "when": "afterHandshakeCompletes",
-          "maxWireVersion": 8,
+          "maxWireVersion": 7,
           "type": "command",
           "response": {
             "ok": 0,
@@ -56,7 +56,7 @@
             "type": "Unknown",
             "topologyVersion": null,
             "pool": {
-              "generation": 0
+              "generation": 1
             }
           }
         },
