@@ -1050,7 +1050,7 @@ class TestTransactionExamples(IntegrationTest):
         client = MongoClient(uriString)
         wc_majority = WriteConcern("majority", wtimeout=1000)
 
-        # Prereq: Create collections. CRUD operations in transactions must be on existing collections.
+        # Prereq: Create collections.
         client.get_database(
             "mydb1", write_concern=wc_majority).foo.insert_one({'abc': 0})
         client.get_database(
