@@ -2236,8 +2236,7 @@ class Collection(common.BaseObject):
           >>> for index in db.test.list_indexes():
           ...     print(index)
           ...
-          SON([(u'v', 1), (u'key', SON([(u'_id', 1)])),
-               (u'name', u'_id_'), (u'ns', u'test.test')])
+          SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
         :Parameters:
           - `session` (optional): a
