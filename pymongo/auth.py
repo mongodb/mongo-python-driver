@@ -254,9 +254,22 @@ def _parse_scram_response(response):
     return dict(item.split(b"=", 1) for item in response.split(b","))
 
 
+def _authenticate_scram_start(credentials, mechanism):
+    username = credentials.username
+    user = username.encode("utf-8").replace(b"=", b"=3D").replace(b",", b"=2C")
+    nonce = standard_b64encode(os.urandom(32))
+    first_bare = b"n=" + user + b",r=" + nonce
+
+    cmd = SON([('saslStart', 1),
+               ('mechanism', mechanism),
+               ('payload', Binary(b"n,," + first_bare)),
+               ('autoAuthorize', 1),
+               ('options', {'skipEmptyExchange': True})])
+    return nonce, first_bare, cmd
+
+
 def _authenticate_scram(credentials, sock_info, mechanism):
     """Authenticate using SCRAM."""
-
     username = credentials.username
     if mechanism == 'SCRAM-SHA-256':
         digest = "sha256"
@@ -272,16 +285,14 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     # Make local
     _hmac = hmac.HMAC
 
-    user = username.encode("utf-8").replace(b"=", b"=3D").replace(b",", b"=2C")
-    nonce = standard_b64encode(os.urandom(32))
-    first_bare = b"n=" + user + b",r=" + nonce
-
-    cmd = SON([('saslStart', 1),
-               ('mechanism', mechanism),
-               ('payload', Binary(b"n,," + first_bare)),
-               ('autoAuthorize', 1),
-               ('options', {'skipEmptyExchange': True})])
-    res = sock_info.command(source, cmd)
+    ctx = sock_info.auth_ctx.get(credentials)
+    if ctx and ctx.speculate_succeeded():
+        nonce, first_bare = ctx.scram_data
+        res = ctx.speculative_authenticate
+    else:
+        nonce, first_bare, cmd = _authenticate_scram_start(
+            credentials, mechanism)
+        res = sock_info.command(source, cmd)
 
     server_first = res['payload']
     parsed = _parse_scram_response(server_first)
@@ -516,15 +527,17 @@ def _authenticate_cram_md5(credentials, sock_info):
 def _authenticate_x509(credentials, sock_info):
     """Authenticate using MONGODB-X509.
     """
-    query = SON([('authenticate', 1),
-                 ('mechanism', 'MONGODB-X509')])
-    if credentials.username is not None:
-        query['user'] = credentials.username
-    elif sock_info.max_wire_version < 5:
+    ctx = sock_info.auth_ctx.get(credentials)
+    if ctx and ctx.speculate_succeeded():
+        # MONGODB-X509 is done after the speculative auth step.
+        return
+
+    cmd = _X509Context(credentials).speculate_command()
+    if credentials.username is None and sock_info.max_wire_version < 5:
         raise ConfigurationError(
             "A username is required for MONGODB-X509 authentication "
             "when connected to MongoDB versions older than 3.4.")
-    sock_info.command('$external', query)
+    sock_info.command('$external', cmd)
 
 
 def _authenticate_aws(credentials, sock_info):
@@ -594,6 +607,62 @@ _AUTH_MAP = {
     'SCRAM-SHA-256': functools.partial(
         _authenticate_scram, mechanism='SCRAM-SHA-256'),
     'DEFAULT': _authenticate_default,
+}
+
+
+class _AuthContext(object):
+    def __init__(self, credentials):
+        self.credentials = credentials
+        self.speculative_authenticate = None
+
+    @staticmethod
+    def from_credentials(creds):
+        spec_cls = _SPECULATIVE_AUTH_MAP.get(creds.mechanism)
+        if spec_cls:
+            return spec_cls(creds)
+        return None
+
+    def speculate_command(self):
+        raise NotImplementedError
+
+    def parse_response(self, ismaster):
+        self.speculative_authenticate = ismaster.speculative_authenticate
+
+    def speculate_succeeded(self):
+        return bool(self.speculative_authenticate)
+
+
+class _ScramContext(_AuthContext):
+    def __init__(self, credentials, mechanism):
+        super(_ScramContext, self).__init__(credentials)
+        self.scram_data = None
+        self.mechanism = mechanism
+
+    def speculate_command(self):
+        nonce, first_bare, cmd = _authenticate_scram_start(
+            self.credentials, self.mechanism)
+        # The 'db' field is included only on the speculative command.
+        cmd['db'] = self.credentials.source
+        # Save for later use.
+        self.scram_data = (nonce, first_bare)
+        return cmd
+
+
+class _X509Context(_AuthContext):
+    def speculate_command(self):
+        cmd = SON([('authenticate', 1),
+                   ('mechanism', 'MONGODB-X509')])
+        if self.credentials.username is not None:
+            cmd['user'] = self.credentials.username
+        return cmd
+
+
+_SPECULATIVE_AUTH_MAP = {
+    'MONGODB-X509': _X509Context,
+    'SCRAM-SHA-1': functools.partial(_ScramContext, mechanism='SCRAM-SHA-1'),
+    'SCRAM-SHA-256': functools.partial(_ScramContext,
+                                       mechanism='SCRAM-SHA-256'),
+    'DEFAULT': functools.partial(_ScramContext, mechanism='SCRAM-SHA-256'),
 }
 
 

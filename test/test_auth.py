@@ -418,18 +418,20 @@ class TestSCRAM(unittest.TestCase):
         client = rs_or_single_client_noauth(
             username='sha256', password='pwd', authSource='testscram',
             event_listeners=[listener])
-        client.admin.command('isMaster')
+        client.testscram.command('dbstats')
 
-        # Assert we sent the skipEmptyExchange option.
-        first_event = listener.results['started'][0]
-        self.assertEqual(first_event.command_name, 'saslStart')
-        self.assertEqual(
-            first_event.command['options'], {'skipEmptyExchange': True})
+        if client_context.version < (4, 4, -1):
+            # Assert we sent the skipEmptyExchange option.
+            first_event = listener.results['started'][0]
+            self.assertEqual(first_event.command_name, 'saslStart')
+            self.assertEqual(
+                first_event.command['options'], {'skipEmptyExchange': True})
 
         # Assert the third exchange was skipped on servers that support it.
+        # Note that the first exchange occurs on the connection handshake.
         started = listener.started_command_names()
-        if client_context.version.at_least(4, 3, 3):
-            self.assertEqual(started, ['saslStart', 'saslContinue'])
+        if client_context.version.at_least(4, 4, -1):
+            self.assertEqual(started, ['saslContinue'])
         else:
             self.assertEqual(
                 started, ['saslStart', 'saslContinue', 'saslContinue'])
@@ -578,8 +580,13 @@ class TestSCRAM(unittest.TestCase):
             'mongodb://both:pwd@%s:%d/testscram' % (host, port),
             event_listeners=[self.listener])
         client.testscram.command('dbstats')
-        started = self.listener.results['started'][0]
-        self.assertEqual(started.command.get('mechanism'), 'SCRAM-SHA-256')
+        if client_context.version.at_least(4, 4, -1):
+            # Speculative authentication in 4.4+ sends saslStart with the
+            # handshake.
+            self.assertEqual(self.listener.results['started'], [])
+        else:
+            started = self.listener.results['started'][0]
+            self.assertEqual(started.command.get('mechanism'), 'SCRAM-SHA-256')
 
         client = rs_or_single_client_noauth(
             'mongodb://both:pwd@%s:%d/testscram?authMechanism=SCRAM-SHA-1'

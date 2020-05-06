@@ -51,7 +51,8 @@ from test import (client_context,
                   SkipTest,
                   unittest,
                   IntegrationTest)
-from test.utils import (ignore_deprecations,
+from test.utils import (EventListener,
+                        ignore_deprecations,
                         remove_all_users,
                         rs_or_single_client_noauth,
                         rs_or_single_client,
@@ -677,14 +678,6 @@ class TestDatabase(IntegrationTest):
         admin_db_auth = self.client.admin
         users_db_auth = self.client.pymongo_test
 
-        # Non-root client.
-        client = rs_or_single_client_noauth()
-        admin_db = client.admin
-        users_db = client.pymongo_test
-        other_db = client.pymongo_test1
-
-        self.assertRaises(OperationFailure, users_db.test.find_one)
-
         admin_db_auth.add_user(
             'ro-admin',
             'pass',
@@ -695,15 +688,36 @@ class TestDatabase(IntegrationTest):
             'user', 'pass', roles=["userAdmin", "readWrite"])
         self.addCleanup(remove_all_users, users_db_auth)
 
+        # Non-root client.
+        listener = EventListener()
+        client = rs_or_single_client_noauth(event_listeners=[listener])
+        admin_db = client.admin
+        users_db = client.pymongo_test
+        other_db = client.pymongo_test1
+
+        self.assertRaises(OperationFailure, users_db.test.find_one)
+        self.assertEqual(listener.started_command_names(), ['find'])
+        listener.reset()
+
         # Regular user should be able to query its own db, but
         # no other.
         users_db.authenticate('user', 'pass')
+        if client_context.version.at_least(3, 0):
+            self.assertEqual(listener.started_command_names()[0], 'saslStart')
+        else:
+            self.assertEqual(listener.started_command_names()[0], 'getnonce')
+
         self.assertEqual(0, users_db.test.count_documents({}))
         self.assertRaises(OperationFailure, other_db.test.find_one)
 
+        listener.reset()
         # Admin read-only user should be able to query any db,
         # but not write.
         admin_db.authenticate('ro-admin', 'pass')
+        if client_context.version.at_least(3, 0):
+            self.assertEqual(listener.started_command_names()[0], 'saslStart')
+        else:
+            self.assertEqual(listener.started_command_names()[0], 'getnonce')
         self.assertEqual(None, other_db.test.find_one())
         self.assertRaises(OperationFailure,
                           other_db.test.insert_one, {})
@@ -711,8 +725,23 @@ class TestDatabase(IntegrationTest):
         # Close all sockets.
         client.close()
 
+        listener.reset()
         # We should still be able to write to the regular user's db.
         self.assertTrue(users_db.test.delete_many({}))
+        names = listener.started_command_names()
+        if client_context.version.at_least(4, 4, -1):
+            # No speculation with multiple users (but we do skipEmptyExchange).
+            self.assertEqual(
+                names, ['saslStart', 'saslContinue', 'saslStart',
+                        'saslContinue', 'delete'])
+        elif client_context.version.at_least(3, 0):
+            self.assertEqual(
+                names, ['saslStart', 'saslContinue', 'saslContinue',
+                        'saslStart', 'saslContinue', 'saslContinue', 'delete'])
+        else:
+            self.assertEqual(
+                names, ['getnonce', 'authenticate',
+                        'getnonce', 'authenticate', 'delete'])
 
         # And read from other dbs...
         self.assertEqual(0, other_db.test.count_documents({}))

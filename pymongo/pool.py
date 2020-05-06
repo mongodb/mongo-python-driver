@@ -468,6 +468,15 @@ def _negotiate_creds(all_credentials):
     return None
 
 
+def _speculative_context(all_credentials):
+    """Return the _AuthContext to use for speculative auth, if any.
+    """
+    if all_credentials and len(all_credentials) == 1:
+        creds = next(itervalues(all_credentials))
+        return auth._AuthContext.from_credentials(creds)
+    return None
+
+
 class SocketInfo(object):
     """Store a socket with some metadata.
 
@@ -501,6 +510,7 @@ class SocketInfo(object):
         # Support for mechanism negotiation on the initial handshake.
         # Maps credential to saslSupportedMechs.
         self.negotiated_mechanisms = {}
+        self.auth_ctx = {}
 
         # The pool's generation changes with each reset() so we can close
         # sockets created before the last reset.
@@ -522,6 +532,9 @@ class SocketInfo(object):
         creds = _negotiate_creds(all_credentials)
         if creds:
             cmd['saslSupportedMechs'] = creds.source + '.' + creds.username
+        auth_ctx = _speculative_context(all_credentials)
+        if auth_ctx:
+            cmd['speculativeAuthenticate'] = auth_ctx.speculate_command()
 
         ismaster = IsMaster(self.command('admin', cmd, publish_events=False))
         self.is_writable = ismaster.is_writable
@@ -541,6 +554,10 @@ class SocketInfo(object):
         self.op_msg_enabled = ismaster.max_wire_version >= 6
         if creds:
             self.negotiated_mechanisms[creds] = ismaster.sasl_supported_mechs
+        if auth_ctx:
+            auth_ctx.parse_response(ismaster)
+            if auth_ctx.speculate_succeeded():
+                self.auth_ctx[auth_ctx.credentials] = auth_ctx
         return ismaster
 
     def command(self, dbname, spec, slave_ok=False,
@@ -743,6 +760,7 @@ class SocketInfo(object):
         self.authset.add(credentials)
         # negotiated_mechanisms are no longer needed.
         self.negotiated_mechanisms.pop(credentials, None)
+        self.auth_ctx.pop(credentials, None)
 
     def validate_session(self, client, session):
         """Validate this session before use with client.

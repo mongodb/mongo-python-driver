@@ -170,5 +170,10 @@ class IsMaster(object):
         return self._doc.get('saslSupportedMechs', [])
 
     @property
+    def speculative_authenticate(self):
+        """The speculativeAuthenticate field."""
+        return self._doc.get('speculativeAuthenticate')
+
+    @property
     def topology_version(self):
         return self._doc.get('topologyVersion')

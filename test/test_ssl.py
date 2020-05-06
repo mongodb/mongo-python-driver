@@ -39,9 +39,11 @@ from test import (IntegrationTest,
                   SkipTest,
                   unittest,
                   HAVE_IPADDRESS)
-from test.utils import (remove_all_users,
+from test.utils import (EventListener,
                         cat_files,
-                        connected)
+                        connected,
+                        remove_all_users)
+
 
 _HAVE_PYOPENSSL = False
 try:
@@ -582,16 +584,24 @@ class TestSSL(IntegrationTest):
 
         self.assertRaises(OperationFailure, noauth.pymongo_test.test.count)
 
+        listener = EventListener()
         auth = MongoClient(
             client_context.pair,
             authMechanism='MONGODB-X509',
             ssl=True,
             ssl_cert_reqs=ssl.CERT_NONE,
-            ssl_certfile=CLIENT_PEM)
+            ssl_certfile=CLIENT_PEM,
+            event_listeners=[listener])
 
         if client_context.version.at_least(3, 3, 12):
             # No error
             auth.pymongo_test.test.find_one()
+            names = listener.started_command_names()
+            if client_context.version.at_least(4, 4, -1):
+                # Speculative auth skips the authenticate command.
+                self.assertEqual(names, ['find'])
+            else:
+                self.assertEqual(names, ['authenticate', 'find'])
         else:
             # Should require a username
             with self.assertRaises(ConfigurationError):
