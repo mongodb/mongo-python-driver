@@ -46,6 +46,7 @@ from test.test_replica_set_client import TestReplicaSetClientBase
 from test.utils import (connected,
                         ignore_deprecations,
                         one,
+                        OvertCommandListener,
                         rs_client,
                         single_client,
                         wait_until)
@@ -566,6 +567,73 @@ class TestMongosAndReadPreference(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             Nearest(max_staleness=-2)
+
+    def test_read_preference_document_hedge(self):
+        cases = {
+            'primaryPreferred': PrimaryPreferred,
+            'secondary': Secondary,
+            'secondaryPreferred': SecondaryPreferred,
+            'nearest': Nearest,
+        }
+        for mode, cls in cases.items():
+            with self.assertRaises(TypeError):
+                cls(hedge=[])
+
+            pref = cls(hedge={})
+            self.assertEqual(pref.document, {'mode': mode})
+            out = _maybe_add_read_preference({}, pref)
+            if cls == SecondaryPreferred:
+                # SecondaryPreferred without hedge doesn't add $readPreference.
+                self.assertEqual(out, {})
+            else:
+                self.assertEqual(
+                    out,
+                    SON([("$query", {}), ("$readPreference", pref.document)]))
+
+            hedge = {'enabled': True}
+            pref = cls(hedge=hedge)
+            self.assertEqual(pref.document, {'mode': mode, 'hedge': hedge})
+            out = _maybe_add_read_preference({}, pref)
+            self.assertEqual(
+                out, SON([("$query", {}), ("$readPreference", pref.document)]))
+
+            hedge = {'enabled': False}
+            pref = cls(hedge=hedge)
+            self.assertEqual(pref.document, {'mode': mode, 'hedge': hedge})
+            out = _maybe_add_read_preference({}, pref)
+            self.assertEqual(
+                out, SON([("$query", {}), ("$readPreference", pref.document)]))
+
+            hedge = {'enabled': False, 'extra': 'option'}
+            pref = cls(hedge=hedge)
+            self.assertEqual(pref.document, {'mode': mode, 'hedge': hedge})
+            out = _maybe_add_read_preference({}, pref)
+            self.assertEqual(
+                out, SON([("$query", {}), ("$readPreference", pref.document)]))
+
+    # Require OP_MSG so that $readPreference is visible in the command event.
+    @client_context.require_version_min(3, 6)
+    def test_send_hedge(self):
+        cases = {
+            'primaryPreferred': PrimaryPreferred,
+            'secondary': Secondary,
+            'secondaryPreferred': SecondaryPreferred,
+            'nearest': Nearest,
+        }
+        listener = OvertCommandListener()
+        client = rs_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        client.admin.command('ping')
+        for mode, cls in cases.items():
+            pref = cls(hedge={'enabled': True})
+            coll = client.test.get_collection('test', read_preference=pref)
+            listener.reset()
+            coll.find_one()
+            started = listener.results['started']
+            self.assertEqual(len(started), 1, started)
+            cmd = started[0].command
+            self.assertIn('$readPreference', cmd)
+            self.assertEqual(cmd['$readPreference'], pref.document)
 
     def test_maybe_add_read_preference(self):
 

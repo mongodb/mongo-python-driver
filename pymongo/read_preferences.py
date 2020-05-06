@@ -81,17 +81,30 @@ def _validate_max_staleness(max_staleness):
     return max_staleness
 
 
+def _validate_hedge(hedge):
+    """Validate hedge."""
+    if hedge is None:
+        return None
+
+    if not isinstance(hedge, dict):
+        raise TypeError("hedge must be a dictionary, not %r" % (hedge,))
+
+    return hedge
+
+
 class _ServerMode(object):
     """Base class for all read preferences.
     """
 
-    __slots__ = ("__mongos_mode", "__mode", "__tag_sets", "__max_staleness")
+    __slots__ = ("__mongos_mode", "__mode", "__tag_sets", "__max_staleness",
+                 "__hedge")
 
-    def __init__(self, mode, tag_sets=None, max_staleness=-1):
+    def __init__(self, mode, tag_sets=None, max_staleness=-1, hedge=None):
         self.__mongos_mode = _MONGOS_MODES[mode]
         self.__mode = mode
         self.__tag_sets = _validate_tag_sets(tag_sets)
         self.__max_staleness = _validate_max_staleness(max_staleness)
+        self.__hedge = _validate_hedge(hedge)
 
     @property
     def name(self):
@@ -114,6 +127,8 @@ class _ServerMode(object):
             doc['tags'] = self.__tag_sets
         if self.__max_staleness != -1:
             doc['maxStalenessSeconds'] = self.__max_staleness
+        if self.__hedge not in (None, {}):
+            doc['hedge'] = self.__hedge
         return doc
 
     @property
@@ -145,6 +160,30 @@ class _ServerMode(object):
         return self.__max_staleness
 
     @property
+    def hedge(self):
+        """The read preference ``hedge`` parameter.
+
+        A dictionary that configures how the server will perform hedged reads.
+        It consists of the following keys:
+
+        - ``enabled``: Enables or disables hedged reads in sharded clusters.
+
+        Hedged reads are automatically enabled in MongoDB 4.4+ when using a
+        ``nearest`` read preference. To explicitly enable hedged reads, set
+        the ``enabled`` key  to ``true``::
+
+            >>> Nearest(hedge={'enabled': True})
+
+        To explicitly disable hedged reads, set the ``enabled`` key  to
+        ``False``::
+
+            >>> Nearest(hedge={'enabled': False})
+
+        .. versionadded:: 3.11
+        """
+        return self.__hedge
+
+    @property
     def min_wire_version(self):
         """The wire protocol version the server must support.
 
@@ -158,14 +197,15 @@ class _ServerMode(object):
         return 0 if self.__max_staleness == -1 else 5
 
     def __repr__(self):
-        return "%s(tag_sets=%r, max_staleness=%r)" % (
-            self.name, self.__tag_sets, self.__max_staleness)
+        return "%s(tag_sets=%r, max_staleness=%r, hedge=%r)" % (
+            self.name, self.__tag_sets, self.__max_staleness, self.__hedge)
 
     def __eq__(self, other):
         if isinstance(other, _ServerMode):
             return (self.mode == other.mode and
                     self.tag_sets == other.tag_sets and
-                    self.max_staleness == other.max_staleness)
+                    self.max_staleness == other.max_staleness and
+                    self.hedge == other.hedge)
         return NotImplemented
 
     def __ne__(self, other):
@@ -178,7 +218,8 @@ class _ServerMode(object):
         """
         return {'mode': self.__mode,
                 'tag_sets': self.__tag_sets,
-                'max_staleness': self.__max_staleness}
+                'max_staleness': self.__max_staleness,
+                'hedge': self.__hedge}
 
     def __setstate__(self, value):
         """Restore from pickling."""
@@ -186,6 +227,7 @@ class _ServerMode(object):
         self.__mongos_mode = _MONGOS_MODES[self.__mode]
         self.__tag_sets = _validate_tag_sets(value['tag_sets'])
         self.__max_staleness = _validate_max_staleness(value['max_staleness'])
+        self.__hedge = _validate_hedge(value['hedge'])
 
 
 class Primary(_ServerMode):
@@ -234,14 +276,17 @@ class PrimaryPreferred(_ServerMode):
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
+      - `hedge`: The :attr:`~hedge` to use if the primary is not available.
+
+    .. versionchanged:: 3.11
+       Added ``hedge`` parameter.
     """
 
     __slots__ = ()
 
-    def __init__(self, tag_sets=None, max_staleness=-1):
-        super(PrimaryPreferred, self).__init__(_PRIMARY_PREFERRED,
-                                               tag_sets,
-                                               max_staleness)
+    def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
+        super(PrimaryPreferred, self).__init__(
+            _PRIMARY_PREFERRED, tag_sets, max_staleness, hedge)
 
     def __call__(self, selection):
         """Apply this read preference to Selection."""
@@ -271,12 +316,17 @@ class Secondary(_ServerMode):
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
+      - `hedge`: The :attr:`~hedge` for this read preference.
+
+    .. versionchanged:: 3.11
+       Added ``hedge`` parameter.
     """
 
     __slots__ = ()
 
-    def __init__(self, tag_sets=None, max_staleness=-1):
-        super(Secondary, self).__init__(_SECONDARY, tag_sets, max_staleness)
+    def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
+        super(Secondary, self).__init__(
+            _SECONDARY, tag_sets, max_staleness, hedge)
 
     def __call__(self, selection):
         """Apply this read preference to Selection."""
@@ -303,14 +353,17 @@ class SecondaryPreferred(_ServerMode):
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
+      - `hedge`: The :attr:`~hedge` for this read preference.
+
+    .. versionchanged:: 3.11
+       Added ``hedge`` parameter.
     """
 
     __slots__ = ()
 
-    def __init__(self, tag_sets=None, max_staleness=-1):
-        super(SecondaryPreferred, self).__init__(_SECONDARY_PREFERRED,
-                                                 tag_sets,
-                                                 max_staleness)
+    def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
+        super(SecondaryPreferred, self).__init__(
+            _SECONDARY_PREFERRED, tag_sets, max_staleness, hedge)
 
     def __call__(self, selection):
         """Apply this read preference to Selection."""
@@ -342,12 +395,17 @@ class Nearest(_ServerMode):
         replication before it will no longer be selected for operations.
         Default -1, meaning no maximum. If it is set, it must be at least
         90 seconds.
+      - `hedge`: The :attr:`~hedge` for this read preference.
+
+    .. versionchanged:: 3.11
+       Added ``hedge`` parameter.
     """
 
     __slots__ = ()
 
-    def __init__(self, tag_sets=None, max_staleness=-1):
-        super(Nearest, self).__init__(_NEAREST, tag_sets, max_staleness)
+    def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
+        super(Nearest, self).__init__(
+            _NEAREST, tag_sets, max_staleness, hedge)
 
     def __call__(self, selection):
         """Apply this read preference to Selection."""

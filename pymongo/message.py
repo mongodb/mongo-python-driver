@@ -95,21 +95,18 @@ def _randint():
 def _maybe_add_read_preference(spec, read_preference):
     """Add $readPreference to spec when appropriate."""
     mode = read_preference.mode
-    tag_sets = read_preference.tag_sets
-    max_staleness = read_preference.max_staleness
+    document = read_preference.document
     # Only add $readPreference if it's something other than primary to avoid
     # problems with mongos versions that don't support read preferences. Also,
     # for maximum backwards compatibility, don't add $readPreference for
     # secondaryPreferred unless tags or maxStalenessSeconds are in use (setting
     # the slaveOkay bit has the same effect).
     if mode and (
-        mode != ReadPreference.SECONDARY_PREFERRED.mode
-        or tag_sets != [{}]
-        or max_staleness != -1):
-
+            mode != ReadPreference.SECONDARY_PREFERRED.mode or
+            len(document) > 1):
         if "$query" not in spec:
             spec = SON([("$query", spec)])
-        spec["$readPreference"] = read_preference.document
+        spec["$readPreference"] = document
     return spec
 
 
