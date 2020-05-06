@@ -29,7 +29,7 @@ from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.py3compat import string_type
 from bson.son import SON
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING, GEOHAYSTACK
 from pymongo.database import Database
 from pymongo.common import partition_node
 from pymongo.errors import (BulkWriteError,
@@ -43,6 +43,7 @@ from pymongo.errors import (BulkWriteError,
                             WriteConcernError,
                             WTimeoutError)
 from pymongo.message import _CursorAddress
+from pymongo.operations import IndexModel
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler,
@@ -107,6 +108,15 @@ class TestDeprecations(IntegrationTest):
 
     def test_reindex_deprecation(self):
         self.assertRaises(DeprecationWarning, lambda: self.db.test.reindex())
+
+    def test_geoHaystack_deprecation(self):
+        self.addCleanup(self.db.test.drop)
+        keys = [("pos", GEOHAYSTACK), ("type", ASCENDING)]
+        self.assertRaises(
+            DeprecationWarning, self.db.test.create_index, keys, bucketSize=1)
+        indexes = [IndexModel(keys, bucketSize=1)]
+        self.assertRaises(
+            DeprecationWarning, self.db.test.create_indexes, indexes)
 
 
 class TestLegacy(IntegrationTest):

@@ -56,6 +56,10 @@ from pymongo.write_concern import WriteConcern
 
 _UJOIN = u"%s.%s"
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
+_HAYSTACK_MSG = (
+    "geoHaystack indexes are deprecated as of MongoDB 4.4."
+    " Instead, create a 2d index and use $geoNear or $geoWithin."
+    " See https://dochub.mongodb.org/core/4.4-deprecate-geoHaystack")
 
 
 class ReturnDocument(object):
@@ -1897,10 +1901,24 @@ class Collection(common.BaseObject):
         .. _createIndexes: https://docs.mongodb.com/manual/reference/command/createIndexes/
         """
         common.validate_list('indexes', indexes)
+        return self.__create_indexes(indexes, session, **kwargs)
+
+    def __create_indexes(self, indexes, session, **kwargs):
+        """Internal createIndexes helper.
+
+        :Parameters:
+          - `indexes`: A list of :class:`~pymongo.operations.IndexModel`
+            instances.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): optional arguments to the createIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
+        """
         names = []
         with self._socket_for_writes(session) as sock_info:
             supports_collations = sock_info.max_wire_version >= 5
             supports_quorum = sock_info.max_wire_version >= 9
+
             def gen_indexes():
                 for index in indexes:
                     if not isinstance(index, IndexModel):
@@ -1912,15 +1930,20 @@ class Collection(common.BaseObject):
                         raise ConfigurationError(
                             "Must be connected to MongoDB "
                             "3.4+ to use collations.")
+                    if 'bucketSize' in document:
+                        # The bucketSize option is required by geoHaystack.
+                        warnings.warn(
+                            _HAYSTACK_MSG, DeprecationWarning, stacklevel=4)
                     names.append(document["name"])
                     yield document
+
             cmd = SON([('createIndexes', self.name),
                        ('indexes', list(gen_indexes()))])
             cmd.update(kwargs)
             if 'commitQuorum' in kwargs and not supports_quorum:
                 raise ConfigurationError(
-                            "Must be connected to MongoDB 4.4+ to use the "
-                            "commitQuorum option for createIndexes")
+                    "Must be connected to MongoDB 4.4+ to use the "
+                    "commitQuorum option for createIndexes")
 
             self._command(
                 sock_info, cmd, read_preference=ReadPreference.PRIMARY,
@@ -1928,36 +1951,6 @@ class Collection(common.BaseObject):
                 write_concern=self._write_concern_for(session),
                 session=session)
         return names
-
-    def __create_index(self, keys, index_options, session, **kwargs):
-        """Internal create index helper.
-
-        :Parameters:
-          - `keys`: a list of tuples [(key, type), (key, type), ...]
-          - `index_options`: a dict of index options.
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
-        """
-        index_doc = helpers._index_document(keys)
-        index = {"key": index_doc}
-        collation = validate_collation_or_none(
-            index_options.pop('collation', None))
-        index.update(index_options)
-
-        with self._socket_for_writes(session) as sock_info:
-            if collation is not None:
-                if sock_info.max_wire_version < 5:
-                    raise ConfigurationError(
-                        'Must be connected to MongoDB 3.4+ to use collations.')
-                else:
-                    index['collation'] = collation
-            cmd = SON([('createIndexes', self.name), ('indexes', [index])])
-            cmd.update(kwargs)
-            self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
-                write_concern=self._write_concern_for(session),
-                session=session)
 
     def create_index(self, keys, session=None, **kwargs):
         """Creates an index on this collection.
@@ -2053,13 +2046,11 @@ class Collection(common.BaseObject):
 
         .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/#wildcard-index-core
         """
-        keys = helpers._index_list(keys)
-        name = kwargs.setdefault("name", helpers._gen_index_name(keys))
         cmd_options = {}
         if "maxTimeMS" in kwargs:
             cmd_options["maxTimeMS"] = kwargs.pop("maxTimeMS")
-        self.__create_index(keys, kwargs, session, **cmd_options)
-        return name
+        index = IndexModel(keys, **kwargs)
+        return self.__create_indexes([index], session, **cmd_options)[0]
 
     def ensure_index(self, key_or_list, cache_for=300, **kwargs):
         """**DEPRECATED** - Ensures that an index exists on this collection.
@@ -2080,8 +2071,8 @@ class Collection(common.BaseObject):
         if "bucket_size" in kwargs:
             kwargs["bucketSize"] = kwargs.pop("bucket_size")
 
-        keys = helpers._index_list(key_or_list)
-        name = kwargs.setdefault("name", helpers._gen_index_name(keys))
+        index = IndexModel(key_or_list, **kwargs)
+        name = index.document["name"]
 
         # Note that there is a race condition here. One thread could
         # check if the index is cached and be preempted before creating
@@ -2091,7 +2082,7 @@ class Collection(common.BaseObject):
         # other than wasted round trips.
         if not self.__database.client._cached(self.__database.name,
                                               self.__name, name):
-            self.__create_index(keys, kwargs, session=None)
+            self.__create_indexes([index], session=None)
             self.__database.client._cache_index(self.__database.name,
                                                 self.__name, name, cache_for)
             return name
