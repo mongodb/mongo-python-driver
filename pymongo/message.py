@@ -117,7 +117,7 @@ def _convert_exception(exception):
 
 
 def _convert_write_result(operation, command, result):
-    """Convert a legacy write result to write commmand format."""
+    """Convert a legacy write result to write command format."""
 
     # Based on _merge_legacy from bulk.py
     affected = result.get("n", 0)
@@ -971,14 +971,17 @@ class _BulkWriteContext(object):
                     # Comply with APM spec.
                     reply = {'ok': 1}
                 self._succeed(request_id, reply, duration)
-        except OperationFailure as exc:
+        except Exception as exc:
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
-                self._fail(
-                    request_id,
-                    _convert_write_result(
-                        self.name, cmd, exc.details),
-                    duration)
+                if isinstance(exc, OperationFailure):
+                    failure = _convert_write_result(
+                        self.name, cmd, exc.details)
+                elif isinstance(exc, NotMasterError):
+                    failure = exc.details
+                else:
+                    failure = _convert_exception(exc)
+                self._fail(request_id, failure, duration)
             raise
         finally:
             self.start_time = datetime.datetime.now()
@@ -996,10 +999,14 @@ class _BulkWriteContext(object):
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 self._succeed(request_id, reply, duration)
-        except OperationFailure as exc:
+        except Exception as exc:
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
-                self._fail(request_id, exc.details, duration)
+                if isinstance(exc, (NotMasterError, OperationFailure)):
+                    failure = exc.details
+                else:
+                    failure = _convert_exception(exc)
+                self._fail(request_id, failure, duration)
             raise
         finally:
             self.start_time = datetime.datetime.now()

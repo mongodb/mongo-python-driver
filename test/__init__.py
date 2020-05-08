@@ -734,6 +734,17 @@ class PyMongoTestCase(unittest.TestCase):
     def assertEqualReply(self, expected, actual, msg=None):
         self.assertEqual(sanitize_reply(expected), sanitize_reply(actual), msg)
 
+    @contextmanager
+    def fail_point(self, command_args):
+        cmd_on = SON([('configureFailPoint', 'failCommand')])
+        cmd_on.update(command_args)
+        client_context.client.admin.command(cmd_on)
+        try:
+            yield
+        finally:
+            client_context.client.admin.command(
+                'configureFailPoint', cmd_on['configureFailPoint'], mode='off')
+
 
 class IntegrationTest(PyMongoTestCase):
     """Base class for TestCases that need a connection to MongoDB to pass."""
@@ -748,16 +759,6 @@ class IntegrationTest(PyMongoTestCase):
         else:
             cls.credentials = {}
 
-    @contextmanager
-    def fail_point(self, command_args):
-        cmd_on = SON([('configureFailPoint', 'failCommand')])
-        cmd_on.update(command_args)
-        self.client.admin.command(cmd_on)
-        try:
-            yield
-        finally:
-            self.client.admin.command(
-                'configureFailPoint', cmd_on['configureFailPoint'], mode='off')
 
 # Use assertRaisesRegex if available, otherwise use Python 2.7's
 # deprecated assertRaisesRegexp, with a 'p'.

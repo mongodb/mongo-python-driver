@@ -25,7 +25,9 @@ from bson.py3compat import text_type
 from bson.son import SON
 from pymongo import CursorType, monitoring, InsertOne, UpdateOne, DeleteOne
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import NotMasterError, OperationFailure
+from pymongo.errors import (AutoReconnect,
+                            NotMasterError,
+                            OperationFailure)
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
@@ -34,6 +36,7 @@ from test import (client_context,
                   sanitize_cmd,
                   unittest)
 from test.utils import (EventListener,
+                        get_pool,
                         rs_or_single_client,
                         single_client,
                         wait_until)
@@ -1171,6 +1174,78 @@ class TestCommandMonitoring(PyMongoTestCase):
                         ('deletes', [SON([('q', {'_id': 1}),
                                           ('limit', 1)])])])
         self.assertEqualCommand(expected, started[2].command)
+
+    @client_context.require_failCommand_fail_point
+    def test_bulk_write_command_network_error(self):
+        coll = self.client.pymongo_test.test
+        self.listener.results.clear()
+
+        insert_network_error = {
+            'configureFailPoint': 'failCommand',
+            'mode': {'times': 1},
+            'data': {
+                'failCommands': ['insert'],
+                'closeConnection': True,
+            },
+        }
+        with self.fail_point(insert_network_error):
+            with self.assertRaises(AutoReconnect):
+                coll.bulk_write([InsertOne({'_id': 1})])
+        failed = self.listener.results['failed']
+        self.assertEqual(1, len(failed))
+        event = failed[0]
+        self.assertEqual(event.command_name, 'insert')
+        self.assertIsInstance(event.failure, dict)
+        self.assertEqual(event.failure['errtype'], 'AutoReconnect')
+        self.assertTrue(event.failure['errmsg'])
+
+    @client_context.require_failCommand_fail_point
+    def test_bulk_write_command_error(self):
+        coll = self.client.pymongo_test.test
+        self.listener.results.clear()
+
+        insert_command_error = {
+            'configureFailPoint': 'failCommand',
+            'mode': {'times': 1},
+            'data': {
+                'failCommands': ['insert'],
+                'closeConnection': False,
+                'errorCode': 10107,  # NotMaster
+            },
+        }
+        with self.fail_point(insert_command_error):
+            with self.assertRaises(NotMasterError):
+                coll.bulk_write([InsertOne({'_id': 1})])
+        failed = self.listener.results['failed']
+        self.assertEqual(1, len(failed))
+        event = failed[0]
+        self.assertEqual(event.command_name, 'insert')
+        self.assertIsInstance(event.failure, dict)
+        self.assertEqual(event.failure['code'], 10107)
+        self.assertTrue(event.failure['errmsg'])
+
+    @client_context.require_version_max(3, 4, 99)
+    def test_bulk_write_legacy_network_error(self):
+        self.listener.results.clear()
+
+        # Make the delete operation run on a closed connection.
+        self.client.admin.command('ping')
+        pool = get_pool(self.client)
+        sock_info = pool.sockets[0]
+        sock_info.sock.close()
+
+        # Test legacy unacknowledged write network error.
+        coll = self.client.pymongo_test.get_collection(
+            'test', write_concern=WriteConcern(w=0))
+        with self.assertRaises(AutoReconnect):
+            coll.bulk_write([InsertOne({'_id': 1})], ordered=False)
+        failed = self.listener.results['failed']
+        self.assertEqual(1, len(failed))
+        event = failed[0]
+        self.assertEqual(event.command_name, 'insert')
+        self.assertIsInstance(event.failure, dict)
+        self.assertEqual(event.failure['errtype'], 'AutoReconnect')
+        self.assertTrue(event.failure['errmsg'])
 
     def test_write_errors(self):
         coll = self.client.pymongo_test.test
