@@ -48,6 +48,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             NetworkTimeout,
                             OperationFailure,
+                            ServerSelectionTimeoutError,
                             WriteConcernError)
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
@@ -1731,6 +1732,7 @@ class TestMongoClientFailover(MockClientTest):
                 mongoses=[],
                 host='b:2',  # Pass a secondary.
                 replicaSet='rs')
+            self.addCleanup(c.close)
 
             wait_until(lambda: len(c.nodes) == 3, 'connect')
             self.assertEqual(c.address, ('a', 1))
@@ -1760,7 +1762,10 @@ class TestMongoClientFailover(MockClientTest):
             mongoses=[],
             host='b:2',  # Pass a secondary.
             replicaSet='rs',
-            retryReads=False)
+            retryReads=False,
+            serverSelectionTimeoutMS=100,
+        )
+        self.addCleanup(c.close)
 
         wait_until(lambda: len(c.nodes) == 3, 'connect')
 
@@ -1769,8 +1774,13 @@ class TestMongoClientFailover(MockClientTest):
         c.kill_host('b:2')
         c.kill_host('c:3')
 
-        # MongoClient discovers it's alone.
+        # MongoClient discovers it's alone. The first attempt raises either
+        # ServerSelectionTimeoutError or AutoReconnect (from
+        # MockPool.get_socket).
         self.assertRaises(AutoReconnect, c.db.collection.find_one)
+        # The second attempt always raises ServerSelectionTimeoutError.
+        self.assertRaises(ServerSelectionTimeoutError,
+                          c.db.collection.find_one)
 
         # But it can reconnect.
         c.revive_host('a:1')
@@ -1789,7 +1799,9 @@ class TestMongoClientFailover(MockClientTest):
                 host='a:1',
                 replicaSet='rs',
                 connect=False,
-                retryReads=False)
+                retryReads=False,
+                serverSelectionTimeoutMS=100)
+            self.addCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range('a:1', 2, 6)
@@ -1799,7 +1811,9 @@ class TestMongoClientFailover(MockClientTest):
 
             c.kill_host('a:1')
 
-            # MongoClient is disconnected from the primary.
+            # MongoClient is disconnected from the primary. This raises either
+            # ServerSelectionTimeoutError or AutoReconnect (from
+            # MockPool.get_socket).
             self.assertRaises(AutoReconnect, operation_callback, c)
 
             # The primary's description is reset.
