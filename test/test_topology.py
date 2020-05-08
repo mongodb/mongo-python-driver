@@ -730,7 +730,8 @@ class TestTopologyErrors(TopologyTest):
                 if ismaster_count[0] in (1, 3):
                     return IsMaster({'ok': 1, 'maxWireVersion': 6}), 0
                 else:
-                    raise AutoReconnect('mock monitor error')
+                    raise AutoReconnect(
+                        'mock monitor error #%s' % (ismaster_count[0],))
 
         t = create_mock_topology(monitor_class=TestMonitor)
         server = wait_for_master(t)
@@ -738,10 +739,14 @@ class TestTopologyErrors(TopologyTest):
         self.assertEqual(SERVER_TYPE.Standalone,
                          server.description.server_type)
 
-        # Second ismaster call, then immediately the third.
+        # Second ismaster call.
         t.request_check_all()
-        self.assertEqual(3, ismaster_count[0])
+        # The third ismaster call (the immediate retry) happens sometime soon
+        # after the failed check triggered by request_check_all. Wait until
+        # the server becomes known again.
+        t.select_server(writable_server_selector, 0.250)
         self.assertEqual(SERVER_TYPE.Standalone, get_type(t, 'a'))
+        self.assertEqual(3, ismaster_count[0])
 
     def test_internal_monitor_error(self):
         exception = AssertionError('internal error')

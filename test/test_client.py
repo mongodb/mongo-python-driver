@@ -1767,7 +1767,7 @@ class TestMongoClientFailover(MockClientTest):
             host='b:2',  # Pass a secondary.
             replicaSet='rs',
             retryReads=False,
-            serverSelectionTimeoutMS=100,
+            serverSelectionTimeoutMS=1000,
         )
         self.addCleanup(c.close)
 
@@ -1782,9 +1782,6 @@ class TestMongoClientFailover(MockClientTest):
         # ServerSelectionTimeoutError or AutoReconnect (from
         # MockPool.get_socket).
         self.assertRaises(AutoReconnect, c.db.collection.find_one)
-        # The second attempt always raises ServerSelectionTimeoutError.
-        self.assertRaises(ServerSelectionTimeoutError,
-                          c.db.collection.find_one)
 
         # But it can reconnect.
         c.revive_host('a:1')
@@ -1804,7 +1801,7 @@ class TestMongoClientFailover(MockClientTest):
                 replicaSet='rs',
                 connect=False,
                 retryReads=False,
-                serverSelectionTimeoutMS=100)
+                serverSelectionTimeoutMS=1000)
             self.addCleanup(c.close)
 
             # Set host-specific information so we can test whether it is reset.
