@@ -599,12 +599,11 @@ class SpecRunner(IntegrationTest):
                 outcome_coll_name,
                 read_preference=ReadPreference.PRIMARY,
                 read_concern=ReadConcern('local'))
+            actual_data = list(outcome_coll.find(sort=[('_id', 1)]))
 
             # The expected data needs to be the left hand side here otherwise
             # CompareType(Binary) doesn't work.
-            self.assertEqual(
-                wrap_types(expected_c['data']), list(outcome_coll.find()))
-
+            self.assertEqual(wrap_types(expected_c['data']), actual_data)
 
 def expect_any_error(op):
     if isinstance(op, dict):
