@@ -30,7 +30,9 @@ from pymongo.mongo_client import MongoClient
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
-from test import client_context, unittest
+from test import (client_context,
+                  IntegrationTest,
+                  unittest)
 from test.utils import (EventListener,
                         disable_replication,
                         enable_replication,
@@ -43,9 +45,8 @@ _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'read_write_concern')
 
 
-class TestReadWriteConcernSpec(unittest.TestCase):
+class TestReadWriteConcernSpec(IntegrationTest):
 
-    @client_context.require_connection
     def test_omit_default_read_write_concern(self):
         listener = EventListener()
         # Client with default readConcern and writeConcern
@@ -170,6 +171,44 @@ class TestReadWriteConcernSpec(unittest.TestCase):
         disable_replication(client_context.client)
         self.assertWriteOpsRaise(WriteConcern(w=client_context.w, wtimeout=1),
                                  WTimeoutError)
+
+    @client_context.require_failCommand_fail_point
+    def test_error_includes_errInfo(self):
+        expected_wce = {
+            "code": 100,
+            "codeName": "UnsatisfiableWriteConcern",
+            "errmsg": "Not enough data-bearing nodes",
+            "errInfo":  {
+                "writeConcern": {
+                    "w": 2,
+                    "wtimeout": 0,
+                    "provenance": "clientSupplied"
+                }
+            }
+        }
+        cause_wce = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 2},
+            "data": {
+                "failCommands": ["insert"],
+                "writeConcernError": expected_wce
+            },
+        }
+        with self.fail_point(cause_wce):
+            # Write concern error on insert includes errInfo.
+            with self.assertRaises(WriteConcernError) as ctx:
+                self.db.test.insert_one({})
+            self.assertEqual(ctx.exception.details, expected_wce)
+
+            # Test bulk_write as well.
+            with self.assertRaises(BulkWriteError) as ctx:
+                self.db.test.bulk_write([InsertOne({})])
+            expected_details = {
+                'writeErrors': [],
+                'writeConcernErrors': [expected_wce],
+                'nInserted': 1, 'nUpserted': 0, 'nMatched': 0, 'nModified': 0,
+                'nRemoved': 0, 'upserted': []}
+            self.assertEqual(ctx.exception.details, expected_details)
 
 
 def normalize_write_concern(concern):
