@@ -331,11 +331,13 @@ class TestSdamMonitoring(IntegrationTest):
     # changes because topologyVersion is not incremented.
     @client_context.require_version_max(4, 3)
     def test_not_master_error_publishes_events(self):
-        self._test_app_error({'errorCode': 10107, 'closeConnection': False},
+        self._test_app_error({'errorCode': 10107, 'closeConnection': False,
+                              'errorLabels': ['RetryableWriteError']},
                              NotMasterError)
 
     def test_shutdown_error_publishes_events(self):
-        self._test_app_error({'errorCode': 91, 'closeConnection': False},
+        self._test_app_error({'errorCode': 91, 'closeConnection': False,
+                              'errorLabels': ['RetryableWriteError']},
                              NotMasterError)
 
 

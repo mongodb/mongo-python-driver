@@ -98,13 +98,11 @@ Classes
 """
 
 import collections
-import os
-import sys
 import uuid
 
 from bson.binary import Binary
 from bson.int64 import Int64
-from bson.py3compat import abc, integer_types, reraise_instance
+from bson.py3compat import abc, integer_types
 from bson.son import SON
 from bson.timestamp import Timestamp
 
@@ -114,7 +112,6 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure,
                             PyMongoError,
-                            ServerSelectionTimeoutError,
                             WTimeoutError)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
@@ -295,6 +292,7 @@ class _Transaction(object):
         self.sharded = False
         self.pinned_address = None
         self.recovery_token = None
+        self.attempt = 0
 
     def active(self):
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -304,12 +302,13 @@ class _Transaction(object):
         self.sharded = False
         self.pinned_address = None
         self.recovery_token = None
+        self.attempt = 0
 
 
 def _reraise_with_unknown_commit(exc):
     """Re-raise an exception with the UnknownTransactionCommitResult label."""
     exc._add_error_label("UnknownTransactionCommitResult")
-    reraise_instance(exc, trace=sys.exc_info()[2])
+    raise
 
 
 def _max_time_expired_error(exc):
@@ -579,7 +578,6 @@ class ClientSession(object):
         .. versionadded:: 3.7
         """
         self._check_ended()
-        retry = False
         state = self._transaction.state
         if state is _TxnState.NONE:
             raise InvalidOperation("No transaction started")
@@ -594,10 +592,9 @@ class ClientSession(object):
             # We're explicitly retrying the commit, move the state back to
             # "in progress" so that in_transaction returns true.
             self._transaction.state = _TxnState.IN_PROGRESS
-            retry = True
 
         try:
-            self._finish_transaction_with_retry("commitTransaction", retry)
+            self._finish_transaction_with_retry("commitTransaction")
         except ConnectionFailure as exc:
             # We do not know if the commit was successfully applied on the
             # server or if it satisfied the provided write concern, set the
@@ -640,44 +637,25 @@ class ClientSession(object):
                 "Cannot call abortTransaction after calling commitTransaction")
 
         try:
-            self._finish_transaction_with_retry("abortTransaction", False)
+            self._finish_transaction_with_retry("abortTransaction")
         except (OperationFailure, ConnectionFailure):
             # The transactions spec says to ignore abortTransaction errors.
             pass
         finally:
             self._transaction.state = _TxnState.ABORTED
 
-    def _finish_transaction_with_retry(self, command_name, explict_retry):
+    def _finish_transaction_with_retry(self, command_name):
         """Run commit or abort with one retry after any retryable error.
 
         :Parameters:
           - `command_name`: Either "commitTransaction" or "abortTransaction".
-          - `explict_retry`: True when this is an explict commit retry attempt,
-            ie the application called session.commit_transaction() twice.
         """
-        # This can be refactored with MongoClient._retry_with_session.
-        try:
-            return self._finish_transaction(command_name, explict_retry)
-        except ServerSelectionTimeoutError:
-            raise
-        except ConnectionFailure as exc:
-            try:
-                return self._finish_transaction(command_name, True)
-            except ServerSelectionTimeoutError:
-                # Raise the original error so the application can infer that
-                # an attempt was made.
-                raise exc
-        except OperationFailure as exc:
-            if exc.code not in _RETRYABLE_ERROR_CODES:
-                raise
-            try:
-                return self._finish_transaction(command_name, True)
-            except ServerSelectionTimeoutError:
-                # Raise the original error so the application can infer that
-                # an attempt was made.
-                raise exc
+        def func(session, sock_info, retryable):
+            return self._finish_transaction(sock_info, command_name)
+        return self._client._retry_internal(True, func, self, None)
 
-    def _finish_transaction(self, command_name, retrying):
+    def _finish_transaction(self, sock_info, command_name):
+        self._transaction.attempt += 1
         opts = self._transaction.opts
         wc = opts.write_concern
         cmd = SON([(command_name, 1)])
@@ -688,7 +666,7 @@ class ClientSession(object):
             # Transaction spec says that after the initial commit attempt,
             # subsequent commitTransaction commands should be upgraded to use
             # w:"majority" and set a default value of 10 seconds for wtimeout.
-            if retrying:
+            if self._transaction.attempt > 1:
                 wc_doc = wc.document
                 wc_doc["w"] = "majority"
                 wc_doc.setdefault("wtimeout", 10000)
@@ -697,13 +675,12 @@ class ClientSession(object):
         if self._transaction.recovery_token:
             cmd['recoveryToken'] = self._transaction.recovery_token
 
-        with self._client._socket_for_writes(self) as sock_info:
-            return self._client.admin._command(
-                sock_info,
-                cmd,
-                session=self,
-                write_concern=wc,
-                parse_write_concern_error=True)
+        return self._client.admin._command(
+            sock_info,
+            cmd,
+            session=self,
+            write_concern=wc,
+            parse_write_concern_error=True)
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""
