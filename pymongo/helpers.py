@@ -50,6 +50,7 @@ _RETRYABLE_ERROR_CODES = _NOT_MASTER_CODES | frozenset([
     6,     # HostUnreachable
     89,    # NetworkTimeout
     9001,  # SocketException
+    262,   # ExceededTimeLimit
 ])
 _UUNDER = u"_"
 

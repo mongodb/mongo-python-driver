@@ -576,6 +576,54 @@
       }
     },
     {
+      "description": "InsertOne succeeds after ExceededTimeLimit",
+      "failPoint": {
+        "configureFailPoint": "failCommand",
+        "mode": {
+          "times": 1
+        },
+        "data": {
+          "failCommands": [
+            "insert"
+          ],
+          "writeConcernError": {
+            "code": 262,
+            "closeConnection": false
+          }
+        }
+      },
+      "operation": {
+        "name": "insertOne",
+        "arguments": {
+          "document": {
+            "_id": 3,
+            "x": 33
+          }
+        }
+      },
+      "outcome": {
+        "result": {
+          "insertedId": 3
+        },
+        "collection": {
+          "data": [
+            {
+              "_id": 1,
+              "x": 11
+            },
+            {
+              "_id": 2,
+              "x": 22
+            },
+            {
+              "_id": 3,
+              "x": 33
+            }
+          ]
+        }
+      }
+    },
+    {
       "description": "InsertOne fails after Interrupted",
       "failPoint": {
         "configureFailPoint": "failCommand",

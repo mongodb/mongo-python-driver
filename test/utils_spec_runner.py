@@ -32,7 +32,9 @@ from pymongo import (client_session,
                      operations)
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
-from pymongo.errors import (OperationFailure, PyMongoError)
+from pymongo.errors import (BulkWriteError,
+                            OperationFailure,
+                            PyMongoError)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import _WriteResult, BulkWriteResult
@@ -375,8 +377,12 @@ class SpecRunner(IntegrationTest):
                     self.run_operation(sessions, collection, op.copy())
 
                 if expect_error_message(expected_result):
+                    if isinstance(context.exception, BulkWriteError):
+                        errmsg = str(context.exception.details).lower()
+                    else:
+                        errmsg = str(context.exception).lower()
                     self.assertIn(expected_result['errorContains'].lower(),
-                                  str(context.exception).lower())
+                                  errmsg)
                 if expect_error_code(expected_result):
                     self.assertEqual(expected_result['errorCodeName'],
                                      context.exception.details.get('codeName'))
