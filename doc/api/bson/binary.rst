@@ -16,6 +16,9 @@
    .. autodata:: MD5_SUBTYPE
    .. autodata:: USER_DEFINED_SUBTYPE
 
+   .. autoclass:: UuidRepresentation
+      :members:
+
    .. autoclass:: Binary(data, subtype=BINARY_SUBTYPE)
       :members:
       :show-inheritance:

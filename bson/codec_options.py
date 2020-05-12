@@ -15,14 +15,15 @@
 """Tools for specifying BSON codec options."""
 
 import datetime
+import warnings
 
 from abc import abstractmethod
 from collections import namedtuple
 
 from bson.py3compat import ABC, abc, abstractproperty, string_type
 
-from bson.binary import (ALL_UUID_REPRESENTATIONS,
-                         PYTHON_LEGACY,
+from bson.binary import (UuidRepresentation,
+                         ALL_UUID_REPRESENTATIONS,
                          UUID_REPRESENTATION_NAMES)
 
 
@@ -239,7 +240,8 @@ class CodecOptions(_options_base):
     """
 
     def __new__(cls, document_class=dict,
-                tz_aware=False, uuid_representation=PYTHON_LEGACY,
+                tz_aware=False,
+                uuid_representation=None,
                 unicode_decode_error_handler="strict",
                 tzinfo=None, type_registry=None):
         if not (issubclass(document_class, abc.MutableMapping) or
@@ -249,9 +251,17 @@ class CodecOptions(_options_base):
                             "sublass of collections.MutableMapping")
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
-        if uuid_representation not in ALL_UUID_REPRESENTATIONS:
+        if uuid_representation is None:
+            warnings.warn(
+                "Starting in PyMongo 4.0, the default uuidRepresentation "
+                "will be changed to 'unspecified'. Applications will need to "
+                "explicitly set 'uuidRepresentation=pythonLegacy' in the "
+                "connection string to preserve current behavior.",
+                DeprecationWarning, stacklevel=2)
+            uuid_representation = UuidRepresentation.PYTHON_LEGACY
+        elif uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError("uuid_representation must be a value "
-                             "from bson.binary.ALL_UUID_REPRESENTATIONS")
+                             "from bson.binary.UuidRepresentation")
         if not isinstance(unicode_decode_error_handler, (string_type, None)):
             raise ValueError("unicode_decode_error_handler must be a string "
                              "or None")
@@ -314,7 +324,8 @@ class CodecOptions(_options_base):
         )
 
 
-DEFAULT_CODEC_OPTIONS = CodecOptions()
+DEFAULT_CODEC_OPTIONS = CodecOptions(
+    uuid_representation=UuidRepresentation.PYTHON_LEGACY)
 
 
 def _parse_codec_options(options):
@@ -324,8 +335,7 @@ def _parse_codec_options(options):
             'document_class', DEFAULT_CODEC_OPTIONS.document_class),
         tz_aware=options.get(
             'tz_aware', DEFAULT_CODEC_OPTIONS.tz_aware),
-        uuid_representation=options.get(
-            'uuidrepresentation', DEFAULT_CODEC_OPTIONS.uuid_representation),
+        uuid_representation=options.get('uuidrepresentation'),
         unicode_decode_error_handler=options.get(
             'unicode_decode_error_handler',
             DEFAULT_CODEC_OPTIONS.unicode_decode_error_handler),

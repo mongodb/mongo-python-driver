@@ -76,9 +76,10 @@ import uuid
 from codecs import (utf_8_decode as _utf_8_decode,
                     utf_8_encode as _utf_8_encode)
 
-from bson.binary import (Binary, OLD_UUID_SUBTYPE,
+from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
+                         OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY,
-                         UUIDLegacy)
+                         UUIDLegacy, UUID_SUBTYPE)
 from bson.code import Code
 from bson.codec_options import (
     CodecOptions, DEFAULT_CODEC_OPTIONS, _raw_document_class)
@@ -303,26 +304,29 @@ def _get_binary(data, view, position, obj_end, opts, dummy1):
     end = position + length
     if length < 0 or end > obj_end:
         raise InvalidBSON('bad binary object length')
-    if subtype == 3:
-        # Java Legacy
+
+    # Convert UUID subtypes to native UUIDs.
+    # TODO: PYTHON-2245 Decoding should follow UUID spec in PyMongo 4.0+
+    if subtype in ALL_UUID_SUBTYPES:
         uuid_representation = opts.uuid_representation
-        if uuid_representation == JAVA_LEGACY:
-            java = data[position:end]
-            value = uuid.UUID(bytes=java[0:8][::-1] + java[8:16][::-1])
-        # C# legacy
-        elif uuid_representation == CSHARP_LEGACY:
-            value = uuid.UUID(bytes_le=data[position:end])
-        # Python
-        else:
-            value = uuid.UUID(bytes=data[position:end])
-        return value, end
-    if subtype == 4:
-        return uuid.UUID(bytes=data[position:end]), end
+        binary_value = Binary(data[position:end], subtype)
+        if uuid_representation == UuidRepresentation.UNSPECIFIED:
+            return binary_value, end
+        if subtype == UUID_SUBTYPE:
+            # Legacy behavior: use STANDARD with binary subtype 4.
+            uuid_representation = UuidRepresentation.STANDARD
+        elif uuid_representation == UuidRepresentation.STANDARD:
+            # subtype == OLD_UUID_SUBTYPE
+            # Legacy behavior: STANDARD is the same as PYTHON_LEGACY.
+            uuid_representation = UuidRepresentation.PYTHON_LEGACY
+        return binary_value.as_uuid(uuid_representation), end
+
     # Python3 special case. Decode subtype 0 to 'bytes'.
     if PY3 and subtype == 0:
         value = data[position:end]
     else:
         value = Binary(data[position:end], subtype)
+
     return value, end
 
 
@@ -633,21 +637,8 @@ def _encode_binary(name, value, dummy0, dummy1):
 def _encode_uuid(name, value, dummy, opts):
     """Encode uuid.UUID."""
     uuid_representation = opts.uuid_representation
-    # Python Legacy Common Case
-    if uuid_representation == OLD_UUID_SUBTYPE:
-        return b"\x05" + name + b'\x10\x00\x00\x00\x03' + value.bytes
-    # Java Legacy
-    elif uuid_representation == JAVA_LEGACY:
-        from_uuid = value.bytes
-        data = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
-        return b"\x05" + name + b'\x10\x00\x00\x00\x03' + data
-    # C# legacy
-    elif uuid_representation == CSHARP_LEGACY:
-        # Microsoft GUID representation.
-        return b"\x05" + name + b'\x10\x00\x00\x00\x03' + value.bytes_le
-    # New
-    return b"\x05" + name + b'\x10\x00\x00\x00\x04' + value.bytes
-
+    binval = Binary.from_uuid(value, uuid_representation=uuid_representation)
+    return _encode_binary(name, binval, dummy, opts)
 
 def _encode_objectid(name, value, dummy0, dummy1):
     """Encode bson.objectid.ObjectId."""

@@ -78,6 +78,7 @@ static struct module_state _state;
 #define STANDARD 4
 #define JAVA_LEGACY   5
 #define CSHARP_LEGACY 6
+#define UNSPECIFIED 0
 
 #define BSON_MAX_SIZE 2147483647
 /* The smallest possible BSON document, i.e. "{}" */
@@ -581,19 +582,6 @@ static int write_element_to_buffer(PyObject* self, buffer_t buffer,
                                       in_custom_call, in_fallback_call);
     Py_LeaveRecursiveCall();
     return result;
-}
-
-static void
-_fix_java(const char* in, char* out) {
-    int i, j;
-    for (i = 0, j = 7; i < j; i++, j--) {
-        out[i] = in[j];
-        out[j] = in[i];
-    }
-    for (i = 8, j = 15; i < j; i++, j--) {
-        out[i] = in[j];
-        out[j] = in[i];
-    }
 }
 
 static void
@@ -1276,14 +1264,9 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
 
     uuid_type = _get_object(state->UUID, "uuid", "UUID");
     if (uuid_type && PyObject_IsInstance(value, uuid_type)) {
-        /* Just a special case of Binary above, but
-         * simpler to do as a separate case. */
-        PyObject* bytes;
-        /* Could be bytes, bytearray, str... */
-        const char* data;
-        /* UUID is always 16 bytes */
-        int size = 16;
-        char subtype;
+        PyObject* binary_type = NULL;
+        PyObject* binary_value = NULL;
+        int result;
 
         Py_DECREF(uuid_type);
         /* PyObject_IsInstance returns -1 on error */
@@ -1291,58 +1274,25 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             return 0;
         }
 
-        if (options->uuid_rep == JAVA_LEGACY
-                || options->uuid_rep == CSHARP_LEGACY) {
-            subtype = 3;
-        }
-        else {
-            subtype = options->uuid_rep;
-        }
-
-        *(buffer_get_buffer(buffer) + type_byte) = 0x05;
-        if (!buffer_write_int32(buffer, (int32_t)size)) {
-            return 0;
-        }
-        if (!buffer_write_bytes(buffer, &subtype, 1)) {
+        binary_type = _get_object(state->Binary, "bson", "Binary");
+        if (binary_type == NULL) {
             return 0;
         }
 
-        if (options->uuid_rep == CSHARP_LEGACY) {
-           /* Legacy C# byte order */
-            bytes = PyObject_GetAttrString(value, "bytes_le");
-        }
-        else {
-            bytes = PyObject_GetAttrString(value, "bytes");
-        }
-        if (!bytes) {
+        binary_value = PyObject_CallMethod(binary_type, "from_uuid", "(Oi)", value, options->uuid_rep);
+        if (binary_value == NULL) {
+            Py_DECREF(binary_type);
             return 0;
         }
-#if PY_MAJOR_VERSION >= 3
-        data = PyBytes_AsString(bytes);
-#else
-        data = PyString_AsString(bytes);
-#endif
-        if (data == NULL) {
-            Py_DECREF(bytes);
-            return 0;
-        }
-        if (options->uuid_rep == JAVA_LEGACY) {
-            /* Store in legacy java byte order. */
-            char as_legacy_java[16];
-            _fix_java(data, as_legacy_java);
-            if (!buffer_write_bytes(buffer, as_legacy_java, size)) {
-                Py_DECREF(bytes);
-                return 0;
-            }
-        }
-        else {
-            if (!buffer_write_bytes(buffer, data, size)) {
-                Py_DECREF(bytes);
-                return 0;
-            }
-        }
-        Py_DECREF(bytes);
-        return 1;
+
+        result = _write_element_to_buffer(self, buffer,
+                                          type_byte, binary_value,
+                                          check_keys, options,
+                                          in_custom_call,
+                                          in_fallback_call);
+        Py_DECREF(binary_type);
+        Py_DECREF(binary_value);
+        return result;
     }
     Py_XDECREF(mapping_type);
     Py_XDECREF(uuid_type);
@@ -1823,7 +1773,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                            unsigned* position, unsigned char type,
                            unsigned max, const codec_options_t* options) {
     struct module_state *state = GETSTATE(self);
-
     PyObject* value = NULL;
     switch (type) {
     case 1:
@@ -2063,70 +2012,49 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (!data) {
                 goto invalid;
             }
-            /* Encode as UUID, not Binary */
+            /* Encode as UUID or Binary based on options->uuid_rep
+             * TODO: PYTHON-2245 Decoding should follow UUID spec in PyMongo 4.0  */
             if (subtype == 3 || subtype == 4) {
-                PyObject* kwargs;
-                PyObject* args = PyTuple_New(0);
+                PyObject* binary_type = NULL;
+                PyObject* binary_value = NULL;
+                char uuid_rep = options->uuid_rep;
+
                 /* UUID should always be 16 bytes */
-                if (!args || length != 16) {
-                    Py_DECREF(data);
-                    goto invalid;
-                }
-                kwargs = PyDict_New();
-                if (!kwargs) {
-                    Py_DECREF(data);
-                    Py_DECREF(args);
-                    goto invalid;
+                if (length != 16) {
+                    goto uuiderror;
                 }
 
-                /*
-                 * From this point, we hold refs to args, kwargs, and data.
-                 * If anything fails, goto uuiderror to clean them up.
-                 */
-                if (subtype == 3 && options->uuid_rep == CSHARP_LEGACY) {
-                    /* Legacy C# byte order */
-                    if ((PyDict_SetItemString(kwargs, "bytes_le", data)) == -1)
-                        goto uuiderror;
+                binary_type = _get_object(state->Binary, "bson", "Binary");
+                if (binary_type == NULL) {
+                    goto uuiderror;
                 }
-                else {
-                    if (subtype == 3 && options->uuid_rep == JAVA_LEGACY) {
-                        /* Convert from legacy java byte order */
-                        char big_endian[16];
-                        _fix_java(buffer + *position, big_endian);
-                        /* Free the previously created PyString object */
-                        Py_DECREF(data);
-#if PY_MAJOR_VERSION >= 3
-                        data = PyBytes_FromStringAndSize(big_endian, length);
-#else
-                        data = PyString_FromStringAndSize(big_endian, length);
-#endif
-                        if (data == NULL)
-                            goto uuiderror;
+
+                binary_value = PyObject_CallFunction(binary_type, "(Oi)", data, subtype);
+                if (binary_value == NULL) {
+                    goto uuiderror;
+                }
+
+                if (uuid_rep == UNSPECIFIED) {
+                    value = binary_value;
+                    Py_INCREF(value);
+                } else {
+                    if (subtype == 4) {
+                        uuid_rep = STANDARD;
+                    } else if (uuid_rep == STANDARD) {
+                        uuid_rep = PYTHON_LEGACY;
                     }
-                    if ((PyDict_SetItemString(kwargs, "bytes", data)) == -1)
-                        goto uuiderror;
-
-                }
-                if ((type_to_create = _get_object(state->UUID, "uuid", "UUID"))) {
-                    value = PyObject_Call(type_to_create, args, kwargs);
-                    Py_DECREF(type_to_create);
+                    value = PyObject_CallMethod(binary_value, "as_uuid", "(i)", uuid_rep);
                 }
 
-                Py_DECREF(args);
-                Py_DECREF(kwargs);
+            uuiderror:
+                Py_XDECREF(binary_type);
+                Py_XDECREF(binary_value);
                 Py_DECREF(data);
                 if (!value) {
                     goto invalid;
                 }
-
                 *position += length;
                 break;
-
-            uuiderror:
-                Py_DECREF(args);
-                Py_DECREF(kwargs);
-                Py_XDECREF(data);
-                goto invalid;
             }
 
 #if PY_MAJOR_VERSION >= 3

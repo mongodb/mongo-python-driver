@@ -22,14 +22,11 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import ConfigurationError
-
-from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
+from bson import json_util, EPOCH_AWARE, SON
 from bson.json_util import (DatetimeRepresentation,
                             STRICT_JSON_OPTIONS)
 from bson.binary import (ALL_UUID_REPRESENTATIONS, Binary, MD5_SUBTYPE,
-                         USER_DEFINED_SUBTYPE, JAVA_LEGACY, CSHARP_LEGACY,
-                         STANDARD)
+                         USER_DEFINED_SUBTYPE, UuidRepresentation, STANDARD)
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.int64 import Int64
@@ -271,7 +268,8 @@ class TestJsonUtil(unittest.TestCase):
             doc, json_util.loads(
                 '{"uuid": '
                 '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}'))
-        for uuid_representation in ALL_UUID_REPRESENTATIONS:
+        for uuid_representation in (set(ALL_UUID_REPRESENTATIONS) -
+                                    {UuidRepresentation.UNSPECIFIED}):
             options = json_util.JSONOptions(
                 strict_uuid=True, uuid_representation=uuid_representation)
             self.round_trip(doc, json_options=options)
@@ -280,6 +278,30 @@ class TestJsonUtil(unittest.TestCase):
                 '{"uuid": '
                 '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
                 json_options=options))
+
+    def test_uuid_uuid_rep_unspecified(self):
+        _uuid = uuid.uuid4()
+        options = json_util.JSONOptions(
+            strict_uuid=True,
+            uuid_representation=UuidRepresentation.UNSPECIFIED)
+
+        # Cannot directly encode native UUIDs with UNSPECIFIED.
+        doc = {'uuid': _uuid}
+        with self.assertRaises(ValueError):
+            json_util.dumps(doc, json_options=options)
+
+        # All UUID subtypes are decoded as Binary with UNSPECIFIED.
+        # subtype 3
+        doc = {'uuid': Binary(_uuid.bytes, subtype=3)}
+        ext_json_str = json_util.dumps(doc)
+        self.assertEqual(
+            doc, json_util.loads(ext_json_str, json_options=options))
+        # subtype 4
+        doc = {'uuid': Binary(_uuid.bytes, subtype=4)}
+        ext_json_str = json_util.dumps(doc)
+        self.assertEqual(
+            doc, json_util.loads(ext_json_str, json_options=options))
+
 
     def test_binary(self):
         if PY3:

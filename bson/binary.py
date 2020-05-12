@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from uuid import UUID
+from warnings import warn
 
 from bson.py3compat import PY3
 
@@ -55,57 +56,104 @@ current default is :data:`OLD_UUID_SUBTYPE`.
    Changed to subtype 4.
 """
 
-STANDARD = UUID_SUBTYPE
-"""The standard UUID representation.
 
-:class:`uuid.UUID` instances will automatically be encoded to
-and decoded from BSON binary, using RFC-4122 byte order with
-binary subtype :data:`UUID_SUBTYPE`.
+class UuidRepresentation:
+    UNSPECIFIED = 0
+    """An unspecified UUID representation.
+
+    When configured, :class:`uuid.UUID` instances will **not** be
+    automatically encoded to or decoded from :class:`~bson.binary.Binary`.
+    When encoding a :class:`uuid.UUID` instance, an error will be raised.
+    To encode a :class:`uuid.UUID` instance with this configuration, it must
+    be wrapped in the :class:`~bson.binary.Binary` class by the application
+    code. When decoding a BSON binary field with a UUID subtype, a
+    :class:`~bson.binary.Binary` instance will be returned instead of a
+    :class:`uuid.UUID` instance.
+
+    .. versionadded:: 3.11
+    """
+
+    STANDARD = UUID_SUBTYPE
+    """The standard UUID representation.
+
+    :class:`uuid.UUID` instances will automatically be encoded to
+    and decoded from BSON binary, using RFC-4122 byte order with
+    binary subtype :data:`UUID_SUBTYPE`.
+
+    .. versionadded:: 3.11
+    """
+
+    PYTHON_LEGACY = OLD_UUID_SUBTYPE
+    """The Python legacy UUID representation.
+
+    :class:`uuid.UUID` instances will automatically be encoded to
+    and decoded from BSON binary, using RFC-4122 byte order with
+    binary subtype :data:`OLD_UUID_SUBTYPE`.
+
+    .. versionadded:: 3.11
+    """
+
+    JAVA_LEGACY = 5
+    """The Java legacy UUID representation.
+
+    :class:`uuid.UUID` instances will automatically be encoded to
+    and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
+    using the Java driver's legacy byte order.
+
+    .. versionadded:: 3.11
+    """
+
+    CSHARP_LEGACY = 6
+    """The C#/.net legacy UUID representation.
+
+    :class:`uuid.UUID` instances will automatically be encoded to
+    and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
+    using the C# driver's legacy byte order.
+
+    .. versionadded:: 3.11
+    """
+
+
+STANDARD = UuidRepresentation.STANDARD
+"""An alias for :data:`UuidRepresentation.STANDARD`.
 
 .. versionadded:: 3.0
 """
 
-PYTHON_LEGACY = OLD_UUID_SUBTYPE
-"""The Python legacy UUID representation.
-
-:class:`uuid.UUID` instances will automatically be encoded to
-and decoded from BSON binary, using RFC-4122 byte order with
-binary subtype :data:`OLD_UUID_SUBTYPE`.
+PYTHON_LEGACY = UuidRepresentation.PYTHON_LEGACY
+"""An alias for :data:`UuidRepresentation.PYTHON_LEGACY`.
 
 .. versionadded:: 3.0
 """
 
-JAVA_LEGACY = 5
-"""The Java legacy UUID representation.
-
-:class:`uuid.UUID` instances will automatically be encoded to
-and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
-using the Java driver's legacy byte order.
+JAVA_LEGACY = UuidRepresentation.JAVA_LEGACY
+"""An alias for :data:`UuidRepresentation.JAVA_LEGACY`.
 
 .. versionchanged:: 3.6
-  BSON binary subtype 4 is decoded using RFC-4122 byte order.
+   BSON binary subtype 4 is decoded using RFC-4122 byte order.
 .. versionadded:: 2.3
 """
 
-CSHARP_LEGACY = 6
-"""The C#/.net legacy UUID representation.
-
-:class:`uuid.UUID` instances will automatically be encoded to
-and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
-using the C# driver's legacy byte order.
+CSHARP_LEGACY = UuidRepresentation.CSHARP_LEGACY
+"""An alias for :data:`UuidRepresentation.CSHARP_LEGACY`.
 
 .. versionchanged:: 3.6
-  BSON binary subtype 4 is decoded using RFC-4122 byte order.
+   BSON binary subtype 4 is decoded using RFC-4122 byte order.
 .. versionadded:: 2.3
 """
 
 ALL_UUID_SUBTYPES = (OLD_UUID_SUBTYPE, UUID_SUBTYPE)
-ALL_UUID_REPRESENTATIONS = (STANDARD, PYTHON_LEGACY, JAVA_LEGACY, CSHARP_LEGACY)
+ALL_UUID_REPRESENTATIONS = (UuidRepresentation.UNSPECIFIED,
+                            UuidRepresentation.STANDARD,
+                            UuidRepresentation.PYTHON_LEGACY,
+                            UuidRepresentation.JAVA_LEGACY,
+                            UuidRepresentation.CSHARP_LEGACY)
 UUID_REPRESENTATION_NAMES = {
-    PYTHON_LEGACY: 'PYTHON_LEGACY',
-    STANDARD: 'STANDARD',
-    JAVA_LEGACY: 'JAVA_LEGACY',
-    CSHARP_LEGACY: 'CSHARP_LEGACY'}
+    UuidRepresentation.UNSPECIFIED: 'UuidRepresentation.UNSPECIFIED',
+    UuidRepresentation.STANDARD: 'UuidRepresentation.STANDARD',
+    UuidRepresentation.PYTHON_LEGACY: 'UuidRepresentation.PYTHON_LEGACY',
+    UuidRepresentation.JAVA_LEGACY: 'UuidRepresentation.JAVA_LEGACY',
+    UuidRepresentation.CSHARP_LEGACY: 'UuidRepresentation.CSHARP_LEGACY'}
 
 MD5_SUBTYPE = 5
 """BSON binary subtype for an MD5 hash.
@@ -155,6 +203,99 @@ class Binary(bytes):
         self.__subtype = subtype
         return self
 
+    @classmethod
+    def from_uuid(cls, uuid, uuid_representation=UuidRepresentation.STANDARD):
+        """Create a BSON Binary object from a Python UUID.
+
+        Creates a :class:`~bson.binary.Binary` object from a
+        :class:`uuid.UUID` instance. Assumes that the native
+        :class:`uuid.UUID` instance uses the byte-order implied by the
+        provided ``uuid_representation``.
+
+        Raises :exc:`TypeError` if `uuid` is not an instance of
+        :class:`~uuid.UUID`.
+
+        :Parameters:
+          - `uuid`: A :class:`uuid.UUID` instance.
+          - `uuid_representation`: A member of
+            :class:`~bson.binary.UuidRepresentation`. Default:
+            :const:`~bson.binary.UuidRepresentation.STANDARD`.
+
+        .. versionadded:: 3.11
+        """
+        if not isinstance(uuid, UUID):
+            raise TypeError("uuid must be an instance of uuid.UUID")
+
+        if uuid_representation not in ALL_UUID_REPRESENTATIONS:
+            raise ValueError("uuid_representation must be a value "
+                             "from bson.binary.UuidRepresentation")
+
+        if uuid_representation == UuidRepresentation.UNSPECIFIED:
+            raise ValueError(
+                "cannot encode native uuid.UUID with "
+                "UuidRepresentation.UNSPECIFIED. UUIDs can be manually "
+                "converted to bson.Binary instances using "
+                "bson.Binary.from_uuid() or a different UuidRepresentation "
+                "can be configured.")
+
+        subtype = OLD_UUID_SUBTYPE
+        if uuid_representation == UuidRepresentation.PYTHON_LEGACY:
+            payload = uuid.bytes
+        elif uuid_representation == UuidRepresentation.JAVA_LEGACY:
+            from_uuid = uuid.bytes
+            payload = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
+        elif uuid_representation == UuidRepresentation.CSHARP_LEGACY:
+            payload = uuid.bytes_le
+        else:
+            # uuid_representation == UuidRepresentation.STANDARD
+            subtype = UUID_SUBTYPE
+            payload = uuid.bytes
+
+        return cls(payload, subtype)
+
+    def as_uuid(self, uuid_representation=UuidRepresentation.STANDARD):
+        """Create a Python UUID from this BSON Binary object.
+
+        Decodes this binary object as a native :class:`uuid.UUID` instance
+        with the provided ``uuid_representation``.
+
+        Raises :exc:`ValueError` if this :class:`~bson.binary.Binary` instance
+        does not contain a UUID.
+
+        :Parameters:
+          - `uuid_representation`: A member of
+            :class:`~bson.binary.UuidRepresentation`. Default:
+            :const:`~bson.binary.UuidRepresentation.STANDARD`.
+
+        .. versionadded:: 3.11
+        """
+        if self.subtype not in ALL_UUID_SUBTYPES:
+            raise ValueError("cannot decode subtype %s as a uuid" % (
+                self.subtype,))
+
+        if uuid_representation not in ALL_UUID_REPRESENTATIONS:
+            raise ValueError("uuid_representation must be a value from "
+                             "bson.binary.UuidRepresentation")
+
+        if uuid_representation == UuidRepresentation.UNSPECIFIED:
+            raise ValueError("uuid_representation cannot be UNSPECIFIED")
+        elif uuid_representation == UuidRepresentation.PYTHON_LEGACY:
+            if self.subtype == OLD_UUID_SUBTYPE:
+                return UUID(bytes=self)
+        elif uuid_representation == UuidRepresentation.JAVA_LEGACY:
+            if self.subtype == OLD_UUID_SUBTYPE:
+                return UUID(bytes=self[0:8][::-1] + self[8:16][::-1])
+        elif uuid_representation == UuidRepresentation.CSHARP_LEGACY:
+            if self.subtype == OLD_UUID_SUBTYPE:
+                return UUID(bytes_le=self)
+        else:
+            # uuid_representation == UuidRepresentation.STANDARD
+            if self.subtype == UUID_SUBTYPE:
+                return UUID(bytes=self)
+
+        raise ValueError("cannot decode subtype %s to %s" % (
+                self.subtype, UUID_REPRESENTATION_NAMES[uuid_representation]))
+
     @property
     def subtype(self):
         """Subtype of this binary data.
@@ -188,7 +329,26 @@ class Binary(bytes):
 
 
 class UUIDLegacy(Binary):
-    """UUID wrapper to support working with UUIDs stored as PYTHON_LEGACY.
+    """**DEPRECATED** - UUID wrapper to support working with UUIDs stored as
+    PYTHON_LEGACY.
+
+    .. note:: This class has been deprecated and will be removed in
+       PyMongo 4.0. Use :meth:`~bson.binary.Binary.from_uuid` and
+       :meth:`~bson.binary.Binary.as_uuid` with the appropriate
+       :class:`~bson.binary.UuidRepresentation` to handle legacy-formatted
+       UUIDs instead.::
+
+            from bson import Binary, UUIDLegacy, UuidRepresentation
+            import uuid
+
+            my_uuid = uuid.uuid4()
+            legacy_uuid = UUIDLegacy(my_uuid)
+            binary_uuid = Binary.from_uuid(
+                my_uuid, UuidRepresentation.PYTHON_LEGACY)
+
+            assert legacy_uuid == binary_uuid
+            assert legacy_uuid.uuid == binary_uuid.as_uuid(
+                UuidRepresentation.PYTHON_LEGACY)
 
     .. doctest::
 
@@ -218,13 +378,25 @@ class UUIDLegacy(Binary):
       >>> coll.find_one({'uuid': my_uuid})['uuid']
       UUID('...')
 
-    Raises TypeError if `obj` is not an instance of :class:`~uuid.UUID`.
+    Raises :exc:`TypeError` if `obj` is not an instance of :class:`~uuid.UUID`.
 
     :Parameters:
       - `obj`: An instance of :class:`~uuid.UUID`.
+
+    .. versionchanged:: 3.11
+       Deprecated. The same functionality can be replicated using the
+       :meth:`~Binary.from_uuid` and :meth:`~Binary.to_uuid` methods with
+       :data:`~UuidRepresentation.PYTHON_LEGACY`.
+    .. versionadded:: 2.1
     """
 
     def __new__(cls, obj):
+        warn(
+            "The UUIDLegacy class has been deprecated and will be removed "
+            "in PyMongo 4.0. Use the Binary.from_uuid() and Binary.to_uuid() "
+            "with the appropriate UuidRepresentation to handle "
+            "legacy-formatted UUIDs instead.",
+            DeprecationWarning, stacklevel=2)
         if not isinstance(obj, UUID):
             raise TypeError("obj must be an instance of uuid.UUID")
         self = Binary.__new__(cls, obj.bytes, OLD_UUID_SUBTYPE)

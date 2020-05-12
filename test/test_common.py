@@ -25,7 +25,7 @@ from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
-from test import client_context, IntegrationTest
+from test import client_context, unittest, IntegrationTest
 from test.utils import connected, rs_or_single_client, single_client
 
 

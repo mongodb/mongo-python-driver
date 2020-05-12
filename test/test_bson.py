@@ -649,7 +649,6 @@ class TestBSON(unittest.TestCase):
                           decode(encode({"tuple": (1, 2)})))
 
     def test_uuid(self):
-
         id = uuid.uuid4()
         transformed_id = decode(encode({"id": id}))["id"]
 
@@ -991,7 +990,6 @@ class TestCodecOptions(unittest.TestCase):
         self.assertTrue(CodecOptions(tz_aware=True).tz_aware)
 
     def test_uuid_representation(self):
-        self.assertRaises(ValueError, CodecOptions, uuid_representation=None)
         self.assertRaises(ValueError, CodecOptions, uuid_representation=7)
         self.assertRaises(ValueError, CodecOptions, uuid_representation=2)
 
@@ -1003,7 +1001,7 @@ class TestCodecOptions(unittest.TestCase):
 
     def test_codec_options_repr(self):
         r = ("CodecOptions(document_class=dict, tz_aware=False, "
-             "uuid_representation=PYTHON_LEGACY, "
+             "uuid_representation=UuidRepresentation.PYTHON_LEGACY, "
              "unicode_decode_error_handler='strict', "
              "tzinfo=None, type_registry=TypeRegistry(type_codecs=[], "
              "fallback_encoder=None))")

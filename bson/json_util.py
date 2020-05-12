@@ -110,14 +110,13 @@ import datetime
 import json
 import math
 import re
-import sys
 import uuid
 
 from pymongo.errors import ConfigurationError
 
 import bson
-from bson import EPOCH_AWARE, EPOCH_NAIVE, RE_TYPE, SON
-from bson.binary import (Binary, JAVA_LEGACY, CSHARP_LEGACY, OLD_UUID_SUBTYPE,
+from bson import EPOCH_AWARE, RE_TYPE, SON
+from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
                          UUID_SUBTYPE)
 from bson.code import Code
 from bson.codec_options import CodecOptions
@@ -245,9 +244,9 @@ class JSONOptions(CodecOptions):
       - `document_class`: BSON documents returned by :func:`loads` will be
         decoded to an instance of this class. Must be a subclass of
         :class:`collections.MutableMapping`. Defaults to :class:`dict`.
-      - `uuid_representation`: The BSON representation to use when encoding
-        and decoding instances of :class:`uuid.UUID`. Defaults to
-        :const:`~bson.binary.PYTHON_LEGACY`.
+      - `uuid_representation`: The :class:`~bson.binary.UuidRepresentation`
+        to use when encoding and decoding instances of :class:`uuid.UUID`.
+        Defaults to :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY`.
       - `tz_aware`: If ``True``, MongoDB Extended JSON's *Strict mode* type
         `Date` will be decoded to timezone aware instances of
         :class:`datetime.datetime`. Otherwise they will be naive. Defaults
@@ -494,14 +493,20 @@ def _parse_legacy_uuid(doc):
 
 def _binary_or_uuid(data, subtype, json_options):
     # special handling for UUID
-    if subtype == OLD_UUID_SUBTYPE:
-        if json_options.uuid_representation == CSHARP_LEGACY:
-            return uuid.UUID(bytes_le=data)
-        if json_options.uuid_representation == JAVA_LEGACY:
-            data = data[7::-1] + data[:7:-1]
-        return uuid.UUID(bytes=data)
-    if subtype == UUID_SUBTYPE:
-        return uuid.UUID(bytes=data)
+    if subtype in ALL_UUID_SUBTYPES:
+        uuid_representation = json_options.uuid_representation
+        binary_value = Binary(data, subtype)
+        if uuid_representation == UuidRepresentation.UNSPECIFIED:
+            return binary_value
+        if subtype == UUID_SUBTYPE:
+            # Legacy behavior: use STANDARD with binary subtype 4.
+            uuid_representation = UuidRepresentation.STANDARD
+        elif uuid_representation == UuidRepresentation.STANDARD:
+            # subtype == OLD_UUID_SUBTYPE
+            # Legacy behavior: STANDARD is the same as PYTHON_LEGACY.
+            uuid_representation = UuidRepresentation.PYTHON_LEGACY
+        return binary_value.as_uuid(uuid_representation)
+
     if PY3 and subtype == 0:
         return data
     return Binary(data, subtype)
@@ -795,15 +800,9 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
         return _encode_binary(obj, 0, json_options)
     if isinstance(obj, uuid.UUID):
         if json_options.strict_uuid:
-            data = obj.bytes
-            subtype = OLD_UUID_SUBTYPE
-            if json_options.uuid_representation == CSHARP_LEGACY:
-                data = obj.bytes_le
-            elif json_options.uuid_representation == JAVA_LEGACY:
-                data = data[7::-1] + data[:7:-1]
-            elif json_options.uuid_representation == UUID_SUBTYPE:
-                subtype = UUID_SUBTYPE
-            return _encode_binary(data, subtype, json_options)
+            binval = Binary.from_uuid(
+                obj, uuid_representation=json_options.uuid_representation)
+            return _encode_binary(binval, binval.subtype, json_options)
         else:
             return {"$uuid": obj.hex}
     if isinstance(obj, Decimal128):

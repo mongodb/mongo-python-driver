@@ -31,8 +31,10 @@ from bson.binary import *
 from bson.codec_options import CodecOptions
 from bson.py3compat import PY3
 from bson.son import SON
+from pymongo.common import validate_uuid_representation
 from pymongo.mongo_client import MongoClient
-from test import client_context, unittest
+from pymongo.write_concern import WriteConcern
+from test import client_context, unittest, IntegrationTest
 from test.utils import ignore_deprecations
 
 
@@ -144,11 +146,13 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(hash(Binary(b"hello world", 42)), hash(two))
 
     def test_uuid_subtype_4(self):
-        """uuid_representation should be ignored when decoding subtype 4."""
+        """uuid_representation should be ignored when decoding subtype 4 for
+        all UuidRepresentation values except UNSPECIFIED."""
         expected_uuid = uuid.uuid4()
         doc = {"uuid": Binary(expected_uuid.bytes, 4)}
         encoded = encode(doc)
-        for uuid_representation in ALL_UUID_REPRESENTATIONS:
+        for uuid_representation in (set(ALL_UUID_REPRESENTATIONS) -
+                                    {UuidRepresentation.UNSPECIFIED}):
             options = CodecOptions(uuid_representation=uuid_representation)
             self.assertEqual(expected_uuid, decode(encoded, options)["uuid"])
 
@@ -296,8 +300,9 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(1, coll.count_documents({}))
 
         # Test UUIDLegacy queries.
-        coll = db.get_collection("test",
-                                 CodecOptions(uuid_representation=STANDARD))
+        coll = db.get_collection(
+            "test", CodecOptions(
+                uuid_representation=UuidRepresentation.STANDARD))
         self.assertEqual(0, coll.find({'uuid': uu}).count())
         cur = coll.find({'uuid': UUIDLegacy(uu)})
         self.assertEqual(1, cur.count())
@@ -362,6 +367,220 @@ class TestBinary(unittest.TestCase):
                 mm.seek(0)
                 self.assertEqual(b0, Binary(mm, 2))
             self.assertEqual(b0, Binary(array.array('B', b'123'), 2))
+
+
+class TestUuidSpecExplicitCoding(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(TestUuidSpecExplicitCoding, cls).setUpClass()
+        cls.uuid = uuid.UUID("00112233445566778899AABBCCDDEEFF")
+
+    @staticmethod
+    def _hex_to_bytes(hexstring):
+        if PY3:
+            return bytes.fromhex(hexstring)
+        return hexstring.decode("hex")
+
+    # Explicit encoding prose test #1
+    def test_encoding_1(self):
+        obj = Binary.from_uuid(self.uuid)
+        expected_obj = Binary(
+            self._hex_to_bytes("00112233445566778899AABBCCDDEEFF"), 4)
+        self.assertEqual(obj, expected_obj)
+
+    def _test_encoding_w_uuid_rep(
+            self, uuid_rep, expected_hexstring, expected_subtype):
+        obj = Binary.from_uuid(self.uuid, uuid_rep)
+        expected_obj = Binary(
+            self._hex_to_bytes(expected_hexstring), expected_subtype)
+        self.assertEqual(obj, expected_obj)
+
+    # Explicit encoding prose test #2
+    def test_encoding_2(self):
+        self._test_encoding_w_uuid_rep(
+            UuidRepresentation.STANDARD,
+            "00112233445566778899AABBCCDDEEFF", 4)
+
+    # Explicit encoding prose test #3
+    def test_encoding_3(self):
+        self._test_encoding_w_uuid_rep(
+            UuidRepresentation.JAVA_LEGACY,
+            "7766554433221100FFEEDDCCBBAA9988", 3)
+
+    # Explicit encoding prose test #4
+    def test_encoding_4(self):
+        self._test_encoding_w_uuid_rep(
+            UuidRepresentation.CSHARP_LEGACY,
+            "33221100554477668899AABBCCDDEEFF", 3)
+
+    # Explicit encoding prose test #5
+    def test_encoding_5(self):
+        self._test_encoding_w_uuid_rep(
+            UuidRepresentation.PYTHON_LEGACY,
+            "00112233445566778899AABBCCDDEEFF", 3)
+
+    # Explicit encoding prose test #6
+    def test_encoding_6(self):
+        with self.assertRaises(ValueError):
+            Binary.from_uuid(self.uuid, UuidRepresentation.UNSPECIFIED)
+
+    # Explicit decoding prose test #1
+    def test_decoding_1(self):
+        obj = Binary(
+            self._hex_to_bytes("00112233445566778899AABBCCDDEEFF"), 4)
+
+        # Case i:
+        self.assertEqual(obj.as_uuid(), self.uuid)
+        # Case ii:
+        self.assertEqual(obj.as_uuid(UuidRepresentation.STANDARD), self.uuid)
+        # Cases iii-vi:
+        for uuid_rep in (UuidRepresentation.JAVA_LEGACY,
+                         UuidRepresentation.CSHARP_LEGACY,
+                         UuidRepresentation.PYTHON_LEGACY):
+            with self.assertRaises(ValueError):
+                obj.as_uuid(uuid_rep)
+
+    def _test_decoding_legacy(self, hexstring, uuid_rep):
+        obj = Binary(self._hex_to_bytes(hexstring), 3)
+
+        # Case i:
+        with self.assertRaises(ValueError):
+            obj.as_uuid()
+        # Cases ii-iii:
+        for rep in (UuidRepresentation.STANDARD,
+                         UuidRepresentation.UNSPECIFIED):
+            with self.assertRaises(ValueError):
+                obj.as_uuid(rep)
+        # Case iv:
+        self.assertEqual(obj.as_uuid(uuid_rep),
+                         self.uuid)
+
+    # Explicit decoding prose test #2
+    def test_decoding_2(self):
+        self._test_decoding_legacy(
+            "7766554433221100FFEEDDCCBBAA9988",
+            UuidRepresentation.JAVA_LEGACY)
+
+    # Explicit decoding prose test #3
+    def test_decoding_3(self):
+        self._test_decoding_legacy(
+            "33221100554477668899AABBCCDDEEFF",
+            UuidRepresentation.CSHARP_LEGACY)
+
+    # Explicit decoding prose test #4
+    def test_decoding_4(self):
+        self._test_decoding_legacy(
+            "00112233445566778899AABBCCDDEEFF",
+            UuidRepresentation.PYTHON_LEGACY)
+
+
+class TestUuidSpecImplicitCoding(IntegrationTest):
+    @classmethod
+    def setUpClass(cls):
+        super(TestUuidSpecImplicitCoding, cls).setUpClass()
+        cls.uuid = uuid.UUID("00112233445566778899AABBCCDDEEFF")
+
+    @staticmethod
+    def _hex_to_bytes(hexstring):
+        if PY3:
+            return bytes.fromhex(hexstring)
+        return hexstring.decode("hex")
+
+    def _get_coll_w_uuid_rep(self, uuid_rep):
+        codec_options = self.client.codec_options.with_options(
+            uuid_representation=validate_uuid_representation(None, uuid_rep))
+        coll = self.db.get_collection(
+            'pymongo_test', codec_options=codec_options,
+            write_concern=WriteConcern("majority"))
+        return coll
+
+    def _test_encoding(self, uuid_rep, expected_hexstring, expected_subtype):
+        coll = self._get_coll_w_uuid_rep(uuid_rep)
+        coll.delete_many({})
+        coll.insert_one({'_id': self.uuid})
+        self.assertTrue(
+            coll.find_one({"_id": Binary(
+                self._hex_to_bytes(expected_hexstring), expected_subtype)}))
+
+    # Implicit encoding prose test #1
+    def test_encoding_1(self):
+        self._test_encoding(
+            "javaLegacy", "7766554433221100FFEEDDCCBBAA9988", 3)
+
+    # Implicit encoding prose test #2
+    def test_encoding_2(self):
+        self._test_encoding(
+            "csharpLegacy", "33221100554477668899AABBCCDDEEFF", 3)
+
+    # Implicit encoding prose test #3
+    def test_encoding_3(self):
+        self._test_encoding(
+            "pythonLegacy", "00112233445566778899AABBCCDDEEFF", 3)
+
+    # Implicit encoding prose test #4
+    def test_encoding_4(self):
+        self._test_encoding(
+            "standard", "00112233445566778899AABBCCDDEEFF", 4)
+
+    # Implicit encoding prose test #5
+    def test_encoding_5(self):
+        with self.assertRaises(ValueError):
+            self._test_encoding(
+                "unspecifed", "dummy", -1)
+
+    def _test_decoding(self, client_uuid_representation_string,
+                       legacy_field_uuid_representation,
+                       expected_standard_field_value,
+                       expected_legacy_field_value):
+        coll = self._get_coll_w_uuid_rep(client_uuid_representation_string)
+        coll.drop()
+
+        standard_val = Binary.from_uuid(self.uuid, UuidRepresentation.STANDARD)
+        legacy_val = Binary.from_uuid(self.uuid, legacy_field_uuid_representation)
+        coll.insert_one({'standard': standard_val, 'legacy': legacy_val})
+
+        doc = coll.find_one()
+        self.assertEqual(doc['standard'], expected_standard_field_value)
+        self.assertEqual(doc['legacy'], expected_legacy_field_value)
+
+    # Implicit decoding prose test #1
+    def test_decoding_1(self):
+        # TODO: these assertions will change after PYTHON-2245. Specifically,
+        #  the 'standard' field will be decoded as a Binary subtype 4.
+        binary_value = Binary.from_uuid(
+            self.uuid, UuidRepresentation.PYTHON_LEGACY)
+        self._test_decoding(
+            "javaLegacy", UuidRepresentation.JAVA_LEGACY,
+            self.uuid, self.uuid)
+        self._test_decoding(
+            "csharpLegacy", UuidRepresentation.CSHARP_LEGACY,
+            self.uuid, self.uuid)
+        self._test_decoding(
+            "pythonLegacy", UuidRepresentation.PYTHON_LEGACY,
+            self.uuid, self.uuid)
+
+    # Implicit decoding pose test #2
+    def test_decoding_2(self):
+        # TODO: these assertions will change after PYTHON-2245. Specifically,
+        #  the 'legacy' field will be decoded as a Binary subtype 3.
+        binary_value = Binary.from_uuid(
+            self.uuid, UuidRepresentation.PYTHON_LEGACY)
+        self._test_decoding(
+            "standard", UuidRepresentation.PYTHON_LEGACY,
+            self.uuid, binary_value.as_uuid(UuidRepresentation.PYTHON_LEGACY))
+
+    # Implicit decoding pose test #3
+    def test_decoding_3(self):
+        expected_standard_value = Binary.from_uuid(
+            self.uuid, UuidRepresentation.STANDARD)
+        for legacy_uuid_rep in (UuidRepresentation.PYTHON_LEGACY,
+                                UuidRepresentation.CSHARP_LEGACY,
+                                UuidRepresentation.JAVA_LEGACY):
+            expected_legacy_value = Binary.from_uuid(
+                self.uuid, legacy_uuid_rep)
+            self._test_decoding(
+                "unspecified", legacy_uuid_rep,
+                expected_standard_value, expected_legacy_value)
 
 
 if __name__ == "__main__":

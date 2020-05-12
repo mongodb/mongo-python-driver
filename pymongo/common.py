@@ -19,8 +19,7 @@ import datetime
 import warnings
 
 from bson import SON
-from bson.binary import (STANDARD, PYTHON_LEGACY,
-                         JAVA_LEGACY, CSHARP_LEGACY)
+from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, TypeRegistry
 from bson.py3compat import abc, integer_types, iteritems, string_type, PY3
 from bson.raw_bson import RawBSONDocument
@@ -149,10 +148,11 @@ def raise_config_error(key, dummy):
 
 # Mapping of URI uuid representation options to valid subtypes.
 _UUID_REPRESENTATIONS = {
-    'standard': STANDARD,
-    'pythonLegacy': PYTHON_LEGACY,
-    'javaLegacy': JAVA_LEGACY,
-    'csharpLegacy': CSHARP_LEGACY
+    'unspecified': UuidRepresentation.UNSPECIFIED,
+    'standard': UuidRepresentation.STANDARD,
+    'pythonLegacy': UuidRepresentation.PYTHON_LEGACY,
+    'javaLegacy': UuidRepresentation.JAVA_LEGACY,
+    'csharpLegacy': UuidRepresentation.CSHARP_LEGACY
 }
 
 
