@@ -166,7 +166,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
         # Disable background refresh.
         with client_knobs(heartbeat_frequency=999999):
-            c = rs_client(socketTimeoutMS=3000, w=self.w)
+            c = rs_client(socketTimeoutMS=1000, w=self.w)
             collection = c.pymongo_test.test
             collection.insert_one({})
 
@@ -174,7 +174,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             self.assertRaises(
                 NetworkTimeout,
                 collection.find_one,
-                {'$where': delay(5)})
+                {'$where': delay(1.5)})
 
             self.assertTrue(c.primary)
             collection.find_one()  # No error.
@@ -186,7 +186,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             self.assertRaises(
                 NetworkTimeout,
                 coll.find_one,
-                {'$where': delay(5)})
+                {'$where': delay(1.5)})
 
             self.assertTrue(c.secondaries)
 

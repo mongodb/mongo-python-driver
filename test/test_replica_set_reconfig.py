@@ -121,7 +121,8 @@ class TestSocketError(MockClientTest):
                 members=['a:1', 'b:2'],
                 mongoses=[],
                 host='a:1',
-                replicaSet='rs')
+                replicaSet='rs',
+                serverSelectionTimeoutMS=100)
             self.addCleanup(c.close)
 
             wait_until(lambda: len(c.nodes) == 2, 'discover both nodes')
