@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-#include <string.h>
-
 /* Include Python.h so we can set Python's error indicator. */
 #define PY_SSIZE_T_CLEAN
 #include "Python.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 #include "buffer.h"
 
