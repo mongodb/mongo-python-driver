@@ -53,8 +53,10 @@ everything you need to know to use **PyMongo**.
 
 Getting Help
 ------------
-If you're having trouble or have questions about PyMongo, ask your question in
-our `MongoDB Community Forums <https://developer.mongodb.com/community/forums/tags/c/drivers-odms-connectors/7/python-driver>`_.
+If you're having trouble or have questions about PyMongo, ask your question on
+our `MongoDB Community Forum <https://developer.mongodb.com/community/forums/tags/c/drivers-odms-connectors/7/python-driver>`_.
+You may also want to consider a
+`commercial support subscription <https://support.mongodb.com/welcome>`_.
 Once you get an answer, it'd be great if you could work it back into this
 documentation and contribute!
 
@@ -64,6 +66,11 @@ All issues should be reported (and can be tracked / voted for /
 commented on) at the main `MongoDB JIRA bug tracker
 <http://jira.mongodb.org/browse/PYTHON>`_, in the "Python Driver"
 project.
+
+Feature Requests / Feedback
+---------------------------
+Use our `feedback engine <https://feedback.mongodb.com/forums/924286-drivers>`_
+to send us feature requests and general feedback about PyMongo.
 
 Contributing
 ------------

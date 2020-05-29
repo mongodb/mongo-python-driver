@@ -2,6 +2,7 @@
 PyMongo
 =======
 :Info: See `the mongo site <http://www.mongodb.org>`_ for more information. See `GitHub <http://github.com/mongodb/mongo-python-driver>`_ for the latest source.
+:Documentation: Available at `pymongo.readthedocs.io <https://pymongo.readthedocs.io/en/stable/>`_
 :Author: Mike Dirolf
 :Maintainer: Bernie Hackett <bernie@mongodb.com>
 
@@ -22,10 +23,10 @@ Support / Feedback
 ==================
 
 For issues with, questions about, or feedback for PyMongo, please look into
-our `support channels <https://docs.mongodb.com/manual/support>`_. Please
+our `support channels <https://support.mongodb.com/welcome>`_. Please
 do not email any of the PyMongo developers directly with issues or
 questions - you're more likely to get an answer on the `MongoDB Community
-Forums <https://developer.mongodb.com/community/forums/tags/c/drivers-odms-connectors/7/python-driver>`_.
+Forums <https://developer.mongodb.com/community/forums/tag/python-driver>`_.
 
 Bugs / Feature Requests
 =======================
