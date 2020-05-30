@@ -52,6 +52,10 @@ class TestCommandMonitoring(PyMongoTestCase):
             event_listeners=[cls.listener],
             retryWrites=False)
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.close()
+
     def tearDown(self):
         self.listener.results.clear()
 
@@ -1401,6 +1405,7 @@ class TestGlobalListener(PyMongoTestCase):
     @classmethod
     def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
+        cls.client.close()
 
     def setUp(self):
         self.listener.results.clear()

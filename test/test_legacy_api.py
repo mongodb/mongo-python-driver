@@ -2306,6 +2306,8 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
     @classmethod
     def tearDownClass(cls):
         cls.deprecation_filter.stop()
+        if cls.secondary:
+            cls.secondary.close()
 
     def cause_wtimeout(self, batch):
         if self.need_replication_stopped:

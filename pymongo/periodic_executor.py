@@ -50,6 +50,10 @@ class PeriodicExecutor(object):
         self._thread_will_exit = False
         self._lock = threading.Lock()
 
+    def __repr__(self):
+        return '<%s(name=%s) object at 0x%x>' % (
+            self.__class__.__name__, self._name, id(self))
+
     def open(self):
         """Start. Multiple calls have no effect.
 

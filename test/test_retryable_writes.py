@@ -192,6 +192,7 @@ class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
     @classmethod
     def tearDownClass(cls):
         cls.knobs.disable()
+        cls.client.close()
 
     @client_context.require_version_min(3, 5)
     @client_context.require_no_standalone
@@ -226,6 +227,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     @classmethod
     def tearDownClass(cls):
         cls.knobs.disable()
+        cls.client.close()
         super(TestRetryableWrites, cls).tearDownClass()
 
     def setUp(self):

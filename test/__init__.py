@@ -795,6 +795,44 @@ def setup():
     warnings.simplefilter("always")
 
 
+def _get_executors(topology):
+    executors = []
+    for server in topology._servers.values():
+        # Some MockMonitor do not have an _executor.
+        executors.append(getattr(server._monitor, '_executor', None))
+    executors.append(topology._Topology__events_executor)
+    if topology._srv_monitor:
+        executors.append(topology._srv_monitor._executor)
+    return [e for e in executors if e is not None]
+
+
+def all_executors_stopped(topology):
+    running = [e for e in _get_executors(topology) if not e._stopped]
+    if running:
+        print('  Topology %s has THREADS RUNNING: %s, created at: %s' % (
+            topology, running, topology._settings._stack))
+        return False
+    return True
+
+
+def print_unclosed_clients():
+    from pymongo.topology import Topology
+    processed = set()
+    # Call collect to manually cleanup any would-be gc'd clients to avoid
+    # false positives.
+    gc.collect()
+    for obj in gc.get_objects():
+        try:
+            if isinstance(obj, Topology):
+                # Avoid printing the same Topology multiple times.
+                if obj._topology_id in processed:
+                    continue
+                all_executors_stopped(obj)
+                processed.add(obj._topology_id)
+        except ReferenceError:
+            pass
+
+
 def teardown():
     garbage = []
     for g in gc.garbage:
@@ -812,6 +850,10 @@ def teardown():
         c.drop_database("pymongo_test_mike")
         c.drop_database("pymongo_test_bernie")
         c.close()
+
+    # Jython does not support gc.get_objects.
+    if not sys.platform.startswith('java'):
+        print_unclosed_clients()
 
 
 class PymongoTestRunner(unittest.TextTestRunner):

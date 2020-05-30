@@ -48,6 +48,10 @@ class TestAllScenarios(unittest.TestCase):
         cls.listener = EventListener()
         cls.client = single_client(event_listeners=[cls.listener])
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.close()
+
     def tearDown(self):
         self.listener.results.clear()
 

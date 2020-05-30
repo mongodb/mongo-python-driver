@@ -65,8 +65,9 @@ class MockMonitor(Monitor):
             topology,
             pool,
             topology_settings):
-        # MockMonitor gets a 'client' arg, regular monitors don't.
-        self.client = client
+        # MockMonitor gets a 'client' arg, regular monitors don't. Weakref it
+        # to avoid cycles.
+        self.client = weakref.proxy(client)
         Monitor.__init__(
             self,
             server_description,
@@ -75,8 +76,9 @@ class MockMonitor(Monitor):
             topology_settings)
 
     def _check_once(self):
+        client = self.client
         address = self._server_description.address
-        response, rtt = self.client.mock_is_master('%s:%d' % address)
+        response, rtt = client.mock_is_master('%s:%d' % address)
         return ServerDescription(address, IsMaster(response), rtt)
 
 

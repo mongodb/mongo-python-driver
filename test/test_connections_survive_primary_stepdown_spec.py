@@ -51,6 +51,10 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         cls.coll = cls.db.get_collection(
             "step-down", write_concern=WriteConcern("majority"))
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.close()
+
     def setUp(self):
         # Note that all ops use same write-concern as self.db (majority).
         self.db.drop_collection("step-down")

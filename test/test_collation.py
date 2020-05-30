@@ -105,6 +105,7 @@ class TestCollation(unittest.TestCase):
     def tearDownClass(cls):
         cls.warn_context.__exit__()
         cls.warn_context = None
+        cls.client.close()
 
     def tearDown(self):
         self.listener.results.clear()

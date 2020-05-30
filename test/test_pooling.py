@@ -161,6 +161,9 @@ class _TestPoolingBase(unittest.TestCase):
         db.unique.insert_one({"_id": "jesse"})
         db.test.insert_many([{} for _ in range(10)])
 
+    def tearDown(self):
+        self.c.close()
+
     def create_pool(
             self,
             pair=(client_context.host, client_context.port),

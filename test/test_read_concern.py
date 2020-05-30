@@ -34,6 +34,7 @@ class TestReadConcern(PyMongoTestCase):
 
     @classmethod
     def tearDownClass(cls):
+        cls.client.close()
         client_context.client.pymongo_test.drop_collection('coll')
 
     def tearDown(self):

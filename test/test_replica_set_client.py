@@ -300,6 +300,7 @@ class TestReplicaSetWireVersion(MockClientTest):
             host='a:1',
             replicaSet='rs',
             connect=False)
+        self.addCleanup(c.close)
 
         c.set_wire_version_range('a:1', 3, 7)
         c.set_wire_version_range('b:2', 2, 3)
@@ -330,15 +331,17 @@ class TestReplicaSetClientInternalIPs(MockClientTest):
     def test_connect_with_internal_ips(self):
         # Client is passed an IP it can reach, 'a:1', but the RS config
         # only contains unreachable IPs like 'internal-ip'. PYTHON-608.
+        client = MockClient(
+            standalones=[],
+            members=['a:1'],
+            mongoses=[],
+            ismaster_hosts=['internal-ip:27017'],
+            host='a:1',
+            replicaSet='rs',
+            serverSelectionTimeoutMS=100)
+        self.addCleanup(client.close)
         with self.assertRaises(AutoReconnect) as context:
-            connected(MockClient(
-                standalones=[],
-                members=['a:1'],
-                mongoses=[],
-                ismaster_hosts=['internal-ip:27017'],
-                host='a:1',
-                replicaSet='rs',
-                serverSelectionTimeoutMS=100))
+            connected(client)
 
         self.assertEqual(
             "Could not reach any servers in [('internal-ip', 27017)]."
@@ -356,6 +359,7 @@ class TestReplicaSetClientMaxWriteBatchSize(MockClientTest):
             host='a:1',
             replicaSet='rs',
             connect=False)
+        self.addCleanup(c.close)
 
         c.set_max_write_batch_size('a:1', 1)
         c.set_max_write_batch_size('b:2', 2)

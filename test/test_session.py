@@ -78,6 +78,7 @@ class TestSession(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         monitoring._SENSITIVE_COMMANDS.update(cls.sensitive_commands)
+        cls.client2.close()
         super(TestSession, cls).tearDownClass()
 
     def setUp(self):
@@ -85,6 +86,7 @@ class TestSession(IntegrationTest):
         self.session_checker_listener = SessionTestListener()
         self.client = rs_or_single_client(
             event_listeners=[self.listener, self.session_checker_listener])
+        self.addCleanup(self.client.close)
         self.db = self.client.pymongo_test
         self.initial_lsids = set(s['id'] for s in session_ids(self.client))
 
@@ -782,6 +784,10 @@ class TestCausalConsistency(unittest.TestCase):
     def setUpClass(cls):
         cls.listener = SessionTestListener()
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.close()
 
     @client_context.require_sessions
     def setUp(self):

@@ -56,6 +56,12 @@ class TransactionsBase(SpecRunner):
             for address in client_context.mongoses:
                 cls.mongos_clients.append(single_client('%s:%s' % address))
 
+    @classmethod
+    def tearDownClass(cls):
+        for client in cls.mongos_clients:
+            client.close()
+        super(TransactionsBase, cls).tearDownClass()
+
     def maybe_skip_scenario(self, test):
         super(TransactionsBase, self).maybe_skip_scenario(test)
         if ('secondary' in self.id() and

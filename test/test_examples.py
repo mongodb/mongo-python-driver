@@ -27,27 +27,26 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
-from test.utils import rs_client, rs_or_single_client
+from test.utils import rs_client
 
-class TestSampleShellCommands(unittest.TestCase):
 
+class TestSampleShellCommands(IntegrationTest):
     @classmethod
-    @client_context.require_connection
     def setUpClass(cls):
-        cls.client = rs_or_single_client(w="majority")
+        super(TestSampleShellCommands, cls).setUpClass()
         # Run once before any tests run.
-        cls.client.pymongo_test.inventory.drop()
+        cls.db.inventory.drop()
 
     @classmethod
     def tearDownClass(cls):
-        client_context.client.drop_database("pymongo_test")
+        cls.client.drop_database("pymongo_test")
 
     def tearDown(self):
         # Run after every test.
-        self.client.pymongo_test.inventory.drop()
+        self.db.inventory.drop()
 
     def test_first_three_examples(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 1
         db.inventory.insert_one(
@@ -84,7 +83,7 @@ class TestSampleShellCommands(unittest.TestCase):
         self.assertEqual(db.inventory.count_documents({}), 4)
 
     def test_query_top_level_fields(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 6
         db.inventory.insert_many([
@@ -151,7 +150,7 @@ class TestSampleShellCommands(unittest.TestCase):
         self.assertEqual(len(list(cursor)), 2)
 
     def test_query_embedded_documents(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 14
         # Subdocument key order matters in a few of these examples so we have
@@ -214,7 +213,7 @@ class TestSampleShellCommands(unittest.TestCase):
         self.assertEqual(len(list(cursor)), 1)
 
     def test_query_arrays(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 20
         db.inventory.insert_many([
@@ -290,7 +289,7 @@ class TestSampleShellCommands(unittest.TestCase):
         self.assertEqual(len(list(cursor)), 1)
 
     def test_query_array_of_documents(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 29
         # Subdocument key order matters in a few of these examples so we have
@@ -372,7 +371,7 @@ class TestSampleShellCommands(unittest.TestCase):
         self.assertEqual(len(list(cursor)), 2)
 
     def test_query_null(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 38
         db.inventory.insert_many([{"_id": 1, "item": None}, {"_id": 2}])
@@ -397,7 +396,7 @@ class TestSampleShellCommands(unittest.TestCase):
         self.assertEqual(len(list(cursor)), 1)
 
     def test_projection(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 42
         db.inventory.insert_many([
@@ -528,7 +527,7 @@ class TestSampleShellCommands(unittest.TestCase):
             self.assertEqual(len(doc["instock"]), 1)
 
     def test_update_and_replace(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 51
         db.inventory.insert_many([
@@ -614,7 +613,7 @@ class TestSampleShellCommands(unittest.TestCase):
             self.assertEqual(len(doc["instock"]), 2)
 
     def test_delete(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Example 55
         db.inventory.insert_many([
@@ -664,7 +663,7 @@ class TestSampleShellCommands(unittest.TestCase):
     @client_context.require_replica_set
     @client_context.require_no_mmap
     def test_change_streams(self):
-        db = client_context.client.pymongo_test
+        db = self.db
         done = False
 
         def insert_docs():
@@ -706,7 +705,7 @@ class TestSampleShellCommands(unittest.TestCase):
             t.join()
 
     def test_aggregate_examples(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Aggregation Example 1
         db.sales.aggregate([
@@ -792,7 +791,7 @@ class TestSampleShellCommands(unittest.TestCase):
             # End Aggregation Example 4
 
     def test_commands(self):
-        db = client_context.client.pymongo_test
+        db = self.db
         db.restaurants.insert_one({})
 
         # Start runCommand Example 1
@@ -804,7 +803,7 @@ class TestSampleShellCommands(unittest.TestCase):
         # End runCommand Example 2
 
     def test_index_management(self):
-        db = client_context.client.pymongo_test
+        db = self.db
 
         # Start Index Example 1
         db.records.create_index("score")
@@ -821,7 +820,7 @@ class TestSampleShellCommands(unittest.TestCase):
     @client_context.require_replica_set
     def test_misc(self):
         # Marketing examples
-        client = client_context.client
+        client = self.client
         self.addCleanup(client.drop_database, "test")
         self.addCleanup(client.drop_database, "my_database")
 
@@ -843,13 +842,6 @@ class TestSampleShellCommands(unittest.TestCase):
 
 
 class TestTransactionExamples(IntegrationTest):
-
-    @classmethod
-    @client_context.require_connection
-    def setUpClass(cls):
-        super(TestTransactionExamples, cls).setUpClass()
-        cls.client = rs_or_single_client(w="majority")
-
     @client_context.require_version_max(4, 4, 99)  # PYTHON-2154 skip on 4.5+
     @client_context.require_transactions
     def test_transactions(self):

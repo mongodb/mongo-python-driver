@@ -101,6 +101,10 @@ class ClientUnitTest(unittest.TestCase):
         cls.client = rs_or_single_client(connect=False,
                                          serverSelectionTimeoutMS=100)
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.close()
+
     def test_keyword_arg_defaults(self):
         client = MongoClient(socketTimeoutMS=None,
                              connectTimeoutMS=20000,

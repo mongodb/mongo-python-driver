@@ -695,8 +695,6 @@ class TestAuthURIOptions(unittest.TestCase):
         client_context.create_user('admin', 'admin', 'pass')
         client_context.create_user(
             'pymongo_test', 'user', 'pass', ['userAdmin', 'readWrite'])
-        self.client = rs_or_single_client_noauth(
-            username='admin', password='pass')
 
     def tearDown(self):
         client_context.drop_user('pymongo_test', 'user')

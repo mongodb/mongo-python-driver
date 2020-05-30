@@ -370,6 +370,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
     @classmethod
     def tearDownClass(cls):
         cls.c.drop_database('pymongo_test')
+        cls.c.close()
 
     def executed_on_which_server(self, client, fn, *args, **kwargs):
         """Execute fn(*args, **kwargs) and return the Server instance used."""

@@ -911,6 +911,7 @@ class TestClusterChangeStreamsWCustomTypes(
             kwargs['type_registry'] = codec_options.type_registry
             kwargs['document_class'] = codec_options.document_class
         self.watched_target = rs_client(*args, **kwargs)
+        self.addCleanup(self.watched_target.close)
         self.input_target = self.watched_target[self.db.name].test
         # Insert a record to ensure db, coll are created.
         self.input_target.insert_one({'data': 'dummy'})

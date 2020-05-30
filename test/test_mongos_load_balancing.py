@@ -71,6 +71,7 @@ class TestMongosLoadBalancing(MockClientTest):
             host='a:1,b:2,c:3',
             connect=False,
             **kwargs)
+        self.addCleanup(mock_client.close)
 
         # Latencies in seconds.
         mock_client.mock_rtts['a:1'] = 0.020

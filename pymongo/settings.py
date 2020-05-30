@@ -15,6 +15,7 @@
 """Represent MongoClient's configuration."""
 
 import threading
+import traceback
 
 from bson.objectid import ObjectId
 from pymongo import common, monitor, pool
@@ -60,6 +61,9 @@ class TopologySettings(object):
         self._heartbeat_frequency = heartbeat_frequency
         self._direct = (len(self._seeds) == 1 and not replica_set_name)
         self._topology_id = ObjectId()
+        # Store the allocation traceback to catch unclosed clients in the
+        # test suite.
+        self._stack = ''.join(traceback.format_stack())
 
     @property
     def seeds(self):
