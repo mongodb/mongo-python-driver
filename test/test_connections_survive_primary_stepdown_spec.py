@@ -28,6 +28,7 @@ from test import (client_context,
                   IntegrationTest)
 from test.utils import (CMAPListener,
                         ensure_all_connected,
+                        repl_set_step_down,
                         rs_or_single_client)
 
 
@@ -38,7 +39,8 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         super(TestConnectionsSurvivePrimaryStepDown, cls).setUpClass()
         cls.listener = CMAPListener()
         cls.client = rs_or_single_client(event_listeners=[cls.listener],
-                                         retryWrites=False)
+                                         retryWrites=False,
+                                         heartbeatFrequencyMS=500)
 
         # Ensure connections to all servers in replica set. This is to test
         # that the is_writable flag is properly updated for sockets that
@@ -84,9 +86,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         for _ in range(batch_size):
             cursor.next()
         # Force step-down the primary.
-        res = self.client.admin.command(
-            SON([("replSetStepDown", 5), ("force", True)]))
-        self.assertEqual(res["ok"], 1.0)
+        repl_set_step_down(self.client, replSetStepDown=5, force=True)
         # Get next batch of results.
         for _ in range(batch_size):
             cursor.next()

@@ -15,7 +15,7 @@
 """Utilities for testing driver specs."""
 
 import copy
-import sys
+import threading
 
 
 from bson import decode, encode
@@ -48,8 +48,46 @@ from test.utils import (camel_to_snake,
                         camel_to_snake_args,
                         camel_to_upper_camel,
                         CompareType,
+                        CMAPListener,
                         OvertCommandListener,
-                        rs_client, parse_read_preference)
+                        parse_read_preference,
+                        rs_client,
+                        ServerAndTopologyEventListener,
+                        HeartbeatEventListener)
+
+
+class SpecRunnerThread(threading.Thread):
+    def __init__(self, name):
+        super(SpecRunnerThread, self).__init__()
+        self.name = name
+        self.exc = None
+        self.setDaemon(True)
+        self.cond = threading.Condition()
+        self.ops = []
+        self.stopped = False
+
+    def schedule(self, work):
+        self.ops.append(work)
+        with self.cond:
+            self.cond.notify()
+
+    def stop(self):
+        self.stopped = True
+        with self.cond:
+            self.cond.notify()
+
+    def run(self):
+        while not self.stopped or self.ops:
+            if not self. ops:
+                with self.cond:
+                    self.cond.wait(10)
+            if self.ops:
+                try:
+                    work = self.ops.pop(0)
+                    work()
+                except Exception as exc:
+                    self.exc = exc
+                    self.stop()
 
 
 class SpecRunner(IntegrationTest):
@@ -60,7 +98,8 @@ class SpecRunner(IntegrationTest):
         cls.mongos_clients = []
 
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(min_heartbeat_interval=0.1)
+        cls.knobs = client_knobs(heartbeat_frequency=0.1,
+                                 min_heartbeat_interval=0.1)
         cls.knobs.enable()
 
     @classmethod
@@ -70,7 +109,10 @@ class SpecRunner(IntegrationTest):
 
     def setUp(self):
         super(SpecRunner, self).setUp()
+        self.targets = {}
         self.listener = None
+        self.pool_listener = None
+        self.server_listener = None
         self.maxDiff = None
 
     def _set_fail_point(self, client, command_args):
@@ -315,7 +357,8 @@ class SpecRunner(IntegrationTest):
                 arguments["requests"] = requests
             elif arg_name == "session":
                 arguments['session'] = sessions[arguments['session']]
-            elif name == 'command' and arg_name == 'command':
+            elif (name in ('command', 'run_admin_command') and
+                  arg_name == 'command'):
                 # Ensure the first key is the command name.
                 ordered_command = SON([(operation['command_name'], 1)])
                 ordered_command.update(arguments['command'])
@@ -343,6 +386,10 @@ class SpecRunner(IntegrationTest):
             else:
                 arguments[c2s] = arguments.pop(arg_name)
 
+        if name == 'run_on_thread':
+            args = {'sessions': sessions, 'collection': collection}
+            args.update(arguments)
+            arguments = args
         result = cmd(**dict(arguments))
 
         if name == "aggregate":
@@ -367,45 +414,48 @@ class SpecRunner(IntegrationTest):
         """Allow encryption spec to override expected error classes."""
         return (PyMongoError,)
 
+    def _run_op(self, sessions, collection, op, in_with_transaction):
+        expected_result = op.get('result')
+        if expect_error(op):
+            with self.assertRaises(self.allowable_errors(op),
+                                   msg=op['name']) as context:
+                self.run_operation(sessions, collection, op.copy())
+
+            if expect_error_message(expected_result):
+                if isinstance(context.exception, BulkWriteError):
+                    errmsg = str(context.exception.details).lower()
+                else:
+                    errmsg = str(context.exception).lower()
+                self.assertIn(expected_result['errorContains'].lower(),
+                              errmsg)
+            if expect_error_code(expected_result):
+                self.assertEqual(expected_result['errorCodeName'],
+                                 context.exception.details.get('codeName'))
+            if expect_error_labels_contain(expected_result):
+                self.assertErrorLabelsContain(
+                    context.exception,
+                    expected_result['errorLabelsContain'])
+            if expect_error_labels_omit(expected_result):
+                self.assertErrorLabelsOmit(
+                    context.exception,
+                    expected_result['errorLabelsOmit'])
+
+            # Reraise the exception if we're in the with_transaction
+            # callback.
+            if in_with_transaction:
+                raise context.exception
+        else:
+            result = self.run_operation(sessions, collection, op.copy())
+            if 'result' in op:
+                if op['name'] == 'runCommand':
+                    self.check_command_result(expected_result, result)
+                else:
+                    self.check_result(expected_result, result)
+
     def run_operations(self, sessions, collection, ops,
                        in_with_transaction=False):
         for op in ops:
-            expected_result = op.get('result')
-            if expect_error(op):
-                with self.assertRaises(self.allowable_errors(op),
-                                       msg=op['name']) as context:
-                    self.run_operation(sessions, collection, op.copy())
-
-                if expect_error_message(expected_result):
-                    if isinstance(context.exception, BulkWriteError):
-                        errmsg = str(context.exception.details).lower()
-                    else:
-                        errmsg = str(context.exception).lower()
-                    self.assertIn(expected_result['errorContains'].lower(),
-                                  errmsg)
-                if expect_error_code(expected_result):
-                    self.assertEqual(expected_result['errorCodeName'],
-                                     context.exception.details.get('codeName'))
-                if expect_error_labels_contain(expected_result):
-                    self.assertErrorLabelsContain(
-                        context.exception,
-                        expected_result['errorLabelsContain'])
-                if expect_error_labels_omit(expected_result):
-                    self.assertErrorLabelsOmit(
-                        context.exception,
-                        expected_result['errorLabelsOmit'])
-
-                # Reraise the exception if we're in the with_transaction
-                # callback.
-                if in_with_transaction:
-                    raise context.exception
-            else:
-                result = self.run_operation(sessions, collection, op.copy())
-                if 'result' in op:
-                    if op['name'] == 'runCommand':
-                        self.check_command_result(expected_result, result)
-                    else:
-                        self.check_result(expected_result, result)
+            self._run_op(sessions, collection, op, in_with_transaction)
 
     # TODO: factor with test_command_monitoring.py
     def check_events(self, test, listener, session_ids):
@@ -517,7 +567,29 @@ class SpecRunner(IntegrationTest):
 
     def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
+
+        # Kill all sessions before and after each test to prevent an open
+        # transaction (from a test failure) from blocking collection/database
+        # operations during test set up and tear down.
+        self.kill_all_sessions()
+        self.addCleanup(self.kill_all_sessions)
+        self.setup_scenario(scenario_def)
+        database_name = self.get_scenario_db_name(scenario_def)
+        collection_name = self.get_scenario_coll_name(scenario_def)
+        # SPEC-1245 workaround StaleDbVersion on distinct
+        for c in self.mongos_clients:
+            c[database_name][collection_name].distinct("x")
+
+        # Configure the fail point before creating the client.
+        if 'failPoint' in test:
+            fp = test['failPoint']
+            self.set_fail_point(fp)
+            self.addCleanup(self.set_fail_point, {
+                'configureFailPoint': fp['configureFailPoint'], 'mode': 'off'})
+
         listener = OvertCommandListener()
+        pool_listener = CMAPListener()
+        server_listener = ServerAndTopologyEventListener()
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test['clientOptions'])
         # MMAPv1 does not support retryable writes.
@@ -526,27 +598,20 @@ class SpecRunner(IntegrationTest):
             self.skipTest("MMAPv1 does not support retryWrites=True")
         use_multi_mongos = test['useMultipleMongoses']
         if client_context.is_mongos and use_multi_mongos:
-            client = rs_client(client_context.mongos_seeds(),
-                               event_listeners=[listener], **client_options)
+            client = rs_client(
+                client_context.mongos_seeds(),
+                event_listeners=[listener, pool_listener, server_listener],
+                **client_options)
         else:
-            client = rs_client(event_listeners=[listener], **client_options)
+            client = rs_client(
+                event_listeners=[listener, pool_listener, server_listener],
+                **client_options)
+        self.scenario_client = client
         self.listener = listener
+        self.pool_listener = pool_listener
+        self.server_listener = server_listener
         # Close the client explicitly to avoid having too many threads open.
         self.addCleanup(client.close)
-
-        # Kill all sessions before and after each test to prevent an open
-        # transaction (from a test failure) from blocking collection/database
-        # operations during test set up and tear down.
-        self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
-
-        database_name = self.get_scenario_db_name(scenario_def)
-        collection_name = self.get_scenario_coll_name(scenario_def)
-        self.setup_scenario(scenario_def)
-
-        # SPEC-1245 workaround StaleDbVersion on distinct
-        for c in self.mongos_clients:
-            c[database_name][collection_name].distinct("x")
 
         # Create session0 and session1.
         sessions = {}
@@ -571,14 +636,6 @@ class SpecRunner(IntegrationTest):
             session_ids[session_name] = s.session_id
 
         self.addCleanup(end_sessions, sessions)
-
-        if 'failPoint' in test:
-            fp = test['failPoint']
-            self.set_fail_point(fp)
-            self.addCleanup(self.set_fail_point, {
-                'configureFailPoint': fp['configureFailPoint'], 'mode': 'off'})
-
-        listener.results.clear()
 
         collection = client[database_name][collection_name]
         self.run_test_ops(sessions, collection, test)
@@ -612,6 +669,7 @@ class SpecRunner(IntegrationTest):
             # The expected data needs to be the left hand side here otherwise
             # CompareType(Binary) doesn't work.
             self.assertEqual(wrap_types(expected_c['data']), actual_data)
+
 
 def expect_any_error(op):
     if isinstance(op, dict):

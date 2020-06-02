@@ -17,11 +17,13 @@
 import os
 import sys
 import threading
+import time
 
 sys.path[0:0] = [""]
 
 from bson import json_util, Timestamp
-from pymongo import common
+from pymongo import (common,
+                     monitoring)
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             NetworkTimeout,
@@ -36,11 +38,14 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.uri_parser import parse_uri
 from test import unittest, IntegrationTest
 from test.utils import (assertion_context,
+                        client_context,
                         Barrier,
                         get_pool,
                         server_name_to_type,
                         rs_or_single_client,
+                        TestCreator,
                         wait_until)
+from test.utils_spec_runner import SpecRunner, SpecRunnerThread
 
 
 # Location of JSON test specifications.
@@ -51,7 +56,9 @@ _TEST_PATH = os.path.join(
 class MockMonitor(object):
     def __init__(self, server_description, topology, pool, topology_settings):
         self._server_description = server_description
-        self._topology = topology
+
+    def cancel_check(self):
+        pass
 
     def open(self):
         pass
@@ -303,6 +310,105 @@ class TestIgnoreStaleErrors(IntegrationTest):
 
         # Server should be selectable.
         client.admin.command('ping')
+
+
+class TestIntegration(SpecRunner):
+    # Location of JSON test specifications.
+    TEST_PATH = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        'discovery_and_monitoring_integration')
+
+    def _event_count(self, event):
+        if event == 'ServerMarkedUnknownEvent':
+            def marked_unknown(e):
+                return (isinstance(e, monitoring.ServerDescriptionChangedEvent)
+                        and not e.new_description.is_server_type_known)
+            return len(self.server_listener.matching(marked_unknown))
+        # Only support CMAP events for now.
+        self.assertTrue(event.startswith('Pool') or event.startswith('Conn'))
+        event_type = getattr(monitoring, event)
+        return self.pool_listener.event_count(event_type)
+
+    def assert_event_count(self, event, count):
+        """Run the assertEventCount test operation.
+
+        Assert the given event was published exactly `count` times.
+        """
+        self.assertEqual(self._event_count(event), count)
+
+    def wait_for_event(self, event, count):
+        """Run the waitForEvent test operation.
+
+        Wait for a number of events to be published, or fail.
+        """
+        wait_until(lambda: self._event_count(event) >= count,
+                   'find %s %s event(s)' % (count, event))
+
+    def configure_fail_point(self, fail_point):
+        """Run the configureFailPoint test operation.
+        """
+        self.set_fail_point(fail_point)
+        self.addCleanup(self.set_fail_point, {
+            'configureFailPoint': fail_point['configureFailPoint'],
+            'mode': 'off'})
+
+    def run_admin_command(self, command, **kwargs):
+        """Run the runAdminCommand test operation.
+        """
+        self.client.admin.command(command, **kwargs)
+
+    def record_primary(self):
+        """Run the recordPrimary test operation.
+        """
+        self._previous_primary = self.scenario_client.primary
+
+    def wait_for_primary_change(self, timeout_ms):
+        """Run the waitForPrimaryChange test operation.
+        """
+        def primary_changed():
+            primary = self.scenario_client.primary
+            if primary is None:
+                return False
+            return primary != self._previous_primary
+        timeout = timeout_ms/1000.0
+        wait_until(primary_changed, 'change primary', timeout=timeout)
+
+    def wait(self, ms):
+        """Run the "wait" test operation.
+        """
+        time.sleep(ms/1000.0)
+
+    def start_thread(self, name):
+        """Run the 'startThread' thread operation."""
+        thread = SpecRunnerThread(name)
+        thread.start()
+        self.targets[name] = thread
+
+    def run_on_thread(self, sessions, collection, name, operation):
+        """Run the 'runOnThread' operation."""
+        thread = self.targets[name]
+        thread.schedule(lambda: self._run_op(
+            sessions, collection, operation, False))
+
+    def wait_for_thread(self, name):
+        """Run the 'waitForThread' operation."""
+        thread = self.targets[name]
+        thread.stop()
+        thread.join()
+        if thread.exc:
+            raise thread.exc
+
+
+def create_spec_test(scenario_def, test, name):
+    @client_context.require_test_commands
+    def run_scenario(self):
+        self.run_scenario(scenario_def, test)
+
+    return run_scenario
+
+
+test_creator = TestCreator(create_spec_test, TestIntegration, TestIntegration.TEST_PATH)
+test_creator.create_tests()
 
 
 if __name__ == "__main__":

@@ -38,7 +38,10 @@ class SocketChecker(object):
             self._poller = None
 
     def select(self, sock, read=False, write=False, timeout=0):
-        """Select for reads or writes with a timeout in seconds."""
+        """Select for reads or writes with a timeout in seconds.
+
+        Returns True if the socket is readable/writable, False on timeout.
+        """
         while True:
             try:
                 if self._poller:
@@ -52,23 +55,31 @@ class SocketChecker(object):
                         # poll() timeout is in milliseconds. select()
                         # timeout is in seconds.
                         res = self._poller.poll(timeout * 1000)
+                        # poll returns a possibly-empty list containing
+                        # (fd, event) 2-tuples for the descriptors that have
+                        # events or errors to report. Return True if the list
+                        # is not empty.
+                        return bool(res)
                     finally:
                         self._poller.unregister(sock)
                 else:
                     rlist = [sock] if read else []
                     wlist = [sock] if write else []
                     res = select.select(rlist, wlist, [sock], timeout)
+                    # select returns a 3-tuple of lists of objects that are
+                    # ready: subsets of the first three arguments. Return
+                    # True if any of the lists are not empty.
+                    return any(res)
             except (_SelectError, IOError) as exc:
                 if _errno_from_exception(exc) in (errno.EINTR, errno.EAGAIN):
                     continue
                 raise
-            return res
 
     def socket_closed(self, sock):
         """Return True if we know socket has been closed, False otherwise.
         """
         try:
-            res = self.select(sock, read=True)
+            return self.select(sock, read=True)
         except (RuntimeError, KeyError):
             # RuntimeError is raised during a concurrent poll. KeyError
             # is raised by unregister if the socket is not in the poller.
@@ -84,4 +95,3 @@ class SocketChecker(object):
             # Any other exceptions should be attributed to a closed
             # or invalid socket.
             return True
-        return any(res)

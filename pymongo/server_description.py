@@ -235,7 +235,8 @@ class ServerDescription(object):
                     (self._election_id == other.election_id) and
                     (self._primary == other.primary) and
                     (self._ls_timeout_minutes ==
-                     other.logical_session_timeout_minutes))
+                     other.logical_session_timeout_minutes) and
+                    (self._error == other.error))
 
         return NotImplemented
 

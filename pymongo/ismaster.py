@@ -46,9 +46,10 @@ def _get_server_type(doc):
 
 
 class IsMaster(object):
-    __slots__ = ('_doc', '_server_type', '_is_writable', '_is_readable')
+    __slots__ = ('_doc', '_server_type', '_is_writable', '_is_readable',
+                 '_awaitable')
 
-    def __init__(self, doc):
+    def __init__(self, doc, awaitable=False):
         """Parse an ismaster response from the server."""
         self._server_type = _get_server_type(doc)
         self._doc = doc
@@ -60,6 +61,7 @@ class IsMaster(object):
         self._is_readable = (
             self.server_type == SERVER_TYPE.RSSecondary
             or self._is_writable)
+        self._awaitable = awaitable
 
     @property
     def document(self):
@@ -177,3 +179,7 @@ class IsMaster(object):
     @property
     def topology_version(self):
         return self._doc.get('topologyVersion')
+
+    @property
+    def awaitable(self):
+        return self._awaitable

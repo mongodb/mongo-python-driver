@@ -754,6 +754,7 @@ class TestSession(IntegrationTest):
         # Ensure the collection exists.
         self.client.pymongo_test.test_unacked_writes.insert_one({})
         client = rs_or_single_client(w=0, event_listeners=[self.listener])
+        self.addCleanup(client.close)
         db = client.pymongo_test
         coll = db.test_unacked_writes
         ops = [

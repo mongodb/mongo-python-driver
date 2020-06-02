@@ -14,7 +14,6 @@
 
 """Run a target function on a background thread."""
 
-import atexit
 import threading
 import time
 import weakref
@@ -46,6 +45,7 @@ class PeriodicExecutor(object):
         self._stopped = False
         self._thread = None
         self._name = name
+        self._skip_sleep = False
 
         self._thread_will_exit = False
         self._lock = threading.Lock()
@@ -109,6 +109,9 @@ class PeriodicExecutor(object):
     def update_interval(self, new_interval):
         self._interval = new_interval
 
+    def skip_sleep(self):
+        self._skip_sleep = True
+
     def __should_stop(self):
         with self._lock:
             if self._stopped:
@@ -129,12 +132,14 @@ class PeriodicExecutor(object):
 
                 raise
 
-            deadline = _time() + self._interval
-
-            while not self._stopped and _time() < deadline:
-                time.sleep(self._min_interval)
-                if self._event:
-                    break  # Early wake.
+            if self._skip_sleep:
+                self._skip_sleep = False
+            else:
+                deadline = _time() + self._interval
+                while not self._stopped and _time() < deadline:
+                    time.sleep(self._min_interval)
+                    if self._event:
+                        break  # Early wake.
 
             self._event = False
 
@@ -177,5 +182,3 @@ def _shutdown_executors():
             executor.join(1)
 
     executor = None
-
-atexit.register(_shutdown_executors)

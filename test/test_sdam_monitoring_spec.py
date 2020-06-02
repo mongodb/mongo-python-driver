@@ -320,7 +320,7 @@ class TestSdamMonitoring(IntegrationTest):
 
         # Expect a single ServerDescriptionChangedEvent for the network error.
         marked_unknown_events = self.listener.matching(marked_unknown)
-        self.assertEqual(len(marked_unknown_events), 1)
+        self.assertEqual(len(marked_unknown_events), 1, marked_unknown_events)
         self.assertIsInstance(
             marked_unknown_events[0].new_description.error, expected_error)
 

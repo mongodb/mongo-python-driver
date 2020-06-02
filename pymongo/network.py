@@ -16,7 +16,9 @@
 
 import datetime
 import errno
+import socket
 import struct
+
 
 from bson import _decode_all_selective
 from bson.py3compat import PY3
@@ -27,15 +29,18 @@ from pymongo.compression_support import decompress, _NO_COMPRESSION
 from pymongo.errors import (AutoReconnect,
                             NotMasterError,
                             OperationFailure,
-                            ProtocolError)
-from pymongo.message import _UNPACK_REPLY
+                            ProtocolError,
+                            NetworkTimeout,
+                            _OperationCancelled)
+from pymongo.message import _UNPACK_REPLY, _OpMsg
+from pymongo.monotonic import time
 from pymongo.socket_checker import _errno_from_exception
 
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
-def command(sock, dbname, spec, slave_ok, is_mongos,
+def command(sock_info, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, session, client, check=True,
             allowable_errors=None, address=None,
             check_keys=False, listeners=None, max_bson_size=None,
@@ -45,7 +50,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
             compression_ctx=None,
             use_op_msg=False,
             unacknowledged=False,
-            user_fields=None):
+            user_fields=None,
+            exhaust_allowed=False):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -74,6 +80,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `user_fields` (optional): Response fields that should be decoded
         using the TypeDecoders from codec_options, passed to
         bson._decode_all_selective.
+      - `exhaust_allowed`: True if we should enable OP_MSG exhaustAllowed.
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
@@ -108,7 +115,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         check_keys = False
 
     if use_op_msg:
-        flags = 2 if unacknowledged else 0
+        flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
+        flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
         request_id, msg, size, max_doc_size = message._op_msg(
             flags, spec, dbname, read_preference, slave_ok, check_keys,
             codec_options, ctx=compression_ctx)
@@ -133,13 +141,14 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
         start = datetime.datetime.now()
 
     try:
-        sock.sendall(msg)
+        sock_info.sock.sendall(msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
             response_doc = {"ok": 1}
         else:
-            reply = receive_message(sock, request_id)
+            reply = receive_message(sock_info, request_id)
+            sock_info.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
                 codec_options=codec_options, user_fields=user_fields)
 
@@ -174,11 +183,16 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
-def receive_message(sock, request_id, max_message_size=MAX_MESSAGE_SIZE):
+def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
     """Receive a raw BSON message or raise socket.error."""
+    timeout = sock_info.sock.gettimeout()
+    if timeout:
+        deadline = time() + timeout
+    else:
+        deadline = None
     # Ignore the response's request id.
     length, _, response_to, op_code = _UNPACK_HEADER(
-        _receive_data_on_socket(sock, 16))
+        _receive_data_on_socket(sock_info, 16, deadline))
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
@@ -192,11 +206,12 @@ def receive_message(sock, request_id, max_message_size=MAX_MESSAGE_SIZE):
                             "message size (%r)" % (length, max_message_size))
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-            _receive_data_on_socket(sock, 9))
+            _receive_data_on_socket(sock_info, 9, deadline))
         data = decompress(
-            _receive_data_on_socket(sock, length - 25), compressor_id)
+            _receive_data_on_socket(sock_info, length - 25, deadline),
+            compressor_id)
     else:
-        data = _receive_data_on_socket(sock, length - 16)
+        data = _receive_data_on_socket(sock_info, length - 16, deadline)
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
@@ -206,18 +221,48 @@ def receive_message(sock, request_id, max_message_size=MAX_MESSAGE_SIZE):
     return unpack_reply(data)
 
 
+_POLL_TIMEOUT = 0.5
+
+
+def wait_for_read(sock_info, deadline):
+    """Block until at least one byte is read, or a timeout, or a cancel."""
+    context = sock_info.cancel_context
+    # Only Monitor connections can be cancelled.
+    if context:
+        sock = sock_info.sock
+        while True:
+            # SSLSocket can have buffered data which won't be caught by select.
+            if hasattr(sock, 'pending') and sock.pending() > 0:
+                readable = True
+            else:
+                # Wait up to 500ms for the socket to become readable and then
+                # check for cancellation.
+                if deadline:
+                    timeout = max(min(deadline - time(), _POLL_TIMEOUT), 0.001)
+                else:
+                    timeout = _POLL_TIMEOUT
+                readable = sock_info.socket_checker.select(
+                    sock, read=True, timeout=timeout)
+            if context.cancelled:
+                raise _OperationCancelled('isMaster cancelled')
+            if readable:
+                return
+            if deadline and time() > deadline:
+                raise socket.timeout("timed out")
+
 # memoryview was introduced in Python 2.7 but we only use it on Python 3
 # because before 2.7.4 the struct module did not support memoryview:
 # https://bugs.python.org/issue10212.
 # In Jython, using slice assignment on a memoryview results in a
 # NullPointerException.
 if not PY3:
-    def _receive_data_on_socket(sock, length):
+    def _receive_data_on_socket(sock_info, length, deadline):
         buf = bytearray(length)
         i = 0
         while length:
             try:
-                chunk = sock.recv(length)
+                wait_for_read(sock_info, deadline)
+                chunk = sock_info.sock.recv(length)
             except (IOError, OSError) as exc:
                 if _errno_from_exception(exc) == errno.EINTR:
                     continue
@@ -231,13 +276,14 @@ if not PY3:
 
         return bytes(buf)
 else:
-    def _receive_data_on_socket(sock, length):
+    def _receive_data_on_socket(sock_info, length, deadline):
         buf = bytearray(length)
         mv = memoryview(buf)
         bytes_read = 0
         while bytes_read < length:
             try:
-                chunk_length = sock.recv_into(mv[bytes_read:])
+                wait_for_read(sock_info, deadline)
+                chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
             except (IOError, OSError) as exc:
                 if _errno_from_exception(exc) == errno.EINTR:
                     continue

@@ -14,14 +14,19 @@
 
 """Class to monitor a MongoDB server on a background thread."""
 
+import atexit
+import threading
 import weakref
 
 from pymongo import common, periodic_executor
-from pymongo.errors import OperationFailure
+from pymongo.errors import (NotMasterError,
+                            OperationFailure,
+                            _OperationCancelled)
+from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
+from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
-from pymongo.server_type import SERVER_TYPE
 from pymongo.srv_resolver import _SrvResolver
 
 
@@ -49,9 +54,17 @@ class MonitorBase(object):
 
         self._executor = executor
 
+        def _on_topology_gc(dummy=None):
+            # This prevents GC from waiting 10 seconds for isMaster to complete
+            # See test_cleanup_executors_on_client_del.
+            monitor = self_ref()
+            if monitor:
+                monitor.gc_safe_close()
+
         # Avoid cycles. When self or topology is freed, stop executor soon.
         self_ref = weakref.ref(self, executor.close)
-        self._topology = weakref.proxy(topology, executor.close)
+        self._topology = weakref.proxy(topology, _on_topology_gc)
+        _register(self)
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -60,12 +73,16 @@ class MonitorBase(object):
         """
         self._executor.open()
 
+    def gc_safe_close(self):
+        """GC safe close."""
+        self._executor.close()
+
     def close(self):
         """Close and stop monitoring.
 
         open() restarts the monitor after closing.
         """
-        self._executor.close()
+        self.gc_safe_close()
 
     def join(self, timeout=None):
         """Wait for the monitor to stop."""
@@ -99,72 +116,113 @@ class Monitor(MonitorBase):
         self._server_description = server_description
         self._pool = pool
         self._settings = topology_settings
-        self._avg_round_trip_time = MovingAverage()
         self._listeners = self._settings._pool_options.event_listeners
         pub = self._listeners is not None
         self._publish = pub and self._listeners.enabled_for_server_heartbeat
+        self._cancel_context = None
+        self._rtt_monitor = _RttMonitor(
+            topology, topology_settings, topology._create_pool_for_monitor(
+                server_description.address))
+        self.heartbeater = None
+
+    def cancel_check(self):
+        """Cancel any concurrent isMaster check.
+
+        Note: this is called from a weakref.proxy callback and MUST NOT take
+        any locks.
+        """
+        context = self._cancel_context
+        if context:
+            # Note: we cannot close the socket because doing so may cause
+            # concurrent reads/writes to hang until a timeout occurs
+            # (depending on the platform).
+            context.cancel()
+
+    def _start_rtt_monitor(self):
+        """Start an _RttMonitor that periodically runs ping."""
+        # If this monitor is closed directly before (or during) this open()
+        # call, the _RttMonitor will not be closed. Checking if this monitor
+        # was closed directly after resolves the race.
+        self._rtt_monitor.open()
+        if self._executor._stopped:
+            self._rtt_monitor.close()
+
+    def gc_safe_close(self):
+        self._executor.close()
+        self._rtt_monitor.gc_safe_close()
+        self.cancel_check()
 
     def close(self):
-        super(Monitor, self).close()
-
+        self.gc_safe_close()
+        self._rtt_monitor.close()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
+        self._reset_connection()
+
+    def _reset_connection(self):
+        # Clear our pooled connection.
         self._pool.reset()
 
     def _run(self):
         try:
-            self._server_description = self._check_with_retry()
+            prev_sd = self._server_description
+            try:
+                self._server_description = self._check_server()
+            except _OperationCancelled as exc:
+                # Already closed the connection, wait for the next check.
+                self._server_description = ServerDescription(
+                    self._server_description.address, error=exc)
+                if prev_sd.is_server_type_known:
+                    # Immediately retry since we've already waited 500ms to
+                    # discover that we've been cancelled.
+                    self._executor.skip_sleep()
+                return
             self._topology.on_change(self._server_description)
+
+            if (self._server_description.is_server_type_known and
+                     self._server_description.topology_version):
+                self._start_rtt_monitor()
+                # Immediately check for the next streaming response.
+                self._executor.skip_sleep()
+
+            if self._server_description.error:
+                # Reset the server pool only after marking the server Unknown.
+                self._topology.reset_pool(self._server_description.address)
+                if prev_sd.is_server_type_known:
+                    # Immediately retry on network errors.
+                    self._executor.skip_sleep()
         except ReferenceError:
             # Topology was garbage-collected.
             self.close()
 
-    def _check_with_retry(self):
-        """Call ismaster once or twice. Reset server's pool on error.
+    def _check_server(self):
+        """Call isMaster or read the next streaming response.
 
         Returns a ServerDescription.
         """
-        # According to the spec, if an ismaster call fails we reset the
-        # server's pool. If a server was once connected, change its type
-        # to Unknown only after retrying once.
-        address = self._server_description.address
-        retry = True
-        if self._server_description.server_type == SERVER_TYPE.Unknown:
-            retry = False
-
         start = _time()
         try:
-            return self._check_once()
+            try:
+                return self._check_once()
+            except (OperationFailure, NotMasterError) as exc:
+                # Update max cluster time even when isMaster fails.
+                self._topology.receive_cluster_time(
+                    exc.details.get('$clusterTime'))
+                raise
         except ReferenceError:
             raise
         except Exception as error:
-            error_time = _time() - start
+            address = self._server_description.address
+            duration = _time() - start
             if self._publish:
                 self._listeners.publish_server_heartbeat_failed(
-                    address, error_time, error)
-            default = ServerDescription(address, error=error)
-            # Reset the server pool only after marking the server Unknown.
-            self._topology.on_change(default)
-            self._topology.reset_pool(address)
-            self._avg_round_trip_time.reset()
-            if not retry:
-                # Server type defaults to Unknown.
-                return default
-
-            # Try a second and final time. If it fails return original error.
-            # Always send metadata: this is a new connection.
-            start = _time()
-            try:
-                return self._check_once()
-            except ReferenceError:
+                    address, duration, error)
+            self._reset_connection()
+            if isinstance(error, _OperationCancelled):
                 raise
-            except Exception as error:
-                error_time = _time() - start
-                if self._publish:
-                    self._listeners.publish_server_heartbeat_failed(
-                        address, error_time, error)
-                self._avg_round_trip_time.reset()
-                return default
+            self._rtt_monitor.reset()
+            # Server type defaults to Unknown.
+            return ServerDescription(address, error=error)
 
     def _check_once(self):
         """A single attempt to call ismaster.
@@ -173,35 +231,46 @@ class Monitor(MonitorBase):
         """
         address = self._server_description.address
         if self._publish:
+            # PYTHON-2299: Add the "awaited" field to heartbeat events.
             self._listeners.publish_server_heartbeat_started(address)
+
+        if self._cancel_context and self._cancel_context.cancelled:
+            self._reset_connection()
         with self._pool.get_socket({}) as sock_info:
+            self._cancel_context = sock_info.cancel_context
             response, round_trip_time = self._check_with_socket(sock_info)
-            self._avg_round_trip_time.add_sample(round_trip_time)
-            sd = ServerDescription(
-                address=address,
-                ismaster=response,
-                round_trip_time=self._avg_round_trip_time.get())
+            if not response.awaitable:
+                self._rtt_monitor.add_sample(round_trip_time)
+
+            sd = ServerDescription(address, response,
+                                   self._rtt_monitor.average())
             if self._publish:
                 self._listeners.publish_server_heartbeat_succeeded(
                     address, round_trip_time, response)
-
             return sd
 
-    def _check_with_socket(self, sock_info):
+    def _check_with_socket(self, conn):
         """Return (IsMaster, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.
         """
+        cluster_time = self._topology.max_cluster_time()
         start = _time()
-        try:
-            return (sock_info.ismaster(self._pool.opts.metadata,
-                                       self._topology.max_cluster_time()),
-                    _time() - start)
-        except OperationFailure as exc:
-            # Update max cluster time even when isMaster fails.
-            self._topology.receive_cluster_time(
-                exc.details.get('$clusterTime'))
-            raise
+        if conn.more_to_come:
+            # Read the next streaming isMaster (MongoDB 4.4+).
+            response = IsMaster(conn._next_reply(), awaitable=True)
+        elif (conn.performed_handshake and
+              self._server_description.topology_version):
+            # Initiate streaming isMaster (MongoDB 4.4+).
+            response = conn._ismaster(
+                cluster_time,
+                self._server_description.topology_version,
+                self._settings.heartbeat_frequency,
+                None)
+        else:
+            # New connection handshake or polling isMaster (MongoDB <4.4).
+            response = conn._ismaster(cluster_time, None, None, None)
+        return response, _time() - start
 
 
 class SrvMonitor(MonitorBase):
@@ -252,3 +321,105 @@ class SrvMonitor(MonitorBase):
             self._executor.update_interval(
                 max(ttl, common.MIN_SRV_RESCAN_INTERVAL))
             return seedlist
+
+
+class _RttMonitor(MonitorBase):
+    def __init__(self, topology, topology_settings, pool):
+        """Maintain round trip times for a server.
+
+        The Topology is weakly referenced.
+        """
+        super(_RttMonitor, self).__init__(
+            topology,
+            "pymongo_server_rtt_thread",
+            topology_settings.heartbeat_frequency,
+            common.MIN_HEARTBEAT_INTERVAL)
+
+        self._pool = pool
+        self._moving_average = MovingAverage()
+        self._lock = threading.Lock()
+
+    def close(self):
+        self.gc_safe_close()
+        # Increment the generation and maybe close the socket. If the executor
+        # thread has the socket checked out, it will be closed when checked in.
+        self._pool.reset()
+
+    def add_sample(self, sample):
+        """Add a RTT sample."""
+        with self._lock:
+            self._moving_average.add_sample(sample)
+
+    def average(self):
+        """Get the calculated average, or None if no samples yet."""
+        with self._lock:
+            return self._moving_average.get()
+
+    def reset(self):
+        """Reset the average RTT."""
+        with self._lock:
+            return self._moving_average.reset()
+
+    def _run(self):
+        try:
+            # NOTE: This thread is only run when when using the streaming
+            # heartbeat protocol (MongoDB 4.4+).
+            # XXX: Skip check if the server is unknown?
+            rtt = self._ping()
+            self.add_sample(rtt)
+        except ReferenceError:
+            # Topology was garbage-collected.
+            self.close()
+        except Exception:
+            self._pool.reset()
+
+    def _ping(self):
+        """Run an "isMaster" command and return the RTT."""
+        with self._pool.get_socket({}) as sock_info:
+            start = _time()
+            sock_info.ismaster()
+            return _time() - start
+
+
+# Close monitors to cancel any in progress streaming checks before joining
+# executor threads. For an explanation of how this works see the comment
+# about _EXECUTORS in periodic_executor.py.
+_MONITORS = set()
+
+
+def _register(monitor):
+    ref = weakref.ref(monitor, _unregister)
+    _MONITORS.add(ref)
+
+
+def _unregister(monitor_ref):
+    _MONITORS.remove(monitor_ref)
+
+
+def _shutdown_monitors():
+    if _MONITORS is None:
+        return
+
+    # Copy the set. Closing monitors removes them.
+    monitors = list(_MONITORS)
+
+    # Close all monitors.
+    for ref in monitors:
+        monitor = ref()
+        if monitor:
+            monitor.gc_safe_close()
+
+    monitor = None
+
+
+def _shutdown_resources():
+    # _shutdown_monitors/_shutdown_executors may already be GC'd at shutdown.
+    shutdown = _shutdown_monitors
+    if shutdown:
+        shutdown()
+    shutdown = _shutdown_executors
+    if shutdown:
+        shutdown()
+
+
+atexit.register(_shutdown_resources)

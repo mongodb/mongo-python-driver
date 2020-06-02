@@ -36,6 +36,9 @@ class MockMonitor(object):
     def __init__(self, server_description, topology, pool, topology_settings):
         pass
 
+    def cancel_check(self):
+        pass
+
     def open(self):
         pass
 

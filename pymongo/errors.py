@@ -282,3 +282,9 @@ class EncryptionError(PyMongoError):
     def cause(self):
         """The exception that caused this encryption or decryption error."""
         return self.__cause
+
+
+class _OperationCancelled(AutoReconnect):
+    """Internal error raised when a socket operation is cancelled.
+    """
+    pass

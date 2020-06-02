@@ -31,12 +31,14 @@ from functools import partial
 
 from bson import json_util, py3compat
 from bson.objectid import ObjectId
+from bson.son import SON
 
 from pymongo import (MongoClient,
                      monitoring, read_preferences)
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS, ConnectionPoolListener
-from pymongo.pool import PoolOptions
+from pymongo.pool import (_CancellationContext,
+                          PoolOptions)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
@@ -160,8 +162,7 @@ class OvertCommandListener(EventListener):
             super(OvertCommandListener, self).failed(event)
 
 
-class ServerAndTopologyEventListener(monitoring.ServerListener,
-                                     monitoring.TopologyListener):
+class _ServerEventListener(object):
     """Listens to all events."""
 
     def __init__(self):
@@ -185,6 +186,16 @@ class ServerAndTopologyEventListener(monitoring.ServerListener,
         self.results = []
 
 
+class ServerEventListener(_ServerEventListener,
+                          monitoring.ServerListener):
+    """Listens to Server events."""
+
+
+class ServerAndTopologyEventListener(ServerEventListener,
+                                     monitoring.TopologyListener):
+    """Listens to Server and Topology events."""
+
+
 class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
     """Listens to only server heartbeat events."""
 
@@ -200,9 +211,18 @@ class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
     def failed(self, event):
         self.results.append(event)
 
+    def matching(self, matcher):
+        """Return the matching events."""
+        results = self.results[:]
+        return [event for event in results if matcher(event)]
+
 
 class MockSocketInfo(object):
-    def close(self):
+    def __init__(self):
+        self.cancel_context = _CancellationContext()
+        self.more_to_come = False
+
+    def close_socket(self, reason):
         pass
 
     def __enter__(self):
@@ -218,7 +238,7 @@ class MockPool(object):
         self._lock = threading.Lock()
         self.opts = PoolOptions()
 
-    def get_socket(self, all_credentials):
+    def get_socket(self, all_credentials, checkout=False):
         return MockSocketInfo()
 
     def return_socket(self, *args, **kwargs):
@@ -676,6 +696,16 @@ def wait_until(predicate, success_description, timeout=10):
 
         time.sleep(interval)
 
+
+def repl_set_step_down(client, **kwargs):
+    """Run replSetStepDown, first unfreezing a secondary with replSetFreeze."""
+    cmd = SON([('replSetStepDown', 1)])
+    cmd.update(kwargs)
+
+    # Unfreeze a secondary to ensure a speedy election.
+    client.admin.command(
+        'replSetFreeze', 0, read_preference=ReadPreference.SECONDARY)
+    client.admin.command(cmd)
 
 def is_mongos(client):
     res = client.admin.command('ismaster')

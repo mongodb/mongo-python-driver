@@ -38,6 +38,7 @@ def get_executors(client):
     executors = []
     for server in client._topology._servers.values():
         executors.append(server._monitor._executor)
+        executors.append(server._monitor._rtt_monitor._executor)
     executors.append(client._kill_cursors_executor)
     executors.append(client._topology._Topology__events_executor)
     return [e for e in executors if e is not None]
@@ -54,7 +55,7 @@ class TestMonitor(IntegrationTest):
     def test_cleanup_executors_on_client_del(self):
         client = create_client()
         executors = get_executors(client)
-        self.assertEqual(len(executors), 3)
+        self.assertEqual(len(executors), 4)
 
         # Each executor stores a weakref to itself in _EXECUTORS.
         executor_refs = [
@@ -71,7 +72,7 @@ class TestMonitor(IntegrationTest):
     def test_cleanup_executors_on_client_close(self):
         client = create_client()
         executors = get_executors(client)
-        self.assertEqual(len(executors), 3)
+        self.assertEqual(len(executors), 4)
 
         client.close()
 

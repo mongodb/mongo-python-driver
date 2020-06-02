@@ -1563,6 +1563,11 @@ class _OpReply(object):
         # This should never be called on _OpReply.
         raise NotImplementedError
 
+    @property
+    def more_to_come(self):
+        """Is the moreToCome bit set on this response?"""
+        return False
+
     @classmethod
     def unpack(cls, msg):
         """Construct an _OpReply from raw bytes."""
@@ -1582,6 +1587,11 @@ class _OpMsg(object):
 
     UNPACK_FROM = struct.Struct("<IBi").unpack_from
     OP_CODE = 2013
+
+    # Flag bits.
+    CHECKSUM_PRESENT = 1
+    MORE_TO_COME = 1 << 1
+    EXHAUST_ALLOWED = 1 << 16  # Only present on requests.
 
     def __init__(self, flags, payload_document):
         self.flags = flags
@@ -1613,15 +1623,28 @@ class _OpMsg(object):
         """Return the bytes of the command response."""
         return self.payload_document
 
+    @property
+    def more_to_come(self):
+        """Is the moreToCome bit set on this response?"""
+        return self.flags & self.MORE_TO_COME
+
     @classmethod
     def unpack(cls, msg):
         """Construct an _OpMsg from raw bytes."""
         flags, first_payload_type, first_payload_size = cls.UNPACK_FROM(msg)
         if flags != 0:
-            raise ProtocolError("Unsupported OP_MSG flags (%r)" % (flags,))
+            if flags & cls.CHECKSUM_PRESENT:
+                raise ProtocolError(
+                    "Unsupported OP_MSG flag checksumPresent: "
+                    "0x%x" % (flags,))
+
+            if flags ^ cls.MORE_TO_COME:
+                raise ProtocolError(
+                    "Unsupported OP_MSG flags: 0x%x" % (flags,))
         if first_payload_type != 0:
             raise ProtocolError(
-                "Unsupported OP_MSG payload type (%r)" % (first_payload_type,))
+                "Unsupported OP_MSG payload type: "
+                "0x%x" % (first_payload_type,))
 
         if len(msg) != first_payload_size + 5:
             raise ProtocolError("Unsupported OP_MSG reply: >1 section")

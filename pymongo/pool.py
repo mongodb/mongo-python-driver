@@ -482,6 +482,20 @@ def _speculative_context(all_credentials):
     return None
 
 
+class _CancellationContext(object):
+    def __init__(self):
+        self._cancelled = False
+
+    def cancel(self):
+        """Cancel this context."""
+        self._cancelled = True
+
+    @property
+    def cancelled(self):
+        """Was cancel called?"""
+        return self._cancelled
+
+
 class SocketInfo(object):
     """Store a socket with some metadata.
 
@@ -521,13 +535,34 @@ class SocketInfo(object):
         # sockets created before the last reset.
         self.generation = pool.generation
         self.ready = False
+        self.cancel_context = None
+        if not pool.handshake:
+            # This is a Monitor connection.
+            self.cancel_context = _CancellationContext()
+        self.opts = pool.opts
+        self.more_to_come = False
 
-    def ismaster(self, metadata, cluster_time, all_credentials=None):
+    def ismaster(self, all_credentials=None):
+        return self._ismaster(None, None, None, all_credentials)
+
+    def _ismaster(self, cluster_time, topology_version,
+                  heartbeat_frequency, all_credentials):
         cmd = SON([('ismaster', 1)])
-        if not self.performed_handshake:
-            cmd['client'] = metadata
+        performing_handshake = not self.performed_handshake
+        awaitable = False
+        if performing_handshake:
+            self.performed_handshake = True
+            cmd['client'] = self.opts.metadata
             if self.compression_settings:
                 cmd['compression'] = self.compression_settings.compressors
+        elif topology_version is not None:
+            cmd['topologyVersion'] = topology_version
+            cmd['maxAwaitTimeMS'] = int(heartbeat_frequency*1000)
+            awaitable = True
+            # If connect_timeout is None there is no timeout.
+            if self.opts.connect_timeout:
+                self.sock.settimeout(
+                    self.opts.connect_timeout + heartbeat_frequency)
 
         if self.max_wire_version >= 6 and cluster_time is not None:
             cmd['$clusterTime'] = cluster_time
@@ -541,7 +576,9 @@ class SocketInfo(object):
         if auth_ctx:
             cmd['speculativeAuthenticate'] = auth_ctx.speculate_command()
 
-        ismaster = IsMaster(self.command('admin', cmd, publish_events=False))
+        doc = self.command('admin', cmd, publish_events=False,
+                           exhaust_allowed=awaitable)
+        ismaster = IsMaster(doc, awaitable=awaitable)
         self.is_writable = ismaster.is_writable
         self.max_wire_version = ismaster.max_wire_version
         self.max_bson_size = ismaster.max_bson_size
@@ -550,12 +587,11 @@ class SocketInfo(object):
         self.supports_sessions = (
             ismaster.logical_session_timeout_minutes is not None)
         self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
-        if not self.performed_handshake and self.compression_settings:
+        if performing_handshake and self.compression_settings:
             ctx = self.compression_settings.get_compression_context(
                 ismaster.compressors)
             self.compression_context = ctx
 
-        self.performed_handshake = True
         self.op_msg_enabled = ismaster.max_wire_version >= 6
         if creds:
             self.negotiated_mechanisms[creds] = ismaster.sasl_supported_mechs
@@ -564,6 +600,14 @@ class SocketInfo(object):
             if auth_ctx.speculate_succeeded():
                 self.auth_ctx[auth_ctx.credentials] = auth_ctx
         return ismaster
+
+    def _next_reply(self):
+        reply = self.receive_message(None)
+        self.more_to_come = reply.more_to_come
+        unpacked_docs = reply.unpack_response()
+        response_doc = unpacked_docs[0]
+        helpers._check_command_response(response_doc)
+        return response_doc
 
     def command(self, dbname, spec, slave_ok=False,
                 read_preference=ReadPreference.PRIMARY,
@@ -577,7 +621,8 @@ class SocketInfo(object):
                 client=None,
                 retryable_write=False,
                 publish_events=True,
-                user_fields=None):
+                user_fields=None,
+                exhaust_allowed=False):
         """Execute a command or raise an error.
 
         :Parameters:
@@ -635,7 +680,7 @@ class SocketInfo(object):
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(self.sock, dbname, spec, slave_ok,
+            return command(self, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
                            session, client, check, allowable_errors,
                            self.address, check_keys, listeners,
@@ -645,7 +690,8 @@ class SocketInfo(object):
                            compression_ctx=self.compression_context,
                            use_op_msg=self.op_msg_enabled,
                            unacknowledged=unacknowledged,
-                           user_fields=user_fields)
+                           user_fields=user_fields,
+                           exhaust_allowed=exhaust_allowed)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
@@ -675,8 +721,7 @@ class SocketInfo(object):
         If any exception is raised, the socket is closed.
         """
         try:
-            return receive_message(self.sock, request_id,
-                                   self.max_message_size)
+            return receive_message(self, request_id, self.max_message_size)
         except BaseException as error:
             self._raise_connection_failure(error)
 
@@ -787,16 +832,24 @@ class SocketInfo(object):
         """Close this connection with a reason."""
         if self.closed:
             return
+        self._close_socket()
+        if reason and self.enabled_for_cmap:
+            self.listeners.publish_connection_closed(
+                self.address, self.id, reason)
+
+    def _close_socket(self):
+        """Close this connection."""
+        if self.closed:
+            return
         self.closed = True
-        # Avoid exceptions on interpreter shutdown.
+        if self.cancel_context:
+            self.cancel_context.cancel()
+        # Note: We catch exceptions to avoid spurious errors on interpreter
+        # shutdown.
         try:
             self.sock.close()
         except Exception:
             pass
-
-        if reason and self.enabled_for_cmap:
-            self.listeners.publish_connection_closed(
-                self.address, self.id, reason)
 
     def socket_closed(self):
         """Return True if we know socket has been closed, False otherwise."""
@@ -1134,7 +1187,7 @@ class Pool:
 
         sock_info = SocketInfo(sock, self, self.address, conn_id)
         if self.handshake:
-            sock_info.ismaster(self.opts.metadata, None, all_credentials)
+            sock_info.ismaster(all_credentials)
             self.is_writable = sock_info.is_writable
 
         return sock_info

@@ -596,6 +596,10 @@ class Topology(object):
             self._process_change(ServerDescription(address, error=error))
             # Clear the pool.
             server.reset()
+            # "When a client marks a server Unknown from `Network error when
+            # reading or writing`_, clients MUST cancel the isMaster check on
+            # that server and close the current monitoring connection."
+            server._monitor.cancel_check()
         elif issubclass(exc_type, OperationFailure):
             # Do not request an immediate check since the server is likely
             # shutting down.

@@ -816,6 +816,19 @@ class TestClient(IntegrationTest):
         client.close()
         self.assertEqual(topology._servers, {})
 
+    def test_close_closes_sockets(self):
+        client = rs_client()
+        self.addCleanup(client.close)
+        client.test.test.find_one()
+        topology = client._topology
+        client.close()
+        for server in topology._servers.values():
+            self.assertFalse(server._pool.sockets)
+            self.assertTrue(server._monitor._executor._stopped)
+            self.assertTrue(server._monitor._rtt_monitor._executor._stopped)
+            self.assertFalse(server._monitor._pool.sockets)
+            self.assertFalse(server._monitor._rtt_monitor._pool.sockets)
+
     def test_bad_uri(self):
         with self.assertRaises(InvalidURI):
             MongoClient("http://localhost")
@@ -1636,12 +1649,12 @@ class TestExhaustCursor(IntegrationTest):
             msg += encode({'$err': 'mock err', 'code': 0})
             return message._OpReply.unpack(msg)
 
-        saved = sock_info.receive_message
         sock_info.receive_message = receive_message
         self.assertRaises(OperationFailure, list, cursor)
-        sock_info.receive_message = saved
+        # Unpatch the instance.
+        del sock_info.receive_message
 
-        # The socket is returned the pool and it still works.
+        # The socket is returned to the pool and it still works.
         self.assertEqual(200, collection.count_documents({}))
         self.assertIn(sock_info, pool.sockets)
 

@@ -226,6 +226,8 @@ class ClientContext(object):
             self.connection_attempts.append(
                 'failed to connect client %r: %s' % (client, exc))
             return None
+        finally:
+            client.close()
 
     def _init_client(self):
         self.client = self._connect(host, port)
@@ -602,6 +604,14 @@ class ClientContext(object):
                              "failCommand fail point must be supported",
                              func=func)
 
+    def require_failCommand_appName(self, func):
+        """Run a test only if the server supports the failCommand appName."""
+        # SERVER-47195
+        return self._require(lambda: (self.test_commands_enabled and
+                                      self.version >= (4, 4, -1)),
+                             "failCommand appName must be supported",
+                             func=func)
+
     def require_tls(self, func):
         """Run a test only if the client can connect over TLS."""
         return self._require(lambda: self.tls,
@@ -788,10 +798,14 @@ def _get_executors(topology):
     executors = []
     for server in topology._servers.values():
         # Some MockMonitor do not have an _executor.
-        executors.append(getattr(server._monitor, '_executor', None))
+        if hasattr(server._monitor, '_executor'):
+            executors.append(server._monitor._executor)
+        if hasattr(server._monitor, '_rtt_monitor'):
+            executors.append(server._monitor._rtt_monitor._executor)
     executors.append(topology._Topology__events_executor)
     if topology._srv_monitor:
         executors.append(topology._srv_monitor._executor)
+
     return [e for e in executors if e is not None]
 
 
