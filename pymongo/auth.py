@@ -43,7 +43,7 @@ from collections import namedtuple
 from bson.binary import Binary
 from bson.py3compat import string_type, _unicode, PY3
 from bson.son import SON
-from pymongo.auth_aws import _HAVE_MONGODB_AWS, _auth_aws, _AWSCredential
+from pymongo.auth_aws import _authenticate_aws
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
@@ -538,20 +538,6 @@ def _authenticate_x509(credentials, sock_info):
             "A username is required for MONGODB-X509 authentication "
             "when connected to MongoDB versions older than 3.4.")
     sock_info.command('$external', cmd)
-
-
-def _authenticate_aws(credentials, sock_info):
-    """Authenticate using MONGODB-AWS.
-    """
-    if not _HAVE_MONGODB_AWS:
-        raise ConfigurationError(
-            "MONGODB-AWS authentication requires botocore and requests: "
-            "install these libraries with: "
-            "python -m pip install 'pymongo[aws]'")
-
-    _auth_aws(_AWSCredential(
-        credentials.username, credentials.password,
-        credentials.mechanism_properties.aws_session_token), sock_info)
 
 
 def _authenticate_mongo_cr(credentials, sock_info):

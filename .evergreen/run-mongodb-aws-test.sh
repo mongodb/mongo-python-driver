@@ -55,8 +55,7 @@ authtest () {
     else
       . venvaws/bin/activate
     fi
-    pip install requests botocore
-
+    pip install '.[aws]'
     python test/auth_aws/test_auth_aws.py
     deactivate
     rm -rf venvaws

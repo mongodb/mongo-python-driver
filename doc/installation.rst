@@ -56,9 +56,8 @@ dependency can be installed automatically along with PyMongo::
 
   $ python -m pip install pymongo[gssapi]
 
-:ref:`MONGODB-AWS` authentication requires `botocore
-<https://pypi.org/project/botocore/>`_ and `requests
-<https://pypi.org/project/requests/>`_::
+:ref:`MONGODB-AWS` authentication requires `pymongo-auth-aws
+<https://pypi.org/project/pymongo-auth-aws/>`_::
 
   $ python -m pip install pymongo[aws]
 

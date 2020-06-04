@@ -35,9 +35,9 @@ authtest () {
 
     $VIRTUALENV -p $PYTHON --system-site-packages --never-download venvaws
     . venvaws/bin/activate
-    pip install requests botocore
 
     cd src
+    pip install '.[aws]'
     python test/auth_aws/test_auth_aws.py
     cd -
     deactivate
