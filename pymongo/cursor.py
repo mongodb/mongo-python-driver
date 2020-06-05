@@ -285,7 +285,9 @@ class Cursor(object):
                            "max_time_ms", "max_await_time_ms", "comment",
                            "max", "min", "ordering", "explain", "hint",
                            "batch_size", "max_scan", "manipulate",
-                           "query_flags", "modifiers", "collation")
+                           "query_flags", "modifiers", "collation", "empty",
+                           "show_record_id", "return_key", "allow_disk_use",
+                           "snapshot", "exhaust")
         data = dict((k, v) for k, v in iteritems(self.__dict__)
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:

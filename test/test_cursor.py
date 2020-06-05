@@ -914,6 +914,8 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(cursor, cursor.rewind())
 
+    # manipulate, oplog_reply, and snapshot are all deprecated.
+    @ignore_deprecations
     def test_clone(self):
         self.db.test.insert_many([{"x": i} for i in range(1, 4)])
 
@@ -952,31 +954,30 @@ class TestCursor(IntegrationTest):
 
         # Just test attributes
         cursor = self.db.test.find({"x": re.compile("^hello.*")},
+                                   projection={'_id': False},
                                    skip=1,
                                    no_cursor_timeout=True,
                                    cursor_type=CursorType.TAILABLE_AWAIT,
+                                   sort=[("x", 1)],
                                    allow_partial_results=True,
+                                   oplog_replay=True,
+                                   batch_size=123,
                                    manipulate=False,
-                                   projection={'_id': False}).limit(2)
+                                   collation={'locale': 'en_US'},
+                                   hint=[("_id", 1)],
+                                   max_scan=100,
+                                   max_time_ms=1000,
+                                   return_key=True,
+                                   show_record_id=True,
+                                   snapshot=True,
+                                   allow_disk_use=True).limit(2)
         cursor.min([('a', 1)]).max([('b', 3)])
         cursor.add_option(128)
         cursor.comment('hi!')
 
+        # Every attribute should be the same.
         cursor2 = cursor.clone()
-        self.assertEqual(cursor._Cursor__skip, cursor2._Cursor__skip)
-        self.assertEqual(cursor._Cursor__limit, cursor2._Cursor__limit)
-        self.assertEqual(type(cursor._Cursor__codec_options),
-                         type(cursor2._Cursor__codec_options))
-        self.assertEqual(cursor._Cursor__manipulate,
-                         cursor2._Cursor__manipulate)
-        self.assertEqual(cursor._Cursor__query_flags,
-                         cursor2._Cursor__query_flags)
-        self.assertEqual(cursor._Cursor__comment,
-                         cursor2._Cursor__comment)
-        self.assertEqual(cursor._Cursor__min,
-                         cursor2._Cursor__min)
-        self.assertEqual(cursor._Cursor__max,
-                         cursor2._Cursor__max)
+        self.assertEqual(cursor.__dict__, cursor2.__dict__)
 
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
@@ -1010,6 +1011,14 @@ class TestCursor(IntegrationTest):
         cursor2 = copy.deepcopy(cursor)
         self.assertTrue(isinstance(cursor2._Cursor__hint, SON))
         self.assertEqual(cursor._Cursor__hint, cursor2._Cursor__hint)
+
+    def test_clone_empty(self):
+        self.db.test.delete_many({})
+        self.db.test.insert_many([{"x": i} for i in range(1, 4)])
+        cursor = self.db.test.find()[2:2]
+        cursor2 = cursor.clone()
+        self.assertRaises(StopIteration, cursor.next)
+        self.assertRaises(StopIteration, cursor2.next)
 
     @ignore_deprecations
     def test_count_with_fields(self):
