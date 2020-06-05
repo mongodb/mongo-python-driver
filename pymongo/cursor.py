@@ -226,6 +226,10 @@ class Cursor(object):
         if oplog_replay:
             self.__query_flags |= _QUERY_OPTIONS["oplog_replay"]
 
+        # The namespace to use for find/getMore commands.
+        self.__dbname = collection.database.name
+        self.__collname = collection.name
+
     @property
     def collection(self):
         """The :class:`~pymongo.collection.Collection` that this
@@ -1037,6 +1041,10 @@ class Cursor(object):
                 self.__id = cursor['id']
                 if cmd_name == 'find':
                     documents = cursor['firstBatch']
+                    # Update the namespace used for future getMore commands.
+                    ns = cursor.get('ns')
+                    if ns:
+                        self.__dbname, self.__collname = ns.split('.', 1)
                 else:
                     documents = cursor['nextBatch']
                 self.__data = deque(documents)
@@ -1116,8 +1124,8 @@ class Cursor(object):
                 limit = self.__batch_size
 
             # Exhaust cursors don't send getMore messages.
-            g = self._getmore_class(self.__collection.database.name,
-                                    self.__collection.name,
+            g = self._getmore_class(self.__dbname,
+                                    self.__collname,
                                     limit,
                                     self.__id,
                                     self.__codec_options,
