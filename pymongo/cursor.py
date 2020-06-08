@@ -441,7 +441,9 @@ class Cursor(object):
         """Specifies whether MongoDB can use temporary disk files while
         processing a blocking sort operation.
 
-        Raises :exc:`TypeError` is `allow_disk_use` is not a boolean.
+        Raises :exc:`TypeError` if `allow_disk_use` is not a boolean.
+
+        .. note:: `allow_disk_use` requires server version **>= 4.4**
 
         :Parameters:
           - `allow_disk_use`: if True, MongoDB may use temporary

@@ -1442,7 +1442,8 @@ class Collection(common.BaseObject):
             disk files to store data exceeding the system memory limit while
             processing a blocking sort operation. The option has no effect if
             MongoDB can satisfy the specified sort using an index, or if the
-            blocking sort requires less memory than the 100 MiB limit.
+            blocking sort requires less memory than the 100 MiB limit. This
+            option is only supported on MongoDB 4.4 and above.
 
         .. note:: There are a number of caveats to using
           :attr:`~pymongo.cursor.CursorType.EXHAUST` as cursor_type:

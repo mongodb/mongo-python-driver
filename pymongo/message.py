@@ -283,8 +283,9 @@ class _Query(object):
                 'version of %d.' % (sock_info.max_wire_version,))
 
         if sock_info.max_wire_version < 4 and self.allow_disk_use is not None:
-            # Ignore allowDiskUse for MongoDB < 3.2.
-            self.allow_disk_use = None
+            raise ConfigurationError(
+                'Specifying allowDiskUse is unsupported with a max wire '
+                'version of %d.' % (sock_info.max_wire_version,))
 
         sock_info.validate_session(self.client, self.session)
 
