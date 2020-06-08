@@ -1106,7 +1106,6 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-            VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run-ocsp-test"
           vars:
@@ -1119,7 +1118,6 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-            VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run-ocsp-test"
           vars:
@@ -1132,7 +1130,6 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-            VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run-ocsp-test"
           vars:
@@ -1145,7 +1142,6 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-            VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run-ocsp-test"
           vars:
@@ -1157,7 +1153,6 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-            VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run-ocsp-test"
           vars:
@@ -1170,7 +1165,6 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-            VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run-ocsp-test"
           vars:
@@ -1182,20 +1176,35 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-            VERSION: "latest"
             TOPOLOGY: "server"
         - func: "run-ocsp-test"
           vars:
             OCSP_TLS_SHOULD_SUCCEED: "0"
 
-    - name: "aws-auth-test"
+    - name: "aws-auth-test-4.4"
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
             AUTH: "auth"
-            # TODO: SSL??
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
+            VERSION: "4.4"
+        - func: "add aws auth variables to file"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws ECS auth test"
+
+    - name: "aws-auth-test-latest"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-aws.json"
+            TOPOLOGY: "server"
+            VERSION: "latest"
         - func: "add aws auth variables to file"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
@@ -1243,10 +1252,6 @@ axes:
         display_name: "Archlinux"
         run_on: archlinux-test
         batchtime: 10080  # 7 days
-      - id: debian71
-        display_name: "Debian 7.1"
-        run_on: debian71-test
-        batchtime: 10080  # 7 days
       - id: debian81
         display_name: "Debian 8.1"
         run_on: debian81-test
@@ -1293,10 +1298,6 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/suse12-64/master/latest/libmongocrypt.tar.gz
-      - id: ubuntu-12.04
-        display_name: "Ubuntu 12.04"
-        run_on: ubuntu1204-test
-        batchtime: 10080  # 7 days
       - id: ubuntu-16.04
         display_name: "Ubuntu 16.04"
         run_on: ubuntu1604-test
@@ -1391,6 +1392,47 @@ axes:
         display_name: zstd compression
         variables:
             COMPRESSORS: "zstd"
+
+  # Choice of MongoDB server version
+  - id: mongodb-version
+    display_name: "MongoDB"
+    values:
+      - id: "2.6"
+        display_name: "MongoDB 2.6"
+        variables:
+           VERSION: "2.6"
+      - id: "3.0"
+        display_name: "MongoDB 3.0"
+        variables:
+          VERSION: "3.0"
+      - id: "3.2"
+        display_name: "MongoDB 3.2"
+        variables:
+          VERSION: "3.2"
+      - id: "3.4"
+        display_name: "MongoDB 3.4"
+        variables:
+          VERSION: "3.4"
+      - id: "3.6"
+        display_name: "MongoDB 3.6"
+        variables:
+          VERSION: "3.6"
+      - id: "4.0"
+        display_name: "MongoDB 4.0"
+        variables:
+          VERSION: "4.0"
+      - id: "4.2"
+        display_name: "MongoDB 4.2"
+        variables:
+          VERSION: "4.2"
+      - id: "4.4"
+        display_name: "MongoDB 4.4"
+        variables:
+          VERSION: "4.4"
+      - id: "latest"
+        display_name: "MongoDB latest"
+        variables:
+          VERSION: "latest"
 
   # Choice of Python runtime version
   - id: python-version
@@ -1635,39 +1677,6 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-    - ".2.6"
-
-- matrix_name: "tests-no-36-plus"
-  matrix_spec:
-    platform:
-      # OSes that support versions of MongoDB>=2.6 and <3.6 with SSL.
-      - ubuntu-12.04
-    auth-ssl: "*"
-    # Ubuntu 12 ships Python 2.7.3. We want to test that version with
-    # and without C extensions
-    c-extensions: "*"
-  display_name: "${platform} ${auth-ssl} ${c-extensions}"
-  tasks:
-    - ".3.4"
-    - ".3.2"
-    - ".3.0"
-    - ".2.6"
-
-- matrix_name: "tests-no-40-plus"
-  matrix_spec:
-    platform:
-      # OSes that support versions of MongoDB>=2.6 and <4.0 with SSL.
-      - debian71
-    auth-ssl: "*"
-    # Debian 7 ships Python 2.7.3. We want to test that version with
-    # and without C extensions
-    c-extensions: "*"
-  display_name: "${platform} ${auth-ssl} ${c-extensions}"
-  tasks:
-    - ".3.6"
-    - ".3.4"
-    - ".3.2"
-    - ".3.0"
     - ".2.6"
 
 - matrix_name: "tests-archlinux"
@@ -2177,9 +2186,10 @@ buildvariants:
   matrix_spec:
     platform: ubuntu-16.04
     python-version: ["2.7", "3.4", "3.8", "pypy", "pypy3.5"]
+    mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
-  display_name: "OCSP test ${python-version} ${platform}"
+  display_name: "OCSP test ${python-version} ${mongodb-version} ${platform}"
   tasks:
     - name: ".ocsp"
 
@@ -2189,7 +2199,8 @@ buildvariants:
     python-version: ["system-python", "system-python3"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
-    - name: "aws-auth-test"
+    - name: "aws-auth-test-4.4"
+    - name: "aws-auth-test-latest"
 
 - matrix_name: "aws-auth-test-windows"
   matrix_spec:
@@ -2197,7 +2208,8 @@ buildvariants:
     python-version-windows: "*"
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-windows}"
   tasks:
-    - name: "aws-auth-test"
+    - name: "aws-auth-test-4.4"
+    - name: "aws-auth-test-latest"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
