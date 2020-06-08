@@ -339,19 +339,6 @@ functions:
            ${PREPARE_SHELL}
            PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-cdecimal-tests.sh
 
-  "run pyopenssl tests":
-     - command: shell.exec
-       type: test
-       params:
-         working_dir: "src"
-         script: |
-           set -o xtrace
-           ${PREPARE_SHELL}
-           if [ -n "${MONGODB_STARTED}" ]; then
-             export PYMONGO_MUST_CONNECT=1
-           fi
-           PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-pyopenssl-tests.sh
-
   "run doctests":
      - command: shell.exec
        type: test
@@ -398,6 +385,9 @@ functions:
             rm -f ./fle_aws_creds.sh
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
+          fi
+          if [ -n "${test_pyopenssl}" ]; then
+            export TEST_PYOPENSSL=1
           fi
           if [ -n "${SETDEFAULTENCODING}" ]; then
             export SETDEFAULTENCODING="${SETDEFAULTENCODING}"
@@ -1076,17 +1066,6 @@ tasks:
             TOPOLOGY: "server"
         - func: "run cdecimal tests"
 
-    # Use latest for this, since we're
-    # adding this to support OCSP stapling
-    - name: "pyopenssl"
-      tags: ["pyopenssl"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
-        - func: "run pyopenssl tests"
-
     - name: "no-server"
       tags: ["no-server"]
       commands:
@@ -1632,6 +1611,17 @@ axes:
         tags: ["encryption_tag"]
         variables:
           test_encryption: true
+        batchtime: 10080  # 7 days
+
+  # Run pyopenssl tests?
+  - id: pyopenssl
+    display_name: "PyOpenSSL"
+    values:
+      - id: "enabled"
+        display_name: "PyOpenSSL"
+        variables:
+          test_pyopenssl: true
+        batchtime: 10080  # 7 days
 
   # Run setdefaultencoding before running the test suite?
   - id: setdefaultencoding
@@ -1834,39 +1824,52 @@ buildvariants:
     python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "pypy", "pypy3.5"]
     auth: "*"
     ssl: "ssl"
+    pyopenssl: "*"
+  # Only test "noauth" with Python 3.7.
+  exclude_spec:
+    platform: ubuntu-16.04
+    python-version: ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5"]
+    auth: "noauth"
+    ssl: "ssl"
+    pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
-    - "pyopenssl"
+    - '.replica_set !.2.6 !.3.0'
+    # Test standalone and sharded only on 4.4.
+    - '.4.4'
 
 - matrix_name: "test-pyopenssl-old-py27"
   matrix_spec:
     platform:
       # Supported OSes with pre-2.7.9 CPython versions.
       - rhel70 # CPython 2.7.5
-    auth: "*"
+    auth: "auth"
     ssl: "ssl"
+    pyopenssl: "*"
   display_name: "PyOpenSSL ${platform}  Pre-2.7.9 Python ${auth}"
   tasks:
-    - "pyopenssl"
+    - '.replica_set'
 
 - matrix_name: "tests-pyopenssl-macOS"
   matrix_spec:
     platform: macos-1014
-    auth: "*"
+    auth: "auth"
     ssl: "ssl"
+    pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${auth}"
   tasks:
-    - "pyopenssl"
+    - '.replica_set !.2.6 !.3.0'
 
 - matrix_name: "tests-pyopenssl-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
     python-version-windows: "*"
-    auth: "*"
+    auth: "auth"
     ssl: "ssl"
+    pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version-windows} ${auth}"
   tasks:
-    - "pyopenssl"
+    - '.replica_set'
 
 - matrix_name: "tests-python-version-rhel62-test-encryption"
   matrix_spec:
