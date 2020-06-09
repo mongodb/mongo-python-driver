@@ -247,8 +247,8 @@ def _get_ocsp_response(cert, issuer, uri, ocsp_response_cache):
                 data=ocsp_request.public_bytes(_Encoding.DER),
                 headers={'Content-Type': 'application/ocsp-request'},
                 timeout=5)
-        except _RequestException:
-            _LOGGER.debug("HTTP request failed")
+        except _RequestException as exc:
+            _LOGGER.debug("HTTP request failed: %s", exc)
             return None
         if response.status_code != 200:
             _LOGGER.debug("HTTP request returned %d", response.status_code)

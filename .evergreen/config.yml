@@ -679,44 +679,79 @@ functions:
         script: |
           ${PREPARE_SHELL}
           PYTHON_BINARY=${PYTHON_BINARY} \
-          CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/rsa/ca.pem" \
+          CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
           sh ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
 
-  "run-valid-ocsp-server":
+  run-valid-ocsp-server:
     - command: shell.exec
       params:
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          /opt/mongodbtoolchain/v3/bin/python3 -m venv ./venv
-          ./venv/bin/pip3 install -r ${DRIVERS_TOOLS}/.evergreen/ocsp/mock-ocsp-responder-requirements.txt
+          ${python3_binary} -m venv ./venv
+          ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
     - command: shell.exec
       params:
         background: true
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          nohup ./venv/bin/python3 ocsp_mock.py \
-          --ca_file rsa/ca.pem \
-          --ocsp_responder_cert rsa/ca.crt \
-          --ocsp_responder_key rsa/ca.key \
+          ./venv/${venv_bin_dir|bin}/python ocsp_mock.py \
+          --ca_file ${OCSP_ALGORITHM}/ca.pem \
+          --ocsp_responder_cert ${OCSP_ALGORITHM}/ca.crt \
+          --ocsp_responder_key ${OCSP_ALGORITHM}/ca.key \
           -p 8100 -v
-
-  "run-revoked-ocsp-server":
+  run-revoked-ocsp-server:
     - command: shell.exec
       params:
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          /opt/mongodbtoolchain/v3/bin/python3 -m venv ./venv
-          ./venv/bin/pip3 install -r ${DRIVERS_TOOLS}/.evergreen/ocsp/mock-ocsp-responder-requirements.txt
+          ${python3_binary} -m venv ./venv
+          ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
     - command: shell.exec
       params:
         background: true
         script: |
           cd ${DRIVERS_TOOLS}/.evergreen/ocsp
-          nohup ./venv/bin/python3 ocsp_mock.py \
-          --ca_file rsa/ca.pem \
-          --ocsp_responder_cert rsa/ca.crt \
-          --ocsp_responder_key rsa/ca.key \
+          ./venv/${venv_bin_dir|bin}/python ocsp_mock.py \
+          --ca_file ${OCSP_ALGORITHM}/ca.pem \
+          --ocsp_responder_cert ${OCSP_ALGORITHM}/ca.crt \
+          --ocsp_responder_key ${OCSP_ALGORITHM}/ca.key \
+          -p 8100 \
+          -v \
+          --fault revoked
+  run-valid-delegate-ocsp-server:
+    - command: shell.exec
+      params:
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
+          ${python3_binary} -m venv ./venv
+          ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
+    - command: shell.exec
+      params:
+        background: true
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
+          ./venv/${venv_bin_dir|bin}/python ocsp_mock.py \
+          --ca_file ${OCSP_ALGORITHM}/ca.pem \
+          --ocsp_responder_cert ${OCSP_ALGORITHM}/ocsp-responder.crt \
+          --ocsp_responder_key ${OCSP_ALGORITHM}/ocsp-responder.key \
+          -p 8100 -v
+  run-revoked-delegate-ocsp-server:
+    - command: shell.exec
+      params:
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
+          ${python3_binary} -m venv ./venv
+          ./venv/${venv_bin_dir|bin}/pip3 install -r mock-ocsp-responder-requirements.txt
+    - command: shell.exec
+      params:
+        background: true
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen/ocsp
+          ./venv/${venv_bin_dir|bin}/python ocsp_mock.py \
+          --ca_file ${OCSP_ALGORITHM}/ca.pem \
+          --ocsp_responder_cert ${OCSP_ALGORITHM}/ocsp-responder.crt \
+          --ocsp_responder_key ${OCSP_ALGORITHM}/ocsp-responder.key \
           -p 8100 \
           -v \
           --fault revoked
@@ -1078,87 +1113,329 @@ tasks:
       commands:
         - func: "run atlas tests"
 
-    - name: "test-ocsp-valid-cert-server-staples"
-      tags: ["ocsp"]
+    - name: test-ocsp-rsa-valid-cert-server-staples
+      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: "run-valid-ocsp-server"
+        - func: run-valid-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-            TOPOLOGY: "server"
-        - func: "run-ocsp-test"
+        - func: run-ocsp-test
           vars:
-            OCSP_TLS_SHOULD_SUCCEED: "1"
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
 
-    - name: "test-ocsp-invalid-cert-server-staples"
-      tags: ["ocsp"]
+    - name: test-ocsp-rsa-invalid-cert-server-staples
+      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:
-        - func: "run-revoked-ocsp-server"
+        - func: run-revoked-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
-            TOPOLOGY: "server"
-        - func: "run-ocsp-test"
+        - func: run-ocsp-test
           vars:
-            OCSP_TLS_SHOULD_SUCCEED: "0"
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
 
-    - name: "test-ocsp-valid-cert-server-does-not-staple"
-      tags: ["ocsp"]
+    - name: test-ocsp-rsa-valid-cert-server-does-not-staple
+      tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: "run-valid-ocsp-server"
+        - func: run-valid-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-            TOPOLOGY: "server"
-        - func: "run-ocsp-test"
+        - func: run-ocsp-test
           vars:
-            OCSP_TLS_SHOULD_SUCCEED: "1"
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
 
-    - name: "test-ocsp-invalid-cert-server-does-not-staple"
-      tags: ["ocsp"]
+    - name: test-ocsp-rsa-invalid-cert-server-does-not-staple
+      tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: "run-revoked-ocsp-server"
+        - func: run-revoked-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-            TOPOLOGY: "server"
-        - func: "run-ocsp-test"
+        - func: run-ocsp-test
           vars:
-            OCSP_TLS_SHOULD_SUCCEED: "0"
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
 
-    - name: "test-ocsp-soft-fail"
-      tags: ["ocsp"]
+    - name: test-ocsp-rsa-soft-fail
+      tags: ["ocsp", "ocsp-rsa"]
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
-            TOPOLOGY: "server"
-        - func: "run-ocsp-test"
+        - func: run-ocsp-test
           vars:
-            OCSP_TLS_SHOULD_SUCCEED: "1"
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
 
-    - name: "test-ocsp-malicious-invalid-cert-mustStaple-server-does-not-staple"
-      tags: ["ocsp"]
+    - name: test-ocsp-rsa-malicious-invalid-cert-mustStaple-server-does-not-staple
+      tags: ["ocsp", "ocsp-rsa"]
       commands:
-        - func: "run-revoked-ocsp-server"
+        - func: run-revoked-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-            TOPOLOGY: "server"
-        - func: "run-ocsp-test"
+        - func: run-ocsp-test
           vars:
-            OCSP_TLS_SHOULD_SUCCEED: "0"
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
 
-    - name: "test-ocsp-malicious-no-responder-mustStaple-server-does-not-staple"
-      tags: ["ocsp"]
+    - name: test-ocsp-rsa-malicious-no-responder-mustStaple-server-does-not-staple
+      tags: ["ocsp", "ocsp-rsa"]
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
             ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
-            TOPOLOGY: "server"
-        - func: "run-ocsp-test"
+        - func: run-ocsp-test
           vars:
-            OCSP_TLS_SHOULD_SUCCEED: "0"
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-rsa-delegate-valid-cert-server-staples
+      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
+      commands:
+        - func: run-valid-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
+
+    - name: test-ocsp-rsa-delegate-invalid-cert-server-staples
+      tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
+      commands:
+        - func: run-revoked-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple
+      tags: ["ocsp", "ocsp-rsa"]
+      commands:
+        - func: run-valid-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
+
+    - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple
+      tags: ["ocsp", "ocsp-rsa"]
+      commands:
+        - func: run-revoked-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-rsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
+      tags: ["ocsp", "ocsp-rsa"]
+      commands:
+        - func: run-revoked-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "rsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "rsa-basic-tls-ocsp-mustStaple-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "rsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-ecdsa-valid-cert-server-staples
+      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
+      commands:
+        - func: run-valid-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
+
+    - name: test-ocsp-ecdsa-invalid-cert-server-staples
+      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
+      commands:
+        - func: run-revoked-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple
+      tags: ["ocsp", "ocsp-ecdsa"]
+      commands:
+        - func: run-valid-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
+
+    - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple
+      tags: ["ocsp", "ocsp-ecdsa"]
+      commands:
+        - func: run-revoked-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-ecdsa-soft-fail
+      tags: ["ocsp", "ocsp-ecdsa"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
+
+    - name: test-ocsp-ecdsa-malicious-invalid-cert-mustStaple-server-does-not-staple
+      tags: ["ocsp", "ocsp-ecdsa"]
+      commands:
+        - func: run-revoked-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-ecdsa-malicious-no-responder-mustStaple-server-does-not-staple
+      tags: ["ocsp", "ocsp-ecdsa"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples
+      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
+      commands:
+        - func: run-valid-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
+
+    - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples
+      tags: ["ocsp", "ocsp-ecdsa", "ocsp-staple"]
+      commands:
+        - func: run-revoked-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple
+      tags: ["ocsp", "ocsp-ecdsa"]
+      commands:
+        - func: run-valid-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "true"
+
+    - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple
+      tags: ["ocsp", "ocsp-ecdsa"]
+      commands:
+        - func: run-revoked-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
+
+    - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-mustStaple-server-does-not-staple
+      tags: ["ocsp", "ocsp-ecdsa"]
+      commands:
+        - func: run-revoked-delegate-ocsp-server
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            ORCHESTRATION_FILE: "ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json"
+        - func: run-ocsp-test
+          vars:
+            OCSP_ALGORITHM: "ecdsa"
+            OCSP_TLS_SHOULD_SUCCEED: "false"
 
     - name: "aws-auth-test-4.4"
       commands:
@@ -1283,6 +1560,7 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1604/master/latest/libmongocrypt.tar.gz
+          python3_binary: "/opt/python/3.8/bin/python3"
       - id: ubuntu-18.04
         display_name: "Ubuntu 18.04"
         run_on: ubuntu1804-test
@@ -1312,6 +1590,7 @@ axes:
         variables:
           skip_ECS_auth_test: true
           python3_binary: "C:/python/Python38/python.exe"
+          venv_bin_dir: "Scripts"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
 
   # Test with authentication?
@@ -2192,9 +2471,35 @@ buildvariants:
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
-  display_name: "OCSP test ${python-version} ${mongodb-version} ${platform}"
+  display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
+  batchtime: 20160 # 14 days
   tasks:
     - name: ".ocsp"
+
+- matrix_name: "ocsp-test-windows"
+  matrix_spec:
+    platform: windows-64-vsMulti-small
+    python-version-windows: ["2.7", "3.4", "3.8"]
+    mongodb-version: ["4.4", "latest"]
+    auth: "noauth"
+    ssl: "ssl"
+  display_name: "OCSP test ${platform} ${python-version-windows} ${mongodb-version}"
+  batchtime: 20160 # 14 days
+  tasks:
+    # Windows MongoDB servers do not staple OCSP responses and only support RSA.
+    - name: ".ocsp-rsa !.ocsp-staple"
+
+- matrix_name: "ocsp-test-macos"
+  matrix_spec:
+    platform: macos-1014
+    mongodb-version: ["4.4", "latest"]
+    auth: "noauth"
+    ssl: "ssl"
+  display_name: "OCSP test ${platform} ${mongodb-version}"
+  batchtime: 20160 # 14 days
+  tasks:
+    # macOS MongoDB servers do not staple OCSP responses and only support RSA.
+    - name: ".ocsp-rsa !.ocsp-staple"
 
 - matrix_name: "aws-auth-test"
   matrix_spec:

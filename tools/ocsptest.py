@@ -20,7 +20,10 @@ from ssl import CERT_REQUIRED
 
 from pymongo.pyopenssl_context import SSLContext, PROTOCOL_SSLv23
 
-logging.basicConfig(level=logging.DEBUG)
+# Enable logs in this format:
+# 2020-06-08 23:49:35,982 DEBUG ocsp_support Peer did not staple an OCSP response
+FORMAT = '%(asctime)s %(levelname)s %(module)s %(message)s'
+logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 def check_ocsp(host, port, capath):
     ctx = SSLContext(PROTOCOL_SSLv23)
