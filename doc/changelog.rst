@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Changes in Version 3.11.0b1
----------------------------
+Changes in Version 3.11.0b2.dev0
+--------------------------------
 
 Version 3.11 adds support for MongoDB 4.4. Highlights include:
 

@@ -70,7 +70,7 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-version_tuple = (3, 11, 0, 'b1')
+version_tuple = (3, 11, 0, 'b2.dev0')
 
 def get_version_string():
     if isinstance(version_tuple[-1], str):
