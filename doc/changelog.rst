@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Changes in Version 3.11.0b1.dev0
---------------------------------
+Changes in Version 3.11.0b1
+---------------------------
 
 Version 3.11 adds support for MongoDB 4.4. Highlights include:
 
@@ -14,6 +14,11 @@ Version 3.11 adds support for MongoDB 4.4. Highlights include:
 - Support for the :ref:`MONGODB-AWS` authentication mechanism.
 - Support for the ``directConnection`` URI option and kwarg to
   :class:`~pymongo.mongo_client.MongoClient`.
+- Support for speculative authentication attempts in connection handshakes
+  which reduces the number of network roundtrips needed to authenticate new
+  connections on MongoDB 4.4+.
+- Support for creating collections in multi-document transactions with
+  :meth:`~pymongo.database.Database.create_collection` on MongoDB 4.4+.
 - Added index hinting support to the
   :meth:`~pymongo.collection.Collection.replace_one`,
   :meth:`~pymongo.collection.Collection.update_one`,
@@ -34,8 +39,12 @@ Version 3.11 adds support for MongoDB 4.4. Highlights include:
   of this parameter see the MongoDB documentation for the `validate command`_.
 - Added the ``allow_disk_use`` parameters to
   :meth:`pymongo.collection.Collection.find`.
-- Support for creating collections in multi-document transactions with
-  :meth:`~pymongo.database.Database.create_collection` on MongoDB 4.4+.
+- Added the ``hedge`` parameter to
+  :class:`~pymongo.read_preferences.PrimaryPreferred`,
+  :class:`~pymongo.read_preferences.Secondary`,
+  :class:`~pymongo.read_preferences.SecondaryPreferred`,
+  :class:`~pymongo.read_preferences.Nearest` to support disabling
+  (or explicitly enabling) hedged reads in MongoDB 4.4+.
 - Deprecated the ``oplog_replay`` parameter to
   :meth:`pymongo.collection.Collection.find`. Starting in MongoDB 4.4, the
   server optimizes queries against the oplog collection without requiring
