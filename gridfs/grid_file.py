@@ -31,6 +31,7 @@ from pymongo.cursor import Cursor
 from pymongo.errors import (ConfigurationError,
                             CursorNotFound,
                             DuplicateKeyError,
+                            InvalidOperation,
                             OperationFailure)
 from pymongo.read_preferences import ReadPreference
 
@@ -103,6 +104,12 @@ def _clear_entity_type_registry(entity, **kwargs):
     """Clear the given database/collection object's type registry."""
     codecopts = entity.codec_options.with_options(type_registry=None)
     return entity.with_options(codec_options=codecopts, **kwargs)
+
+
+def _disallow_transactions(session):
+    if session and session.in_transacton:
+        raise InvalidOperation(
+            'GridFS does not support multi-document transactions')
 
 
 class GridIn(object):
@@ -207,6 +214,7 @@ class GridIn(object):
 
     def __ensure_indexes(self):
         if not object.__getattribute__(self, "_ensured_index"):
+            _disallow_transactions(self._session)
             self.__create_index(self._coll.files, _F_INDEX, False)
             self.__create_index(self._coll.chunks, _C_INDEX, True)
             object.__setattr__(self, "_ensured_index", True)
@@ -483,6 +491,7 @@ class GridOut(object):
 
     def _ensure_file(self):
         if not self._file:
+            _disallow_transactions(self._session)
             self._file = self.__files.find_one({"_id": self.__file_id},
                                                session=self._session)
             if not self._file:
@@ -718,6 +727,7 @@ class _GridOutChunkIterator(object):
         filter = {"files_id": self._id}
         if self._next_chunk > 0:
             filter["n"] = {"$gte": self._next_chunk}
+        _disallow_transactions(self._session)
         self._cursor = self._chunks.find(filter, sort=[("n", 1)],
                                          session=self._session)
 
@@ -823,6 +833,7 @@ class GridOutCursor(Cursor):
     def next(self):
         """Get next GridOut object from cursor.
         """
+        _disallow_transactions(self.session)
         # Work around "super is not iterable" issue in Python 3.x
         next_file = super(GridOutCursor, self).next()
         return GridOut(self.__root_collection, file_document=next_file,
