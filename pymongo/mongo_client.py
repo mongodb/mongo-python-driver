@@ -719,8 +719,6 @@ class MongoClient(common.BaseObject):
             direct_connection=options.direct_connection)
 
         self._topology = Topology(self._topology_settings)
-        if connect:
-            self._topology.open()
 
         def target():
             client = self_ref()
@@ -739,7 +737,9 @@ class MongoClient(common.BaseObject):
         # this closure. When the client is freed, stop the executor soon.
         self_ref = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
-        executor.open()
+
+        if connect:
+            self._get_topology()
 
         self._encrypter = None
         if self.__options.auto_encryption_opts:

@@ -790,6 +790,24 @@ class TestClient(IntegrationTest):
         client.close()
         self.assertTrue(client._kill_cursors_executor._stopped)
 
+    def test_uri_connect_option(self):
+        # Ensure that topology is not opened if connect=False.
+        client = rs_client(connect=False)
+        self.assertFalse(client._topology._opened)
+
+        # Ensure kill cursors thread has not been started.
+        kc_thread = client._kill_cursors_executor._thread
+        self.assertFalse(kc_thread and kc_thread.is_alive())
+
+        # Using the client should open topology and start the thread.
+        client.admin.command('isMaster')
+        self.assertTrue(client._topology._opened)
+        kc_thread = client._kill_cursors_executor._thread
+        self.assertTrue(kc_thread and kc_thread.is_alive())
+
+        # Tear down.
+        client.close()
+
     def test_close_does_not_open_servers(self):
         client = rs_client(connect=False)
         topology = client._topology
