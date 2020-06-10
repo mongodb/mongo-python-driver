@@ -122,7 +122,7 @@ except ImportError:
         """Dummy function for platforms that don't provide fcntl."""
         pass
 
-_MAX_TCP_KEEPIDLE = 300
+_MAX_TCP_KEEPIDLE = 120
 _MAX_TCP_KEEPINTVL = 10
 _MAX_TCP_KEEPCNT = 9
 
