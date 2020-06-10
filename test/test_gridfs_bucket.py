@@ -17,14 +17,17 @@
 """Tests for the gridfs package.
 """
 import datetime
+import itertools
 import threading
 import time
 
 import gridfs
 
 from bson.binary import Binary
+from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.py3compat import StringIO, string_type
+from bson.son import SON
 from gridfs.errors import NoFile, CorruptGridFile
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
@@ -160,6 +163,25 @@ class TestGridfs(IntegrationTest):
         self.assertTrue(any(
             info.get('key') == [('filename', 1), ('uploadDate', 1)]
             for info in files.index_information().values()))
+
+    def test_ensure_index_shell_compat(self):
+        files = self.db.fs.files
+        for i, j in itertools.combinations_with_replacement(
+                [1, 1.0, Int64(1)], 2):
+            # Create the index with different numeric types (as might be done
+            # from the mongo shell).
+            shell_index = [('filename', i), ('uploadDate', j)]
+            self.db.command('createIndexes', files.name,
+                            indexes=[{'key': SON(shell_index),
+                                      'name': 'filename_1.0_uploadDate_1.0'}])
+
+            # No error.
+            self.fs.upload_from_stream("filename", b"data")
+
+            self.assertTrue(any(
+                info.get('key') == [('filename', 1), ('uploadDate', 1)]
+                for info in files.index_information().values()))
+            files.drop()
 
     def test_alt_collection(self):
         oid = self.alt.upload_from_stream("test_filename",
