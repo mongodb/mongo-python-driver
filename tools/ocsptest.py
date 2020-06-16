@@ -18,7 +18,8 @@ import socket
 
 from ssl import CERT_REQUIRED
 
-from pymongo.pyopenssl_context import SSLContext, PROTOCOL_SSLv23
+from pymongo.pyopenssl_context import SSLContext
+from pymongo.ssl_support import get_ssl_context
 
 # Enable logs in this format:
 # 2020-06-08 23:49:35,982 DEBUG ocsp_support Peer did not staple an OCSP response
@@ -26,12 +27,18 @@ FORMAT = '%(asctime)s %(levelname)s %(module)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 def check_ocsp(host, port, capath):
-    ctx = SSLContext(PROTOCOL_SSLv23)
-    ctx.verify_mode = CERT_REQUIRED
-    if capath is not None:
-        ctx.load_verify_locations(capath)
-    else:
-        ctx.set_default_verify_paths()
+    ctx = get_ssl_context(
+        None,  # certfile
+        None,  # keyfile
+        None,  # passphrase
+        capath,
+        CERT_REQUIRED,
+        None,  # crlfile
+        True,  # match_hostname
+        True)  # check_ocsp_endpoint
+
+    # Ensure we're using pyOpenSSL.
+    assert isinstance(ctx, SSLContext)
 
     s = socket.socket()
     s.connect((host, port))
