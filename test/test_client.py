@@ -60,6 +60,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
+from pymongo.settings import TOPOLOGY_TYPE
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
@@ -1551,6 +1552,25 @@ class TestClient(IntegrationTest):
             total = monotonic_time() - start
             # Each ping command should not take more than 2 seconds
             self.assertLess(total, 2)
+
+    @client_context.require_replica_set
+    def test_direct_connection(self):
+        # direct_connection=True should result in Single topology.
+        client = rs_or_single_client(directConnection=True)
+        client.admin.command('ping')
+        self.assertEqual(len(client.nodes), 1)
+        self.assertEqual(client._topology_settings.get_topology_type(),
+                         TOPOLOGY_TYPE.Single)
+        client.close()
+
+        # direct_connection=False should result in RS topology.
+        client = rs_or_single_client(directConnection=False)
+        client.admin.command('ping')
+        self.assertGreaterEqual(len(client.nodes), 1)
+        self.assertIn(client._topology_settings.get_topology_type(),
+                      [TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                       TOPOLOGY_TYPE.ReplicaSetWithPrimary])
+        client.close()
 
 
 class TestExhaustCursor(IntegrationTest):

@@ -427,12 +427,13 @@ def _connection_string(h, authenticate):
         return "mongodb://%s" % (str(h),)
 
 
-def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
+def _mongo_client(host, port, authenticate=True, directConnection=False,
+                  **kwargs):
     """Create a new client over SSL/TLS if necessary."""
     host = host or client_context.host
     port = port or client_context.port
     client_options = client_context.default_client_options.copy()
-    if client_context.replica_set_name and not direct:
+    if client_context.replica_set_name and not directConnection:
         client_options['replicaSet'] = client_context.replica_set_name
     client_options.update(kwargs)
 
@@ -444,12 +445,13 @@ def _mongo_client(host, port, authenticate=True, direct=False, **kwargs):
 
 def single_client_noauth(h=None, p=None, **kwargs):
     """Make a direct connection. Don't authenticate."""
-    return _mongo_client(h, p, authenticate=False, direct=True, **kwargs)
+    return _mongo_client(h, p, authenticate=False,
+                         directConnection=True, **kwargs)
 
 
 def single_client(h=None, p=None, **kwargs):
     """Make a direct connection, and authenticate if necessary."""
-    return _mongo_client(h, p, direct=True, **kwargs)
+    return _mongo_client(h, p, directConnection=True, **kwargs)
 
 
 def rs_client_noauth(h=None, p=None, **kwargs):

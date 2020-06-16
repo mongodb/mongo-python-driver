@@ -27,7 +27,8 @@ import warnings
 try:
     from xmlrunner import XMLTestRunner
     HAVE_XML = True
-except ImportError:
+# ValueError is raised when version 3+ is installed on Jython 2.7.
+except (ImportError, ValueError):
     HAVE_XML = False
 
 try:

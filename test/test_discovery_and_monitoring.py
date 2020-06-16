@@ -21,17 +21,19 @@ import threading
 sys.path[0:0] = [""]
 
 from bson import json_util, Timestamp
-from pymongo import common, MongoClient
+from pymongo import common
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure)
 from pymongo.helpers import _check_command_response
-from pymongo.topology import _ErrorContext
-from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.server_description import ServerDescription, SERVER_TYPE
+from pymongo.settings import TopologySettings
+from pymongo.topology import Topology, _ErrorContext
+from pymongo.topology_description import TOPOLOGY_TYPE
+from pymongo.uri_parser import parse_uri
 from test import unittest, IntegrationTest
 from test.utils import (assertion_context,
                         Barrier,
@@ -65,8 +67,23 @@ class MockMonitor(object):
 
 
 def create_mock_topology(uri, monitor_class=MockMonitor):
-    mc = MongoClient(uri, _monitor_class=monitor_class)
-    return mc._get_topology()
+    parsed_uri = parse_uri(uri)
+    replica_set_name = None
+    direct_connection = None
+    if 'replicaset' in parsed_uri['options']:
+        replica_set_name = parsed_uri['options']['replicaset']
+    if 'directConnection' in parsed_uri['options']:
+        direct_connection = parsed_uri['options']['directConnection']
+
+    topology_settings = TopologySettings(
+        parsed_uri['nodelist'],
+        replica_set_name=replica_set_name,
+        monitor_class=monitor_class,
+        direct_connection=direct_connection)
+
+    c = Topology(topology_settings)
+    c.open()
+    return c
 
 
 def got_ismaster(topology, server_address, ismaster_response):
