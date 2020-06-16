@@ -28,7 +28,7 @@ from pymongo.ssl_support import (
     IPADDR_SAFE as _IPADDR_SAFE)
 
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import imap, itervalues, _unicode, integer_types
+from bson.py3compat import imap, itervalues, _unicode
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
 from pymongo.client_session import _validate_session_write_concern
@@ -132,31 +132,36 @@ if sys.platform == 'win32':
     except ImportError:
         import winreg
 
+    def _query(key, name, default):
+        try:
+            value, _ = winreg.QueryValueEx(key, name)
+            # Ensure the value is a number or raise ValueError.
+            return int(value)
+        except (OSError, ValueError):
+            # QueryValueEx raises OSError when the key does not exist (i.e.
+            # the system is using the Windows default value).
+            return default
+
     try:
         with winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
                 r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters") as key:
-            _DEFAULT_TCP_IDLE_MS, _ = winreg.QueryValueEx(key, "KeepAliveTime")
-            _DEFAULT_TCP_INTERVAL_MS, _ = winreg.QueryValueEx(
-                key, "KeepAliveInterval")
-            # Make sure these are integers.
-            if not isinstance(_DEFAULT_TCP_IDLE_MS, integer_types):
-                raise ValueError
-            if not isinstance(_DEFAULT_TCP_INTERVAL_MS, integer_types):
-                raise ValueError
-    except (OSError, ValueError):
-        # We could not check the default values so do not attempt to override.
-        def _set_keepalive_times(dummy):
-            pass
-    else:
-        def _set_keepalive_times(sock):
-            idle_ms = min(_DEFAULT_TCP_IDLE_MS, _MAX_TCP_KEEPIDLE * 1000)
-            interval_ms = min(_DEFAULT_TCP_INTERVAL_MS,
-                              _MAX_TCP_KEEPINTVL * 1000)
-            if (idle_ms < _DEFAULT_TCP_IDLE_MS or
-                    interval_ms < _DEFAULT_TCP_INTERVAL_MS):
-                sock.ioctl(socket.SIO_KEEPALIVE_VALS,
-                           (1, idle_ms, interval_ms))
+            _WINDOWS_TCP_IDLE_MS = _query(key, "KeepAliveTime", 7200000)
+            _WINDOWS_TCP_INTERVAL_MS = _query(key, "KeepAliveInterval", 1000)
+    except OSError:
+        # We could not check the default values because winreg.OpenKey failed.
+        # Assume the system is using the default values.
+        _WINDOWS_TCP_IDLE_MS = 7200000
+        _WINDOWS_TCP_INTERVAL_MS = 1000
+
+    def _set_keepalive_times(sock):
+        idle_ms = min(_WINDOWS_TCP_IDLE_MS, _MAX_TCP_KEEPIDLE * 1000)
+        interval_ms = min(_WINDOWS_TCP_INTERVAL_MS,
+                          _MAX_TCP_KEEPINTVL * 1000)
+        if (idle_ms < _WINDOWS_TCP_IDLE_MS or
+                interval_ms < _WINDOWS_TCP_INTERVAL_MS):
+            sock.ioctl(socket.SIO_KEEPALIVE_VALS,
+                       (1, idle_ms, interval_ms))
 else:
     def _set_tcp_option(sock, tcp_option, max_value):
         if hasattr(socket, tcp_option):
