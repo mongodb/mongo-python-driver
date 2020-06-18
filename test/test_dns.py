@@ -40,7 +40,7 @@ class TestDNS(unittest.TestCase):
 def create_test(test_case):
 
     @client_context.require_replica_set
-    @client_context.require_ssl
+    @client_context.require_tls
     def run_test(self):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("DNS tests require the dnspython module")
@@ -68,7 +68,7 @@ def create_test(test_case):
             # The replica set members must be configured as 'localhost'.
             if hostname == 'localhost':
                 copts = client_context.default_client_options.copy()
-                if client_context.ssl is True:
+                if client_context.tls is True:
                     # Our test certs don't support the SRV hosts used in these tests.
                     copts['ssl_match_hostname'] = False
 

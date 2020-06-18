@@ -919,7 +919,7 @@ class TestClient(IntegrationTest):
         assertRaisesExactly(
             OperationFailure, lazy_client.test.collection.find_one)
 
-    @client_context.require_no_ssl
+    @client_context.require_no_tls
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")
@@ -1086,7 +1086,7 @@ class TestClient(IntegrationTest):
 
     @client_context.require_ipv6
     def test_ipv6(self):
-        if client_context.ssl:
+        if client_context.tls:
             if not HAVE_IPADDRESS:
                 raise SkipTest("Need the ipaddress module to test with SSL")
 

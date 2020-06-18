@@ -195,7 +195,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
     @client_context.require_ipv6
     def test_ipv6(self):
-        if client_context.ssl:
+        if client_context.tls:
             if not HAVE_IPADDRESS:
                 raise SkipTest("Need the ipaddress module to test with SSL")
 
