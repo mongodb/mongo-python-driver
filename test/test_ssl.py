@@ -196,7 +196,7 @@ class TestSSL(IntegrationTest):
         MongoClient.PORT = cls.saved_port
         super(TestSSL, cls).tearDownClass()
 
-    @client_context.require_ssl
+    @client_context.require_tls
     def test_simple_ssl(self):
         # Expects the server to be running with ssl and with
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation
