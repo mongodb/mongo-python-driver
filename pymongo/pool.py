@@ -1200,8 +1200,8 @@ class Pool:
             self.active_sockets += 1
 
         # We've now acquired the semaphore and must release it on error.
+        sock_info = None
         try:
-            sock_info = None
             while sock_info is None:
                 try:
                     with self.lock:
@@ -1214,6 +1214,9 @@ class Pool:
                         sock_info = None
             sock_info.check_auth(all_credentials)
         except Exception:
+            if sock_info:
+                # We checked out a socket but authentication failed.
+                sock_info.close_socket(ConnectionClosedReason.ERROR)
             self._socket_semaphore.release()
             with self.lock:
                 self.active_sockets -= 1
