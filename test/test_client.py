@@ -1120,6 +1120,7 @@ class TestClient(IntegrationTest):
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_bernie" in dbs)
 
+    @ignore_deprecations
     @client_context.require_no_mongos
     def test_fsync_lock_unlock(self):
         if server_is_master_with_slave(client_context.client):
@@ -1143,13 +1144,19 @@ class TestClient(IntegrationTest):
             time.sleep(1)
         self.assertFalse(locked)
 
-    def test_is_locked_does_not_raise_warning(self):
-        client = rs_or_single_client()
-        with warnings.catch_warnings(record=True) as ctx:
-            warnings.simplefilter("always")
-            _ = client.is_locked
-            self.assertFalse(
-                any(issubclass(w.category, DeprecationWarning) for w in ctx))
+    def test_deprecated_methods(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            with self.assertRaisesRegex(DeprecationWarning,
+                                        'is_locked is deprecated'):
+                _ = self.client.is_locked
+            if not client_context.is_mongos:
+                with self.assertRaisesRegex(DeprecationWarning,
+                                            'fsync is deprecated'):
+                    self.client.fsync(lock=True)
+                with self.assertRaisesRegex(DeprecationWarning,
+                                            'unlock is deprecated'):
+                    self.client.unlock()
 
     def test_contextlib(self):
         client = rs_or_single_client()

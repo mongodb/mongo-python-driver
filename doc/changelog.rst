@@ -46,6 +46,12 @@ Highlights include:
   :class:`~pymongo.read_preferences.SecondaryPreferred`,
   :class:`~pymongo.read_preferences.Nearest` to support disabling
   (or explicitly enabling) hedged reads in MongoDB 4.4+.
+- Fixed a bug in change streams that could cause PyMongo to miss some change
+  documents when resuming a stream that was started without a resume token and
+  whose first batch did not contain any change documents.
+
+Deprecations:
+
 - Deprecated the ``oplog_replay`` parameter to
   :meth:`pymongo.collection.Collection.find`. Starting in MongoDB 4.4, the
   server optimizes queries against the oplog collection without requiring
@@ -53,9 +59,15 @@ Highlights include:
 - Deprecated :meth:`pymongo.collection.Collection.reindex`. Use
   :meth:`~pymongo.database.Database.command` to run the ``reIndex`` command
   instead.
-- Fixed a bug in change streams that could cause PyMongo to miss some change
-  documents when resuming a stream that was started without a resume token and
-  whose first batch did not contain any change documents.
+- Deprecated :meth:`pymongo.mongo_client.MongoClient.fsync`. Use
+  :meth:`~pymongo.database.Database.command` to run the ``fsync`` command
+  instead.
+- Deprecated :meth:`pymongo.mongo_client.MongoClient.unlock`. Use
+  :meth:`~pymongo.database.Database.command` to run the ``fsyncUnlock`` command
+  instead. See the documentation for more information.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.is_locked`. Use
+  :meth:`~pymongo.database.Database.command` to run the ``currentOp`` command
+  instead. See the documentation for more information.
 
 Unavoidable breaking changes:
 
