@@ -213,7 +213,9 @@ class Topology(object):
             # No suitable servers.
             if timeout == 0 or now > end_time:
                 raise ServerSelectionTimeoutError(
-                    self._error_message(selector)+", Timeout: "+str(timeout)+"s, Topology Description: "+repr(self.description))
+                    "%s, Timeout: %ss, Topology Description: %s" %
+                    (self._error_message(selector), str(timeout),
+                     repr(self.description)))
 
             self._ensure_opened()
             self._request_check_all()
