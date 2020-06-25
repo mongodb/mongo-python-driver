@@ -37,7 +37,7 @@ from bson.py3compat import iteritems
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 
 from pymongo import MongoClient
-from pymongo.change_stream import _NON_RESUMABLE_GETMORE_ERRORS
+# from pymongo.change_stream import _NON_RESUMABLE_GETMORE_ERRORS
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (InvalidOperation, OperationFailure,
                             ServerSelectionTimeoutError)
@@ -555,47 +555,11 @@ class ProseSpecTestsMixin(object):
         self.assertEqual(listener.results['started'][0].command_name,
                          'aggregate')
 
-    # Prose test no. 5
-    def test_does_not_resume_fatal_errors(self):
-        """ChangeStream will not attempt to resume fatal server errors."""
-        if client_context.supports_failCommand_fail_point:
-            # failCommand does not support returning no errorCode.
-            TEST_ERROR_CODES = _NON_RESUMABLE_GETMORE_ERRORS - {None}
-            @contextmanager
-            def generate_error(change_stream, code):
-                fail_point = {'mode': {'times': 1}, 'data': {
-                    'errorCode': code, 'failCommands': ['getMore']}}
-                with self.fail_point(fail_point):
-                    yield
-        else:
-            TEST_ERROR_CODES = _NON_RESUMABLE_GETMORE_ERRORS
-            @contextmanager
-            def generate_error(change_stream, code):
-                def mock_try_next(*args, **kwargs):
-                    change_stream._cursor.close()
-                    raise OperationFailure('Mock server error', code=code)
-
-                original_cursor = change_stream._cursor
-                change_stream._cursor._try_next = mock_try_next
-                try:
-                    yield
-                finally:
-                    # Un patch the instance.
-                    del original_cursor._try_next
-
-        for code in TEST_ERROR_CODES:
-            with self.change_stream() as change_stream:
-                self.watched_collection().insert_one({})
-                with generate_error(change_stream, code):
-                    with self.assertRaises(OperationFailure):
-                        next(change_stream)
-                with self.assertRaises(StopIteration):
-                    next(change_stream)
-
+    # Prose test no. 5 - REMOVED
     # Prose test no. 6 - SKIPPED
-    # readPreference is not configurable using the watch() helpers so we can
-    # skip this test. Also, PyMongo performs server selection for each
-    # operation which ensure compliance with this prose test.
+    # Reason: readPreference is not configurable using the watch() helpers
+    #   so we can skip this test. Also, PyMongo performs server selection for
+    #   each operation which ensure compliance with this prose test.
 
     # Prose test no. 7
     def test_initial_empty_batch(self):
@@ -1075,7 +1039,7 @@ class TestAllScenarios(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        cls.listener = WhiteListEventListener("aggregate")
+        cls.listener = WhiteListEventListener("aggregate", "getMore")
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
@@ -1086,13 +1050,65 @@ class TestAllScenarios(unittest.TestCase):
         self.listener.results.clear()
 
     def setUpCluster(self, scenario_dict):
-        assets = [
-            (scenario_dict["database_name"], scenario_dict["collection_name"]),
-            (scenario_dict["database2_name"], scenario_dict["collection2_name"]),
-        ]
+        assets = [(scenario_dict["database_name"],
+                   scenario_dict["collection_name"]),
+                  (scenario_dict.get("database2_name", "db2"),
+                   scenario_dict.get("collection2_name", "coll2"))]
         for db, coll in assets:
             self.client.drop_database(db)
             self.client[db].create_collection(coll)
+
+    def setFailPoint(self, scenario_dict):
+        fail_point = scenario_dict.get("failPoint")
+        if fail_point is None:
+            return
+
+        fail_cmd = SON([('configureFailPoint', 'failCommand')])
+        fail_cmd.update(fail_point)
+        client_context.client.admin.command(fail_cmd)
+        self.addCleanup(
+            client_context.client.admin.command,
+            'configureFailPoint', fail_cmd['configureFailPoint'], mode='off')
+
+    def assert_list_contents_are_subset(self, superlist, sublist):
+        """Check that each element in sublist is a subset of the corresponding
+        element in superlist."""
+        self.assertEqual(len(superlist), len(sublist))
+        for sup, sub in zip(superlist, sublist):
+            if isinstance(sub, dict):
+                self.assert_dict_is_subset(sup, sub)
+                continue
+            if isinstance(sub, (list, tuple)):
+                self.assert_list_contents_are_subset(sup, sub)
+                continue
+            self.assertEqual(sup, sub)
+
+    def assert_dict_is_subset(self, superdict, subdict):
+        """Check that subdict is a subset of superdict."""
+        exempt_fields = ["documentKey", "_id", "getMore"]
+        for key, value in iteritems(subdict):
+            if key not in superdict:
+                self.fail('Key %s not found in %s' % (key, superdict))
+            if isinstance(value, dict):
+                self.assert_dict_is_subset(superdict[key], value)
+                continue
+            if isinstance(value, (list, tuple)):
+                self.assert_list_contents_are_subset(superdict[key], value)
+                continue
+            if key in exempt_fields:
+                # Only check for presence of these exempt fields, but not value.
+                self.assertIn(key, superdict)
+            else:
+                self.assertEqual(superdict[key], value)
+
+    def check_event(self, event, expectation_dict):
+        if event is None:
+            self.fail()
+        for key, value in iteritems(expectation_dict):
+            if isinstance(value, dict):
+                self.assert_dict_is_subset(getattr(event, key), value)
+            else:
+                self.assertEqual(getattr(event, key), value)
 
     def tearDown(self):
         self.listener.results.clear()
@@ -1147,36 +1163,11 @@ def run_operation(client, operation):
     return cmd(**arguments)
 
 
-def assert_dict_is_subset(superdict, subdict):
-    """Check that subdict is a subset of superdict."""
-    exempt_fields = ["documentKey", "_id"]
-    for key, value in iteritems(subdict):
-        if key not in superdict:
-            assert False
-        if isinstance(value, dict):
-            assert_dict_is_subset(superdict[key], value)
-            continue
-        if key in exempt_fields:
-            superdict[key] = "42"
-        assert superdict[key] == value
-
-
-def check_event(event, expectation_dict):
-    if event is None:
-        raise AssertionError
-    for key, value in iteritems(expectation_dict):
-        if isinstance(value, dict):
-            assert_dict_is_subset(
-                getattr(event, key), value
-            )
-        else:
-            assert getattr(event, key) == value
-
-
 def create_test(scenario_def, test):
     def run_scenario(self):
         # Set up
         self.setUpCluster(scenario_def)
+        self.setFailPoint(test)
         is_error = test["result"].get("error", False)
         try:
             with get_change_stream(
@@ -1202,17 +1193,17 @@ def create_test(scenario_def, test):
         else:
             # Check for expected output from change streams
             for change, expected_changes in zip(changes, test["result"]["success"]):
-                assert_dict_is_subset(change, expected_changes)
+                self.assert_dict_is_subset(change, expected_changes)
             self.assertEqual(len(changes), len(test["result"]["success"]))
         
         finally:
             # Check for expected events
             results = self.listener.results
-            for expectation in test.get("expectations", []):
-                for idx, (event_type, event_desc) in enumerate(iteritems(expectation)):
+            for idx, expectation in enumerate(test.get("expectations", [])):
+                for event_type, event_desc in iteritems(expectation):
                     results_key = event_type.split("_")[1]
                     event = results[results_key][idx] if len(results[results_key]) > idx else None
-                    check_event(event, event_desc)
+                    self.check_event(event, event_desc)
 
     return run_scenario
 

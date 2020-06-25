@@ -140,11 +140,13 @@ class ConfigurationError(PyMongoError):
 class OperationFailure(PyMongoError):
     """Raised when a database operation fails.
 
+    .. versionadded:: 3.11
+       The :attr:`max_wire_version` attribute.
     .. versionadded:: 2.7
        The :attr:`details` attribute.
     """
 
-    def __init__(self, error, code=None, details=None):
+    def __init__(self, error, code=None, details=None, max_wire_version=None):
         error_labels = None
         if details is not None:
             error_labels = details.get('errorLabels')
@@ -152,6 +154,7 @@ class OperationFailure(PyMongoError):
             error, error_labels=error_labels)
         self.__code = code
         self.__details = details
+        self.__max_wire_version = max_wire_version
 
     @property
     def code(self):
@@ -170,6 +173,15 @@ class OperationFailure(PyMongoError):
         on multiple shards.
         """
         return self.__details
+
+    @property
+    def max_wire_version(self):
+        """The latest version of the wire protocol supported by the socket
+        that was used to run the operation that raised this exception.
+
+        PyMongo does not always record this value and it may be None.
+        """
+        return self.__max_wire_version
 
     def __str__(self):
         output_str = "%s, full error: %s" % (self._message, self.__details)
