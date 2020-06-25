@@ -343,8 +343,7 @@ class TestReplicaSetClientInternalIPs(MockClientTest):
         with self.assertRaises(AutoReconnect) as context:
             connected(client)
 
-        self.assertEqual(
-            "Could not reach any servers in [('internal-ip', 27017)]."
+        self.assertIn("Could not reach any servers in [('internal-ip', 27017)]."
             " Replica set is configured with internal hostnames or IPs?",
             str(context.exception))
 
