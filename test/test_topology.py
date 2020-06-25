@@ -766,7 +766,7 @@ class TestServerSelectionErrors(TopologyTest):
         with self.assertRaises(ConnectionFailure) as context:
             topology.select_server(selector, server_selection_timeout=0)
 
-        self.assertTrue(str(context.exception).startswith(message))
+        self.assertIn(message, str(context.exception))
 
     def test_no_primary(self):
         t = create_mock_topology(replica_set_name='rs')
