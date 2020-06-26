@@ -435,6 +435,9 @@ def _mongo_client(host, port, authenticate=True, directConnection=False,
     client_options = client_context.default_client_options.copy()
     if client_context.replica_set_name and not directConnection:
         client_options['replicaSet'] = client_context.replica_set_name
+    # Use STANDARD representation unless one is specified.
+    if 'uuidRepresentation' not in kwargs:
+        kwargs['uuidRepresentation'] = "unspecified"
     client_options.update(kwargs)
 
     client = MongoClient(_connection_string(host, authenticate), port,

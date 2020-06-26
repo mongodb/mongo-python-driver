@@ -44,6 +44,7 @@ from unittest import SkipTest
 import pymongo
 import pymongo.errors
 
+from bson.codec_options import UuidRepresentation
 from bson.son import SON
 from pymongo import common, message
 from pymongo.common import partition_node
@@ -200,6 +201,9 @@ class ClientContext(object):
         return self.client.admin.command('isMaster')
 
     def _connect(self, host, port, **kwargs):
+        # Use STANDARD representation unless one is specified.
+        if 'uuidRepresentation' not in kwargs and :
+            kwargs['uuidRepresentation'] = "unspecified"
         # Jython takes a long time to connect.
         if sys.platform.startswith('java'):
             timeout_ms = 10000
