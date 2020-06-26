@@ -202,7 +202,7 @@ class ClientContext(object):
 
     def _connect(self, host, port, **kwargs):
         # Use STANDARD representation unless one is specified.
-        if 'uuidRepresentation' not in kwargs and :
+        if 'uuidRepresentation' not in kwargs:
             kwargs['uuidRepresentation'] = "unspecified"
         # Jython takes a long time to connect.
         if sys.platform.startswith('java'):
