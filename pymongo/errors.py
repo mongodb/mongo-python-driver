@@ -146,15 +146,8 @@ class OperationFailure(PyMongoError):
             error_labels = details.get('errorLabels')
         super(OperationFailure, self).__init__(
             error, error_labels=error_labels)
-        self.__error = error
         self.__code = code
         self.__details = details
-
-    @property
-    def error(self):
-        """The error string returned by the server, if any.
-        """
-        return self.__error
 
     @property
     def code(self):
@@ -175,7 +168,7 @@ class OperationFailure(PyMongoError):
         return self.__details
 
     def __str__(self):
-        return "%s, full error: %s" % (self.__error, self.__details)
+        return "%s, full error: %s" % (self._message, self.__details)
 
 class CursorNotFound(OperationFailure):
     """Raised while iterating query results if the cursor is
