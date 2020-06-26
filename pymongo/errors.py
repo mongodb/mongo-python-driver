@@ -168,7 +168,10 @@ class OperationFailure(PyMongoError):
         return self.__details
 
     def __str__(self):
-        return "%s, full error: %s" % (self._message, self.__details)
+        output_str = "%s, full error: %s" % (self._message, self.__details)
+        if isinstance(output_str, unicode):
+            return output_str.encode('utf-8', errors='replace')
+        return output_str
 
 class CursorNotFound(OperationFailure):
     """Raised while iterating query results if the cursor is
