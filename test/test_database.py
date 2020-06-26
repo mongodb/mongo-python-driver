@@ -972,7 +972,7 @@ class TestDatabase(IntegrationTest):
         with self.assertRaises(OperationFailure) as context:
             helpers._check_command_response(error_document)
 
-        self.assertEqual('inner', str(context.exception))
+        self.assertIn('inner', str(context.exception))
 
         # If a shard has no primary and you run a command like dbstats, which
         # cannot be run on a secondary, mongos's response includes empty "raw"
