@@ -1,8 +1,23 @@
+# Copyright 2019-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 
 from pymongo import monitoring
 
-class CommandLogger(monitoring.CommandListener):
+
+class CommandListener(monitoring.CommandListener):
 
     def started(self, event):
         logging.info("Command {0.command_name} with request id "
@@ -22,7 +37,7 @@ class CommandLogger(monitoring.CommandListener):
                      "microseconds".format(event))
 
 
-class ServerLogger(monitoring.ServerListener):
+class ServerListener(monitoring.ServerListener):
 
     def opened(self, event):
         logging.info("Server {0.server_address} added to topology "
@@ -43,7 +58,7 @@ class ServerLogger(monitoring.ServerListener):
                         "{0.topology_id}".format(event))
 
 
-class HeartbeatLogger(monitoring.ServerHeartbeatListener):
+class HeartbeatListener(monitoring.ServerHeartbeatListener):
 
     def started(self, event):
         logging.info("Heartbeat sent to server "
@@ -60,7 +75,7 @@ class HeartbeatLogger(monitoring.ServerHeartbeatListener):
                         "failed with error {0.reply}".format(event))
 
 
-class TopologyLogger(monitoring.TopologyListener):
+class TopologyListener(monitoring.TopologyListener):
 
     def opened(self, event):
         logging.info("Topology with id {0.topology_id} "
@@ -89,7 +104,7 @@ class TopologyLogger(monitoring.TopologyListener):
                      "closed".format(event))
 
 
-class ConnectionPoolLogger(ConnectionPoolListener):
+class ConnectionPoolListener(ConnectionPoolListener):
 
     def pool_created(self, event):
         logging.info("[pool {0.address}] pool created".format(event))
