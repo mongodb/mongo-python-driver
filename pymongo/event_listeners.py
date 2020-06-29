@@ -18,7 +18,9 @@ from pymongo import monitoring
 
 
 class CommandListener(monitoring.CommandListener):
-
+    """A simple example command listener
+    .. versionadded:: 3.11
+    """
     def started(self, event):
         logging.info("Command {0.command_name} with request id "
                      "{0.request_id} started on server "
@@ -38,7 +40,9 @@ class CommandListener(monitoring.CommandListener):
 
 
 class ServerListener(monitoring.ServerListener):
-
+    """A simple example server listener
+    .. versionadded:: 3.11
+    """
     def opened(self, event):
         logging.info("Server {0.server_address} added to topology "
                      "{0.topology_id}".format(event))
@@ -59,7 +63,9 @@ class ServerListener(monitoring.ServerListener):
 
 
 class HeartbeatListener(monitoring.ServerHeartbeatListener):
-
+    """A simple example heartbeat listener
+    .. versionadded:: 3.11
+    """
     def started(self, event):
         logging.info("Heartbeat sent to server "
                      "{0.connection_id}".format(event))
@@ -76,7 +82,9 @@ class HeartbeatListener(monitoring.ServerHeartbeatListener):
 
 
 class TopologyListener(monitoring.TopologyListener):
-
+    """A simple example topology listener
+    .. versionadded:: 3.11
+    """
     def opened(self, event):
         logging.info("Topology with id {0.topology_id} "
                      "opened".format(event))
@@ -105,7 +113,9 @@ class TopologyListener(monitoring.TopologyListener):
 
 
 class ConnectionPoolListener(ConnectionPoolListener):
-
+    """A simple example connection listener for connection monitoring
+    .. versionadded:: 3.11
+    """
     def pool_created(self, event):
         logging.info("[pool {0.address}] pool created".format(event))
 
