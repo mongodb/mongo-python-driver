@@ -15,10 +15,16 @@
 import logging
 
 from pymongo import monitoring
+from pymongo.monitoring import ConnectionPoolListener
 
 
 class CommandListener(monitoring.CommandListener):
-    """A simple example command listener
+    """A simple listener that logs command events.
+
+    Listens for :class:`~pymongo.monitoring.CommandStartedEvent`,
+    :class:`~pymongo.monitoring.CommandSucceededEvent` and
+    :class:`~pymongo.monitoring.CommandFailedEvent` events and
+    logs them at the `INFO` severity level using :mod:`logging`.
     .. versionadded:: 3.11
     """
     def started(self, event):
@@ -40,7 +46,13 @@ class CommandListener(monitoring.CommandListener):
 
 
 class ServerListener(monitoring.ServerListener):
-    """A simple example server listener
+    """A simple listener that logs server discovery events.
+
+    Listens for :class:`~pymongo.monitoring.ServerOpeningEvent`,
+    :class:`~pymongo.monitoring.ServerDescriptionChangedEvent`,
+    and :class:`~pymongo.monitoring.ServerClosedEvent`
+    events and logs them at the `INFO` severity level using :mod:`logging`.
+
     .. versionadded:: 3.11
     """
     def opened(self, event):
@@ -63,7 +75,13 @@ class ServerListener(monitoring.ServerListener):
 
 
 class HeartbeatListener(monitoring.ServerHeartbeatListener):
-    """A simple example heartbeat listener
+    """A simple listener that logs server heartbeat events.
+
+    Listens for :class:`~pymongo.monitoring.ServerHeartbeatStartedEvent`,
+    :class:`~pymongo.monitoring.ServerHeartbeatSucceededEvent`,
+    and :class:`~pymongo.monitoring.ServerHeartbeatFailedEvent`
+    events and logs them at the `INFO` severity level using :mod:`logging`.
+
     .. versionadded:: 3.11
     """
     def started(self, event):
@@ -82,7 +100,13 @@ class HeartbeatListener(monitoring.ServerHeartbeatListener):
 
 
 class TopologyListener(monitoring.TopologyListener):
-    """A simple example topology listener
+    """A simple listener that logs server topology events.
+
+    Listens for :class:`~pymongo.monitoring.TopologyOpenedEvent`,
+    :class:`~pymongo.monitoring.TopologyDescriptionChangedEvent`,
+    and :class:`~pymongo.monitoring.TopologyClosedEvent`
+    events and logs them at the `INFO` severity level using :mod:`logging`.
+
     .. versionadded:: 3.11
     """
     def opened(self, event):
@@ -113,7 +137,20 @@ class TopologyListener(monitoring.TopologyListener):
 
 
 class ConnectionPoolListener(ConnectionPoolListener):
-    """A simple example connection listener for connection monitoring
+    """A simple listener that logs server connection pool events.
+
+    Listens for :class:`~pymongo.monitoring.PoolCreatedEvent`,
+    :class:`~pymongo.monitoring.PoolClearedEvent`,
+    :class:`~pymongo.monitoring.PoolClosedEvent`,
+    :~pymongo.monitoring.class:`ConnectionCreatedEvent`,
+    :class:`~pymongo.monitoring.ConnectionReadyEvent`,
+    :class:`~pymongo.monitoring.ConnectionClosedEvent`,
+    :class:`~pymongo.monitoring.ConnectionCheckOutStartedEvent`,
+    :class:`~pymongo.monitoring.ConnectionCheckOutFailedEvent`,
+    :class:`~pymongo.monitoring.ConnectionCheckedOutEvent`,
+    and :class:`~pymongo.monitoring.ConnectionCheckedInEvent`
+    events and logs them at the `INFO` severity level using :mod:`logging`.
+
     .. versionadded:: 3.11
     """
     def pool_created(self, event):

@@ -14,3 +14,4 @@ pymongo.egg-info/
 *.egg
 .tox
 mongocryptd.pid
+.idea/

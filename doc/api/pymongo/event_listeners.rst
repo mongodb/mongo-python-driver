@@ -2,5 +2,5 @@
 ===========================================
 
 .. automodule:: pymongo.event_listeners
-   :synopsis: Example event listeners.
+   :synopsis: A collection of simple listeners for monitoring driver events.
    :members:
