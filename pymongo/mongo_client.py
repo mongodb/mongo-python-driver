@@ -1416,12 +1416,15 @@ class MongoClient(common.BaseObject):
                 # be a persistent outage. Attempting to retry in this case will
                 # most likely be a waste of time.
                 raise
-            except Exception as exc:
+            except PyMongoError as exc:
                 if not retryable:
                     raise
-                # Add the RetryableWriteError label.
-                if (not _retryable_writes_error(exc, max_wire_version)
-                        or is_retrying()):
+                # Add the RetryableWriteError label, if applicable.
+                _add_retryable_write_error(exc, max_wire_version)
+                retryable_error = exc.has_error_label("RetryableWriteError")
+                if retryable_error:
+                    session._unpin_mongos()
+                if is_retrying() or not retryable_error:
                     raise
                 if bulk:
                     bulk.retrying = True
@@ -2165,7 +2168,7 @@ def _retryable_error_doc(exc):
     return None
 
 
-def _retryable_writes_error(exc, max_wire_version):
+def _add_retryable_write_error(exc, max_wire_version):
     doc = _retryable_error_doc(exc)
     if doc:
         code = doc.get('code', 0)
@@ -2178,18 +2181,18 @@ def _retryable_writes_error(exc, max_wire_version):
                 "to your connection string.")
             raise OperationFailure(errmsg, code, exc.details)
         if max_wire_version >= 9:
-            # MongoDB 4.4+ utilizes RetryableWriteError.
-            return 'RetryableWriteError' in doc.get('errorLabels', [])
+            # In MongoDB 4.4+, the server reports the error labels.
+            for label in doc.get('errorLabels', []):
+                exc._add_error_label(label)
         else:
             if code in helpers._RETRYABLE_ERROR_CODES:
                 exc._add_error_label("RetryableWriteError")
-                return True
-            return False
 
-    if isinstance(exc, ConnectionFailure):
+    # Connection errors are always retryable except NotMasterError which is
+    # handled above.
+    if (isinstance(exc, ConnectionFailure) and
+            not isinstance(exc, NotMasterError)):
         exc._add_error_label("RetryableWriteError")
-        return True
-    return False
 
 
 class _MongoClientErrorHandler(object):
@@ -2227,7 +2230,8 @@ class _MongoClientErrorHandler(object):
                 self.session._server_session.mark_dirty()
 
             if issubclass(exc_type, PyMongoError):
-                if exc_val.has_error_label("TransientTransactionError"):
+                if (exc_val.has_error_label("TransientTransactionError") or
+                        exc_val.has_error_label("RetryableWriteError")):
                     self.session._unpin_mongos()
 
         err_ctx = _ErrorContext(
