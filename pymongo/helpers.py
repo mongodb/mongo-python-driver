@@ -102,9 +102,9 @@ def _index_document(index_list):
     return index
 
 
-def _check_command_response(response, msg=None, allowable_errors=None,
-                            parse_write_concern_error=False,
-                            max_wire_version=None):
+def _check_command_response(response, max_wire_version, msg=None,
+                            allowable_errors=None,
+                            parse_write_concern_error=False):
     """Check the response to a command for errors.
     """
     if "ok" not in response:
@@ -168,10 +168,10 @@ def _check_command_response(response, msg=None, allowable_errors=None,
                                    max_wire_version)
 
 
-def _check_gle_response(result):
+def _check_gle_response(result, max_wire_version):
     """Return getlasterror response as a dict, or raise OperationFailure."""
     # Did getlasterror itself fail?
-    _check_command_response(result)
+    _check_command_response(result, max_wire_version)
 
     if result.get("wtimeout", False):
         # MongoDB versions before 1.8.0 return the error message in an "errmsg"

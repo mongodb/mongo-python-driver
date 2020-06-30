@@ -954,10 +954,10 @@ class TestDatabase(IntegrationTest):
         # command document will have no 'ok' field. We should raise
         # OperationFailure instead of KeyError.
         self.assertRaises(OperationFailure,
-                          helpers._check_command_response, {})
+                          helpers._check_command_response, {}, None)
 
         try:
-            helpers._check_command_response({'$err': 'foo'})
+            helpers._check_command_response({'$err': 'foo'}, None)
         except OperationFailure as e:
             self.assertEqual(e.args[0], 'foo')
         else:
@@ -970,7 +970,7 @@ class TestDatabase(IntegrationTest):
             'raw': {'shard0/host0,host1': {'ok': 0, 'errmsg': 'inner'}}}
 
         with self.assertRaises(OperationFailure) as context:
-            helpers._check_command_response(error_document)
+            helpers._check_command_response(error_document, None)
 
         self.assertIn('inner', str(context.exception))
 
@@ -983,7 +983,7 @@ class TestDatabase(IntegrationTest):
             'raw': {'shard0/host0,host1': {}}}
 
         with self.assertRaises(OperationFailure) as context:
-            helpers._check_command_response(error_document)
+            helpers._check_command_response(error_document, None)
 
         self.assertIn('outer', str(context.exception))
 
@@ -994,7 +994,7 @@ class TestDatabase(IntegrationTest):
             'raw': {'shard0/host0,host1': {'ok': 0}}}
 
         with self.assertRaises(OperationFailure) as context:
-            helpers._check_command_response(error_document)
+            helpers._check_command_response(error_document, None)
 
         self.assertIn('outer', str(context.exception))
 

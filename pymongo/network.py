@@ -40,7 +40,7 @@ from pymongo.socket_checker import _errno_from_exception
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
-def command(sock_info, dbname, spec, slave_ok, is_mongos,
+def command(sock_info, max_wire_version, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, session, client, check=True,
             allowable_errors=None, address=None,
             check_keys=False, listeners=None, max_bson_size=None,
@@ -157,7 +157,7 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
                 client._process_response(response_doc, session)
             if check:
                 helpers._check_command_response(
-                    response_doc, None, allowable_errors,
+                    response_doc, max_wire_version, None, allowable_errors,
                     parse_write_concern_error=parse_write_concern_error)
     except Exception as exc:
         if publish:

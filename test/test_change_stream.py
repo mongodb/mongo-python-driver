@@ -37,7 +37,6 @@ from bson.py3compat import iteritems
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 
 from pymongo import MongoClient
-# from pymongo.change_stream import _NON_RESUMABLE_GETMORE_ERRORS
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (InvalidOperation, OperationFailure,
                             ServerSelectionTimeoutError)

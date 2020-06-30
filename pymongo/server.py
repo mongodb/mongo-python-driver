@@ -134,7 +134,7 @@ class Server(object):
                 operation.client._process_response(
                     first, operation.session)
                 _check_command_response(
-                    first, max_wire_version=sock_info.max_wire_version)
+                    first, sock_info.max_wire_version)
         except Exception as exc:
             if publish:
                 duration = datetime.now() - start

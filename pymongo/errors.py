@@ -157,6 +157,10 @@ class OperationFailure(PyMongoError):
         self.__max_wire_version = max_wire_version
 
     @property
+    def _max_wire_version(self):
+        return self.__max_wire_version
+
+    @property
     def code(self):
         """The error code returned by the server, if any.
         """
@@ -188,6 +192,7 @@ class OperationFailure(PyMongoError):
         if sys.version_info[0] == 2 and isinstance(output_str, unicode):
             return output_str.encode('utf-8', errors='replace')
         return output_str
+
 
 class CursorNotFound(OperationFailure):
     """Raised while iterating query results if the cursor is

@@ -680,11 +680,11 @@ class SocketInfo(object):
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(self, dbname, spec, slave_ok,
-                           self.is_mongos, read_preference, codec_options,
-                           session, client, check, allowable_errors,
-                           self.address, check_keys, listeners,
-                           self.max_bson_size, read_concern,
+            return command(self, self.max_wire_version, dbname, spec,
+                           slave_ok, self.is_mongos, read_preference,
+                           codec_options, session, client, check,
+                           allowable_errors, self.address, check_keys,
+                           listeners, self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation,
                            compression_ctx=self.compression_context,
@@ -751,7 +751,8 @@ class SocketInfo(object):
         self.send_message(msg, max_doc_size)
         if with_last_error:
             reply = self.receive_message(request_id)
-            return helpers._check_gle_response(reply.command_response())
+            return helpers._check_gle_response(reply.command_response(),
+                                               self.max_wire_version)
 
     def write_command(self, request_id, msg):
         """Send "insert" etc. command, returning response as a dict.
@@ -767,7 +768,7 @@ class SocketInfo(object):
         result = reply.command_response()
 
         # Raises NotMasterError or OperationFailure.
-        helpers._check_command_response(result)
+        helpers._check_command_response(result, self.max_wire_version)
         return result
 
     def check_auth(self, all_credentials):
