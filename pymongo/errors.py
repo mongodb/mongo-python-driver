@@ -113,7 +113,11 @@ class NotMasterError(AutoReconnect):
 
     Subclass of :exc:`~pymongo.errors.AutoReconnect`.
     """
-
+    def __str__(self):
+        output_str = "%s, full error: %s" % (self._message, self.__details)
+        if sys.version_info[0] == 2 and isinstance(output_str, unicode):
+            return output_str.encode('utf-8', errors='replace')
+        return output_str
 
 class ServerSelectionTimeoutError(AutoReconnect):
     """Thrown when no MongoDB server is available for an operation
@@ -167,6 +171,11 @@ class OperationFailure(PyMongoError):
         """
         return self.__details
 
+    def __str__(self):
+        output_str = "%s, full error: %s" % (self._message, self.__details)
+        if sys.version_info[0] == 2 and isinstance(output_str, unicode):
+            return output_str.encode('utf-8', errors='replace')
+        return output_str
 
 class CursorNotFound(OperationFailure):
     """Raised while iterating query results if the cursor is
