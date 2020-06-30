@@ -624,7 +624,7 @@ class MongoClient(common.BaseObject):
         username = None
         password = None
         dbase = None
-        opts = common._CaseInsensitiveDictionary()
+        opts = {}
         fqdn = None
         for entity in host:
             if "://" in entity:
@@ -671,7 +671,7 @@ class MongoClient(common.BaseObject):
         opts = _normalize_options(opts)
 
         # Ensure directConnection was not True if there are multiple seeds.
-        if len(seeds) > 1 and opts.get('directConnection'):
+        if len(seeds) > 1 and opts.get('directconnection'):
             raise ConfigurationError(
                 "Cannot specify multiple hosts with directConnection=true")
 

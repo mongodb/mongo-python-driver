@@ -1566,20 +1566,15 @@ class TestClient(IntegrationTest):
         # direct_connection=False should result in RS topology.
         client = rs_or_single_client(directConnection=False)
         client.admin.command('ping')
-        nodes = client.nodes
-        self.assertGreaterEqual(len(nodes), 1)
+        self.assertGreaterEqual(len(client.nodes), 1)
         self.assertIn(client._topology_settings.get_topology_type(),
                       [TOPOLOGY_TYPE.ReplicaSetNoPrimary,
                        TOPOLOGY_TYPE.ReplicaSetWithPrimary])
         client.close()
 
         # directConnection=True, should error with multiple hosts as a list.
-        if len(nodes) > 1:
-            hosts = []
-            for h, p in nodes:
-                hosts.append("%s:%s" % (h, p))
-            with self.assertRaises(ConfigurationError):
-                MongoClient(hosts, directConnection=True)
+        with self.assertRaises(ConfigurationError):
+            MongoClient(['host1', 'host2'], directConnection=True)
 
 
 class TestExhaustCursor(IntegrationTest):
