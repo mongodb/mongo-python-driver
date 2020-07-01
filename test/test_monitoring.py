@@ -439,9 +439,6 @@ class TestCommandMonitoring(PyMongoTestCase):
             client.pymongo_test.test.find_one_and_delete({})
         except NotMasterError as exc:
             error = exc.errors
-            import traceback
-            self.assertIn("full error", str(exc))
-            self.assertIn("full error", traceback.format_exc())
         results = self.listener.results
         started = results['started'][0]
         failed = results['failed'][0]
