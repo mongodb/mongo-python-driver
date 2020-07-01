@@ -680,7 +680,7 @@ class SocketInfo(object):
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(self, self.max_wire_version, dbname, spec,
+            return command(self, dbname, spec,
                            slave_ok, self.is_mongos, read_preference,
                            codec_options, session, client, check,
                            allowable_errors, self.address, check_keys,
