@@ -670,6 +670,11 @@ class MongoClient(common.BaseObject):
         # Normalize combined options.
         opts = _normalize_options(opts)
 
+        # Ensure directConnection was not True if there are multiple seeds.
+        if len(seeds) > 1 and opts.get('directconnection'):
+            raise ConfigurationError(
+                "Cannot specify multiple hosts with directConnection=true")
+
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)

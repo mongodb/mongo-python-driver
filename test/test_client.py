@@ -1572,6 +1572,10 @@ class TestClient(IntegrationTest):
                        TOPOLOGY_TYPE.ReplicaSetWithPrimary])
         client.close()
 
+        # directConnection=True, should error with multiple hosts as a list.
+        with self.assertRaises(ConfigurationError):
+            MongoClient(['host1', 'host2'], directConnection=True)
+
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""
