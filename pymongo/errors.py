@@ -140,8 +140,6 @@ class ConfigurationError(PyMongoError):
 class OperationFailure(PyMongoError):
     """Raised when a database operation fails.
 
-    .. versionadded:: 3.11
-       The :attr:`max_wire_version` attribute.
     .. versionadded:: 2.7
        The :attr:`details` attribute.
     """
