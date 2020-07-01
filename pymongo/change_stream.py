@@ -302,6 +302,8 @@ class ChangeStream(object):
             self._resume()
             change = self._cursor._try_next(False)
         except OperationFailure as exc:
+            if exc._max_wire_version is None:
+                raise
             is_resumable = ((exc._max_wire_version >= 9 and
                              exc.has_error_label("ResumableChangeStreamError")) or
                             (exc._max_wire_version < 9 and
