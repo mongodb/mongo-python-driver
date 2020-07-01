@@ -154,6 +154,12 @@ class OperationFailure(PyMongoError):
         self.__details = details
         self.__max_wire_version = max_wire_version
 
+    def __str__(self):
+        output_str = "%s, full error: %s" % (self._message, self.__details)
+        if sys.version_info[0] == 2 and isinstance(output_str, unicode):
+            return output_str.encode('utf-8', errors='replace')
+        return output_str
+
     @property
     def _max_wire_version(self):
         return self.__max_wire_version
@@ -175,21 +181,6 @@ class OperationFailure(PyMongoError):
         on multiple shards.
         """
         return self.__details
-
-    @property
-    def max_wire_version(self):
-        """The latest version of the wire protocol supported by the socket
-        that was used to run the operation that raised this exception.
-
-        PyMongo does not always record this value and it may be None.
-        """
-        return self.__max_wire_version
-
-    def __str__(self):
-        output_str = "%s, full error: %s" % (self._message, self.__details)
-        if sys.version_info[0] == 2 and isinstance(output_str, unicode):
-            return output_str.encode('utf-8', errors='replace')
-        return output_str
 
 
 class CursorNotFound(OperationFailure):
