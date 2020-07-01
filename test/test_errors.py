@@ -6,13 +6,8 @@ from test import (client_context,
                   PyMongoTestCase,
                   sanitize_cmd,
                   unittest)
-from test.utils import (EventListener,
-                        get_pool,
-                        rs_or_single_client,
-                        single_client,
-                        wait_until)
 
-class TestCommandMonitoring(PyMongoTestCase):
+class TestErrors(PyMongoTestCase):
     def test_not_master_error(self):
         exc = NotMasterError("not master test", "details")
         self.assertIn("full error", str(exc))
