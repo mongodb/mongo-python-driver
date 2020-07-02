@@ -959,7 +959,7 @@ class TestDatabase(IntegrationTest):
         try:
             helpers._check_command_response({'$err': 'foo'}, None)
         except OperationFailure as e:
-            self.assertEqual(e.args[0], 'foo')
+            self.assertEqual(e.args[0], "foo, full error: {'$err': 'foo'}")
         else:
             self.fail("_check_command_response didn't raise OperationFailure")
 

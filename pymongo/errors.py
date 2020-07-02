@@ -100,6 +100,14 @@ class NetworkTimeout(AutoReconnect):
     """
 
 
+def _format_detailed_error(message, details):
+    if details is not None:
+        message = "%s, full error: %s" % (message, details)
+        if sys.version_info[0] == 2 and isinstance(message, unicode):
+            message = message.encode('utf-8', errors='replace')
+    return message
+
+
 class NotMasterError(AutoReconnect):
     """The server responded "not master" or "node is recovering".
 
@@ -113,11 +121,10 @@ class NotMasterError(AutoReconnect):
 
     Subclass of :exc:`~pymongo.errors.AutoReconnect`.
     """
-    def __str__(self):
-        output_str = "%s, full error: %s" % (self._message, self.__details)
-        if sys.version_info[0] == 2 and isinstance(output_str, unicode):
-            return output_str.encode('utf-8', errors='replace')
-        return output_str
+    def __init__(self, message='', errors=None):
+        super(NotMasterError, self).__init__(
+            _format_detailed_error(message, errors), errors=errors)
+
 
 class ServerSelectionTimeoutError(AutoReconnect):
     """Thrown when no MongoDB server is available for an operation
@@ -149,7 +156,7 @@ class OperationFailure(PyMongoError):
         if details is not None:
             error_labels = details.get('errorLabels')
         super(OperationFailure, self).__init__(
-            error, error_labels=error_labels)
+            _format_detailed_error(error, details), error_labels=error_labels)
         self.__code = code
         self.__details = details
         self.__max_wire_version = max_wire_version
@@ -176,11 +183,6 @@ class OperationFailure(PyMongoError):
         """
         return self.__details
 
-    def __str__(self):
-        output_str = "%s, full error: %s" % (self._message, self.__details)
-        if sys.version_info[0] == 2 and isinstance(output_str, unicode):
-            return output_str.encode('utf-8', errors='replace')
-        return output_str
 
 
 class CursorNotFound(OperationFailure):
