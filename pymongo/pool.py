@@ -680,11 +680,11 @@ class SocketInfo(object):
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(self, dbname, spec,
-                           slave_ok, self.is_mongos, read_preference,
-                           codec_options, session, client, check,
-                           allowable_errors, self.address, check_keys,
-                           listeners, self.max_bson_size, read_concern,
+            return command(self, dbname, spec, slave_ok,
+                           self.is_mongos, read_preference, codec_options,
+                           session, client, check, allowable_errors,
+                           self.address, check_keys, listeners,
+                           self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation,
                            compression_ctx=self.compression_context,
