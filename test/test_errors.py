@@ -33,7 +33,8 @@ class TestErrors(PyMongoTestCase):
             self.assertIn("full error", traceback.format_exc())
 
     def test_operation_failure(self):
-        exc = OperationFailure("operation failure test", 10, {"ok": 0, "errmsg":"error"})
+        exc = OperationFailure("operation failure test", 10,
+                               {"ok": 0, "errmsg":"error"})
         self.assertIn("full error", str(exc))
         try:
             raise exc
@@ -42,20 +43,24 @@ class TestErrors(PyMongoTestCase):
 
     def _test_unicode_strs(self, exc):
         if sys.version_info[0] == 2:
-            self.assertEqual("unicode \xf0\x9f\x90\x8d, full error: {'ok': 0, 'errmsg': u'unicode \\U0001f40d'}", str(exc))
+            self.assertEqual("unicode \xf0\x9f\x90\x8d, full error: {'ok': 0, "
+                             "'errmsg': u'unicode \\U0001f40d'}", str(exc))
         else:
-            self.assertEqual("unicode \U0001f40d, full error: {'ok': 0, 'errmsg': 'unicode \U0001f40d'}", str(exc))
+            self.assertEqual("unicode \U0001f40d, full error: {'ok': 0, "
+                             "'errmsg': 'unicode \U0001f40d'}", str(exc))
         try:
             raise exc
         except Exception:
             self.assertIn("full error", traceback.format_exc())
 
     def test_unicode_strs_operation_failure(self):
-        exc = OperationFailure(u'unicode \U0001f40d', 10, {"ok": 0, "errmsg": u'unicode \U0001f40d'})
+        exc = OperationFailure(u'unicode \U0001f40d', 10,
+                               {"ok": 0, "errmsg": u'unicode \U0001f40d'})
         self._test_unicode_strs(exc)
 
     def test_unicode_strs_not_master_error(self):
-        exc = NotMasterError(u'unicode \U0001f40d', {"ok": 0, "errmsg": u'unicode \U0001f40d'})
+        exc = NotMasterError(u'unicode \U0001f40d',
+                             {"ok": 0, "errmsg": u'unicode \U0001f40d'})
         self._test_unicode_strs(exc)
 
 

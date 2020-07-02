@@ -100,6 +100,14 @@ class NetworkTimeout(AutoReconnect):
     """
 
 
+def _format_detailed_error(message, details):
+    if details is not None:
+        message = "%s, full error: %s" % (message, details)
+        if sys.version_info[0] == 2 and isinstance(message, unicode):
+            message = message.encode('utf-8', errors='replace')
+    return message
+
+
 class NotMasterError(AutoReconnect):
     """The server responded "not master" or "node is recovering".
 
@@ -114,11 +122,8 @@ class NotMasterError(AutoReconnect):
     Subclass of :exc:`~pymongo.errors.AutoReconnect`.
     """
     def __init__(self, message='', errors=None):
-        if errors is not None:
-            message = "%s, full error: %s" % (message, errors)
-            if sys.version_info[0] == 2 and isinstance(message, unicode):
-                message = message.encode('utf-8', errors='replace')
-        super(NotMasterError, self).__init__(message, errors=errors)
+        super(NotMasterError, self).__init__(
+            _format_detailed_error(message, errors), errors=errors)
 
 
 class ServerSelectionTimeoutError(AutoReconnect):
@@ -150,11 +155,8 @@ class OperationFailure(PyMongoError):
         error_labels = None
         if details is not None:
             error_labels = details.get('errorLabels')
-            error = "%s, full error: %s" % (error, details)
-            if sys.version_info[0] == 2 and isinstance(error, unicode):
-                error = error.encode('utf-8', errors='replace')
         super(OperationFailure, self).__init__(
-            error, error_labels=error_labels)
+            _format_detailed_error(error, details), error_labels=error_labels)
         self.__code = code
         self.__details = details
 
