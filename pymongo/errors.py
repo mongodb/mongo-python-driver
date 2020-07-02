@@ -113,11 +113,13 @@ class NotMasterError(AutoReconnect):
 
     Subclass of :exc:`~pymongo.errors.AutoReconnect`.
     """
-    def __str__(self):
-        output_str = "%s, full error: %s" % (self._message, self.details)
-        if sys.version_info[0] == 2 and isinstance(output_str, unicode):
-            return output_str.encode('utf-8', errors='replace')
-        return output_str
+    def __init__(self, message='', errors=None):
+        if errors is not None:
+            message = "%s, full error: %s" % (message, errors)
+            if sys.version_info[0] == 2 and isinstance(message, unicode):
+                message = message.encode('utf-8', errors='replace')
+        super(NotMasterError, self).__init__(message, errors=errors)
+
 
 class ServerSelectionTimeoutError(AutoReconnect):
     """Thrown when no MongoDB server is available for an operation
@@ -148,6 +150,9 @@ class OperationFailure(PyMongoError):
         error_labels = None
         if details is not None:
             error_labels = details.get('errorLabels')
+            error = "%s, full error: %s" % (error, details)
+            if sys.version_info[0] == 2 and isinstance(error, unicode):
+                error = error.encode('utf-8', errors='replace')
         super(OperationFailure, self).__init__(
             error, error_labels=error_labels)
         self.__code = code
@@ -171,11 +176,6 @@ class OperationFailure(PyMongoError):
         """
         return self.__details
 
-    def __str__(self):
-        output_str = "%s, full error: %s" % (self._message, self.__details)
-        if sys.version_info[0] == 2 and isinstance(output_str, unicode):
-            return output_str.encode('utf-8', errors='replace')
-        return output_str
 
 class CursorNotFound(OperationFailure):
     """Raised while iterating query results if the cursor is
