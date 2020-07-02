@@ -289,8 +289,7 @@ class SSLContext(object):
         """Wrap an existing Python socket sock and return a TLS socket
         object.
         """
-        ssl_conn = _sslConn(
-            self._ctx, sock, suppress_ragged_eofs=suppress_ragged_eofs)
+        ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)
         if session:
             ssl_conn.set_session(session)
         if server_side is True:
