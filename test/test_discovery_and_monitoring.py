@@ -334,7 +334,8 @@ class TestIntegration(SpecRunner):
 
         Assert the given event was published exactly `count` times.
         """
-        self.assertEqual(self._event_count(event), count)
+        self.assertEqual(self._event_count(event), count,
+                         'expected %s not %r' % (count, event))
 
     def wait_for_event(self, event, count):
         """Run the waitForEvent test operation.

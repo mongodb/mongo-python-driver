@@ -606,7 +606,7 @@ class SocketInfo(object):
         self.more_to_come = reply.more_to_come
         unpacked_docs = reply.unpack_response()
         response_doc = unpacked_docs[0]
-        helpers._check_command_response(response_doc)
+        helpers._check_command_response(response_doc, self.max_wire_version)
         return response_doc
 
     def command(self, dbname, spec, slave_ok=False,
