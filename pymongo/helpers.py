@@ -102,7 +102,8 @@ def _index_document(index_list):
     return index
 
 
-def _check_command_response(response, msg=None, allowable_errors=None,
+def _check_command_response(response, max_wire_version, msg=None,
+                            allowable_errors=None,
                             parse_write_concern_error=False):
     """Check the response to a command for errors.
     """
@@ -110,7 +111,8 @@ def _check_command_response(response, msg=None, allowable_errors=None,
         # Server didn't recognize our message as a command.
         raise OperationFailure(response.get("$err"),
                                response.get("code"),
-                               response)
+                               response,
+                               max_wire_version)
 
     if parse_write_concern_error and 'writeConcernError' in response:
         _raise_write_concern_error(response['writeConcernError'])
@@ -146,25 +148,30 @@ def _check_command_response(response, msg=None, allowable_errors=None,
                           details.get("assertion", ""))
                 raise OperationFailure(errmsg,
                                        details.get("assertionCode"),
-                                       response)
+                                       response,
+                                       max_wire_version)
 
             # Other errors
             # findAndModify with upsert can raise duplicate key error
             if code in (11000, 11001, 12582):
-                raise DuplicateKeyError(errmsg, code, response)
+                raise DuplicateKeyError(errmsg, code, response,
+                                        max_wire_version)
             elif code == 50:
-                raise ExecutionTimeout(errmsg, code, response)
+                raise ExecutionTimeout(errmsg, code, response,
+                                       max_wire_version)
             elif code == 43:
-                raise CursorNotFound(errmsg, code, response)
+                raise CursorNotFound(errmsg, code, response,
+                                     max_wire_version)
 
             msg = msg or "%s"
-            raise OperationFailure(msg % errmsg, code, response)
+            raise OperationFailure(msg % errmsg, code, response,
+                                   max_wire_version)
 
 
-def _check_gle_response(result):
+def _check_gle_response(result, max_wire_version):
     """Return getlasterror response as a dict, or raise OperationFailure."""
     # Did getlasterror itself fail?
-    _check_command_response(result)
+    _check_command_response(result, max_wire_version)
 
     if result.get("wtimeout", False):
         # MongoDB versions before 1.8.0 return the error message in an "errmsg"

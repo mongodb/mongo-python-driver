@@ -606,7 +606,7 @@ class SocketInfo(object):
         self.more_to_come = reply.more_to_come
         unpacked_docs = reply.unpack_response()
         response_doc = unpacked_docs[0]
-        helpers._check_command_response(response_doc)
+        helpers._check_command_response(response_doc, self.max_wire_version)
         return response_doc
 
     def command(self, dbname, spec, slave_ok=False,
@@ -751,7 +751,8 @@ class SocketInfo(object):
         self.send_message(msg, max_doc_size)
         if with_last_error:
             reply = self.receive_message(request_id)
-            return helpers._check_gle_response(reply.command_response())
+            return helpers._check_gle_response(reply.command_response(),
+                                               self.max_wire_version)
 
     def write_command(self, request_id, msg):
         """Send "insert" etc. command, returning response as a dict.
@@ -767,7 +768,7 @@ class SocketInfo(object):
         result = reply.command_response()
 
         # Raises NotMasterError or OperationFailure.
-        helpers._check_command_response(result)
+        helpers._check_command_response(result, self.max_wire_version)
         return result
 
     def check_auth(self, all_credentials):

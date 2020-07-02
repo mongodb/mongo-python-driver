@@ -110,7 +110,7 @@ def got_app_error(topology, app_error):
     # Pool/SocketInfo.
     try:
         if error_type == 'command':
-            _check_command_response(app_error['response'])
+            _check_command_response(app_error['response'], max_wire_version)
         elif error_type == 'network':
             raise AutoReconnect('mock non-timeout network error')
         elif error_type == 'timeout':
@@ -334,7 +334,8 @@ class TestIntegration(SpecRunner):
 
         Assert the given event was published exactly `count` times.
         """
-        self.assertEqual(self._event_count(event), count)
+        self.assertEqual(self._event_count(event), count,
+                         'expected %s not %r' % (count, event))
 
     def wait_for_event(self, event, count):
         """Run the waitForEvent test operation.

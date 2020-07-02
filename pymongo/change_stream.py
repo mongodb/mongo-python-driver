@@ -25,6 +25,7 @@ from pymongo.aggregation import (_CollectionAggregationCommand,
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (ConnectionFailure,
+                            CursorNotFound,
                             InvalidOperation,
                             OperationFailure,
                             PyMongoError)
@@ -32,11 +33,25 @@ from pymongo.errors import (ConnectionFailure,
 
 # The change streams spec considers the following server errors from the
 # getMore command non-resumable. All other getMore errors are resumable.
-_NON_RESUMABLE_GETMORE_ERRORS = frozenset([
-    11601,  # Interrupted
-    136,    # CappedPositionLost
-    237,    # CursorKilled
-    None,   # No error code was returned.
+_RESUMABLE_GETMORE_ERRORS = frozenset([
+    6,      # HostUnreachable
+    7,      # HostNotFound
+    89,     # NetworkTimeout
+    91,     # ShutdownInProgress
+    189,    # PrimarySteppedDown
+    262,    # ExceededTimeLimit
+    9001,   # SocketException
+    10107,  # NotMaster
+    11600,  # InterruptedAtShutdown
+    11602,  # InterruptedDueToReplStateChange
+    13435,  # NotMasterNoSlaveOk
+    13436,  # NotMasterOrSecondary
+    63,     # StaleShardVersion
+    150,    # StaleEpoch
+    13388,  # StaleConfig
+    234,    # RetryChangeStream
+    133,    # FailedToSatisfyReadPreference
+    216,    # ElectionInProgress
 ])
 
 
@@ -283,12 +298,17 @@ class ChangeStream(object):
         # one resume attempt.
         try:
             change = self._cursor._try_next(True)
-        except ConnectionFailure:
+        except (ConnectionFailure, CursorNotFound):
             self._resume()
             change = self._cursor._try_next(False)
         except OperationFailure as exc:
-            if (exc.code in _NON_RESUMABLE_GETMORE_ERRORS or
-                    exc.has_error_label("NonResumableChangeStreamError")):
+            if exc._max_wire_version is None:
+                raise
+            is_resumable = ((exc._max_wire_version >= 9 and
+                             exc.has_error_label("ResumableChangeStreamError")) or
+                            (exc._max_wire_version < 9 and
+                             exc.code in _RESUMABLE_GETMORE_ERRORS))
+            if not is_resumable:
                 raise
             self._resume()
             change = self._cursor._try_next(False)

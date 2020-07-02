@@ -144,7 +144,7 @@ class OperationFailure(PyMongoError):
        The :attr:`details` attribute.
     """
 
-    def __init__(self, error, code=None, details=None):
+    def __init__(self, error, code=None, details=None, max_wire_version=None):
         error_labels = None
         if details is not None:
             error_labels = details.get('errorLabels')
@@ -152,6 +152,11 @@ class OperationFailure(PyMongoError):
             error, error_labels=error_labels)
         self.__code = code
         self.__details = details
+        self.__max_wire_version = max_wire_version
+
+    @property
+    def _max_wire_version(self):
+        return self.__max_wire_version
 
     @property
     def code(self):
@@ -176,6 +181,7 @@ class OperationFailure(PyMongoError):
         if sys.version_info[0] == 2 and isinstance(output_str, unicode):
             return output_str.encode('utf-8', errors='replace')
         return output_str
+
 
 class CursorNotFound(OperationFailure):
     """Raised while iterating query results if the cursor is
