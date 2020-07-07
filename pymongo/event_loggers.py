@@ -15,10 +15,17 @@
 import logging
 
 from pymongo import monitoring
-from pymongo.monitoring import ConnectionPoolListener
 
+"""Example event logger classes.
+.. versionadded:: 3.11
 
-class CommandListener(monitoring.CommandListener):
+These loggers can be registered using :func:`register` or 
+:class:`~pymongo.mongo_client.MongoClient`::
+    monitoring.register(CommandLogger())
+or::
+    MongoClient(event_listeners=[CommandLogger()])
+"""
+class CommandLogger(monitoring.CommandListener):
     """A simple listener that logs command events.
 
     Listens for :class:`~pymongo.monitoring.CommandStartedEvent`,
@@ -45,7 +52,7 @@ class CommandListener(monitoring.CommandListener):
                      "microseconds".format(event))
 
 
-class ServerListener(monitoring.ServerListener):
+class ServerLogger(monitoring.ServerListener):
     """A simple listener that logs server discovery events.
 
     Listens for :class:`~pymongo.monitoring.ServerOpeningEvent`,
@@ -74,7 +81,7 @@ class ServerListener(monitoring.ServerListener):
                         "{0.topology_id}".format(event))
 
 
-class HeartbeatListener(monitoring.ServerHeartbeatListener):
+class HeartbeatLogger(monitoring.ServerHeartbeatListener):
     """A simple listener that logs server heartbeat events.
 
     Listens for :class:`~pymongo.monitoring.ServerHeartbeatStartedEvent`,
@@ -99,7 +106,7 @@ class HeartbeatListener(monitoring.ServerHeartbeatListener):
                         "failed with error {0.reply}".format(event))
 
 
-class TopologyListener(monitoring.TopologyListener):
+class TopologyLogger(monitoring.TopologyListener):
     """A simple listener that logs server topology events.
 
     Listens for :class:`~pymongo.monitoring.TopologyOpenedEvent`,
@@ -136,7 +143,7 @@ class TopologyListener(monitoring.TopologyListener):
                      "closed".format(event))
 
 
-class ConnectionPoolListener(ConnectionPoolListener):
+class ConnectionPoolLogger(monitoring.ConnectionPoolListener):
     """A simple listener that logs server connection pool events.
 
     Listens for :class:`~pymongo.monitoring.PoolCreatedEvent`,
