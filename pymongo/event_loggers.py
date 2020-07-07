@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
-from pymongo import monitoring
 
 """Example event logger classes.
 .. versionadded:: 3.11
 
-These loggers can be registered using :func:`register` or 
+These loggers can be registered using :func:`register` or
 :class:`~pymongo.mongo_client.MongoClient`::
     monitoring.register(CommandLogger())
 or::
     MongoClient(event_listeners=[CommandLogger()])
 """
+
+
+import logging
+
+from pymongo import monitoring
+
+
 class CommandLogger(monitoring.CommandListener):
     """A simple listener that logs command events.
 
