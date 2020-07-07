@@ -175,6 +175,7 @@ class GridIn(object):
         if not root_collection.write_concern.acknowledged:
             raise ConfigurationError('root_collection must use '
                                      'acknowledged write_concern')
+        _disallow_transactions(session)
 
         # Handle alternative naming
         if "content_type" in kwargs:
@@ -464,6 +465,7 @@ class GridOut(object):
         if not isinstance(root_collection, Collection):
             raise TypeError("root_collection must be an "
                             "instance of Collection")
+        _disallow_transactions(session)
 
         root_collection = _clear_entity_type_registry(root_collection)
 
@@ -820,6 +822,7 @@ class GridOutCursor(Cursor):
 
         .. mongodoc:: cursors
         """
+        _disallow_transactions(session)
         collection = _clear_entity_type_registry(collection)
 
         # Hold on to the base "fs" collection to create GridOut objects later.
