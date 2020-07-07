@@ -745,6 +745,9 @@ class Cursor(object):
             for doc in cursor:
                 print(doc)
 
+        For more advanced text search functionality, see MongoDB's
+        `Atlas Search <https://docs.atlas.mongodb.com/atlas-search/>`_.
+
         Raises :class:`~pymongo.errors.InvalidOperation` if this cursor has
         already been used. Only the last :meth:`sort` applied to this
         cursor has any effect.

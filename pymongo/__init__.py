@@ -58,6 +58,10 @@ HASHED = "hashed"
 TEXT = "text"
 """Index specifier for a `text index`_.
 
+.. seealso:: MongoDB's `Atlas Search
+   <https://docs.atlas.mongodb.com/atlas-search/>`_ which offers more advanced
+   text search functionality.
+
 .. versionadded:: 2.7.1
 
 .. _text index: http://docs.mongodb.org/manual/core/index-text/
