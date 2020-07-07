@@ -107,7 +107,7 @@ def _clear_entity_type_registry(entity, **kwargs):
 
 
 def _disallow_transactions(session):
-    if session and session.in_transacton:
+    if session and session.in_transaction:
         raise InvalidOperation(
             'GridFS does not support multi-document transactions')
 
