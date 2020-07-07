@@ -51,6 +51,10 @@ class GridFS(object):
             computed for uploaded files. Useful in environments where MD5
             cannot be used for regulatory or other reasons. Defaults to False.
 
+        .. versionchanged:: 3.11
+           Running a GridFS operation in a transaction now always raises an
+           error. GridFS does not support multi-document transactions.
+
         .. versionchanged:: 3.1
            Indexes are only ensured on the first write to the DB.
 
@@ -441,6 +445,10 @@ class GridFSBucket(object):
           - `disable_md5` (optional): When True, MD5 checksums will not be
             computed for uploaded files. Useful in environments where MD5
             cannot be used for regulatory or other reasons. Defaults to False.
+
+        .. versionchanged:: 3.11
+           Running a GridFS operation in a transaction now always raises an
+           error. GridFSBucket does not support multi-document transactions.
 
         .. versionadded:: 3.1
 
