@@ -160,6 +160,14 @@ class TestStreamingProtocol(IntegrationTest):
             return (isinstance(event, monitoring.ServerHeartbeatStartedEvent)
                     and event.connection_id == address)
 
+        def hb_succeeded(event):
+            return (isinstance(event, monitoring.ServerHeartbeatSucceededEvent)
+                    and event.connection_id == address)
+
+        def hb_failed(event):
+            return (isinstance(event, monitoring.ServerHeartbeatFailedEvent)
+                    and event.connection_id == address)
+
         hb_started_events = hb_listener.matching(hb_started)
         # Explanation of the expected heartbeat events:
         # Time: event
@@ -177,6 +185,14 @@ class TestStreamingProtocol(IntegrationTest):
         self.assertGreater(len(hb_started_events), 7)
         # This can be reduced to ~15 after SERVER-49220 is fixed.
         self.assertLess(len(hb_started_events), 40)
+
+        # Check the awaited flag.
+        hb_succeeded_events = hb_listener.matching(hb_succeeded)
+        hb_failed_events = hb_listener.matching(hb_failed)
+        self.assertFalse(hb_succeeded_events[0].awaited)
+        self.assertTrue(hb_succeeded_events[1].awaited)
+        self.assertTrue(hb_failed_events[0].awaited)
+        self.assertFalse(hb_failed_events[1].awaited)
 
 
 if __name__ == "__main__":
