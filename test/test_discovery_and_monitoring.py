@@ -119,11 +119,16 @@ def got_app_error(topology, app_error):
             raise AssertionError('unknown error type: %s' % (error_type,))
         assert False
     except (AutoReconnect, NotMasterError, OperationFailure) as e:
-        if when == 'beforeHandshakeCompletes' and error_type == 'timeout':
-            raise unittest.SkipTest('PYTHON-2211')
+        if when == 'beforeHandshakeCompletes':
+            completed_handshake = False
+        elif when == 'afterHandshakeCompletes':
+            completed_handshake = True
+        else:
+            assert False, 'Unknown when field %s' % (when,)
 
         topology.handle_error(
-            server_address, _ErrorContext(e, max_wire_version, generation))
+            server_address, _ErrorContext(e, max_wire_version, generation,
+                                          completed_handshake))
 
 
 def get_type(topology, hostname):

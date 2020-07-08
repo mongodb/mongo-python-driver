@@ -567,7 +567,8 @@ class Topology(object):
         server = self._servers[address]
         error = err_ctx.error
         exc_type = type(error)
-        if issubclass(exc_type, NetworkTimeout):
+        if (issubclass(exc_type, NetworkTimeout) and
+                err_ctx.completed_handshake):
             # The socket has been closed. Don't reset the server.
             # Server Discovery And Monitoring Spec: "When an application
             # operation fails because of any network error besides a socket
@@ -750,10 +751,12 @@ class Topology(object):
 
 class _ErrorContext(object):
     """An error with context for SDAM error handling."""
-    def __init__(self, error, max_wire_version, sock_generation):
+    def __init__(self, error, max_wire_version, sock_generation,
+                 completed_handshake):
         self.error = error
         self.max_wire_version = max_wire_version
         self.sock_generation = sock_generation
+        self.completed_handshake = completed_handshake
 
 
 def _is_stale_error_topology_version(current_tv, error_tv):
