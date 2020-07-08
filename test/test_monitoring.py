@@ -1466,13 +1466,13 @@ class TestEventClasses(PyMongoTestCase):
         self.assertEqual(
             repr(event),
             "<ServerHeartbeatSucceededEvent ('localhost', 27017) "
-            "duration: 0.1, reply: {'ok': 1}>")
+            "duration: 0.1, awaited: False, reply: {'ok': 1}>")
         event = monitoring.ServerHeartbeatFailedEvent(
             delta, 'ERROR', connection_id)
         self.assertEqual(
             repr(event),
             "<ServerHeartbeatFailedEvent ('localhost', 27017) "
-            "duration: 0.1, reply: 'ERROR'>")
+            "duration: 0.1, awaited: False, reply: 'ERROR'>")
 
     def test_server_event_repr(self):
         server_address = ('localhost', 27017)

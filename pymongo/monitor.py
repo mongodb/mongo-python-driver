@@ -212,11 +212,13 @@ class Monitor(MonitorBase):
         except ReferenceError:
             raise
         except Exception as error:
-            address = self._server_description.address
+            sd = self._server_description
+            address = sd.address
             duration = _time() - start
             if self._publish:
+                awaited = sd.is_server_type_known and sd.topology_version
                 self._listeners.publish_server_heartbeat_failed(
-                    address, duration, error)
+                    address, duration, error, awaited)
             self._reset_connection()
             if isinstance(error, _OperationCancelled):
                 raise
@@ -231,7 +233,6 @@ class Monitor(MonitorBase):
         """
         address = self._server_description.address
         if self._publish:
-            # PYTHON-2299: Add the "awaited" field to heartbeat events.
             self._listeners.publish_server_heartbeat_started(address)
 
         if self._cancel_context and self._cancel_context.cancelled:
@@ -246,7 +247,7 @@ class Monitor(MonitorBase):
                                    self._rtt_monitor.average())
             if self._publish:
                 self._listeners.publish_server_heartbeat_succeeded(
-                    address, round_trip_time, response)
+                    address, round_trip_time, response, response.awaitable)
             return sd
 
     def _check_with_socket(self, conn):

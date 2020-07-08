@@ -1099,12 +1099,13 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ('__duration', '__reply')
+    __slots__ = ('__duration', '__reply', '__awaited')
 
-    def __init__(self, duration, reply, *args):
-        super(ServerHeartbeatSucceededEvent, self).__init__(*args)
+    def __init__(self, duration, reply, connection_id, awaited=False):
+        super(ServerHeartbeatSucceededEvent, self).__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
+        self.__awaited = awaited
 
     @property
     def duration(self):
@@ -1116,10 +1117,20 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         """An instance of :class:`~pymongo.ismaster.IsMaster`."""
         return self.__reply
 
+    @property
+    def awaited(self):
+        """Whether the heartbeat was awaited.
+
+        If true, then :meth:`duration` reflects the sum of the round trip time
+        to the server and the time that the server waited before sending a
+        response.
+        """
+        return self.__awaited
+
     def __repr__(self):
-        return "<%s %s duration: %s, reply: %s>" % (
+        return "<%s %s duration: %s, awaited: %s, reply: %s>" % (
             self.__class__.__name__, self.connection_id,
-            self.duration, self.reply)
+            self.duration, self.awaited, self.reply)
 
 
 class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
@@ -1129,12 +1140,13 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ('__duration', '__reply')
+    __slots__ = ('__duration', '__reply', '__awaited')
 
-    def __init__(self, duration, reply, *args):
-        super(ServerHeartbeatFailedEvent, self).__init__(*args)
+    def __init__(self, duration, reply, connection_id, awaited=False):
+        super(ServerHeartbeatFailedEvent, self).__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
+        self.__awaited = awaited
 
     @property
     def duration(self):
@@ -1146,10 +1158,20 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         """A subclass of :exc:`Exception`."""
         return self.__reply
 
+    @property
+    def awaited(self):
+        """Whether the heartbeat was awaited.
+
+        If true, then :meth:`duration` reflects the sum of the round trip time
+        to the server and the time that the server waited before sending a
+        response.
+        """
+        return self.__awaited
+
     def __repr__(self):
-        return "<%s %s duration: %s, reply: %r>" % (
+        return "<%s %s duration: %s, awaited: %s, reply: %r>" % (
             self.__class__.__name__, self.connection_id,
-            self.duration, self.reply)
+            self.duration, self.awaited, self.reply)
 
 
 class _EventListeners(object):
@@ -1303,7 +1325,7 @@ class _EventListeners(object):
                 _handle_exception()
 
     def publish_server_heartbeat_succeeded(self, connection_id, duration,
-                                           reply):
+                                           reply, awaited):
         """Publish a ServerHeartbeatSucceededEvent to all server heartbeat
         listeners.
 
@@ -1312,15 +1334,18 @@ class _EventListeners(object):
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.
+         - `awaited`: True if the response was awaited.
          """
-        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id)
+        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id,
+                                              awaited)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.succeeded(event)
             except Exception:
                 _handle_exception()
 
-    def publish_server_heartbeat_failed(self, connection_id, duration, reply):
+    def publish_server_heartbeat_failed(self, connection_id, duration, reply,
+                                        awaited):
         """Publish a ServerHeartbeatFailedEvent to all server heartbeat
         listeners.
 
@@ -1329,8 +1354,10 @@ class _EventListeners(object):
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.
+         - `awaited`: True if the response was awaited.
          """
-        event = ServerHeartbeatFailedEvent(duration, reply, connection_id)
+        event = ServerHeartbeatFailedEvent(duration, reply, connection_id,
+                                           awaited)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.failed(event)
