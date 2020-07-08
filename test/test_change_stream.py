@@ -127,7 +127,6 @@ class APITestsMixin(object):
             self.assertEqual([{'$project': {'foo': 0}}],
                              change_stream._pipeline)
             self.assertEqual('updateLookup', change_stream._full_document)
-            self.assertIsNone(change_stream.resume_token)
             self.assertEqual(1000, change_stream._max_await_time_ms)
             self.assertEqual(100, change_stream._batch_size)
             self.assertIsInstance(change_stream._cursor, CommandCursor)
@@ -472,8 +471,10 @@ class ProseSpecTestsMixin(object):
         listener is a WhiteListEventListener that listens for aggregate and
         getMore commands."""
         if previous_change is None or stream._cursor._has_next():
-            return self._get_expected_resume_token_legacy(
+            token = self._get_expected_resume_token_legacy(
                 stream, listener, previous_change)
+            if token is not None:
+                return token
 
         response = listener.results['succeeded'][-1].reply
         return response['cursor']['postBatchResumeToken']
@@ -1061,6 +1062,8 @@ class TestAllScenarios(unittest.TestCase):
         fail_point = scenario_dict.get("failPoint")
         if fail_point is None:
             return
+        elif not client_context.test_commands_enabled:
+            self.skipTest("Test commands must be enabled")
 
         fail_cmd = SON([('configureFailPoint', 'failCommand')])
         fail_cmd.update(fail_point)
