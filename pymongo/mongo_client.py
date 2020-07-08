@@ -1779,7 +1779,10 @@ class MongoClient(common.BaseObject):
         deprecated method :meth:`~pymongo.database.Database.authenticate`.
 
         A :class:`~pymongo.client_session.ClientSession` may only be used with
-        the MongoClient that started it.
+        the MongoClient that started it. :class:`ClientSession` instances are
+        **not thread-safe or fork-safe**. They can only be used by one thread
+        or process at a time. A single :class:`ClientSession` cannot be used
+        to run multiple operations concurrently.
 
         :Returns:
           An instance of :class:`~pymongo.client_session.ClientSession`.
