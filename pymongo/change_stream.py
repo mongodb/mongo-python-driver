@@ -125,7 +125,7 @@ class ChangeStream(object):
         if resume_token is not None:
             if self._uses_start_after:
                 options['startAfter'] = resume_token
-            if self._uses_resume_after:
+            else:
                 options['resumeAfter'] = resume_token
 
         if self._start_at_operation_time is not None:
@@ -157,8 +157,10 @@ class ChangeStream(object):
         version in order to determine whether to cache this value.
         """
         if not result['cursor']['firstBatch']:
-            if (self._start_at_operation_time is None and
-                    self.resume_token is None and
+            if ('postBatchResumeToken' not in result['cursor'] and
+                    self._start_at_operation_time is None and
+                    self._uses_resume_after is False and
+                    self._uses_start_after is False and
                     sock_info.max_wire_version >= 7):
                 self._start_at_operation_time = result.get("operationTime")
                 # PYTHON-2181: informative error on missing operationTime.
@@ -166,6 +168,8 @@ class ChangeStream(object):
                     raise OperationFailure(
                         "Expected field 'operationTime' missing from command "
                         "response : %r" % (result, ))
+            elif 'postBatchResumeToken' in result['cursor']:
+                self._resume_token = result['cursor']['postBatchResumeToken']
 
     def _run_aggregation_cmd(self, session, explicit_session):
         """Run the full aggregation pipeline for this ChangeStream and return
