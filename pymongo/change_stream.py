@@ -149,27 +149,26 @@ class ChangeStream(object):
         return full_pipeline
 
     def _process_result(self, result, session, server, sock_info, slave_ok):
-        """Callback that caches the startAtOperationTime from a changeStream
-        aggregate command response containing an empty batch of change
-        documents.
+        """Callback that caches the postBatchResumeToken or
+        startAtOperationTime from a changeStream aggregate command response
+        containing an empty batch of change documents.
 
         This is implemented as a callback because we need access to the wire
         version in order to determine whether to cache this value.
         """
         if not result['cursor']['firstBatch']:
-            if ('postBatchResumeToken' not in result['cursor'] and
-                    self._start_at_operation_time is None and
-                    self._uses_resume_after is False and
-                    self._uses_start_after is False and
-                    sock_info.max_wire_version >= 7):
+            if 'postBatchResumeToken' in result['cursor']:
+                self._resume_token = result['cursor']['postBatchResumeToken']
+            elif (self._start_at_operation_time is None and
+                  self._uses_resume_after is False and
+                  self._uses_start_after is False and
+                  sock_info.max_wire_version >= 7):
                 self._start_at_operation_time = result.get("operationTime")
                 # PYTHON-2181: informative error on missing operationTime.
                 if self._start_at_operation_time is None:
                     raise OperationFailure(
                         "Expected field 'operationTime' missing from command "
                         "response : %r" % (result, ))
-            elif 'postBatchResumeToken' in result['cursor']:
-                self._resume_token = result['cursor']['postBatchResumeToken']
 
     def _run_aggregation_cmd(self, session, explicit_session):
         """Run the full aggregation pipeline for this ChangeStream and return

@@ -4,7 +4,8 @@ Changelog
 Changes in Version 3.11.0b2.dev0
 --------------------------------
 
-Version 3.11 adds support for MongoDB 4.4. Highlights include:
+Version 3.11 adds support for MongoDB 4.4 and includes a number of bug fixes.
+Highlights include:
 
 - Support for :ref:`OCSP` (Online Certificate Status Protocol).
 - Support for `PyOpenSSL <https://pypi.org/project/pyOpenSSL/>`_ as an
@@ -52,6 +53,9 @@ Version 3.11 adds support for MongoDB 4.4. Highlights include:
 - Deprecated :meth:`pymongo.collection.Collection.reindex`. Use
   :meth:`~pymongo.database.Database.command` to run the ``reIndex`` command
   instead.
+- Fixed a bug in change streams that could cause PyMongo to miss some change
+  documents when resuming a stream that was started without a resume token and
+  whose first batch did not contain any change documents.
 
 Unavoidable breaking changes:
 

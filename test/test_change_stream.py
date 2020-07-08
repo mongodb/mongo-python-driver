@@ -1063,6 +1063,8 @@ class TestAllScenarios(unittest.TestCase):
         fail_point = scenario_dict.get("failPoint")
         if fail_point is None:
             return
+        elif not client_context.test_commands_enabled:
+            self.skipTest("Test commands must be enabled")
 
         fail_cmd = SON([('configureFailPoint', 'failCommand')])
         fail_cmd.update(fail_point)
