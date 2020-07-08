@@ -127,7 +127,6 @@ class APITestsMixin(object):
             self.assertEqual([{'$project': {'foo': 0}}],
                              change_stream._pipeline)
             self.assertEqual('updateLookup', change_stream._full_document)
-            self.assertIsNotNone(change_stream.resume_token)
             self.assertEqual(1000, change_stream._max_await_time_ms)
             self.assertEqual(100, change_stream._batch_size)
             self.assertIsInstance(change_stream._cursor, CommandCursor)
