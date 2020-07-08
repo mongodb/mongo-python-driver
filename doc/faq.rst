@@ -237,7 +237,7 @@ collection, configured to use :class:`~bson.son.SON` instead of dict:
   >>> opts
   CodecOptions(document_class=<class 'bson.son.SON'>,
                tz_aware=False,
-               uuid_representation=PYTHON_LEGACY,
+               uuid_representation=UuidRepresentation.PYTHON_LEGACY,
                unicode_decode_error_handler='strict',
                tzinfo=None, type_registry=TypeRegistry(type_codecs=[],
                                                        fallback_encoder=None))

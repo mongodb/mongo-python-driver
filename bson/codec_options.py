@@ -252,12 +252,6 @@ class CodecOptions(_options_base):
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
         if uuid_representation is None:
-            warnings.warn(
-                "Starting in PyMongo 4.0, the default uuidRepresentation "
-                "will be changed to 'unspecified'. Applications will need to "
-                "explicitly set 'uuidRepresentation=pythonLegacy' in the "
-                "connection string to preserve current behavior.",
-                DeprecationWarning, stacklevel=2)
             uuid_representation = UuidRepresentation.PYTHON_LEGACY
         elif uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError("uuid_representation must be a value "
