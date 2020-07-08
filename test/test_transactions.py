@@ -19,15 +19,20 @@ import sys
 
 sys.path[0:0] = [""]
 
+from bson.py3compat import StringIO
+
 from pymongo import client_session, WriteConcern
 from pymongo.client_session import TransactionOptions
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             ConnectionFailure,
+                            InvalidOperation,
                             OperationFailure)
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+
+from gridfs import GridFS, GridFSBucket
 
 from test import unittest, client_context
 from test.utils import (rs_client, single_client,
@@ -215,8 +220,7 @@ class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     @client_context.require_version_min(4, 3, 4)
     def test_create_collection(self):
-        client = rs_client()
-        self.addCleanup(client.close)
+        client = client_context.client
         db = client.pymongo_test
         coll = db.test_create_collection
         self.addCleanup(coll.drop)
@@ -240,6 +244,48 @@ class TestTransactions(TransactionsBase):
             with self.assertRaises(OperationFailure) as ctx:
                 db.create_collection(coll.name, session=s)
             self.assertEqual(ctx.exception.code, 48)  # NamespaceExists
+
+    @client_context.require_transactions
+    def test_gridfs_does_not_support_transactions(self):
+        client = client_context.client
+        db = client.pymongo_test
+        gfs = GridFS(db)
+        bucket = GridFSBucket(db)
+
+        def gridfs_find(*args, **kwargs):
+            return gfs.find(*args, **kwargs).next()
+
+        def gridfs_open_upload_stream(*args, **kwargs):
+            bucket.open_upload_stream(*args, **kwargs).write(b'1')
+
+        gridfs_ops = [
+            (gfs.put, (b'123',)),
+            (gfs.get, (1,)),
+            (gfs.get_version, ('name',)),
+            (gfs.get_last_version, ('name',)),
+            (gfs.delete, (1, )),
+            (gfs.list, ()),
+            (gfs.find_one, ()),
+            (gridfs_find, ()),
+            (gfs.exists, ()),
+            (gridfs_open_upload_stream, ('name',)),
+            (bucket.upload_from_stream, ('name', b'data',)),
+            (bucket.download_to_stream, (1, StringIO(),)),
+            (bucket.download_to_stream_by_name, ('name', StringIO(),)),
+            (bucket.delete, (1,)),
+            (bucket.find, ()),
+            (bucket.open_download_stream, (1,)),
+            (bucket.open_download_stream_by_name, ('name',)),
+            (bucket.rename, (1, 'new-name',)),
+        ]
+
+        with client.start_session() as s, s.start_transaction():
+            for op, args in gridfs_ops:
+                with self.assertRaisesRegex(
+                        InvalidOperation,
+                        'GridFS does not support multi-document transactions',
+                ):
+                    op(*args, session=s)
 
 
 class PatchSessionTimeout(object):

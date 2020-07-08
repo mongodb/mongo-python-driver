@@ -26,7 +26,8 @@ from gridfs.grid_file import (GridIn,
                               GridOut,
                               GridOutCursor,
                               DEFAULT_CHUNK_SIZE,
-                              _clear_entity_type_registry)
+                              _clear_entity_type_registry,
+                              _disallow_transactions)
 from pymongo import (ASCENDING,
                      DESCENDING)
 from pymongo.common import UNAUTHORIZED_CODES, validate_string
@@ -50,6 +51,10 @@ class GridFS(object):
             computed for uploaded files. Useful in environments where MD5
             cannot be used for regulatory or other reasons. Defaults to False.
 
+        .. versionchanged:: 3.11
+           Running a GridFS operation in a transaction now always raises an
+           error. GridFS does not support multi-document transactions.
+
         .. versionchanged:: 3.1
            Indexes are only ensured on the first write to the DB.
 
@@ -68,7 +73,6 @@ class GridFS(object):
             raise ConfigurationError('database must use '
                                      'acknowledged write_concern')
 
-        self.__database = database
         self.__collection = database[collection]
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
@@ -88,8 +92,6 @@ class GridFS(object):
         :Parameters:
           - `**kwargs` (optional): keyword arguments for file creation
         """
-        # No need for __ensure_index_files_id() here; GridIn ensures
-        # the (files_id, n) index when needed.
         return GridIn(
             self.__collection, disable_md5=self.__disable_md5, **kwargs)
 
@@ -192,6 +194,7 @@ class GridFS(object):
         if filename is not None:
             query["filename"] = filename
 
+        _disallow_transactions(session)
         cursor = self.__files.find(query, session=session)
         if version < 0:
             skip = abs(version) - 1
@@ -249,6 +252,7 @@ class GridFS(object):
         .. versionchanged:: 3.1
            ``delete`` no longer ensures indexes.
         """
+        _disallow_transactions(session)
         self.__files.delete_one({"_id": file_id}, session=session)
         self.__chunks.delete_many({"files_id": file_id}, session=session)
 
@@ -266,6 +270,7 @@ class GridFS(object):
         .. versionchanged:: 3.1
            ``list`` no longer ensures indexes.
         """
+        _disallow_transactions(session)
         # With an index, distinct includes documents with no filename
         # as None.
         return [
@@ -299,6 +304,7 @@ class GridFS(object):
         if filter is not None and not isinstance(filter, abc.Mapping):
             filter = {"_id": filter}
 
+        _disallow_transactions(session)
         for f in self.find(filter, *args, session=session, **kwargs):
             return f
 
@@ -403,6 +409,7 @@ class GridFS(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
+        _disallow_transactions(session)
         if kwargs:
             f = self.__files.find_one(kwargs, ["_id"], session=session)
         else:
@@ -439,6 +446,10 @@ class GridFSBucket(object):
             computed for uploaded files. Useful in environments where MD5
             cannot be used for regulatory or other reasons. Defaults to False.
 
+        .. versionchanged:: 3.11
+           Running a GridFS operation in a transaction now always raises an
+           error. GridFSBucket does not support multi-document transactions.
+
         .. versionadded:: 3.1
 
         .. mongodoc:: gridfs
@@ -452,7 +463,6 @@ class GridFSBucket(object):
         if not wtc.acknowledged:
             raise ConfigurationError('write concern must be acknowledged')
 
-        self._db = db
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
         self._disable_md5 = disable_md5
@@ -746,6 +756,7 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
+        _disallow_transactions(session)
         res = self._files.delete_one({"_id": file_id}, session=session)
         self._chunks.delete_many({"files_id": file_id}, session=session)
         if not res.deleted_count:
@@ -839,9 +850,8 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         validate_string("filename", filename)
-
         query = {"filename": filename}
-
+        _disallow_transactions(session)
         cursor = self._files.find(query, session=session)
         if revision < 0:
             skip = abs(revision) - 1
@@ -922,6 +932,7 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
+        _disallow_transactions(session)
         result = self._files.update_one({"_id": file_id},
                                         {"$set": {"filename": new_filename}},
                                         session=session)

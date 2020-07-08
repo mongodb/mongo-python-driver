@@ -53,6 +53,13 @@ Version 3.11 adds support for MongoDB 4.4. Highlights include:
   :meth:`~pymongo.database.Database.command` to run the ``reIndex`` command
   instead.
 
+Unavoidable breaking changes:
+
+- :class:`~gridfs.GridFSBucket` and :class:`~gridfs.GridFS` do not support
+  multi-document transactions. Running a GridFS operation in a transaction
+  now always raises the following error:
+  ``InvalidOperation: GridFS does not support multi-document transactions``
+
 .. _validate command: https://docs.mongodb.com/manual/reference/command/validate/
 
 Issues Resolved
