@@ -336,7 +336,17 @@ def _within_time_limit(start_time):
 
 
 class ClientSession(object):
-    """A session for ordering sequential operations."""
+    """A session for ordering sequential operations.
+
+    :class:`ClientSession` instances are **not thread-safe or fork-safe**.
+    They can only be used by one thread or process at a time. A single
+    :class:`ClientSession` cannot be used to run multiple operations
+    concurrently.
+
+    Should not be initialized directly by application developers - to create a
+    :class:`ClientSession`, call
+    :meth:`~pymongo.mongo_client.MongoClient.start_session`.
+    """
     def __init__(self, client, server_session, options, authset, implicit):
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client = client
@@ -460,6 +470,10 @@ class ClientSession(object):
         ``callback`` does commit or abort the transaction without error,
         however, ``with_transaction`` will return without taking further
         action.
+
+        :class:`ClientSession` instances are **not thread-safe or fork-safe**.
+        Consequently, the ``callback`` must not attempt to execute multiple
+        operations concurrently.
 
         When ``callback`` raises an exception, ``with_transaction``
         automatically aborts the current transaction. When ``callback`` or
