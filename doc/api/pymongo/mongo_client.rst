@@ -34,7 +34,6 @@
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
       .. autoattribute:: read_concern
-      .. autoattribute:: is_locked
       .. automethod:: start_session
       .. automethod:: list_databases
       .. automethod:: list_database_names
@@ -43,9 +42,10 @@
       .. automethod:: get_default_database
       .. automethod:: get_database
       .. automethod:: server_info
+      .. automethod:: watch
       .. automethod:: close_cursor
       .. automethod:: kill_cursors
       .. automethod:: set_cursor_manager
-      .. automethod:: watch
+      .. autoattribute:: is_locked
       .. automethod:: fsync
       .. automethod:: unlock

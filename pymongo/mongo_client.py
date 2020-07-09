@@ -2083,15 +2083,33 @@ class MongoClient(common.BaseObject):
 
     @property
     def is_locked(self):
-        """Is this server locked? While locked, all write operations
-        are blocked, although read operations may still be allowed.
+        """**DEPRECATED**: Is this server locked? While locked, all write
+        operations are blocked, although read operations may still be allowed.
         Use :meth:`unlock` to unlock.
+
+        Deprecated. Users of MongoDB version 3.2 or newer can run the
+        `currentOp command`_ directly with
+        :meth:`~pymongo.database.Database.command`::
+
+            is_locked = client.admin.command('currentOp').get('fsyncLock')
+
+        Users of MongoDB version 2.6 and 3.0 can query the "inprog" virtual
+        collection::
+
+            is_locked = client.admin["$cmd.sys.inprog"].find_one().get('fsyncLock')
+
+        .. versionchanged:: 3.11
+           Deprecated.
+
+        .. _currentOp command: https://docs.mongodb.com/manual/reference/command/currentOp/
         """
+        warnings.warn("is_locked is deprecated. See the documentation for "
+                      "more information.", DeprecationWarning, stacklevel=2)
         ops = self._database_default_options('admin')._current_op()
         return bool(ops.get('fsyncLock', 0))
 
     def fsync(self, **kwargs):
-        """Flush all pending writes to datafiles.
+        """**DEPRECATED**: Flush all pending writes to datafiles.
 
         Optional parameters can be passed as keyword arguments:
           - `lock`: If True lock the server to disallow writes.
@@ -2106,6 +2124,14 @@ class MongoClient(common.BaseObject):
             options = {'async': True}
             client.fsync(**options)
 
+        Deprecated. Run the `fsync command`_ directly with
+        :meth:`~pymongo.database.Database.command` instead. For example::
+
+            client.admin.command('fsync', lock=True)
+
+        .. versionchanged:: 3.11
+           Deprecated.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -2114,20 +2140,46 @@ class MongoClient(common.BaseObject):
         .. warning:: MongoDB does not support the `async` option
                      on Windows and will raise an exception on that
                      platform.
+
+        .. _fsync command: https://docs.mongodb.com/manual/reference/command/fsync/
         """
+        warnings.warn("fsync is deprecated. Use "
+                      "client.admin.command('fsync') instead.",
+                      DeprecationWarning, stacklevel=2)
         self.admin.command("fsync",
                            read_preference=ReadPreference.PRIMARY, **kwargs)
 
     def unlock(self, session=None):
-        """Unlock a previously locked server.
+        """**DEPRECATED**: Unlock a previously locked server.
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
+        Deprecated. Users of MongoDB version 3.2 or newer can run the
+        `fsyncUnlock command`_ directly with
+        :meth:`~pymongo.database.Database.command`::
+
+             client.admin.command('fsyncUnlock')
+
+        Users of MongoDB version 2.6 and 3.0 can query the "unlock" virtual
+        collection::
+
+            client.admin["$cmd.sys.unlock"].find_one()
+
+        .. versionchanged:: 3.11
+           Deprecated.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
+
+        .. _fsyncUnlock command: https://docs.mongodb.com/manual/reference/command/fsyncUnlock/
         """
+        warnings.warn("unlock is deprecated. Use "
+                      "client.admin.command('fsyncUnlock') instead. For "
+                      "MongoDB 2.6 and 3.0, see the documentation for "
+                      "more information.",
+                      DeprecationWarning, stacklevel=2)
         cmd = SON([("fsyncUnlock", 1)])
         with self._socket_for_writes(session) as sock_info:
             if sock_info.max_wire_version >= 4:

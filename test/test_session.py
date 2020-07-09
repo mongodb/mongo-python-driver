@@ -227,6 +227,7 @@ class TestSession(IntegrationTest):
         client.close()
         self.assertEqual(len(listener.results['started']), 0)
 
+    @ignore_deprecations  # fsync and unlock
     def test_client(self):
         client = self.client
 

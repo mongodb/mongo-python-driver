@@ -37,6 +37,7 @@ from test import (client_context,
                   unittest)
 from test.utils import (EventListener,
                         get_pool,
+                        ignore_deprecations,
                         rs_or_single_client,
                         single_client,
                         wait_until)
@@ -1336,12 +1337,13 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertTrue('ok' in succeeded.reply)
 
         if not client_context.is_mongos:
-            self.client.fsync(lock=True)
-            self.listener.results.clear()
-            self.client.unlock()
-            # Wait for async unlock...
-            wait_until(
-                lambda: not self.client.is_locked, "unlock the database")
+            with ignore_deprecations():
+                self.client.fsync(lock=True)
+                self.listener.results.clear()
+                self.client.unlock()
+                # Wait for async unlock...
+                wait_until(
+                    lambda: not self.client.is_locked, "unlock the database")
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
