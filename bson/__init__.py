@@ -1213,7 +1213,7 @@ class BSON(bytes):
         .. versionchanged:: 3.0
            Replaced `uuid_subtype` option with `codec_options`.
         """
-        return cls(encode(document, check_keys, codec_options))
+        return cls(encode(document, False, codec_options))
 
     def decode(self, codec_options=DEFAULT_CODEC_OPTIONS):
         """Decode this BSON data.
