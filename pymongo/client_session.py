@@ -343,7 +343,7 @@ class ClientSession(object):
     :class:`ClientSession` cannot be used to run multiple operations
     concurrently.
 
-    Should not be called directly by application developers - to create a
+    Should not be initialized directly by application developers - to create a
     :class:`ClientSession`, call
     :meth:`~pymongo.mongo_client.MongoClient.start_session`.
     """
@@ -471,9 +471,9 @@ class ClientSession(object):
         however, ``with_transaction`` will return without taking further
         action.
 
-        This :class:`ClientSession` is **not thread-safe or fork-safe**. The
-        ``callback`` must not attempt to execute multiple operations
-        concurrently.
+        :class:`ClientSession` instances are **not thread-safe or fork-safe**.
+        Consequently, the ``callback`` must not attempt to execute multiple
+        operations concurrently.
 
         When ``callback`` raises an exception, ``with_transaction``
         automatically aborts the current transaction. When ``callback`` or
