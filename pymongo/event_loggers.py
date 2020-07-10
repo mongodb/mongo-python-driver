@@ -14,13 +14,17 @@
 
 
 """Example event logger classes.
+
 .. versionadded:: 3.11
 
 These loggers can be registered using :func:`register` or
-:class:`~pymongo.mongo_client.MongoClient`::
-    monitoring.register(CommandLogger())
-or::
-    MongoClient(event_listeners=[CommandLogger()])
+:class:`~pymongo.mongo_client.MongoClient`.
+
+``monitoring.register(CommandLogger())``
+
+or
+
+``MongoClient(event_listeners=[CommandLogger()])``
 """
 
 
