@@ -56,3 +56,4 @@ Sub-modules:
    son_manipulator
    uri_parser
    write_concern
+   event_loggers

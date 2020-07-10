@@ -16,6 +16,10 @@
 
 .. versionadded:: 3.1
 
+.. attention:: Starting in PyMongo 3.11, the monitoring classes outlined below
+    are included in the PyMongo distribution under the
+    :mod:`~pymongo.event_loggers` submodule.
+
 Use :func:`register` to register global listeners for specific events.
 Listeners must inherit from one of the abstract classes below and implement
 the correct functions for that class.
