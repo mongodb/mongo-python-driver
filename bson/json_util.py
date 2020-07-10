@@ -449,7 +449,7 @@ def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
     if "$code" in dct:
         return _parse_canonical_code(dct)
     if "$uuid" in dct:
-        return _parse_legacy_uuid(dct)
+        return _parse_legacy_uuid(dct, json_options)
     if "$undefined" in dct:
         return None
     if "$numberLong" in dct:
@@ -484,11 +484,14 @@ def _parse_legacy_regex(doc):
     return Regex(pattern, flags)
 
 
-def _parse_legacy_uuid(doc):
+def _parse_legacy_uuid(doc, json_options):
     """Decode a JSON legacy $uuid to Python UUID."""
     if len(doc) != 1:
         raise TypeError('Bad $uuid, extra field(s): %s' % (doc,))
-    return uuid.UUID(doc["$uuid"])
+    if json_options.uuid_representation == UuidRepresentation.UNSPECIFIED:
+        return Binary.from_uuid(uuid.UUID(doc["$uuid"]))
+    else:
+        return uuid.UUID(doc["$uuid"])
 
 
 def _binary_or_uuid(data, subtype, json_options):
