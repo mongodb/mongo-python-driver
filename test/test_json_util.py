@@ -301,7 +301,11 @@ class TestJsonUtil(unittest.TestCase):
         ext_json_str = json_util.dumps(doc)
         self.assertEqual(
             doc, json_util.loads(ext_json_str, json_options=options))
-
+        # $uuid-encoded fields
+        doc = {'uuid': Binary(_uuid.bytes, subtype=4)}
+        ext_json_str = json_util.dumps({'uuid': _uuid})
+        self.assertEqual(
+            doc, json_util.loads(ext_json_str, json_options=options))
 
     def test_binary(self):
         if PY3:
