@@ -107,7 +107,7 @@
       }
     },
     {
-      "description": "change stream errors on MaxTimeMSExpired",
+      "description": "change stream errors on ElectionInProgress",
       "minServerVersion": "4.2",
       "failPoint": {
         "configureFailPoint": "failCommand",
@@ -118,7 +118,7 @@
           "failCommands": [
             "getMore"
           ],
-          "errorCode": 50,
+          "errorCode": 216,
           "closeConnection": false
         }
       },
@@ -127,13 +127,7 @@
         "replicaset",
         "sharded"
       ],
-      "changeStreamPipeline": [
-        {
-          "$project": {
-            "_id": 0
-          }
-        }
-      ],
+      "changeStreamPipeline": [],
       "changeStreamOptions": {},
       "operations": [
         {
@@ -149,7 +143,7 @@
       ],
       "result": {
         "error": {
-          "code": 50
+          "code": 216
         }
       }
     }
