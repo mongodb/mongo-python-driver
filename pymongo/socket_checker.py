@@ -16,8 +16,11 @@
 
 import errno
 import select
+import sys
 
-_HAVE_POLL = hasattr(select, "poll")
+# PYTHON-2320: Jython does not fully support poll on SSL sockets,
+# https://bugs.jython.org/issue2900
+_HAVE_POLL = hasattr(select, "poll") and not sys.platform.startswith('java')
 _SelectError = getattr(select, "error", OSError)
 
 
