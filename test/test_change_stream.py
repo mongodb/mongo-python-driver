@@ -1194,9 +1194,10 @@ def create_test(scenario_def, test):
 
         else:
             # Check for expected output from change streams
-            for change, expected_changes in zip(changes, test["result"]["success"]):
-                self.assert_dict_is_subset(change, expected_changes)
-            self.assertEqual(len(changes), len(test["result"]["success"]))
+            if test["result"].get("success"):
+                for change, expected_changes in zip(changes, test["result"]["success"]):
+                    self.assert_dict_is_subset(change, expected_changes)
+                self.assertEqual(len(changes), len(test["result"]["success"]))
         
         finally:
             # Check for expected events
