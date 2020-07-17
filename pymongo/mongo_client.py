@@ -631,7 +631,7 @@ class MongoClient(common.BaseObject):
                 # Determine connection timeout from kwargs.
                 timeout = keyword_opts.get("connecttimeoutms")
                 if timeout is not None:
-                    timeout = common.validate_timeout_or_none(
+                    timeout = common.validate_timeout_or_none_or_zero(
                         keyword_opts.cased_key("connecttimeoutms"), timeout)
                 res = uri_parser.parse_uri(
                     entity, port, validate=True, warn=True, normalize=False,

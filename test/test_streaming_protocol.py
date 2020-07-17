@@ -26,6 +26,7 @@ from test import (client_context,
                   unittest)
 from test.utils import (HeartbeatEventListener,
                         rs_or_single_client,
+                        single_client,
                         ServerEventListener,
                         wait_until)
 
@@ -160,14 +161,6 @@ class TestStreamingProtocol(IntegrationTest):
             return (isinstance(event, monitoring.ServerHeartbeatStartedEvent)
                     and event.connection_id == address)
 
-        def hb_succeeded(event):
-            return (isinstance(event, monitoring.ServerHeartbeatSucceededEvent)
-                    and event.connection_id == address)
-
-        def hb_failed(event):
-            return (isinstance(event, monitoring.ServerHeartbeatFailedEvent)
-                    and event.connection_id == address)
-
         hb_started_events = hb_listener.matching(hb_started)
         # Explanation of the expected heartbeat events:
         # Time: event
@@ -186,13 +179,39 @@ class TestStreamingProtocol(IntegrationTest):
         # This can be reduced to ~15 after SERVER-49220 is fixed.
         self.assertLess(len(hb_started_events), 40)
 
-        # Check the awaited flag.
+    @client_context.require_failCommand_appName
+    def test_heartbeat_awaited_flag(self):
+        hb_listener = HeartbeatEventListener()
+        client = single_client(
+            event_listeners=[hb_listener], heartbeatFrequencyMS=500,
+            appName='heartbeatEventAwaitedFlag')
+        self.addCleanup(client.close)
+        # Force a connection.
+        client.admin.command('ping')
+
+        def hb_succeeded(event):
+            return isinstance(event, monitoring.ServerHeartbeatSucceededEvent)
+
+        def hb_failed(event):
+            return isinstance(event, monitoring.ServerHeartbeatFailedEvent)
+
+        fail_heartbeat = {
+            'mode': {'times': 2},
+            'data': {
+                'failCommands': ['isMaster'],
+                'closeConnection': True,
+                'appName': 'heartbeatEventAwaitedFlag',
+            },
+        }
+        with self.fail_point(fail_heartbeat):
+            wait_until(lambda: hb_listener.matching(hb_failed),
+                       "published failed event")
+
         hb_succeeded_events = hb_listener.matching(hb_succeeded)
         hb_failed_events = hb_listener.matching(hb_failed)
         self.assertFalse(hb_succeeded_events[0].awaited)
         self.assertTrue(hb_succeeded_events[1].awaited)
         self.assertTrue(hb_failed_events[0].awaited)
-        self.assertFalse(hb_failed_events[1].awaited)
 
 
 if __name__ == "__main__":
