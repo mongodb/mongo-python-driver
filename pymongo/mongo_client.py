@@ -339,8 +339,9 @@ class MongoClient(common.BaseObject):
           - `uuidRepresentation`: The BSON representation to use when encoding
             from and decoding to instances of :class:`~uuid.UUID`. Valid
             values are `pythonLegacy` (the default), `javaLegacy`,
-            `csharpLegacy` and `standard`. New applications should consider
-            setting this to `standard` for cross language compatibility.
+            `csharpLegacy`, `standard` and `unspecified`. New applications
+            should consider setting this to `standard` for cross language
+            compatibility.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
