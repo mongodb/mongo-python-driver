@@ -227,11 +227,13 @@ class MongoClient(common.BaseObject):
           - `socketTimeoutMS`: (integer or None) Controls how long (in
             milliseconds) the driver will wait for a response after sending an
             ordinary (non-monitoring) database operation before concluding that
-            a network error has occurred. Defaults to ``None`` (no timeout).
+            a network error has occurred. ``0`` or ``None`` means no timeout.
+            Defaults to ``None`` (no timeout).
           - `connectTimeoutMS`: (integer or None) Controls how long (in
             milliseconds) the driver will wait during server monitoring when
             connecting a new socket to a server before concluding the server
-            is unavailable. Defaults to ``20000`` (20 seconds).
+            is unavailable. ``0`` or ``None`` means no timeout.
+            Defaults to ``20000`` (20 seconds).
           - `server_selector`: (callable or None) Optional, user-provided
             function that augments server selection rules. The function should
             accept as an argument a list of
