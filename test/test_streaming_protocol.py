@@ -206,12 +206,23 @@ class TestStreamingProtocol(IntegrationTest):
         with self.fail_point(fail_heartbeat):
             wait_until(lambda: hb_listener.matching(hb_failed),
                        "published failed event")
+        # Reconnect.
+        client.admin.command('ping')
 
         hb_succeeded_events = hb_listener.matching(hb_succeeded)
         hb_failed_events = hb_listener.matching(hb_failed)
         self.assertFalse(hb_succeeded_events[0].awaited)
-        self.assertTrue(hb_succeeded_events[1].awaited)
         self.assertTrue(hb_failed_events[0].awaited)
+        # Depending on thread scheduling, the failed heartbeat could occur on
+        # the second or third check.
+        events = [type(e) for e in hb_listener.results[:4]]
+        if events == [monitoring.ServerHeartbeatStartedEvent,
+                      monitoring.ServerHeartbeatSucceededEvent,
+                      monitoring.ServerHeartbeatStartedEvent,
+                      monitoring.ServerHeartbeatFailedEvent]:
+            self.assertFalse(hb_succeeded_events[1].awaited)
+        else:
+            self.assertTrue(hb_succeeded_events[1].awaited)
 
 
 if __name__ == "__main__":

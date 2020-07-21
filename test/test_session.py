@@ -1249,6 +1249,7 @@ class TestClusterTime(IntegrationTest):
         # Prevent heartbeats from updating $clusterTime between operations.
         client = rs_or_single_client(event_listeners=[listener],
                                      heartbeatFrequencyMS=999999)
+        self.addCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         collection.insert_many([{} for _ in range(10)])
