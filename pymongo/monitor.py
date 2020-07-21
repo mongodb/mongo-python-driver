@@ -377,6 +377,8 @@ class _RttMonitor(MonitorBase):
     def _ping(self):
         """Run an "isMaster" command and return the RTT."""
         with self._pool.get_socket({}) as sock_info:
+            if self._executor._stopped:
+                raise Exception('_RttMonitor closed')
             start = _time()
             sock_info.ismaster()
             return _time() - start
