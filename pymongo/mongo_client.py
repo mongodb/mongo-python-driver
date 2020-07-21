@@ -341,7 +341,7 @@ class MongoClient(common.BaseObject):
             values are `pythonLegacy` (the default), `javaLegacy`,
             `csharpLegacy`, `standard` and `unspecified`. New applications
             should consider setting this to `standard` for cross language
-            compatibility.
+            compatibility. See :ref:`handling-uuid-data-example` for details.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
