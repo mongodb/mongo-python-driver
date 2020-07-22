@@ -134,6 +134,24 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
         self.assertAlmostEqual(12, client.server_selection_timeout)
 
+    def test_connect_timeout(self):
+        client = MongoClient(connect=False, connectTimeoutMS=None,
+                             socketTimeoutMS=None)
+        pool_opts = client._MongoClient__options.pool_options
+        self.assertEqual(None, pool_opts.socket_timeout)
+        self.assertEqual(None, pool_opts.connect_timeout)
+        client = MongoClient(connect=False, connectTimeoutMS=0,
+                             socketTimeoutMS=0)
+        pool_opts = client._MongoClient__options.pool_options
+        self.assertEqual(None, pool_opts.socket_timeout)
+        self.assertEqual(None, pool_opts.connect_timeout)
+        client = MongoClient(
+            'mongodb://localhost/?connectTimeoutMS=0&socketTimeoutMS=0',
+            connect=False)
+        pool_opts = client._MongoClient__options.pool_options
+        self.assertEqual(None, pool_opts.socket_timeout)
+        self.assertEqual(None, pool_opts.connect_timeout)
+
     def test_types(self):
         self.assertRaises(TypeError, MongoClient, 1)
         self.assertRaises(TypeError, MongoClient, 1.14)
@@ -996,8 +1014,8 @@ class TestClient(IntegrationTest):
         c = connected(rs_or_single_client(socketTimeoutMS=None))
         self.assertEqual(None, get_pool(c).opts.socket_timeout)
 
-        self.assertRaises(ValueError,
-                          rs_or_single_client, socketTimeoutMS=0)
+        c = connected(rs_or_single_client(socketTimeoutMS=0))
+        self.assertEqual(None, get_pool(c).opts.socket_timeout)
 
         self.assertRaises(ValueError,
                           rs_or_single_client, socketTimeoutMS=-1)

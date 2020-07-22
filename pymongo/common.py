@@ -333,6 +333,16 @@ def validate_timeout_or_zero(option, value):
     return validate_positive_float(option, value) / 1000.0
 
 
+def validate_timeout_or_none_or_zero(option, value):
+    """Validates a timeout specified in milliseconds returning
+    a value in floating point seconds. value=0 and value="0" are treated the
+    same as value=None which means unlimited timeout.
+    """
+    if value is None or value == 0 or value == "0":
+        return None
+    return validate_positive_float(option, value) / 1000.0
+
+
 def validate_max_staleness(option, value):
     """Validates maxStalenessSeconds according to the Max Staleness Spec."""
     if value == -1 or value == "-1":
@@ -593,7 +603,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'authmechanismproperties': validate_auth_mechanism_properties,
     'authsource': validate_string,
     'compressors': validate_compressors,
-    'connecttimeoutms': validate_timeout_or_none,
+    'connecttimeoutms': validate_timeout_or_none_or_zero,
     'directconnection': validate_boolean_or_string,
     'heartbeatfrequencyms': validate_timeout_or_none,
     'journal': validate_boolean_or_string,
@@ -608,7 +618,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'retryreads': validate_boolean_or_string,
     'retrywrites': validate_boolean_or_string,
     'serverselectiontimeoutms': validate_timeout_or_zero,
-    'sockettimeoutms': validate_timeout_or_none,
+    'sockettimeoutms': validate_timeout_or_none_or_zero,
     'ssl_keyfile': validate_readable,
     'tls': validate_boolean_or_string,
     'tlsallowinvalidcertificates': validate_allow_invalid_certs,
