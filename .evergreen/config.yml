@@ -756,6 +756,21 @@ functions:
           -v \
           --fault revoked
 
+# https://github.com/mongodb/mongodb-atlas-service-broker/blob/e69ae3523da5c0a35f9f134119d332dba9602ab5/.evergreen.yaml
+  "setup_docker":
+    - command: shell.exec
+      params:
+        script: |
+          # sudo pacman --refresh --noconfirm -S community/docker
+          systemctl start docker.service
+
+  "teardown_docker":
+    - command: shell.exec
+      params:
+        script: |
+          # Remove all Docker images
+          docker rmi -f $(docker images -a -q) &> /dev/null || true
+
 pre:
   - func: "fetch source"
   - func: "prepare resources"
@@ -773,6 +788,7 @@ post:
   - func: "upload test results"
   - func: "stop mongo-orchestration"
   - func: "cleanup"
+  - func: "teardown_docker"
 
 tasks:
 
@@ -805,6 +821,20 @@ tasks:
                scan-build --version || true
                genhtml --version || true
                valgrind --version || true
+
+
+    - name: "release"
+      tags: ["release"]
+      git_tag_only: false # TODO: change to true once POC is done
+      commands:
+        - command: shell.exec
+          type: test
+          params:
+            working_dir: "src"
+            script: |
+              set -o xtrace
+              ${PREPARE_SHELL}
+              .evergreen/release.sh
 
 # Standard test tasks {{{
 
@@ -1912,6 +1942,17 @@ axes:
         variables:
           SETDEFAULTENCODING: "cp1251"
 
+task_groups:
+  - name: release_group
+    setup_group:
+      - func: "fetch source"
+      - func: "setup_docker"
+      - func: "build_docker"
+    tasks:
+      - release
+    teardown_group:
+      - func: "teardown_docker"
+
 buildvariants:
 - matrix_name: "tests-all"
   matrix_spec:
@@ -2518,6 +2559,13 @@ buildvariants:
   tasks:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-latest"
+
+- matrix_name: "Release"
+  matrix_spec:
+    platform: [ubuntu-16.04, windows-64-vsMulti-small]
+  display_name: "Release ${platform}"
+  tasks:
+    - name: "release"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
