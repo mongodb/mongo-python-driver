@@ -335,7 +335,7 @@ def validate_timeout_or_zero(option, value):
 
 def validate_timeout_or_none_or_zero(option, value):
     """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds. value=0 and value="0" and treated the
+    a value in floating point seconds. value=0 and value="0" are treated the
     same as value=None which means unlimited timeout.
     """
     if value is None or value == 0 or value == "0":
