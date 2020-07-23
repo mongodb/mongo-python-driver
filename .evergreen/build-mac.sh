@@ -1,8 +1,5 @@
 #!/bin/bash -ex
 
-
-#python setup.py sdist
-
 for VERSION in 2.7 3.4 3.5 3.6 3.7 3.8; do
     if [[ $VERSION == "2.7" ]]; then
         rm -rf build

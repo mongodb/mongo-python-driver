@@ -835,6 +835,22 @@ tasks:
               set -o xtrace
               ${PREPARE_SHELL}
               .evergreen/release.sh
+        - command: archive.targz_pack
+          params:
+            target: "release-files.tgz"
+            source_dir: "src/dist"
+            include:
+              - "*"
+        - command: s3.put
+          params:
+            aws_key: ${aws_key}
+            aws_secret: ${aws_secret}
+            local_file: release-files.tgz
+            remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release/${task_id}-${execution}-release-files.tar.gz
+            bucket: mciuploads
+            permissions: public-read
+            content_type: ${content_type|application/gzip}
+            display_name: Release files
 
 # Standard test tasks {{{
 
