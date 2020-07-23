@@ -33,7 +33,7 @@ struct buffer {
 
 /* Set Python's error indicator to MemoryError.
  * Called after allocation failures. */
-static void set_memory_error() {
+static void set_memory_error(void) {
     PyErr_NoMemory();
 }
 
