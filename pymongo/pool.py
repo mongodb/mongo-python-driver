@@ -1257,8 +1257,17 @@ class Pool:
         if not self._socket_semaphore.acquire(
                 True, self.opts.wait_queue_timeout):
             self._raise_wait_queue_timeout()
-        with self.lock:
-            self.active_sockets += 1
+
+        try:
+            with self.lock:
+                self.active_sockets += 1
+        except Exception:
+            self._socket_semaphore.release()
+
+            if self.enabled_for_cmap:
+                self.opts.event_listeners.publish_connection_check_out_failed(
+                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
+            raise
 
         # We've now acquired the semaphore and must release it on error.
         sock_info = None
