@@ -265,7 +265,7 @@ class Topology(object):
                                   server_selection_timeout,
                                   address)
 
-    def _process_change(self, server_description):
+    def _process_change(self, server_description, reset_pool=False):
         """Process a new ServerDescription on an opened topology.
 
         Hold the lock when calling this.
@@ -303,10 +303,16 @@ class Topology(object):
                                   SRV_POLLING_TOPOLOGIES):
             self._srv_monitor.close()
 
+        # Clear the pool from a failed heartbeat.
+        if reset_pool:
+            server = self._servers.get(server_description.address)
+            if server:
+                server.pool.reset()
+
         # Wake waiters in select_servers().
         self._condition.notify_all()
 
-    def on_change(self, server_description):
+    def on_change(self, server_description, reset_pool=False):
         """Process a new ServerDescription after an ismaster call completes."""
         # We do no I/O holding the lock.
         with self._lock:
@@ -320,7 +326,7 @@ class Topology(object):
             # that didn't include this server.
             if (self._opened and
                     self._description.has_server(server_description.address)):
-                self._process_change(server_description)
+                self._process_change(server_description, reset_pool)
 
     def _process_srv_update(self, seedlist):
         """Process a new seedlist on an opened topology.
@@ -414,20 +420,14 @@ class Topology(object):
             self._request_check_all()
             self._condition.wait(wait_time)
 
-    def reset_pool(self, address):
-        with self._lock:
-            server = self._servers.get(address)
-            if server:
-                server.pool.reset()
-
     def handle_getlasterror(self, address, error_msg):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
         error = NotMasterError(error_msg, {'code': 10107, 'errmsg': error_msg})
         with self._lock:
             server = self._servers.get(address)
             if server:
-                self._process_change(ServerDescription(address, error=error))
-                server.pool.reset()
+                self._process_change(
+                    ServerDescription(address, error=error), True)
                 server.request_check()
 
     def update_pool(self, all_credentials):

@@ -177,7 +177,10 @@ class Monitor(MonitorBase):
                     # discover that we've been cancelled.
                     self._executor.skip_sleep()
                 return
-            self._topology.on_change(self._server_description)
+
+            # Update the Topology and clear the server pool on error.
+            self._topology.on_change(self._server_description,
+                                     reset_pool=self._server_description.error)
 
             if (self._server_description.is_server_type_known and
                      self._server_description.topology_version):
@@ -185,12 +188,9 @@ class Monitor(MonitorBase):
                 # Immediately check for the next streaming response.
                 self._executor.skip_sleep()
 
-            if self._server_description.error:
-                # Reset the server pool only after marking the server Unknown.
-                self._topology.reset_pool(self._server_description.address)
-                if prev_sd.is_server_type_known:
-                    # Immediately retry on network errors.
-                    self._executor.skip_sleep()
+            if self._server_description.error and prev_sd.is_server_type_known:
+                # Immediately retry on network errors.
+                self._executor.skip_sleep()
         except ReferenceError:
             # Topology was garbage-collected.
             self.close()
@@ -377,6 +377,8 @@ class _RttMonitor(MonitorBase):
     def _ping(self):
         """Run an "isMaster" command and return the RTT."""
         with self._pool.get_socket({}) as sock_info:
+            if self._executor._stopped:
+                raise Exception('_RttMonitor closed')
             start = _time()
             sock_info.ismaster()
             return _time() - start
