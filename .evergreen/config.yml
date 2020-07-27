@@ -756,14 +756,6 @@ functions:
           -v \
           --fault revoked
 
-# https://github.com/mongodb/mongodb-atlas-service-broker/blob/e69ae3523da5c0a35f9f134119d332dba9602ab5/.evergreen.yaml
-  "setup_docker":
-    - command: shell.exec
-      params:
-        script: |
-          # sudo pacman --refresh --noconfirm -S community/docker
-          systemctl start docker.service
-
   "teardown_docker":
     - command: shell.exec
       params:
@@ -1958,17 +1950,6 @@ axes:
         variables:
           SETDEFAULTENCODING: "cp1251"
 
-task_groups:
-  - name: release_group
-    setup_group:
-      - func: "fetch source"
-      - func: "setup_docker"
-      - func: "build_docker"
-    tasks:
-      - release
-    teardown_group:
-      - func: "teardown_docker"
-
 buildvariants:
 - matrix_name: "tests-all"
   matrix_spec:
@@ -2122,8 +2103,6 @@ buildvariants:
     - ".latest"
     - ".4.4"
     - ".4.2"
-  variables:
-    set_xtrace_on: on
 
 - matrix_name: "tests-python-version-rhel62-test-ssl"
   matrix_spec:
