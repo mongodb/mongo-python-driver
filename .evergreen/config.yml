@@ -2557,7 +2557,7 @@ buildvariants:
 
 - matrix_name: "Release"
   matrix_spec:
-    platform: [ubuntu-16.04, windows-64-vsMulti-small]
+    platform: [ubuntu-18.04, windows-64-vsMulti-small]
   display_name: "Release ${platform}"
   tasks:
     - name: "release"
