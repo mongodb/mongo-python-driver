@@ -817,7 +817,7 @@ tasks:
 
     - name: "release"
       tags: ["release"]
-      git_tag_only: false # TODO: change to true once POC is done
+      git_tag_only: true
       commands:
         - command: shell.exec
           type: test
