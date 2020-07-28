@@ -756,6 +756,13 @@ functions:
           -v \
           --fault revoked
 
+  "teardown_docker":
+    - command: shell.exec
+      params:
+        script: |
+          # Remove all Docker images
+          docker rmi -f $(docker images -a -q) &> /dev/null || true
+
 pre:
   - func: "fetch source"
   - func: "prepare resources"
@@ -773,6 +780,7 @@ post:
   - func: "upload test results"
   - func: "stop mongo-orchestration"
   - func: "cleanup"
+  - func: "teardown_docker"
 
 tasks:
 
@@ -805,6 +813,36 @@ tasks:
                scan-build --version || true
                genhtml --version || true
                valgrind --version || true
+
+
+    - name: "release"
+      tags: ["release"]
+      git_tag_only: true
+      commands:
+        - command: shell.exec
+          type: test
+          params:
+            working_dir: "src"
+            script: |
+              set -o xtrace
+              ${PREPARE_SHELL}
+              .evergreen/release.sh
+        - command: archive.targz_pack
+          params:
+            target: "release-files.tgz"
+            source_dir: "src/dist"
+            include:
+              - "*"
+        - command: s3.put
+          params:
+            aws_key: ${aws_key}
+            aws_secret: ${aws_secret}
+            local_file: release-files.tgz
+            remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release/${task_id}-${execution}-release-files.tar.gz
+            bucket: mciuploads
+            permissions: public-read
+            content_type: ${content_type|application/gzip}
+            display_name: Release files
 
 # Standard test tasks {{{
 
@@ -2065,8 +2103,6 @@ buildvariants:
     - ".latest"
     - ".4.4"
     - ".4.2"
-  variables:
-    set_xtrace_on: on
 
 - matrix_name: "tests-python-version-rhel62-test-ssl"
   matrix_spec:
@@ -2518,6 +2554,13 @@ buildvariants:
   tasks:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-latest"
+
+- matrix_name: "Release"
+  matrix_spec:
+    platform: [ubuntu-18.04, windows-64-vsMulti-small]
+  display_name: "Release ${platform}"
+  tasks:
+    - name: "release"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
