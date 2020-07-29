@@ -1985,8 +1985,9 @@ class Collection(common.BaseObject):
 
           - `name`: custom name to use for this index - if none is
             given, a name will be generated.
-          - `unique`: if ``True`` creates a uniqueness constraint on the index.
-          - `background`: if ``True`` this index should be created in the
+          - `unique`: if ``True``, creates a uniqueness constraint on the
+            index.
+          - `background`: if ``True``, this index should be created in the
             background.
           - `sparse`: if ``True``, omit from the index any documents that lack
             the indexed field.
@@ -2002,13 +2003,15 @@ class Collection(common.BaseObject):
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
-            a partial index. Requires server version >=3.2.
+            a partial index. Requires MongoDB >=3.2.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`. Requires MongoDB >= 3.4.
           - `wildcardProjection`: Allows users to include or exclude specific
-            field paths from a `wildcard index`_ using the { "$**" : 1} key
-            pattern. Requires server version >= 4.2.
+            field paths from a `wildcard index`_ using the {"$**" : 1} key
+            pattern. Requires MongoDB >= 4.2.
+          - `hidden`: if ``True``, this index will be hidden from the query
+            planner and will not be evaluated as part of query plan
+            selection. Requires MongoDB >= 4.4.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
@@ -2030,6 +2033,8 @@ class Collection(common.BaseObject):
             options (see the above list) should be passed as keyword
             arguments
 
+        .. versionchanged:: 3.11
+           Added the ``hidden`` option.
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for passing maxTimeMS
            in kwargs.
@@ -2037,11 +2042,11 @@ class Collection(common.BaseObject):
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4. Support the `collation` option.
         .. versionchanged:: 3.2
-            Added partialFilterExpression to support partial indexes.
+           Added partialFilterExpression to support partial indexes.
         .. versionchanged:: 3.0
-            Renamed `key_or_list` to `keys`. Removed the `cache_for` option.
-            :meth:`create_index` no longer caches index names. Removed support
-            for the drop_dups and bucket_size aliases.
+           Renamed `key_or_list` to `keys`. Removed the `cache_for` option.
+           :meth:`create_index` no longer caches index names. Removed support
+           for the drop_dups and bucket_size aliases.
 
         .. mongodoc:: indexes
 
