@@ -1944,6 +1944,36 @@ class TestMongoClientFailover(MockClientTest):
         task.kill()
         self.assertTrue(task.dead)
 
+    def test_gevent_timeout(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import spawn, Timeout
+        client = rs_or_single_client(maxPoolSize=1)
+        coll = client.test.test
+        coll.insert_one({})
+
+        def contentious_task():
+            # The 10 second timeout causes this test to fail without blocking
+            # forever if a bug like PYTHON-2334 is reintroduced.
+            with Timeout(10):
+                coll.find_one({'$where': delay(1)})
+
+        def timeout_task():
+            with Timeout(.5):
+                try:
+                    coll.find_one({})
+                except Timeout:
+                    pass
+
+        ct = spawn(contentious_task)
+        tt = spawn(timeout_task)
+        tt.join(15)
+        ct.join(15)
+        self.assertTrue(tt.dead)
+        self.assertTrue(ct.dead)
+        self.assertIsNone(tt.get())
+        self.assertIsNone(ct.get())
+
 
 if __name__ == "__main__":
     unittest.main()
