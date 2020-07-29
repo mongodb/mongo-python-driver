@@ -32,3 +32,4 @@ MongoDB, you can start it like so:
    tailable
    tls
    encryption
+   uuid

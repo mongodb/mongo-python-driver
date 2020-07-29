@@ -218,7 +218,10 @@ class CodecOptions(_options_base):
         naive. Defaults to ``False``.
       - `uuid_representation`: The BSON representation to use when encoding
         and decoding instances of :class:`~uuid.UUID`. Defaults to
-        :data:`~bson.binary.PYTHON_LEGACY`.
+        :data:`~bson.binary.UuidRepresentation.PYTHON_LEGACY`. New
+        applications should consider setting this to
+        :data:`~bson.binary.UuidRepresentation.STANDARD` for cross language
+        compatibility. See :ref:`handling-uuid-data-example` for details.
       - `unicode_decode_error_handler`: The error handler to apply when
         a Unicode-related error occurs during BSON decoding that would
         otherwise raise :exc:`UnicodeDecodeError`. Valid options include

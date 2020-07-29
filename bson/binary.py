@@ -69,6 +69,8 @@ class UuidRepresentation:
     code. When decoding a BSON binary field with a UUID subtype, a
     :class:`~bson.binary.Binary` instance will be returned instead of a
     :class:`uuid.UUID` instance.
+    
+    See :ref:`unspecified-representation-details` for details.
 
     .. versionadded:: 3.11
     """
@@ -79,6 +81,8 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`UUID_SUBTYPE`.
+    
+    See :ref:`standard-representation-details` for details.
 
     .. versionadded:: 3.11
     """
@@ -89,6 +93,8 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`OLD_UUID_SUBTYPE`.
+    
+    See :ref:`python-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
     """
@@ -99,6 +105,8 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the Java driver's legacy byte order.
+    
+    See :ref:`java-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
     """
@@ -109,6 +117,8 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the C# driver's legacy byte order.
+    
+    See :ref:`csharp-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
     """
@@ -220,6 +230,7 @@ class Binary(bytes):
           - `uuid_representation`: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
             :const:`~bson.binary.UuidRepresentation.STANDARD`.
+            See :ref:`handling-uuid-data-example` for details.
 
         .. versionadded:: 3.11
         """
@@ -236,7 +247,8 @@ class Binary(bytes):
                 "UuidRepresentation.UNSPECIFIED. UUIDs can be manually "
                 "converted to bson.Binary instances using "
                 "bson.Binary.from_uuid() or a different UuidRepresentation "
-                "can be configured.")
+                "can be configured. See the documentation for "
+                "UuidRepresentation for more information.")
 
         subtype = OLD_UUID_SUBTYPE
         if uuid_representation == UuidRepresentation.PYTHON_LEGACY:
@@ -266,6 +278,7 @@ class Binary(bytes):
           - `uuid_representation`: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
             :const:`~bson.binary.UuidRepresentation.STANDARD`.
+            See :ref:`handling-uuid-data-example` for details.
 
         .. versionadded:: 3.11
         """
