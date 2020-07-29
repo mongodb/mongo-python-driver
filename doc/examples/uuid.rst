@@ -192,6 +192,7 @@ when round-tripping documents::
   # Round-tripping the retrieved document silently changes the Binary bytes and subtype
   java_collection.replace_one({'_id': 'baz'}, doc)
   assert collection.find_one({'uuid': Binary(input_uuid.bytes, 3)}) is None
+  assert collection.find_one({'uuid': Binary(input_uuid.bytes, 4)}) is None
   round_tripped_doc = collection.find_one({'_id': 'baz'})
   assert round_tripped_doc['uuid'] == Binary(input_uuid.bytes, 3).as_uuid(UuidRepresentation.JAVA_LEGACY)
 
@@ -202,8 +203,8 @@ In this case, using the incorrect :class:`~bson.binary.UuidRepresentation`
 **Note that this happens when any representation that
 manipulates byte-order (``CSHARP_LEGACY`` or ``JAVA_LEGACY``) is incorrectly
 used to round-trip UUIDs written with ``STANDARD``. When the situation is
-reversed - i.e. when the original document is written using ``STANDARD``
-and then round-tripped using ``CSHARP_LEGACY`` or ``JAVA_LEGACY`` -
+reversed - i.e. when the original document is written using ``CSHARP_LEGACY``
+or ``JAVA_LEGACY`` and then round-tripped using ``STANDARD`` -
 only the :class:`~bson.binary.Binary` subtype is changed.**
 
 .. note:: Starting in PyMongo 4.0, these issue will be resolved as
