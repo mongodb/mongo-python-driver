@@ -1257,12 +1257,15 @@ class Pool:
         if not self._socket_semaphore.acquire(
                 True, self.opts.wait_queue_timeout):
             self._raise_wait_queue_timeout()
-        with self.lock:
-            self.active_sockets += 1
 
         # We've now acquired the semaphore and must release it on error.
         sock_info = None
+        incremented = False
         try:
+            with self.lock:
+                self.active_sockets += 1
+                incremented = True
+
             while sock_info is None:
                 try:
                     with self.lock:
@@ -1279,8 +1282,10 @@ class Pool:
                 # We checked out a socket but authentication failed.
                 sock_info.close_socket(ConnectionClosedReason.ERROR)
             self._socket_semaphore.release()
-            with self.lock:
-                self.active_sockets -= 1
+
+            if incremented:
+                with self.lock:
+                    self.active_sockets -= 1
 
             if self.enabled_for_cmap:
                 self.opts.event_listeners.publish_connection_check_out_failed(
