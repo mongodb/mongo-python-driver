@@ -128,10 +128,11 @@ avoid the unintuitive behavior) as described in
 Scenario 2: Round-Tripping UUIDs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In this scenario, we see how using a misconfigured
+In the following examples, we see how using a misconfigured
 :class:`~bson.binary.UuidRepresentation` can cause an application
-to inadvertently change the :class:`~bson.binary.Binary` subtype of a UUID
-field when round-tripping documents containing UUIDs.
+to inadvertently change the :class:`~bson.binary.Binary` subtype, and in some
+cases, the bytes of the :class:`~bson.binary.Binary` field itself when
+round-tripping documents containing UUIDs.
 
 Consider the following situation::
 
@@ -164,11 +165,48 @@ In this example, round-tripping the document using the incorrect
 ``PYTHON_LEGACY``) changes the :class:`~bson.binary.Binary` subtype as a
 side-effect. **Note that this can also happen when the situation is reversed -
 i.e. when the original document is written using ``STANDARD`` representation
-and then round-tripped using the ``PYTHON_LEGACY`` representation. Note also
-that replacing ``PYTHON_LEGACY`` by ``JAVA_LEGACY`` or ``CSHARP_LEGACY`` in
-the above example produces the same behavior.**
+and then round-tripped using the ``PYTHON_LEGACY`` representation.**
 
-.. note:: Starting in PyMongo 4.0, this issue will be resolved as
+In the next example, we see the consequences of incorrectly using a
+representation that modifies byte-order (``CSHARP_LEGACY`` or ``JAVA_LEGACY``)
+when round-tripping documents::
+
+  from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
+  from bson.binary import Binary, UuidRepresentation
+  from uuid import uuid4
+
+  # Using UuidRepresentation.STANDARD stores a Binary subtype-4 UUID
+  std_opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+  input_uuid = uuid4()
+  collection = client.testdb.get_collection('test', codec_options=std_opts)
+  collection.insert_one({'_id': 'baz', 'uuid': input_uuid})
+  assert collection.find_one({'uuid': Binary(input_uuid.bytes, 4)})['_id'] == 'baz'
+
+  # Retrieving this document using UuidRepresentation.JAVA_LEGACY returns a native UUID
+  # without modifying the UUID byte-order
+  java_opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
+  java_collection = client.testdb.get_collection('test', codec_options=java_opts)
+  doc = java_collection.find_one({'_id': 'baz'})
+  assert doc['uuid'] == input_uuid
+
+  # Round-tripping the retrieved document silently changes the Binary bytes and subtype
+  java_collection.replace_one({'_id': 'baz'}, doc)
+  assert collection.find_one({'uuid': Binary(input_uuid.bytes, 3)}) is None
+  round_tripped_doc = collection.find_one({'_id': 'baz'})
+  assert round_tripped_doc['uuid'] == Binary(input_uuid.bytes, 3).as_uuid(UuidRepresentation.JAVA_LEGACY)
+
+
+In this case, using the incorrect :class:`~bson.binary.UuidRepresentation`
+(``JAVA_LEGACY`` instead of ``STANDARD``) changes the
+:class:`~bson.binary.Binary` bytes and subtype as a side-effect.
+**Note that this happens when any representation that
+manipulates byte-order (``CSHARP_LEGACY`` or ``JAVA_LEGACY``) is incorrectly
+used to round-trip UUIDs written with ``STANDARD``. When the situation is
+reversed - i.e. when the original document is written using ``STANDARD``
+and then round-tripped using ``CSHARP_LEGACY`` or ``JAVA_LEGACY`` -
+only the :class:`~bson.binary.Binary` subtype is changed.**
+
+.. note:: Starting in PyMongo 4.0, these issue will be resolved as
    the ``STANDARD`` representation will decode Binary subtype 3 fields as
    :class:`~bson.binary.Binary` objects of subtype 3 (instead of
    :class:`uuid.UUID`), and each of the ``LEGACY_*`` representations will
@@ -460,7 +498,7 @@ and attempting to do so will result in an exception::
   unspec_collection.insert_one({'_id': 'bar', 'uuid': uuid4()})
   Traceback (most recent call last):
   ...
-  ValueError: cannot encode native uuid.UUID with UuidRepresentation.UNSPECIFIED. UUIDs can be manually converted to bson.Binary instances using bson.Binary.from_uuid() or a different UuidRepresentation can be configured.
+  ValueError: cannot encode native uuid.UUID with UuidRepresentation.UNSPECIFIED. UUIDs can be manually converted to bson.Binary instances using bson.Binary.from_uuid() or a different UuidRepresentation can be configured. See the documentation for UuidRepresentation for more information.
 
 Instead, applications using :data:`~bson.binary.UuidRepresentation.UNSPECIFIED`
 must explicitly coerce a native UUID using the

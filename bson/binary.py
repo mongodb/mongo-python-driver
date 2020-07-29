@@ -247,7 +247,8 @@ class Binary(bytes):
                 "UuidRepresentation.UNSPECIFIED. UUIDs can be manually "
                 "converted to bson.Binary instances using "
                 "bson.Binary.from_uuid() or a different UuidRepresentation "
-                "can be configured.")
+                "can be configured. See the documentation for "
+                "UuidRepresentation for more information.")
 
         subtype = OLD_UUID_SUBTYPE
         if uuid_representation == UuidRepresentation.PYTHON_LEGACY:
