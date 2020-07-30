@@ -1949,7 +1949,7 @@ class TestMongoClientFailover(MockClientTest):
             raise SkipTest("Must be running monkey patched by gevent")
         from gevent import spawn, Timeout
         client = rs_or_single_client(maxPoolSize=1)
-        coll = client.test.test
+        coll = client.pymongo_test.test
         coll.insert_one({})
 
         def contentious_task():
