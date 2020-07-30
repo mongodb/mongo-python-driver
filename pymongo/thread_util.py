@@ -60,10 +60,9 @@ class Semaphore:
     __enter__ = acquire
 
     def release(self):
-        self._cond.acquire()
-        self._value = self._value + 1
-        self._cond.notify()
-        self._cond.release()
+        with self._cond:
+            self._value = self._value + 1
+            self._cond.notify()
 
     def __exit__(self, t, v, tb):
         self.release()
