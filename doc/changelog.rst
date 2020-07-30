@@ -35,6 +35,10 @@ Highlights include:
   :class:`~pymongo.operations.UpdateMany`,
   :class:`~pymongo.operations.DeleteOne`, and
   :class:`~pymongo.operations.DeleteMany` bulk operations.
+- Added support for :data:`bson.binary.UuidRepresentation.UNSPECIFIED` and
+  ``MongoClient(uuidRepresentation='unspecified')`` which will become the
+  default UUID representation starting in PyMongo 4.0. See
+  :ref:`handling-uuid-data-example` for details.
 - Added the ``background`` parameter to
   :meth:`pymongo.database.Database.validate_collection`. For a description
   of this parameter see the MongoDB documentation for the `validate command`_.
@@ -49,6 +53,8 @@ Highlights include:
 - Fixed a bug in change streams that could cause PyMongo to miss some change
   documents when resuming a stream that was started without a resume token and
   whose first batch did not contain any change documents.
+- Fixed an bug where using gevent.Timeout to timeout an operation could
+  lead to a deadlock.
 
 Deprecations:
 
