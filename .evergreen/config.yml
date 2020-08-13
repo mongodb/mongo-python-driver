@@ -1605,6 +1605,12 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
+      - id: ubuntu-20.04
+        display_name: "Ubuntu 20.04"
+        run_on: ubuntu2004-small
+        batchtime: 10080  # 7 days
+        variables:
+          python3_binary: python3
       - id: ubuntu1604-arm64-small
         display_name: "Ubuntu 16.04 (ARM64)"
         run_on: ubuntu1604-arm64-small
@@ -2557,7 +2563,7 @@ buildvariants:
 
 - matrix_name: "Release"
   matrix_spec:
-    platform: [ubuntu-18.04, windows-64-vsMulti-small]
+    platform: [ubuntu-20.04, windows-64-vsMulti-small]
   display_name: "Release ${platform}"
   tasks:
     - name: "release"
