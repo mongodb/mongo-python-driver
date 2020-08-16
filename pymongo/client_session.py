@@ -827,6 +827,9 @@ class ClientSession(object):
         self._check_ended()
         self._server_session.inc_transaction_id()
 
+    def __copy__(self):
+        raise RuntimeError('A session cannot be copied (simply)!')
+
 
 class _ServerSession(object):
     def __init__(self, generation):
