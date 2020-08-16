@@ -881,6 +881,16 @@ class TestCollection(IntegrationTest):
             DocumentTooLarge, coll.replace_one, {}, {'data': large})
         self.assertRaises(
             DocumentTooLarge, coll.delete_one, {'data': large})
+    
+    def test_replace_one_keys_dot_check(self):
+        coll = self.db.test
+        coll.insert_one({"hello": "world"})
+        self.assertRaises(
+            InvalidDocument,
+            coll.replace_one,
+            {"hello": "world"},
+            {"hello.world":"world"}
+        )
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_insert_bypass_document_validation(self):
@@ -1562,7 +1572,7 @@ class TestCollection(IntegrationTest):
         # doesn't change. If the behavior changes checking the first key for
         # '$' in update won't be good enough anymore.
         doc = SON([("hello", "world"), ("$set", {"foo.bar": "bim"})])
-        self.assertRaises(OperationFailure, self.db.test.replace_one,
+        self.assertRaises(InvalidDocument, self.db.test.replace_one,
                           {"hello": "world"}, doc, upsert=True)
 
         # Replace with empty document

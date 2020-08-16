@@ -21,6 +21,7 @@ import warnings
 from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, TypeRegistry
+from bson.errors import InvalidDocument
 from bson.py3compat import abc, integer_types, iteritems, string_type, PY3
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
@@ -533,6 +534,17 @@ def validate_is_callable_or_none(option, value):
         raise ValueError("%s must be a callable" % (option,))
     return value
 
+def validate_keys_for_dots(document):
+    """Validates keys of the document to check for dots."""
+    for key, value in document.items():
+        if "." in key:
+            raise InvalidDocument("key %s must not contain \'.\'" % (key))
+        if isinstance(value, dict):
+            validate_keys_for_dots(value)
+        elif isinstance(value, list):
+            for element in value:
+                if isinstance(element, dict):
+                    validate_keys_for_dots(element)
 
 def validate_ok_for_replace(replacement):
     """Validate a replacement document."""
@@ -542,6 +554,7 @@ def validate_ok_for_replace(replacement):
         first = next(iter(replacement))
         if first.startswith('$'):
             raise ValueError('replacement can not include $ operators')
+        validate_keys_for_dots(replacement)
 
 
 def validate_ok_for_update(update):
