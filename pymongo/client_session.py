@@ -828,7 +828,7 @@ class ClientSession(object):
         self._server_session.inc_transaction_id()
 
     def __copy__(self):
-        raise RuntimeError('A session cannot be copied (simply)!')
+        raise TypeError('A ClientSession cannot be copied, create a new session instead')
 
 
 class _ServerSession(object):
