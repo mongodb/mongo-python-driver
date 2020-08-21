@@ -715,7 +715,10 @@ class TestSession(IntegrationTest):
             with self.client.start_session(causal_consistency=True,
                                            snapshot=True):
                 pass
-
+    def test_session_not_copyable(self):
+        client = self.client
+        with client.start_session() as s:
+            self.assertRaises(TypeError, lambda: copy.copy(s))
 
 class TestCausalConsistency(unittest.TestCase):
 
