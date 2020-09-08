@@ -52,6 +52,27 @@ class TestJsonUtil(unittest.TestCase):
     def test_basic(self):
         self.round_trip({"hello": "world"})
 
+    def test_json_options_with_options(self):
+        opts = json_util.JSONOptions(
+            datetime_representation=DatetimeRepresentation.NUMBERLONG)
+        self.assertEqual(
+            opts.datetime_representation, DatetimeRepresentation.NUMBERLONG)
+        newopts = opts.with_options(
+            datetime_representation=DatetimeRepresentation.ISO8601)
+        self.assertEqual(
+            newopts.datetime_representation, DatetimeRepresentation.ISO8601)
+
+        opts = json_util.JSONOptions(strict_number_long=True)
+        self.assertEqual(opts.strict_number_long, True)
+        newopts = opts.with_options(strict_number_long=False)
+        self.assertEqual(newopts.strict_number_long, False)
+
+        opts = json_util.CANONICAL_JSON_OPTIONS
+        newopts = opts.with_options(
+            uuid_representation=UuidRepresentation.JAVA_LEGACY)
+        self.assertEqual(
+            newopts.uuid_representation, UuidRepresentation.JAVA_LEGACY)
+
     def test_objectid(self):
         self.round_trip({"id": ObjectId()})
 
