@@ -320,7 +320,7 @@ class JSONOptions(CodecOptions):
             True
             >>> json_options = CANONICAL_JSON_OPTIONS.with_options(tz_aware=False)
             >>> json_options.tz_aware
-            True
+            False
 
         .. versionadded:: 3.12
         """
