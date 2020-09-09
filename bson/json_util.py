@@ -508,6 +508,8 @@ def _parse_legacy_uuid(doc, json_options):
     """Decode a JSON legacy $uuid to Python UUID."""
     if len(doc) != 1:
         raise TypeError('Bad $uuid, extra field(s): %s' % (doc,))
+    if not isinstance(doc["$uuid"], text_type):
+        raise TypeError('$uuid must be a string: %s' % (doc,))
     if json_options.uuid_representation == UuidRepresentation.UNSPECIFIED:
         return Binary.from_uuid(uuid.UUID(doc["$uuid"]))
     else:

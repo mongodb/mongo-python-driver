@@ -210,7 +210,7 @@ def create_test(case_spec):
                     decode_extjson(parse_error_case['string'])
                     raise AssertionError('exception not raised for test '
                                          'case: ' + description)
-                except (AttributeError, ValueError):
+                except (TypeError, ValueError):
                     pass
             else:
                 raise AssertionError('cannot test parseErrors for type ' +
