@@ -122,8 +122,6 @@ def create_test(case_spec):
                 encode_extjson = to_extjson
                 encode_bson = to_bson
 
-            # Special case for testing encoding
-
             cB = binascii.unhexlify(b(valid_case['canonical_bson']))
             cEJ = valid_case['canonical_extjson']
             rEJ = valid_case.get('relaxed_extjson')
