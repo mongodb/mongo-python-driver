@@ -57,21 +57,28 @@ class TestJsonUtil(unittest.TestCase):
             datetime_representation=DatetimeRepresentation.NUMBERLONG)
         self.assertEqual(
             opts.datetime_representation, DatetimeRepresentation.NUMBERLONG)
-        newopts = opts.with_options(
+        opts2 = opts.with_options(
             datetime_representation=DatetimeRepresentation.ISO8601)
         self.assertEqual(
-            newopts.datetime_representation, DatetimeRepresentation.ISO8601)
+            opts2.datetime_representation, DatetimeRepresentation.ISO8601)
 
         opts = json_util.JSONOptions(strict_number_long=True)
         self.assertEqual(opts.strict_number_long, True)
-        newopts = opts.with_options(strict_number_long=False)
-        self.assertEqual(newopts.strict_number_long, False)
+        opts2 = opts.with_options(strict_number_long=False)
+        self.assertEqual(opts2.strict_number_long, False)
 
         opts = json_util.CANONICAL_JSON_OPTIONS
-        newopts = opts.with_options(
+        self.assertNotEqual(
+            opts2.uuid_representation, UuidRepresentation.JAVA_LEGACY)
+        opts2 = opts.with_options(
             uuid_representation=UuidRepresentation.JAVA_LEGACY)
         self.assertEqual(
-            newopts.uuid_representation, UuidRepresentation.JAVA_LEGACY)
+            opts2.uuid_representation, UuidRepresentation.JAVA_LEGACY)
+        self.assertEqual(opts2.document_class, dict)
+        opts3 = opts2.with_options(document_class=SON)
+        self.assertEqual(
+            opts3.uuid_representation, UuidRepresentation.JAVA_LEGACY)
+        self.assertEqual(opts3.document_class, SON)
 
     def test_objectid(self):
         self.round_trip({"id": ObjectId()})
