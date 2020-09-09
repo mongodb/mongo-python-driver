@@ -328,6 +328,7 @@ class JSONOptions(CodecOptions):
         for opt in ('strict_number_long', 'datetime_representation',
                     'strict_uuid', 'json_mode'):
             opts[opt] = kwargs.get(opt, getattr(self, opt))
+        opts.update(kwargs)
         return JSONOptions(**opts)
 
 

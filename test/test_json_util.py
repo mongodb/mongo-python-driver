@@ -69,7 +69,7 @@ class TestJsonUtil(unittest.TestCase):
 
         opts = json_util.CANONICAL_JSON_OPTIONS
         self.assertNotEqual(
-            opts2.uuid_representation, UuidRepresentation.JAVA_LEGACY)
+            opts.uuid_representation, UuidRepresentation.JAVA_LEGACY)
         opts2 = opts.with_options(
             uuid_representation=UuidRepresentation.JAVA_LEGACY)
         self.assertEqual(
