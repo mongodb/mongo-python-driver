@@ -324,21 +324,11 @@ class JSONOptions(CodecOptions):
 
         .. versionadded:: 3.12
         """
-        opts = ('strict_number_long',
-                'datetime_representation',
-                'strict_uuid',
-                'json_mode',
-                'document_class',
-                'tz_aware',
-                'uuid_representation',
-                'unicode_decode_error_handler',
-                'tzinfo',
-                'type_registry')
-
-        for opt in opts:
-            kwargs[opt] = kwargs.get(opt, getattr(self, opt))
-
-        return JSONOptions(**kwargs)
+        opts = self._asdict()
+        for opt in ('strict_number_long', 'datetime_representation',
+                    'strict_uuid', 'json_mode'):
+            opts[opt] = kwargs.get(opt, getattr(self, opt))
+        return JSONOptions(**opts)
 
 
 LEGACY_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.LEGACY)
