@@ -115,12 +115,14 @@ def create_test(case_spec):
                 continue
 
             # Special case for testing encoding UUID as binary subtype 0x04.
-            if description == 'subtype 0x04':
+            if description.startswith('subtype 0x04'):
                 encode_extjson = to_extjson_uuid_04
                 encode_bson = to_bson_uuid_04
             else:
                 encode_extjson = to_extjson
                 encode_bson = to_bson
+
+            # Special case for testing encoding
 
             cB = binascii.unhexlify(b(valid_case['canonical_bson']))
             cEJ = valid_case['canonical_extjson']
@@ -203,6 +205,13 @@ def create_test(case_spec):
                                              'case: ' + description)
                     except (ValueError, KeyError, TypeError, InvalidId):
                         pass
+            elif bson_type == '0x05':
+                try:
+                    decode_extjson(parse_error_case['string'])
+                    raise AssertionError('exception not raised for test '
+                                         'case: ' + description)
+                except (AttributeError, ValueError):
+                    pass
             else:
                 raise AssertionError('cannot test parseErrors for type ' +
                                      bson_type)
