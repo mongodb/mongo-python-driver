@@ -310,15 +310,9 @@ class CodecOptions(_options_base):
 
         .. versionadded:: 3.5
         """
-        return CodecOptions(
-            kwargs.get('document_class', self.document_class),
-            kwargs.get('tz_aware', self.tz_aware),
-            kwargs.get('uuid_representation', self.uuid_representation),
-            kwargs.get('unicode_decode_error_handler',
-                       self.unicode_decode_error_handler),
-            kwargs.get('tzinfo', self.tzinfo),
-            kwargs.get('type_registry', self.type_registry)
-        )
+        opts = self._asdict()
+        opts.update(kwargs)
+        return CodecOptions(**opts)
 
 
 DEFAULT_CODEC_OPTIONS = CodecOptions(

@@ -311,6 +311,26 @@ class JSONOptions(CodecOptions):
                     self.json_mode,
                     super(JSONOptions, self)._arguments_repr()))
 
+    def with_options(self, **kwargs):
+        """
+        Make a copy of this JSONOptions, overriding some options::
+
+            >>> from bson.json_util import CANONICAL_JSON_OPTIONS
+            >>> CANONICAL_JSON_OPTIONS.tz_aware
+            True
+            >>> json_options = CANONICAL_JSON_OPTIONS.with_options(tz_aware=False)
+            >>> json_options.tz_aware
+            False
+
+        .. versionadded:: 3.12
+        """
+        opts = self._asdict()
+        for opt in ('strict_number_long', 'datetime_representation',
+                    'strict_uuid', 'json_mode'):
+            opts[opt] = kwargs.get(opt, getattr(self, opt))
+        opts.update(kwargs)
+        return JSONOptions(**opts)
+
 
 LEGACY_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.LEGACY)
 """:class:`JSONOptions` for encoding to PyMongo's legacy JSON format.
