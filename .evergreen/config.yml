@@ -817,7 +817,7 @@ tasks:
 
     - name: "release"
       tags: ["release"]
-      git_tag_only: true
+#      git_tag_only: true
       commands:
         - command: shell.exec
           type: test
@@ -2563,7 +2563,7 @@ buildvariants:
 
 - matrix_name: "Release"
   matrix_spec:
-    platform: [ubuntu-20.04, windows-64-vsMulti-small]
+    platform: [ubuntu-20.04, windows-64-vsMulti-small, macos-1014]
   display_name: "Release ${platform}"
   tasks:
     - name: "release"
