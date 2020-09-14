@@ -255,7 +255,7 @@ class TestBSONFallbackEncoder(unittest.TestCase):
 
 class TestBSONTypeEnDeCodecs(unittest.TestCase):
     def test_instantiation(self):
-        msg = "Can't instantiate abstract class .* with abstract methods .*"
+        msg = "Can't instantiate abstract class"
         def run_test(base, attrs, fail):
             codec = type('testcodec', (base,), attrs)
             if fail:

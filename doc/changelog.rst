@@ -1,6 +1,23 @@
 Changelog
 =========
 
+Changes in Version 3.12.0
+-------------------------
+
+Version 3.12 adds support for Python 3.9 and includes a number of bug fixes.
+Highlights include:
+
+- Support for Python 3.9.
+- New method :class:`bson.json_util.JSONOptions.with_options`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.12.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.12.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=29594
+
 Changes in Version 3.11.0
 -------------------------
 

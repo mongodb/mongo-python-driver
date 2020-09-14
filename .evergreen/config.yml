@@ -1767,6 +1767,10 @@ axes:
         display_name: "Python 3.8"
         variables:
           PYTHON_BINARY: "/opt/python/3.8/bin/python3"
+      - id: "3.9"
+        display_name: "Python 3.9"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.9/bin/python3"
       - id: "pypy"
         display_name: "PyPy"
         variables:
@@ -1821,6 +1825,10 @@ axes:
         display_name: "Python 3.8"
         variables:
           PYTHON_BINARY: "C:/python/Python38/python.exe"
+      - id: "3.9"
+        display_name: "Python 3.9"
+        variables:
+          PYTHON_BINARY: "C:/python/Python39/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -1849,6 +1857,10 @@ axes:
         display_name: "32-bit Python 3.8"
         variables:
           PYTHON_BINARY: "C:/python/32/Python38/python.exe"
+      - id: "3.9"
+        display_name: "32-bit Python 3.9"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python39/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2142,14 +2154,14 @@ buildvariants:
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "pypy", "pypy3.5"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.8", "3.9", "pypy", "pypy3.5"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2225,7 +2237,7 @@ buildvariants:
 - matrix_name: "tests-python-version-ubuntu1604-without-c-extensions"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: &openssl-102-plus-pythons ["3.7", "3.8"]
+    python-version: &openssl-102-plus-pythons ["3.7", "3.8", "3.9"]
     c-extensions: without-c-extensions
     auth-ssl: noauth-nossl
   display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
@@ -2242,7 +2254,7 @@ buildvariants:
   matrix_spec:
     # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "jython2.7"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
@@ -2256,9 +2268,9 @@ buildvariants:
      python-version: ["jython2.7"]
      c-extensions: "*"
      compression: ["snappy", "zstd"]
-  # Some tests fail with CPython 3.8 and python-snappy
+   # PYTHON-2365 Some tests fail with CPython 3.8+ and python-snappy
    - platform: ubuntu-16.04
-     python-version: ["3.8"]
+     python-version: ["3.8", "3.9"]
      c-extensions: "*"
      compression: ["snappy"]
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
@@ -2311,7 +2323,7 @@ buildvariants:
 - matrix_name: "tests-python-version-requires-openssl-102-plus-test-ssl"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: &openssl-102-plus-pythons ["3.7", "3.8"]
+    python-version: *openssl-102-plus-pythons
     auth-ssl: "*"
   display_name: "${python-version} OpenSSL 1.0.2 ${platform} ${auth-ssl}"
   tasks:
@@ -2347,6 +2359,12 @@ buildvariants:
     python-version-windows: "*"
     auth-ssl: "*"
     encryption: "*"
+  exclude_spec:
+    # PYTHON-2366 Skip 3.9 due to cryptography install failures
+    - platform: "*"
+      python-version-windows: ["3.9"]
+      auth-ssl: "*"
+      encryption: "*"
   display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
 
@@ -2509,7 +2527,7 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.8", "pypy", "pypy3.5"]
+    python-version: ["2.7", "3.4", "3.8", "3.9", "pypy", "pypy3.5"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
