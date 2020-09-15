@@ -18,6 +18,8 @@ for VERSION in 27 34 35 36 37 38; do
         fi
         rm -rf build
         $PYTHON setup.py bdist_wheel
+
+        # Test that each wheel is installable.
         for release in dist/*; do
             testinstall $PYTHON $release
             mv $release validdist/

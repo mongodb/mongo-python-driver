@@ -17,7 +17,21 @@ for VERSION in 2.7 3.4 3.5 3.6 3.7 3.8; do
         PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
     fi
     rm -rf build
-    $PYTHON setup.py bdist_wheel
+
+    # Install wheel if not already there.
+    if ! $PYTHON -m wheel version; then
+        createvirtualenv $PYTHON releasevenv
+        WHEELPYTHON=python
+        pip install --upgrade wheel
+    else
+        WHEELPYTHON=$PYTHON
+    fi
+
+    $WHEELPYTHON setup.py bdist_wheel
+    deactivate || true
+    rm -rf releasevenv
+
+    # Test that each wheel is installable.
     for release in dist/*; do
         testinstall $PYTHON $release
         mv $release validdist/
