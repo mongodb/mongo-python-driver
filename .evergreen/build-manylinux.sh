@@ -15,7 +15,7 @@ images=(quay.io/pypa/manylinux1_x86_64:2020-03-20-2fda31c \
 
 for image in "${images[@]}"; do
   docker pull $image
-  docker run --rm -v `pwd`:/pymongo $image /pymongo/.evergreen/build-manylinux-internal.sh
+  docker run --rm -v `pwd`:/src $image /src/.evergreen/build-manylinux-internal.sh
 done
 
 ls dist
