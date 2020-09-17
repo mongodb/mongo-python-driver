@@ -1,25 +1,42 @@
 #!/bin/bash -ex
-cd /pymongo
+cd /src
+
+# Get access to testinstall.
+. .evergreen/utils.sh
+
+# Create temp directory for validated files.
+rm -rf validdist
+mkdir -p validdist
+mv dist/* validdist || true
 
 # Compile wheels
-for PYBIN in /opt/python/*/bin; do
+for PYTHON in /opt/python/*/bin/python; do
     # Skip Python 3.3 and 3.9.
-    if [[ "$PYBIN" == *"cp33"* || "$PYBIN" == *"cp39"* ]]; then
+    if [[ "$PYTHON" == *"cp33"* || "$PYTHON" == *"cp39"* ]]; then
         continue
     fi
     # https://github.com/pypa/manylinux/issues/49
     rm -rf build
-    ${PYBIN}/python setup.py bdist_wheel
+    $PYTHON setup.py bdist_wheel
+    rm -rf build
+
+    # Audit wheels and write multilinux tag
+    for whl in dist/*.whl; do
+        # Skip already built manylinux1 wheels.
+        if [[ "$whl" != *"manylinux"* ]]; then
+            auditwheel repair $whl -w dist
+            rm $whl
+        fi
+    done
+
+    # Test that each wheel is installable.
+    # Test without virtualenv because it's not present on manylinux containers.
+    for release in dist/*; do
+        testinstall $PYTHON $release "without-virtualenv"
+        mv $release validdist/
+    done
 done
 
-# https://github.com/pypa/manylinux/issues/49
-rm -rf build
-
-# Audit wheels and write multilinux1 tag
-for whl in dist/*.whl; do
-    # Skip already built manylinux1 wheels.
-    if [[ "$whl" != *"manylinux"* ]]; then
-        auditwheel repair $whl -w dist
-        rm $whl
-    fi
-done
+mv validdist/* dist
+rm -rf validdist
+ls dist
