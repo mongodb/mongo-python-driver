@@ -31,39 +31,74 @@ that changes the major version number.
 Doing a Release
 ---------------
 
-1. Test releases on Python 2.7 and 3.4+ on Windows, Linux and OSX,
-   with and without the C extensions. It's generally enough to just run the
-   tests on 2.7, 3.4 and the latest 3.x version with and without the
-   extensions on a single platform, and then just test any version on the
-   other platforms as a sanity check. `python setup.py test` will build the
-   extensions and test. `python tools/clean.py` will remove the extensions,
+1. PyMongo is tested on Evergreen. Ensure the latest commit are passing CI
+   as expected: https://evergreen.mongodb.com/waterfall/mongo-python-driver.
+   To test locally, `python setup.py test` will build the C extensions and
+   test. `python tools/clean.py` will remove the extensions,
    and then `python setup.py --no_ext test` will run the tests without
    them. You can also run the doctests: `python setup.py doc -t`.
 
-2. Add release notes to doc/changelog.rst. Generally just summarize/clarify
+2. Check Jira to ensure all the tickets in this version have been completed.
+
+3. Add release notes to doc/changelog.rst. Generally just summarize/clarify
    the git log, but you might add some more long form notes for big changes.
 
-3. Search and replace the "devN" version number w/ the new version number (see
+4. Search and replace the "devN" version number w/ the new version number (see
    note above).
 
-4. Make sure version number is updated in setup.py and pymongo/__init__.py
+5. Make sure version number is updated in setup.py and pymongo/__init__.py
 
-5. Commit with a BUMP version_number message.
+6. Commit with a BUMP version_number message, eg `git commit -m 'BUMP 3.11.0'`.
 
-6. Tag w/ version_number
+7. Tag w/ version_number, eg, `git tag -a '3.11.0' -m '3.11.0' <COMMIT>`.
 
-7. Push commit / tag.
+8. Push commit / tag, eg `git push && git push --tags`.
 
-8. Push source to PyPI: `python setup.py sdist upload`
+9. Pushing a tag will trigger a release process in Evergreen which builds
+   wheels and eggs for manylinux, macOS, and Windows. Wait for these jobs to
+   complete and then download the "Release files" archive from each task. See:
+   https://evergreen.mongodb.com/waterfall/mongo-python-driver?bv_filter=release
 
-9. Push binaries to PyPI; for each version of python and platform do:`python
-   setup.py bdist_egg upload`. Probably best to do `python setup.py bdist_egg`
-   first, to make sure the egg builds properly. We also publish wheels.
-   `python setup.py bdist_wheel upload`.
+   Unpack each downloaded archive so that we can upload the included files. For
+   the next steps let's assume we unpacked these files into the following paths::
 
-10. Make sure to push a build of the new docs (see the apidocs repo).
+     $ ls path/to/manylinux
+     pymongo-<version>-cp27-cp27m-manylinux1_i686.whl
+     ...
+     pymongo-<version>-cp38-cp38-manylinux2014_x86_64.whl
+     $ ls path/to/mac/
+     pymongo-<version>-cp27-cp27m-macosx_10_14_intel.whl
+     ...
+     pymongo-<version>-py2.7-macosx-10.14-intel.egg
+     $ ls path/to/windows/
+     pymongo-<version>-cp27-cp27m-win32.whl
+     ...
+     pymongo-<version>-cp38-cp38-win_amd64.whl
 
-11. Bump the version number to <next version>.dev0 in setup.py/__init__.py,
+10. Build the source distribution::
+
+     $ git clone git@github.com:mongodb/mongo-python-driver.git
+     $ cd mongo-python-driver
+     $ git checkout "<release version number>"
+     $ python3 setup.py sdist
+
+    This will create the following distribution::
+
+     $ ls dist
+     pymongo-<version>.tar.gz
+
+11. Upload all the release packages to PyPI with twine::
+
+     $ python3 -m twine upload dist/*.tar.gz path/to/manylinux/* path/to/mac/* path/to/windows/*
+
+12. Make sure the new version appears on https://pymongo.readthedocs.io/. If the
+    new version does not show up automatically, trigger a rebuild of "latest":
+    https://readthedocs.org/projects/pymongo/builds/
+
+13. Bump the version number to <next version>.dev0 in setup.py/__init__.py,
     commit, push.
 
-12. Announce!
+14. Publish the release version in Jira.
+
+15. Announce the release on:
+    https://developer.mongodb.com/community/forums/c/community/release-notes/
