@@ -33,10 +33,10 @@ Doing a Release
 
 1. PyMongo is tested on Evergreen. Ensure the latest commit are passing CI
    as expected: https://evergreen.mongodb.com/waterfall/mongo-python-driver.
-   To test locally, `python setup.py test` will build the C extensions and
-   test. `python tools/clean.py` will remove the extensions,
-   and then `python setup.py --no_ext test` will run the tests without
-   them. You can also run the doctests: `python setup.py doc -t`.
+   To test locally, ``python setup.py test`` will build the C extensions and
+   test. ``python tools/clean.py`` will remove the extensions,
+   and then ``python setup.py --no_ext test`` will run the tests without
+   them. You can also run the doctests: ``python setup.py doc -t``.
 
 2. Check Jira to ensure all the tickets in this version have been completed.
 
@@ -44,15 +44,15 @@ Doing a Release
    the git log, but you might add some more long form notes for big changes.
 
 4. Search and replace the "devN" version number w/ the new version number (see
-   note above).
+   note above in `Versioning`_).
 
 5. Make sure version number is updated in setup.py and pymongo/__init__.py
 
-6. Commit with a BUMP version_number message, eg `git commit -m 'BUMP 3.11.0'`.
+6. Commit with a BUMP version_number message, eg ``git commit -m 'BUMP 3.11.0'``.
 
-7. Tag w/ version_number, eg, `git tag -a '3.11.0' -m '3.11.0' <COMMIT>`.
+7. Tag w/ version_number, eg, ``git tag -a '3.11.0' -m '3.11.0' <COMMIT>``.
 
-8. Push commit / tag, eg `git push && git push --tags`.
+8. Push commit / tag, eg ``git push && git push --tags``.
 
 9. Pushing a tag will trigger a release process in Evergreen which builds
    wheels and eggs for manylinux, macOS, and Windows. Wait for these jobs to
