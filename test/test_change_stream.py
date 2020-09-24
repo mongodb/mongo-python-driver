@@ -367,8 +367,13 @@ class APITestsMixin(object):
             self.assertEqual(change['operationType'], 'update')
             self.assertEqual(change['ns'], expected_ns)
             self.assertNotIn('fullDocument', change)
-            self.assertEqual({'updatedFields': {'new': 1},
-                              'removedFields': ['foo']},
+
+            expected_update_description = {
+                'updatedFields': {'new': 1},
+                'removedFields': ['foo']}
+            if client_context.version.at_least(4, 5, 0):
+                expected_update_description['truncatedArrays'] = []
+            self.assertEqual(expected_update_description,
                              change['updateDescription'])
             # Replace.
             self.watched_collection().replace_one({'new': 1}, {'foo': 'bar'})
