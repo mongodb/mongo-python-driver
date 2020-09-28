@@ -131,10 +131,8 @@ class Server(object):
                               user_fields=user_fields)
             if use_cmd:
                 first = docs[0]
-                operation.client._process_response(
-                    first, operation.session)
-                _check_command_response(
-                    first, sock_info.max_wire_version)
+                operation.client._process_response(first, operation.session)
+                _check_command_response(first, sock_info.max_wire_version)
         except Exception as exc:
             if publish:
                 duration = datetime.now() - start

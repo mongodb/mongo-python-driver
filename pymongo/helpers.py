@@ -102,7 +102,7 @@ def _index_document(index_list):
     return index
 
 
-def _check_command_response(response, max_wire_version, msg=None,
+def _check_command_response(response, max_wire_version,
                             allowable_errors=None,
                             parse_write_concern_error=False):
     """Check the response to a command for errors.
@@ -117,55 +117,47 @@ def _check_command_response(response, max_wire_version, msg=None,
     if parse_write_concern_error and 'writeConcernError' in response:
         _raise_write_concern_error(response['writeConcernError'])
 
-    if not response["ok"]:
+    if response["ok"]:
+        return
 
-        details = response
-        # Mongos returns the error details in a 'raw' object
-        # for some errors.
-        if "raw" in response:
-            for shard in itervalues(response["raw"]):
-                # Grab the first non-empty raw error from a shard.
-                if shard.get("errmsg") and not shard.get("ok"):
-                    details = shard
-                    break
+    details = response
+    # Mongos returns the error details in a 'raw' object
+    # for some errors.
+    if "raw" in response:
+        for shard in itervalues(response["raw"]):
+            # Grab the first non-empty raw error from a shard.
+            if shard.get("errmsg") and not shard.get("ok"):
+                details = shard
+                break
 
-        errmsg = details["errmsg"]
-        if (allowable_errors is None
-                or (errmsg not in allowable_errors
-                    and details.get("code") not in allowable_errors)):
+    errmsg = details["errmsg"]
+    code = details.get("code")
 
-            code = details.get("code")
-            # Server is "not master" or "recovering"
-            if code in _NOT_MASTER_CODES:
-                raise NotMasterError(errmsg, response)
-            elif ("not master" in errmsg
-                  or "node is recovering" in errmsg):
-                raise NotMasterError(errmsg, response)
+    # For allowable errors, only check for error messages when the code is not
+    # included.
+    if allowable_errors:
+        if code is not None:
+            if code in allowable_errors:
+                return
+        elif errmsg in allowable_errors:
+            return
 
-            # Server assertion failures
-            if errmsg == "db assertion failure":
-                errmsg = ("db assertion failure, assertion: '%s'" %
-                          details.get("assertion", ""))
-                raise OperationFailure(errmsg,
-                                       details.get("assertionCode"),
-                                       response,
-                                       max_wire_version)
+    # Server is "not master" or "recovering"
+    if code in _NOT_MASTER_CODES:
+        raise NotMasterError(errmsg, response)
+    elif "not master" in errmsg or "node is recovering" in errmsg:
+        raise NotMasterError(errmsg, response)
 
-            # Other errors
-            # findAndModify with upsert can raise duplicate key error
-            if code in (11000, 11001, 12582):
-                raise DuplicateKeyError(errmsg, code, response,
-                                        max_wire_version)
-            elif code == 50:
-                raise ExecutionTimeout(errmsg, code, response,
-                                       max_wire_version)
-            elif code == 43:
-                raise CursorNotFound(errmsg, code, response,
-                                     max_wire_version)
+    # Other errors
+    # findAndModify with upsert can raise duplicate key error
+    if code in (11000, 11001, 12582):
+        raise DuplicateKeyError(errmsg, code, response, max_wire_version)
+    elif code == 50:
+        raise ExecutionTimeout(errmsg, code, response, max_wire_version)
+    elif code == 43:
+        raise CursorNotFound(errmsg, code, response, max_wire_version)
 
-            msg = msg or "%s"
-            raise OperationFailure(msg % errmsg, code, response,
-                                   max_wire_version)
+    raise OperationFailure(errmsg, code, response, max_wire_version)
 
 
 def _check_gle_response(result, max_wire_version):
