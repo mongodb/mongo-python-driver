@@ -969,10 +969,8 @@ class TestDatabase(IntegrationTest):
             'errmsg': 'outer',
             'raw': {'shard0/host0,host1': {'ok': 0, 'errmsg': 'inner'}}}
 
-        with self.assertRaises(OperationFailure) as context:
+        with self.assertRaisesRegex(OperationFailure, 'outer, full error:'):
             helpers._check_command_response(error_document, None)
-
-        self.assertIn('inner', str(context.exception))
 
         # If a shard has no primary and you run a command like dbstats, which
         # cannot be run on a secondary, mongos's response includes empty "raw"
@@ -982,10 +980,8 @@ class TestDatabase(IntegrationTest):
             'errmsg': 'outer',
             'raw': {'shard0/host0,host1': {}}}
 
-        with self.assertRaises(OperationFailure) as context:
+        with self.assertRaisesRegex(OperationFailure, 'outer, full error:'):
             helpers._check_command_response(error_document, None)
-
-        self.assertIn('outer', str(context.exception))
 
         # Raw error has ok: 0 but no errmsg. Not a known case, but test it.
         error_document = {
@@ -993,10 +989,8 @@ class TestDatabase(IntegrationTest):
             'errmsg': 'outer',
             'raw': {'shard0/host0,host1': {'ok': 0}}}
 
-        with self.assertRaises(OperationFailure) as context:
+        with self.assertRaisesRegex(OperationFailure, 'outer, full error:'):
             helpers._check_command_response(error_document, None)
-
-        self.assertIn('outer', str(context.exception))
 
     @client_context.require_test_commands
     @client_context.require_no_mongos

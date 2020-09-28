@@ -120,18 +120,8 @@ def _check_command_response(response, max_wire_version,
     if response["ok"]:
         return
 
-    details = response
-    # Mongos returns the error details in a 'raw' object
-    # for some errors.
-    if "raw" in response:
-        for shard in itervalues(response["raw"]):
-            # Grab the first non-empty raw error from a shard.
-            if shard.get("errmsg") and not shard.get("ok"):
-                details = shard
-                break
-
-    errmsg = details["errmsg"]
-    code = details.get("code")
+    errmsg = response["errmsg"]
+    code = response.get("code")
 
     # For allowable errors, only check for error messages when the code is not
     # included.
