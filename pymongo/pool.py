@@ -1150,6 +1150,7 @@ class Pool:
                 break
             try:
                 sock_info = self.connect(all_credentials)
+                sock_info.check_auth(all_credentials)
                 with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
