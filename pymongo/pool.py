@@ -1150,7 +1150,6 @@ class Pool:
                 break
             try:
                 sock_info = self.connect(all_credentials)
-                sock_info.check_auth(all_credentials)
                 with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
@@ -1193,6 +1192,12 @@ class Pool:
         if self.handshake:
             sock_info.ismaster(all_credentials)
             self.is_writable = sock_info.is_writable
+
+        try:
+            sock_info.check_auth(all_credentials)
+        except Exception:
+            sock_info.close_socket(ConnectionClosedReason.ERROR)
+            raise
 
         return sock_info
 

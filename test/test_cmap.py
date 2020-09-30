@@ -23,6 +23,7 @@ import threading
 sys.path[0:0] = [""]
 
 from pymongo.errors import (ConnectionFailure,
+                            OperationFailure,
                             PyMongoError)
 from pymongo.monitoring import (ConnectionCheckedInEvent,
                                 ConnectionCheckedOutEvent,
@@ -331,27 +332,12 @@ class TestCMAP(IntegrationTest):
 
     def test_5_check_out_fails_auth_error(self):
         listener = CMAPListener()
-        client = single_client(event_listeners=[listener])
+        client = single_client(username="notauser", password="fail",
+                               event_listeners=[listener])
         self.addCleanup(client.close)
-        pool = get_pool(client)
-        connect = pool.connect
-
-        def mock_check_auth(self, *args, **kwargs):
-            self.close_socket(ConnectionClosedReason.ERROR)
-            raise ConnectionFailure('auth failed')
-
-        def mock_connect(*args, **kwargs):
-            sock_info = connect(*args, **kwargs)
-            sock_info.check_auth = functools.partial(mock_check_auth, sock_info)
-            # Un-patch to break the cyclic reference.
-            self.addCleanup(delattr, sock_info, 'check_auth')
-            return sock_info
-        pool.connect = mock_connect
-        # Un-patch Pool.connect to break the cyclic reference.
-        self.addCleanup(delattr, pool, 'connect')
 
         # Attempt to create a new connection.
-        with self.assertRaisesRegex(ConnectionFailure, 'auth failed'):
+        with self.assertRaisesRegex(OperationFailure, 'failed'):
             client.admin.command('isMaster')
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
@@ -362,7 +348,6 @@ class TestCMAP(IntegrationTest):
         self.assertIsInstance(listener.events[3], ConnectionClosedEvent)
         self.assertIsInstance(listener.events[4],
                               ConnectionCheckOutFailedEvent)
-        self.assertIsInstance(listener.events[5], PoolClearedEvent)
 
         failed_event = listener.events[4]
         self.assertEqual(
