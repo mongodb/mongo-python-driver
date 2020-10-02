@@ -1775,7 +1775,6 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
 
-
         def _cmd(session, server, sock_info, slave_ok):
             result = self._aggregate_one_result(
                 sock_info, slave_ok, cmd, collation, session)

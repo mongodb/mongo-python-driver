@@ -1440,8 +1440,8 @@ class MongoClient(common.BaseObject):
                     retrying = True
                 last_error = exc
 
-    def _retryable_read(self, func, read_pref, session, address=None,
-                        retryable=True, exhaust=False):
+    def _retryable_read_with_session(self, func, read_pref, session,
+                                     address, retryable, exhaust):
         """Execute an operation with at most one consecutive retries
 
         Returns func()'s return value on success. On error retries the same
@@ -1496,6 +1496,13 @@ class MongoClient(common.BaseObject):
         """Internal retryable write helper."""
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, None)
+
+    def _retryable_read(self, func, read_pref, session,
+                        address=None, retryable=True, exhaust=False):
+        """Internal retryable read helper."""
+        with self._tmp_session(session) as s:
+            return self._retryable_read_with_session(
+                func, read_pref, s, address, retryable, exhaust)
 
     def _handle_getlasterror(self, address, error_msg):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
@@ -1827,17 +1834,20 @@ class MongoClient(common.BaseObject):
             return
 
         s = self._ensure_session(session)
-        if s and close:
-            with s:
-                # Call end_session when we exit this scope.
-                yield s
-        elif s:
+        if s:
             try:
-                # Only call end_session on error.
                 yield s
-            except Exception:
+            except Exception as exc:
+                if isinstance(exc, ConnectionFailure):
+                    s._server_session.mark_dirty()
+
+                # Always call end_session on error.
                 s.end_session()
                 raise
+            finally:
+                # Call end_session when we exit this scope.
+                if close:
+                    s.end_session()
         else:
             yield None
 
