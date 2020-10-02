@@ -157,8 +157,7 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
                 client._process_response(response_doc, session)
             if check:
                 helpers._check_command_response(
-                    response_doc, sock_info.max_wire_version, None,
-                    allowable_errors,
+                    response_doc, sock_info.max_wire_version, allowable_errors,
                     parse_write_concern_error=parse_write_concern_error)
     except Exception as exc:
         if publish:
