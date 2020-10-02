@@ -852,7 +852,10 @@ class TestCausalConsistency(unittest.TestCase):
         with self.client.start_session() as sess:
             coll.find_one({}, session=sess)
             operation_time = sess.operation_time
-            self.assertIsNotNone(operation_time)
+            if client_context.is_mongos or client_context.is_rs:
+                self.assertIsNotNone(operation_time)
+            else:
+                self.assertIsNone(operation_time)
             self.listener.results.clear()
             if exception:
                 with self.assertRaises(exception):
@@ -863,7 +866,6 @@ class TestCausalConsistency(unittest.TestCase):
                 'readConcern', {}).get('afterClusterTime')
             self.assertEqual(operation_time, act)
 
-    @client_context.require_no_standalone
     def test_reads(self):
         # Make sure the collection exists.
         self.client.pymongo_test.test.insert_one({})
@@ -925,14 +927,16 @@ class TestCausalConsistency(unittest.TestCase):
         with self.client.start_session() as sess:
             op(coll, sess)
             operation_time = sess.operation_time
-            self.assertIsNotNone(operation_time)
+            if client_context.is_mongos or client_context.is_rs:
+                self.assertIsNotNone(operation_time)
+            else:
+                self.assertIsNone(operation_time)
             self.listener.results.clear()
             coll.find_one({}, session=sess)
             act = self.listener.results['started'][0].command.get(
                 'readConcern', {}).get('afterClusterTime')
             self.assertEqual(operation_time, act)
 
-    @client_context.require_no_standalone
     def test_writes(self):
         self._test_writes(
             lambda coll, session: coll.bulk_write(
@@ -982,14 +986,16 @@ class TestCausalConsistency(unittest.TestCase):
         with self.client.start_session() as sess:
             coll.find_one({}, session=sess)
             operation_time = sess.operation_time
-            self.assertIsNotNone(operation_time)
+            if client_context.is_mongos or client_context.is_rs:
+                self.assertIsNotNone(operation_time)
+            else:
+                self.assertIsNone(operation_time)
             self.listener.results.clear()
             op(coll, sess)
             rc = self.listener.results['started'][0].command.get(
                 'readConcern')
             self.assertIsNone(rc)
 
-    @client_context.require_no_standalone
     def test_writes_do_not_include_read_concern(self):
         self._test_no_read_concern(
             lambda coll, session: coll.bulk_write(
@@ -1044,20 +1050,21 @@ class TestCausalConsistency(unittest.TestCase):
             self._test_no_read_concern(
                 lambda coll, session: coll.reindex(session=session))
 
-    @client_context.require_no_standalone
     @client_context.require_version_max(4, 1, 0)
     def test_aggregate_out_does_not_include_read_concern(self):
         self._test_no_read_concern(
                 lambda coll, session: list(
                     coll.aggregate([{"$out": "aggout"}], session=session)))
 
-    @client_context.require_no_standalone
     def test_get_more_does_not_include_read_concern(self):
         coll = self.client.pymongo_test.test
         with self.client.start_session() as sess:
             coll.find_one({}, session=sess)
             operation_time = sess.operation_time
-            self.assertIsNotNone(operation_time)
+            if client_context.is_mongos or client_context.is_rs:
+                self.assertIsNotNone(operation_time)
+            else:
+                self.assertIsNone(operation_time)
             coll.insert_many([{}, {}])
             cursor = coll.find({}).batch_size(1)
             next(cursor)
