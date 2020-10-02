@@ -38,7 +38,6 @@ from pymongo.operations import (InsertOne,
 from pymongo.write_concern import WriteConcern
 
 from test import unittest, client_context, IntegrationTest, SkipTest, client_knobs
-from test.test_crud_v1 import check_result as crud_v1_check_result
 from test.utils import (rs_or_single_client,
                         DeprecationFilter,
                         OvertCommandListener,
