@@ -62,20 +62,15 @@ class TestAllScenarios(SpecRunner):
         return scenario_def.get('collection_name', 'test')
 
     def run_test_ops(self, sessions, collection, test):
+        # Transform retryable writes spec format into transactions.
+        operation = test['operation']
         outcome = test['outcome']
-        should_fail = outcome.get('error')
-        result = None
-        error = None
-        try:
-            result = self.run_operation(
-                sessions, collection, test['operation'])
-        except (ConnectionFailure, OperationFailure) as exc:
-            error = exc
-        if should_fail:
-            self.assertIsNotNone(error, 'should have raised an error')
-        else:
-            self.assertIsNone(error)
-            crud_v1_check_result(self, outcome['result'], result)
+        if 'error' in outcome:
+            operation['error'] = outcome['error']
+        if 'result' in outcome:
+            operation['result'] = outcome['result']
+        test['operations'] = [operation]
+        super(TestAllScenarios, self).run_test_ops(sessions, collection, test)
 
 
 def create_test(scenario_def, test, name):
