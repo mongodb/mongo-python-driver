@@ -2713,6 +2713,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    destroy_codec_options(&options);
     return result_tuple;
 }
 
