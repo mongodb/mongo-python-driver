@@ -1193,6 +1193,12 @@ class Pool:
             sock_info.ismaster(all_credentials)
             self.is_writable = sock_info.is_writable
 
+        try:
+            sock_info.check_auth(all_credentials)
+        except Exception:
+            sock_info.close_socket(ConnectionClosedReason.ERROR)
+            raise
+
         return sock_info
 
     @contextlib.contextmanager
