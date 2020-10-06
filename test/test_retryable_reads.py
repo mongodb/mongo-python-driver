@@ -28,8 +28,10 @@ from test.utils_spec_runner import SpecRunner
 
 
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(
+TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'retryable_reads')
+TEST_PATH_CUSTOM = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'retryable_reads_custom')
 
 
 class TestClientOptions(PyMongoTestCase):
@@ -53,7 +55,6 @@ class TestClientOptions(PyMongoTestCase):
 class TestSpec(SpecRunner):
 
     @classmethod
-    @client_context.require_version_min(4, 0)
     # TODO: remove this once PYTHON-1948 is done.
     @client_context.require_no_mmap
     def setUpClass(cls):
@@ -98,6 +99,10 @@ class TestSpec(SpecRunner):
             super(TestSpec, self).setup_scenario(scenario_def)
 
 
+class TestSpecCustom(SpecRunner):
+    pass
+
+
 def create_test(scenario_def, test, name):
     @client_context.require_test_commands
     def run_scenario(self):
@@ -106,8 +111,8 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestSpec, _TEST_PATH)
-test_creator.create_tests()
+TestCreator(create_test, TestSpec, TEST_PATH).create_tests()
+TestCreator(create_test, TestSpecCustom, TEST_PATH_CUSTOM).create_tests()
 
 if __name__ == "__main__":
     unittest.main()
