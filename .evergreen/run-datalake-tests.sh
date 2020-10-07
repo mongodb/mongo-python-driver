@@ -52,6 +52,18 @@ $PYTHON -c 'import sys; print(sys.version)'
 
 PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
 
+# Don't download unittest-xml-reporting from pypi, which often fails.
+if $PYTHON -c "import xmlrunner"; then
+    # The xunit output dir must be a Python style absolute path.
+    XUNIT_DIR="$(pwd)/xunit-results"
+    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+        XUNIT_DIR=$(cygpath -m $XUNIT_DIR)
+    fi
+    OUTPUT="--xunit-output=${XUNIT_DIR}"
+else
+    OUTPUT=""
+fi
+
 $PYTHON setup.py clean
 if [ -z "$C_EXTENSIONS" -a $PYTHON_IMPL = "CPython" ]; then
     # Fail if the C extensions fail to build.
@@ -65,7 +77,5 @@ if [ -z "$C_EXTENSIONS" -a $PYTHON_IMPL = "CPython" ]; then
     $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
 fi
 
-$PYTHON setup.py $C_EXTENSIONS install
-
 echo "Running tests"
-$PYTHON test/data_lake/test_data_lake.py
+$PYTHON setup.py $C_EXTENSIONS test -s test.data_lake.test_data_lake $OUTPUT
