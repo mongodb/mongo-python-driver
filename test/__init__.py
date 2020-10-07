@@ -236,6 +236,7 @@ class ClientContext(object):
         build_info = self.client.admin.command('buildInfo')
         if 'dataLake' in build_info:
             self.data_lake = True
+            self.auth_enabled = True
             self.client = self._connect(
                 host, port, username=db_user, password=db_pwd)
             self.connected = True
@@ -862,7 +863,7 @@ def teardown():
         c.drop_database("pymongo_test2")
         c.drop_database("pymongo_test_mike")
         c.drop_database("pymongo_test_bernie")
-        c.close()
+    c.close()
 
     # Jython does not support gc.get_objects.
     if not sys.platform.startswith('java'):
