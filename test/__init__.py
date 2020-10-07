@@ -233,14 +233,15 @@ class ClientContext(object):
     def _init_client(self):
         self.client = self._connect(host, port)
 
-        build_info = self.client.admin.command('buildInfo')
-        if 'dataLake' in build_info:
-            self.data_lake = True
-            self.auth_enabled = True
-            self.client = self._connect(
-                host, port, username=db_user, password=db_pwd)
-            self.connected = True
-            return
+        if self.client is not None:
+            build_info = self.client.admin.command('buildInfo')
+            if 'dataLake' in build_info:
+                self.data_lake = True
+                self.auth_enabled = True
+                self.client = self._connect(
+                    host, port, username=db_user, password=db_pwd)
+                self.connected = True
+                return
 
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
