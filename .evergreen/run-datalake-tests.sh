@@ -50,6 +50,8 @@ fi
 echo "Running $AUTH tests over $SSL with python $PYTHON"
 $PYTHON -c 'import sys; print(sys.version)'
 
+PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
+
 $PYTHON setup.py clean
 if [ -z "$C_EXTENSIONS" -a $PYTHON_IMPL = "CPython" ]; then
     # Fail if the C extensions fail to build.

@@ -26,7 +26,7 @@ from test.utils_spec_runner import SpecRunner
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)))
+    os.path.dirname(os.path.realpath(__file__)), "tests")
 
 # Default test database and collection names.
 TEST_DB = 'test'
