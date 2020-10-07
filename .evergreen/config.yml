@@ -301,6 +301,25 @@ functions:
           - key: MONGODB_STARTED
             value: "1"
 
+  "bootstrap datalake":
+    - command: shell.exec
+      type: setup
+      params:
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          cd ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" sh build-mongohouse-local.sh
+    - command: shell.exec
+      type: setup
+      params:
+        background: true
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          cd ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" sh run-mongohouse-local.sh
+
   "stop mongo-orchestration":
     - command: shell.exec
       params:
@@ -426,6 +445,47 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           PYTHON_BINARY=${PYTHON_BINARY} ATLAS_REPL='${atlas_repl}' ATLAS_SHRD='${atlas_shrd}' ATLAS_FREE='${atlas_free}' ATLAS_TLS11='${atlas_tls11}' ATLAS_TLS12='${atlas_tls12}'  sh ${PROJECT_DIRECTORY}/.evergreen/run-atlas-tests.sh
+
+  "run datalake tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          if [ -n "${set_xtrace_on}" ]; then
+            set -o xtrace
+            export SET_XTRACE_ON="${set_xtrace_on}"
+          fi
+          ${PREPARE_SHELL}
+          if [ -n "${MONGODB_STARTED}" ]; then
+            export PYMONGO_MUST_CONNECT=1
+          fi
+          if [ -n "${DISABLE_TEST_COMMANDS}" ]; then
+            export PYMONGO_DISABLE_TEST_COMMANDS=1
+          fi
+          if [ -n "${test_encryption}" ]; then
+            # Disable xtrace (just in case it was accidentally set).
+            set +x
+            . ./fle_aws_creds.sh
+            rm -f ./fle_aws_creds.sh
+            export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
+            export TEST_ENCRYPTION=1
+          fi
+          if [ -n "${test_pyopenssl}" ]; then
+            export TEST_PYOPENSSL=1
+          fi
+          if [ -n "${SETDEFAULTENCODING}" ]; then
+            export SETDEFAULTENCODING="${SETDEFAULTENCODING}"
+          fi
+
+          PYTHON_BINARY=${PYTHON_BINARY} \
+            GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
+            C_EXTENSIONS=${C_EXTENSIONS} \
+            COVERAGE=${COVERAGE} \
+            COMPRESSORS=${COMPRESSORS} \
+            AUTH=${AUTH} \
+            SSL=${SSL} \
+            sh ${PROJECT_DIRECTORY}/.evergreen/run-datalake-tests.sh
 
   "add aws auth variables to file":
     - command: shell.exec
@@ -1156,6 +1216,13 @@ tasks:
       tags: ["atlas-connect"]
       commands:
         - func: "run atlas tests"
+
+    - name: atlas-data-lake-tests
+      commands:
+        - func: "bootstrap datalake"
+        - func: "run datalake tests"
+          vars:
+            TOPOLOGY: "server"
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
@@ -2546,6 +2613,16 @@ buildvariants:
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
     - name: "atlas-connect"
+
+- matrix_name: "data-lake-spec-tests"
+  matrix_spec:
+    platform: ubuntu-16.04
+    python-version: ["2.7", "3.7", "3.8"]
+    auth: "auth"
+    ssl: "nossl"
+  display_name: "Atlas Data Lake ${python-version}"
+  tasks:
+    - name: atlas-data-lake-tests
 
 - matrix_name: "ocsp-test"
   matrix_spec:
