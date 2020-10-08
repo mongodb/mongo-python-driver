@@ -301,7 +301,7 @@ functions:
           - key: MONGODB_STARTED
             value: "1"
 
-  "bootstrap datalake":
+  "bootstrap data lake":
     - command: shell.exec
       type: setup
       params:
@@ -1179,7 +1179,7 @@ tasks:
 
     - name: atlas-data-lake-tests
       commands:
-        - func: "bootstrap datalake"
+        - func: "bootstrap data lake"
         - func: "run tests"
           vars:
             DATA_LAKE: "true"

@@ -160,9 +160,9 @@ else
 fi
 
 if [ -z "$DATA_LAKE" ]; then
-    TEST_ARGS="-s test.test_data_lake"
-else
     TEST_ARGS=""
+else
+    TEST_ARGS="-s test.test_data_lake"
 fi
 
 # Don't download unittest-xml-reporting from pypi, which often fails.
