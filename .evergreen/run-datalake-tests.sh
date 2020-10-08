@@ -14,37 +14,14 @@ else
     set +x
 fi
 
+PYTHON="$PYTHON_BINARY"
 AUTH=${AUTH:-noauth}
-SSL=${SSL:-nossl}
 PYTHON_BINARY=${PYTHON_BINARY:-}
 C_EXTENSIONS=${C_EXTENSIONS:-}
 
 if [ "$AUTH" != "noauth" ]; then
     export DB_USER="mhuser"
     export DB_PASSWORD="pencil"
-fi
-
-if [ "$SSL" != "nossl" ]; then
-    export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
-    export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
-fi
-
-if [ -z "$PYTHON_BINARY" ]; then
-    VIRTUALENV=$(command -v virtualenv) || true
-    if [ -z "$VIRTUALENV" ]; then
-        PYTHON=$(command -v python || command -v python3) || true
-        if [ -z "$PYTHON" ]; then
-            echo "Cannot test without python or python3 installed!"
-            exit 1
-        fi
-    else
-        $VIRTUALENV pymongotestvenv
-        . pymongotestvenv/bin/activate
-        PYTHON=python
-        trap "deactivate; rm -rf pymongotestvenv" EXIT HUP
-    fi
-else
-    PYTHON="$PYTHON_BINARY"
 fi
 
 echo "Running $AUTH tests over $SSL with python $PYTHON"

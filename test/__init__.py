@@ -191,7 +191,7 @@ class ClientContext(object):
         self.sessions_enabled = False
         self.client = None
         self.conn_lock = threading.Lock()
-        self.data_lake = False
+        self.is_data_lake = False
 
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
@@ -236,7 +236,7 @@ class ClientContext(object):
         if self.client is not None:
             build_info = self.client.admin.command('buildInfo')
             if 'dataLake' in build_info:
-                self.data_lake = True
+                self.is_data_lake = True
                 self.auth_enabled = True
                 self.client = self._connect(
                     host, port, username=db_user, password=db_pwd)
@@ -857,7 +857,7 @@ def teardown():
     if garbage:
         assert False, '\n'.join(garbage)
     c = client_context.client
-    if c and not client_context.data_lake:
+    if c and not client_context.is_data_lake:
         c.drop_database("pymongo-pooling-tests")
         c.drop_database("pymongo_test")
         c.drop_database("pymongo_test1")

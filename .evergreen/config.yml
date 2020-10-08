@@ -424,6 +424,7 @@ functions:
             COMPRESSORS=${COMPRESSORS} \
             AUTH=${AUTH} \
             SSL=${SSL} \
+            DATA_LAKE=${DATA_LAKE} \
             sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
@@ -445,23 +446,6 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           PYTHON_BINARY=${PYTHON_BINARY} ATLAS_REPL='${atlas_repl}' ATLAS_SHRD='${atlas_shrd}' ATLAS_FREE='${atlas_free}' ATLAS_TLS11='${atlas_tls11}' ATLAS_TLS12='${atlas_tls12}'  sh ${PROJECT_DIRECTORY}/.evergreen/run-atlas-tests.sh
-
-  "run datalake tests":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          if [ -n "${set_xtrace_on}" ]; then
-            set -o xtrace
-            export SET_XTRACE_ON="${set_xtrace_on}"
-          fi
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} \
-            C_EXTENSIONS=${C_EXTENSIONS} \
-            AUTH=${AUTH} \
-            SSL=${SSL} \
-            sh ${PROJECT_DIRECTORY}/.evergreen/run-datalake-tests.sh
 
   "add aws auth variables to file":
     - command: shell.exec
@@ -1196,9 +1180,9 @@ tasks:
     - name: atlas-data-lake-tests
       commands:
         - func: "bootstrap datalake"
-        - func: "run datalake tests"
+        - func: "run tests"
           vars:
-            TOPOLOGY: "server"
+            DATA_LAKE: "true"
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
@@ -2593,10 +2577,10 @@ buildvariants:
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.7", "3.8"]
+    python-version: ["2.7", "3.4", "3.8"]
     auth: "auth"
-    ssl: "nossl"
-  display_name: "Atlas Data Lake ${python-version}"
+    c-extensions: "*"
+  display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
   tasks:
     - name: atlas-data-lake-tests
 
