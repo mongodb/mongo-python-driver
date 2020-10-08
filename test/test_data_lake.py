@@ -37,7 +37,7 @@ class DataLakeTestSpec(TestSpec):
     def maybe_skip_scenario(self, test):
         # Skip these tests unless connected to data lake.
         if not client_context.is_data_lake:
-            raise unittest.skipTest('Not connected to Atlas Data Lake')
+            self.skipTest('Not connected to Atlas Data Lake')
 
     def setup_scenario(self, scenario_def):
         # Spec tests MUST NOT insert data/drop collection for
