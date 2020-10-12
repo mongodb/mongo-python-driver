@@ -1827,17 +1827,20 @@ class MongoClient(common.BaseObject):
             return
 
         s = self._ensure_session(session)
-        if s and close:
-            with s:
-                # Call end_session when we exit this scope.
-                yield s
-        elif s:
+        if s:
             try:
-                # Only call end_session on error.
                 yield s
-            except Exception:
+            except Exception as exc:
+                if isinstance(exc, ConnectionFailure):
+                    s._server_session.mark_dirty()
+
+                # Always call end_session on error.
                 s.end_session()
                 raise
+            finally:
+                # Call end_session when we exit this scope.
+                if close:
+                    s.end_session()
         else:
             yield None
 
