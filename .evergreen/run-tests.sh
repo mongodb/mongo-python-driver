@@ -201,12 +201,6 @@ if [ -n "$COVERAGE" -a $PYTHON_IMPL = "CPython" ]; then
     fi
 fi
 
-if $PYTHON -c 'import dns'; then
-  # Trying with/without --user to avoid:
-  # ERROR: Can not perform a '--user' install. User site-packages are not visible in this virtualenv.
-  $PYTHON -m pip install --upgrade --user 'dnspython<2.0.0' || $PYTHON -m pip install --upgrade 'dnspython<2.0.0'
-fi
-
 $PYTHON setup.py clean
 if [ -z "$GREEN_FRAMEWORK" ]; then
     if [ -z "$C_EXTENSIONS" -a $PYTHON_IMPL = "CPython" ]; then
