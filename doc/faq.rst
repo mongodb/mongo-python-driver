@@ -77,7 +77,7 @@ network errors, causing the total number of sockets (both in use and idle) to
 drop below the minimum, more sockets are opened until the minimum is reached.
 
 The maximum number of milliseconds that a connection can remain idle in the
-pool before being removed and replaced can be set with ``maxIdleTime``, which
+pool before being removed and replaced can be set with ``maxIdleTimeMS``, which
 defaults to `None` (no limit).
 
 The default configuration for a :class:`~pymongo.mongo_client.MongoClient`
