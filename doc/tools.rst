@@ -49,7 +49,7 @@ Humongolus
    examples are also available at GitHub.
    
 MincePy
-   `MincePy <https://https://mincepy.readthedocs.io/en/latest/>`_ is an 
+   `MincePy <https://mincepy.readthedocs.io/en/latest/>`_ is an 
    object-document mapper (ODM) designed to make any Python object storable 
    and queryable in a MongoDB database. It is designed with machine learning 
    and big-data computational and experimental science applications in mind 
