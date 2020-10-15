@@ -11,8 +11,7 @@ mv dist/* validdist || true
 
 # Compile wheels
 for PYTHON in /opt/python/*/bin/python; do
-    # Skip Python 3.3 and 3.9.
-    if [[ "$PYTHON" == *"cp33"* || "$PYTHON" == *"cp39"* ]]; then
+    if [[ ! $PYTHON =~ (cp27|cp34|cp35|cp36|cp37|cp38|cp39) ]]; then
         continue
     fi
     # https://github.com/pypa/manylinux/issues/49
