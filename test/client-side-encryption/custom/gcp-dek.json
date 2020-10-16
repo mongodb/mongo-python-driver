@@ -1,0 +1,35 @@
+{
+    "_id": {
+        "$binary": {
+            "base64": "osU8SLxJRHONbl8Oh5o+eg==",
+            "subType": "04"
+        }
+    },
+    "keyMaterial": {
+        "$binary": {
+            "base64": "CiQAg4LDql74hjYPZ957Z7YpCrD6yTVVXKegflJDstQ/xngTyx0SiQEAkWNo/fjPj6jMNSvEop07/29Fu72QHFDRYM3e/KFHfnMQjKzfxb1yX1dC6MbO5FZG/UNBkXlJgPqbHNVuizea3QC24kV5iOiEb4nTM7+RW+8TfVb6QerWWe6MjC+kNpj4LMVcc1lFfVDeGgpJLyMLNGitrjR16qH8qQTNbGNy0toTL69JUmgS8Q==",
+            "subType": "00"
+        }
+    },
+    "creationDate": {
+        "$date": {
+            "$numberLong": "1601574333107"
+        }
+    },
+    "updateDate": {
+        "$date": {
+            "$numberLong": "1601574333107"
+        }
+    },
+    "status": {
+        "$numberInt": "0"
+    },
+    "masterKey": {
+        "provider": "gcp",
+        "projectId": "csfle-poc",
+        "location": "global",
+        "keyRing": "test",
+        "keyName": "quickstart"
+    }
+}
+

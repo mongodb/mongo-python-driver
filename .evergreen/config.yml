@@ -357,9 +357,14 @@ functions:
         working_dir: "src"
         script: |
           if [ -n "${test_encryption}" ]; then
-            cat <<EOT > fle_aws_creds.sh
+            cat <<EOT > fle_creds.sh
             export FLE_AWS_KEY="${fle_aws_key}"
             export FLE_AWS_SECRET="${fle_aws_secret}"
+            export FLE_AZURE_CLIENTID="${fle_azure_clientid}"
+            export FLE_AZURE_TENANTID="${fle_azure_tenantid}"
+            export FLE_AZURE_CLIENTSECRET="${fle_azure_clientsecret}"
+            export FLE_GCP_EMAIL="${fle_gcp_email}"
+            export FLE_GCP_PRIVATEKEY="${fle_gcp_privatekey}"
           EOT
           fi
     - command: shell.exec
@@ -381,8 +386,8 @@ functions:
           if [ -n "${test_encryption}" ]; then
             # Disable xtrace (just in case it was accidentally set).
             set +x
-            . ./fle_aws_creds.sh
-            rm -f ./fle_aws_creds.sh
+            . ./fle_creds.sh
+            rm -f ./fle_creds.sh
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
           fi

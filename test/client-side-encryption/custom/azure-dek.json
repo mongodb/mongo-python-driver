@@ -1,0 +1,33 @@
+{
+    "_id": {
+        "$binary": {
+            "base64": "As3URE1jRcyHOPjaLWHOXA==",
+            "subType": "04"
+        }
+    },
+    "keyMaterial": {
+        "$binary": {
+            "base64": "df6fFLZqBsZSnQz2SnTYWNBtznIHktVSDMaidAdL7yVVgxBJQ0DyPZUR2HDQB4hdYym3w4C+VGqzcyTZNJOXn6nJzpGrGlIQMcjv93HE4sP2d245ShQCi1nTkLmMaXN63E2fzltOY3jW7ojf5Z4+r8kxmzyfymmSRgo0w8AF7lUWvFhnBYoE4tE322L31vtAK3Zj8pTPvw8/TcUdMSI9Y669IIzxbMy5yMPmdzpnb8nceUv6/CJoeiLhbt5GgaHqIAv7tHFOY8ZX8ztowMLa3GeAjd9clvzraDTqrfMFYco/kDKAW5iPQQ+Xuy1fP8tyFp0ZwaL/7Ed2sc819j8FTQ==",
+            "subType": "00"
+        }
+    },
+    "creationDate": {
+        "$date": {
+            "$numberLong": "1601573901680"
+        }
+    },
+    "updateDate": {
+        "$date": {
+            "$numberLong": "1601573901680"
+        }
+    },
+    "status": {
+        "$numberInt": "0"
+    },
+    "masterKey": {
+        "provider": "azure",
+        "keyVaultEndpoint": "key-vault-kevinalbs.vault.azure.net",
+        "keyName": "test-key"
+    }
+}
+

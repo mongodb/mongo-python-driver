@@ -358,6 +358,16 @@ class ClientEncryption(object):
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
                 These are the AWS access key ID and AWS secret access key used
                 to generate KMS messages.
+              - `azure`: Map with "tenantId", "clientId", and "clientSecret" as
+                strings. Additionally, "identityPlatformEndpoint" may also be
+                specified as a string (defaults to 'login.microsoftonline.com').
+                These are the Azure Active Directory credentials used to
+                generate Azure Key Vault messages.
+              - `gcp`: Map with "email" as a string and "privateKey" as a
+                base64 encoded string or `bytes`. Additionally,
+                "endpoint" may also be specified as a string (defaults to
+                'oauth2.googleapis.com'). These are the credentials used to
+                generate Google Cloud KMS messages.
               - `local`: Map with "key" as a 96-byte array or string. "key"
                 is the master key used to encrypt/decrypt data keys. This key
                 should be generated and stored as securely as possible.
@@ -409,8 +419,10 @@ class ClientEncryption(object):
             "aws" and "local".
           - `master_key`: Identifies a KMS-specific key used to encrypt the
             new data key. If the kmsProvider is "local" the `master_key` is
-            not applicable and may be omitted. If the `kms_provider` is "aws"
-            it is required and has the following fields::
+            not applicable and may be omitted.
+
+            If the `kms_provider` is "aws" it is required and has the
+            following fields::
 
               - `region` (string): Required. The AWS region, e.g. "us-east-1".
               - `key` (string): Required. The Amazon Resource Name (ARN) to
@@ -418,6 +430,26 @@ class ClientEncryption(object):
               - `endpoint` (string): Optional. An alternate host to send KMS
                 requests to. May include port number, e.g.
                 "kms.us-east-1.amazonaws.com:443".
+
+            If the `kms_provider` is "azure" it is required and has the
+            following fields::
+
+              - `keyVaultEndpoint` (string): Required. Host with optional
+                 port, e.g. "example.vault.azure.net".
+              - `keyName` (string): Required. Key name in the key vault.
+              - `keyVersion` (string): Optional. Version of the key to use.
+
+            If the `kms_provider` is "gcp" it is required and has the
+            following fields::
+
+              - `projectId` (string): Required. The Google cloud project ID.
+              - `location` (string): Required. The GCP location, e.g. "us-east1".
+              - `keyRing` (string): Required. Name of the key ring that contains
+                the key to use.
+              - `keyName` (string): Required. Name of the key to use.
+              - `keyVersion` (string): Optional. Version of the key to use.
+              - `endpoint` (string): Optional. Host with optional port.
+                Defaults to "cloudkms.googleapis.com".
 
           - `key_alt_names` (optional): An optional list of string alternate
             names used to reference a key. If a key is created with alternate
