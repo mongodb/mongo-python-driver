@@ -817,6 +817,7 @@ tasks:
 
     - name: "release"
       tags: ["release"]
+      exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       git_tag_only: false
       commands:
         - command: shell.exec
