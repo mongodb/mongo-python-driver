@@ -128,29 +128,26 @@ MONGODB-X509
 
 The MONGODB-X509 mechanism authenticates a username derived from the
 distinguished subject name of the X.509 certificate presented by the driver
-during SSL negotiation. This authentication method requires the use of SSL
-connections with certificate validation and is available in MongoDB 2.6
-and newer::
+during TLS/SSL negotiation. This authentication method requires the use of
+TLS/SSL connections with certificate validation and is available in
+MongoDB 2.6 and newer::
 
-  >>> import ssl
   >>> from pymongo import MongoClient
   >>> client = MongoClient('example.com',
   ...                      username="<X.509 derived username>"
   ...                      authMechanism="MONGODB-X509",
-  ...                      ssl=True,
-  ...                      ssl_certfile='/path/to/client.pem',
-  ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
-  ...                      ssl_ca_certs='/path/to/ca.pem')
+  ...                      tls=True,
+  ...                      tlsCertificateKeyFile='/path/to/client.pem',
+  ...                      tlsCAFile='/path/to/ca.pem')
 
 MONGODB-X509 authenticates against the $external virtual database, so you
 do not have to specify a database in the URI::
 
   >>> uri = "mongodb://<X.509 derived username>@example.com/?authMechanism=MONGODB-X509"
   >>> client = MongoClient(uri,
-  ...                      ssl=True,
-  ...                      ssl_certfile='/path/to/client.pem',
-  ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
-  ...                      ssl_ca_certs='/path/to/ca.pem')
+  ...                      tls=True,
+  ...                      tlsCertificateKeyFile='/path/to/client.pem',
+  ...                      tlsCAFile='/path/to/ca.pem')
   >>>
 
 .. versionchanged:: 3.4
@@ -242,17 +239,15 @@ These examples use the $external virtual database for LDAP support::
   >>>
 
 SASL PLAIN is a clear-text authentication mechanism. We **strongly** recommend
-that you connect to MongoDB using SSL with certificate validation when using
-the SASL PLAIN mechanism::
+that you connect to MongoDB using TLS/SSL with certificate validation when
+using the SASL PLAIN mechanism::
 
-  >>> import ssl
   >>> from pymongo import MongoClient
   >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN"
   >>> client = MongoClient(uri,
-  ...                      ssl=True,
-  ...                      ssl_certfile='/path/to/client.pem',
-  ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
-  ...                      ssl_ca_certs='/path/to/ca.pem')
+  ...                      tls=True,
+  ...                      tlsCertificateKeyFile='/path/to/client.pem',
+  ...                      tlsCAFile='/path/to/ca.pem')
   >>>
 
 .. _MONGODB-AWS:

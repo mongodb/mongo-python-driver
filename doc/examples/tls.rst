@@ -77,14 +77,14 @@ Basic configuration
 ...................
 
 In many cases connecting to MongoDB over TLS/SSL requires nothing more than
-passing ``ssl=True`` as a keyword argument to
+passing ``tls=True`` as a keyword argument to
 :class:`~pymongo.mongo_client.MongoClient`::
 
-  >>> client = pymongo.MongoClient('example.com', ssl=True)
+  >>> client = pymongo.MongoClient('example.com', tls=True)
 
-Or passing ``ssl=true`` in the URI::
+Or passing ``tls=true`` in the URI::
 
-  >>> client = pymongo.MongoClient('mongodb://example.com/?ssl=true')
+  >>> client = pymongo.MongoClient('mongodb://example.com/?tls=true')
 
 This configures PyMongo to connect to the server using TLS, verify the server's
 certificate and verify that the host you are attempting to connect to is listed
@@ -94,17 +94,17 @@ Certificate verification policy
 ...............................
 
 By default, PyMongo is configured to require a certificate from the server when
-TLS is enabled. This is configurable using the `ssl_cert_reqs` option. To
-disable this requirement pass ``ssl.CERT_NONE`` as a keyword parameter::
+TLS is enabled. This is configurable using the ``tlsAllowInvalidCertificates``
+option. To disable this requirement pass ``tlsAllowInvalidCertificates=True``
+as a keyword parameter::
 
-  >>> import ssl
   >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_cert_reqs=ssl.CERT_NONE)
+  ...                              tls=True,
+  ...                              tlsAllowInvalidCertificates=True)
 
 Or, in the URI::
 
-  >>> uri = 'mongodb://example.com/?ssl=true&ssl_cert_reqs=CERT_NONE'
+  >>> uri = 'mongodb://example.com/?tls=true&tlsAllowInvalidCertificates=true'
   >>> client = pymongo.MongoClient(uri)
 
 Specifying a CA file
@@ -113,32 +113,32 @@ Specifying a CA file
 In some cases you may want to configure PyMongo to use a specific set of CA
 certificates. This is most often the case when you are acting as your own
 certificate authority rather than using server certificates signed by a well
-known authority. The `ssl_ca_certs` option takes a path to a CA file. It can be
+known authority. The ``tlsCAFile`` option takes a path to a CA file. It can be
 passed as a keyword argument::
 
   >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_ca_certs='/path/to/ca.pem')
+  ...                              tls=True,
+  ...                              tlsCAFile='/path/to/ca.pem')
 
 Or, in the URI::
 
-  >>> uri = 'mongodb://example.com/?ssl=true&ssl_ca_certs=/path/to/ca.pem'
+  >>> uri = 'mongodb://example.com/?tls=true&tlsCAFile=/path/to/ca.pem'
   >>> client = pymongo.MongoClient(uri)
 
 Specifying a certificate revocation list
 ........................................
 
 Python 2.7.9+ (pypy 2.5.1+) and 3.4+ provide support for certificate revocation
-lists. The `ssl_crlfile` option takes a path to a CRL file. It can be passed as
-a keyword argument::
+lists. The ``tlsCRLFile`` option takes a path to a CRL file. It can be passed
+as a keyword argument::
 
   >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_crlfile='/path/to/crl.pem')
+  ...                              tls=True,
+  ...                              tlsCRLFile='/path/to/crl.pem')
 
 Or, in the URI::
 
-  >>> uri = 'mongodb://example.com/?ssl=true&ssl_crlfile=/path/to/crl.pem'
+  >>> uri = 'mongodb://example.com/?tls=true&tlsCRLFile=/path/to/crl.pem'
   >>> client = pymongo.MongoClient(uri)
 
 .. note:: Certificate revocation lists and :ref:`OCSP` cannot be used together.
@@ -147,28 +147,29 @@ Client certificates
 ...................
 
 PyMongo can be configured to present a client certificate using the
-`ssl_certfile` option::
+``tlsCertificateKeyFile`` option::
 
   >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_certfile='/path/to/client.pem')
+  ...                              tls=True,
+  ...                              tlsCertificateKeyFile='/path/to/client.pem')
 
 If the private key for the client certificate is stored in a separate file use
-the `ssl_keyfile` option::
+the ``ssl_keyfile`` option::
 
   >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_certfile='/path/to/client.pem',
+  ...                              tls=True,
+  ...                              tlsCertificateKeyFile='/path/to/client.pem',
   ...                              ssl_keyfile='/path/to/key.pem')
 
 Python 2.7.9+ (pypy 2.5.1+) and 3.3+ support providing a password or passphrase
-to decrypt encrypted private keys. Use the `ssl_pem_passphrase` option::
+to decrypt encrypted private keys. Use the ``tlsCertificateKeyFilePassword``
+option::
 
   >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_certfile='/path/to/client.pem',
+  ...                              tls=True,
+  ...                              tlsCertificateKeyFile='/path/to/client.pem',
   ...                              ssl_keyfile='/path/to/key.pem',
-  ...                              ssl_pem_passphrase=<passphrase>)
+  ...                              tlsCertificateKeyFilePassword=<passphrase>)
 
 
 These options can also be passed as part of the MongoDB URI.
