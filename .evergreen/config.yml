@@ -1588,7 +1588,7 @@ axes:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel72-zseries-test/master/latest/libmongocrypt.tar.gz
       - id: suse12-x86-64-test
         display_name: "SUSE 12 (x86_64)"
-        run_on: suse12-test
+        run_on: suse12-sp5-small
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/suse12-64/master/latest/libmongocrypt.tar.gz
