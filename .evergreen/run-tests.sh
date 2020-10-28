@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -o errexit  # Exit the script with error if any of the commands fail
 
 # Supported/used environment variables:
@@ -46,6 +46,9 @@ if [ "$SSL" != "nossl" ]; then
     export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
     export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
 fi
+
+# For createvirtualenv.
+. .evergreen/utils.sh
 
 if [ -z "$PYTHON_BINARY" ]; then
     VIRTUALENV=$(command -v virtualenv) || true
@@ -109,6 +112,7 @@ if [ -n "$TEST_PYOPENSSL" ]; then
         . pyopenssltest/bin/activate
     fi
     trap "deactivate; rm -rf pyopenssltest" EXIT HUP
+    PYTHON=python
 
     IS_PYTHON_2=$(python -c "import sys; sys.stdout.write('1' if sys.version_info < (3,) else '0')")
     if [ $IS_PYTHON_2 = "1" ]; then
@@ -125,6 +129,10 @@ if [ -n "$TEST_PYOPENSSL" ]; then
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
+    createvirtualenv $PYTHON venv-encryption
+    trap "deactivate; rm -rf venv-encryption" EXIT HUP
+    PYTHON=python
+
     if [ -z "$LIBMONGOCRYPT_URL" ]; then
         echo "Cannot test client side encryption without LIBMONGOCRYPT_URL!"
         exit 1
@@ -152,13 +160,13 @@ if [ -n "$TEST_ENCRYPTION" ]; then
         exit 1
     fi
 
-    git clone --branch master git@github.com:mongodb/libmongocrypt.git libmongocrypt_git
-    $PYTHON -m pip install --upgrade ./libmongocrypt_git/bindings/python
-    # TODO: use a virtualenv
-    trap "$PYTHON -m pip uninstall -y pymongocrypt" EXIT HUP
-    $PYTHON -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
-    $PYTHON -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
-    # PATH is set by PREPARE_SHELL.
+    # TODO: Test with 'pip install pymongocrypt'
+    git clone --branch master https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
+    python -m pip install --upgrade ./libmongocrypt_git/bindings/python
+    python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
+    python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
+    # PATH is updated by PREPARE_SHELL for access to mongocryptd.
+
 fi
 
 PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
