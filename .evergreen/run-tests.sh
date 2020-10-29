@@ -133,6 +133,10 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     trap "deactivate; rm -rf venv-encryption" EXIT HUP
     PYTHON=python
 
+    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+        $PYTHON -m pip install -U setuptools
+    fi
+
     if [ -z "$LIBMONGOCRYPT_URL" ]; then
         echo "Cannot test client side encryption without LIBMONGOCRYPT_URL!"
         exit 1
