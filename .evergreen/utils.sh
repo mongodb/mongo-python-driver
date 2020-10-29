@@ -4,7 +4,7 @@
 # createvirtualenv /path/to/python /output/path/for/venv
 # * param1: Python binary to use for the virtualenv
 # * param2: Path to the virtualenv to create
-function createvirtualenv {
+createvirtualenv () {
     PYTHON=$1
     VENVPATH=$2
     if $PYTHON -m virtualenv --version; then
@@ -28,7 +28,7 @@ function createvirtualenv {
 # * param1: Python binary to test
 # * param2: Path to the wheel or egg file to install
 # * param3 (optional): If set to a non-empty string, don't create a virtualenv. Used in manylinux containers.
-function testinstall {
+testinstall () {
     PYTHON=$1
     RELEASE=$2
     NO_VIRTUALENV=$3
