@@ -1126,6 +1126,7 @@ class AzureGCPEncryptionTestMixin(object):
             '.'.join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
             client_context.client,
             OPTS)
+        self.addCleanup(client_encryption.close)
 
         ciphertext = client_encryption.encrypt(
             'test',
@@ -1149,6 +1150,7 @@ class AzureGCPEncryptionTestMixin(object):
         client = rs_or_single_client(
             auto_encryption_opts=encryption_opts,
             event_listeners=[insert_listener])
+        self.addCleanup(client.close)
 
         coll = client.get_database(encrypted_db).get_collection(
             encrypted_coll, codec_options=OPTS,
