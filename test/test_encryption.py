@@ -20,6 +20,7 @@ import os
 import traceback
 import socket
 import sys
+import textwrap
 import uuid
 
 sys.path[0:0] = [""]
@@ -30,6 +31,7 @@ from bson.binary import (Binary,
                          STANDARD,
                          UUID_SUBTYPE)
 from bson.codec_options import CodecOptions
+from bson.py3compat import _unicode
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
@@ -52,6 +54,7 @@ from test import unittest, IntegrationTest, PyMongoTestCase, client_context
 from test.utils import (TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
+                        WhiteListEventListener,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
@@ -1103,6 +1106,133 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, 'parse error'):
             self.client_encryption.create_data_key(
                 'aws', master_key=master_key)
+
+
+class AzureGCPEncryptionTestMixin(object):
+    DEK = None
+    KMS_PROVIDER_MAP = None
+    KEYVAULT_DB = 'keyvault'
+    KEYVAULT_COLL = 'datakeys'
+
+    def setUp(self):
+        keyvault = self.client.get_database(
+            self.KEYVAULT_DB).get_collection(
+            self.KEYVAULT_COLL)
+        create_key_vault(keyvault, self.DEK)
+
+    def _test_explicit(self, expectation):
+        client_encryption = ClientEncryption(
+            self.KMS_PROVIDER_MAP,
+            '.'.join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
+            client_context.client,
+            OPTS)
+        self.addCleanup(client_encryption.close)
+
+        ciphertext = client_encryption.encrypt(
+            'test',
+            algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=Binary.from_uuid(self.DEK['_id'], STANDARD))
+
+        self.assertEqual(bytes(ciphertext), base64.b64decode(expectation))
+        self.assertEqual(client_encryption.decrypt(ciphertext), 'test')
+
+    def _test_automatic(self, expectation_extjson, payload):
+        encrypted_db = "db"
+        encrypted_coll = "coll"
+        keyvault_namespace = '.'.join([self.KEYVAULT_DB, self.KEYVAULT_COLL])
+
+        encryption_opts = AutoEncryptionOpts(
+            self.KMS_PROVIDER_MAP,
+            keyvault_namespace,
+            schema_map=self.SCHEMA_MAP)
+
+        insert_listener = WhiteListEventListener('insert')
+        client = rs_or_single_client(
+            auto_encryption_opts=encryption_opts,
+            event_listeners=[insert_listener])
+        self.addCleanup(client.close)
+
+        coll = client.get_database(encrypted_db).get_collection(
+            encrypted_coll, codec_options=OPTS,
+            write_concern=WriteConcern("majority"))
+        coll.drop()
+
+        expected_document = json_util.loads(
+            expectation_extjson, json_options=JSON_OPTS)
+
+        coll.insert_one(payload)
+        event = insert_listener.results['started'][0]
+        inserted_doc = event.command['documents'][0]
+
+        for key, value in expected_document.items():
+            self.assertEqual(value, inserted_doc[key])
+
+        output_doc = coll.find_one({})
+        for key, value in payload.items():
+            self.assertEqual(output_doc[key], value)
+
+
+AZURE_CREDS = {
+    'tenantId': os.environ.get('FLE_AZURE_TENANTID', ''),
+    'clientId': os.environ.get('FLE_AZURE_CLIENTID', ''),
+    'clientSecret': os.environ.get('FLE_AZURE_CLIENTSECRET', '')}
+
+
+class TestAzureEncryption(AzureGCPEncryptionTestMixin,
+                          EncryptionIntegrationTest):
+    @classmethod
+    @unittest.skipUnless(any(AZURE_CREDS.values()),
+                         'Azure environment credentials are not set')
+    def setUpClass(cls):
+        cls.KMS_PROVIDER_MAP = {'azure': AZURE_CREDS}
+        cls.DEK = json_data(BASE, 'custom', 'azure-dek.json')
+        cls.SCHEMA_MAP = json_data(BASE, 'custom', 'azure-gcp-schema.json')
+        super(TestAzureEncryption, cls).setUpClass()
+
+    def test_explicit(self):
+        return self._test_explicit(
+            'AQLN1ERNY0XMhzj42i1hzlwC8/OSU9bHfaQRmmRF5l7d5ZpqJX13qF5zSyExo8N9c1b6uS/LoKrHNzcEMKNrkpi3jf2HiShTFRF0xi8AOD9yfw==')
+
+    def test_automatic(self):
+        expected_document_extjson = textwrap.dedent(""" 
+        {"secret_azure": {
+            "$binary": {
+                "base64": "AQLN1ERNY0XMhzj42i1hzlwC8/OSU9bHfaQRmmRF5l7d5ZpqJX13qF5zSyExo8N9c1b6uS/LoKrHNzcEMKNrkpi3jf2HiShTFRF0xi8AOD9yfw==",
+                "subType": "06"}
+        }}""")
+        return self._test_automatic(
+            expected_document_extjson, {"secret_azure": "test"})
+
+
+GCP_CREDS = {
+    'email': os.environ.get('FLE_GCP_EMAIL', ''),
+    'privateKey': _unicode(os.environ.get('FLE_GCP_PRIVATEKEY', ''))}
+
+
+class TestGCPEncryption(AzureGCPEncryptionTestMixin,
+                        EncryptionIntegrationTest):
+    @classmethod
+    @unittest.skipUnless(any(GCP_CREDS.values()),
+                         'GCP environment credentials are not set')
+    def setUpClass(cls):
+        cls.KMS_PROVIDER_MAP = {'gcp': GCP_CREDS}
+        cls.DEK = json_data(BASE, 'custom', 'gcp-dek.json')
+        cls.SCHEMA_MAP = json_data(BASE, 'custom', 'azure-gcp-schema.json')
+        super(TestGCPEncryption, cls).setUpClass()
+
+    def test_explicit(self):
+        return self._test_explicit(
+            'AaLFPEi8SURzjW5fDoeaPnoCGcOFAmFOPpn5584VPJJ8iXIgml3YDxMRZD9IWv5otyoft8fBzL1LsDEp0lTeB32cV1gOj0IYeAKHhGIleuHZtA==')
+
+    def test_automatic(self):
+        expected_document_extjson = textwrap.dedent(""" 
+        {"secret_gcp": {
+            "$binary": {
+                "base64": "AaLFPEi8SURzjW5fDoeaPnoCGcOFAmFOPpn5584VPJJ8iXIgml3YDxMRZD9IWv5otyoft8fBzL1LsDEp0lTeB32cV1gOj0IYeAKHhGIleuHZtA==",
+                "subType": "06"}
+        }}""")
+        return self._test_automatic(
+            expected_document_extjson, {"secret_gcp": "test"})
 
 
 if __name__ == "__main__":

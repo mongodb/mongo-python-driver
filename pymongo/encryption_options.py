@@ -59,9 +59,21 @@ class AutoEncryptionOpts(object):
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
                 These are the AWS access key ID and AWS secret access key used
                 to generate KMS messages.
-              - `local`: Map with "key" as a 96-byte array or string. "key"
-                is the master key used to encrypt/decrypt data keys. This key
-                should be generated and stored as securely as possible.
+              - `azure`: Map with "tenantId", "clientId", and "clientSecret" as
+                strings. Additionally, "identityPlatformEndpoint" may also be
+                specified as a string (defaults to 'login.microsoftonline.com').
+                These are the Azure Active Directory credentials used to
+                generate Azure Key Vault messages.
+              - `gcp`: Map with "email" as a string and "privateKey"
+                as `bytes` or a base64 encoded string (unicode on Python 2).
+                Additionally, "endpoint" may also be specified as a string
+                (defaults to 'oauth2.googleapis.com'). These are the
+                credentials used to generate Google Cloud KMS messages.
+              - `local`: Map with "key" as `bytes` (96 bytes in length) or
+                a base64 encoded string (unicode on Python 2) which decodes
+                to 96 bytes. "key" is the master key used to encrypt/decrypt
+                data keys. This key should be generated and stored as securely
+                as possible.
 
           - `key_vault_namespace`: The namespace for the key vault collection.
             The key vault collection contains all data keys used for encryption
