@@ -31,6 +31,7 @@ from bson.binary import (Binary,
                          STANDARD,
                          UUID_SUBTYPE)
 from bson.codec_options import CodecOptions
+from bson.py3compat import _unicode
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
@@ -1203,7 +1204,7 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin,
 
 GCP_CREDS = {
     'email': os.environ.get('FLE_GCP_EMAIL', ''),
-    'privateKey': os.environ.get('FLE_GCP_PRIVATEKEY', '')}
+    'privateKey': _unicode(os.environ.get('FLE_GCP_PRIVATEKEY', ''))}
 
 
 class TestGCPEncryption(AzureGCPEncryptionTestMixin,
