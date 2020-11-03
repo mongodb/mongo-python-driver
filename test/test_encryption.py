@@ -666,15 +666,10 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
     def run_test(self, provider_name):
         # Create data key.
         master_key = self.MASTER_KEYS[provider_name]
-        if master_key is not None:
-            datakey_id = self.client_encryption.create_data_key(
-                provider_name, master_key=master_key,
-                key_alt_names=['%s_altname' % (provider_name,)])
-        else:
-            datakey_id = self.client_encryption.create_data_key(
-                provider_name, key_alt_names=['%s_altname' % (provider_name,)])
+        datakey_id = self.client_encryption.create_data_key(
+            provider_name, master_key=master_key,
+            key_alt_names=['%s_altname' % (provider_name,)])
         self.assertBinaryUUID(datakey_id)
-
         cmd = self.listener.results['started'][-1]
         self.assertEqual('insert', cmd.command_name)
         self.assertEqual({'w': 'majority'}, cmd.command.get('writeConcern'))
@@ -1074,12 +1069,12 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
     """Prose tests for creating data keys with a custom endpoint."""
 
     @classmethod
-    @unittest.skipUnless(all(AWS_CREDS.values()),
-                         'AWS environment credentials are not set')
+    @unittest.skipUnless(any([all(AWS_CREDS.values()),
+                              all(AZURE_CREDS.values()),
+                              all(GCP_CREDS.values())]),
+                         'No environment credentials are set')
     def setUpClass(cls):
         super(TestCustomEndpoint, cls).setUpClass()
-        cls.client_encryption = ClientEncryption(
-            {'aws': AWS_CREDS}, 'keyvault.datakeys', client_context.client, OPTS)
 
     def setUp(self):
         kms_providers = {'aws': AWS_CREDS,
@@ -1112,6 +1107,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             key_id=data_key_id)
         self.assertEqual('test', self.client_encryption.decrypt(encrypted))
 
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
     def test_01_aws_region_key(self):
         self.run_test_expected_success(
             'aws',
@@ -1119,6 +1116,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
              "key": ("arn:aws:kms:us-east-1:579766882180:key/"
                      "89fcc2c4-08b0-4bd9-9f25-e30687b580d0")})
 
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
     def test_02_aws_region_key_endpoint(self):
         self.run_test_expected_success(
             'aws',
@@ -1127,6 +1126,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
                      "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
              "endpoint": "kms.us-east-1.amazonaws.com"})
 
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
     def test_03_aws_region_key_endpoint_port(self):
         self.run_test_expected_success(
             'aws',
@@ -1135,7 +1136,9 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
                      "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
              "endpoint": "kms.us-east-1.amazonaws.com:443"})
 
-    def test_04_endpoint_invalid_port(self):
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
+    def test_04_aws_endpoint_invalid_port(self):
         master_key = {
             "region": "us-east-1",
             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
@@ -1147,7 +1150,9 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
                 'aws', master_key=master_key)
         self.assertIsInstance(ctx.exception.cause, socket.error)
 
-    def test_05_endpoint_wrong_region(self):
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
+    def test_05_aws_endpoint_wrong_region(self):
         master_key = {
             "region": "us-east-1",
             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
@@ -1162,7 +1167,9 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption.create_data_key(
                 'aws', master_key=master_key)
 
-    def test_06_endpoint_invalid_host(self):
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
+    def test_06_aws_endpoint_invalid_host(self):
         master_key = {
             "region": "us-east-1",
             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
@@ -1173,6 +1180,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption.create_data_key(
                 'aws', master_key=master_key)
 
+    @unittest.skipUnless(all(AZURE_CREDS.values()),
+                         'Azure environment credentials are not set')
     def test_07_azure(self):
         master_key = {'keyVaultEndpoint': 'key-vault-csfle.vault.azure.net',
                       'keyName': 'key-name-csfle'}
@@ -1184,6 +1193,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption_invalid.create_data_key(
                 'azure', master_key=master_key)
 
+    @unittest.skipUnless(all(GCP_CREDS.values()),
+                         'GCP environment credentials are not set')
     def test_08_gcp_valid_endpoint(self):
         master_key = {
             "projectId": "devprod-drivers",
@@ -1199,6 +1210,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption_invalid.create_data_key(
                 'gcp', master_key=master_key)
 
+    @unittest.skipUnless(all(GCP_CREDS.values()),
+                         'GCP environment credentials are not set')
     def test_09_gcp_invalid_endpoint(self):
         master_key = {
             "projectId": "devprod-drivers",
@@ -1281,7 +1294,7 @@ class AzureGCPEncryptionTestMixin(object):
 class TestAzureEncryption(AzureGCPEncryptionTestMixin,
                           EncryptionIntegrationTest):
     @classmethod
-    @unittest.skipUnless(any(AZURE_CREDS.values()),
+    @unittest.skipUnless(all(AZURE_CREDS.values()),
                          'Azure environment credentials are not set')
     def setUpClass(cls):
         cls.KMS_PROVIDER_MAP = {'azure': AZURE_CREDS}
@@ -1307,7 +1320,7 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin,
 class TestGCPEncryption(AzureGCPEncryptionTestMixin,
                         EncryptionIntegrationTest):
     @classmethod
-    @unittest.skipUnless(any(GCP_CREDS.values()),
+    @unittest.skipUnless(all(GCP_CREDS.values()),
                          'GCP environment credentials are not set')
     def setUpClass(cls):
         cls.KMS_PROVIDER_MAP = {'gcp': GCP_CREDS}
