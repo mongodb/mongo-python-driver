@@ -1070,7 +1070,6 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         self.assertIn('object to insert too large', err['errmsg'])
 
 
-
 class TestCustomEndpoint(EncryptionIntegrationTest):
     """Prose tests for creating data keys with a custom endpoint."""
 
@@ -1082,38 +1081,61 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         cls.client_encryption = ClientEncryption(
             {'aws': AWS_CREDS}, 'keyvault.datakeys', client_context.client, OPTS)
 
-    def _test_create_data_key(self, master_key):
+    def setUp(self):
+        kms_providers = {'aws': AWS_CREDS,
+                         'azure': AZURE_CREDS,
+                         'gcp': GCP_CREDS}
+        self.client_encryption = ClientEncryption(
+            kms_providers=kms_providers,
+            key_vault_namespace='keyvault.datakeys',
+            key_vault_client=client_context.client,
+            codec_options=OPTS)
+
+        kms_providers_invalid = copy.deepcopy(kms_providers)
+        kms_providers_invalid['azure']['identityPlatformEndpoint'] = 'example.com:443'
+        kms_providers_invalid['gcp']['endpoint'] = 'example.com:443'
+        self.client_encryption_invalid = ClientEncryption(
+            kms_providers=kms_providers_invalid,
+            key_vault_namespace='keyvault.datakeys',
+            key_vault_client=client_context.client,
+            codec_options=OPTS)
+
+    def tearDown(self):
+        self.client_encryption.close()
+        self.client_encryption_invalid.close()
+
+    def run_test_expected_success(self, provider_name, master_key):
         data_key_id = self.client_encryption.create_data_key(
-            'aws', master_key=master_key)
+            provider_name, master_key=master_key)
         encrypted = self.client_encryption.encrypt(
             'test', Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
             key_id=data_key_id)
         self.assertEqual('test', self.client_encryption.decrypt(encrypted))
 
-    def test_02_aws_region_key(self):
-        self._test_create_data_key({
-            "region": "us-east-1",
-            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
-                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0")
-        })
+    def test_01_aws_region_key(self):
+        self.run_test_expected_success(
+            'aws',
+            {"region": "us-east-1",
+             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                     "89fcc2c4-08b0-4bd9-9f25-e30687b580d0")})
 
-    def test_03_aws_region_key_endpoint(self):
-        self._test_create_data_key({
-            "region": "us-east-1",
-            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
-                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
-            "endpoint": "kms.us-east-1.amazonaws.com"
-        })
+    def test_02_aws_region_key_endpoint(self):
+        self.run_test_expected_success(
+            'aws',
+            {"region": "us-east-1",
+             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                     "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+             "endpoint": "kms.us-east-1.amazonaws.com"})
 
-    def test_04_aws_region_key_endpoint_port(self):
-        self._test_create_data_key({
-            "region": "us-east-1",
-            "key": ("arn:aws:kms:us-east-1:579766882180:key/"
-                    "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
-            "endpoint": "kms.us-east-1.amazonaws.com:443"
-        })
+    def test_03_aws_region_key_endpoint_port(self):
+        self.run_test_expected_success(
+            'aws',
+            {"region": "us-east-1",
+             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
+                     "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+             "endpoint": "kms.us-east-1.amazonaws.com:443"})
 
-    def test_05_endpoint_invalid_port(self):
+    def test_04_endpoint_invalid_port(self):
         master_key = {
             "region": "us-east-1",
             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
@@ -1140,7 +1162,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption.create_data_key(
                 'aws', master_key=master_key)
 
-    def test_05_endpoint_invalid_host(self):
+    def test_06_endpoint_invalid_host(self):
         master_key = {
             "region": "us-east-1",
             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
@@ -1150,6 +1172,46 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, 'parse error'):
             self.client_encryption.create_data_key(
                 'aws', master_key=master_key)
+
+    def test_07_azure(self):
+        master_key = {'keyVaultEndpoint': 'key-vault-csfle.vault.azure.net',
+                      'keyName': 'key-name-csfle'}
+        self.run_test_expected_success('azure', master_key)
+
+        # The full error should be something like:
+        # "Invalid JSON in KMS response. HTTP status=404. Error: Got parse error at '<', position 0: 'SPECIAL_EXPECTED'"
+        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+            self.client_encryption_invalid.create_data_key(
+                'azure', master_key=master_key)
+
+    def test_08_gcp_valid_endpoint(self):
+        master_key = {
+            "projectId": "devprod-drivers",
+            "location": "global",
+            "keyRing": "key-ring-csfle",
+            "keyName": "key-name-csfle",
+            "endpoint": "cloudkms.googleapis.com:443"}
+        self.run_test_expected_success('gcp', master_key)
+
+        # The full error should be something like:
+        # "Invalid JSON in KMS response. HTTP status=404. Error: Got parse error at '<', position 0: 'SPECIAL_EXPECTED'"
+        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+            self.client_encryption_invalid.create_data_key(
+                'gcp', master_key=master_key)
+
+    def test_09_gcp_invalid_endpoint(self):
+        master_key = {
+            "projectId": "devprod-drivers",
+            "location": "global",
+            "keyRing": "key-ring-csfle",
+            "keyName": "key-name-csfle",
+            "endpoint": "example.com:443"}
+
+        # The full error should be something like:
+        # "Invalid KMS response, no access_token returned. HTTP status=200"
+        with self.assertRaisesRegex(EncryptionError, "Invalid KMS response"):
+            self.client_encryption.create_data_key(
+                'gcp', master_key=master_key)
 
 
 class AzureGCPEncryptionTestMixin(object):
