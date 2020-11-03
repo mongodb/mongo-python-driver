@@ -572,6 +572,10 @@ LOCAL_KEY_ID = Binary(
     base64.b64decode(b'LOCALAAAAAAAAAAAAAAAAA=='), UUID_SUBTYPE)
 AWS_KEY_ID = Binary(
     base64.b64decode(b'AWSAAAAAAAAAAAAAAAAAAA=='), UUID_SUBTYPE)
+AZURE_KEY_ID = Binary(
+    base64.b64decode(b'AZUREAAAAAAAAAAAAAAAAA=='), UUID_SUBTYPE)
+GCP_KEY_ID = Binary(
+    base64.b64decode(b'GCPAAAAAAAAAAAAAAAAAAA=='), UUID_SUBTYPE)
 
 
 def create_with_schema(coll, json_schema):
@@ -820,7 +824,10 @@ class TestCorpus(EncryptionIntegrationTest):
 
     @staticmethod
     def kms_providers():
-        return {'aws': AWS_CREDS, 'local': {'key': LOCAL_MASTER_KEY}}
+        return {'aws': AWS_CREDS,
+                'azure': AZURE_CREDS,
+                'gcp': GCP_CREDS,
+                'local': {'key': LOCAL_MASTER_KEY}}
 
     @staticmethod
     def fix_up_schema(json_schema):
@@ -856,7 +863,9 @@ class TestCorpus(EncryptionIntegrationTest):
         vault = create_key_vault(
             self.client.keyvault.datakeys,
             json_data('corpus', 'corpus-key-local.json'),
-            json_data('corpus', 'corpus-key-aws.json'))
+            json_data('corpus', 'corpus-key-aws.json'),
+            json_data('corpus', 'corpus-key-azure.json'),
+            json_data('corpus', 'corpus-key-gcp.json'))
         self.addCleanup(vault.drop)
 
         client_encrypted = rs_or_single_client(
@@ -872,7 +881,8 @@ class TestCorpus(EncryptionIntegrationTest):
         corpus_copied = SON()
         for key, value in corpus.items():
             corpus_copied[key] = copy.deepcopy(value)
-            if key in ('_id', 'altname_aws', 'altname_local'):
+            if key in ('_id', 'altname_aws', 'altname_azure', 'altname_gcp',
+                       'altname_local'):
                 continue
             if value['method'] == 'auto':
                 continue
@@ -880,12 +890,16 @@ class TestCorpus(EncryptionIntegrationTest):
                 identifier = value['identifier']
                 self.assertIn(identifier, ('id', 'altname'))
                 kms = value['kms']
-                self.assertIn(kms, ('local', 'aws'))
+                self.assertIn(kms, ('local', 'aws', 'azure', 'gcp'))
                 if identifier == 'id':
                     if kms == 'local':
                         kwargs = dict(key_id=LOCAL_KEY_ID)
-                    else:
+                    elif kms == 'aws':
                         kwargs = dict(key_id=AWS_KEY_ID)
+                    elif kms == 'azure':
+                        kwargs = dict(key_id=AZURE_KEY_ID)
+                    else:
+                        kwargs = dict(key_id=GCP_KEY_ID)
                 else:
                     kwargs = dict(key_alt_name=kms)
 
@@ -917,7 +931,8 @@ class TestCorpus(EncryptionIntegrationTest):
             'corpus', 'corpus-encrypted.json'), corpus)
         corpus_encrypted_actual = coll.find_one()
         for key, value in corpus_encrypted_actual.items():
-            if key in ('_id', 'altname_aws', 'altname_local'):
+            if key in ('_id', 'altname_aws', 'altname_azure',
+                       'altname_gcp', 'altname_local'):
                 continue
 
             if value['algo'] == 'det':
