@@ -443,11 +443,19 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
 
 # Spec tests
-
 AWS_CREDS = {
     'accessKeyId': os.environ.get('FLE_AWS_KEY', ''),
     'secretAccessKey': os.environ.get('FLE_AWS_SECRET', '')
 }
+
+AZURE_CREDS = {
+    'tenantId': os.environ.get('FLE_AZURE_TENANTID', ''),
+    'clientId': os.environ.get('FLE_AZURE_CLIENTID', ''),
+    'clientSecret': os.environ.get('FLE_AZURE_CLIENTSECRET', '')}
+
+GCP_CREDS = {
+    'email': os.environ.get('FLE_GCP_EMAIL', ''),
+    'privateKey': _unicode(os.environ.get('FLE_GCP_PRIVATEKEY', ''))}
 
 
 class TestSpec(SpecRunner):
@@ -466,6 +474,14 @@ class TestSpec(SpecRunner):
             kms_providers['aws'] = AWS_CREDS
             if not any(AWS_CREDS.values()):
                 self.skipTest('AWS environment credentials are not set')
+        if 'azure' in kms_providers:
+            kms_providers['azure'] = AZURE_CREDS
+            if not any(AZURE_CREDS.values()):
+                self.skipTest('Azure environment credentials are not set')
+        if 'gcp' in kms_providers:
+            kms_providers['gcp'] = GCP_CREDS
+            if not any(AZURE_CREDS.values()):
+                self.skipTest('GCP environment credentials are not set')
         if 'key_vault_namespace' not in opts:
             opts['key_vault_namespace'] = 'keyvault.datakeys'
         opts = dict(opts)
@@ -1172,12 +1188,6 @@ class AzureGCPEncryptionTestMixin(object):
             self.assertEqual(output_doc[key], value)
 
 
-AZURE_CREDS = {
-    'tenantId': os.environ.get('FLE_AZURE_TENANTID', ''),
-    'clientId': os.environ.get('FLE_AZURE_CLIENTID', ''),
-    'clientSecret': os.environ.get('FLE_AZURE_CLIENTSECRET', '')}
-
-
 class TestAzureEncryption(AzureGCPEncryptionTestMixin,
                           EncryptionIntegrationTest):
     @classmethod
@@ -1202,11 +1212,6 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin,
         }}""")
         return self._test_automatic(
             expected_document_extjson, {"secret_azure": "test"})
-
-
-GCP_CREDS = {
-    'email': os.environ.get('FLE_GCP_EMAIL', ''),
-    'privateKey': _unicode(os.environ.get('FLE_GCP_PRIVATEKEY', ''))}
 
 
 class TestGCPEncryption(AzureGCPEncryptionTestMixin,
