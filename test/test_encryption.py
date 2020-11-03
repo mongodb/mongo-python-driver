@@ -594,120 +594,133 @@ def create_key_vault(vault, *data_keys):
 
 class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
+    KMS_PROVIDERS = {'aws': AWS_CREDS,
+                     'azure': AZURE_CREDS,
+                     'gcp': GCP_CREDS,
+                     'local': {'key': LOCAL_MASTER_KEY}}
+
+    MASTER_KEYS = {
+        'aws': {
+            'region': 'us-east-1',
+            'key': 'arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-'
+                   '4bd9-9f25-e30687b580d0'},
+        'azure': {
+            'keyVaultEndpoint': 'key-vault-csfle.vault.azure.net',
+            'keyName': 'key-name-csfle'},
+        'gcp': {
+            'projectId': 'devprod-drivers',
+            'location': 'global',
+            'keyRing': 'key-ring-csfle',
+            'keyName': 'key-name-csfle'},
+        'local': None
+    }
+
     @classmethod
-    @unittest.skipUnless(all(AWS_CREDS.values()),
-                         'AWS environment credentials are not set')
+    @unittest.skipUnless(any([all(AWS_CREDS.values()),
+                              all(AZURE_CREDS.values()),
+                              all(GCP_CREDS.values())]),
+                         'No environment credentials are set')
     def setUpClass(cls):
         super(TestDataKeyDoubleEncryption, cls).setUpClass()
-
-    @staticmethod
-    def kms_providers():
-        return {'aws': AWS_CREDS, 'local': {'key': LOCAL_MASTER_KEY}}
-
-    def test_data_key(self):
-        listener = OvertCommandListener()
-        client = rs_or_single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
-        client.db.coll.drop()
-        vault = create_key_vault(client.keyvault.datakeys)
-        self.addCleanup(vault.drop)
+        cls.listener = OvertCommandListener()
+        cls.client = rs_or_single_client(event_listeners=[cls.listener])
+        cls.client.db.coll.drop()
+        cls.vault = create_key_vault(cls.client.keyvault.datakeys)
 
         # Configure the encrypted field via the local schema_map option.
         schemas = {
-          "db.coll": {
-            "bsonType": "object",
-            "properties": {
-              "encrypted_placeholder": {
-                "encrypt": {
-                  "keyId": "/placeholder",
-                  "bsonType": "string",
-                  "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
+            "db.coll": {
+                "bsonType": "object",
+                "properties": {
+                    "encrypted_placeholder": {
+                        "encrypt": {
+                            "keyId": "/placeholder",
+                            "bsonType": "string",
+                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
+                        }
+                    }
                 }
-              }
             }
-          }
         }
         opts = AutoEncryptionOpts(
-            self.kms_providers(), 'keyvault.datakeys', schema_map=schemas)
-        client_encrypted = rs_or_single_client(
+            cls.KMS_PROVIDERS, 'keyvault.datakeys', schema_map=schemas)
+        cls.client_encrypted = rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation='standard')
-        self.addCleanup(client_encrypted.close)
+        cls.client_encryption = ClientEncryption(
+            cls.KMS_PROVIDERS, 'keyvault.datakeys', cls.client, OPTS)
 
-        client_encryption = ClientEncryption(
-            self.kms_providers(), 'keyvault.datakeys', client, OPTS)
-        self.addCleanup(client_encryption.close)
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.close()
+        cls.vault.drop()
+        cls.client_encrypted.close()
+        cls.client_encryption.close()
 
-        # Local create data key.
-        listener.reset()
-        local_datakey_id = client_encryption.create_data_key(
-            'local', key_alt_names=['local_altname'])
-        self.assertBinaryUUID(local_datakey_id)
-        cmd = listener.results['started'][-1]
+    def setUp(self):
+        self.listener.reset()
+
+    def run_test(self, provider_name):
+        # Create data key.
+        master_key = self.MASTER_KEYS[provider_name]
+        if master_key is not None:
+            datakey_id = self.client_encryption.create_data_key(
+                provider_name, master_key=master_key,
+                key_alt_names=['%s_altname' % (provider_name,)])
+        else:
+            datakey_id = self.client_encryption.create_data_key(
+                provider_name, key_alt_names=['%s_altname' % (provider_name,)])
+        self.assertBinaryUUID(datakey_id)
+
+        cmd = self.listener.results['started'][-1]
         self.assertEqual('insert', cmd.command_name)
         self.assertEqual({'w': 'majority'}, cmd.command.get('writeConcern'))
-        docs = list(vault.find({'_id': local_datakey_id}))
+        docs = list(self.vault.find({'_id': datakey_id}))
         self.assertEqual(len(docs), 1)
-        self.assertEqual(docs[0]['masterKey']['provider'], 'local')
+        self.assertEqual(docs[0]['masterKey']['provider'], provider_name)
 
-        # Local encrypt by key_id.
-        local_encrypted = client_encryption.encrypt(
-            'hello local',
+        # Encrypt by key_id.
+        encrypted = self.client_encryption.encrypt(
+            'hello %s' % (provider_name,),
             Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-            key_id=local_datakey_id)
-        self.assertEncrypted(local_encrypted)
-        client_encrypted.db.coll.insert_one(
-            {'_id': 'local', 'value': local_encrypted})
-        doc_decrypted = client_encrypted.db.coll.find_one({'_id': 'local'})
-        self.assertEqual(doc_decrypted['value'], 'hello local')
+            key_id=datakey_id)
+        self.assertEncrypted(encrypted)
+        self.client_encrypted.db.coll.insert_one(
+            {'_id': provider_name, 'value': encrypted})
+        doc_decrypted = self.client_encrypted.db.coll.find_one(
+            {'_id': provider_name})
+        self.assertEqual(doc_decrypted['value'], 'hello %s' % (provider_name,))
 
-        # Local encrypt by key_alt_name.
-        local_encrypted_altname = client_encryption.encrypt(
-            'hello local',
+        # Encrypt by key_alt_name.
+        encrypted_altname = self.client_encryption.encrypt(
+            'hello %s' % (provider_name,),
             Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-            key_alt_name='local_altname')
-        self.assertEqual(local_encrypted_altname, local_encrypted)
-
-        # AWS create data key.
-        listener.reset()
-        master_key = {
-            'region': 'us-east-1',
-            'key': 'arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-'
-                   '9f25-e30687b580d0'
-        }
-        aws_datakey_id = client_encryption.create_data_key(
-            'aws', master_key=master_key, key_alt_names=['aws_altname'])
-        self.assertBinaryUUID(aws_datakey_id)
-        cmd = listener.results['started'][-1]
-        self.assertEqual('insert', cmd.command_name)
-        self.assertEqual({'w': 'majority'}, cmd.command.get('writeConcern'))
-        docs = list(vault.find({'_id': aws_datakey_id}))
-        self.assertEqual(len(docs), 1)
-        self.assertEqual(docs[0]['masterKey']['provider'], 'aws')
-
-        # AWS encrypt by key_id.
-        aws_encrypted = client_encryption.encrypt(
-            'hello aws',
-            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-            key_id=aws_datakey_id)
-        self.assertEncrypted(aws_encrypted)
-        client_encrypted.db.coll.insert_one(
-            {'_id': 'aws', 'value': aws_encrypted})
-        doc_decrypted = client_encrypted.db.coll.find_one({'_id': 'aws'})
-        self.assertEqual(doc_decrypted['value'], 'hello aws')
-
-        # AWS encrypt by key_alt_name.
-        aws_encrypted_altname = client_encryption.encrypt(
-            'hello aws',
-            Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-            key_alt_name='aws_altname')
-        self.assertEqual(aws_encrypted_altname, aws_encrypted)
+            key_alt_name='%s_altname' % (provider_name,))
+        self.assertEqual(encrypted_altname, encrypted)
 
         # Explicitly encrypting an auto encrypted field.
         msg = (r'Cannot encrypt element of type binData because schema '
                r'requires that type is one of: \[ string \]')
         with self.assertRaisesRegex(EncryptionError, msg):
-            client_encrypted.db.coll.insert_one(
-                {'encrypted_placeholder': local_encrypted})
+            self.client_encrypted.db.coll.insert_one(
+                {'encrypted_placeholder': encrypted})
+
+    def test_data_key_local(self):
+        self.run_test('local')
+
+    @unittest.skipUnless(all(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
+    def test_data_key_aws(self):
+        self.run_test('aws')
+
+    @unittest.skipUnless(all(AZURE_CREDS.values()),
+                         'Azure environment credentials are not set')
+    def test_data_key_azure(self):
+        self.run_test('azure')
+
+    @unittest.skipUnless(all(GCP_CREDS.values()),
+                         'GCP environment credentials are not set')
+    def test_data_key_gcp(self):
+        self.run_test('gcp')
 
 
 class TestExternalKeyVault(EncryptionIntegrationTest):
