@@ -1145,12 +1145,12 @@ class AzureGCPEncryptionTestMixin(object):
         self.addCleanup(client_encryption.close)
 
         ciphertext = client_encryption.encrypt(
-            'test',
+            'string0',
             algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
             key_id=Binary.from_uuid(self.DEK['_id'], STANDARD))
 
         self.assertEqual(bytes(ciphertext), base64.b64decode(expectation))
-        self.assertEqual(client_encryption.decrypt(ciphertext), 'test')
+        self.assertEqual(client_encryption.decrypt(ciphertext), 'string0')
 
     def _test_automatic(self, expectation_extjson, payload):
         encrypted_db = "db"
@@ -1201,17 +1201,17 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin,
 
     def test_explicit(self):
         return self._test_explicit(
-            'AQLN1ERNY0XMhzj42i1hzlwC8/OSU9bHfaQRmmRF5l7d5ZpqJX13qF5zSyExo8N9c1b6uS/LoKrHNzcEMKNrkpi3jf2HiShTFRF0xi8AOD9yfw==')
+            'AQGVERPgAAAAAAAAAAAAAAAC5DbBSwPwfSlBrDtRuglvNvCXD1KzDuCKY2P+4bRFtHDjpTOE2XuytPAUaAbXf1orsPq59PVZmsbTZbt2CB8qaQ==')
 
     def test_automatic(self):
         expected_document_extjson = textwrap.dedent(""" 
         {"secret_azure": {
             "$binary": {
-                "base64": "AQLN1ERNY0XMhzj42i1hzlwC8/OSU9bHfaQRmmRF5l7d5ZpqJX13qF5zSyExo8N9c1b6uS/LoKrHNzcEMKNrkpi3jf2HiShTFRF0xi8AOD9yfw==",
+                "base64": "AQGVERPgAAAAAAAAAAAAAAAC5DbBSwPwfSlBrDtRuglvNvCXD1KzDuCKY2P+4bRFtHDjpTOE2XuytPAUaAbXf1orsPq59PVZmsbTZbt2CB8qaQ==",
                 "subType": "06"}
         }}""")
         return self._test_automatic(
-            expected_document_extjson, {"secret_azure": "test"})
+            expected_document_extjson, {"secret_azure": "string0"})
 
 
 class TestGCPEncryption(AzureGCPEncryptionTestMixin,
@@ -1227,17 +1227,17 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin,
 
     def test_explicit(self):
         return self._test_explicit(
-            'AaLFPEi8SURzjW5fDoeaPnoCGcOFAmFOPpn5584VPJJ8iXIgml3YDxMRZD9IWv5otyoft8fBzL1LsDEp0lTeB32cV1gOj0IYeAKHhGIleuHZtA==')
+            'ARgj/gAAAAAAAAAAAAAAAAACwFd+Y5Ojw45GUXNvbcIpN9YkRdoHDHkR4kssdn0tIMKlDQOLFkWFY9X07IRlXsxPD8DcTiKnl6XINK28vhcGlg==')
 
     def test_automatic(self):
         expected_document_extjson = textwrap.dedent(""" 
         {"secret_gcp": {
             "$binary": {
-                "base64": "AaLFPEi8SURzjW5fDoeaPnoCGcOFAmFOPpn5584VPJJ8iXIgml3YDxMRZD9IWv5otyoft8fBzL1LsDEp0lTeB32cV1gOj0IYeAKHhGIleuHZtA==",
+                "base64": "ARgj/gAAAAAAAAAAAAAAAAACwFd+Y5Ojw45GUXNvbcIpN9YkRdoHDHkR4kssdn0tIMKlDQOLFkWFY9X07IRlXsxPD8DcTiKnl6XINK28vhcGlg==",
                 "subType": "06"}
         }}""")
         return self._test_automatic(
-            expected_document_extjson, {"secret_gcp": "test"})
+            expected_document_extjson, {"secret_gcp": "string0"})
 
 
 if __name__ == "__main__":
