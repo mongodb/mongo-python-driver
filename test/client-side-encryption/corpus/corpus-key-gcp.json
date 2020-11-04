@@ -1,7 +1,7 @@
 {
     "_id": {
         "$binary": {
-            "base64": "GCP+AAAAAAAAAAAAAAAAAA==",
+            "base64": "GCPAAAAAAAAAAAAAAAAAAA==",
             "subType": "04"
         }
     },
@@ -31,5 +31,5 @@
         "keyRing": "key-ring-csfle",
         "keyName": "key-name-csfle"
     },
-    "keyAltNames": ["altname", "gcp_altname"]
+    "keyAltNames": ["gcp"]
 }

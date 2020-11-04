@@ -1,7 +1,7 @@
 {
     "_id": {
         "$binary": {
-            "base64": "AZURE+AAAAAAAAAAAAAAAA==",
+            "base64": "AZUREAAAAAAAAAAAAAAAAA==",
             "subType": "04"
         }
     },
@@ -29,5 +29,5 @@
         "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
         "keyName": "key-name-csfle"
     },
-    "keyAltNames": ["altname", "azure_altname"]
+    "keyAltNames": ["azure"]
 }
