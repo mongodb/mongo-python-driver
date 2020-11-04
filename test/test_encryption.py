@@ -655,8 +655,8 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
-        cls.client.close()
         cls.vault.drop()
+        cls.client.close()
         cls.client_encrypted.close()
         cls.client_encryption.close()
 
