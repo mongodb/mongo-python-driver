@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pickle
 import sys
 import traceback
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import (NotMasterError,
+from pymongo.errors import (BulkWriteError,
+                            EncryptionError,
+                            NotMasterError,
                             OperationFailure)
 from test import (PyMongoTestCase,
                   unittest)
@@ -67,6 +70,36 @@ class TestErrors(PyMongoTestCase):
                              {"errmsg": u'unicode \U0001f40d'})
         self._test_unicode_strs(exc)
 
+    def assertPyMongoErrorEqual(self, exc1, exc2):
+        self.assertEqual(exc1._message, exc2._message)
+        self.assertEqual(exc1._error_labels, exc2._error_labels)
+        self.assertEqual(exc1.args, exc2.args)
+        self.assertEqual(str(exc1), str(exc2))
+
+    def assertOperationFailureEqual(self, exc1, exc2):
+        self.assertPyMongoErrorEqual(exc1, exc2)
+        self.assertEqual(exc1.code, exc2.code)
+        self.assertEqual(exc1.details, exc2.details)
+        self.assertEqual(exc1._max_wire_version, exc2._max_wire_version)
+
+    def test_pickle_NotMasterError(self):
+        exc = NotMasterError("not master test", {"errmsg": "error"})
+        self.assertPyMongoErrorEqual(exc, pickle.loads(pickle.dumps(exc)))
+
+    def test_pickle_OperationFailure(self):
+        exc = OperationFailure('error', code=5, details={}, max_wire_version=7)
+        self.assertOperationFailureEqual(exc, pickle.loads(pickle.dumps(exc)))
+
+    def test_pickle_BulkWriteError(self):
+        exc = BulkWriteError({})
+        self.assertOperationFailureEqual(exc, pickle.loads(pickle.dumps(exc)))
+
+    def test_pickle_EncryptionError(self):
+        cause = OperationFailure('error', code=5, details={},
+                                 max_wire_version=7)
+        exc = EncryptionError(cause)
+        self.assertOperationFailureEqual(
+            cause, pickle.loads(pickle.dumps(exc)).cause)
 
 
 if __name__ == "__main__":
