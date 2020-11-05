@@ -450,6 +450,8 @@ class TestCollection(IntegrationTest):
         index_info = db.test.index_information()['loc_2d']
         self.assertEqual([('loc', '2d')], index_info['key'])
 
+    # geoSearch was deprecated in 4.4 and removed in 5.0
+    @client_context.require_version_max(4, 5)
     @client_context.require_no_mongos
     def test_index_haystack(self):
         db = self.db
