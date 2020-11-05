@@ -89,6 +89,9 @@ MAX_POOL_SIZE = 100
 # Default value for minPoolSize.
 MIN_POOL_SIZE = 0
 
+# The maximum number of concurrent connection creation attempts per pool.
+MAX_CONNECTING = 2
+
 # Default value for maxIdleTimeMS.
 MAX_IDLE_TIME_MS = None
 

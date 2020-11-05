@@ -28,11 +28,12 @@ from pymongo.ssl_support import (
     IPADDR_SAFE as _IPADDR_SAFE)
 
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import imap, itervalues, _unicode
+from bson.py3compat import imap, itervalues, _unicode, PY3
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (MAX_BSON_SIZE,
+                            MAX_CONNECTING,
                             MAX_IDLE_TIME_SEC,
                             MAX_MESSAGE_SIZE,
                             MAX_POOL_SIZE,
@@ -285,6 +286,18 @@ def _raise_connection_failure(address, error, msg_prefix=None):
     else:
         raise AutoReconnect(msg)
 
+if PY3:
+    def _cond_wait(condition, timeout, deadline):
+        return condition.wait(timeout)
+else:
+    def _cond_wait(condition, timeout, deadline):
+        condition.wait(timeout)
+        # Python 2.7 always returns False for wait(),
+        # manually check for a timeout.
+        if timeout and _time() >= deadline:
+            return False
+        return True
+
 
 class PoolOptions(object):
 
@@ -294,7 +307,7 @@ class PoolOptions(object):
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
                  '__event_listeners', '__appname', '__driver', '__metadata',
-                 '__compression_settings')
+                 '__compression_settings', '__max_connecting')
 
     def __init__(self, max_pool_size=MAX_POOL_SIZE,
                  min_pool_size=MIN_POOL_SIZE,
@@ -303,7 +316,7 @@ class PoolOptions(object):
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=True,
                  event_listeners=None, appname=None, driver=None,
-                 compression_settings=None):
+                 compression_settings=None, max_connecting=MAX_CONNECTING):
 
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -319,6 +332,7 @@ class PoolOptions(object):
         self.__appname = appname
         self.__driver = driver
         self.__compression_settings = compression_settings
+        self.__max_connecting = max_connecting
         self.__metadata = copy.deepcopy(_METADATA)
         if appname:
             self.__metadata['application'] = {'name': appname}
@@ -357,6 +371,8 @@ class PoolOptions(object):
             opts['maxIdleTimeMS'] = self.__max_idle_time_seconds * 1000
         if self.__wait_queue_timeout != WAIT_QUEUE_TIMEOUT:
             opts['waitQueueTimeoutMS'] = self.__wait_queue_timeout * 1000
+        if self.__max_connecting != MAX_CONNECTING:
+            opts['maxConnecting'] = self.__max_connecting
         return opts
 
     @property
@@ -380,6 +396,13 @@ class PoolOptions(object):
         will maintain to each connected server. Default is 0.
         """
         return self.__min_pool_size
+
+    @property
+    def max_connecting(self):
+        """The maximum number of concurrent connection creation attempts per
+        pool. Defaults to 2.
+        """
+        return self.__max_connecting
 
     @property
     def max_idle_time_seconds(self):
@@ -1080,6 +1103,9 @@ class Pool:
 
         self._socket_semaphore = thread_util.create_semaphore(
             self.opts.max_pool_size, max_waiters)
+        self._max_connecting_cond = threading.Condition(self.lock)
+        self._max_connecting = self.opts.max_connecting
+        self._pending = 0
         if self.enabled_for_cmap:
             self.opts.event_listeners.publish_pool_created(
                 self.address, self.opts.non_default_options)
@@ -1143,21 +1169,34 @@ class Pool:
                 if (len(self.sockets) + self.active_sockets >=
                         self.opts.min_pool_size):
                     # There are enough sockets in the pool.
-                    break
+                    return
 
             # We must acquire the semaphore to respect max_pool_size.
             if not self._socket_semaphore.acquire(False):
-                break
+                return
+            incremented = False
             try:
+                with self._max_connecting_cond:
+                    # If maxConnecting connections are already being created
+                    # by this pool then try again later instead of waiting.
+                    if self._pending >= self._max_connecting:
+                        return
+                    self._pending += 1
+                    incremented = True
                 sock_info = self.connect(all_credentials)
                 with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
                     if self.generation != reference_generation:
                         sock_info.close_socket(ConnectionClosedReason.STALE)
-                        break
+                        return
                     self.sockets.appendleft(sock_info)
             finally:
+                if incremented:
+                    # Notify after adding the socket to the pool.
+                    with self._max_connecting_cond:
+                        self._pending -= 1
+                        self._max_connecting_cond.notify()
                 self._socket_semaphore.release()
 
     def connect(self, all_credentials=None):
@@ -1260,6 +1299,10 @@ class Pool:
                 'pool')
 
         # Get a free socket or create one.
+        if self.opts.wait_queue_timeout:
+            deadline = _time() + self.opts.wait_queue_timeout
+        else:
+            deadline = None
         if not self._socket_semaphore.acquire(
                 True, self.opts.wait_queue_timeout):
             self._raise_wait_queue_timeout()
@@ -1267,21 +1310,45 @@ class Pool:
         # We've now acquired the semaphore and must release it on error.
         sock_info = None
         incremented = False
+        emitted_event = False
         try:
             with self.lock:
                 self.active_sockets += 1
                 incremented = True
 
             while sock_info is None:
-                try:
-                    with self.lock:
+                # CMAP: we MUST wait for either maxConnecting OR for a socket
+                # to be checked back into the pool.
+                with self._max_connecting_cond:
+                    while (self._pending >= self._max_connecting and
+                           not self.sockets):
+                        if self.opts.wait_queue_timeout:
+                            # TODO: What if timeout is <= zero here?
+                            # timeout = max(deadline - _time(), .001)
+                            timeout = deadline - _time()
+                        else:
+                            timeout = None
+                        if not _cond_wait(self._max_connecting_cond,
+                                          timeout, deadline):
+                            # timeout
+                            emitted_event = True
+                            self._raise_wait_queue_timeout()
+
+                    try:
                         sock_info = self.sockets.popleft()
-                except IndexError:
-                    # Can raise ConnectionFailure or CertificateError.
-                    sock_info = self.connect(all_credentials)
-                else:
+                    except IndexError:
+                        self._pending += 1
+                if sock_info:  # We got a socket from the pool
                     if self._perished(sock_info):
                         sock_info = None
+                        continue
+                else:  # We need to create a new connection
+                    try:
+                        sock_info = self.connect(all_credentials)
+                    finally:
+                        with self._max_connecting_cond:
+                            self._pending -= 1
+                            self._max_connecting_cond.notify()
             sock_info.check_auth(all_credentials)
         except Exception:
             if sock_info:
@@ -1293,7 +1360,7 @@ class Pool:
                 with self.lock:
                     self.active_sockets -= 1
 
-            if self.enabled_for_cmap:
+            if self.enabled_for_cmap and not emitted_event:
                 self.opts.event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
             raise
@@ -1324,6 +1391,8 @@ class Pool:
                         sock_info.update_last_checkin_time()
                         sock_info.update_is_writable(self.is_writable)
                         self.sockets.appendleft(sock_info)
+                        # Notify any threads waiting to create a connection.
+                        self._max_connecting_cond.notify()
 
         self._socket_semaphore.release()
         with self.lock:
