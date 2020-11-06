@@ -98,8 +98,9 @@ class TestErrors(PyMongoTestCase):
         cause = OperationFailure('error', code=5, details={},
                                  max_wire_version=7)
         exc = EncryptionError(cause)
-        self.assertOperationFailureEqual(
-            cause, pickle.loads(pickle.dumps(exc)).cause)
+        exc2 = pickle.loads(pickle.dumps(exc))
+        self.assertPyMongoErrorEqual(exc, exc2)
+        self.assertOperationFailureEqual(cause, exc2.cause)
 
 
 if __name__ == "__main__":
