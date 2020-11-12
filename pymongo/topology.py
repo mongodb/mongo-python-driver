@@ -243,7 +243,7 @@ class Topology(object):
         if len(servers) == 1:
             return servers[0]
         server1, server2 = random.sample(servers, 2)
-        if server1._operation_count <= server2._operation_count:
+        if server1.pool.operation_count <= server2.pool.operation_count:
             return server1
         else:
             return server2

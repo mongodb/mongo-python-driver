@@ -1111,6 +1111,8 @@ class Pool:
         if self.enabled_for_cmap:
             self.opts.event_listeners.publish_pool_created(
                 self.address, self.opts.non_default_options)
+        # Similar to active_sockets but includes threads in the wait queue.
+        self.operation_count = 0
 
     def _reset(self, close):
         with self.lock:
@@ -1290,6 +1292,7 @@ class Pool:
         # See test.test_client:TestClient.test_fork for an example of
         # what could go wrong otherwise
         if self.pid != os.getpid():
+            # TODO: what to do about operation_count here?
             self.reset()
 
         if self.closed:
@@ -1299,6 +1302,9 @@ class Pool:
             raise _PoolClosedError(
                 'Attempted to check out a connection from closed connection '
                 'pool')
+
+        with self.lock:
+            self.operation_count += 1
 
         # Get a free socket or create one.
         if self.opts.wait_queue_timeout:
@@ -1396,6 +1402,7 @@ class Pool:
         self._socket_semaphore.release()
         with self.lock:
             self.active_sockets -= 1
+            self.operation_count -= 1
 
     def _perished(self, sock_info):
         """Return True and close the connection if it is "perished".

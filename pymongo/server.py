@@ -14,9 +14,7 @@
 
 """Communicate with one MongoDB server in a topology."""
 
-import contextlib
 from datetime import datetime
-from threading import Lock
 
 from bson import _decode_all_selective
 
@@ -42,8 +40,6 @@ class Server(object):
         self._events = None
         if self._publish:
             self._events = events()
-        self._lock = Lock()
-        self._operation_count = 0
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -199,20 +195,8 @@ class Server(object):
 
         return response
 
-    @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
-        with self._lock:
-            self._operation_count += 1
-        try:
-            with self.pool.get_socket(all_credentials, checkout) as sock_info:
-                yield sock_info
-        except Exception:
-            with self._lock:
-                self._operation_count -= 1
-            raise
-        if not checkout:
-            with self._lock:
-                self._operation_count -= 1
+        return self.pool.get_socket(all_credentials, checkout)
 
     @property
     def description(self):

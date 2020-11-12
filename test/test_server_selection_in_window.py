@@ -68,7 +68,7 @@ class TestAllScenarios(unittest.TestCase):
         for in_window in scenario_def['in_window']:
             address = clean_node(in_window['address'])
             server = topology.get_server_by_address(address)
-            server._operation_count = in_window['operation_count']
+            server.pool.operation_count = in_window['operation_count']
 
         pref = ReadPreference.NEAREST
         counts = dict((address, 0) for address in
