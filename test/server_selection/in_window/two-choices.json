@@ -1,0 +1,37 @@
+{
+  "description": "Better of two choices always selected",
+  "topology_description": {
+    "type": "Sharded",
+    "servers": [
+      {
+        "address": "a:27017",
+        "avg_rtt_ms": 35,
+        "type": "Mongos"
+      },
+      {
+        "address": "b:27017",
+        "avg_rtt_ms": 35,
+        "type": "Mongos"
+      },
+      {
+        "address": "c:27017",
+        "avg_rtt_ms": 7000,
+        "type": "Mongos"
+      }
+    ]
+  },
+  "in_window": [
+    {
+      "address": "a:27017",
+      "operation_count": 0
+    },
+    {
+      "address": "b:27017",
+      "operation_count": 5
+    }
+  ],
+  "expected_frequencies": {
+    "a:27017": 1,
+    "b:27017": 0
+  }
+}

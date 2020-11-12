@@ -34,7 +34,7 @@ TEST_PATH = os.path.join(
     os.path.join('server_selection', 'in_window'))
 
 # Number of times to repeat server selection
-REPEAT = 2000
+REPEAT = 10000
 
 
 class TestAllScenarios(unittest.TestCase):
@@ -52,10 +52,6 @@ class TestAllScenarios(unittest.TestCase):
             heartbeat_frequency=frequency,
             seeds=seeds
         )
-        # "In latency window" is defined in the server selection
-        # spec as the subset of suitable_servers that falls within the
-        # allowable latency window.
-        settings['local_threshold_ms'] = 1000000
         topology = Topology(TopologySettings(**settings))
         topology.open()
 
@@ -88,7 +84,7 @@ class TestAllScenarios(unittest.TestCase):
                 self.assertEqual(actual_freq, 0)
             else:
                 # Should be within ~5%
-                self.assertAlmostEqual(actual_freq, freq, delta=0.05)
+                self.assertAlmostEqual(actual_freq, freq, delta=0.02)
 
 
 def create_test(scenario_def, test, name):
