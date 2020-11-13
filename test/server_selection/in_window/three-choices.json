@@ -1,5 +1,5 @@
 {
-  "description": "Server with least connections and most available connections selected most",
+  "description": "Selections from three servers occur at proper distributions",
   "topology_description": {
     "type": "Sharded",
     "servers": [
@@ -20,7 +20,7 @@
       }
     ]
   },
-  "in_window": [
+  "mocked_topology_state": [
     {
       "address": "a:27017",
       "operation_count": 3
@@ -34,9 +34,13 @@
       "operation_count": 20
     }
   ],
-  "expected_frequencies": {
-    "a:27017": 0.66,
-    "b:27017": 0.33,
-    "c:27017": 0
+  "iterations": 2000,
+  "outcome": {
+    "tolerance": 0.05,
+    "expected_frequencies": {
+      "a:27017": 0.66,
+      "b:27017": 0.33,
+      "c:27017": 0
+    }
   }
 }

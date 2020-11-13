@@ -34,9 +34,6 @@ TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     os.path.join('server_selection', 'in_window'))
 
-# Number of times to repeat server selection
-REPEAT = 10000
-
 
 class TestAllScenarios(unittest.TestCase):
     def run_scenario(self, scenario_def):
@@ -62,30 +59,34 @@ class TestAllScenarios(unittest.TestCase):
             topology.on_change(server_description)
 
         # Update mock operation_count state:
-        for in_window in scenario_def['in_window']:
-            address = clean_node(in_window['address'])
+        for mock in scenario_def['mocked_topology_state']:
+            address = clean_node(mock['address'])
             server = topology.get_server_by_address(address)
-            server.pool.operation_count = in_window['operation_count']
+            server.pool.operation_count = mock['operation_count']
 
         pref = ReadPreference.NEAREST
         counts = dict((address, 0) for address in
                       topology._description.server_descriptions())
 
-        for _ in range(REPEAT):
+        # Number of times to repeat server selection
+        iterations = scenario_def['iterations']
+        for _ in range(iterations):
             server = topology.select_server(pref, server_selection_timeout=0)
             counts[server.description.address] += 1
 
         # Verify expected_frequencies
-        expected_frequencies = scenario_def['expected_frequencies']
+        outcome = scenario_def['outcome']
+        tolerance = outcome['tolerance']
+        expected_frequencies = outcome['expected_frequencies']
         for host_str, freq in expected_frequencies.items():
             address = clean_node(host_str)
-            actual_freq = float(counts[address])/REPEAT
+            actual_freq = float(counts[address])/iterations
             if freq == 0:
                 # Should be exactly 0.
                 self.assertEqual(actual_freq, 0)
             else:
-                # Should be within ~5%
-                self.assertAlmostEqual(actual_freq, freq, delta=0.02)
+                # Should be within 'tolerance'.
+                self.assertAlmostEqual(actual_freq, freq, delta=tolerance)
 
 
 def create_test(scenario_def, test, name):

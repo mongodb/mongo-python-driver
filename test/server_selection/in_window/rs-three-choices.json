@@ -1,45 +1,45 @@
 {
-  "description": "Two tied for least operations share all selections",
+  "description": "Selections from three servers occur at proper distributions (replica set)",
   "topology_description": {
-    "type": "Sharded",
+    "type": "ReplicaSetWithPrimary",
     "servers": [
       {
         "address": "a:27017",
         "avg_rtt_ms": 35,
-        "type": "Mongos"
+        "type": "RSPrimary"
       },
       {
         "address": "b:27017",
         "avg_rtt_ms": 35,
-        "type": "Mongos"
+        "type": "RSSecondary"
       },
       {
         "address": "c:27017",
         "avg_rtt_ms": 35,
-        "type": "Mongos"
+        "type": "RSSecondary"
       }
     ]
   },
   "mocked_topology_state": [
     {
       "address": "a:27017",
-      "operation_count": 10
+      "operation_count": 3
     },
     {
       "address": "b:27017",
-      "operation_count": 10
+      "operation_count": 6
     },
     {
       "address": "c:27017",
-      "operation_count": 16
+      "operation_count": 20
     }
   ],
   "iterations": 2000,
   "outcome": {
     "tolerance": 0.05,
     "expected_frequencies": {
-      "a:27017": 0.5,
-      "b:27017": 0.5,
+      "a:27017": 0.66,
+      "b:27017": 0.33,
       "c:27017": 0
     }
   }

@@ -15,7 +15,7 @@
       }
     ]
   },
-  "in_window": [
+  "mocked_topology_state": [
     {
       "address": "a:27017",
       "operation_count": 0
@@ -25,8 +25,12 @@
       "operation_count": 5
     }
   ],
-  "expected_frequencies": {
-    "a:27017": 1,
-    "b:27017": 0
+  "iterations": 100,
+  "outcome": {
+    "tolerance": 0,
+    "expected_frequencies": {
+      "a:27017": 1,
+      "b:27017": 0
+    }
   }
 }
