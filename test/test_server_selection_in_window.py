@@ -171,10 +171,10 @@ class TestProse(IntegrationTest):
             self.assertEqual(len(nodes), 1)
             delayed_server = next(iter(nodes))
             freqs = self.frequencies(client, listener)
-            self.assertLessEqual(freqs[delayed_server], 0.20)
+            self.assertLessEqual(freqs[delayed_server], 0.25)
         listener.reset()
         freqs = self.frequencies(client, listener)
-        self.assertAlmostEqual(freqs[delayed_server], 0.50, delta=0.05)
+        self.assertAlmostEqual(freqs[delayed_server], 0.50, delta=0.1)
 
 
 if __name__ == "__main__":
