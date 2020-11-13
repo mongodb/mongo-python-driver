@@ -12,11 +12,6 @@
         "address": "b:27017",
         "avg_rtt_ms": 35,
         "type": "Mongos"
-      },
-      {
-        "address": "c:27017",
-        "avg_rtt_ms": 7000,
-        "type": "Mongos"
       }
     ]
   },
