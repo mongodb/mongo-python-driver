@@ -287,10 +287,12 @@ def _raise_connection_failure(address, error, msg_prefix=None):
         raise AutoReconnect(msg)
 
 if PY3:
-    def _cond_wait(condition, timeout, deadline):
+    def _cond_wait(condition, deadline):
+        timeout = deadline - _time() if deadline else None
         return condition.wait(timeout)
 else:
-    def _cond_wait(condition, timeout, deadline):
+    def _cond_wait(condition, deadline):
+        timeout = deadline - _time() if deadline else None
         condition.wait(timeout)
         # Python 2.7 always returns False for wait(),
         # manually check for a timeout.
@@ -1322,14 +1324,7 @@ class Pool:
                 with self._max_connecting_cond:
                     while (self._pending >= self._max_connecting and
                            not self.sockets):
-                        if self.opts.wait_queue_timeout:
-                            # TODO: What if timeout is <= zero here?
-                            # timeout = max(deadline - _time(), .001)
-                            timeout = deadline - _time()
-                        else:
-                            timeout = None
-                        if not _cond_wait(self._max_connecting_cond,
-                                          timeout, deadline):
+                        if not _cond_wait(self._max_connecting_cond, deadline):
                             # timeout
                             emitted_event = True
                             self._raise_wait_queue_timeout()
