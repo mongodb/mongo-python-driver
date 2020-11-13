@@ -396,6 +396,14 @@ class TestPooling(_TestPoolingBase):
 
         self.assertEqual(len(docs), 50)
         self.assertLessEqual(len(pool.sockets), 50)
+        # TLS and auth make connection establishment more expensive than
+        # the artificially delayed query which leads to more threads
+        # hitting maxConnecting. The end result is fewer total connections
+        # and better latency.
+        if client_context.tls and client_context.auth_enabled:
+            self.assertLessEqual(len(pool.sockets), 20)
+        else:
+            self.assertLessEqual(len(pool.sockets), 50)
         # MongoDB 4.4.1 with auth + ssl:
         # maxConnecting = 2:         6 connections in ~0.231+ seconds
         # maxConnecting = unbounded: 50 connections in ~0.642+ seconds
