@@ -88,4 +88,3 @@ The following is a list of people who have contributed to
 - Terence Honles (terencehonles)
 - Paul Fisher (thetorpedodog)
 - Julius Park (juliusgeo)
-- Ishmum Jawad Khan (ishmum123)

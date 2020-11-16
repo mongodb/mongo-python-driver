@@ -827,9 +827,6 @@ class ClientSession(object):
         self._check_ended()
         self._server_session.inc_transaction_id()
 
-    def __copy__(self):
-        raise TypeError('A ClientSession cannot be copied, create a new session instead')
-
 
 class _ServerSession(object):
     def __init__(self, generation):
