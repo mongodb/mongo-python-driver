@@ -607,6 +607,7 @@ class ClientContext(object):
                              func=func)
 
     def is_topology_type(self, topologies):
+        # TODO: add support for 'sharded-replicaset' topology type.
         if 'single' in topologies and not (self.is_mongos or self.is_rs):
             return True
         if 'replicaset' in topologies and self.is_rs:
