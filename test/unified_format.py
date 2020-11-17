@@ -24,7 +24,6 @@ import types
 
 from bson import json_util
 
-from pymongo.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
@@ -239,13 +238,13 @@ class UnifiedSpecTestMeta(type):
         for test_spec in cls.TEST_SPEC['tests']:
             description = test_spec['description']
             test_name = 'test_%s' % (
-                description.replace(' ', '_').replace('.', '_').lower(),)
+                description.replace(' ', '_').replace('.', '_'),)
             test_method = create_test(copy.deepcopy(test_spec))
             test_method.__name__ = test_name
             setattr(cls, test_name, test_method)
 
 
-def generate_test_classes(test_path, name_prefix=''):
+def generate_test_classes(test_path, module=__name__, name_prefix=''):
     """Method for generating test classes. Returns a dictionary where keys are
     the names of test classes and values are the test class objects."""
     test_klasses = {}
@@ -281,6 +280,6 @@ def generate_test_classes(test_path, name_prefix=''):
             test_klasses[class_name] = type(
                 class_name,
                 (UnifiedSpecTestMixin, test_base_class_factory(scenario_def),),
-                {})
+                {'__module__': module})
 
     return test_klasses

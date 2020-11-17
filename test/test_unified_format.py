@@ -26,6 +26,7 @@ _TEST_PATH = os.path.join(
 
 globals().update(generate_test_classes(
     os.path.join(_TEST_PATH, 'valid-pass'),
+    module=__name__,
     name_prefix='unified_test_format'))
 
 
