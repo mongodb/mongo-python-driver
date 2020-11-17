@@ -563,6 +563,11 @@ def camel_to_snake_args(arguments):
     return arguments
 
 
+def snake_to_camel(snake):
+    # Regex to convert snake_case to lowerCamelCase.
+    return re.sub(r'_([a-z])', lambda m: m.group(1).upper(), snake)
+
+
 def parse_collection_options(opts):
     if 'readPreference' in opts:
         opts['read_preference'] = parse_read_preference(
