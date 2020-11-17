@@ -244,12 +244,10 @@ class UnifiedSpecTestMeta(type):
             setattr(cls, test_name, test_method)
 
 
-def generate_test_classes(test_path, module=__name__, name_prefix=''):
+def generate_test_classes(test_path, module=__name__, class_name_prefix=''):
     """Method for generating test classes. Returns a dictionary where keys are
     the names of test classes and values are the test class objects."""
     test_klasses = {}
-    if name_prefix:
-        name_prefix = name_prefix + '_'
 
     def test_base_class_factory(test_spec):
         """Utility that creates the base class to use for test generation.
@@ -272,8 +270,8 @@ def generate_test_classes(test_path, module=__name__, name_prefix=''):
                                     json_options=opts))
 
             test_type = os.path.splitext(filename)[0]
-            snake_class_name = 'Test_%s_%s' % (
-                name_prefix + dirname.replace('-', '_'),
+            snake_class_name = 'Test%s_%s_%s' % (
+                class_name_prefix, dirname.replace('-', '_'),
                 test_type.replace('-', '_').replace('.', '_'))
             class_name = snake_to_camel(snake_class_name)
 
