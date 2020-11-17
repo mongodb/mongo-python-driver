@@ -1,22 +1,39 @@
 Changelog
 =========
 
-Changes in Version 3.12.0
+Changes in Version 3.11.1
 -------------------------
 
-Version 3.12 adds support for Python 3.9 and includes a number of bug fixes.
+Version 3.11.1 adds support for Python 3.9 and includes a number of bugfixes.
 Highlights include:
 
 - Support for Python 3.9.
-- New method :class:`bson.json_util.JSONOptions.with_options`.
+- Initial support for Azure and GCP KMS providers for client side field level
+  encryption is in beta. See the docstring for
+  :class:`~pymongo.mongo_client.MongoClient`,
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  and :mod:`~pymongo.encryption`. **Note: Backwards-breaking changes may be
+  made before the final release.**
+- Fixed a bug where the :class:`bson.json_util.JSONOptions` API did not match
+  the :class:`bson.codec_options.CodecOptions` API due to the absence of
+  a :meth:`bson.json_util.JSONOptions.with_options` method. This method has now
+  been added.
+- Fixed a bug which made it impossible to serialize
+  :class:`~pymongo.errors.BulkWriteError` instances using :mod:`pickle`.
+- Fixed a bug wherein PyMongo did not always discard an implicit session after
+  encountering a network error.
+- Fixed a bug where connections created in the background were not
+  authenticated.
+- Fixed a memory leak in the :mod:`bson` module when using a
+  :class:`~bson.codec_options.TypeRegistry`.
 
 Issues Resolved
 ...............
 
-See the `PyMongo 3.12.0 release notes in JIRA`_ for the list of resolved issues
+See the `PyMongo 3.11.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
-.. _PyMongo 3.12.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=29594
+.. _PyMongo 3.11.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=29997
 
 Changes in Version 3.11.0
 -------------------------
