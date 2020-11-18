@@ -201,8 +201,43 @@ class UnifiedSpecTestMixin(IntegrationTest):
         for data in initial_data:
             self.insert_initial_data(self.client, data)
 
-        # initialize internals
-        self.test_assets = {}
+        # PyMongo internals
+        #self.test_assets = {}
+
+    def run_entity_operation(self, entity_name, spec):
+        target = self.entity_map[entity_name]
+        opname = camel_to_snake(spec['name'])
+        opargs = spec.get('arguments')
+        expect_error = spec.get('expectError')
+        if expect_error:
+            # TODO: process expectedError object
+            # See L420-446 of utils_spec_runner.py
+            pass
+        else:
+            # Operation expected to succeed
+            arguments = {}
+            if opargs:
+                if 'session' in arguments:
+                    # TODO: resolve session to entity
+                    pass
+                if 'readConcern' in arguments:
+                    from pymongo.read_concern import ReadConcern
+                    arguments['read_concern'] = ReadConcern(
+                        **opargs.pop('readConcern'))
+                if 'readPreference' in arguments:
+                    from pymongo.read_preferences import ReadPreference
+                    pass
+
+    def run_special_operation(self, spec):
+        pass
+
+    def run_operations(self, spec):
+        for op in spec:
+            target = op['object']
+            if target != 'testRunner':
+                self.run_entity_operation(target, op)
+            else:
+                self.run_special_operation(op)
 
     def run_scenario(self, spec):
         # process test-level runOnRequirements
@@ -216,7 +251,7 @@ class UnifiedSpecTestMixin(IntegrationTest):
             raise unittest.SkipTest('%s' % (skip_reason,))
 
         # process operations
-        # TODO: process operations
+        self.run_operations(spec['operations'])
 
         # process expectedEvents
         # TODO: process expectedEvents
