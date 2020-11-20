@@ -9,7 +9,8 @@ createvirtualenv () {
     VENVPATH=$2
     if $PYTHON -m virtualenv --version; then
         VIRTUALENV="$PYTHON -m virtualenv --never-download"
-    elif $PYTHON -m venv -h >/dev/null; then
+    elif [ $(uname -s) = "Darwin" ] && $PYTHON -m venv -h >/dev/null; then
+        # Only use venv on macOS, venv fails on Windows and some Linux distros.
         VIRTUALENV="$PYTHON -m venv"
     elif command -v virtualenv; then
         VIRTUALENV="$(command -v virtualenv) -p $PYTHON --never-download"
