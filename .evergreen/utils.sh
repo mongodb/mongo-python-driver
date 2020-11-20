@@ -8,14 +8,16 @@ createvirtualenv () {
     PYTHON=$1
     VENVPATH=$2
     if $PYTHON -m virtualenv --version; then
-        VIRTUALENV="$PYTHON -m virtualenv"
+        VIRTUALENV="$PYTHON -m virtualenv --never-download"
+    elif $PYTHON -m venv -h >/dev/null; then
+        VIRTUALENV="$PYTHON -m venv"
     elif command -v virtualenv; then
-        VIRTUALENV="$(command -v virtualenv) -p $PYTHON"
+        VIRTUALENV="$(command -v virtualenv) -p $PYTHON --never-download"
     else
         echo "Cannot test without virtualenv"
         exit 1
     fi
-    $VIRTUALENV --system-site-packages --never-download $VENVPATH
+    $VIRTUALENV --system-site-packages $VENVPATH
     if [ "Windows_NT" = "$OS" ]; then
         . $VENVPATH/Scripts/activate
     else

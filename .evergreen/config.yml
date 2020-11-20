@@ -492,7 +492,7 @@ functions:
         script: |
           ${PREPARE_SHELL}
           # The aws_e2e_assume_role script requires python3 with boto3.
-          virtualenv -p ${python3_binary} mongovenv
+          ${python3_binary} -m venv mongovenv
           if [ "Windows_NT" = "$OS" ]; then
             . mongovenv/Scripts/activate
           else

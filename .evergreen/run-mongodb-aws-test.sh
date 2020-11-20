@@ -3,6 +3,9 @@
 set -o xtrace
 set -o errexit  # Exit the script with error if any of the commands fail
 
+# Get access to createvirtualenv.
+. .evergreen/utils.sh
+
 ############################################
 #            Main Program                  #
 ############################################
@@ -39,8 +42,6 @@ fi
 # show test output
 set -x
 
-VIRTUALENV=$(command -v virtualenv)
-
 authtest () {
     if [ "Windows_NT" = "$OS" ]; then
       PYTHON=$(cygpath -m $PYTHON)
@@ -49,7 +50,7 @@ authtest () {
     echo "Running MONGODB-AWS authentication tests with $PYTHON"
     $PYTHON --version
 
-    $VIRTUALENV -p $PYTHON --system-site-packages --never-download venvaws
+    createvirtualenv $PYTHON venvaws
     if [ "Windows_NT" = "$OS" ]; then
       . venvaws/Scripts/activate
     else
