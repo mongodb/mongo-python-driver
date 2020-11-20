@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Changes in Version 3.11.2
+-------------------------
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.11.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.11.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30315
+
 Changes in Version 3.11.1
 -------------------------
 
