@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Changes in Version 4.0
+----------------------
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
+
 Changes in Version 3.11.1
 -------------------------
 
