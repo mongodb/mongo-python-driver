@@ -2112,6 +2112,7 @@ class TestLegacyBulk(BulkTestBase):
                   'op': {'_id': '...', 'b': 6, 'a': 1}}]},
             result)
 
+    @client_context.require_version_max(4, 8)  # PYTHON-2436
     def test_large_inserts_ordered(self):
         big = 'x' * self.coll.database.client.max_bson_size
         batch = self.coll.initialize_ordered_bulk_op()
