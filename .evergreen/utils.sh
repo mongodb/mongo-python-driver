@@ -10,9 +10,8 @@ createvirtualenv () {
     if $PYTHON -m virtualenv --version; then
         VIRTUALENV="$PYTHON -m virtualenv --never-download"
     elif $PYTHON -m venv -h>/dev/null; then
+        # System virtualenv might not be compatible with the python3 on our path
         VIRTUALENV="$PYTHON -m venv"
-    elif command -v virtualenv; then
-        VIRTUALENV="$(command -v virtualenv) -p $PYTHON --never-download"
     else
         echo "Cannot test without virtualenv"
         exit 1

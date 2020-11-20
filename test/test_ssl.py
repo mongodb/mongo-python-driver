@@ -51,14 +51,11 @@ try:
     import OpenSSL
     import requests
     import service_identity
+    from pymongo.ocsp_support import _load_trusted_ca_certs
     _HAVE_PYOPENSSL = True
 except ImportError:
-    pass
-
-if _HAVE_PYOPENSSL:
-    from pymongo.ocsp_support import _load_trusted_ca_certs
-else:
     _load_trusted_ca_certs = None
+
 
 if HAVE_SSL:
     import ssl

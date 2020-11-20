@@ -8,9 +8,9 @@ set -o errexit
 
 if [ -z "$PYTHON_BINARY" ]; then
     echo "No python binary specified"
-    PYTHON=$(command -v python || command -v python3) || true
+    PYTHON=$(command -v python3) || true
     if [ -z "$PYTHON" ]; then
-        echo "Cannot test without python or python3 installed!"
+        echo "Cannot test without python3 installed!"
         exit 1
     fi
 else

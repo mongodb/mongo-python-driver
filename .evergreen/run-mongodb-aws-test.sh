@@ -54,7 +54,7 @@ authtest () {
     echo "Running MONGODB-AWS authentication tests with $PYTHON"
     $PYTHON --version
 
-    $VIRTUALENV -p $PYTHON --system-site-packages --never-download venvaws
+    $VIRTUALENV -p $PYTHON --never-download venvaws
     if [ "Windows_NT" = "$OS" ]; then
       . venvaws/Scripts/activate
     else

@@ -514,7 +514,7 @@ functions:
         silent: true
         script: |
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='python -c "import sys, urllib as ul; sys.stdout.write(ul.quote_plus(sys.argv[1]))"'
+            alias urlencode='python3 -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
             USER=$(urlencode ${iam_auth_ecs_account})
             PASS=$(urlencode ${iam_auth_ecs_secret_access_key})
             MONGODB_URI="mongodb://$USER:$PASS@localhost"
@@ -552,8 +552,8 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='python -c "import sys, urllib as ul; sys.stdout.write(ul.quote_plus(sys.argv[1]))"'
-            alias jsonkey='python -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
+            alias urlencode='python3 -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
+            alias jsonkey='python3 -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
             USER=$(jsonkey AccessKeyId)
             USER=$(urlencode $USER)
             PASS=$(jsonkey SecretAccessKey)
@@ -626,7 +626,7 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias jsonkey='python -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
+            alias jsonkey='python3 -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
             export AWS_ACCESS_KEY_ID=$(jsonkey AccessKeyId)
             export AWS_SECRET_ACCESS_KEY=$(jsonkey SecretAccessKey)
             export AWS_SESSION_TOKEN=$(jsonkey SessionToken)
@@ -1193,7 +1193,7 @@ tasks:
       commands:
         - func: "run tests"
           vars:
-            PYTHON_BINARY: /opt/python/2.7/bin/python
+            PYTHON_BINARY: /opt/python/3.6/bin/python3
 
     - name: "atlas-connect"
       tags: ["atlas-connect"]
@@ -1799,10 +1799,6 @@ axes:
     values:
       # Note: always display platform with python-version to avoid ambiguous display names.
       # Linux
-      - id: "2.7"
-        display_name: "Python 2.7"
-        variables:
-           PYTHON_BINARY: "/opt/python/2.7/bin/python"
       - id: "3.4"
         display_name: "Python 3.4"
         variables:
@@ -1828,10 +1824,6 @@ axes:
         display_name: "Python 3.9"
         variables:
           PYTHON_BINARY: "/opt/python/3.9/bin/python3"
-      - id: "pypy"
-        display_name: "PyPy"
-        variables:
-           PYTHON_BINARY: "/opt/python/pypy/bin/pypy"
       - id: "pypy3.5"
         display_name: "PyPy 3.5"
         variables:
@@ -1840,16 +1832,6 @@ axes:
         display_name: "PyPy 3.6"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.6/bin/pypy3"
-      - id: "jython2.7"
-        display_name: "Jython 2.7"
-        batchtime: 10080  # 7 days
-        variables:
-           PYTHON_BINARY: "/opt/python/jython2.7/bin/jython"
-      # System python
-      - id: "system-python"
-        display_name: "Python"
-        variables:
-          PYTHON_BINARY: "python"
       - id: "system-python3"
         display_name: "Python3"
         variables:
@@ -1858,10 +1840,6 @@ axes:
   - id: python-version-windows
     display_name: "Python"
     values:
-      - id: "2.7"
-        display_name: "Python 2.7"
-        variables:
-          PYTHON_BINARY: "C:/python/Python27/python.exe"
       - id: "3.4"
         display_name: "Python 3.4"
         variables:
@@ -1890,10 +1868,6 @@ axes:
   - id: python-version-windows-32
     display_name: "Python"
     values:
-      - id: "2.7"
-        display_name: "32-bit Python 2.7"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python27/python.exe"
       - id: "3.4"
         display_name: "32-bit Python 3.4"
         variables:
@@ -2015,16 +1989,6 @@ axes:
           test_pyopenssl: true
         batchtime: 10080  # 7 days
 
-  # Run setdefaultencoding before running the test suite?
-  - id: setdefaultencoding
-    display_name: "setdefaultencoding"
-    values:
-      - id: "setdefaultencoding"
-        display_name: "setdefaultencoding"
-        tags: ["setdefaultencoding_tag"]
-        variables:
-          SETDEFAULTENCODING: "cp1251"
-
   - id: requireApiVersion
     display_name: "requireApiVersion"
     values:
@@ -2044,7 +2008,6 @@ buildvariants:
     platform:
       # OSes that support versions of MongoDB>=2.6 with SSL.
       - awslinux
-      - rhel70
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks: &all-server-versions
@@ -2063,7 +2026,6 @@ buildvariants:
     platform:
       # OSes that support versions of MongoDB>=2.6 with SSL.
       - awslinux
-      - rhel70
     auth-ssl: "*"
     encryption: "*"
   display_name: "Encryption ${platform} ${auth-ssl}"
@@ -2196,7 +2158,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: &rhel62-pythons ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+    python-version: &rhel62-pythons ["3.4", "3.5", "3.6", "pypy3.5", "pypy3.6"]
     auth: "*"
     ssl: "*"
     coverage: "*"
@@ -2206,32 +2168,20 @@ buildvariants:
       auth: "noauth"
       ssl: "ssl"
       coverage: "*"
-    - platform: rhel62
-      python-version: "!jython2.7" # Test Jython with Auth/NoSSL
-      auth: "auth"
-      ssl: "nossl"
-      coverage: "*"
-    - platform: rhel62
-      # PYTHON-498: disable Jython SSL tests
-      python-version: "jython2.7"
-      # EVG-1410: exlcude_spec must specifiy values for all axes
-      auth: "*"
-      ssl: "ssl"
-      coverage: "*"
   display_name: "${python-version} ${platform} ${auth} ${ssl} ${coverage}"
   tasks: *all-server-versions
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9"]
+    python-version: ["3.4", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.8", "3.9"]
+    python-version: ["3.4", "3.5", "3.6", "3.8", "3.9"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2244,7 +2194,7 @@ buildvariants:
 - matrix_name: "tests-pyopenssl-pypy"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    python-version: ["pypy3.5", "pypy3.6"]
     auth: "auth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2253,18 +2203,6 @@ buildvariants:
     - '.replica_set !.2.6 !.3.0 !.3.2 !.3.4'
     # Test standalone and sharded only on 4.4.
     - '.4.4'
-
-- matrix_name: "test-pyopenssl-old-py27"
-  matrix_spec:
-    platform:
-      # Supported OSes with pre-2.7.9 CPython versions.
-      - rhel70 # CPython 2.7.5
-    auth: "auth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform}  Pre-2.7.9 Python ${auth}"
-  tasks:
-    - '.replica_set'
 
 - matrix_name: "tests-pyopenssl-macOS"
   matrix_spec:
@@ -2291,7 +2229,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: ["2.7", "3.4", "3.5", "3.6"]
+    python-version: ["3.4", "3.5", "3.6"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
@@ -2303,7 +2241,7 @@ buildvariants:
 - matrix_name: "tests-pypy-debian-test-encryption"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    python-version: ["pypy3.5", "pypy3.6"]
     auth-ssl: noauth-nossl
     encryption: "*"
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
@@ -2319,7 +2257,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: rhel62
-     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+     python-version: ["pypy3.5", "pypy3.6"]
      c-extensions: "*"
      auth-ssl: "*"
      coverage: "*"
@@ -2346,20 +2284,15 @@ buildvariants:
   matrix_spec:
     # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+    python-version: ["3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy3.5", "pypy3.6"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: ubuntu-16.04
-     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+     python-version: ["pypy3.5", "pypy3.6"]
      c-extensions: "with-c-extensions"
      compression: "*"
-  # Jython doesn't support some compression types.
-   - platform: ubuntu-16.04
-     python-version: ["jython2.7"]
-     c-extensions: "*"
-     compression: ["snappy", "zstd"]
    # PYTHON-2365 Some tests fail with CPython 3.8+ and python-snappy
    - platform: ubuntu-16.04
      python-version: ["3.8", "3.9"]
@@ -2390,7 +2323,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: rhel62
-     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+     python-version: ["pypy3.5", "pypy3.6"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2454,12 +2387,12 @@ buildvariants:
   display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
 
-# Storage engine tests on RHEL 6.2 (x86_64) with Python 2.7.
+# Storage engine tests on RHEL 6.2 (x86_64) with Python 3.6.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
     platform: rhel62
     storage-engine: "*"
-    python-version: 2.7
+    python-version: 3.6
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
@@ -2497,25 +2430,15 @@ buildvariants:
         add_tasks:
           - "test-3.0-standalone"
 
-# enableTestCommands=0 tests on RHEL 6.2 (x86_64) with Python 2.7.
+# enableTestCommands=0 tests on RHEL 6.2 (x86_64) with Python 3.6.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
     platform: rhel62
     disableTestCommands: "*"
-    python-version: "2.7"
+    python-version: "3.6"
   display_name: "Disable test commands ${python-version} ${platform}"
   tasks:
      - ".latest"
-
-# setdefaultencoding tests on RHEL 6.2 (x86_64) with Python 2.7.
-- matrix_name: "test-setdefaultencoding"
-  matrix_spec:
-    platform: rhel62
-    setdefaultencoding: "*"
-    python-version: "2.7"
-  display_name: "setdefaultencoding ${python-version} ${platform}"
-  tasks:
-     - "test-latest-standalone"
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:
@@ -2538,7 +2461,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: rhel62
-    python-version: ["2.7", "3.4", "3.6"]
+    python-version: ["3.4", "3.6"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
@@ -2548,7 +2471,7 @@ buildvariants:
 - matrix_name: "mockupdb-tests"
   matrix_spec:
     platform: rhel62
-    python-version: 2.7
+    python-version: 3.6
   display_name: "MockupDB Tests"
   tasks:
      - name: "mockupdb"
@@ -2556,18 +2479,10 @@ buildvariants:
 - matrix_name: "tests-doctests"
   matrix_spec:
     platform: rhel62
-    python-version: ["2.7", "3.4"]
+    python-version: ["3.4"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
      - name: "doctests"
-
-- matrix_name: "cdecimal"
-  matrix_spec:
-    platform: rhel62
-    python-version: 2.7
-  display_name: "cdecimal ${python-version} ${platform}"
-  tasks:
-    - name: "cdecimal"
 
 - name: "no-server"
   display_name: "No server test"
@@ -2586,13 +2501,6 @@ buildvariants:
      - name: "coverage-report"
   expansions:
     set_xtrace_on: on
-
-- matrix_name: "atlas-connect-pre-279"
-  matrix_spec:
-    platform: rhel70
-  display_name: "Atlas connect Pre-2.7.9 Python ${platform}"
-  tasks:
-    - name: "atlas-connect"
 
 - matrix_name: "atlas-connect"
   matrix_spec:
@@ -2613,7 +2521,7 @@ buildvariants:
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.8"]
+    python-version: ["3.4", "3.8"]
     auth: "auth"
     c-extensions: "*"
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
@@ -2623,7 +2531,7 @@ buildvariants:
 - matrix_name: "versioned-api-tests"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.9"]
+    python-version: ["3.6", "3.9"]
     auth: "auth"
     requireApiVersion: "*"
   display_name: "requireApiVersion ${python-version}"
@@ -2634,7 +2542,7 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.8", "3.9"]
+    python-version: ["3.4", "3.8", "3.9"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2646,7 +2554,7 @@ buildvariants:
 - matrix_name: "ocsp-test-pypy"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    python-version: ["pypy3.5", "pypy3.6"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2658,7 +2566,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version-windows: ["2.7", "3.4", "3.9"]
+    python-version-windows: ["3.4", "3.9"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2683,7 +2591,7 @@ buildvariants:
 - matrix_name: "aws-auth-test"
   matrix_spec:
     platform: [ubuntu-18.04, macos-1014]
-    python-version: ["system-python", "system-python3"]
+    python-version: ["system-python3"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
     - name: "aws-auth-test-4.4"

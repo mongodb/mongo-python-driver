@@ -11,7 +11,6 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  COVERAGE           If non-empty, run the test suite with coverage.
 #  TEST_ENCRYPTION    If non-empty, install pymongocrypt.
 #  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
-#  SETDEFAULTENCODING The encoding to set via sys.setdefaultencoding.
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace
@@ -29,7 +28,6 @@ COMPRESSORS=${COMPRESSORS:-}
 MONGODB_API_VERSION=${MONGODB_API_VERSION:-}
 TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
 LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
-SETDEFAULTENCODING=${SETDEFAULTENCODING:-}
 DATA_LAKE=${DATA_LAKE:-}
 
 if [ -n "$COMPRESSORS" ]; then
@@ -39,9 +37,6 @@ fi
 if [ -n "$MONGODB_API_VERSION" ]; then
     export MONGODB_API_VERSION=$MONGODB_API_VERSION
 fi
-
-
-export JAVA_HOME=/opt/java/jdk8
 
 if [ "$AUTH" != "noauth" ]; then
     if [ -z "$DATA_LAKE" ]; then
@@ -62,42 +57,25 @@ fi
 . .evergreen/utils.sh
 
 if [ -z "$PYTHON_BINARY" ]; then
-    VIRTUALENV=$(command -v virtualenv) || true
-    if [ -z "$VIRTUALENV" ]; then
-        PYTHON=$(command -v python || command -v python3) || true
-        if [ -z "$PYTHON" ]; then
-            echo "Cannot test without python or python3 installed!"
-            exit 1
-        fi
-    else
-        $VIRTUALENV pymongotestvenv
-        . pymongotestvenv/bin/activate
-        PYTHON=python
-        trap "deactivate; rm -rf pymongotestvenv" EXIT HUP
+    # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
+    # system python3 doesn't exist. This seems to only be an issue on RHEL 7.x.
+    PYTHON=$(command -v python3 || command -v /opt/mongodbtoolchain/v2/bin/python3) || true
+    if [ -z "$PYTHON" ]; then
+        echo "Cannot test without python3 installed!"
+        exit 1
     fi
 elif [ "$COMPRESSORS" = "snappy" ]; then
-    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download snappytest
+    $PYTHON_BINARY -m virtualenv --never-download snappytest
     . snappytest/bin/activate
     trap "deactivate; rm -rf snappytest" EXIT HUP
     # 0.5.2 has issues in pypy3(.5)
     pip install python-snappy==0.5.1
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
-    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download zstdtest
+    $PYTHON_BINARY -m virtualenv --never-download zstdtest
     . zstdtest/bin/activate
     trap "deactivate; rm -rf zstdtest" EXIT HUP
     pip install zstandard
-    PYTHON=python
-elif [ -n "$SETDEFAULTENCODING" ]; then
-    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download encodingtest
-    . encodingtest/bin/activate
-    trap "deactivate; rm -rf encodingtest" EXIT HUP
-    mkdir test-sitecustomize
-    cat <<EOT > test-sitecustomize/sitecustomize.py
-import sys
-sys.setdefaultencoding("$SETDEFAULTENCODING")
-EOT
-    export PYTHONPATH="$(pwd)/test-sitecustomize"
     PYTHON=python
 else
     PYTHON="$PYTHON_BINARY"
@@ -158,13 +136,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
 
 fi
 
-PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
-if [ $PYTHON_IMPL = "Jython" ]; then
-    PYTHON_ARGS="-J-XX:-UseGCOverheadLimit -J-Xmx4096m"
-else
-    PYTHON_ARGS=""
-fi
-
 if [ -z "$DATA_LAKE" ]; then
     TEST_ARGS=""
 else
@@ -217,7 +188,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-    $COVERAGE_OR_PYTHON $PYTHON_ARGS $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
+    $COVERAGE_OR_PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT

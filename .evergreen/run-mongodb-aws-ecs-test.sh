@@ -33,7 +33,7 @@ authtest () {
     echo "Running MONGODB-AWS ECS authentication tests with $PYTHON"
     $PYTHON --version
 
-    $VIRTUALENV -p $PYTHON --system-site-packages --never-download venvaws
+    $VIRTUALENV -p $PYTHON --never-download venvaws
     . venvaws/bin/activate
 
     cd src
@@ -44,5 +44,4 @@ authtest () {
     rm -rf venvaws
 }
 
-PYTHON=$(command -v python) authtest
 PYTHON=$(command -v python3) authtest
