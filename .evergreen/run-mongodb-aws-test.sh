@@ -39,7 +39,12 @@ fi
 # show test output
 set -x
 
-VIRTUALENV=$(command -v virtualenv)
+# Workaround macOS python 3.9 incompatibility with system virtualenv.
+if [ $(uname -s) = "Darwin" ]; then
+    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
+else
+    VIRTUALENV=$(command -v virtualenv)
+fi
 
 authtest () {
     if [ "Windows_NT" = "$OS" ]; then
