@@ -1615,6 +1615,8 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ConfigurationError):
             MongoClient(['host1', 'host2'], directConnection=True)
 
+    @unittest.skipIf(sys.platform.startswith('java'),
+                     'Jython does not support gc.get_objects')
     def test_continuous_network_errors(self):
         def server_description_count():
             i = 0
