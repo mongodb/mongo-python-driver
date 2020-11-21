@@ -15,7 +15,6 @@
 """Represent one server the driver is connected to."""
 
 from bson import EPOCH_NAIVE
-from bson.py3compat import PY3
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
@@ -70,11 +69,6 @@ class ServerDescription(object):
         self._me = ismaster.me
         self._last_update_time = _time()
         self._error = error
-        # PYTHON-2433 Clear error traceback info.
-        if error and PY3:
-            error.__traceback__ = None
-            error.__context__ = None
-            error.__cause__ = None
         self._topology_version = ismaster.topology_version
         if error:
             if hasattr(error, 'details') and isinstance(error.details, dict):

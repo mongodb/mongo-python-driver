@@ -18,6 +18,8 @@ import atexit
 import threading
 import weakref
 
+from bson.py3compat import PY3
+
 from pymongo import common, periodic_executor
 from pymongo.errors import (NotMasterError,
                             OperationFailure,
@@ -28,6 +30,14 @@ from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.srv_resolver import _SrvResolver
+
+
+def _sanitize(error):
+    """PYTHON-2433 Clear error traceback info."""
+    if PY3:
+        error.__traceback__ = None
+        error.__context__ = None
+        error.__cause__ = None
 
 
 class MonitorBase(object):
@@ -169,6 +179,7 @@ class Monitor(MonitorBase):
             try:
                 self._server_description = self._check_server()
             except _OperationCancelled as exc:
+                _sanitize(exc)
                 # Already closed the connection, wait for the next check.
                 self._server_description = ServerDescription(
                     self._server_description.address, error=exc)
@@ -212,6 +223,7 @@ class Monitor(MonitorBase):
         except ReferenceError:
             raise
         except Exception as error:
+            _sanitize(error)
             sd = self._server_description
             address = sd.address
             duration = _time() - start
