@@ -1568,7 +1568,7 @@ axes:
         variables:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
-          python3_binary: python3
+          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel62
         display_name: "RHEL 6.2 (x86_64)"
