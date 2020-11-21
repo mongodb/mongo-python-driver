@@ -496,11 +496,6 @@ functions:
           . .evergreen/utils.sh
           # The aws_e2e_assume_role script requires python3 with boto3.
           createvirtualenv ${python3_binary} mongovenv
-          if [ "Windows_NT" = "$OS" ]; then
-            . mongovenv/Scripts/activate
-          else
-            . mongovenv/bin/activate
-          fi
           pip install boto3
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           mongo aws_e2e_assume_role.js

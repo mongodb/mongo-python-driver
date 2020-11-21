@@ -51,18 +51,6 @@ authtest () {
     $PYTHON --version
 
     createvirtualenv $PYTHON venvaws
-    if [ "Windows_NT" = "$OS" ]; then
-      . venvaws/Scripts/activate
-    else
-      . venvaws/bin/activate
-    fi
-
-    # Added to fix Windows Python 3.5 pip install error:
-    # TypeError: stat: can't specify None for path argument
-    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-        $PYTHON -m pip install -U setuptools
-    fi
-
     pip install '.[aws]'
     python test/auth_aws/test_auth_aws.py
     deactivate

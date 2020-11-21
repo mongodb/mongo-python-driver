@@ -9,8 +9,8 @@ createvirtualenv () {
     VENVPATH=$2
     if $PYTHON -m virtualenv --version; then
         VIRTUALENV="$PYTHON -m virtualenv --never-download"
-    elif [ $(uname -s) = "Darwin" ] && $PYTHON -m venv -h >/dev/null; then
-        # Only use venv on macOS, venv fails on Windows and some Linux distros.
+    elif [[ $(uname -s) == "Darwin" || "Windows_NT" == "$OS" ]] && $PYTHON -m venv -h >/dev/null; then
+        # Only use venv on macOS or Windows, venv fails on some Linux distros.
         VIRTUALENV="$PYTHON -m venv"
     elif command -v virtualenv; then
         VIRTUALENV="$(command -v virtualenv) -p $PYTHON --never-download"
@@ -20,7 +20,9 @@ createvirtualenv () {
     fi
     $VIRTUALENV --system-site-packages $VENVPATH
     if [ "Windows_NT" = "$OS" ]; then
-        . $VENVPATH/Scripts/activate
+        # Workaround https://bugs.python.org/issue32451:
+        # mongovenv/Scripts/activate: line 3: $'\r': command not found
+        . $VENVPATH/Scripts/activate || (dos2unix $VENVPATH/Scripts/activate && . $VENVPATH/Scripts/activate)
     else
         . $VENVPATH/bin/activate
     fi
