@@ -57,6 +57,7 @@ from pymongo.monotonic import time as monotonic_time
 from pymongo.driver_info import DriverInfo
 from pymongo.pool import SocketInfo, _METADATA
 from pymongo.read_preferences import ReadPreference
+from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
@@ -1613,6 +1614,33 @@ class TestClient(IntegrationTest):
         # directConnection=True, should error with multiple hosts as a list.
         with self.assertRaises(ConfigurationError):
             MongoClient(['host1', 'host2'], directConnection=True)
+
+    def test_continuous_network_errors(self):
+        def server_description_count():
+            i = 0
+            for obj in gc.get_objects():
+                try:
+                    if isinstance(obj, ServerDescription):
+                        i += 1
+                except ReferenceError:
+                    pass
+            return i
+        gc.collect()
+        with client_knobs(min_heartbeat_interval=0.003):
+            client = MongoClient(
+                'invalid:27017',
+                heartbeatFrequencyMS=3,
+                serverSelectionTimeoutMS=100)
+            initial_count = server_description_count()
+            self.addCleanup(client.close)
+            with self.assertRaises(ServerSelectionTimeoutError):
+                client.test.test.find_one()
+            gc.collect()
+            final_count = server_description_count()
+            # If a bug like PYTHON-2433 is reintroduced then too many
+            # ServerDescriptions will be kept alive and this test will fail:
+            # AssertionError: 4 != 22 within 5 delta (18 difference)
+            self.assertAlmostEqual(initial_count, final_count, delta=5)
 
 
 class TestExhaustCursor(IntegrationTest):
