@@ -401,7 +401,7 @@ class TestPooling(_TestPoolingBase):
         # hitting maxConnecting. The end result is fewer total connections
         # and better latency.
         if client_context.tls and client_context.auth_enabled:
-            self.assertLessEqual(len(pool.sockets), 20)
+            self.assertLessEqual(len(pool.sockets), 25)
         else:
             self.assertLessEqual(len(pool.sockets), 50)
         # MongoDB 4.4.1 with auth + ssl:
