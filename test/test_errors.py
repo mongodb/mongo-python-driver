@@ -93,6 +93,7 @@ class TestErrors(PyMongoTestCase):
     def test_pickle_BulkWriteError(self):
         exc = BulkWriteError({})
         self.assertOperationFailureEqual(exc, pickle.loads(pickle.dumps(exc)))
+        self.assertIn("batch op errors occurred", str(exc))
 
     def test_pickle_EncryptionError(self):
         cause = OperationFailure('error', code=5, details={},

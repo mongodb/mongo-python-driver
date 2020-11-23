@@ -240,8 +240,9 @@ class BulkWriteError(OperationFailure):
     def __init__(self, results):
         super(BulkWriteError, self).__init__(
             "batch op errors occurred", 65, results)
-        # For pickle support
-        self.args = (results,)
+
+    def __reduce__(self):
+        return self.__class__, (self.details,)
 
 
 class InvalidOperation(PyMongoError):
