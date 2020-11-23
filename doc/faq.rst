@@ -58,17 +58,32 @@ to 100. If there are ``maxPoolSize`` connections to a server and all are in
 use, the next request to that server will wait until one of the connections
 becomes available.
 
-The client instance opens one additional socket per server in your MongoDB
+The client instance opens two additional sockets per server in your MongoDB
 topology for monitoring the server's state.
 
-For example, a client connected to a 3-node replica set opens 3 monitoring
+For example, a client connected to a 3-node replica set opens 6 monitoring
 sockets. It also opens as many sockets as needed to support a multi-threaded
 application's concurrent operations on each server, up to ``maxPoolSize``. With
 a ``maxPoolSize`` of 100, if the application only uses the primary (the
 default), then only the primary connection pool grows and the total connections
-is at most 103. If the application uses a
+is at most 106. If the application uses a
 :class:`~pymongo.read_preferences.ReadPreference` to query the secondaries,
-their pools also grow and the total connections can reach 303.
+their pools also grow and the total connections can reach 306.
+
+Additionally, the pools are rate limited such that each connection pool can
+only create at most 2 connections in parallel at any time. The connection
+creation covers covers all the work required to setup a new connection
+including DNS, TCP, SSL/TLS, MongoDB handshake, and MongoDB authentication.
+For example, if three threads concurrently attempt to check out a connection
+from an empty pool, the first two threads will begin creating new connections
+while the third thread will wait. The third thread stops waiting when either:
+
+- one of the first two threads finishes creating a connection, or
+- an existing connection is checked back into the pool.
+
+Rate limiting concurrent connection creation reduces the likelihood of
+connection storms and improves the driver's ability to reuse existing
+connections.
 
 It is possible to set the minimum number of concurrent connections to each
 server with ``minPoolSize``, which defaults to 0. The connection pool will be

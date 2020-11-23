@@ -379,6 +379,40 @@ class TestPooling(_TestPoolingBase):
         for socket_info in socks:
             socket_info.close_socket(None)
 
+    def test_maxConnecting(self):
+        client = rs_or_single_client()
+        self.addCleanup(client.close)
+        pool = get_pool(client)
+        docs = []
+
+        # Run 50 short running operations
+        def find_one():
+            docs.append(client.test.test.find_one({'$where': delay(0.001)}))
+        threads = [threading.Thread(target=find_one) for _ in range(50)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(10)
+
+        self.assertEqual(len(docs), 50)
+        self.assertLessEqual(len(pool.sockets), 50)
+        # TLS and auth make connection establishment more expensive than
+        # the artificially delayed query which leads to more threads
+        # hitting maxConnecting. The end result is fewer total connections
+        # and better latency.
+        if client_context.tls and client_context.auth_enabled:
+            self.assertLessEqual(len(pool.sockets), 30)
+        else:
+            self.assertLessEqual(len(pool.sockets), 50)
+        # MongoDB 4.4.1 with auth + ssl:
+        # maxConnecting = 2:         6 connections in ~0.231+ seconds
+        # maxConnecting = unbounded: 50 connections in ~0.642+ seconds
+        #
+        # MongoDB 4.4.1 with no-auth no-ssl Python 3.8:
+        # maxConnecting = 2:         15-22 connections in ~0.108+ seconds
+        # maxConnecting = unbounded: 30+ connections in ~0.140+ seconds
+        print(len(pool.sockets))
+
 
 class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):

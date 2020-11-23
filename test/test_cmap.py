@@ -14,13 +14,13 @@
 
 """Execute Transactions Spec tests."""
 
-import functools
 import os
 import sys
 import time
-import threading
 
 sys.path[0:0] = [""]
+
+from bson.son import SON
 
 from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
@@ -184,12 +184,27 @@ class TestCMAP(IntegrationTest):
         self.check_object(actual, expected)
         self.assertIn(message, str(actual))
 
+    def _set_fail_point(self, client, command_args):
+        cmd = SON([('configureFailPoint', 'failCommand')])
+        cmd.update(command_args)
+        client.admin.command(cmd)
+
+    def set_fail_point(self, command_args):
+        self._set_fail_point(self.client, command_args)
+
     def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
         self.assertEqual(scenario_def['version'], 1)
-        self.assertEqual(scenario_def['style'], 'unit')
+        self.assertIn(scenario_def['style'], ['unit', 'integration'])
         self.listener = CMAPListener()
         self._ops = []
+
+        # Configure the fail point before creating the client.
+        if 'failPoint' in test:
+            fp = test['failPoint']
+            self.set_fail_point(fp)
+            self.addCleanup(self.set_fail_point, {
+                'configureFailPoint': fp['configureFailPoint'], 'mode': 'off'})
 
         opts = test['poolOptions'].copy()
         opts['event_listeners'] = [self.listener]
