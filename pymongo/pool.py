@@ -1322,10 +1322,14 @@ class Pool:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
-                    while (self._pending >= self._max_connecting and
-                           not self.sockets):
+                    while not (self.sockets or
+                               self._pending < self._max_connecting):
                         if not _cond_wait(self._max_connecting_cond, deadline):
-                            # timeout
+                            # Timed out, notify the next thread to ensure a
+                            # timeout doesn't consume the condition.
+                            if (self.sockets or
+                                    self._pending < self._max_connecting):
+                                self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout()
 
