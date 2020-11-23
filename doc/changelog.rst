@@ -4,6 +4,11 @@ Changelog
 Changes in Version 4.0
 ----------------------
 
+Breaking Changes in 4.0
+```````````````````````
+
+- Removed :mod:`~pymongo.thread_util`.
+
 Issues Resolved
 ...............
 

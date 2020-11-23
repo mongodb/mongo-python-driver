@@ -39,6 +39,7 @@ from pymongo.errors import (ConnectionFailure,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure,
+                            PyMongoError,
                             ServerSelectionTimeoutError)
 from pymongo.monitor import SrvMonitor
 from pymongo.monotonic import time as _time
@@ -282,6 +283,13 @@ class Topology(object):
             # This is a stale isMaster response. Ignore it.
             return
 
+        # Mark the pool "ready" if the server was rediscovered.
+        if (not sd_old.is_server_type_known and
+                server_description.is_server_type_known):
+            server = self._servers.get(server_description.address)
+            if server:
+                server.pool.ready()
+
         suppress_event = ((self._publish_server or self._publish_tp)
                           and sd_old == server_description)
         if self._publish_server and not suppress_event:
@@ -444,7 +452,13 @@ class Topology(object):
                 servers.append((server, server._pool.generation))
 
         for server, generation in servers:
-            server._pool.remove_stale_sockets(generation, all_credentials)
+            pool = server._pool
+            try:
+                pool.remove_stale_sockets(generation, all_credentials)
+            except PyMongoError as exc:
+                ctx = _ErrorContext(exc, 0, generation, False)
+                self.handle_error(pool.address, ctx)
+                raise
 
     def close(self):
         """Clear pools and terminate monitors. Topology reopens on demand."""
@@ -686,7 +700,9 @@ class Topology(object):
             ssl_match_hostname=options.ssl_match_hostname,
             event_listeners=options.event_listeners,
             appname=options.appname,
-            driver=options.driver)
+            driver=options.driver,
+            pause_enabled=False,
+        )
 
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)

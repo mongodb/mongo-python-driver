@@ -30,23 +30,7 @@ from pymongo.server_selectors import writable_server_selector
 from pymongo.topology import Topology
 from test import unittest
 from test.utils import MockPool, parse_read_preference
-
-
-class MockMonitor(object):
-    def __init__(self, server_description, topology, pool, topology_settings):
-        pass
-
-    def cancel_check(self):
-        pass
-
-    def open(self):
-        pass
-
-    def request_check(self):
-        pass
-
-    def close(self):
-        pass
+from test.pymongo_mocks import DummyMonitor
 
 
 def get_addresses(server_list):
@@ -122,7 +106,7 @@ def get_topology_type_name(scenario_def):
 
 def get_topology_settings_dict(**kwargs):
     settings = dict(
-        monitor_class=MockMonitor,
+        monitor_class=DummyMonitor,
         heartbeat_frequency=HEARTBEAT_FREQUENCY,
         pool_class=MockPool
     )

@@ -47,6 +47,7 @@ from test.utils import (assertion_context,
                         TestCreator,
                         wait_until)
 from test.utils_spec_runner import SpecRunner, SpecRunnerThread
+from test.pymongo_mocks import DummyMonitor
 
 
 # Location of JSON test specifications.
@@ -54,27 +55,7 @@ _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'discovery_and_monitoring')
 
 
-class MockMonitor(object):
-    def __init__(self, server_description, topology, pool, topology_settings):
-        self._server_description = server_description
-
-    def cancel_check(self):
-        pass
-
-    def open(self):
-        pass
-
-    def close(self):
-        pass
-
-    def join(self):
-        pass
-
-    def request_check(self):
-        pass
-
-
-def create_mock_topology(uri, monitor_class=MockMonitor):
+def create_mock_topology(uri, monitor_class=DummyMonitor):
     parsed_uri = parse_uri(uri)
     replica_set_name = None
     direct_connection = None

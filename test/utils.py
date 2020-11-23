@@ -98,6 +98,9 @@ class CMAPListener(ConnectionPoolListener):
     def pool_created(self, event):
         self.add_event(event)
 
+    def pool_ready(self, event):
+        self.add_event(event)
+
     def pool_cleared(self, event):
         self.add_event(event)
 
@@ -248,6 +251,9 @@ class MockPool(object):
     def _reset(self):
         with self._lock:
             self.generation += 1
+
+    def ready(self):
+        pass
 
     def reset(self):
         self._reset()

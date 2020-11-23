@@ -171,6 +171,9 @@ class ConnectionPoolLogger(monitoring.ConnectionPoolListener):
     def pool_created(self, event):
         logging.info("[pool {0.address}] pool created".format(event))
 
+    def pool_ready(self, event):
+        logging.info("[pool {0.address}] pool ready".format(event))
+
     def pool_cleared(self, event):
         logging.info("[pool {0.address}] pool cleared".format(event))
 

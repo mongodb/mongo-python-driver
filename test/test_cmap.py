@@ -35,12 +35,14 @@ from pymongo.monitoring import (ConnectionCheckedInEvent,
                                 ConnectionCreatedEvent,
                                 ConnectionReadyEvent,
                                 PoolCreatedEvent,
+                                PoolReadyEvent,
                                 PoolClearedEvent,
                                 PoolClosedEvent)
 from pymongo.read_preferences import ReadPreference
 from pymongo.pool import _PoolClosedError
 
-from test import (IntegrationTest,
+from test import (client_knobs,
+                  IntegrationTest,
                   unittest)
 from test.utils import (camel_to_snake,
                         client_context,
@@ -52,6 +54,7 @@ from test.utils import (camel_to_snake,
                         TestCreator,
                         wait_until)
 from test.utils_spec_runner import SpecRunnerThread
+from test.pymongo_mocks import DummyMonitor
 
 
 OBJECT_TYPES = {
@@ -64,6 +67,7 @@ OBJECT_TYPES = {
     'ConnectionReady': ConnectionReadyEvent,
     'ConnectionCheckOutStarted': ConnectionCheckOutStartedEvent,
     'ConnectionPoolCreated': PoolCreatedEvent,
+    'ConnectionPoolReady': PoolReadyEvent,
     'ConnectionPoolCleared': PoolClearedEvent,
     'ConnectionPoolClosed': PoolClosedEvent,
     # Error types.
@@ -98,13 +102,15 @@ class TestCMAP(IntegrationTest):
         thread.join()
         if thread.exc:
             raise thread.exc
+        self.assertFalse(thread.ops)
 
     def wait_for_event(self, op):
         """Run the 'waitForEvent' operation."""
         event = OBJECT_TYPES[op['event']]
         count = op['count']
+        timeout = op.get('timeout', 10000) / 1000.0
         wait_until(lambda: self.listener.event_count(event) >= count,
-                   'find %s %s event(s)' % (count, event))
+                   'find %s %s event(s)' % (count, event), timeout=timeout)
 
     def check_out(self, op):
         """Run the 'checkOut' operation."""
@@ -120,6 +126,10 @@ class TestCMAP(IntegrationTest):
         label = op['connection']
         sock_info = self.labels[label]
         self.pool.return_socket(sock_info)
+
+    def ready(self, op):
+        """Run the 'ready' operation."""
+        self.pool.ready()
 
     def clear(self, op):
         """Run the 'clear' operation."""
@@ -213,9 +223,13 @@ class TestCMAP(IntegrationTest):
 
         opts = test['poolOptions'].copy()
         opts['event_listeners'] = [self.listener]
-        client = single_client(**opts)
+        opts['_monitor_class'] = DummyMonitor
+        with client_knobs(kill_cursor_frequency=.05,
+                          min_heartbeat_interval=.05):
+            client = single_client(**opts)
         self.addCleanup(client.close)
-        self.pool = get_pool(client)
+        # self.pool = get_pools(client)[0]
+        self.pool = list(client._get_topology()._servers.values())[0].pool
 
         # Map of target names to Thread objects.
         self.targets = dict()
@@ -342,13 +356,14 @@ class TestCMAP(IntegrationTest):
             client.admin.command('isMaster')
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
-        self.assertIsInstance(listener.events[1],
-                              ConnectionCheckOutStartedEvent)
+        self.assertIsInstance(listener.events[1], PoolReadyEvent)
         self.assertIsInstance(listener.events[2],
+                              ConnectionCheckOutStartedEvent)
+        self.assertIsInstance(listener.events[3],
                               ConnectionCheckOutFailedEvent)
-        self.assertIsInstance(listener.events[3], PoolClearedEvent)
+        self.assertIsInstance(listener.events[4], PoolClearedEvent)
 
-        failed_event = listener.events[2]
+        failed_event = listener.events[3]
         self.assertEqual(
             failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
@@ -363,17 +378,16 @@ class TestCMAP(IntegrationTest):
             client.admin.command('isMaster')
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
-        self.assertIsInstance(listener.events[1],
+        self.assertIsInstance(listener.events[1], PoolReadyEvent)
+        self.assertIsInstance(listener.events[2],
                               ConnectionCheckOutStartedEvent)
-        self.assertIsInstance(listener.events[2], ConnectionCreatedEvent)
+        self.assertIsInstance(listener.events[3], ConnectionCreatedEvent)
         # Error happens here.
-        self.assertIsInstance(listener.events[3], ConnectionClosedEvent)
-        self.assertIsInstance(listener.events[4],
+        self.assertIsInstance(listener.events[4], ConnectionClosedEvent)
+        self.assertIsInstance(listener.events[5],
                               ConnectionCheckOutFailedEvent)
-
-        failed_event = listener.events[4]
-        self.assertEqual(
-            failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
+        self.assertEqual(listener.events[5].reason,
+                         ConnectionCheckOutFailedReason.CONN_ERROR)
 
     #
     # Extra non-spec tests

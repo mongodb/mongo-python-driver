@@ -1086,7 +1086,8 @@ class TestClient(IntegrationTest):
         client = rs_or_single_client(maxPoolSize=3, waitQueueMultiple=2)
         pool = get_pool(client)
         self.assertEqual(pool.opts.wait_queue_multiple, 2)
-        self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
+        self.assertEqual(pool.max_waiters, 6)
+        self.assertEqual(pool.max_pool_size, 3)
 
     def test_socketKeepAlive(self):
         for socketKeepAlive in [True, False]:
@@ -1337,7 +1338,7 @@ class TestClient(IntegrationTest):
         self.assertTrue(sock_info.closed)
 
         # The semaphore was decremented despite the error.
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        self.assertEqual(0, pool.requests)
 
     @client_context.require_auth
     def test_auth_network_error(self):
@@ -1543,6 +1544,9 @@ class TestClient(IntegrationTest):
             def run(self):
                 while self.running:
                     self.pool.reset()
+                    # TODO: This may be racey: replace with
+                    #  topology.handle_error()?
+                    self.pool.ready()
                     time.sleep(0.001)
 
         t = ResetPoolThread(pool)
@@ -1676,7 +1680,7 @@ class TestExhaustCursor(IntegrationTest):
 
         # The socket was checked in and the semaphore was decremented.
         self.assertIn(sock_info, pool.sockets)
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        self.assertEqual(0, pool.requests)
 
     def test_exhaust_getmore_server_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
@@ -1735,7 +1739,7 @@ class TestExhaustCursor(IntegrationTest):
 
         # The socket was closed and the semaphore was decremented.
         self.assertNotIn(sock_info, pool.sockets)
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        self.assertEqual(0, pool.requests)
 
     def test_exhaust_getmore_network_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
@@ -1762,7 +1766,7 @@ class TestExhaustCursor(IntegrationTest):
 
         # The socket was closed and the semaphore was decremented.
         self.assertNotIn(sock_info, pool.sockets)
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        self.assertEqual(0, pool.requests)
 
 
 class TestClientLazyConnect(IntegrationTest):

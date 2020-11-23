@@ -7,6 +7,9 @@
   },
   "operations": [
     {
+      "name": "ready"
+    },
+    {
       "name": "checkOut",
       "label": "conn"
     },
@@ -52,6 +55,7 @@
   ],
   "ignore": [
     "ConnectionReady",
+    "ConnectionPoolReady",
     "ConnectionCreated",
     "ConnectionCheckOutStarted"
   ]

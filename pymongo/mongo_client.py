@@ -737,7 +737,7 @@ class MongoClient(common.BaseObject):
 
         executor = periodic_executor.PeriodicExecutor(
             interval=common.KILL_CURSOR_FREQUENCY,
-            min_interval=0.5,
+            min_interval=common.MIN_HEARTBEAT_INTERVAL,
             target=target,
             name="pymongo_kill_cursors_thread")
 
