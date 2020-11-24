@@ -190,6 +190,8 @@ class TestCMAP(IntegrationTest):
         client.admin.command(cmd)
 
     def set_fail_point(self, command_args):
+        if not client_context.supports_failCommand_fail_point:
+            self.skipTest('failCommand fail point must be supported')
         self._set_fail_point(self.client, command_args)
 
     def run_scenario(self, scenario_def, test):
