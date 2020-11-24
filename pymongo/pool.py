@@ -1119,9 +1119,12 @@ class Pool:
             if self.closed:
                 return
             self.generation += 1
-            self.pid = os.getpid()
+            newpid = os.getpid()
+            if self.pid != newpid:
+                self.pid = newpid
+                self.active_sockets = 0
+                self.operation_count = 0
             sockets, self.sockets = self.sockets, collections.deque()
-            self.active_sockets = 0
             if close:
                 self.closed = True
 
@@ -1292,7 +1295,6 @@ class Pool:
         # See test.test_client:TestClient.test_fork for an example of
         # what could go wrong otherwise
         if self.pid != os.getpid():
-            # TODO: what to do about operation_count here?
             self.reset()
 
         if self.closed:
