@@ -17,15 +17,10 @@
 import os
 import threading
 
-from pymongo.common import clean_node, HEARTBEAT_FREQUENCY
+from pymongo.common import clean_node
 from pymongo.read_preferences import ReadPreference
-from pymongo.settings import TopologySettings
-from pymongo.topology import Topology
 from test import client_context, IntegrationTest, unittest
-from test.utils_selection_tests import (
-    get_addresses,
-    get_topology_settings_dict,
-    make_server_description)
+from test.utils_selection_tests import create_topology
 from test.utils import TestCreator, rs_client, OvertCommandListener
 
 
@@ -37,26 +32,7 @@ TEST_PATH = os.path.join(
 
 class TestAllScenarios(unittest.TestCase):
     def run_scenario(self, scenario_def):
-        # Initialize topologies.
-        if 'heartbeatFrequencyMS' in scenario_def:
-            frequency = int(scenario_def['heartbeatFrequencyMS']) / 1000.0
-        else:
-            frequency = HEARTBEAT_FREQUENCY
-
-        seeds, hosts = get_addresses(
-            scenario_def['topology_description']['servers'])
-
-        settings = get_topology_settings_dict(
-            heartbeat_frequency=frequency,
-            seeds=seeds
-        )
-        topology = Topology(TopologySettings(**settings))
-        topology.open()
-
-        # Update topologies with server descriptions.
-        for server in scenario_def['topology_description']['servers']:
-            server_description = make_server_description(server, hosts)
-            topology.on_change(server_description)
+        topology = create_topology(scenario_def)
 
         # Update mock operation_count state:
         for mock in scenario_def['mocked_topology_state']:
