@@ -312,6 +312,7 @@ class JSONOptions(CodecOptions):
                     super(JSONOptions, self)._arguments_repr()))
 
     def _options_dict(self):
+        # TODO: PYTHON-2442 use _asdict() instead
         options_dict = super(JSONOptions, self)._options_dict()
         options_dict.update({
             'strict_number_long': self.strict_number_long,

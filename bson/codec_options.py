@@ -297,6 +297,7 @@ class CodecOptions(_options_base):
 
     def _options_dict(self):
         """Dictionary of the arguments used to create this object."""
+        # TODO: PYTHON-2442 use _asdict() instead
         return {
             'document_class': self.document_class,
             'tz_aware': self.tz_aware,
