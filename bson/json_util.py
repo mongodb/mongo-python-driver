@@ -311,6 +311,15 @@ class JSONOptions(CodecOptions):
                     self.json_mode,
                     super(JSONOptions, self)._arguments_repr()))
 
+    def _options_dict(self):
+        options_dict = super(JSONOptions, self)._options_dict()
+        options_dict.update({
+            'strict_number_long': self.strict_number_long,
+            'datetime_representation': self.datetime_representation,
+            'strict_uuid': self.strict_uuid,
+            'json_mode': self.json_mode})
+        return options_dict
+
     def with_options(self, **kwargs):
         """
         Make a copy of this JSONOptions, overriding some options::
@@ -324,7 +333,7 @@ class JSONOptions(CodecOptions):
 
         .. versionadded:: 3.12
         """
-        opts = self._asdict()
+        opts = self._options_dict()
         for opt in ('strict_number_long', 'datetime_representation',
                     'strict_uuid', 'json_mode'):
             opts[opt] = kwargs.get(opt, getattr(self, opt))

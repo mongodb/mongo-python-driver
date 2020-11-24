@@ -295,6 +295,16 @@ class CodecOptions(_options_base):
                  self.unicode_decode_error_handler, self.tzinfo,
                  self.type_registry))
 
+    def _options_dict(self):
+        """Dictionary of the arguments used to create this object."""
+        return {
+            'document_class': self.document_class,
+            'tz_aware': self.tz_aware,
+            'uuid_representation': self.uuid_representation,
+            'unicode_decode_error_handler': self.unicode_decode_error_handler,
+            'tzinfo': self.tzinfo,
+            'type_registry': self.type_registry}
+
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
 
@@ -310,7 +320,7 @@ class CodecOptions(_options_base):
 
         .. versionadded:: 3.5
         """
-        opts = self._asdict()
+        opts = self._options_dict()
         opts.update(kwargs)
         return CodecOptions(**opts)
 
