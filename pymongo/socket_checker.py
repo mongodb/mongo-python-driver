@@ -57,7 +57,9 @@ class SocketChecker(object):
                     try:
                         # poll() timeout is in milliseconds. select()
                         # timeout is in seconds.
-                        res = self._poller.poll(timeout * 1000)
+                        # socket.getdefaulttimeout() can return None
+                        timeout_ = timeout * 1000 if timeout is not None else None
+                        res = self._poller.poll(timeout_)
                         # poll returns a possibly-empty list containing
                         # (fd, event) 2-tuples for the descriptors that have
                         # events or errors to report. Return True if the list
