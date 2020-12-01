@@ -18,12 +18,22 @@ https://github.com/mongodb/specifications/blob/master/source/unified-test-format
 """
 
 import copy
+import functools
 import os
 import sys
 import types
 
-from bson import json_util
+from bson import json_util, SON
+from bson.py3compat import abc, iteritems, text_type
 
+from pymongo import operations, ASCENDING, MongoClient
+from pymongo.cursor import Cursor
+from pymongo.database import Database
+from pymongo.monitoring import (
+    CommandFailedEvent, CommandListener, CommandStartedEvent,
+    CommandSucceededEvent)
+from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
@@ -32,6 +42,9 @@ from test.utils import (
     snake_to_camel, ScenarioDict)
 
 from test.version import Version
+from test.utils import (camel_to_upper_camel,
+                        parse_spec_options,
+                        prepare_spec_arguments)
 
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -87,6 +100,206 @@ def is_run_on_requirement_satisfied(requirement):
             max_version_satisfied)
 
 
+class EventListenerUtil(CommandListener):
+    def __init__(self, observe_events, ignore_commands):
+        self._event_types = set(observe_events)
+        self._ignore_commands = set(ignore_commands)
+        self._ignore_commands.add('configureFailPoint')
+        self.results = []
+
+    def _observe_event(self, event):
+        if event.command_name not in self._ignore_commands:
+            self.results.append(event)
+
+    def started(self, event):
+        if 'commandStartedEvent' in self._event_types:
+            self._observe_event(event)
+
+    def succeeded(self, event):
+        if 'commandSucceededEvent' in self._event_types:
+            self._observe_event(event)
+
+    def failed(self, event):
+        if 'commandFailedEvent' in self._event_types:
+            self._observe_event(event)
+
+
+class EntityMapUtil(object):
+    """Utility class that implements an entity map as per the unified
+    test format specification."""
+    def __init__(self, test_class):
+        self._entities = {}
+        self._listeners = {}
+        self._test_class = test_class
+
+    def __getitem__(self, item):
+        return self._entities[item]
+
+    def __setitem__(self, key, value):
+        if not isinstance(key, text_type):
+            self._test_class.fail(
+                'Expected entity name of type str, got %s' % (type(key)))
+
+        if key in self._entities:
+            self._test_class.fail('Entity named %s already in map' % (key,))
+
+        self._entities[key] = value
+
+    def _create_entity(self, entity_spec):
+        if len(entity_spec) != 1:
+            self._test_class.fail(
+                "Entity spec %s did not contain exactly one top-level key" % (
+                    entity_spec,))
+
+        entity_type, spec = next(iteritems(entity_spec))
+        if entity_type == 'client':
+            # TODO
+            # Add logic to respect the following fields
+            # - uriOptions
+            # - useMultipleMongoses
+            # - observeEvents
+            # - ignoreCommandMonitoringEvents
+            observe_events = spec.get('observeEvents')
+            ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
+            if observe_events:
+                listener = EventListenerUtil(observe_events, ignore_commands)
+                client = rs_or_single_client(event_listeners=[listener])
+            else:
+                listener = None
+                client = rs_or_single_client()
+            self[spec['id']] = client
+            self._listeners[spec['id']] = listener
+            self._test_class.addCleanup(client.close)
+            return
+        elif entity_type == 'database':
+            # TODO
+            # Add logic to respect the following fields
+            # - databaseOptions
+            client = self[spec['client']]
+            if not isinstance(client, MongoClient):
+                self._test_class.fail(
+                    'Expected entity %s to be of type MongoClient, got %s' % (
+                        spec['client'], type(client)))
+            self[spec['id']] = client.get_database(spec['databaseName'])
+            return
+        elif entity_type == 'collection':
+            # TODO
+            # Add logic to respect the following fields
+            # - collectionOptions
+            database = self[spec['database']]
+            if not isinstance(database, Database):
+                self._test_class.fail(
+                    'Expected entity %s to be of type Database, got %s' % (
+                        spec['database'], type(database)))
+            self[spec['id']] = database.get_collection(spec['collectionName'])
+            return
+        # elif ...
+            # TODO
+            # Implement the following entity types:
+            # - session
+            # - bucket
+        self._test_class.fail(
+            'Unable to create entity of unknown type %s' % (entity_type,))
+
+    def create_entities_from_spec(self, entity_spec):
+        for spec in entity_spec:
+            self._create_entity(spec)
+
+    def get_listener_for_client(self, client_name):
+        client = self[client_name]
+        if not isinstance(client, MongoClient):
+            self._test_class.fail(
+                'Expected entity %s to be of type MongoClient, got %s' % (
+                        client_name, type(client)))
+
+        listener = self._listeners[client_name]
+        if not listener:
+            self._test_class.fail(
+                'No listeners configured for client %s' % (client_name,))
+
+        return listener
+
+
+class MatchEvaluatorUtil(object):
+    """Utility class that implements methods for evaluating matches as per
+    the unified test format specification."""
+    def __init__(self, test_class):
+        self._test_class = test_class
+
+    def _evaluate_special_operation(self, operation, expectation, actual):
+        pass
+
+    def _evaluate_if_special_operation(self, expectation, actual):
+        if isinstance(expectation, abc.Mapping) and len(expectation) == 1:
+            key, value = next(iteritems(expectation))
+            if key.startswith('$$'):
+                self._evaluate_special_operation(
+                    operation=key,
+                    expectation=value,
+                    actual=actual)
+                return True
+        return False
+
+    def _match_document(self, expectation, actual):
+        if self._evaluate_if_special_operation(expectation, actual):
+            return
+
+        self._test_class.assertIsInstance(actual, abc.Mapping)
+        for key, value in iteritems(expectation):
+            if self._evaluate_if_special_operation({key: value}, actual):
+                continue
+
+            self._test_class.assertIn(key, actual)
+            self.match_result(value, actual[key])
+
+        # TODO: handle if expected is not root
+        return
+
+    def _match_array(self, expectation, actual):
+        self._test_class.assertIsInstance(actual, abc.Iterable)
+
+        for e, a in zip(expectation, actual):
+            self.match_result(e, a)
+
+    def match_result(self, expectation, actual):
+        if isinstance(expectation, abc.Mapping):
+            return self._match_document(expectation, actual)
+
+        if isinstance(expectation, abc.MutableSequence):
+            return self._match_array(expectation, actual)
+
+        self._test_class.assertIsInstance(actual, type(expectation))
+        self._test_class.assertEqual(expectation, actual)
+
+    def match_event(self, expectation, actual):
+        event_type, spec = next(iteritems(expectation))
+
+        # every event type has the commandName field
+        command_name = spec.get('commandName')
+        if command_name:
+            self._test_class.assertEqual(command_name, actual.command_name)
+
+        if event_type == 'commandStartedEvent':
+            self._test_class.assertIsInstance(actual, CommandStartedEvent)
+            command = spec.get('command')
+            database_name = spec.get('databaseName')
+            if command:
+                self.match_result(command, actual.command)
+            if database_name:
+                self._test_class.assertEqual(
+                    database_name, actual.database_name)
+        elif event_type == 'commandSucceededEvent':
+            self._test_class.assertIsInstance(actual, CommandSucceededEvent)
+            reply = spec.get('reply')
+            if reply:
+                self.match_result(reply, actual.reply)
+        elif event_type == 'commandFailedEvent':
+            self._test_class.assertIsInstance(actual, CommandFailedEvent)
+        else:
+            self._test_class.fail(
+                'Unsupported event type %s' % (event_type,))
+
+
 class UnifiedSpecTestMixin(IntegrationTest):
     """Mixin class to run test cases from test specification files.
 
@@ -109,23 +322,23 @@ class UnifiedSpecTestMixin(IntegrationTest):
                 return True
         return False
 
-    @staticmethod
-    def insert_initial_data(client, collection_data):
-        coll_name = collection_data['collectionName']
-        db_name = collection_data['databaseName']
-        documents = collection_data['documents']
+    def insert_initial_data(self, initial_data):
+        for collection_data in initial_data:
+            coll_name = collection_data['collectionName']
+            db_name = collection_data['databaseName']
+            documents = collection_data['documents']
 
-        coll = client.get_database(db_name).get_collection(
-            coll_name, write_concern=WriteConcern(w="majority"))
-        coll.drop()
+            coll = self.client.get_database(db_name).get_collection(
+                coll_name, write_concern=WriteConcern(w="majority"))
+            coll.drop()
 
-        # documents MAY be an empty list
-        if documents:
-            coll.insert_many(documents)
+            # documents MAY be an empty list
+            if documents:
+                coll.insert_many(documents)
 
     @classmethod
     def setUpClass(cls):
-        # The super call takes care of creating the internal client.
+        # super call creates internal client cls.client
         super(UnifiedSpecTestMixin, cls).setUpClass()
 
         # process schemaVersion
@@ -147,97 +360,155 @@ class UnifiedSpecTestMixin(IntegrationTest):
         super(UnifiedSpecTestMixin, cls).tearDownClass()
         cls.client.close()
 
-    def create_entity(self, entity_spec):
-        if len(entity_spec) != 1:
-            raise ValueError("Entity spec MUST contain exactly one top-level key.")
-
-        for entity_type, spec in entity_spec.items():
-            pass
-
-        if entity_type == 'client':
-            # TODO
-            # Add logic to respect the following fields
-            # - uriOptions
-            # - useMultipleMongoses
-            # - observeEvents
-            # - ignoreCommandMonitoringEvents
-            client = rs_or_single_client()
-            self.entity_map[spec['id']] = client
-            self.addCleanup(client.close)
-            return
-        elif entity_type == 'database':
-            # TODO
-            # Add logic to respect the following fields
-            # - databaseOptions
-            client = self.entity_map[spec['client']]
-            self.entity_map[spec['id']] = client.get_database(spec['databaseName'])
-            return
-        elif entity_type == 'collection':
-            # TODO
-            # Add logic to respect the following fields
-            # - collectionOptions
-            database = self.entity_map[spec['database']]
-            self.entity_map[spec['id']] = database.get_collection(spec['collectionName'])
-            return
-        # elif ...
-            # TODO
-            # Implement the following entity types:
-            # - session
-            # - bucket
-        else:
-            raise ValueError("Unknown entity type %s" % (entity_type,))
-
     def setUp(self):
         super(UnifiedSpecTestMixin, self).setUp()
 
         # process createEntities
-        self.entity_map = {}
-        entity_spec = self.TEST_SPEC.get('createEntities', [])
-        for spec in entity_spec:
-            self.create_entity(spec)
+        self.entity_map = EntityMapUtil(self)
+        self.entity_map.create_entities_from_spec(
+            self.TEST_SPEC.get('createEntities', []))
 
         # process initialData
-        initial_data = self.TEST_SPEC.get('initialData', [])
-        for data in initial_data:
-            self.insert_initial_data(self.client, data)
+        self.insert_initial_data(self.TEST_SPEC.get('initialData', []))
 
-        # PyMongo internals
-        #self.test_assets = {}
+        # initialize internals
+        self.match_evaluator = MatchEvaluatorUtil(self)
 
-    def run_entity_operation(self, entity_name, spec):
-        target = self.entity_map[entity_name]
+    def run_entity_operation(self, spec):
+        target = self.entity_map[spec['object']]
         opname = camel_to_snake(spec['name'])
         opargs = spec.get('arguments')
         expect_error = spec.get('expectError')
         if expect_error:
             # TODO: process expectedError object
             # See L420-446 of utils_spec_runner.py
-            pass
-        else:
-            # Operation expected to succeed
-            arguments = {}
-            if opargs:
-                if 'session' in arguments:
-                    # TODO: resolve session to entity
-                    pass
-                if 'readConcern' in arguments:
-                    from pymongo.read_concern import ReadConcern
-                    arguments['read_concern'] = ReadConcern(
-                        **opargs.pop('readConcern'))
-                if 'readPreference' in arguments:
-                    from pymongo.read_preferences import ReadPreference
-                    pass
+            return
+
+        # Operation expected to succeed
+        arguments = parse_spec_options(copy.deepcopy(opargs))
+        cmd = getattr(target, opname)
+        prepare_spec_arguments(spec, arguments, opname, self.entity_map,
+                               None)
+        result = cmd(**dict(arguments))
+
+        if isinstance(result, Cursor):
+            result = list(result)
+
+        expected_result = spec.get('expectResult')
+        self.match_evaluator.match_result(expected_result, result)
+
+        save_as_entity = spec.get('saveResultAsEntity')
+        if save_as_entity:
+            self.entity_map[save_as_entity] = result
+
+    def _operation_failPoint(self, spec):
+        client = self.entity_map[spec['client']]
+        command_args = spec['failPoint']
+        cmd_on = SON([('configureFailPoint', 'failCommand')])
+        cmd_on.update(command_args)
+        client.admin.command(cmd_on)
+        self.addCleanup(
+            client.admin.command,
+            'configureFailPoint', cmd_on['configureFailPoint'], mode='off')
+
+    def _operation_targetedFailPoint(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertSessionTransactionState(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertSessionPinned(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertSessionUnpinned(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertDifferentLsidOnLastTwoCommands(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertSameLsidOnLastTwoCommands(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertSessionDirty(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertSessionNotDirty(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertCollectionExists(self, spec):
+        database_name = spec['databaseName']
+        collection_name = spec['collectionName']
+        collection_name_list = list(
+            self.client.get_database(database_name).list_collection_names())
+        self.assertIn(collection_name, collection_name_list)
+
+    def _operation_assertCollectionNotExists(self, spec):
+        database_name = spec['databaseName']
+        collection_name = spec['collectionName']
+        collection_name_list = list(
+            self.client.get_database(database_name).list_collection_names())
+        self.assertNotIn(collection_name, collection_name_list)
+
+    def _operation_assertIndexExists(self, spec):
+        raise NotImplementedError
+
+    def _operation_assertIndexNotExists(self, spec):
+        raise NotImplementedError
 
     def run_special_operation(self, spec):
-        pass
+        opname = spec['name']
+        method_name = '_operation_%s' % (opname,)
+        try:
+            method = getattr(self, method_name)
+        except AttributeError:
+            self.fail('Unsupported special test operation %s' % (opname,))
+        else:
+            method(spec['arguments'])
 
     def run_operations(self, spec):
         for op in spec:
             target = op['object']
             if target != 'testRunner':
-                self.run_entity_operation(target, op)
+                self.run_entity_operation(op)
             else:
                 self.run_special_operation(op)
+
+    def check_events(self, spec):
+        for event_spec in spec:
+            client_name = event_spec['client']
+            events = event_spec['events']
+            listener = self.entity_map.get_listener_for_client(client_name)
+
+            if len(events) == 0:
+                self.assertEqual(listener.results, [])
+                continue
+
+            if len(events) > len(listener.results):
+                self.fail('Expected to see %s events, got %s' % (
+                    len(events), len(listener.results)))
+
+            for idx, expected_event in enumerate(events):
+                self.match_evaluator.match_event(
+                    expected_event, listener.results[idx])
+
+    def verify_outcome(self, spec):
+        for collection_data in spec:
+            coll_name = collection_data['collectionName']
+            db_name = collection_data['databaseName']
+            expected_documents = collection_data['documents']
+
+            coll = self.client.get_database(db_name).get_collection(
+                coll_name,
+                read_preference=ReadPreference.PRIMARY,
+                read_concern=ReadConcern(level='local'))
+
+            if expected_documents:
+                sorted_expected_documents = sorted(
+                    expected_documents, key=lambda doc: doc['_id'])
+                actual_documents = list(
+                    coll.find({}, sort=[('_id', ASCENDING)]))
+                self.assertListEqual(sorted_expected_documents,
+                                     actual_documents)
 
     def run_scenario(self, spec):
         # process test-level runOnRequirements
@@ -253,11 +524,11 @@ class UnifiedSpecTestMixin(IntegrationTest):
         # process operations
         self.run_operations(spec['operations'])
 
-        # process expectedEvents
-        # TODO: process expectedEvents
+        # process expectEvents
+        self.check_events(spec.get('expectEvents', []))
 
         # process outcome
-        # TODO: process outcome
+        self.verify_outcome(spec.get('outcome', []))
 
 
 class UnifiedSpecTestMeta(type):
