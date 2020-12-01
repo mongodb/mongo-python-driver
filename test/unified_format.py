@@ -18,7 +18,6 @@ https://github.com/mongodb/specifications/blob/master/source/unified-test-format
 """
 
 import copy
-import functools
 import os
 import sys
 import types
@@ -26,7 +25,7 @@ import types
 from bson import json_util, SON
 from bson.py3compat import abc, iteritems, text_type
 
-from pymongo import operations, ASCENDING, MongoClient
+from pymongo import ASCENDING, MongoClient
 from pymongo.cursor import Cursor
 from pymongo.database import Database
 from pymongo.monitoring import (
@@ -38,13 +37,11 @@ from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
 from test.utils import (
-    camel_to_snake, camel_to_snake_args, rs_or_single_client,
+    camel_to_snake, rs_or_single_client,
     snake_to_camel, ScenarioDict)
 
 from test.version import Version
-from test.utils import (camel_to_upper_camel,
-                        parse_spec_options,
-                        prepare_spec_arguments)
+from test.utils import parse_spec_options, prepare_spec_arguments
 
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -157,8 +154,6 @@ class EntityMapUtil(object):
             # Add logic to respect the following fields
             # - uriOptions
             # - useMultipleMongoses
-            # - observeEvents
-            # - ignoreCommandMonitoringEvents
             observe_events = spec.get('observeEvents')
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
             if observe_events:
@@ -226,16 +221,41 @@ class MatchEvaluatorUtil(object):
     def __init__(self, test_class):
         self._test_class = test_class
 
-    def _evaluate_special_operation(self, operation, expectation, actual):
-        pass
+    def _operation_exists(self, spec, actual):
+        raise NotImplementedError
+
+    def _operation_type(self, spec, actual):
+        raise NotImplementedError
+
+    def _operation_matchesEntity(self, spec, actual):
+        raise NotImplementedError
+
+    def _operation_matchesHexBytes(self, spec, actual):
+        raise NotImplementedError
+
+    def _operation_unsetOrMatches(self, spec, actual):
+        raise NotImplementedError
+
+    def _operation_sessionLsid(self, spec, actual):
+        raise NotImplementedError
+
+    def _evaluate_special_operation(self, opname, spec, actual):
+        method_name = '_operation_%s' % (opname.strip('$'),)
+        try:
+            method = getattr(self, method_name)
+        except AttributeError:
+            self._test_class.fail(
+                'Unsupported special matching operator %s' % (opname,))
+        else:
+            method(spec, actual)
 
     def _evaluate_if_special_operation(self, expectation, actual):
         if isinstance(expectation, abc.Mapping) and len(expectation) == 1:
             key, value = next(iteritems(expectation))
             if key.startswith('$$'):
                 self._evaluate_special_operation(
-                    operation=key,
-                    expectation=value,
+                    opname=key,
+                    spec=value,
                     actual=actual)
                 return True
         return False
@@ -374,28 +394,64 @@ class UnifiedSpecTestMixin(IntegrationTest):
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
 
+    def process_error(self, exception, spec):
+        is_error = spec.get('isError')
+        is_client_error = spec.get('isClientError')
+        error_contains = spec.get('errorContains')
+        error_code = spec.get('errorCode')
+        error_code_name = spec.get('errorCodeName')
+        error_labels_contain = spec.get('errorLabelsContain')
+        error_labels_omit = spec.get('errorLabelsOmit')
+        expect_result = spec.get('expectResult')
+        # TODO: process expectedError object
+        # See L420-446 of utils_spec_runner.py
+
+        if is_error:
+            self.assertIsInstance(exception, Exception)
+
+        if is_client_error:
+            raise NotImplementedError
+
+        if error_contains:
+            raise RuntimeError
+
+        if error_code:
+            raise NotImplementedError
+
+        if error_code_name:
+            raise NotImplementedError
+
+        if error_labels_contain:
+            raise NotImplementedError
+
+        if error_labels_omit:
+            raise NotImplementedError
+
+        if expect_result:
+            raise NotImplementedError
+
     def run_entity_operation(self, spec):
         target = self.entity_map[spec['object']]
         opname = camel_to_snake(spec['name'])
         opargs = spec.get('arguments')
         expect_error = spec.get('expectError')
-        if expect_error:
-            # TODO: process expectedError object
-            # See L420-446 of utils_spec_runner.py
-            return
-
-        # Operation expected to succeed
         arguments = parse_spec_options(copy.deepcopy(opargs))
         cmd = getattr(target, opname)
         prepare_spec_arguments(spec, arguments, opname, self.entity_map,
                                None)
-        result = cmd(**dict(arguments))
 
-        if isinstance(result, Cursor):
-            result = list(result)
+        try:
+            result = cmd(**dict(arguments))
+        except Exception as exc:
+            if expect_error:
+                return self.process_error(exc, expect_error)
+            raise
+        else:
+            if isinstance(result, Cursor):
+                result = list(result)
 
-        expected_result = spec.get('expectResult')
-        self.match_evaluator.match_result(expected_result, result)
+        expect_result = spec.get('expectResult')
+        self.match_evaluator.match_result(expect_result, result)
 
         save_as_entity = spec.get('saveResultAsEntity')
         if save_as_entity:
