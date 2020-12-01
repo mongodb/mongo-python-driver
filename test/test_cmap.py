@@ -172,6 +172,8 @@ class TestCMAP(IntegrationTest):
         """Check the events of a test."""
         actual_events = self.actual_events(ignore)
         for actual, expected in zip(actual_events, events):
+            self.logs.append('Checking event actual: %r vs expected: %r' % (
+                actual, expected))
             self.check_event(actual, expected)
 
         if len(events) > len(actual_events):
@@ -196,6 +198,7 @@ class TestCMAP(IntegrationTest):
 
     def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
+        self.logs = []
         self.assertEqual(scenario_def['version'], 1)
         self.assertIn(scenario_def['style'], ['unit', 'integration'])
         self.listener = CMAPListener()
@@ -240,8 +243,7 @@ class TestCMAP(IntegrationTest):
             self.check_events(test['events'], test['ignore'])
         except Exception:
             # Print the events after a test failure.
-            print()
-            print('Failed test: %r' % (test['description'],))
+            print('\nFailed test: %r' % (test['description'],))
             print('Operations:')
             for op in self._ops:
                 print(op)
@@ -252,6 +254,9 @@ class TestCMAP(IntegrationTest):
             print('Events:')
             for event in self.listener.events:
                 print(event)
+            print('Log:')
+            for log in self.logs:
+                print(log)
             raise
 
     POOL_OPTIONS = {

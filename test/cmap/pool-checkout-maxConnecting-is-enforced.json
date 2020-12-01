@@ -31,30 +31,29 @@
       "target": "thread1"
     },
     {
-      "name": "checkOut",
-      "thread": "thread1"
-    },
-    {
       "name": "start",
       "target": "thread2"
-    },
-    {
-      "name": "wait",
-      "thread": "thread2",
-      "ms": 100
-    },
-    {
-      "name": "checkOut",
-      "thread": "thread2"
     },
     {
       "name": "start",
       "target": "thread3"
     },
     {
+      "name": "checkOut",
+      "thread": "thread1"
+    },
+    {
+      "name": "waitForEvent",
+      "event": "ConnectionCreated",
+      "count": 1
+    },
+    {
       "name": "wait",
-      "thread": "thread3",
       "ms": 100
+    },
+    {
+      "name": "checkOut",
+      "thread": "thread2"
     },
     {
       "name": "checkOut",
