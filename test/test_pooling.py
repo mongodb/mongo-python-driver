@@ -276,8 +276,8 @@ class TestPooling(_TestPoolingBase):
         self.assertTrue(socket_checker.select(s, write=True, timeout=0))
         self.assertTrue(socket_checker.select(s, write=True, timeout=.05))
         # Make the socket readable
-        _, msg, _, _ = message._op_msg(
-            0, SON([('ping', 1)]), 'admin', None, True, False,
+        _, msg, _ = message.query(
+            0, 'admin.$cmd', 0, -1, SON([('isMaster', 1)]), None,
             DEFAULT_CODEC_OPTIONS)
         s.sendall(msg)
         # Block until the socket is readable.
