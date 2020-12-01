@@ -21,7 +21,10 @@ import sys
 import threading
 import time
 
-from pymongo import MongoClient
+from bson.son import SON
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
+
+from pymongo import MongoClient, message
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             DuplicateKeyError,
@@ -256,6 +259,37 @@ class TestPooling(_TestPoolingBase):
         s.connect((client_context.host, client_context.port))
         socket_checker = SocketChecker()
         self.assertFalse(socket_checker.socket_closed(s))
+        s.close()
+        self.assertTrue(socket_checker.socket_closed(s))
+
+    def test_socket_checker(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((client_context.host, client_context.port))
+        socket_checker = SocketChecker()
+        # Socket has nothing to read.
+        self.assertFalse(socket_checker.select(s, read=True))
+        self.assertFalse(socket_checker.select(s, read=True, timeout=0))
+        self.assertFalse(socket_checker.select(s, read=True, timeout=.05))
+        # Socket is writable.
+        self.assertTrue(socket_checker.select(s, write=True, timeout=None))
+        self.assertTrue(socket_checker.select(s, write=True))
+        self.assertTrue(socket_checker.select(s, write=True, timeout=0))
+        self.assertTrue(socket_checker.select(s, write=True, timeout=.05))
+        # Make the socket readable
+        _, msg, _ = message.query(
+            0, 'admin.$cmd', 0, -1, SON([('isMaster', 1)]), None,
+            DEFAULT_CODEC_OPTIONS)
+        s.sendall(msg)
+        # Block until the socket is readable.
+        self.assertTrue(socket_checker.select(s, read=True, timeout=None))
+        self.assertTrue(socket_checker.select(s, read=True))
+        self.assertTrue(socket_checker.select(s, read=True, timeout=0))
+        self.assertTrue(socket_checker.select(s, read=True, timeout=.05))
+        # Socket is still writable.
+        self.assertTrue(socket_checker.select(s, write=True, timeout=None))
+        self.assertTrue(socket_checker.select(s, write=True))
+        self.assertTrue(socket_checker.select(s, write=True, timeout=0))
+        self.assertTrue(socket_checker.select(s, write=True, timeout=.05))
         s.close()
         self.assertTrue(socket_checker.socket_closed(s))
 

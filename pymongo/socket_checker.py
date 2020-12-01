@@ -41,7 +41,7 @@ class SocketChecker(object):
             self._poller = None
 
     def select(self, sock, read=False, write=False, timeout=0):
-        """Select for reads or writes with a timeout in seconds.
+        """Select for reads or writes with a timeout in seconds (or None).
 
         Returns True if the socket is readable/writable, False on timeout.
         """
@@ -57,7 +57,8 @@ class SocketChecker(object):
                     try:
                         # poll() timeout is in milliseconds. select()
                         # timeout is in seconds.
-                        res = self._poller.poll(timeout * 1000)
+                        timeout_ = None if timeout is None else timeout * 1000
+                        res = self._poller.poll(timeout_)
                         # poll returns a possibly-empty list containing
                         # (fd, event) 2-tuples for the descriptors that have
                         # events or errors to report. Return True if the list
