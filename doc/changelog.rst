@@ -7,9 +7,26 @@ Changes in Version 3.11.2
 Issues Resolved
 ...............
 
+Version 3.11.2 includes a number of bugfixes. Highlights include:
+
+- Fixed a memory leak caused by failing SDAM monitor checks on Python 3 (`PYTHON-2433`_).
+- Fixed a regression that changed the string representation of
+  :exc:`~pymongo.errors.BulkWriteError` (`PYTHON-2438`_).
+- Fixed a bug that made it impossible to use
+  :meth:`bson.codec_options.CodecOptions.with_options` and
+  :meth:`~bson.json_util.JSONOptions.with_options` on some early versions of
+  Python 3.4 and Python 3.5 due to a bug in the standard library implementation
+  of :meth:`collections.namedtuple._asdict` (`PYTHON-2440`_).
+- Fixed a bug that resulted in a :exc:`TypeError` exception when a PyOpenSSL
+  socket was configured with a timeout of ``None`` (`PYTHON-2443`_).
+
 See the `PyMongo 3.11.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
+.. _PYTHON-2433: https://jira.mongodb.org/browse/PYTHON-2433
+.. _PYTHON-2438: https://jira.mongodb.org/browse/PYTHON-2438
+.. _PYTHON-2440: https://jira.mongodb.org/browse/PYTHON-2440
+.. _PYTHON-2443: https://jira.mongodb.org/browse/PYTHON-2443
 .. _PyMongo 3.11.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30315
 
 Changes in Version 3.11.1
