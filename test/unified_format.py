@@ -18,14 +18,22 @@ https://github.com/mongodb/specifications/blob/master/source/unified-test-format
 """
 
 import copy
+import datetime
+import functools
 import os
 import sys
 import types
 
 from bson import json_util, SON
+from bson.binary import Binary
+from bson.objectid import ObjectId
 from bson.py3compat import abc, iteritems, text_type
+from bson.regex import Regex, RE_TYPE
 
 from pymongo import ASCENDING, MongoClient
+from pymongo.client_session import ClientSession, TransactionOptions
+from pymongo.change_stream import ChangeStream
+from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.database import Database
 from pymongo.monitoring import (
@@ -41,7 +49,7 @@ from test.utils import (
     snake_to_camel, ScenarioDict)
 
 from test.version import Version
-from test.utils import parse_spec_options, prepare_spec_arguments
+from test.utils import camel_to_snake_args, parse_spec_options, prepare_spec_arguments
 
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -188,10 +196,24 @@ class EntityMapUtil(object):
                         spec['database'], type(database)))
             self[spec['id']] = database.get_collection(spec['collectionName'])
             return
+        elif entity_type == 'session':
+            client = self[spec['client']]
+            if not isinstance(client, MongoClient):
+                self._test_class.fail(
+                    'Expected entity %s to be of type MongoClient, got %s' % (
+                        spec['client'], type(client)))
+            opts = camel_to_snake_args(spec['sessionOptions'])
+            if 'default_transaction_options' in opts:
+                txn_opts = parse_spec_options(
+                    opts['default_transaction_options'])
+                txn_opts = TransactionOptions(**txn_opts)
+                opts['default_transaction_options'] = txn_opts
+            session = client.start_session(**dict(opts))
+            self[spec['id']] = session
+            self._test_class.addCleanup(session.end_session())
         # elif ...
             # TODO
             # Implement the following entity types:
-            # - session
             # - bucket
         self._test_class.fail(
             'Unable to create entity of unknown type %s' % (entity_type,))
@@ -215,6 +237,23 @@ class EntityMapUtil(object):
         return listener
 
 
+BSON_TYPE_ALIAS_MAP = {
+    # https://docs.mongodb.com/manual/reference/operator/query/type/
+    # https://pymongo.readthedocs.io/en/stable/api/bson/index.html
+    'double': float,
+    'string': text_type,
+    'object': abc.Mapping,
+    'array': abc.Sequence,
+    'binData': (Binary, bytes),
+    'objectId': ObjectId,
+    'bool': bool,
+    'date': datetime.datetime,
+    'null': type(None),
+    'regex': (Regex, RE_TYPE),
+    # TODO: add all supported types
+}
+
+
 class MatchEvaluatorUtil(object):
     """Utility class that implements methods for evaluating matches as per
     the unified test format specification."""
@@ -225,7 +264,9 @@ class MatchEvaluatorUtil(object):
         raise NotImplementedError
 
     def _operation_type(self, spec, actual):
-        raise NotImplementedError
+        if spec not in BSON_TYPE_ALIAS_MAP:
+            self._test_class.fail('Unrecognized BSON type alias %s' % (spec,))
+        self._test_class.assertIsInstance(actual, BSON_TYPE_ALIAS_MAP[spec])
 
     def _operation_matchesEntity(self, spec, actual):
         raise NotImplementedError
@@ -260,7 +301,7 @@ class MatchEvaluatorUtil(object):
                 return True
         return False
 
-    def _match_document(self, expectation, actual):
+    def _match_document(self, expectation, actual, is_root):
         if self._evaluate_if_special_operation(expectation, actual):
             return
 
@@ -270,10 +311,11 @@ class MatchEvaluatorUtil(object):
                 continue
 
             self._test_class.assertIn(key, actual)
-            self.match_result(value, actual[key])
+            self.match_result(value, actual[key], is_root=False)
 
-        # TODO: handle if expected is not root
-        return
+        if not is_root:
+            self._test_class.assertEqual(
+                set(expectation.keys()), set(actual.keys()))
 
     def _match_array(self, expectation, actual):
         self._test_class.assertIsInstance(actual, abc.Iterable)
@@ -281,9 +323,12 @@ class MatchEvaluatorUtil(object):
         for e, a in zip(expectation, actual):
             self.match_result(e, a)
 
-    def match_result(self, expectation, actual):
+    def match_result(self, expectation, actual, is_root=True):
+        if expectation is None:
+            return
+
         if isinstance(expectation, abc.Mapping):
-            return self._match_document(expectation, actual)
+            return self._match_document(expectation, actual, is_root=is_root)
 
         if isinstance(expectation, abc.MutableSequence):
             return self._match_array(expectation, actual)
@@ -430,15 +475,111 @@ class UnifiedSpecTestMixin(IntegrationTest):
         if expect_result:
             raise NotImplementedError
 
+    def __raise_if_unsupported(self, opname, target, *target_types):
+        if not isinstance(target, target_types):
+            self.fail('Operation %s not supported for entity '
+                      'of type %s' % (opname, type(target)))
+
+    def __entityOperation_createChangeStream(self, target, *args, **kwargs):
+        self.__raise_if_unsupported(
+            'createChangeStream', target, MongoClient, Database, Collection)
+        return target.watch(*args, **kwargs)
+
+    def _clientOperation_createChangeStream(self, target, *args, **kwargs):
+        return self.__entityOperation_createChangeStream(
+            target, *args, **kwargs)
+
+    def _databaseOperation_createChangeStream(self, target, *args, **kwargs):
+        return self.__entityOperation_createChangeStream(
+            target, *args, **kwargs)
+
+    def _collectionOperation_createChangeStream(self, target, *args, **kwargs):
+        return self.__entityOperation_createChangeStream(
+            target, *args, **kwargs)
+
+    def _databaseOperation_runCommand(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('runCommand', target, Database)
+        return target.command(*args, **kwargs)
+
+    def _collectionOperation_aggregate(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('aggregate', target, Collection)
+        agg_cursor = target.aggregate(*args, **kwargs)
+        return list(agg_cursor)
+
+    def _collectionOperation_bulkWrite(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('bulkWrite', target, Collection)
+        raise NotImplementedError
+
+    def _collectionOperation_find(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('find', target, Collection)
+        find_cursor = target.find(*args, **kwargs)
+        return list(find_cursor)
+
+    def _collectionOperation_findOneAndReplace(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('findOneAndReplace', target, Collection)
+        find_cursor = target.find_one_and_replace(*args, **kwargs)
+        return list(find_cursor)
+
+    def _collectionOperation_findOneAndUpdate(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('findOneAndReplace', target, Collection)
+        find_cursor = target.find_one_and_update(*args, **kwargs)
+        return list(find_cursor)
+
+    def _collectionOperation_insertMany(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('insertMany', target, Collection)
+        return target.insert_many(*args, **kwargs)
+
+    def _collectionOperation_insertOne(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('insertOne', target, Collection)
+        return target.insert_one(*args, **kwargs)
+
+    def _sessionOperation_withTransaction(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('withTransaction', target, ClientSession)
+        raise NotImplementedError
+
+    def _changeStreamOperation_iterateUntilDocumentOrError(self, target,
+                                                           *args, **kwargs):
+        self.__raise_if_unsupported(
+            'iterateUntilDocumentOrError', target, ChangeStream)
+        return next(target)
+
     def run_entity_operation(self, spec):
         target = self.entity_map[spec['object']]
-        opname = camel_to_snake(spec['name'])
+        opname = spec['name']
         opargs = spec.get('arguments')
         expect_error = spec.get('expectError')
-        arguments = parse_spec_options(copy.deepcopy(opargs))
-        cmd = getattr(target, opname)
-        prepare_spec_arguments(spec, arguments, opname, self.entity_map,
-                               None)
+        if opargs:
+            arguments = parse_spec_options(copy.deepcopy(opargs))
+            prepare_spec_arguments(spec, arguments, opname, self.entity_map,
+                                   None)
+        else:
+            arguments = tuple()
+
+        if isinstance(target, MongoClient):
+            method_name = '_clientOperation_%s' % (opname,)
+        elif isinstance(target, Database):
+            method_name = '_databaseOperation_%s' % (opname,)
+        elif isinstance(target, Collection):
+            method_name = '_collectionOperation_%s' % (opname,)
+        elif isinstance(target, ChangeStream):
+            method_name = '_changeStreamOperation_%s' % (opname,)
+        elif isinstance(target, ClientSession):
+            method_name = '_sessionOperation_%s' % (opname,)
+        #elif isinstance(target, GridFSBucket):
+        #   method_name = ...
+        else:
+            method_name = 'doesNotExist'
+
+        try:
+            method = getattr(self, method_name)
+        except AttributeError:
+            try:
+                cmd = getattr(target, camel_to_snake(opname))
+            except AttributeError:
+                self.fail('Unsupported operation %s on entity %s' % (
+                    opname, target))
+        else:
+            cmd = functools.partial(method, target)
 
         try:
             result = cmd(**dict(arguments))
@@ -457,7 +598,7 @@ class UnifiedSpecTestMixin(IntegrationTest):
         if save_as_entity:
             self.entity_map[save_as_entity] = result
 
-    def _operation_failPoint(self, spec):
+    def _testOperation_failPoint(self, spec):
         client = self.entity_map[spec['client']]
         command_args = spec['failPoint']
         cmd_on = SON([('configureFailPoint', 'failCommand')])
@@ -467,53 +608,53 @@ class UnifiedSpecTestMixin(IntegrationTest):
             client.admin.command,
             'configureFailPoint', cmd_on['configureFailPoint'], mode='off')
 
-    def _operation_targetedFailPoint(self, spec):
+    def _testOperation_targetedFailPoint(self, spec):
         raise NotImplementedError
 
-    def _operation_assertSessionTransactionState(self, spec):
+    def _testOperation_assertSessionTransactionState(self, spec):
         raise NotImplementedError
 
-    def _operation_assertSessionPinned(self, spec):
+    def _testOperation_assertSessionPinned(self, spec):
         raise NotImplementedError
 
-    def _operation_assertSessionUnpinned(self, spec):
+    def _testOperation_assertSessionUnpinned(self, spec):
         raise NotImplementedError
 
-    def _operation_assertDifferentLsidOnLastTwoCommands(self, spec):
+    def _testOperation_assertDifferentLsidOnLastTwoCommands(self, spec):
         raise NotImplementedError
 
-    def _operation_assertSameLsidOnLastTwoCommands(self, spec):
+    def _testOperation_assertSameLsidOnLastTwoCommands(self, spec):
         raise NotImplementedError
 
-    def _operation_assertSessionDirty(self, spec):
+    def _testOperation_assertSessionDirty(self, spec):
         raise NotImplementedError
 
-    def _operation_assertSessionNotDirty(self, spec):
+    def _testOperation_assertSessionNotDirty(self, spec):
         raise NotImplementedError
 
-    def _operation_assertCollectionExists(self, spec):
+    def _testOperation_assertCollectionExists(self, spec):
         database_name = spec['databaseName']
         collection_name = spec['collectionName']
         collection_name_list = list(
             self.client.get_database(database_name).list_collection_names())
         self.assertIn(collection_name, collection_name_list)
 
-    def _operation_assertCollectionNotExists(self, spec):
+    def _testOperation_assertCollectionNotExists(self, spec):
         database_name = spec['databaseName']
         collection_name = spec['collectionName']
         collection_name_list = list(
             self.client.get_database(database_name).list_collection_names())
         self.assertNotIn(collection_name, collection_name_list)
 
-    def _operation_assertIndexExists(self, spec):
+    def _testOperation_assertIndexExists(self, spec):
         raise NotImplementedError
 
-    def _operation_assertIndexNotExists(self, spec):
+    def _testOperation_assertIndexNotExists(self, spec):
         raise NotImplementedError
 
     def run_special_operation(self, spec):
         opname = spec['name']
-        method_name = '_operation_%s' % (opname,)
+        method_name = '_testOperation_%s' % (opname,)
         try:
             method = getattr(self, method_name)
         except AttributeError:
@@ -567,6 +708,7 @@ class UnifiedSpecTestMixin(IntegrationTest):
                                      actual_documents)
 
     def run_scenario(self, spec):
+        # import ipdb; ipdb.set_trace()
         # process test-level runOnRequirements
         run_on_spec = spec.get('runOnRequirements', [])
         if not self.should_run_on(run_on_spec):
@@ -600,7 +742,7 @@ class UnifiedSpecTestMeta(type):
         for test_spec in cls.TEST_SPEC['tests']:
             description = test_spec['description']
             test_name = 'test_%s' % (
-                description.replace(' ', '_').replace('.', '_'),)
+                description.strip('. ').replace(' ', '_').replace('.', '_'),)
             test_method = create_test(copy.deepcopy(test_spec))
             test_method.__name__ = test_name
             setattr(cls, test_name, test_method)
