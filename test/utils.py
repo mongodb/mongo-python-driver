@@ -991,7 +991,7 @@ def parse_spec_options(opts):
     if 'requests' in opts:
         reqs = opts.pop('requests')
         for req in reqs:
-            args = req.pop('arguments')
+            args = req.pop('arguments', {})
             if 'hint' in args:
                 hint = args.pop('hint')
                 if not isinstance(hint, string_type):
@@ -1025,9 +1025,16 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map,
             # Parse each request into a bulk write model.
             requests = []
             for request in arguments["requests"]:
-                bulk_model = camel_to_upper_camel(request["name"])
-                bulk_class = getattr(operations, bulk_model)
-                bulk_arguments = camel_to_snake_args(request["arguments"])
+                if 'name' in request:
+                    # CRUD v2 format
+                    bulk_model = camel_to_upper_camel(request["name"])
+                    bulk_class = getattr(operations, bulk_model)
+                    bulk_arguments = camel_to_snake_args(request["arguments"])
+                else:
+                    # Unified test format
+                    bulk_model, spec = next(iteritems(request))
+                    bulk_class = getattr(operations, camel_to_upper_camel(bulk_model))
+                    bulk_arguments = camel_to_snake_args(spec)
                 requests.append(bulk_class(**dict(bulk_arguments)))
             arguments["requests"] = requests
         elif arg_name == "session":

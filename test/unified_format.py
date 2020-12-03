@@ -24,10 +24,10 @@ import os
 import sys
 import types
 
-from bson import json_util, SON
+from bson import json_util, SON, Int64
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from bson.py3compat import abc, iteritems, text_type
+from bson.py3compat import abc, integer_types, iteritems, text_type
 from bson.regex import Regex, RE_TYPE
 
 from pymongo import ASCENDING, MongoClient
@@ -36,11 +36,13 @@ from pymongo.change_stream import ChangeStream
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.database import Database
+from pymongo.errors import BulkWriteError, PyMongoError
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
     CommandSucceededEvent)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.results import BulkWriteResult
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
@@ -49,7 +51,9 @@ from test.utils import (
     snake_to_camel, ScenarioDict)
 
 from test.version import Version
-from test.utils import camel_to_snake_args, parse_spec_options, prepare_spec_arguments
+from test.utils import (
+    camel_to_snake_args, parse_collection_options, parse_spec_options,
+    prepare_spec_arguments)
 
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -82,27 +86,50 @@ def with_metaclass(meta, *bases):
     return type.__new__(metaclass, 'temporary_class', (), {})
 
 
-def is_run_on_requirement_satisfied(requirement):
-    topology_satisfied = True
-    req_topologies = requirement.get('topologies')
-    if req_topologies:
-        topology_satisfied = client_context.is_topology_type(
-            req_topologies)
+class SpecTestUtil(object):
+    @staticmethod
+    def is_run_on_requirement_satisfied(requirement):
+        topology_satisfied = True
+        req_topologies = requirement.get('topologies')
+        if req_topologies:
+            topology_satisfied = client_context.is_topology_type(
+                req_topologies)
 
-    min_version_satisfied = True
-    req_min_server_version = requirement.get('minServerVersion')
-    if req_min_server_version:
-        min_version_satisfied = Version.from_string(
-            req_min_server_version) <= client_context.version
+        min_version_satisfied = True
+        req_min_server_version = requirement.get('minServerVersion')
+        if req_min_server_version:
+            min_version_satisfied = Version.from_string(
+                req_min_server_version) <= client_context.version
 
-    max_version_satisfied = True
-    req_max_server_version = requirement.get('maxServerVersion')
-    if req_max_server_version:
-        max_version_satisfied = Version.from_string(
-            req_max_server_version) >= client_context.version
+        max_version_satisfied = True
+        req_max_server_version = requirement.get('maxServerVersion')
+        if req_max_server_version:
+            max_version_satisfied = Version.from_string(
+                req_max_server_version) >= client_context.version
 
-    return (topology_satisfied and min_version_satisfied and
-            max_version_satisfied)
+        return (topology_satisfied and min_version_satisfied and
+                max_version_satisfied)
+
+    @staticmethod
+    def parse_collection_or_database_options(options):
+        return parse_collection_options(options)
+
+    @staticmethod
+    def parse_bulk_write_result(result):
+        upserted_ids = {str(int_idx): result.upserted_ids[int_idx]
+                        for int_idx in result.upserted_ids}
+        return {
+            'deletedCount': result.deleted_count,
+            'insertedCount': result.inserted_count,
+            'matchedCount': result.matched_count,
+            'modifiedCount': result.modified_count,
+            'upsertedCount': result.upserted_count,
+            'upsertedIds': upserted_ids}
+
+    @staticmethod
+    def parse_bulk_write_error_result(error):
+        write_result = BulkWriteResult(error.details, True)
+        return SpecTestUtil.parse_bulk_write_result(write_result)
 
 
 class EventListenerUtil(CommandListener):
@@ -175,26 +202,26 @@ class EntityMapUtil(object):
             self._test_class.addCleanup(client.close)
             return
         elif entity_type == 'database':
-            # TODO
-            # Add logic to respect the following fields
-            # - databaseOptions
             client = self[spec['client']]
             if not isinstance(client, MongoClient):
                 self._test_class.fail(
                     'Expected entity %s to be of type MongoClient, got %s' % (
                         spec['client'], type(client)))
-            self[spec['id']] = client.get_database(spec['databaseName'])
+            options = SpecTestUtil.parse_collection_or_database_options(
+                spec.get('databaseOptions', {}))
+            self[spec['id']] = client.get_database(
+                spec['databaseName'], **options)
             return
         elif entity_type == 'collection':
-            # TODO
-            # Add logic to respect the following fields
-            # - collectionOptions
             database = self[spec['database']]
             if not isinstance(database, Database):
                 self._test_class.fail(
                     'Expected entity %s to be of type Database, got %s' % (
                         spec['database'], type(database)))
-            self[spec['id']] = database.get_collection(spec['collectionName'])
+            options = SpecTestUtil.parse_collection_or_database_options(
+                spec.get('collectionOptions', {}))
+            self[spec['id']] = database.get_collection(
+                spec['collectionName'], **options)
             return
         elif entity_type == 'session':
             client = self[spec['client']]
@@ -211,6 +238,7 @@ class EntityMapUtil(object):
             session = client.start_session(**dict(opts))
             self[spec['id']] = session
             self._test_class.addCleanup(session.end_session())
+            return
         # elif ...
             # TODO
             # Implement the following entity types:
@@ -240,16 +268,18 @@ class EntityMapUtil(object):
 BSON_TYPE_ALIAS_MAP = {
     # https://docs.mongodb.com/manual/reference/operator/query/type/
     # https://pymongo.readthedocs.io/en/stable/api/bson/index.html
-    'double': float,
-    'string': text_type,
-    'object': abc.Mapping,
-    'array': abc.Sequence,
+    'double': (float,),
+    'string': (text_type,),
+    'object': (abc.Mapping,),
+    'array': (abc.MutableSequence,),
     'binData': (Binary, bytes),
-    'objectId': ObjectId,
-    'bool': bool,
-    'date': datetime.datetime,
-    'null': type(None),
+    'objectId': (ObjectId,),
+    'bool': (bool,),
+    'date': (datetime.datetime,),
+    'null': (type(None),),
     'regex': (Regex, RE_TYPE),
+    'int': (int,),
+    'long': (Int64,)
     # TODO: add all supported types
 }
 
@@ -260,27 +290,48 @@ class MatchEvaluatorUtil(object):
     def __init__(self, test_class):
         self._test_class = test_class
 
-    def _operation_exists(self, spec, actual):
+    def _operation_exists(self, spec, actual, key_to_compare):
+        if spec is True:
+            self._test_class.assertIn(key_to_compare, actual)
+        elif spec is False:
+            self._test_class.assertNotIn(key_to_compare, actual)
+        else:
+            self._test_class.fail(
+                'Expected boolean value for $$exists operator, got %s' % (
+                    spec,))
+
+    def __type_alias_to_type(self, alias):
+        if alias not in BSON_TYPE_ALIAS_MAP:
+            self._test_class.fail('Unrecognized BSON type alias %s' % (alias,))
+        return BSON_TYPE_ALIAS_MAP[alias]
+
+    def _operation_type(self, spec, actual, key_to_compare):
+        if isinstance(spec, abc.MutableSequence):
+            permissible_types = tuple([
+                t for alias in spec for t in self.__type_alias_to_type(alias)])
+        else:
+            permissible_types = self.__type_alias_to_type(spec)
+        self._test_class.assertIsInstance(
+            actual[key_to_compare], permissible_types)
+
+    def _operation_matchesEntity(self, spec, actual, key_to_compare):
         raise NotImplementedError
 
-    def _operation_type(self, spec, actual):
-        if spec not in BSON_TYPE_ALIAS_MAP:
-            self._test_class.fail('Unrecognized BSON type alias %s' % (spec,))
-        self._test_class.assertIsInstance(actual, BSON_TYPE_ALIAS_MAP[spec])
-
-    def _operation_matchesEntity(self, spec, actual):
+    def _operation_matchesHexBytes(self, spec, actual, key_to_compare):
         raise NotImplementedError
 
-    def _operation_matchesHexBytes(self, spec, actual):
-        raise NotImplementedError
-
-    def _operation_unsetOrMatches(self, spec, actual):
-        raise NotImplementedError
+    def _operation_unsetOrMatches(self, spec, actual, key_to_compare):
+        if key_to_compare not in actual:
+            # we add a dummy value for the compared key to pass map size check
+            actual[key_to_compare] = None
+            return
+        self._test_class.assertEqual(spec, actual[key_to_compare])
 
     def _operation_sessionLsid(self, spec, actual):
         raise NotImplementedError
 
-    def _evaluate_special_operation(self, opname, spec, actual):
+    def _evaluate_special_operation(self, opname, spec, actual,
+                                    key_to_compare):
         method_name = '_operation_%s' % (opname.strip('$'),)
         try:
             method = getattr(self, method_name)
@@ -288,17 +339,39 @@ class MatchEvaluatorUtil(object):
             self._test_class.fail(
                 'Unsupported special matching operator %s' % (opname,))
         else:
-            method(spec, actual)
+            method(spec, actual, key_to_compare)
 
-    def _evaluate_if_special_operation(self, expectation, actual):
-        if isinstance(expectation, abc.Mapping) and len(expectation) == 1:
-            key, value = next(iteritems(expectation))
-            if key.startswith('$$'):
-                self._evaluate_special_operation(
-                    opname=key,
-                    spec=value,
-                    actual=actual)
-                return True
+    def _evaluate_if_special_operation(self, expectation, actual,
+                                       key_to_compare=None):
+        """Returns True if a special operation is evaluated, False
+        otherwise. If the ``expectation`` map contains a single key,
+        value pair we check it for a special operation.
+        If given, ``key_to_compare`` is assumed to be the key in
+        ``expectation`` whose corresponding value needs to be
+        evaluated for a possible special operation. ``key_to_compare``
+        is ignored when ``expectation`` has only one key."""
+        if not isinstance(expectation, abc.Mapping):
+            return False
+
+        if len(expectation) == 1:
+            field_name, spec = next(iteritems(expectation))
+        elif key_to_compare is not None:
+            field_name, spec = key_to_compare, expectation[key_to_compare]
+        else:
+            return False
+
+        if not (isinstance(spec, abc.Mapping) and len(spec) == 1):
+            return False
+
+        opname, payload = next(iteritems(spec))
+        if opname.startswith('$$'):
+            self._evaluate_special_operation(
+                opname=opname,
+                spec=payload,
+                actual=actual,
+                key_to_compare=key_to_compare)
+            return True
+
         return False
 
     def _match_document(self, expectation, actual, is_root):
@@ -307,34 +380,39 @@ class MatchEvaluatorUtil(object):
 
         self._test_class.assertIsInstance(actual, abc.Mapping)
         for key, value in iteritems(expectation):
-            if self._evaluate_if_special_operation({key: value}, actual):
+            if self._evaluate_if_special_operation(expectation, actual, key):
                 continue
 
             self._test_class.assertIn(key, actual)
-            self.match_result(value, actual[key], is_root=False)
+            self.match_result(value, actual[key], in_recursive_call=True)
 
         if not is_root:
             self._test_class.assertEqual(
                 set(expectation.keys()), set(actual.keys()))
 
-    def _match_array(self, expectation, actual):
-        self._test_class.assertIsInstance(actual, abc.Iterable)
-
-        for e, a in zip(expectation, actual):
-            self.match_result(e, a)
-
-    def match_result(self, expectation, actual, is_root=True):
-        if expectation is None:
-            return
-
+    def match_result(self, expectation, actual,
+                     in_recursive_call=False):
         if isinstance(expectation, abc.Mapping):
-            return self._match_document(expectation, actual, is_root=is_root)
+            return self._match_document(
+                expectation, actual, is_root=not in_recursive_call)
 
         if isinstance(expectation, abc.MutableSequence):
-            return self._match_array(expectation, actual)
+            self._test_class.assertIsInstance(actual, abc.MutableSequence)
+            for e, a in zip(expectation, actual):
+                if isinstance(e, abc.Mapping):
+                    self._match_document(
+                        e, a, is_root=not in_recursive_call)
+                else:
+                    self.match_result(e, a, in_recursive_call=True)
+                return
 
-        self._test_class.assertIsInstance(actual, type(expectation))
-        self._test_class.assertEqual(expectation, actual)
+        # account for flexible numerics in element-wise comparison
+        if (isinstance(expectation, integer_types) or
+                isinstance(expectation, float)):
+            self._test_class.assertEqual(expectation, actual)
+        else:
+            self._test_class.assertIsInstance(actual, type(expectation))
+            self._test_class.assertEqual(expectation, actual)
 
     def match_event(self, expectation, actual):
         event_type, spec = next(iteritems(expectation))
@@ -383,7 +461,7 @@ class UnifiedSpecTestMixin(IntegrationTest):
             return True
 
         for req in run_on_spec:
-            if is_run_on_requirement_satisfied(req):
+            if SpecTestUtil.is_run_on_requirement_satisfied(req):
                 return True
         return False
 
@@ -452,10 +530,11 @@ class UnifiedSpecTestMixin(IntegrationTest):
         # See L420-446 of utils_spec_runner.py
 
         if is_error:
-            self.assertIsInstance(exception, Exception)
+            # already satisfied because exception was raised
+            pass
 
         if is_client_error:
-            raise NotImplementedError
+            self.assertNotIsInstance(exception, PyMongoError)
 
         if error_contains:
             raise RuntimeError
@@ -473,7 +552,12 @@ class UnifiedSpecTestMixin(IntegrationTest):
             raise NotImplementedError
 
         if expect_result:
-            raise NotImplementedError
+            if isinstance(exception, BulkWriteError):
+                result = SpecTestUtil.parse_bulk_write_error_result(
+                    exception)
+                self.match_evaluator.match_result(expect_result, result)
+            else:
+                raise NotImplementedError
 
     def __raise_if_unsupported(self, opname, target, *target_types):
         if not isinstance(target, target_types):
@@ -501,14 +585,20 @@ class UnifiedSpecTestMixin(IntegrationTest):
         self.__raise_if_unsupported('runCommand', target, Database)
         return target.command(*args, **kwargs)
 
+    def __entityOperation_aggregate(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('aggregate', target, Database, Collection)
+        return list(target.aggregate(*args, **kwargs))
+
+    def _databaseOperation_aggregate(self, target, *args, **kwargs):
+        return self.__entityOperation_aggregate(target, *args, **kwargs)
+
     def _collectionOperation_aggregate(self, target, *args, **kwargs):
-        self.__raise_if_unsupported('aggregate', target, Collection)
-        agg_cursor = target.aggregate(*args, **kwargs)
-        return list(agg_cursor)
+        return self.__entityOperation_aggregate(target, *args, **kwargs)
 
     def _collectionOperation_bulkWrite(self, target, *args, **kwargs):
         self.__raise_if_unsupported('bulkWrite', target, Collection)
-        raise NotImplementedError
+        write_result = target.bulk_write(*args, **kwargs)
+        return SpecTestUtil.parse_bulk_write_result(write_result)
 
     def _collectionOperation_find(self, target, *args, **kwargs):
         self.__raise_if_unsupported('find', target, Collection)
@@ -591,8 +681,8 @@ class UnifiedSpecTestMixin(IntegrationTest):
             if isinstance(result, Cursor):
                 result = list(result)
 
-        expect_result = spec.get('expectResult')
-        self.match_evaluator.match_result(expect_result, result)
+        if 'expectResult' in spec:
+            self.match_evaluator.match_result(spec['expectResult'], result)
 
         save_as_entity = spec.get('saveResultAsEntity')
         if save_as_entity:
@@ -708,7 +798,6 @@ class UnifiedSpecTestMixin(IntegrationTest):
                                      actual_documents)
 
     def run_scenario(self, spec):
-        # import ipdb; ipdb.set_trace()
         # process test-level runOnRequirements
         run_on_spec = spec.get('runOnRequirements', [])
         if not self.should_run_on(run_on_spec):
