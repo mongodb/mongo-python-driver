@@ -17,8 +17,10 @@ import sys
 
 sys.path[0:0] = [""]
 
+from bson import ObjectId, Timestamp
+
 from test import unittest
-from test.unified_format import generate_test_classes
+from test.unified_format import generate_test_classes, MatchEvaluatorUtil
 
 
 _TEST_PATH = os.path.join(
@@ -28,6 +30,29 @@ globals().update(generate_test_classes(
     os.path.join(_TEST_PATH, 'valid-pass'),
     module=__name__,
     class_name_prefix='UnifiedTestFormat'))
+
+
+class TestMatchEvaluatorUtil(unittest.TestCase):
+    def setUp(self):
+        self.match_evaluator = MatchEvaluatorUtil(self)
+
+    def test_unsetOrMatches(self):
+        spec = {'$$unsetOrMatches': {'y': {'$$unsetOrMatches': 2}}}
+        for actual in [{}, {'y': 2}, None]:
+            self.match_evaluator.match_result(spec, actual)
+
+        spec = {'x': {'$$unsetOrMatches': {'y': {'$$unsetOrMatches': 2}}}}
+        for actual in [{}, {'x': {}}, {'x': {'y': 2}}]:
+            self.match_evaluator.match_result(spec, actual)
+
+    def test_type(self):
+        self.match_evaluator.match_result(
+            {'operationType': 'insert',
+             'ns': {'db': 'change-stream-tests', 'coll': 'test'},
+             'fullDocument': {'_id': {'$$type': 'objectId'}, 'x': 1}},
+            {'operationType': 'insert',
+             'fullDocument': {'_id': ObjectId('5fc93511ac93941052098f0c'), 'x': 1},
+             'ns': {'db': 'change-stream-tests', 'coll': 'test'}})
 
 
 if __name__ == "__main__":

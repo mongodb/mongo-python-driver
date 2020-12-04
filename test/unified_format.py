@@ -42,7 +42,7 @@ from pymongo.monitoring import (
     CommandSucceededEvent)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import BulkWriteResult
+from pymongo.results import BulkWriteResult, InsertManyResult, InsertOneResult
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
@@ -189,11 +189,13 @@ class EntityMapUtil(object):
             # Add logic to respect the following fields
             # - uriOptions
             # - useMultipleMongoses
+            uri_options = spec.get('uriOptions', {})
             observe_events = spec.get('observeEvents')
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
             if observe_events:
                 listener = EventListenerUtil(observe_events, ignore_commands)
-                client = rs_or_single_client(event_listeners=[listener])
+                client = rs_or_single_client(
+                    event_listeners=[listener], **uri_options)
             else:
                 listener = None
                 client = rs_or_single_client()
@@ -321,11 +323,15 @@ class MatchEvaluatorUtil(object):
         raise NotImplementedError
 
     def _operation_unsetOrMatches(self, spec, actual, key_to_compare):
+        if key_to_compare is None and not actual:
+            # top-level document can be None when unset
+            return
+
         if key_to_compare not in actual:
             # we add a dummy value for the compared key to pass map size check
-            actual[key_to_compare] = None
+            actual[key_to_compare] = 'dummyValue'
             return
-        self._test_class.assertEqual(spec, actual[key_to_compare])
+        self.match_result(spec, actual[key_to_compare], in_recursive_call=True)
 
     def _operation_sessionLsid(self, spec, actual):
         raise NotImplementedError
@@ -353,21 +359,30 @@ class MatchEvaluatorUtil(object):
         if not isinstance(expectation, abc.Mapping):
             return False
 
-        if len(expectation) == 1:
-            field_name, spec = next(iteritems(expectation))
-        elif key_to_compare is not None:
-            field_name, spec = key_to_compare, expectation[key_to_compare]
-        else:
-            return False
+        is_special_op, opname, spec = False, False, False
 
-        if not (isinstance(spec, abc.Mapping) and len(spec) == 1):
-            return False
+        if key_to_compare is not None:
+            if key_to_compare.startswith('$$'):
+                is_special_op = True
+                opname = key_to_compare
+                spec = expectation[key_to_compare]
+                key_to_compare = None
+            else:
+                nested = expectation[key_to_compare]
+                if isinstance(nested, abc.Mapping) and len(nested) == 1:
+                    opname, spec = next(iteritems(nested))
+                    if opname.startswith('$$'):
+                        is_special_op = True
+        elif len(expectation) == 1:
+            opname, spec = next(iteritems(expectation))
+            if opname.startswith('$$'):
+                is_special_op = True
+                key_to_compare = None
 
-        opname, payload = next(iteritems(spec))
-        if opname.startswith('$$'):
+        if is_special_op:
             self._evaluate_special_operation(
                 opname=opname,
-                spec=payload,
+                spec=spec,
                 actual=actual,
                 key_to_compare=key_to_compare)
             return True
@@ -546,10 +561,15 @@ class UnifiedSpecTestMixin(IntegrationTest):
             raise NotImplementedError
 
         if error_labels_contain:
-            raise NotImplementedError
+            labels = [err_label for err_label in error_labels_contain
+                      if exception.has_error_label(err_label)]
+            self.assertEqual(labels, error_labels_contain)
 
         if error_labels_omit:
-            raise NotImplementedError
+            for err_label in error_labels_omit:
+                if exception.has_error_label(err_label):
+                    self.fail("Exception '%s' unexpectedly had label '%s'" % (
+                        exception, err_label))
 
         if expect_result:
             if isinstance(exception, BulkWriteError):
@@ -607,21 +627,21 @@ class UnifiedSpecTestMixin(IntegrationTest):
 
     def _collectionOperation_findOneAndReplace(self, target, *args, **kwargs):
         self.__raise_if_unsupported('findOneAndReplace', target, Collection)
-        find_cursor = target.find_one_and_replace(*args, **kwargs)
-        return list(find_cursor)
+        return target.find_one_and_replace(*args, **kwargs)
 
     def _collectionOperation_findOneAndUpdate(self, target, *args, **kwargs):
         self.__raise_if_unsupported('findOneAndReplace', target, Collection)
-        find_cursor = target.find_one_and_update(*args, **kwargs)
-        return list(find_cursor)
+        return target.find_one_and_update(*args, **kwargs)
 
     def _collectionOperation_insertMany(self, target, *args, **kwargs):
         self.__raise_if_unsupported('insertMany', target, Collection)
-        return target.insert_many(*args, **kwargs)
+        result = target.insert_many(*args, **kwargs)
+        return {idx: _id for idx, _id in enumerate(result.inserted_ids)}
 
     def _collectionOperation_insertOne(self, target, *args, **kwargs):
         self.__raise_if_unsupported('insertOne', target, Collection)
-        return target.insert_one(*args, **kwargs)
+        result = target.insert_one(*args, **kwargs)
+        return {'insertedId': result.inserted_id}
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         self.__raise_if_unsupported('withTransaction', target, ClientSession)
@@ -677,9 +697,6 @@ class UnifiedSpecTestMixin(IntegrationTest):
             if expect_error:
                 return self.process_error(exc, expect_error)
             raise
-        else:
-            if isinstance(result, Cursor):
-                result = list(result)
 
         if 'expectResult' in spec:
             self.match_evaluator.match_result(spec['expectResult'], result)
