@@ -1053,7 +1053,12 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map,
             # camelCase maxTimeMS. See PYTHON-1855.
             arguments['maxTimeMS'] = arguments.pop('max_time_ms')
         elif opname == 'with_transaction' and arg_name == 'callback':
-            callback_ops = arguments[arg_name]['operations']
+            if 'operations' in arguments[arg_name]:
+                # CRUD v2 format
+                callback_ops = arguments[arg_name]['operations']
+            else:
+                # Unified test format
+                callback_ops = arguments[arg_name]
             arguments['callback'] = lambda _: with_txn_callback(
                 copy.deepcopy(callback_ops))
         elif opname == 'drop_collection' and arg_name == 'collection':

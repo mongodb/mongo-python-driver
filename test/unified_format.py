@@ -30,13 +30,15 @@ from bson.objectid import ObjectId
 from bson.py3compat import abc, integer_types, iteritems, text_type
 from bson.regex import Regex, RE_TYPE
 
+from gridfs import GridFSBucket
+
 from pymongo import ASCENDING, MongoClient
-from pymongo.client_session import ClientSession, TransactionOptions
+from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.change_stream import ChangeStream
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.database import Database
-from pymongo.errors import BulkWriteError, PyMongoError
+from pymongo.errors import BulkWriteError, InvalidOperation, PyMongoError
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
     CommandSucceededEvent)
@@ -162,6 +164,7 @@ class EntityMapUtil(object):
     def __init__(self, test_class):
         self._entities = {}
         self._listeners = {}
+        self._session_lsids = {}
         self._test_class = test_class
 
     def __getitem__(self, item):
@@ -236,15 +239,17 @@ class EntityMapUtil(object):
                 txn_opts = parse_spec_options(
                     opts['default_transaction_options'])
                 txn_opts = TransactionOptions(**txn_opts)
+                opts = copy.deepcopy(opts)
                 opts['default_transaction_options'] = txn_opts
             session = client.start_session(**dict(opts))
             self[spec['id']] = session
-            self._test_class.addCleanup(session.end_session())
+            self._session_lsids[spec['id']] = copy.deepcopy(session.session_id)
+            self._test_class.addCleanup(session.end_session)
             return
-        # elif ...
-            # TODO
-            # Implement the following entity types:
-            # - bucket
+        elif entity_type == 'bucket':
+            # TODO: implement the 'bucket' entity type
+            self._test_class.skipTest(
+                'GridFS entity types are not currently supported.')
         self._test_class.fail(
             'Unable to create entity of unknown type %s' % (entity_type,))
 
@@ -265,6 +270,19 @@ class EntityMapUtil(object):
                 'No listeners configured for client %s' % (client_name,))
 
         return listener
+
+    def get_lsid_for_session(self, session_name):
+        session = self[session_name]
+        if not isinstance(session, ClientSession):
+            self._test_class.fail(
+                'Expected entity %s to be of type ClientSession, got %s' % (
+                    session_name, type(session)))
+
+        try:
+            return session.session_id
+        except InvalidOperation:
+            # session has been closed.
+            return self._session_lsids[session_name]
 
 
 BSON_TYPE_ALIAS_MAP = {
@@ -333,8 +351,9 @@ class MatchEvaluatorUtil(object):
             return
         self.match_result(spec, actual[key_to_compare], in_recursive_call=True)
 
-    def _operation_sessionLsid(self, spec, actual):
-        raise NotImplementedError
+    def _operation_sessionLsid(self, spec, actual, key_to_compare):
+        expected_lsid = self._test_class.entity_map.get_lsid_for_session(spec)
+        self._test_class.assertEqual(expected_lsid, actual[key_to_compare])
 
     def _evaluate_special_operation(self, opname, spec, actual,
                                     key_to_compare):
@@ -552,7 +571,7 @@ class UnifiedSpecTestMixin(IntegrationTest):
             self.assertNotIsInstance(exception, PyMongoError)
 
         if error_contains:
-            raise RuntimeError
+            raise NotImplementedError
 
         if error_code:
             raise NotImplementedError
@@ -577,7 +596,8 @@ class UnifiedSpecTestMixin(IntegrationTest):
                     exception)
                 self.match_evaluator.match_result(expect_result, result)
             else:
-                raise NotImplementedError
+                self.fail("expectResult can only be specified with %s "
+                          "exceptions" % (BulkWriteError,))
 
     def __raise_if_unsupported(self, opname, target, *target_types):
         if not isinstance(target, target_types):
@@ -645,7 +665,7 @@ class UnifiedSpecTestMixin(IntegrationTest):
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         self.__raise_if_unsupported('withTransaction', target, ClientSession)
-        raise NotImplementedError
+        return target.with_transaction(*args, **kwargs)
 
     def _changeStreamOperation_iterateUntilDocumentOrError(self, target,
                                                            *args, **kwargs):
@@ -660,8 +680,8 @@ class UnifiedSpecTestMixin(IntegrationTest):
         expect_error = spec.get('expectError')
         if opargs:
             arguments = parse_spec_options(copy.deepcopy(opargs))
-            prepare_spec_arguments(spec, arguments, opname, self.entity_map,
-                                   None)
+            prepare_spec_arguments(spec, arguments, camel_to_snake(opname),
+                                   self.entity_map, self.run_operations)
         else:
             arguments = tuple()
 
@@ -675,8 +695,8 @@ class UnifiedSpecTestMixin(IntegrationTest):
             method_name = '_changeStreamOperation_%s' % (opname,)
         elif isinstance(target, ClientSession):
             method_name = '_sessionOperation_%s' % (opname,)
-        #elif isinstance(target, GridFSBucket):
-        #   method_name = ...
+        elif isinstance(target, GridFSBucket):
+            raise NotImplementedError
         else:
             method_name = 'doesNotExist'
 
@@ -719,25 +739,43 @@ class UnifiedSpecTestMixin(IntegrationTest):
         raise NotImplementedError
 
     def _testOperation_assertSessionTransactionState(self, spec):
-        raise NotImplementedError
+        session = self.entity_map[spec['session']]
+        expected_state = getattr(_TxnState, spec['state'].upper())
+        self.assertEqual(expected_state, session._transaction.state)
 
     def _testOperation_assertSessionPinned(self, spec):
-        raise NotImplementedError
+        session = self.entity_map[spec['session']]
+        self.assertIsNotNone(session._pinned_address)
 
     def _testOperation_assertSessionUnpinned(self, spec):
-        raise NotImplementedError
+        session = self.entity_map[spec['session']]
+        self.assertIsNone(session._pinned_address)
+
+    def __get_last_two_command_lsids(self, listener):
+        cmd_started_events = []
+        for event in reversed(listener.results):
+            if isinstance(event, CommandStartedEvent):
+                cmd_started_events.append(event)
+        if len(cmd_started_events) < 2:
+            self.fail('Needed 2 CommandStartedEvents to compare lsids, '
+                      'got %s' % (len(cmd_started_events)))
+        return tuple([e.command['lsid'] for e in cmd_started_events][:2])
 
     def _testOperation_assertDifferentLsidOnLastTwoCommands(self, spec):
-        raise NotImplementedError
+        listener = self.entity_map.get_listener_for_client(spec['client'])
+        self.assertNotEqual(*self.__get_last_two_command_lsids(listener))
 
     def _testOperation_assertSameLsidOnLastTwoCommands(self, spec):
-        raise NotImplementedError
+        listener = self.entity_map.get_listener_for_client(spec['client'])
+        self.assertEqual(*self.__get_last_two_command_lsids(listener))
 
     def _testOperation_assertSessionDirty(self, spec):
-        raise NotImplementedError
+        session = self.entity_map[spec['session']]
+        self.assertTrue(session._server_session.dirty)
 
     def _testOperation_assertSessionNotDirty(self, spec):
-        raise NotImplementedError
+        session = self.entity_map[spec['session']]
+        return self.assertFalse(session._server_session.dirty)
 
     def _testOperation_assertCollectionExists(self, spec):
         database_name = spec['databaseName']
@@ -754,10 +792,14 @@ class UnifiedSpecTestMixin(IntegrationTest):
         self.assertNotIn(collection_name, collection_name_list)
 
     def _testOperation_assertIndexExists(self, spec):
-        raise NotImplementedError
+        collection = self.client[spec['databaseName']][spec['collectionName']]
+        index_names = [idx['name'] for idx in collection.list_indexes()]
+        self.assertIn(spec['indexName'], index_names)
 
     def _testOperation_assertIndexNotExists(self, spec):
-        raise NotImplementedError
+        collection = self.client[spec['databaseName']][spec['collectionName']]
+        for index in collection.list_indexes():
+            self.assertNotEqual(spec['indexName'], index['name'])
 
     def run_special_operation(self, spec):
         opname = spec['name']
