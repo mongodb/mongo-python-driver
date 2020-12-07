@@ -560,8 +560,6 @@ class UnifiedSpecTestMixin(IntegrationTest):
         error_labels_contain = spec.get('errorLabelsContain')
         error_labels_omit = spec.get('errorLabelsOmit')
         expect_result = spec.get('expectResult')
-        # TODO: process expectedError object
-        # See L420-446 of utils_spec_runner.py
 
         if is_error:
             # already satisfied because exception was raised
