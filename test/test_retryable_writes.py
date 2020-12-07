@@ -27,7 +27,8 @@ from bson.son import SON
 
 from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
-                            ServerSelectionTimeoutError)
+                            ServerSelectionTimeoutError,
+                            WriteConcernError)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import (InsertOne,
                                 DeleteMany,
@@ -452,6 +453,27 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             final_txn = session._server_session._transaction_id
             self.assertEqual(final_txn, expected_txn)
         self.assertEqual(coll.find_one(projection={'_id': True}), {'_id': 1})
+
+    @client_context.require_version_min(4, 4)
+    def test_retryable_write_error_label_is_propagated(self):
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
+            retryWrites=True, event_listeners=[listener])
+
+        fail_insert = {
+            'configureFailPoint': 'failCommand',
+            'mode': {'times': 2},
+            'data': {
+                'failCommands': ['insert'],
+                'writeConcernError': {
+                    'code': 91,
+                    'errmsg': 'Replication is being shut down'}}}
+
+        with self.fail_point(fail_insert):
+            with self.assertRaises(WriteConcernError) as exc:
+                client.testdb.testcoll.insert_one({})
+            self.assertIn('RetryableWriteError',
+                          exc.exception._error_labels)
 
 
 # TODO: Make this a real integration test where we stepdown the primary.

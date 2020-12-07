@@ -221,7 +221,9 @@ def _check_write_command_response(result):
     if write_errors:
         _raise_last_write_error(write_errors)
 
-    error = result.get("writeConcernError")
+    error = result.get("writeConcernError", {})
+    error_labels = result.get("errorLabels", [])
+    error.update({'errorLabels': error_labels})
     if error:
         _raise_write_concern_error(error)
 
