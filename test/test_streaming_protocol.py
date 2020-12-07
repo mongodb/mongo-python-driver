@@ -152,6 +152,18 @@ class TestStreamingProtocol(IntegrationTest):
             # Force a connection.
             client.admin.command('ping')
             duration = time.time() - start
+            # Explanation of the expected events:
+            # 0ms: run configureFailPoint
+            # 1ms: create MongoClient
+            # 2ms: failed monitor handshake, 1
+            # 502ms: failed monitor handshake, 2
+            # 1002ms: failed monitor handshake, 3
+            # 1502ms: failed monitor handshake, 4
+            # 2002ms: failed monitor handshake, 5
+            # 2502ms: monitor handshake succeeds
+            # 2503ms: run awaitable isMaster
+            # 2504ms: application handshake succeeds
+            # 2505ms: ping command succeeds
             self.assertGreaterEqual(duration, 2)
             self.assertLessEqual(duration, 3.5)
 
