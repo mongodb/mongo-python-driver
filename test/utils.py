@@ -233,10 +233,11 @@ class MockSocketInfo(object):
 
 
 class MockPool(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, address, options, handshake=True):
         self.generation = 0
         self._lock = threading.Lock()
-        self.opts = PoolOptions()
+        self.opts = options
+        self.operation_count = 0
 
     def get_socket(self, all_credentials, checkout=False):
         return MockSocketInfo()
