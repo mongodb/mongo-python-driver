@@ -133,6 +133,8 @@ class TestStreamingProtocol(IntegrationTest):
     @client_context.require_version_min(4, 9, -1)
     @client_context.require_failCommand_appName
     def test_monitor_waits_after_server_check_error(self):
+        # This test implements:
+        # https://github.com/mongodb/specifications/blob/6c5b2ac/source/server-discovery-and-monitoring/server-discovery-and-monitoring-tests.rst#monitors-sleep-at-least-minheartbeatfreqencyms-between-checks
         fail_ismaster = {
             'mode': {'times': 5},
             'data': {
