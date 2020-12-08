@@ -130,54 +130,42 @@ class TestStreamingProtocol(IntegrationTest):
         self.assertEqual(1, len(events))
         self.assertGreater(events[0].new_description.round_trip_time, 0)
 
+    @client_context.require_version_min(4, 9, -1)
     @client_context.require_failCommand_appName
     def test_monitor_waits_after_server_check_error(self):
-        hb_listener = HeartbeatEventListener()
-        client = rs_or_single_client(
-            event_listeners=[hb_listener], heartbeatFrequencyMS=500,
-            appName='waitAfterErrorTest')
-        self.addCleanup(client.close)
-        # Force a connection.
-        client.admin.command('ping')
-        address = client.address
-
+        # This test implements:
+        # https://github.com/mongodb/specifications/blob/6c5b2ac/source/server-discovery-and-monitoring/server-discovery-and-monitoring-tests.rst#monitors-sleep-at-least-minheartbeatfreqencyms-between-checks
         fail_ismaster = {
-            'mode': {'times': 50},
+            'mode': {'times': 5},
             'data': {
                 'failCommands': ['isMaster'],
-                'closeConnection': False,
-                'errorCode': 91,
-                # This can be uncommented after SERVER-49220 is fixed.
-                # 'appName': 'waitAfterErrorTest',
+                'errorCode': 1234,
+                'appName': 'SDAMMinHeartbeatFrequencyTest',
             },
         }
         with self.fail_point(fail_ismaster):
-            time.sleep(2)
-
-        # Server should be selectable.
-        client.admin.command('ping')
-
-        def hb_started(event):
-            return (isinstance(event, monitoring.ServerHeartbeatStartedEvent)
-                    and event.connection_id == address)
-
-        hb_started_events = hb_listener.matching(hb_started)
-        # Explanation of the expected heartbeat events:
-        # Time: event
-        # 0ms: create MongoClient
-        # 1ms: run monitor handshake, 1
-        # 2ms: run awaitable isMaster, 2
-        # 3ms: run configureFailPoint
-        # 502ms: isMaster fails for the first time with command error
-        # 1002ms: run monitor handshake, 3
-        # 1502ms: run monitor handshake, 4
-        # 2002ms: run monitor handshake, 5
-        # 2003ms: disable configureFailPoint
-        # 2004ms: isMaster succeeds, 6
-        # 2004ms: awaitable isMaster, 7
-        self.assertGreater(len(hb_started_events), 7)
-        # This can be reduced to ~15 after SERVER-49220 is fixed.
-        self.assertLess(len(hb_started_events), 40)
+            start = time.time()
+            client = single_client(
+                appName='SDAMMinHeartbeatFrequencyTest',
+                serverSelectionTimeoutMS=5000)
+            self.addCleanup(client.close)
+            # Force a connection.
+            client.admin.command('ping')
+            duration = time.time() - start
+            # Explanation of the expected events:
+            # 0ms: run configureFailPoint
+            # 1ms: create MongoClient
+            # 2ms: failed monitor handshake, 1
+            # 502ms: failed monitor handshake, 2
+            # 1002ms: failed monitor handshake, 3
+            # 1502ms: failed monitor handshake, 4
+            # 2002ms: failed monitor handshake, 5
+            # 2502ms: monitor handshake succeeds
+            # 2503ms: run awaitable isMaster
+            # 2504ms: application handshake succeeds
+            # 2505ms: ping command succeeds
+            self.assertGreaterEqual(duration, 2)
+            self.assertLessEqual(duration, 3.5)
 
     @client_context.require_failCommand_appName
     def test_heartbeat_awaited_flag(self):
