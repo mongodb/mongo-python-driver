@@ -1147,11 +1147,12 @@ class Pool:
         return self.state == CLOSED
 
     def _reset(self, close):
+        old_state = self.state
         with self.size_cond:
             if self.closed:
                 return
             if self.opts.pause_enabled:
-                self.state = PAUSED
+                old_state, self.state = self.state, PAUSED
             self.generation += 1
             newpid = os.getpid()
             if self.pid != newpid:
@@ -1175,7 +1176,7 @@ class Pool:
             if self.enabled_for_cmap:
                 listeners.publish_pool_closed(self.address)
         else:
-            if self.enabled_for_cmap:
+            if old_state != PAUSED and self.enabled_for_cmap:
                 listeners.publish_pool_cleared(self.address)
             for sock_info in sockets:
                 sock_info.close_socket(ConnectionClosedReason.STALE)
