@@ -455,6 +455,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         self.assertEqual(coll.find_one(projection={'_id': True}), {'_id': 1})
 
     @client_context.require_version_min(4, 4)
+    @client_context.require_failCommand_fail_point
     def test_retryable_write_error_label_is_propagated(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(
@@ -470,10 +471,10 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     'errmsg': 'Replication is being shut down'}}}
 
         with self.fail_point(fail_insert):
-            with self.assertRaises(WriteConcernError) as exc:
+            with self.assertRaises(WriteConcernError) as cm:
                 client.testdb.testcoll.insert_one({})
             self.assertIn('RetryableWriteError',
-                          exc.exception._error_labels)
+                          cm.exception._error_labels)
 
 
 # TODO: Make this a real integration test where we stepdown the primary.
