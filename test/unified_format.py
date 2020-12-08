@@ -22,6 +22,7 @@ import datetime
 import functools
 import os
 import sys
+import traceback
 import types
 
 from bson import json_util, SON, Int64
@@ -168,7 +169,11 @@ class EntityMapUtil(object):
         self._test_class = test_class
 
     def __getitem__(self, item):
-        return self._entities[item]
+        try:
+            return self._entities[item]
+        except KeyError:
+            self._test_class.fail('Could not find entity named %s in map' % (
+                item,))
 
     def __setitem__(self, key, value):
         if not isinstance(key, text_type):
@@ -193,9 +198,9 @@ class EntityMapUtil(object):
             # - uriOptions
             # - useMultipleMongoses
             uri_options = spec.get('uriOptions', {})
-            observe_events = spec.get('observeEvents')
+            observe_events = spec.get('observeEvents', [])
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
-            if observe_events:
+            if len(observe_events) or len(ignore_commands):
                 listener = EventListenerUtil(observe_events, ignore_commands)
                 client = rs_or_single_client(
                     event_listeners=[listener], **uri_options)
@@ -234,7 +239,7 @@ class EntityMapUtil(object):
                 self._test_class.fail(
                     'Expected entity %s to be of type MongoClient, got %s' % (
                         spec['client'], type(client)))
-            opts = camel_to_snake_args(spec['sessionOptions'])
+            opts = camel_to_snake_args(spec.get('sessionOptions', {}))
             if 'default_transaction_options' in opts:
                 txn_opts = parse_spec_options(
                     opts['default_transaction_options'])
@@ -477,7 +482,7 @@ class MatchEvaluatorUtil(object):
                 'Unsupported event type %s' % (event_type,))
 
 
-class UnifiedSpecTestMixin(IntegrationTest):
+class UnifiedSpecTestMixinV1(IntegrationTest):
     """Mixin class to run test cases from test specification files.
 
     Assumes that tests conform to the `unified test format
@@ -486,7 +491,7 @@ class UnifiedSpecTestMixin(IntegrationTest):
     Specification of the test suite being currently run is available as
     a class attribute ``TEST_SPEC``.
     """
-    SCHEMA_VERSION = '1.0'
+    SCHEMA_VERSION = Version.from_string('1.0')
 
     @staticmethod
     def should_run_on(run_on_spec):
@@ -510,19 +515,17 @@ class UnifiedSpecTestMixin(IntegrationTest):
             coll.drop()
 
             # documents MAY be an empty list
-            if documents:
+            if len(documents):
                 coll.insert_many(documents)
 
     @classmethod
     def setUpClass(cls):
         # super call creates internal client cls.client
-        super(UnifiedSpecTestMixin, cls).setUpClass()
+        super(UnifiedSpecTestMixinV1, cls).setUpClass()
 
         # process schemaVersion
-        version = cls.TEST_SPEC['schemaVersion']
-        version_tuple = tuple(version.split('.', 2)[:2])
-        max_version_tuple = tuple(cls.SCHEMA_VERSION.split('.', 2)[:2])
-        if not version_tuple <= max_version_tuple:
+        version = Version.from_string(cls.TEST_SPEC['schemaVersion'])
+        if not version <= cls.SCHEMA_VERSION:
             raise unittest.SkipTest(
                 'expected schemaVersion %s or lower, got %s' % (
                     cls.SCHEMA_VERSION, version))
@@ -534,19 +537,11 @@ class UnifiedSpecTestMixin(IntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
-        super(UnifiedSpecTestMixin, cls).tearDownClass()
+        super(UnifiedSpecTestMixinV1, cls).tearDownClass()
         cls.client.close()
 
     def setUp(self):
-        super(UnifiedSpecTestMixin, self).setUp()
-
-        # process createEntities
-        self.entity_map = EntityMapUtil(self)
-        self.entity_map.create_entities_from_spec(
-            self.TEST_SPEC.get('createEntities', []))
-
-        # process initialData
-        self.insert_initial_data(self.TEST_SPEC.get('initialData', []))
+        super(UnifiedSpecTestMixinV1, self).setUp()
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
@@ -855,6 +850,14 @@ class UnifiedSpecTestMixin(IntegrationTest):
                                      actual_documents)
 
     def run_scenario(self, spec):
+        # process createEntities
+        self.entity_map = EntityMapUtil(self)
+        self.entity_map.create_entities_from_spec(
+            self.TEST_SPEC.get('createEntities', []))
+
+        # process initialData
+        self.insert_initial_data(self.TEST_SPEC.get('initialData', []))
+
         # process test-level runOnRequirements
         run_on_spec = spec.get('runOnRequirements', [])
         if not self.should_run_on(run_on_spec):
@@ -887,14 +890,29 @@ class UnifiedSpecTestMeta(type):
 
         for test_spec in cls.TEST_SPEC['tests']:
             description = test_spec['description']
-            test_name = 'test_%s' % (
-                description.strip('. ').replace(' ', '_').replace('.', '_'),)
+            test_name = 'test_%s' % (description.strip('. ').
+                                     replace(' ', '_').replace('.', '_'),)
             test_method = create_test(copy.deepcopy(test_spec))
             test_method.__name__ = test_name
+
+            if description in cls.EXPECTED_FAILURES:
+                test_method = unittest.expectedFailure(test_method)
+
             setattr(cls, test_name, test_method)
 
 
-def generate_test_classes(test_path, module=__name__, class_name_prefix=''):
+_ALL_MIXIN_CLASSES = [
+    UnifiedSpecTestMixinV1,
+    # add mixin classes for new schema major versions here
+]
+
+
+_SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS = {
+    KLASS.SCHEMA_VERSION[0]: KLASS for KLASS in _ALL_MIXIN_CLASSES}
+
+
+def generate_test_classes(test_path, module=__name__, class_name_prefix='',
+                          expected_failures=[]):
     """Method for generating test classes. Returns a dictionary where keys are
     the names of test classes and values are the test class objects."""
     test_klasses = {}
@@ -905,19 +923,20 @@ def generate_test_classes(test_path, module=__name__, class_name_prefix=''):
         the metaclass __init__ is invoked."""
         class SpecTestBase(with_metaclass(UnifiedSpecTestMeta)):
             TEST_SPEC = test_spec
+            EXPECTED_FAILURES = expected_failures
         return SpecTestBase
 
     for dirpath, _, filenames in os.walk(test_path):
         dirname = os.path.split(dirpath)[-1]
 
         for filename in filenames:
-            with open(os.path.join(dirpath, filename)) as scenario_stream:
+            fpath = os.path.join(dirpath, filename)
+            with open(fpath) as scenario_stream:
                 # Use tz_aware=False to match how CodecOptions decodes
                 # dates.
                 opts = json_util.JSONOptions(tz_aware=False)
-                scenario_def = ScenarioDict(
-                    json_util.loads(scenario_stream.read(),
-                                    json_options=opts))
+                scenario_def = json_util.loads(
+                    scenario_stream.read(), json_options=opts)
 
             test_type = os.path.splitext(filename)[0]
             snake_class_name = 'Test%s_%s_%s' % (
@@ -925,9 +944,22 @@ def generate_test_classes(test_path, module=__name__, class_name_prefix=''):
                 test_type.replace('-', '_').replace('.', '_'))
             class_name = snake_to_camel(snake_class_name)
 
-            test_klasses[class_name] = type(
-                class_name,
-                (UnifiedSpecTestMixin, test_base_class_factory(scenario_def),),
-                {'__module__': module})
+            try:
+                schema_version = Version.from_string(
+                    scenario_def['schemaVersion'])
+                mixin_class = _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS.get(
+                    schema_version[0])
+                if mixin_class is None:
+                    print('Ignoring test file %s with '
+                          'unsupported schemaVersion %s' %
+                          (fpath, schema_version))
+                test_klasses[class_name] = type(
+                    class_name,
+                    (mixin_class, test_base_class_factory(scenario_def),),
+                    {'__module__': module})
+            except (AttributeError, KeyError, TypeError):
+                print("Ignoring invalid test file '%s'\n"
+                      "Original exception: %s" %
+                      (fpath, traceback.format_exc()))
 
     return test_klasses

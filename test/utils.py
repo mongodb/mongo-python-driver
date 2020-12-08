@@ -37,6 +37,7 @@ from bson.son import SON
 
 from pymongo import (MongoClient,
                      monitoring, operations, read_preferences)
+from pymongo.collection import ReturnDocument
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS, ConnectionPoolListener
 from pymongo.pool import (_CancellationContext,
@@ -1020,7 +1021,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map,
             continue
         # Requires boolean returnDocument.
         elif arg_name == "returnDocument":
-            arguments[c2s] = arguments.pop(arg_name) == "After"
+            arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
         elif c2s == "requests":
             # Parse each request into a bulk write model.
             requests = []

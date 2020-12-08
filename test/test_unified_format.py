@@ -26,10 +26,26 @@ from test.unified_format import generate_test_classes, MatchEvaluatorUtil
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'unified-test-format')
 
+
 globals().update(generate_test_classes(
     os.path.join(_TEST_PATH, 'valid-pass'),
     module=__name__,
-    class_name_prefix='UnifiedTestFormat'))
+    class_name_prefix='UnifiedTestFormat',
+    expected_failures=[
+        'Client side error in command starting transaction',            # PYTHON-1894
+        'InsertOne fails after multiple retryable writeConcernErrors'   # PYTHON-2452
+    ]))
+
+
+globals().update(generate_test_classes(
+    os.path.join(_TEST_PATH, 'valid-fail'),
+    module=__name__,
+    class_name_prefix='UnifiedTestFormat',
+    expected_failures=[
+        'foo',
+        'FindOneAndReplace returnDocument invalid enum value',
+        'FindOneAndUpdate returnDocument invalid enum value'
+    ]))
 
 
 class TestMatchEvaluatorUtil(unittest.TestCase):
