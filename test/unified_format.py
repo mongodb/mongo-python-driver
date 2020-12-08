@@ -340,7 +340,9 @@ class MatchEvaluatorUtil(object):
             actual[key_to_compare], permissible_types)
 
     def _operation_matchesEntity(self, spec, actual, key_to_compare):
-        raise NotImplementedError
+        expected_entity = self._test_class.entity_map[spec]
+        self._test_class.assertIsInstance(expected_entity, abc.Mapping)
+        self._test_class.assertEqual(expected_entity, actual[key_to_compare])
 
     def _operation_matchesHexBytes(self, spec, actual, key_to_compare):
         raise NotImplementedError
@@ -564,13 +566,19 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.assertNotIsInstance(exception, PyMongoError)
 
         if error_contains:
-            raise NotImplementedError
+            if isinstance(exception, BulkWriteError):
+                errmsg = str(exception.details).lower()
+            else:
+                errmsg = str(exception).lower()
+            self.assertIn(error_contains.lower(), errmsg)
 
         if error_code:
-            raise NotImplementedError
+            self.assertEqual(
+                error_code, exception.details.get('code'))
 
         if error_code_name:
-            raise NotImplementedError
+            self.assertEqual(
+                error_code_name, exception.details.get('codeName'))
 
         if error_labels_contain:
             labels = [err_label for err_label in error_labels_contain
