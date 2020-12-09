@@ -60,7 +60,7 @@ else:
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
 
-class CMAPListener(ConnectionPoolListener):
+class BaseListener(ConnectionPoolListener):
     def __init__(self):
         self.events = []
 
@@ -71,9 +71,26 @@ class CMAPListener(ConnectionPoolListener):
         self.events.append(event)
 
     def event_count(self, event_type):
-        return len([event for event in self.events[:]
-                    if isinstance(event, event_type)])
+        return len(self.events_by_type(event_type))
 
+    def events_by_type(self, event_type):
+        """Return the matching events by event class.
+
+        event_type can be a single class or a tuple of classes.
+        """
+        return self.matching(lambda e: isinstance(e, event_type))
+
+    def matching(self, matcher):
+        """Return the matching events."""
+        return [event for event in self.events[:] if matcher(event)]
+
+    def wait_for_event(self, event, count):
+        """Wait for a number of events to be published, or fail."""
+        wait_until(lambda: self.event_count(event) >= count,
+                   'find %s %s event(s)' % (count, event))
+
+
+class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
     def connection_created(self, event):
         self.add_event(event)
 
@@ -199,25 +216,17 @@ class ServerAndTopologyEventListener(ServerEventListener,
     """Listens to Server and Topology events."""
 
 
-class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
+class HeartbeatEventListener(BaseListener, monitoring.ServerHeartbeatListener):
     """Listens to only server heartbeat events."""
 
-    def __init__(self):
-        self.results = []
-
     def started(self, event):
-        self.results.append(event)
+        self.add_event(event)
 
     def succeeded(self, event):
-        self.results.append(event)
+        self.add_event(event)
 
     def failed(self, event):
-        self.results.append(event)
-
-    def matching(self, matcher):
-        """Return the matching events."""
-        results = self.results[:]
-        return [event for event in results if matcher(event)]
+        self.add_event(event)
 
 
 class MockSocketInfo(object):
