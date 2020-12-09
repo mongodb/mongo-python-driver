@@ -258,6 +258,9 @@ class MockPool(object):
     def reset(self):
         self._reset()
 
+    def reset_without_pause(self):
+        self._reset()
+
     def close(self):
         self._reset()
 

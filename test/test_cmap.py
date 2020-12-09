@@ -39,7 +39,7 @@ from pymongo.monitoring import (ConnectionCheckedInEvent,
                                 PoolClearedEvent,
                                 PoolClosedEvent)
 from pymongo.read_preferences import ReadPreference
-from pymongo.pool import _PoolClosedError
+from pymongo.pool import _PoolClosedError, READY
 
 from test import (client_knobs,
                   IntegrationTest,
@@ -411,6 +411,20 @@ class TestCMAP(IntegrationTest):
         self.assertRepr(PoolCreatedEvent(host, {}))
         self.assertRepr(PoolClearedEvent(host))
         self.assertRepr(PoolClosedEvent(host))
+
+    def test_close_leaves_pool_unpaused(self):
+        # Needed until we implement PYTHON-2463. This test is related to
+        # test_threads.TestThreads.test_client_disconnect
+        listener = CMAPListener()
+        client = single_client(event_listeners=[listener])
+        client.admin.command('ping')
+        pool = get_pool(client)
+        client.close()
+        self.assertEqual(1, listener.event_count(PoolClearedEvent))
+        self.assertEqual(READY, pool.state)
+        # Checking out a connection should succeed
+        with pool.get_socket({}):
+            pass
 
 
 def create_test(scenario_def, test, name):

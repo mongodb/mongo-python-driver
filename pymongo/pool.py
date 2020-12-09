@@ -1146,12 +1146,12 @@ class Pool:
     def closed(self):
         return self.state == CLOSED
 
-    def _reset(self, close):
+    def _reset(self, close, pause=True):
         old_state = self.state
         with self.size_cond:
             if self.closed:
                 return
-            if self.opts.pause_enabled:
+            if self.opts.pause_enabled and pause:
                 old_state, self.state = self.state, PAUSED
             self.generation += 1
             newpid = os.getpid()
@@ -1192,6 +1192,9 @@ class Pool:
 
     def reset(self):
         self._reset(close=False)
+
+    def reset_without_pause(self):
+        self._reset(close=False, pause=False)
 
     def close(self):
         self._reset(close=True)
