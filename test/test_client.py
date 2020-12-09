@@ -62,6 +62,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
+from pymongo.topology import _ErrorContext
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
@@ -1543,10 +1544,9 @@ class TestClient(IntegrationTest):
 
             def run(self):
                 while self.running:
-                    self.pool.reset()
-                    # TODO: This may be racey: replace with
-                    #  topology.handle_error()?
-                    self.pool.ready()
+                    exc = AutoReconnect('mock pool error')
+                    ctx = _ErrorContext(exc, 0, pool.generation, False)
+                    client._topology.handle_error(pool.address, ctx)
                     time.sleep(0.001)
 
         t = ResetPoolThread(pool)
