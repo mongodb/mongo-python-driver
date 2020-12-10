@@ -44,6 +44,7 @@ from test.utils import (rs_or_single_client,
                         OvertCommandListener,
                         TestCreator)
 from test.utils_spec_runner import SpecRunner
+from test.version import Version
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -454,9 +455,13 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             self.assertEqual(final_txn, expected_txn)
         self.assertEqual(coll.find_one(projection={'_id': True}), {'_id': 1})
 
-    @client_context.require_version_min(4, 4)
+
+class TestWriteConcernError(IntegrationTest):
+    @client_context.require_version_min(3, 6)
+    @client_context.require_no_standalone
+    @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
-    def test_retryable_write_error_label_is_propagated(self):
+    def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(
             retryWrites=True, event_listeners=[listener])
@@ -478,9 +483,11 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             self.assertIn('RetryableWriteError',
                           cm.exception._error_labels)
 
-        self.assertIn(
-            'RetryableWriteError',
-            listener.results['succeeded'][-1].reply['errorLabels'])
+        if client_context.version >= Version(4, 4):
+            # In MongoDB 4.4+ we rely on the server returning the error label.
+            self.assertIn(
+                'RetryableWriteError',
+                listener.results['succeeded'][-1].reply['errorLabels'])
 
 
 # TODO: Make this a real integration test where we stepdown the primary.
