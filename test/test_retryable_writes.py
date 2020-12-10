@@ -466,15 +466,21 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             'mode': {'times': 2},
             'data': {
                 'failCommands': ['insert'],
+                'closeConnection': False,
                 'writeConcernError': {
                     'code': 91,
-                    'errmsg': 'Replication is being shut down'}}}
+                    'errmsg': 'Replication is being shut down'},
+            }}
 
         with self.fail_point(fail_insert):
             with self.assertRaises(WriteConcernError) as cm:
-                client.testdb.testcoll.insert_one({})
+                client.pymongo_test.testcoll.insert_one({})
             self.assertIn('RetryableWriteError',
                           cm.exception._error_labels)
+
+        self.assertIn(
+            'RetryableWriteError',
+            listener.results['succeeded'][-1].reply['errorLabels'])
 
 
 # TODO: Make this a real integration test where we stepdown the primary.
