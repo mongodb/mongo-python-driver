@@ -457,7 +457,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
 
 class TestWriteConcernError(IntegrationTest):
-    @client_context.require_version_min(3, 6)
+    @client_context.require_version_min(4, 0)
     @client_context.require_no_standalone
     @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
@@ -476,6 +476,14 @@ class TestWriteConcernError(IntegrationTest):
                     'code': 91,
                     'errmsg': 'Replication is being shut down'},
             }}
+
+        if client_context.version < Version(4, 2):
+            # SERVER-39292: specifying closeConnection on MongoDB 4.0+,<4.2
+            # causes the failPoint to fire twice so we remove it.
+            fail_insert['data'].pop('closeConnection')
+
+        # Ensure collection exists.
+        client.pymongo_test.testcoll.insert_one({})
 
         with self.fail_point(fail_insert):
             with self.assertRaises(WriteConcernError) as cm:
