@@ -458,7 +458,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
 class TestWriteConcernError(IntegrationTest):
     @client_context.require_version_min(4, 0)
-    @client_context.require_no_standalone
+    @client_context.require_replica_set
     @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
     def test_RetryableWriteError_error_label(self):
