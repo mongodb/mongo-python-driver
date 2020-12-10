@@ -604,7 +604,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         if expect_result:
             if isinstance(exception, BulkWriteError):
-                result = SpecTestUtil.parse_bulk_write_error_result(
+                result = parse_bulk_write_error_result(
                     exception)
                 self.match_evaluator.match_result(expect_result, result)
             else:
@@ -650,7 +650,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_bulkWrite(self, target, *args, **kwargs):
         self.__raise_if_unsupported('bulkWrite', target, Collection)
         write_result = target.bulk_write(*args, **kwargs)
-        return SpecTestUtil.parse_bulk_write_result(write_result)
+        return parse_bulk_write_result(write_result)
 
     def _collectionOperation_find(self, target, *args, **kwargs):
         self.__raise_if_unsupported('find', target, Collection)
