@@ -480,8 +480,8 @@ class TestWriteConcernError(IntegrationTest):
         with self.fail_point(fail_insert):
             with self.assertRaises(WriteConcernError) as cm:
                 client.pymongo_test.testcoll.insert_one({})
-            self.assertIn('RetryableWriteError',
-                          cm.exception._error_labels)
+            self.assertTrue(cm.exception.has_error_label(
+                'RetryableWriteError'))
 
         if client_context.version >= Version(4, 4):
             # In MongoDB 4.4+ we rely on the server returning the error label.
