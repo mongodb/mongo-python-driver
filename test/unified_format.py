@@ -89,50 +89,48 @@ def with_metaclass(meta, *bases):
     return type.__new__(metaclass, 'temporary_class', (), {})
 
 
-class SpecTestUtil(object):
-    @staticmethod
-    def is_run_on_requirement_satisfied(requirement):
-        topology_satisfied = True
-        req_topologies = requirement.get('topologies')
-        if req_topologies:
-            topology_satisfied = client_context.is_topology_type(
-                req_topologies)
+def is_run_on_requirement_satisfied(requirement):
+    topology_satisfied = True
+    req_topologies = requirement.get('topologies')
+    if req_topologies:
+        topology_satisfied = client_context.is_topology_type(
+            req_topologies)
 
-        min_version_satisfied = True
-        req_min_server_version = requirement.get('minServerVersion')
-        if req_min_server_version:
-            min_version_satisfied = Version.from_string(
-                req_min_server_version) <= client_context.version
+    min_version_satisfied = True
+    req_min_server_version = requirement.get('minServerVersion')
+    if req_min_server_version:
+        min_version_satisfied = Version.from_string(
+            req_min_server_version) <= client_context.version
 
-        max_version_satisfied = True
-        req_max_server_version = requirement.get('maxServerVersion')
-        if req_max_server_version:
-            max_version_satisfied = Version.from_string(
-                req_max_server_version) >= client_context.version
+    max_version_satisfied = True
+    req_max_server_version = requirement.get('maxServerVersion')
+    if req_max_server_version:
+        max_version_satisfied = Version.from_string(
+            req_max_server_version) >= client_context.version
 
-        return (topology_satisfied and min_version_satisfied and
-                max_version_satisfied)
+    return (topology_satisfied and min_version_satisfied and
+            max_version_satisfied)
 
-    @staticmethod
-    def parse_collection_or_database_options(options):
-        return parse_collection_options(options)
 
-    @staticmethod
-    def parse_bulk_write_result(result):
-        upserted_ids = {str(int_idx): result.upserted_ids[int_idx]
-                        for int_idx in result.upserted_ids}
-        return {
-            'deletedCount': result.deleted_count,
-            'insertedCount': result.inserted_count,
-            'matchedCount': result.matched_count,
-            'modifiedCount': result.modified_count,
-            'upsertedCount': result.upserted_count,
-            'upsertedIds': upserted_ids}
+def parse_collection_or_database_options(options):
+    return parse_collection_options(options)
 
-    @staticmethod
-    def parse_bulk_write_error_result(error):
-        write_result = BulkWriteResult(error.details, True)
-        return SpecTestUtil.parse_bulk_write_result(write_result)
+
+def parse_bulk_write_result(result):
+    upserted_ids = {str(int_idx): result.upserted_ids[int_idx]
+                    for int_idx in result.upserted_ids}
+    return {
+        'deletedCount': result.deleted_count,
+        'insertedCount': result.inserted_count,
+        'matchedCount': result.matched_count,
+        'modifiedCount': result.modified_count,
+        'upsertedCount': result.upserted_count,
+        'upsertedIds': upserted_ids}
+
+
+def parse_bulk_write_error_result(error):
+    write_result = BulkWriteResult(error.details, True)
+    return parse_bulk_write_result(write_result)
 
 
 class EventListenerUtil(CommandListener):
@@ -213,7 +211,7 @@ class EntityMapUtil(object):
                 self._test_class.fail(
                     'Expected entity %s to be of type MongoClient, got %s' % (
                         spec['client'], type(client)))
-            options = SpecTestUtil.parse_collection_or_database_options(
+            options = parse_collection_or_database_options(
                 spec.get('databaseOptions', {}))
             self[spec['id']] = client.get_database(
                 spec['databaseName'], **options)
@@ -224,7 +222,7 @@ class EntityMapUtil(object):
                 self._test_class.fail(
                     'Expected entity %s to be of type Database, got %s' % (
                         spec['database'], type(database)))
-            options = SpecTestUtil.parse_collection_or_database_options(
+            options = parse_collection_or_database_options(
                 spec.get('collectionOptions', {}))
             self[spec['id']] = database.get_collection(
                 spec['collectionName'], **options)
@@ -250,7 +248,7 @@ class EntityMapUtil(object):
         elif entity_type == 'bucket':
             # TODO: implement the 'bucket' entity type
             self._test_class.skipTest(
-                'GridFS entity types are not currently supported.')
+                'GridFS is not currently supported (PYTHON-2459)')
         self._test_class.fail(
             'Unable to create entity of unknown type %s' % (entity_type,))
 
@@ -515,7 +513,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             return True
 
         for req in run_on_spec:
-            if SpecTestUtil.is_run_on_requirement_satisfied(req):
+            if is_run_on_requirement_satisfied(req):
                 return True
         return False
 

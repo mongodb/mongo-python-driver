@@ -607,12 +607,21 @@ class ClientContext(object):
                              func=func)
 
     def is_topology_type(self, topologies):
-        # TODO: add support for 'sharded-replicaset' topology type.
         if 'single' in topologies and not (self.is_mongos or self.is_rs):
             return True
         if 'replicaset' in topologies and self.is_rs:
             return True
         if 'sharded' in topologies and self.is_mongos:
+            return True
+        if 'sharded-replicaset' in topologies and self.is_mongos:
+            shards = list(client_context.client.config.shards.find())
+            for shard in shards:
+                # For a 3-member RS-backed sharded cluster, shard['host']
+                # will be 'replicaName/ip1:port1,ip2:port2,ip3:port3'
+                # Otherwise it will be 'ip1:port1'
+                host_spec = shard['host']
+                if not len(host_spec.split('/')) > 1:
+                    return False
             return True
         return False
 
