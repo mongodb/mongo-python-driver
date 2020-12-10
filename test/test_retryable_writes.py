@@ -471,16 +471,10 @@ class TestWriteConcernError(IntegrationTest):
             'mode': {'times': 2},
             'data': {
                 'failCommands': ['insert'],
-                'closeConnection': False,
                 'writeConcernError': {
                     'code': 91,
                     'errmsg': 'Replication is being shut down'},
             }}
-
-        if client_context.version < Version(4, 2):
-            # SERVER-39292: specifying closeConnection on MongoDB 4.0+,<4.2
-            # causes the failPoint to fire twice so we remove it.
-            fail_insert['data'].pop('closeConnection')
 
         # Ensure collection exists.
         client.pymongo_test.testcoll.insert_one({})
