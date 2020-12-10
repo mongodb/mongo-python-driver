@@ -25,10 +25,10 @@ import sys
 import traceback
 import types
 
-from bson import json_util, SON, Int64
+from bson import json_util, Code, Decimal128, DBRef, SON, Int64, MaxKey, MinKey
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from bson.py3compat import abc, integer_types, iteritems, text_type
+from bson.py3compat import abc, integer_types, iteritems, text_type, PY3
 from bson.regex import Regex, RE_TYPE
 
 from gridfs import GridFSBucket
@@ -286,6 +286,16 @@ class EntityMapUtil(object):
             return self._session_lsids[session_name]
 
 
+if not PY3:
+    binary_types = (Binary,)
+    long_types = (Int64, long)
+    unicode_types = (unicode,)
+else:
+    binary_types = (Binary, bytes)
+    long_types = (Int64,)
+    unicode_types = (str,)
+
+
 BSON_TYPE_ALIAS_MAP = {
     # https://docs.mongodb.com/manual/reference/operator/query/type/
     # https://pymongo.readthedocs.io/en/stable/api/bson/index.html
@@ -293,15 +303,22 @@ BSON_TYPE_ALIAS_MAP = {
     'string': (text_type,),
     'object': (abc.Mapping,),
     'array': (abc.MutableSequence,),
-    'binData': (Binary, bytes),
+    'binData': binary_types,
+    'undefined': (type(None),),
     'objectId': (ObjectId,),
     'bool': (bool,),
     'date': (datetime.datetime,),
     'null': (type(None),),
     'regex': (Regex, RE_TYPE),
+    'dbPointer': (DBRef,),
+    'javascript': (*unicode_types, Code),
+    'symbol': unicode_types,
+    'javascriptWithScope': (*unicode_types, Code),
     'int': (int,),
-    'long': (Int64,)
-    # TODO: add all supported types
+    'long': (Int64,),
+    'decimal': (Decimal128,),
+    'maxKey': (MaxKey,),
+    'minKey': (MinKey,),
 }
 
 
