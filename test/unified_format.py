@@ -37,21 +37,19 @@ from pymongo import ASCENDING, MongoClient
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.change_stream import ChangeStream
 from pymongo.collection import Collection
-from pymongo.cursor import Cursor
 from pymongo.database import Database
 from pymongo.errors import BulkWriteError, InvalidOperation, PyMongoError
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
-    CommandSucceededEvent)
+    CommandSucceededEvent, _SENSITIVE_COMMANDS)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import BulkWriteResult, InsertManyResult, InsertOneResult
+from pymongo.results import BulkWriteResult
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
 from test.utils import (
-    camel_to_snake, rs_or_single_client, single_client,
-    snake_to_camel, ScenarioDict)
+    camel_to_snake, rs_or_single_client, single_client, snake_to_camel)
 
 from test.version import Version
 from test.utils import (
@@ -136,7 +134,7 @@ def parse_bulk_write_error_result(error):
 class EventListenerUtil(CommandListener):
     def __init__(self, observe_events, ignore_commands):
         self._event_types = set(observe_events)
-        self._ignore_commands = set(ignore_commands)
+        self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
         self._ignore_commands.add('configureFailPoint')
         self.results = []
 
