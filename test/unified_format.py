@@ -50,7 +50,7 @@ from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
 from test.utils import (
-    camel_to_snake, rs_or_single_client,
+    camel_to_snake, rs_or_single_client, single_client,
     snake_to_camel, ScenarioDict)
 
 from test.version import Version
@@ -193,22 +193,18 @@ class EntityMapUtil(object):
 
         entity_type, spec = next(iteritems(entity_spec))
         if entity_type == 'client':
-            # TODO
-            # Add logic to respect the following fields
-            # - uriOptions
-            # - useMultipleMongoses
-            uri_options = spec.get('uriOptions', {})
+            kwargs = {}
             observe_events = spec.get('observeEvents', [])
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
             if len(observe_events) or len(ignore_commands):
                 listener = EventListenerUtil(observe_events, ignore_commands)
-                client = rs_or_single_client(
-                    event_listeners=[listener], **uri_options)
-            else:
-                listener = None
-                client = rs_or_single_client()
+                self._listeners[spec['id']] = listener
+                kwargs['event_listeners'] = [listener]
+            if client_context.is_mongos and spec.get('useMultipleMongoses'):
+                kwargs['host'] = client_context.mongos_seeds()
+            kwargs.update(spec.get('uriOptions', {}))
+            client = rs_or_single_client(**kwargs)
             self[spec['id']] = client
-            self._listeners[spec['id']] = listener
             self._test_class.addCleanup(client.close)
             return
         elif entity_type == 'database':
@@ -269,7 +265,7 @@ class EntityMapUtil(object):
                 'Expected entity %s to be of type MongoClient, got %s' % (
                         client_name, type(client)))
 
-        listener = self._listeners[client_name]
+        listener = self._listeners.get(client_name)
         if not listener:
             self._test_class.fail(
                 'No listeners configured for client %s' % (client_name,))
@@ -726,9 +722,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if save_as_entity:
             self.entity_map[save_as_entity] = result
 
-    def _testOperation_failPoint(self, spec):
-        client = self.entity_map[spec['client']]
-        command_args = spec['failPoint']
+    def __set_fail_point(self, client, command_args):
         cmd_on = SON([('configureFailPoint', 'failCommand')])
         cmd_on.update(command_args)
         client.admin.command(cmd_on)
@@ -736,8 +730,21 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             client.admin.command,
             'configureFailPoint', cmd_on['configureFailPoint'], mode='off')
 
+    def _testOperation_failPoint(self, spec):
+        self.__set_fail_point(
+            client=self.entity_map[spec['client']],
+            command_args=spec['failPoint'])
+
     def _testOperation_targetedFailPoint(self, spec):
-        raise NotImplementedError
+        session = self.entity_map[spec['session']]
+        if not session._pinned_address:
+            self.fail("Cannot use targetedFailPoint operation with unpinned "
+                      "session %s" % (spec['session'],))
+
+        client = single_client('%s:%s' % session._pinned_address)
+        self.__set_fail_point(
+            client=client, command_args=spec['failPoint'])
+        self.addCleanup(client.close)
 
     def _testOperation_assertSessionTransactionState(self, spec):
         session = self.entity_map[spec['session']]
