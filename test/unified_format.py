@@ -135,11 +135,11 @@ class EventListenerUtil(CommandListener):
     def __init__(self, observe_events, ignore_commands):
         self._event_types = set(observe_events)
         self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
-        self._ignore_commands.add('configureFailPoint')
+        self._ignore_commands.add('configurefailpoint')
         self.results = []
 
     def _observe_event(self, event):
-        if event.command_name not in self._ignore_commands:
+        if event.command_name.lower() not in self._ignore_commands:
             self.results.append(event)
 
     def started(self, event):
@@ -193,6 +193,7 @@ class EntityMapUtil(object):
             observe_events = spec.get('observeEvents', [])
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
             if len(observe_events) or len(ignore_commands):
+                ignore_commands = [cmd.lower() for cmd in ignore_commands]
                 listener = EventListenerUtil(observe_events, ignore_commands)
                 self._listeners[spec['id']] = listener
                 kwargs['event_listeners'] = [listener]
