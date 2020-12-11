@@ -526,9 +526,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 coll_name, write_concern=WriteConcern(w="majority"))
             coll.drop()
 
-            # documents MAY be an empty list
-            if len(documents):
+            if len(documents) > 0:
                 coll.insert_many(documents)
+            else:
+                # ensure collection exists
+                result = coll.insert_one({})
+                coll.delete_one({'_id': result.inserted_id})
 
     @classmethod
     def setUpClass(cls):

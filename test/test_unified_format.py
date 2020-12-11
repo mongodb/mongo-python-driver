@@ -32,8 +32,7 @@ globals().update(generate_test_classes(
     module=__name__,
     class_name_prefix='UnifiedTestFormat',
     expected_failures=[
-        'Client side error in command starting transaction',            # PYTHON-1894
-        'InsertOne fails after multiple retryable writeConcernErrors'   # PYTHON-2452
+        'Client side error in command starting transaction',    # PYTHON-1894
     ]))
 
 
