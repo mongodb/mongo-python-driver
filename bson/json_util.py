@@ -268,7 +268,8 @@ class JSONOptions(CodecOptions):
 
     def __new__(cls, strict_number_long=False,
                 datetime_representation=DatetimeRepresentation.LEGACY,
-                strict_uuid=False, json_mode=JSONMode.LEGACY,
+                strict_uuid=False, canonical_uuid=False,
+                json_mode=JSONMode.LEGACY,
                 *args, **kwargs):
         kwargs["tz_aware"] = kwargs.get("tz_aware", True)
         if kwargs["tz_aware"]:
@@ -291,14 +292,17 @@ class JSONOptions(CodecOptions):
             self.strict_number_long = False
             self.datetime_representation = DatetimeRepresentation.ISO8601
             self.strict_uuid = True
+            self.canonical_uuid = False
         elif self.json_mode == JSONMode.CANONICAL:
             self.strict_number_long = True
             self.datetime_representation = DatetimeRepresentation.NUMBERLONG
             self.strict_uuid = True
+            self.canonical_uuid = False
         else:
             self.strict_number_long = strict_number_long
             self.datetime_representation = datetime_representation
             self.strict_uuid = strict_uuid
+            self.canonical_uuid = canonical_uuid
         return self
 
     def _arguments_repr(self):
@@ -318,6 +322,7 @@ class JSONOptions(CodecOptions):
             'strict_number_long': self.strict_number_long,
             'datetime_representation': self.datetime_representation,
             'strict_uuid': self.strict_uuid,
+            'canonical_uuid': self.canonical_uuid,
             'json_mode': self.json_mode})
         return options_dict
 
@@ -336,7 +341,7 @@ class JSONOptions(CodecOptions):
         """
         opts = self._options_dict()
         for opt in ('strict_number_long', 'datetime_representation',
-                    'strict_uuid', 'json_mode'):
+                    'strict_uuid', 'canonical_uuid', 'json_mode'):
             opts[opt] = kwargs.get(opt, getattr(self, opt))
         opts.update(kwargs)
         return JSONOptions(**opts)
@@ -839,7 +844,10 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
                 obj, uuid_representation=json_options.uuid_representation)
             return _encode_binary(binval, binval.subtype, json_options)
         else:
-            return {"$uuid": obj.hex}
+            if json_options.canonical_uuid:
+                return {"$uuid": str(obj)}
+            else:
+                return {"$uuid": obj.hex}
     if isinstance(obj, Decimal128):
         return {"$numberDecimal": str(obj)}
     if isinstance(obj, bool):
