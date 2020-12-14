@@ -20,8 +20,10 @@ import sys
 
 sys.path[0:0] = [""]
 
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.objectid import ObjectId
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 
 
@@ -457,16 +459,14 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
 
 class TestWriteConcernError(IntegrationTest):
+    @classmethod
     @client_context.require_version_min(4, 0)
     @client_context.require_replica_set
     @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
-    def test_RetryableWriteError_error_label(self):
-        listener = OvertCommandListener()
-        client = rs_or_single_client(
-            retryWrites=True, event_listeners=[listener])
-
-        fail_insert = {
+    def setUpClass(cls):
+        super(TestWriteConcernError, cls).setUpClass()
+        cls.fail_insert = {
             'configureFailPoint': 'failCommand',
             'mode': {'times': 2},
             'data': {
@@ -476,10 +476,15 @@ class TestWriteConcernError(IntegrationTest):
                     'errmsg': 'Replication is being shut down'},
             }}
 
+    def test_RetryableWriteError_error_label(self):
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
+            retryWrites=True, event_listeners=[listener])
+
         # Ensure collection exists.
         client.pymongo_test.testcoll.insert_one({})
 
-        with self.fail_point(fail_insert):
+        with self.fail_point(self.fail_insert):
             with self.assertRaises(WriteConcernError) as cm:
                 client.pymongo_test.testcoll.insert_one({})
             self.assertTrue(cm.exception.has_error_label(
@@ -490,6 +495,19 @@ class TestWriteConcernError(IntegrationTest):
             self.assertIn(
                 'RetryableWriteError',
                 listener.results['succeeded'][-1].reply['errorLabels'])
+
+    def test_RetryableWriteError_error_label_RawBSONDocument(self):
+        # using RawBSONDocument should not cause errorLabel parsing to fail
+        with self.fail_point(self.fail_insert):
+            with self.client.start_session() as s:
+                result = self.client.pymongo_test.command(
+                    'insert', 'testcoll', documents=[{'_id': 1}],
+                    txnNumber=s._server_session.transaction_id, session=s,
+                    codec_options=DEFAULT_CODEC_OPTIONS.with_options(
+                        document_class=RawBSONDocument))
+
+        self.assertIn('writeConcernError', result)
+        self.assertIn('RetryableWriteError', result['errorLabels'])
 
 
 # TODO: Make this a real integration test where we stepdown the primary.
