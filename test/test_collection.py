@@ -154,6 +154,9 @@ class TestCollection(IntegrationTest):
         self.assertEqual(self.db.test.mike, self.db["test.mike"])
         self.assertEqual(self.db.test["mike"], self.db["test.mike"])
 
+    def test_hashable(self):
+        self.assertIn(self.db.test.mike, {self.db["test.mike"]})
+
     @client_context.require_version_min(3, 3, 9)
     def test_create(self):
         # No Exception.

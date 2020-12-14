@@ -627,6 +627,10 @@ class TestClient(IntegrationTest):
         # Explicitly test inequality
         self.assertFalse(client_context.client != c)
 
+    def test_hashable(self):
+        c = connected(rs_or_single_client())
+        self.assertIn(c, {client_context.client})
+
     def test_host_w_port(self):
         with self.assertRaises(ValueError):
             connected(MongoClient("%s:1234567" % (client_context.host,),
