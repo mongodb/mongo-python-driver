@@ -500,6 +500,7 @@ class TestWriteConcernError(IntegrationTest):
         # using RawBSONDocument should not cause errorLabel parsing to fail
         with self.fail_point(self.fail_insert):
             with self.client.start_session() as s:
+                s._start_retryable_write()
                 result = self.client.pymongo_test.command(
                     'insert', 'testcoll', documents=[{'_id': 1}],
                     txnNumber=s._server_session.transaction_id, session=s,
