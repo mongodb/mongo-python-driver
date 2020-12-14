@@ -460,7 +460,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
 class TestWriteConcernError(IntegrationTest):
     @classmethod
-    @client_context.require_version_min(4, 0)
     @client_context.require_replica_set
     @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
@@ -476,6 +475,7 @@ class TestWriteConcernError(IntegrationTest):
                     'errmsg': 'Replication is being shut down'},
             }}
 
+    @client_context.require_version_min(4, 0)
     def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(
@@ -496,6 +496,7 @@ class TestWriteConcernError(IntegrationTest):
                 'RetryableWriteError',
                 listener.results['succeeded'][-1].reply['errorLabels'])
 
+    @client_context.require_version_min(4, 4)
     def test_RetryableWriteError_error_label_RawBSONDocument(self):
         # using RawBSONDocument should not cause errorLabel parsing to fail
         with self.fail_point(self.fail_insert):
