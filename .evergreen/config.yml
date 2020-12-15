@@ -2227,11 +2227,20 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5", "pypy3.6"]
+    python-version: ["2.7", "3.4", "3.5", "3.6"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
 #    coverage: "*"
+    encryption: "*"
+  display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
+  tasks: *encryption-server-versions
+
+- matrix_name: "tests-pypy-debian-test-encryption"
+  matrix_spec:
+    platform: debian92
+    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    auth-ssl: noauth-nossl
     encryption: "*"
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
