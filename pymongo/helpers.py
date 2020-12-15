@@ -115,7 +115,11 @@ def _check_command_response(response, max_wire_version,
                                max_wire_version)
 
     if parse_write_concern_error and 'writeConcernError' in response:
-        _raise_write_concern_error(response['writeConcernError'])
+        _error = response["writeConcernError"]
+        _labels = response.get("errorLabels")
+        if _labels:
+            _error.update({'errorLabels': _labels})
+        _raise_write_concern_error(_error)
 
     if response["ok"]:
         return
@@ -223,6 +227,9 @@ def _check_write_command_response(result):
 
     error = result.get("writeConcernError")
     if error:
+        error_labels = result.get("errorLabels")
+        if error_labels:
+            error.update({'errorLabels': error_labels})
         _raise_write_concern_error(error)
 
 
