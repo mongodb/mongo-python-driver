@@ -959,10 +959,6 @@ def assertion_context(msg):
         py3compat.reraise(type(exc), msg, sys.exc_info()[2])
 
 
-class SpecParserUtil(object):
-    pass
-
-
 def parse_spec_options(opts):
     if 'readPreference' in opts:
         opts['read_preference'] = parse_read_preference(

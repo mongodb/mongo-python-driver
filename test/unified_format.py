@@ -198,7 +198,7 @@ class EntityMapUtil(object):
                 self._listeners[spec['id']] = listener
                 kwargs['event_listeners'] = [listener]
             if client_context.is_mongos and spec.get('useMultipleMongoses'):
-                kwargs['host'] = client_context.mongos_seeds()
+                kwargs['h'] = client_context.mongos_seeds()
             kwargs.update(spec.get('uriOptions', {}))
             client = rs_or_single_client(**kwargs)
             self[spec['id']] = client
@@ -882,14 +882,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                                      actual_documents)
 
     def run_scenario(self, spec):
-        # process createEntities
-        self.entity_map = EntityMapUtil(self)
-        self.entity_map.create_entities_from_spec(
-            self.TEST_SPEC.get('createEntities', []))
-
-        # process initialData
-        self.insert_initial_data(self.TEST_SPEC.get('initialData', []))
-
         # process test-level runOnRequirements
         run_on_spec = spec.get('runOnRequirements', [])
         if not self.should_run_on(run_on_spec):
@@ -899,6 +891,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         skip_reason = spec.get('skipReason', None)
         if skip_reason is not None:
             raise unittest.SkipTest('%s' % (skip_reason,))
+
+        # process createEntities
+        self.entity_map = EntityMapUtil(self)
+        self.entity_map.create_entities_from_spec(
+            self.TEST_SPEC.get('createEntities', []))
+
+        # process initialData
+        self.insert_initial_data(self.TEST_SPEC.get('initialData', []))
 
         # process operations
         self.run_operations(spec['operations'])
