@@ -98,7 +98,7 @@ if [ -n "$TEST_PYOPENSSL" ]; then
     trap "deactivate; rm -rf pyopenssltest" EXIT HUP
     PYTHON=python
 
-    python -m pip install pyopenssl requests service_identity
+    python -m pip install --prefer-binary pyopenssl requests service_identity
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
