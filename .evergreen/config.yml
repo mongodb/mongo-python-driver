@@ -1561,6 +1561,7 @@ axes:
         run_on: debian92-test
         batchtime: 10080  # 7 days
         variables:
+          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/debian92/master/latest/libmongocrypt.tar.gz
       - id: macos-1014
         display_name: "macOS 10.14"
@@ -2186,7 +2187,7 @@ buildvariants:
     pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
-    - '.replica_set !.2.6 !.3.0'
+    - '.replica_set !.2.6 !.3.0 !.3.2 !.3.4'
     # Test standalone and sharded only on 4.4.
     - '.4.4'
 
