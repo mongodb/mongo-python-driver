@@ -20,14 +20,17 @@ import sys
 
 sys.path[0:0] = [""]
 
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.objectid import ObjectId
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 
 
 from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
-                            ServerSelectionTimeoutError)
+                            ServerSelectionTimeoutError,
+                            WriteConcernError)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import (InsertOne,
                                 DeleteMany,
@@ -43,6 +46,7 @@ from test.utils import (rs_or_single_client,
                         OvertCommandListener,
                         TestCreator)
 from test.utils_spec_runner import SpecRunner
+from test.version import Version
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -452,6 +456,60 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             final_txn = session._server_session._transaction_id
             self.assertEqual(final_txn, expected_txn)
         self.assertEqual(coll.find_one(projection={'_id': True}), {'_id': 1})
+
+
+class TestWriteConcernError(IntegrationTest):
+    @classmethod
+    @client_context.require_replica_set
+    @client_context.require_no_mmap
+    @client_context.require_failCommand_fail_point
+    def setUpClass(cls):
+        super(TestWriteConcernError, cls).setUpClass()
+        cls.fail_insert = {
+            'configureFailPoint': 'failCommand',
+            'mode': {'times': 2},
+            'data': {
+                'failCommands': ['insert'],
+                'writeConcernError': {
+                    'code': 91,
+                    'errmsg': 'Replication is being shut down'},
+            }}
+
+    @client_context.require_version_min(4, 0)
+    def test_RetryableWriteError_error_label(self):
+        listener = OvertCommandListener()
+        client = rs_or_single_client(
+            retryWrites=True, event_listeners=[listener])
+
+        # Ensure collection exists.
+        client.pymongo_test.testcoll.insert_one({})
+
+        with self.fail_point(self.fail_insert):
+            with self.assertRaises(WriteConcernError) as cm:
+                client.pymongo_test.testcoll.insert_one({})
+            self.assertTrue(cm.exception.has_error_label(
+                'RetryableWriteError'))
+
+        if client_context.version >= Version(4, 4):
+            # In MongoDB 4.4+ we rely on the server returning the error label.
+            self.assertIn(
+                'RetryableWriteError',
+                listener.results['succeeded'][-1].reply['errorLabels'])
+
+    @client_context.require_version_min(4, 4)
+    def test_RetryableWriteError_error_label_RawBSONDocument(self):
+        # using RawBSONDocument should not cause errorLabel parsing to fail
+        with self.fail_point(self.fail_insert):
+            with self.client.start_session() as s:
+                s._start_retryable_write()
+                result = self.client.pymongo_test.command(
+                    'insert', 'testcoll', documents=[{'_id': 1}],
+                    txnNumber=s._server_session.transaction_id, session=s,
+                    codec_options=DEFAULT_CODEC_OPTIONS.with_options(
+                        document_class=RawBSONDocument))
+
+        self.assertIn('writeConcernError', result)
+        self.assertIn('RetryableWriteError', result['errorLabels'])
 
 
 # TODO: Make this a real integration test where we stepdown the primary.
