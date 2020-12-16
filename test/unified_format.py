@@ -548,7 +548,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process file-level runOnRequirements
         run_on_spec = cls.TEST_SPEC.get('runOnRequirements', [])
         if not cls.should_run_on(run_on_spec):
-            raise unittest.SkipTest('runOnRequirements not satisfied')
+            raise unittest.SkipTest(
+                '%s runOnRequirements not satisfied' % (cls.__name__,))
 
     @classmethod
     def tearDownClass(cls):
@@ -985,6 +986,7 @@ def generate_test_classes(test_path, module=__name__, class_name_prefix='',
                     print('Ignoring test file %s with '
                           'unsupported schemaVersion %s' %
                           (fpath, schema_version))
+                    continue
                 test_klasses[class_name] = type(
                     class_name,
                     (mixin_class, test_base_class_factory(scenario_def),),
