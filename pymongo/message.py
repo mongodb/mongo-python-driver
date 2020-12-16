@@ -307,6 +307,7 @@ class _Query(object):
             self.name = 'explain'
             cmd = SON([('explain', cmd)])
         session = self.session
+        sock_info.add_server_api(cmd, session)
         if session:
             session._apply_to(cmd, False, self.read_preference)
             # Explain does not support readConcern.

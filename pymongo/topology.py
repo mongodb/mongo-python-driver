@@ -701,6 +701,7 @@ class Topology(object):
             appname=options.appname,
             driver=options.driver,
             pause_enabled=False,
+            server_api=options.server_api,
         )
 
         return self._settings.pool_class(address, monitor_pool_options,

@@ -296,6 +296,7 @@ class _Bulk(object):
                 run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
+                sock_info.add_server_api(cmd, session)
                 if session:
                     # Start a new retryable write unless one was already
                     # started for this command.

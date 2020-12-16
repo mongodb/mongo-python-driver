@@ -498,7 +498,17 @@ class MongoClient(common.BaseObject):
             and automatically decrypt results. See
             :ref:`automatic-client-side-encryption` for an example.
 
+          | **Versioned API options:**
+          | (If not set explicitly, Versioned API will not be enabled.)
+
+          - `server_api`: A
+            :class:`~pymongo.server_api.ServerApi` which configures this
+            client to use Versioned API.
+
         .. mongodoc:: connections
+
+        .. versionchanged:: 3.12
+           Added the ``server_api`` keyword argument.
 
         .. versionchanged:: 3.11
            Added the following keyword arguments and URI options:

@@ -60,6 +60,7 @@ from pymongo.monitoring import (ConnectionCheckOutFailedReason,
 from pymongo.network import (command,
                              receive_message)
 from pymongo.read_preferences import ReadPreference
+from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 # Always use our backport so we always have support for IP address matching
@@ -311,7 +312,7 @@ class PoolOptions(object):
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
                  '__event_listeners', '__appname', '__driver', '__metadata',
                  '__compression_settings', '__max_connecting',
-                 '__pause_enabled')
+                 '__pause_enabled', '__server_api')
 
     def __init__(self, max_pool_size=MAX_POOL_SIZE,
                  min_pool_size=MIN_POOL_SIZE,
@@ -321,8 +322,7 @@ class PoolOptions(object):
                  ssl_match_hostname=True, socket_keepalive=True,
                  event_listeners=None, appname=None, driver=None,
                  compression_settings=None, max_connecting=MAX_CONNECTING,
-                 pause_enabled=True):
-
+                 pause_enabled=True, server_api=None):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
         self.__max_idle_time_seconds = max_idle_time_seconds
@@ -339,6 +339,7 @@ class PoolOptions(object):
         self.__compression_settings = compression_settings
         self.__max_connecting = max_connecting
         self.__pause_enabled = pause_enabled
+        self.__server_api = server_api
         self.__metadata = copy.deepcopy(_METADATA)
         if appname:
             self.__metadata['application'] = {'name': appname}
@@ -494,6 +495,12 @@ class PoolOptions(object):
         """A dict of metadata about the application, driver, os, and platform.
         """
         return self.__metadata.copy()
+
+    @property
+    def server_api(self):
+        """A pymongo.server_api.ServerApi or None.
+        """
+        return self.__server_api
 
 
 def _negotiate_creds(all_credentials):
@@ -705,6 +712,7 @@ class SocketInfo(object):
             raise ConfigurationError(
                 'Must be connected to MongoDB 3.4+ to use a collation.')
 
+        self.add_server_api(spec, session)
         if session:
             session._apply_to(spec, retryable_write, read_preference)
         self.send_cluster_time(spec, session, client)
@@ -893,6 +901,14 @@ class SocketInfo(object):
         """Add cluster time for MongoDB >= 3.6."""
         if self.max_wire_version >= 6 and client:
             client._send_cluster_time(command, session)
+
+    def add_server_api(self, command, session):
+        """Add server_api parameters."""
+        if (session and session.in_transaction and
+                not session._starting_transaction):
+            return
+        if self.opts.server_api:
+            _add_to_command(command, self.opts.server_api)
 
     def update_last_checkin_time(self):
         self.last_checkin_time = _time()

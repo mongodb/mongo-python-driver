@@ -27,6 +27,7 @@ from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (validate_compressors,
                                          validate_zlib_compression_level)
 from pymongo.driver_info import DriverInfo
+from pymongo.server_api import ServerApi
 from pymongo.encryption_options import validate_auto_encryption_opts_or_none
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
@@ -528,6 +529,15 @@ def validate_driver_or_none(option, value):
     return value
 
 
+def validate_server_api_or_none(option, value):
+    """Validate the server_api keyword arg."""
+    if value is None:
+        return value
+    if not isinstance(value, ServerApi):
+        raise TypeError("%s must be an instance of ServerApi" % (option,))
+    return value
+
+
 def validate_is_callable_or_none(option, value):
     """Validates that 'value' is a callable."""
     if value is None:
@@ -643,6 +653,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
 NONSPEC_OPTIONS_VALIDATOR_MAP = {
     'connect': validate_boolean_or_string,
     'driver': validate_driver_or_none,
+    'server_api': validate_server_api_or_none,
     'fsync': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
     'socketkeepalive': validate_boolean_or_string,
