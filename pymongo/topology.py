@@ -283,9 +283,8 @@ class Topology(object):
             # This is a stale isMaster response. Ignore it.
             return
 
-        # Mark the pool "ready" if the server was rediscovered.
-        if (not sd_old.is_server_type_known and
-                server_description.is_server_type_known):
+        # CMAP: Ensure the pool is "ready" when the server is selectable.
+        if server_description.is_server_type_known:
             server = self._servers.get(server_description.address)
             if server:
                 server.pool.ready()
