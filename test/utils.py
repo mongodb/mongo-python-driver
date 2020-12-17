@@ -60,7 +60,7 @@ else:
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
 
-class BaseListener(ConnectionPoolListener):
+class BaseListener(object):
     def __init__(self):
         self.events = []
 
