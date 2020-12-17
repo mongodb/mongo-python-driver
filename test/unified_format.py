@@ -538,13 +538,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # super call creates internal client cls.client
         super(UnifiedSpecTestMixinV1, cls).setUpClass()
 
-        # process schemaVersion
-        version = Version.from_string(cls.TEST_SPEC['schemaVersion'])
-        if not version <= cls.SCHEMA_VERSION:
-            raise unittest.SkipTest(
-                'expected schemaVersion %s or lower, got %s' % (
-                    cls.SCHEMA_VERSION, version))
-
         # process file-level runOnRequirements
         run_on_spec = cls.TEST_SPEC.get('runOnRequirements', [])
         if not cls.should_run_on(run_on_spec):
@@ -558,6 +551,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def setUp(self):
         super(UnifiedSpecTestMixinV1, self).setUp()
+
+        # process schemaVersion
+        # note: we check major schema version during class generation
+        # note: we do this here because we cannot run assertions in setUpClass
+        version = Version.from_string(self.TEST_SPEC['schemaVersion'])
+        self.assertLessEqual(
+            version, self.SCHEMA_VERSION,
+            'expected schema version %s or lower, got %s' % (
+                self.SCHEMA_VERSION, version))
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
@@ -977,23 +979,17 @@ def generate_test_classes(test_path, module=__name__, class_name_prefix='',
                 test_type.replace('-', '_').replace('.', '_'))
             class_name = snake_to_camel(snake_class_name)
 
-            try:
-                schema_version = Version.from_string(
-                    scenario_def['schemaVersion'])
-                mixin_class = _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS.get(
-                    schema_version[0])
-                if mixin_class is None:
-                    print('Ignoring test file %s with '
-                          'unsupported schemaVersion %s' %
-                          (fpath, schema_version))
-                    continue
-                test_klasses[class_name] = type(
-                    class_name,
-                    (mixin_class, test_base_class_factory(scenario_def),),
-                    {'__module__': module})
-            except (AttributeError, KeyError, TypeError):
-                print("Ignoring invalid test file '%s'\n"
-                      "Original exception: %s" %
-                      (fpath, traceback.format_exc()))
+            schema_version = Version.from_string(
+                scenario_def['schemaVersion'])
+            mixin_class = _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS.get(
+                schema_version[0])
+            if mixin_class is None:
+                raise ValueError(
+                    "test file '%s' has unsupported schemaVersion '%s'" % (
+                        fpath, schema_version))
+            test_klasses[class_name] = type(
+                class_name,
+                (mixin_class, test_base_class_factory(scenario_def),),
+                {'__module__': module})
 
     return test_klasses

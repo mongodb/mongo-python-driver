@@ -36,15 +36,11 @@ globals().update(generate_test_classes(
     ]))
 
 
-globals().update(generate_test_classes(
-    os.path.join(_TEST_PATH, 'valid-fail'),
-    module=__name__,
-    class_name_prefix='UnifiedTestFormat',
-    expected_failures=[
-        'foo',
-        'FindOneAndReplace returnDocument invalid enum value',
-        'FindOneAndUpdate returnDocument invalid enum value'
-    ]))
+# Uncomment to run the valid-fail tests
+# globals().update(generate_test_classes(
+#     os.path.join(_TEST_PATH, 'valid-fail'),
+#     module=__name__,
+#     class_name_prefix='UnifiedTestFormat'))
 
 
 class TestMatchEvaluatorUtil(unittest.TestCase):
