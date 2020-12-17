@@ -303,6 +303,9 @@ class Collection(common.BaseObject):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash((self.__database, self.__name))
+
     @property
     def full_name(self):
         """The full name of this :class:`Collection`.

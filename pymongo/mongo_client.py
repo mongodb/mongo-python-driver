@@ -1509,6 +1509,9 @@ class MongoClient(common.BaseObject):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash(self.address)
+
     def _repr_helper(self):
         def option_repr(option, value):
             """Fix options whose __repr__ isn't usable in a constructor."""
