@@ -1561,6 +1561,7 @@ axes:
         run_on: debian92-test
         batchtime: 10080  # 7 days
         variables:
+          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/debian92/master/latest/libmongocrypt.tar.gz
       - id: macos-1014
         display_name: "macOS 10.14"
@@ -2160,20 +2161,33 @@ buildvariants:
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.8", "3.9", "pypy", "pypy3.5"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.8", "3.9"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
     - '.replica_set !.2.6 !.3.0'
+    # Test standalone and sharded only on 4.4.
+    - '.4.4'
+
+- matrix_name: "tests-pyopenssl-pypy"
+  matrix_spec:
+    platform: debian92
+    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    auth: "auth"
+    ssl: "ssl"
+    pyopenssl: "*"
+  display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
+  tasks:
+    - '.replica_set !.2.6 !.3.0 !.3.2 !.3.4'
     # Test standalone and sharded only on 4.4.
     - '.4.4'
 
@@ -2214,11 +2228,20 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5", "pypy3.6"]
+    python-version: ["2.7", "3.4", "3.5", "3.6"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
 #    coverage: "*"
+    encryption: "*"
+  display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
+  tasks: *encryption-server-versions
+
+- matrix_name: "tests-pypy-debian-test-encryption"
+  matrix_spec:
+    platform: debian92
+    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    auth-ssl: noauth-nossl
     encryption: "*"
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
@@ -2365,12 +2388,6 @@ buildvariants:
     python-version-windows: "*"
     auth-ssl: "*"
     encryption: "*"
-  exclude_spec:
-    # PYTHON-2366 Skip 3.9 due to cryptography install failures
-    - platform: "*"
-      python-version-windows: ["3.9"]
-      auth-ssl: "*"
-      encryption: "*"
   display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
 
@@ -2533,7 +2550,19 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.8", "3.9", "pypy", "pypy3.5"]
+    python-version: ["2.7", "3.4", "3.8", "3.9"]
+    mongodb-version: ["4.4", "latest"]
+    auth: "noauth"
+    ssl: "ssl"
+  display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
+  batchtime: 20160 # 14 days
+  tasks:
+    - name: ".ocsp"
+
+- matrix_name: "ocsp-test-pypy"
+  matrix_spec:
+    platform: debian92
+    python-version: ["pypy", "pypy3.5", "pypy3.6"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2545,7 +2574,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version-windows: ["2.7", "3.4", "3.8"]
+    python-version-windows: ["2.7", "3.4", "3.9"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
