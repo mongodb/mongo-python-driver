@@ -1645,7 +1645,7 @@ class TestClient(IntegrationTest):
             # If a bug like PYTHON-2433 is reintroduced then too many
             # ServerDescriptions will be kept alive and this test will fail:
             # AssertionError: 4 != 22 within 5 delta (18 difference)
-            self.assertAlmostEqual(initial_count, final_count, delta=5)
+            self.assertAlmostEqual(initial_count, final_count, delta=10)
 
 
 class TestExhaustCursor(IntegrationTest):
