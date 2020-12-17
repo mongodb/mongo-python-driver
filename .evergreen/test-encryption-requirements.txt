@@ -1,0 +1,4 @@
+# cffi==1.14.3 was the last installable release on RHEL 6.2 with Python 3.4
+cffi==1.14.3;python_version=="3.4"
+cffi>=1.12.0,<2;python_version!="3.4"
+cryptography>=2,<4
