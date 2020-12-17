@@ -527,7 +527,7 @@ class SpecRunner(IntegrationTest):
 
     def maybe_skip_scenario(self, test):
         if test.get('skipReason'):
-            raise unittest.SkipTest(test.get('skipReason'))
+            self.skipTest(test.get('skipReason'))
 
     def get_scenario_db_name(self, scenario_def):
         """Allow subclasses to override a test's database name."""
