@@ -9,7 +9,7 @@
   "data": [],
   "tests": [
     {
-      "description": "Command error on minPoolSize background creation",
+      "description": "Network error on minPoolSize background creation",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
@@ -27,7 +27,8 @@
         "heartbeatFrequencyMS": 10000,
         "appname": "SDAMminPoolSizeError",
         "minPoolSize": 10,
-        "serverSelectionTimeoutMS": 100
+        "serverSelectionTimeoutMS": 1000,
+        "directConnection": true
       },
       "operations": [
         {
@@ -76,14 +77,6 @@
           }
         },
         {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "event": "PoolReadyEvent",
-            "count": 2
-          }
-        },
-        {
           "name": "runCommand",
           "object": "database",
           "command_name": "ping",
@@ -93,6 +86,14 @@
             }
           },
           "error": false
+        },
+        {
+          "name": "assertEventCount",
+          "object": "testRunner",
+          "arguments": {
+            "event": "PoolReadyEvent",
+            "count": 2
+          }
         }
       ]
     }
