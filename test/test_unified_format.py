@@ -17,7 +17,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from bson import ObjectId, Timestamp
+from bson import ObjectId
 
 from test import unittest
 from test.unified_format import generate_test_classes, MatchEvaluatorUtil
@@ -36,11 +36,14 @@ globals().update(generate_test_classes(
     ]))
 
 
-# Uncomment to run the valid-fail tests
-# globals().update(generate_test_classes(
-#     os.path.join(_TEST_PATH, 'valid-fail'),
-#     module=__name__,
-#     class_name_prefix='UnifiedTestFormat'))
+globals().update(generate_test_classes(
+    os.path.join(_TEST_PATH, 'valid-fail'),
+    module=__name__,
+    class_name_prefix='UnifiedTestFormat',
+    bypass_test_generation_errors=True,
+    expected_failures=[
+        '.*',       # All tests expected to fail
+    ]))
 
 
 class TestMatchEvaluatorUtil(unittest.TestCase):

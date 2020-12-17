@@ -21,8 +21,8 @@ import copy
 import datetime
 import functools
 import os
+import re
 import sys
-import traceback
 import types
 
 from bson import json_util, Code, Decimal128, DBRef, SON, Int64, MaxKey, MinKey
@@ -930,8 +930,10 @@ class UnifiedSpecTestMeta(type):
             test_method = create_test(copy.deepcopy(test_spec))
             test_method.__name__ = test_name
 
-            if description in cls.EXPECTED_FAILURES:
-                test_method = unittest.expectedFailure(test_method)
+            for fail_pattern in cls.EXPECTED_FAILURES:
+                if re.search(fail_pattern, description):
+                    test_method = unittest.expectedFailure(test_method)
+                    break
 
             setattr(cls, test_name, test_method)
 
@@ -947,7 +949,8 @@ _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS = {
 
 
 def generate_test_classes(test_path, module=__name__, class_name_prefix='',
-                          expected_failures=[]):
+                          expected_failures=[],
+                          bypass_test_generation_errors=False):
     """Method for generating test classes. Returns a dictionary where keys are
     the names of test classes and values are the test class objects."""
     test_klasses = {}
@@ -979,17 +982,22 @@ def generate_test_classes(test_path, module=__name__, class_name_prefix='',
                 test_type.replace('-', '_').replace('.', '_'))
             class_name = snake_to_camel(snake_class_name)
 
-            schema_version = Version.from_string(
-                scenario_def['schemaVersion'])
-            mixin_class = _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS.get(
-                schema_version[0])
-            if mixin_class is None:
-                raise ValueError(
-                    "test file '%s' has unsupported schemaVersion '%s'" % (
-                        fpath, schema_version))
-            test_klasses[class_name] = type(
-                class_name,
-                (mixin_class, test_base_class_factory(scenario_def),),
-                {'__module__': module})
+            try:
+                schema_version = Version.from_string(
+                    scenario_def['schemaVersion'])
+                mixin_class = _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS.get(
+                    schema_version[0])
+                if mixin_class is None:
+                    raise ValueError(
+                        "test file '%s' has unsupported schemaVersion '%s'" % (
+                            fpath, schema_version))
+                test_klasses[class_name] = type(
+                    class_name,
+                    (mixin_class, test_base_class_factory(scenario_def),),
+                    {'__module__': module})
+            except Exception:
+                if bypass_test_generation_errors:
+                    continue
+                raise
 
     return test_klasses
