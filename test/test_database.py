@@ -126,6 +126,9 @@ class TestDatabase(IntegrationTest):
         self.assertFalse(Database(self.client, "test") !=
                          Database(self.client, "test"))
 
+    def test_hashable(self):
+        self.assertIn(self.client.test, {Database(self.client, "test")})
+
     def test_get_coll(self):
         db = Database(self.client, "pymongo_test")
         self.assertEqual(db.test, db["test"])

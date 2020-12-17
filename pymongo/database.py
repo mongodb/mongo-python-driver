@@ -272,6 +272,9 @@ class Database(common.BaseObject):
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return hash((self.__client, self.__name))
+
     def __repr__(self):
         return "Database(%r, %r)" % (self.__client, self.__name)
 
