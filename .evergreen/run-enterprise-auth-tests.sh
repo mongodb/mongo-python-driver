@@ -18,6 +18,7 @@ if [ ${PLATFORM} != "Java" ]; then
     if [ "Windows_NT" = "$OS" ]; then
         echo "Setting GSSAPI_PASS"
         export GSSAPI_PASS=${SASL_PASS}
+        export GSSAPI_CANONICALIZE="true"
     else
         # BUILD-3830
         touch ${PROJECT_DIRECTORY}/.evergreen/krb5.conf.empty
