@@ -42,8 +42,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestSpec, _TEST_PATH)
-test_creator.create_tests()
+TestCreator(create_test, TestSpec, _TEST_PATH).create_tests()
 
 
 if __name__ == "__main__":
