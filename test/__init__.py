@@ -191,6 +191,7 @@ class ClientContext(object):
         self.sessions_enabled = False
         self.client = None
         self.conn_lock = threading.Lock()
+        self.is_data_lake = False
 
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
@@ -231,6 +232,19 @@ class ClientContext(object):
 
     def _init_client(self):
         self.client = self._connect(host, port)
+
+        if self.client is not None:
+            # Return early when connected to dataLake as mongohoused does not
+            # support the getCmdLineOpts command and is tested without TLS.
+            build_info = self.client.admin.command('buildInfo')
+            if 'dataLake' in build_info:
+                self.is_data_lake = True
+                self.auth_enabled = True
+                self.client = self._connect(
+                    host, port, username=db_user, password=db_pwd)
+                self.connected = True
+                return
+
         if HAVE_SSL and not self.client:
             # Is MongoDB configured for SSL?
             self.client = self._connect(host, port, **TLS_OPTIONS)
@@ -845,14 +859,14 @@ def teardown():
     if garbage:
         assert False, '\n'.join(garbage)
     c = client_context.client
-    if c:
+    if c and not client_context.is_data_lake:
         c.drop_database("pymongo-pooling-tests")
         c.drop_database("pymongo_test")
         c.drop_database("pymongo_test1")
         c.drop_database("pymongo_test2")
         c.drop_database("pymongo_test_mike")
         c.drop_database("pymongo_test_bernie")
-        c.close()
+    c.close()
 
     # Jython does not support gc.get_objects.
     if not sys.platform.startswith('java'):

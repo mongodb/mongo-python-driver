@@ -19,7 +19,6 @@ else
     set +x
 fi
 
-
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 PYTHON_BINARY=${PYTHON_BINARY:-}
@@ -30,6 +29,7 @@ COMPRESSORS=${COMPRESSORS:-}
 TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
 LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
 SETDEFAULTENCODING=${SETDEFAULTENCODING:-}
+DATA_LAKE=${DATA_LAKE:-}
 
 if [ -n "$COMPRESSORS" ]; then
     export COMPRESSORS=$COMPRESSORS
@@ -38,8 +38,13 @@ fi
 export JAVA_HOME=/opt/java/jdk8
 
 if [ "$AUTH" != "noauth" ]; then
-    export DB_USER="bob"
-    export DB_PASSWORD="pwd123"
+    if [ -z "$DATA_LAKE" ]; then
+        export DB_USER="bob"
+        export DB_PASSWORD="pwd123"
+    else
+        export DB_USER="mhuser"
+        export DB_PASSWORD="pencil"
+    fi
 fi
 
 if [ "$SSL" != "nossl" ]; then
@@ -149,9 +154,15 @@ fi
 
 PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
 if [ $PYTHON_IMPL = "Jython" ]; then
-    EXTRA_ARGS="-J-XX:-UseGCOverheadLimit -J-Xmx4096m"
+    PYTHON_ARGS="-J-XX:-UseGCOverheadLimit -J-Xmx4096m"
 else
-    EXTRA_ARGS=""
+    PYTHON_ARGS=""
+fi
+
+if [ -z "$DATA_LAKE" ]; then
+    TEST_ARGS=""
+else
+    TEST_ARGS="-s test.test_data_lake"
 fi
 
 # Don't download unittest-xml-reporting from pypi, which often fails.
@@ -200,7 +211,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-    $COVERAGE_OR_PYTHON $EXTRA_ARGS $COVERAGE_ARGS setup.py $C_EXTENSIONS test $OUTPUT
+    $COVERAGE_OR_PYTHON $PYTHON_ARGS $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT

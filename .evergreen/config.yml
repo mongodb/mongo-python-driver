@@ -301,6 +301,25 @@ functions:
           - key: MONGODB_STARTED
             value: "1"
 
+  "bootstrap data lake":
+    - command: shell.exec
+      type: setup
+      params:
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          cd ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" sh build-mongohouse-local.sh
+    - command: shell.exec
+      type: setup
+      params:
+        background: true
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          cd ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake
+          DRIVERS_TOOLS="${DRIVERS_TOOLS}" sh run-mongohouse-local.sh
+
   "stop mongo-orchestration":
     - command: shell.exec
       params:
@@ -405,6 +424,7 @@ functions:
             COMPRESSORS=${COMPRESSORS} \
             AUTH=${AUTH} \
             SSL=${SSL} \
+            DATA_LAKE=${DATA_LAKE} \
             sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
@@ -1156,6 +1176,13 @@ tasks:
       tags: ["atlas-connect"]
       commands:
         - func: "run atlas tests"
+
+    - name: atlas-data-lake-tests
+      commands:
+        - func: "bootstrap data lake"
+        - func: "run tests"
+          vars:
+            DATA_LAKE: "true"
 
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
@@ -2546,6 +2573,16 @@ buildvariants:
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
     - name: "atlas-connect"
+
+- matrix_name: "data-lake-spec-tests"
+  matrix_spec:
+    platform: ubuntu-16.04
+    python-version: ["2.7", "3.4", "3.8"]
+    auth: "auth"
+    c-extensions: "*"
+  display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
+  tasks:
+    - name: atlas-data-lake-tests
 
 - matrix_name: "ocsp-test"
   matrix_spec:

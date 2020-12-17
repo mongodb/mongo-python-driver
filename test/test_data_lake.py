@@ -1,4 +1,4 @@
-# Copyright 2019-present MongoDB, Inc.
+# Copyright 2020-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,27 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the collection module."""
+"""Test Atlas Data Lake."""
 
 import os
 import sys
 
 sys.path[0:0] = [""]
 
-from test import unittest
+from test import client_context, unittest
 from test.crud_v2_format import TestCrudV2
 from test.utils import TestCreator
 
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'crud', 'v2')
+    os.path.dirname(os.path.realpath(__file__)), "data_lake")
 
 
-class TestSpec(TestCrudV2):
+class DataLakeTestSpec(TestCrudV2):
     # Default test database and collection names.
-    TEST_DB = 'testdb'
-    TEST_COLLECTION = 'testcollection'
+    TEST_DB = 'test'
+    TEST_COLLECTION = 'driverdata'
+
+    @classmethod
+    def setUpClass(cls):
+        super(DataLakeTestSpec, cls).setUpClass()
+        # Skip these tests unless connected to data lake.
+        if not client_context.is_data_lake:
+            raise unittest.SkipTest('Not connected to Atlas Data Lake')
+
+    def setup_scenario(self, scenario_def):
+        # Spec tests MUST NOT insert data/drop collection for
+        # data lake testing.
+        pass
 
 
 def create_test(scenario_def, test, name):
@@ -42,7 +54,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-TestCreator(create_test, TestSpec, _TEST_PATH).create_tests()
+TestCreator(create_test, DataLakeTestSpec, _TEST_PATH).create_tests()
 
 
 if __name__ == "__main__":
