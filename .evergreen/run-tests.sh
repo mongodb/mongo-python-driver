@@ -94,38 +94,11 @@ fi
 
 # PyOpenSSL test setup.
 if [ -n "$TEST_PYOPENSSL" ]; then
-    if $PYTHON -m virtualenv --version; then
-        VIRTUALENV="$PYTHON -m virtualenv"
-    elif command -v virtualenv; then
-        # We can remove this fallback after:
-        # https://github.com/10gen/mongo-python-toolchain/issues/8
-        VIRTUALENV="$(command -v virtualenv) -p $PYTHON"
-    else
-        echo "Cannot test without virtualenv"
-        exit 1
-    fi
-
-    $VIRTUALENV pyopenssltest
-    if [ "Windows_NT" = "$OS" ]; then
-        . pyopenssltest/Scripts/activate
-    else
-        . pyopenssltest/bin/activate
-    fi
+    createvirtualenv $PYTHON pyopenssltest
     trap "deactivate; rm -rf pyopenssltest" EXIT HUP
     PYTHON=python
 
-    IS_PYTHON_2=$(python -c "import sys; sys.stdout.write('1' if sys.version_info < (3,) else '0')")
-    if [ $IS_PYTHON_2 = "1" ]; then
-        echo "Using a Python 2"
-        # Upgrade pip to install the cryptography wheel and not the tar.
-        # <20.1 because 20.0.2 says a future release may drop support for 2.7.
-        python -m pip install --upgrade 'pip<20.1'
-        # Upgrade setuptools because cryptography requires 18.5+.
-        # <45 because 45.0 dropped support for 2.7.
-        python -m pip install --upgrade 'setuptools<45'
-    fi
-
-    python -m pip install pyopenssl requests service_identity
+    python -m pip install --prefer-binary pyopenssl requests service_identity
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
@@ -166,7 +139,8 @@ if [ -n "$TEST_ENCRYPTION" ]; then
 
     # TODO: Test with 'pip install pymongocrypt'
     git clone --branch master https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
-    python -m pip install --upgrade ./libmongocrypt_git/bindings/python
+    python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
+    python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by PREPARE_SHELL for access to mongocryptd.
