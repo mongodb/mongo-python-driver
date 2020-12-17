@@ -20,7 +20,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import client_context, unittest
-from test.test_crud_v2 import TestSpec
+from test.crud_v2_format import TestCrudV2
 from test.utils import TestCreator
 
 
@@ -28,12 +28,12 @@ from test.utils import TestCreator
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "data_lake")
 
-# Default test database and collection names.
-TEST_DB = 'test'
-TEST_COLLECTION = 'driverdata'
 
+class DataLakeTestSpec(TestCrudV2):
+    # Default test database and collection names.
+    TEST_DB = 'test'
+    TEST_COLLECTION = 'driverdata'
 
-class DataLakeTestSpec(TestSpec):
     def maybe_skip_scenario(self, test):
         # Skip these tests unless connected to data lake.
         if not client_context.is_data_lake:
