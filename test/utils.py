@@ -988,13 +988,23 @@ def parse_spec_options(opts):
     if 'requests' in opts:
         reqs = opts.pop('requests')
         for req in reqs:
-            args = req.pop('arguments', {})
-            if 'hint' in args:
-                hint = args.pop('hint')
-                if not isinstance(hint, string_type):
-                    hint = list(iteritems(hint))
+            if 'name' in req:
+                # CRUD v2 format
+                args = req.pop('arguments', {})
+                if 'hint' in args:
+                    hint = args.pop('hint')
+                    if not isinstance(hint, string_type):
+                        hint = list(iteritems(hint))
                 args['hint'] = hint
-            req['arguments'] = args
+                req['arguments'] = args
+            else:
+                # Unified test format
+                bulk_model, spec = next(iteritems(req))
+                if 'hint' in spec:
+                    hint = spec.pop('hint')
+                    if not isinstance(hint, string_type):
+                        hint = list(iteritems(hint))
+                    spec['hint'] = hint
         opts['requests'] = reqs
 
     return dict(opts)

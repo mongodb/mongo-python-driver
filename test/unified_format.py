@@ -286,11 +286,11 @@ class EntityMapUtil(object):
 if not PY3:
     binary_types = (Binary,)
     long_types = (Int64, long)
-    unicode_types = (unicode,)
+    unicode_type = unicode
 else:
     binary_types = (Binary, bytes)
     long_types = (Int64,)
-    unicode_types = (str,)
+    unicode_type = str
 
 
 BSON_TYPE_ALIAS_MAP = {
@@ -308,9 +308,9 @@ BSON_TYPE_ALIAS_MAP = {
     'null': (type(None),),
     'regex': (Regex, RE_TYPE),
     'dbPointer': (DBRef,),
-    'javascript': (*unicode_types, Code),
-    'symbol': unicode_types,
-    'javascriptWithScope': (*unicode_types, Code),
+    'javascript': (unicode_type, Code),
+    'symbol': (unicode_type,),
+    'javascriptWithScope': (unicode_type, Code),
     'int': (int,),
     'long': (Int64,),
     'decimal': (Decimal128,),
@@ -928,7 +928,7 @@ class UnifiedSpecTestMeta(type):
             test_name = 'test_%s' % (description.strip('. ').
                                      replace(' ', '_').replace('.', '_'),)
             test_method = create_test(copy.deepcopy(test_spec))
-            test_method.__name__ = test_name
+            test_method.__name__ = str(test_name)
 
             for fail_pattern in cls.EXPECTED_FAILURES:
                 if re.search(fail_pattern, description):
