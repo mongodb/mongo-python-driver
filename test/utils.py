@@ -995,7 +995,7 @@ def parse_spec_options(opts):
                     hint = args.pop('hint')
                     if not isinstance(hint, string_type):
                         hint = list(iteritems(hint))
-                args['hint'] = hint
+                    args['hint'] = hint
                 req['arguments'] = args
             else:
                 # Unified test format
