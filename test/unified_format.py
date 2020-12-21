@@ -545,10 +545,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 '%s runOnRequirements not satisfied' % (cls.__name__,))
 
         # add any special-casing for skipping tests here
-        if (cls.TEST_SPEC['description'] == 'poc-retryable-writes'
-                and client_context.storage_engine == 'mmapv1'):
-            raise unittest.skipTest(
-                "MMAPv1 does not support retryWrites=True")
+        if client_context.storage_engine == 'mmapv1':
+            if cls.TEST_SPEC['description'].find('retryable-writes') != -1:
+                raise unittest.SkipTest(
+                    "MMAPv1 does not support retryWrites=True")
+            if cls.TEST_SPEC['description'].find('change-streams') != -1:
+                raise unittest.SkipTest(
+                    "MMAPv1 does not support change streams")
+
 
     @classmethod
     def tearDownClass(cls):
