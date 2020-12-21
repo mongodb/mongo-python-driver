@@ -743,6 +743,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.entity_map[save_as_entity] = result
 
     def __set_fail_point(self, client, command_args):
+        if not client_context.test_commands_enabled:
+            self.skipTest('Test commands must be enabled')
+
         cmd_on = SON([('configureFailPoint', 'failCommand')])
         cmd_on.update(command_args)
         client.admin.command(cmd_on)
