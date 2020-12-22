@@ -21,6 +21,7 @@ import socket
 import sys
 import threading
 import time
+import traceback
 import unittest
 import warnings
 
@@ -130,6 +131,8 @@ class client_knobs(object):
         self.old_min_heartbeat_interval = None
         self.old_kill_cursor_frequency = None
         self.old_events_queue_frequency = None
+        self._enabled = True
+        self._stack = None
 
     def enable(self):
         self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
@@ -148,6 +151,9 @@ class client_knobs(object):
 
         if self.events_queue_frequency is not None:
             common.EVENTS_QUEUE_FREQUENCY = self.events_queue_frequency
+        self._enabled = True
+        # Store the allocation traceback to catch non-disabled client_knobs.
+        self._stack = ''.join(traceback.format_stack())
 
     def __enter__(self):
         self.enable()
@@ -157,9 +163,23 @@ class client_knobs(object):
         common.MIN_HEARTBEAT_INTERVAL = self.old_min_heartbeat_interval
         common.KILL_CURSOR_FREQUENCY = self.old_kill_cursor_frequency
         common.EVENTS_QUEUE_FREQUENCY = self.old_events_queue_frequency
+        self._enabled = False
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable()
+
+    def __del__(self):
+        if self._enabled:
+            print(
+                '\nERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY=%s, '
+                'MIN_HEARTBEAT_INTERVAL=%s, KILL_CURSOR_FREQUENCY=%s, '
+                'EVENTS_QUEUE_FREQUENCY=%s, stack:\n%s' % (
+                    common.HEARTBEAT_FREQUENCY,
+                    common.MIN_HEARTBEAT_INTERVAL,
+                    common.KILL_CURSOR_FREQUENCY,
+                    common.EVENTS_QUEUE_FREQUENCY,
+                    self._stack))
+            self.disable()
 
 
 def _all_users(db):
