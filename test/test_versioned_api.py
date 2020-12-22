@@ -22,7 +22,7 @@ from pymongo.server_api import ServerApi, ServerApiVersion
 
 from test import client_context, IntegrationTest, unittest
 from test.unified_format import generate_test_classes
-from test.utils import EventListener, rs_or_single_client
+from test.utils import OvertCommandListener, rs_or_single_client
 
 
 TEST_PATH = os.path.join(
@@ -74,7 +74,7 @@ class TestServerApi(IntegrationTest):
             self.assertNoServerApi(event)
 
     def test_command_options(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(server_api=ServerApi('1'),
                                      event_listeners=[listener])
         self.addCleanup(client.close)
@@ -91,7 +91,7 @@ class TestServerApi(IntegrationTest):
 
     @client_context.require_transactions
     def test_command_options_txn(self):
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(server_api=ServerApi('1'),
                                      event_listeners=[listener])
         self.addCleanup(client.close)
