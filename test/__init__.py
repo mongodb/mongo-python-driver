@@ -179,6 +179,7 @@ class client_knobs(object):
                     common.KILL_CURSOR_FREQUENCY,
                     common.EVENTS_QUEUE_FREQUENCY,
                     self._stack))
+            self.disable()
 
 
 def _all_users(db):
