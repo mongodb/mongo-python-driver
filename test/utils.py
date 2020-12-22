@@ -17,6 +17,7 @@
 
 import collections
 import contextlib
+import copy
 import functools
 import os
 import re
@@ -31,10 +32,12 @@ from functools import partial
 
 from bson import json_util, py3compat
 from bson.objectid import ObjectId
+from bson.py3compat import iteritems, string_type
 from bson.son import SON
 
 from pymongo import (MongoClient,
-                     monitoring, read_preferences)
+                     monitoring, operations, read_preferences)
+from pymongo.collection import ReturnDocument
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS, ConnectionPoolListener
 from pymongo.pool import (_CancellationContext,
@@ -562,6 +565,11 @@ def camel_to_snake_args(arguments):
     return arguments
 
 
+def snake_to_camel(snake):
+    # Regex to convert snake_case to lowerCamelCase.
+    return re.sub(r'_([a-z])', lambda m: m.group(1).upper(), snake)
+
+
 def parse_collection_options(opts):
     if 'readPreference' in opts:
         opts['read_preference'] = parse_read_preference(
@@ -948,3 +956,124 @@ def assertion_context(msg):
     except AssertionError as exc:
         msg = '%s (%s)' % (exc, msg)
         py3compat.reraise(type(exc), msg, sys.exc_info()[2])
+
+
+def parse_spec_options(opts):
+    if 'readPreference' in opts:
+        opts['read_preference'] = parse_read_preference(
+            opts.pop('readPreference'))
+
+    if 'writeConcern' in opts:
+        opts['write_concern'] = WriteConcern(
+            **dict(opts.pop('writeConcern')))
+
+    if 'readConcern' in opts:
+        opts['read_concern'] = ReadConcern(
+            **dict(opts.pop('readConcern')))
+
+    if 'maxTimeMS' in opts:
+        opts['max_time_ms'] = opts.pop('maxTimeMS')
+
+    if 'maxCommitTimeMS' in opts:
+        opts['max_commit_time_ms'] = opts.pop('maxCommitTimeMS')
+
+    if 'hint' in opts:
+        hint = opts.pop('hint')
+        if not isinstance(hint, string_type):
+            hint = list(iteritems(hint))
+        opts['hint'] = hint
+
+    # Properly format 'hint' arguments for the Bulk API tests.
+    if 'requests' in opts:
+        reqs = opts.pop('requests')
+        for req in reqs:
+            if 'name' in req:
+                # CRUD v2 format
+                args = req.pop('arguments', {})
+                if 'hint' in args:
+                    hint = args.pop('hint')
+                    if not isinstance(hint, string_type):
+                        hint = list(iteritems(hint))
+                    args['hint'] = hint
+                req['arguments'] = args
+            else:
+                # Unified test format
+                bulk_model, spec = next(iteritems(req))
+                if 'hint' in spec:
+                    hint = spec.pop('hint')
+                    if not isinstance(hint, string_type):
+                        hint = list(iteritems(hint))
+                    spec['hint'] = hint
+        opts['requests'] = reqs
+
+    return dict(opts)
+
+
+def prepare_spec_arguments(spec, arguments, opname, entity_map,
+                           with_txn_callback):
+    for arg_name in list(arguments):
+        c2s = camel_to_snake(arg_name)
+        # PyMongo accepts sort as list of tuples.
+        if arg_name == "sort":
+            sort_dict = arguments[arg_name]
+            arguments[arg_name] = list(iteritems(sort_dict))
+        # Named "key" instead not fieldName.
+        if arg_name == "fieldName":
+            arguments["key"] = arguments.pop(arg_name)
+        # Aggregate uses "batchSize", while find uses batch_size.
+        elif ((arg_name == "batchSize" or arg_name == "allowDiskUse") and
+              opname == "aggregate"):
+            continue
+        # Requires boolean returnDocument.
+        elif arg_name == "returnDocument":
+            arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
+        elif c2s == "requests":
+            # Parse each request into a bulk write model.
+            requests = []
+            for request in arguments["requests"]:
+                if 'name' in request:
+                    # CRUD v2 format
+                    bulk_model = camel_to_upper_camel(request["name"])
+                    bulk_class = getattr(operations, bulk_model)
+                    bulk_arguments = camel_to_snake_args(request["arguments"])
+                else:
+                    # Unified test format
+                    bulk_model, spec = next(iteritems(request))
+                    bulk_class = getattr(operations, camel_to_upper_camel(bulk_model))
+                    bulk_arguments = camel_to_snake_args(spec)
+                requests.append(bulk_class(**dict(bulk_arguments)))
+            arguments["requests"] = requests
+        elif arg_name == "session":
+            arguments['session'] = entity_map[arguments['session']]
+        elif (opname in ('command', 'run_admin_command') and
+              arg_name == 'command'):
+            # Ensure the first key is the command name.
+            ordered_command = SON([(spec['command_name'], 1)])
+            ordered_command.update(arguments['command'])
+            arguments['command'] = ordered_command
+        elif opname == 'open_download_stream' and arg_name == 'id':
+            arguments['file_id'] = arguments.pop(arg_name)
+        elif opname != 'find' and c2s == 'max_time_ms':
+            # find is the only method that accepts snake_case max_time_ms.
+            # All other methods take kwargs which must use the server's
+            # camelCase maxTimeMS. See PYTHON-1855.
+            arguments['maxTimeMS'] = arguments.pop('max_time_ms')
+        elif opname == 'with_transaction' and arg_name == 'callback':
+            if 'operations' in arguments[arg_name]:
+                # CRUD v2 format
+                callback_ops = arguments[arg_name]['operations']
+            else:
+                # Unified test format
+                callback_ops = arguments[arg_name]
+            arguments['callback'] = lambda _: with_txn_callback(
+                copy.deepcopy(callback_ops))
+        elif opname == 'drop_collection' and arg_name == 'collection':
+            arguments['name_or_collection'] = arguments.pop(arg_name)
+        elif opname == 'create_collection' and arg_name == 'collection':
+            arguments['name'] = arguments.pop(arg_name)
+        elif opname == 'create_index' and arg_name == 'keys':
+            arguments['keys'] = list(arguments.pop(arg_name).items())
+        elif opname == 'drop_index' and arg_name == 'name':
+            arguments['index_or_name'] = arguments.pop(arg_name)
+        else:
+            arguments[c2s] = arguments.pop(arg_name)

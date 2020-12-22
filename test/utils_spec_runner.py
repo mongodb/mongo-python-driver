@@ -15,6 +15,7 @@
 """Utilities for testing driver specs."""
 
 import copy
+import functools
 import threading
 
 
@@ -50,7 +51,9 @@ from test.utils import (camel_to_snake,
                         CompareType,
                         CMAPListener,
                         OvertCommandListener,
+                        parse_spec_options,
                         parse_read_preference,
+                        prepare_spec_arguments,
                         rs_client,
                         ServerAndTopologyEventListener,
                         HeartbeatEventListener)
@@ -251,44 +254,7 @@ class SpecRunner(IntegrationTest):
 
     @staticmethod
     def parse_options(opts):
-        if 'readPreference' in opts:
-            opts['read_preference'] = parse_read_preference(
-                opts.pop('readPreference'))
-
-        if 'writeConcern' in opts:
-            opts['write_concern'] = WriteConcern(
-                **dict(opts.pop('writeConcern')))
-
-        if 'readConcern' in opts:
-            opts['read_concern'] = ReadConcern(
-                **dict(opts.pop('readConcern')))
-
-        if 'maxTimeMS' in opts:
-            opts['max_time_ms'] = opts.pop('maxTimeMS')
-
-        if 'maxCommitTimeMS' in opts:
-            opts['max_commit_time_ms'] = opts.pop('maxCommitTimeMS')
-
-        if 'hint' in opts:
-            hint = opts.pop('hint')
-            if not isinstance(hint, string_type):
-                hint = list(iteritems(hint))
-            opts['hint'] = hint
-
-        # Properly format 'hint' arguments for the Bulk API tests.
-        if 'requests' in opts:
-            reqs = opts.pop('requests')
-            for req in reqs:
-                args = req.pop('arguments')
-                if 'hint' in args:
-                    hint = args.pop('hint')
-                    if not isinstance(hint, string_type):
-                        hint = list(iteritems(hint))
-                    args['hint'] = hint
-                req['arguments'] = args
-            opts['requests'] = reqs
-
-        return dict(opts)
+        return parse_spec_options(opts)
 
     def run_operation(self, sessions, collection, operation):
         original_collection = collection
@@ -330,61 +296,11 @@ class SpecRunner(IntegrationTest):
 
         cmd = getattr(obj, name)
 
-        for arg_name in list(arguments):
-            c2s = camel_to_snake(arg_name)
-            # PyMongo accepts sort as list of tuples.
-            if arg_name == "sort":
-                sort_dict = arguments[arg_name]
-                arguments[arg_name] = list(iteritems(sort_dict))
-            # Named "key" instead not fieldName.
-            if arg_name == "fieldName":
-                arguments["key"] = arguments.pop(arg_name)
-            # Aggregate uses "batchSize", while find uses batch_size.
-            elif ((arg_name == "batchSize" or arg_name == "allowDiskUse") and
-                  name == "aggregate"):
-                continue
-            # Requires boolean returnDocument.
-            elif arg_name == "returnDocument":
-                arguments[c2s] = arguments.pop(arg_name) == "After"
-            elif c2s == "requests":
-                # Parse each request into a bulk write model.
-                requests = []
-                for request in arguments["requests"]:
-                    bulk_model = camel_to_upper_camel(request["name"])
-                    bulk_class = getattr(operations, bulk_model)
-                    bulk_arguments = camel_to_snake_args(request["arguments"])
-                    requests.append(bulk_class(**dict(bulk_arguments)))
-                arguments["requests"] = requests
-            elif arg_name == "session":
-                arguments['session'] = sessions[arguments['session']]
-            elif (name in ('command', 'run_admin_command') and
-                  arg_name == 'command'):
-                # Ensure the first key is the command name.
-                ordered_command = SON([(operation['command_name'], 1)])
-                ordered_command.update(arguments['command'])
-                arguments['command'] = ordered_command
-            elif name == 'open_download_stream' and arg_name == 'id':
-                arguments['file_id'] = arguments.pop(arg_name)
-            elif name != 'find' and c2s == 'max_time_ms':
-                # find is the only method that accepts snake_case max_time_ms.
-                # All other methods take kwargs which must use the server's
-                # camelCase maxTimeMS. See PYTHON-1855.
-                arguments['maxTimeMS'] = arguments.pop('max_time_ms')
-            elif name == 'with_transaction' and arg_name == 'callback':
-                callback_ops = arguments[arg_name]['operations']
-                arguments['callback'] = lambda _: self.run_operations(
-                    sessions, original_collection, copy.deepcopy(callback_ops),
-                    in_with_transaction=True)
-            elif name == 'drop_collection' and arg_name == 'collection':
-                arguments['name_or_collection'] = arguments.pop(arg_name)
-            elif name == 'create_collection' and arg_name == 'collection':
-                arguments['name'] = arguments.pop(arg_name)
-            elif name == 'create_index' and arg_name == 'keys':
-                arguments['keys'] = list(arguments.pop(arg_name).items())
-            elif name == 'drop_index' and arg_name == 'name':
-                arguments['index_or_name'] = arguments.pop(arg_name)
-            else:
-                arguments[c2s] = arguments.pop(arg_name)
+        with_txn_callback = functools.partial(
+            self.run_operations, sessions, original_collection,
+            in_with_transaction=True)
+        prepare_spec_arguments(operation, arguments, name, sessions,
+                               with_txn_callback)
 
         if name == 'run_on_thread':
             args = {'sessions': sessions, 'collection': collection}
