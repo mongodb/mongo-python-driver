@@ -290,6 +290,7 @@ functions:
             STORAGE_ENGINE=${STORAGE_ENGINE} \
             DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS} \
             ORCHESTRATION_FILE=${ORCHESTRATION_FILE} \
+            REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
             sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
@@ -425,6 +426,7 @@ functions:
             AUTH=${AUTH} \
             SSL=${SSL} \
             DATA_LAKE=${DATA_LAKE} \
+            MONGODB_API_VERSION=${MONGODB_API_VERSION} \
             sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
@@ -1199,6 +1201,13 @@ tasks:
         - func: "run atlas tests"
 
     - name: atlas-data-lake-tests
+      commands:
+        - func: "bootstrap data lake"
+        - func: "run tests"
+          vars:
+            DATA_LAKE: "true"
+
+    - name: versioned-api-tests
       commands:
         - func: "bootstrap data lake"
         - func: "run tests"
@@ -2023,6 +2032,16 @@ axes:
         variables:
           SETDEFAULTENCODING: "cp1251"
 
+  - id: requireApiVersion
+    display_name: "requireApiVersion"
+    values:
+      - id: "requireApiVersion"
+        display_name: "requireApiVersion"
+        tags: [ "requireApiVersion_tag" ]
+        variables:
+          REQUIRE_API_VERSION: "1"
+          MONGODB_API_VERSION: "1"
+
 buildvariants:
 - matrix_name: "tests-all"
   matrix_spec:
@@ -2604,6 +2623,16 @@ buildvariants:
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
   tasks:
     - name: atlas-data-lake-tests
+
+- matrix_name: "versioned-api-tests"
+  matrix_spec:
+    platform: ubuntu-16.04
+    python-version: ["2.7", "3.9"]
+    auth: "auth"
+    requireApiVersion: "*"
+  display_name: "requireApiVersion ${python-version}"
+  tasks:
+    - "test-latest-standalone"
 
 - matrix_name: "ocsp-test"
   matrix_spec:
