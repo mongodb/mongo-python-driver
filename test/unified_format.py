@@ -549,13 +549,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if cls.TEST_SPEC['description'].find('retryable-writes') != -1:
                 raise unittest.SkipTest(
                     "MMAPv1 does not support retryWrites=True")
-            if cls.TEST_SPEC['description'].find('change-streams') != -1:
-                raise unittest.SkipTest(
-                    "MMAPv1 does not support change streams")
-            if cls.TEST_SPEC['description'].find(
-                    'transactions-convenient-api') != -1:
-                raise unittest.SkipTest(
-                    "MMAPv1 does not support document-level locking")
 
     @classmethod
     def tearDownClass(cls):
@@ -643,6 +636,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                       'of type %s' % (opname, type(target)))
 
     def __entityOperation_createChangeStream(self, target, *args, **kwargs):
+        if client_context.storage_engine == 'mmapv1':
+            self.skipTest("MMAPv1 does not support change streams")
         self.__raise_if_unsupported(
             'createChangeStream', target, MongoClient, Database, Collection)
         return target.watch(*args, **kwargs)
@@ -702,8 +697,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return {'insertedId': result.inserted_id}
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
+        if client_context.storage_engine == 'mmapv1':
+            self.skipTest('MMAPv1 does not support document-level locking')
         self.__raise_if_unsupported('withTransaction', target, ClientSession)
         return target.with_transaction(*args, **kwargs)
+
+    def _sessionOperation_startTransaction(self, target, *args, **kwargs):
+        if client_context.storage_engine == 'mmapv1':
+            self.skipTest('MMAPv1 does not support document-level locking')
+        self.__raise_if_unsupported('startTransaction', target, ClientSession)
+        return target.start_transaction(*args, **kwargs)
 
     def _changeStreamOperation_iterateUntilDocumentOrError(self, target,
                                                            *args, **kwargs):
