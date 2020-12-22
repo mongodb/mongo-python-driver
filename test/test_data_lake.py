@@ -35,11 +35,10 @@ class DataLakeTestSpec(TestCrudV2):
     TEST_COLLECTION = 'driverdata'
 
     @classmethod
+    @unittest.skipUnless(client_context.is_data_lake,
+                         'Not connected to Atlas Data Lake')
     def setUpClass(cls):
         super(DataLakeTestSpec, cls).setUpClass()
-        # Skip these tests unless connected to data lake.
-        if not client_context.is_data_lake:
-            raise unittest.SkipTest('Not connected to Atlas Data Lake')
 
     def setup_scenario(self, scenario_def):
         # Spec tests MUST NOT insert data/drop collection for
