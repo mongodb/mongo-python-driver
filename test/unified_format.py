@@ -552,7 +552,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if cls.TEST_SPEC['description'].find('change-streams') != -1:
                 raise unittest.SkipTest(
                     "MMAPv1 does not support change streams")
-
+            if cls.TEST_SPEC['description'].find(
+                    'transactions-convenient-api') != -1:
+                raise unittest.SkipTest(
+                    "MMAPv1 does not support document-level locking")
 
     @classmethod
     def tearDownClass(cls):
@@ -573,6 +576,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # initialize internals
         self.match_evaluator = MatchEvaluatorUtil(self)
+
+    def maybe_skip_test(self, spec):
+        # add any special-casing for skipping tests here
+        if client_context.storage_engine == 'mmapv1':
+            if spec['description'].find(
+                    'Dirty explicit session is discarded') != -1:
+                raise unittest.SkipTest(
+                    "MMAPv1 does not support retryWrites=True")
 
     def process_error(self, exception, spec):
         is_error = spec.get('isError')
@@ -898,6 +909,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                                      actual_documents)
 
     def run_scenario(self, spec):
+        # maybe skip test manually
+        self.maybe_skip_test(spec)
+
         # process test-level runOnRequirements
         run_on_spec = spec.get('runOnRequirements', [])
         if not self.should_run_on(run_on_spec):
