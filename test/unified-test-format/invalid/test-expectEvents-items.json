@@ -1,0 +1,13 @@
+{
+  "description": "test-expectEvents-items",
+  "schemaVersion": "1.0",
+  "tests": [
+    {
+      "description": "foo",
+      "operations": [],
+      "expectEvents": [
+        0
+      ]
+    }
+  ]
+}
