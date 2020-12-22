@@ -546,7 +546,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # add any special-casing for skipping tests here
         if client_context.storage_engine == 'mmapv1':
-            if cls.TEST_SPEC['description'].find('retryable-writes') != -1:
+            if 'retryable-writes' in cls.TEST_SPEC['description']:
                 raise unittest.SkipTest(
                     "MMAPv1 does not support retryWrites=True")
 
@@ -573,8 +573,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
         if client_context.storage_engine == 'mmapv1':
-            if spec['description'].find(
-                    'Dirty explicit session is discarded') != -1:
+            if 'Dirty explicit session is discarded' in spec['description']:
                 raise unittest.SkipTest(
                     "MMAPv1 does not support retryWrites=True")
 
