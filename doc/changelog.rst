@@ -9,6 +9,11 @@ Breaking Changes in 4.0
 
 - Removed :mod:`~pymongo.thread_util`.
 
+Notable improvements
+....................
+
+- Support for MongoDB Versioned API, see :class:`~pymongo.server_api.ServerApi`.
+
 Issues Resolved
 ...............
 

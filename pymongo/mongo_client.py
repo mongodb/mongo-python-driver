@@ -503,7 +503,8 @@ class MongoClient(common.BaseObject):
 
           - `server_api`: A
             :class:`~pymongo.server_api.ServerApi` which configures this
-            client to use Versioned API.
+            client to use Versioned API. See :ref:`versioned-api-ref` for
+            details.
 
         .. mongodoc:: connections
 
