@@ -435,6 +435,7 @@ class TestCMAP(IntegrationTest):
         cmd_listener = OvertCommandListener()
         client = rs_or_single_client(
             maxPoolSize=1,
+            heartbeatFrequencyMS=500,
             event_listeners=[cmap_listener, cmd_listener])
         self.addCleanup(client.close)
         threads = [InsertThread(client.pymongo_test.test) for _ in range(3)]
@@ -444,7 +445,7 @@ class TestCMAP(IntegrationTest):
                 'failCommands': ['insert'],
                 'blockConnection': True,
                 'blockTimeMS': 1000,
-                'closeConnection': True
+                'errorCode': 91
             },
         }
         with self.fail_point(fail_command):
