@@ -730,6 +730,12 @@ class ClientContext(object):
                              "Transactions are not supported",
                              func=func)
 
+    def require_no_api_version(self, func):
+        """Skip this test when testing with requireApiVersion."""
+        return self._require(not MONGODB_API_VERSION,
+                             "This test does not work with requireApiVersion",
+                             func=func)
+
     def mongos_seeds(self):
         return ','.join('%s:%s' % address for address in self.mongoses)
 
