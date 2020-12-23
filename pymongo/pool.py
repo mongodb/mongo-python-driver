@@ -1335,9 +1335,9 @@ class Pool:
             if not checkout:
                 self.return_socket(sock_info)
 
-    def _raise_if_not_ready(self):
-        if self.opts.pause_enabled and self.state == PAUSED:
-            if self.enabled_for_cmap:
+    def _raise_if_not_ready(self, emit_event):
+        if self.state != READY:
+            if self.enabled_for_cmap and emit_event:
                 self.opts.event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
             # TODO: ensure this error is retryable
@@ -1370,7 +1370,7 @@ class Pool:
             deadline = None
 
         with self.size_cond:
-            self._raise_if_not_ready()
+            self._raise_if_not_ready(emit_event=True)
             if self.waiters >= self.max_waiters:
                 raise ExceededMaxWaiters(
                     'exceeded max waiters: %s threads already waiting' % (
@@ -1384,7 +1384,7 @@ class Pool:
                         if self.requests < self.max_pool_size:
                             self.size_cond.notify()
                         self._raise_wait_queue_timeout()
-                    self._raise_if_not_ready()
+                    self._raise_if_not_ready(emit_event=True)
             finally:
                 self.waiters -= 1
             self.requests += 1
@@ -1402,9 +1402,7 @@ class Pool:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
-                    emitted_event = True
-                    self._raise_if_not_ready()
-                    emitted_event = False
+                    self._raise_if_not_ready(emit_event=False)
                     while not (self.sockets or
                                self._pending < self._max_connecting):
                         if not _cond_wait(self._max_connecting_cond, deadline):
@@ -1415,9 +1413,7 @@ class Pool:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout()
-                        emitted_event = True
-                        self._raise_if_not_ready()
-                        emitted_event = False
+                        self._raise_if_not_ready(emit_event=False)
 
                     try:
                         sock_info = self.sockets.popleft()
