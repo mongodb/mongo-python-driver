@@ -1340,7 +1340,6 @@ class Pool:
             if self.enabled_for_cmap and emit_event:
                 self.opts.event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
-            # TODO: ensure this error is retryable
             _raise_connection_failure(
                 self.address, AutoReconnect('connection pool paused'))
 
