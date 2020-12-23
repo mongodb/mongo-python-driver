@@ -1066,7 +1066,11 @@ class _PoolClosedError(PyMongoError):
     pass
 
 
-PAUSED, READY, CLOSED = range(3)
+class PoolState(object):
+    PAUSED = 1
+    READY = 2
+    CLOSED = 3
+
 
 # Do *not* explicitly inherit from object or Jython won't call __del__
 # http://bugs.jython.org/issue1057
@@ -1078,9 +1082,10 @@ class Pool:
           - `options`: a PoolOptions instance
           - `handshake`: whether to call ismaster for each new SocketInfo
         """
-        self.state = READY
         if options.pause_enabled:
-            self.state = PAUSED
+            self.state = PoolState.PAUSED
+        else:
+            self.state = PoolState.READY
         # Check a socket's health with socket_closed() every once in a while.
         # Can override for testing: 0 to always check, None to never check.
         self._check_interval_seconds = 1
@@ -1137,14 +1142,14 @@ class Pool:
         self.operation_count = 0
 
     def ready(self):
-        old_state, self.state = self.state, READY
-        if old_state != READY:
+        old_state, self.state = self.state, PoolState.READY
+        if old_state != PoolState.READY:
             if self.enabled_for_cmap:
                 self.opts.event_listeners.publish_pool_ready(self.address)
 
     @property
     def closed(self):
-        return self.state == CLOSED
+        return self.state == PoolState.CLOSED
 
     def _reset(self, close, pause=True):
         old_state = self.state
@@ -1152,7 +1157,7 @@ class Pool:
             if self.closed:
                 return
             if self.opts.pause_enabled and pause:
-                old_state, self.state = self.state, PAUSED
+                old_state, self.state = self.state, PoolState.PAUSED
             self.generation += 1
             newpid = os.getpid()
             if self.pid != newpid:
@@ -1161,7 +1166,7 @@ class Pool:
                 self.operation_count = 0
             sockets, self.sockets = self.sockets, collections.deque()
             if close:
-                self.state = CLOSED
+                self.state = PoolState.CLOSED
             # Clear the wait queue
             self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
@@ -1176,7 +1181,7 @@ class Pool:
             if self.enabled_for_cmap:
                 listeners.publish_pool_closed(self.address)
         else:
-            if old_state != PAUSED and self.enabled_for_cmap:
+            if old_state != PoolState.PAUSED and self.enabled_for_cmap:
                 listeners.publish_pool_cleared(self.address)
             for sock_info in sockets:
                 sock_info.close_socket(ConnectionClosedReason.STALE)
@@ -1205,7 +1210,7 @@ class Pool:
         `generation` at the point in time this operation was requested on the
         pool.
         """
-        if self.state != READY:
+        if self.state != PoolState.READY:
             return
 
         if self.opts.max_idle_time_seconds is not None:
@@ -1336,7 +1341,7 @@ class Pool:
                 self.return_socket(sock_info)
 
     def _raise_if_not_ready(self, emit_event):
-        if self.state != READY:
+        if self.state != PoolState.READY:
             if self.enabled_for_cmap and emit_event:
                 self.opts.event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR)

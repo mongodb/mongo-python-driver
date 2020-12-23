@@ -40,7 +40,7 @@ from pymongo.monitoring import (ConnectionCheckedInEvent,
                                 PoolClearedEvent,
                                 PoolClosedEvent)
 from pymongo.read_preferences import ReadPreference
-from pymongo.pool import _PoolClosedError, READY
+from pymongo.pool import _PoolClosedError, PoolState
 
 from test import (client_knobs,
                   IntegrationTest,
@@ -423,7 +423,7 @@ class TestCMAP(IntegrationTest):
         pool = get_pool(client)
         client.close()
         self.assertEqual(1, listener.event_count(PoolClearedEvent))
-        self.assertEqual(READY, pool.state)
+        self.assertEqual(PoolState.READY, pool.state)
         # Checking out a connection should succeed
         with pool.get_socket({}):
             pass
