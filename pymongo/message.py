@@ -893,6 +893,7 @@ class _BulkWriteContext(object):
         self.compress = True if sock_info.compression_context else False
         self.op_type = op_type
         self.codec = codec
+        sock_info.add_server_api(command, session)
 
     def _batch_command(self, docs):
         namespace = self.db_name + '.$cmd'
