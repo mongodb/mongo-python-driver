@@ -1207,13 +1207,6 @@ tasks:
           vars:
             DATA_LAKE: "true"
 
-    - name: versioned-api-tests
-      commands:
-        - func: "bootstrap data lake"
-        - func: "run tests"
-          vars:
-            DATA_LAKE: "true"
-
     - name: test-ocsp-rsa-valid-cert-server-staples
       tags: ["ocsp", "ocsp-rsa", "ocsp-staple"]
       commands:

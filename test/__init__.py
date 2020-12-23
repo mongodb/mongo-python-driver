@@ -732,7 +732,7 @@ class ClientContext(object):
 
     def require_no_api_version(self, func):
         """Skip this test when testing with requireApiVersion."""
-        return self._require(not MONGODB_API_VERSION,
+        return self._require(lambda: not MONGODB_API_VERSION,
                              "This test does not work with requireApiVersion",
                              func=func)
 
