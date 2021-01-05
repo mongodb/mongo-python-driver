@@ -444,19 +444,29 @@ functions:
         silent: true
         working_dir: "src"
         script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          PYTHON_BINARY=${PYTHON_BINARY} \
-            ATLAS_FREE='${atlas_free}' \
-            ATLAS_REPL='${atlas_repl}' \
-            ATLAS_SHRD='${atlas_shrd}' \
-            ATLAS_TLS11='${atlas_tls11}' \
-            ATLAS_TLS12='${atlas_tls12}' \
-            ATLAS_SRV_FREE='${atlas_srv_free}' \
-            ATLAS_SRV_REPL='${atlas_srv_repl}' \
-            ATLAS_SRV_SHRD='${atlas_srv_shrd}' \
-            ATLAS_SRV_TLS11='${atlas_srv_tls11}' \
-            ATLAS_SRV_TLS12='${atlas_srv_tls12}' \
-            sh ${PROJECT_DIRECTORY}/.evergreen/run-atlas-tests.sh
+          cat <<EOT > prepare_atlas_connectivity.sh
+          export ATLAS_FREE='${atlas_free}'
+          export ATLAS_REPL='${atlas_repl}'
+          export ATLAS_SHRD='${atlas_shrd}'
+          export ATLAS_TLS11='${atlas_tls11}'
+          export ATLAS_TLS12='${atlas_tls12}'
+          export ATLAS_SRV_FREE='${atlas_srv_free}'
+          export ATLAS_SRV_REPL='${atlas_srv_repl}'
+          export ATLAS_SRV_SHRD='${atlas_srv_shrd}'
+          export ATLAS_SRV_TLS11='${atlas_srv_tls11}'
+          export ATLAS_SRV_TLS12='${atlas_srv_tls12}'
+          EOT
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          # Disable xtrace (just in case it was accidentally set).
+          set +x
+          . ./prepare_atlas_connectivity.sh
+          rm -f ./prepare_atlas_connectivity.sh
+
+          PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/run-atlas-tests.sh
 
   "add aws auth variables to file":
     - command: shell.exec

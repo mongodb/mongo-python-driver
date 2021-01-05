@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Don't trace to avoid secrets showing up in the logs
+# Exit on error and enable trace.
 set -o errexit
+set -o xtrace
 
 export JAVA_HOME=/opt/java/jdk8
 
