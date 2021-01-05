@@ -15,13 +15,19 @@ if [ -z "$PYTHON_BINARY" ]; then
     fi
 fi
 
-# For createvirtualenv.
-. .evergreen/utils.sh
+IMPL=$(${PYTHON_BINARY} -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
 
-createvirtualenv $PYTHON_BINARY atlastest
+if [ $IMPL = "Jython" ]; then
+    # The venv created by createvirtualenv is incompatible with Jython
+    $PYTHON_BINARY -m virtualenv --never-download --no-wheel atlastest
+    . atlastest/bin/activate
+else
+    # All other pythons work with createvirtualenv.
+    . .evergreen/utils.sh
+    createvirtualenv $PYTHON_BINARY atlastest
+fi
 trap "deactivate; rm -rf atlastest" EXIT HUP
 
-IMPL=$(python -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
 if [ $IMPL = "Jython" -o $IMPL = "PyPy" ]; then
     echo "Using Jython or PyPy"
     python -m pip install certifi
