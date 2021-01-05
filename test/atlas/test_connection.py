@@ -18,6 +18,8 @@ import os
 import sys
 import unittest
 
+from collections import defaultdict
+
 sys.path[0:0] = [""]
 
 import pymongo
@@ -30,21 +32,25 @@ except ImportError:
     HAS_DNS = False
 
 
-ATLAS_REPL = os.environ.get("ATLAS_REPL")
-ATLAS_SHRD = os.environ.get("ATLAS_SHRD")
-ATLAS_FREE = os.environ.get("ATLAS_FREE")
-ATLAS_TLS11 = os.environ.get("ATLAS_TLS11")
-ATLAS_TLS12 = os.environ.get("ATLAS_TLS12")
-ATLAS_SRV_REPL = os.environ.get("ATLAS_SRV_REPL")
-ATLAS_SRV_SHRD = os.environ.get("ATLAS_SRV_SHRD")
-ATLAS_SRV_FREE = os.environ.get("ATLAS_SRV_FREE")
-ATLAS_SRV_TLS11 = os.environ.get("ATLAS_SRV_TLS11")
-ATLAS_SRV_TLS12 = os.environ.get("ATLAS_SRV_TLS12")
+URIS = {
+    "ATLAS_REPL": os.environ.get("ATLAS_REPL"),
+    "ATLAS_SHRD": os.environ.get("ATLAS_SHRD"),
+    "ATLAS_FREE": os.environ.get("ATLAS_FREE"),
+    "ATLAS_TLS11": os.environ.get("ATLAS_TLS11"),
+    "ATLAS_TLS12": os.environ.get("ATLAS_TLS12"),
+    "ATLAS_SRV_REPL": os.environ.get("ATLAS_SRV_REPL"),
+    "ATLAS_SRV_SHRD": os.environ.get("ATLAS_SRV_SHRD"),
+    "ATLAS_SRV_FREE": os.environ.get("ATLAS_SRV_FREE"),
+    "ATLAS_SRV_TLS11": os.environ.get("ATLAS_SRV_TLS11"),
+    "ATLAS_SRV_TLS12": os.environ.get("ATLAS_SRV_TLS12"),
+}
 
-PYMONGO_MUST_HAVE_DNS = os.environ.get("PYMONGO_MUST_HAVE_DNS")
+# Set this variable to true to run the SRV tests even when dnspython is not
+# installed.
+MUST_TEST_SRV = os.environ.get("MUST_TEST_SRV")
 
 
-def _connect(uri):
+def connect(uri):
     if not uri:
         raise Exception("Must set env variable to test.")
     client = pymongo.MongoClient(uri)
@@ -57,45 +63,56 @@ def _connect(uri):
 class TestAtlasConnect(unittest.TestCase):
     @unittest.skipUnless(HAS_SNI, 'Free tier requires SNI support')
     def test_free_tier(self):
-        _connect(ATLAS_FREE)
+        connect(URIS['ATLAS_FREE'])
 
     def test_replica_set(self):
-        _connect(ATLAS_REPL)
+        connect(URIS['ATLAS_REPL'])
 
     def test_sharded_cluster(self):
-        _connect(ATLAS_SHRD)
+        connect(URIS['ATLAS_SHRD'])
 
     def test_tls_11(self):
-        _connect(ATLAS_TLS11)
+        connect(URIS['ATLAS_TLS11'])
 
     def test_tls_12(self):
-        _connect(ATLAS_TLS12)
+        connect(URIS['ATLAS_TLS12'])
 
-    @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
+    def connect_srv(self, uri):
+        connect(uri)
+        self.assertIn('mongodb+srv://', uri)
+
     @unittest.skipUnless(HAS_SNI, 'Free tier requires SNI support')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
     def test_srv_free_tier(self):
-        _connect(ATLAS_SRV_FREE)
+        self.connect_srv(URIS['ATLAS_SRV_FREE'])
 
-    @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
     def test_srv_replica_set(self):
-        _connect(ATLAS_SRV_REPL)
+        self.connect_srv(URIS['ATLAS_SRV_REPL'])
 
-    @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
     def test_srv_sharded_cluster(self):
-        _connect(ATLAS_SRV_SHRD)
+        self.connect_srv(URIS['ATLAS_SRV_SHRD'])
 
-    @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
     def test_srv_tls_11(self):
-        _connect(ATLAS_SRV_TLS11)
+        self.connect_srv(URIS['ATLAS_SRV_TLS11'])
 
-    @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
     def test_srv_tls_12(self):
-        _connect(ATLAS_SRV_TLS12)
+        self.connect_srv(URIS['ATLAS_SRV_TLS12'])
 
-    @unittest.skipUnless(PYMONGO_MUST_HAVE_DNS, 'dnspython is optional')
-    def test_dnspython_was_installed(self):
-        self.assertTrue(HAS_DNS, 'PYMONGO_MUST_HAVE_DNS is set but dns could '
-                                 'not be imported')
+    def test_uniqueness(self):
+        """Ensure that we don't accidentally duplicate the test URIs."""
+        uri_to_names = defaultdict(list)
+        for name, uri in URIS.items():
+            if uri:
+                uri_to_names[uri].append(name)
+        duplicates = [names for names in uri_to_names.values()
+                      if len(names) > 1]
+        self.assertFalse(duplicates, 'Error: the following env variables have '
+                                     'duplicate values: %s' % (duplicates,))
+
 
 
 if __name__ == '__main__':

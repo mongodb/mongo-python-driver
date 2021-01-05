@@ -48,5 +48,5 @@ python test/atlas/test_connection.py
 if [ $IMPL != "Jython" ]; then
     python -m pip install dnspython
     echo "Running tests with dnspython"
-    PYMONGO_MUST_HAVE_DNS="1" python test/atlas/test_connection.py
+    MUST_TEST_SRV="1" python test/atlas/test_connection.py
 fi
