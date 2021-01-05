@@ -44,6 +44,9 @@ fi
 echo "Running tests without dnspython"
 python test/atlas/test_connection.py
 
-python -m pip install dnspython
-echo "Running tests with dnspython"
-PYMONGO_MUST_HAVE_DNS="1" python test/atlas/test_connection.py
+# dnspython is incompatible with Jython so don't test that combination.
+if [ $IMPL != "Jython" ]; then
+    python -m pip install dnspython
+    echo "Running tests with dnspython"
+    PYMONGO_MUST_HAVE_DNS="1" python test/atlas/test_connection.py
+fi
