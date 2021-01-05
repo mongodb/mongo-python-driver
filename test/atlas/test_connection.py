@@ -35,11 +35,11 @@ ATLAS_SHRD = os.environ.get("ATLAS_SHRD")
 ATLAS_FREE = os.environ.get("ATLAS_FREE")
 ATLAS_TLS11 = os.environ.get("ATLAS_TLS11")
 ATLAS_TLS12 = os.environ.get("ATLAS_TLS12")
-SRV_ATLAS_REPL = os.environ.get("SRV_ATLAS_REPL")
-SRV_ATLAS_SHRD = os.environ.get("SRV_ATLAS_SHRD")
-SRV_ATLAS_FREE = os.environ.get("SRV_ATLAS_FREE")
-SRV_ATLAS_TLS11 = os.environ.get("SRV_ATLAS_TLS11")
-SRV_ATLAS_TLS12 = os.environ.get("SRV_ATLAS_TLS12")
+ATLAS_SRV_REPL = os.environ.get("ATLAS_SRV_REPL")
+ATLAS_SRV_SHRD = os.environ.get("ATLAS_SRV_SHRD")
+ATLAS_SRV_FREE = os.environ.get("ATLAS_SRV_FREE")
+ATLAS_SRV_TLS11 = os.environ.get("ATLAS_SRV_TLS11")
+ATLAS_SRV_TLS12 = os.environ.get("ATLAS_SRV_TLS12")
 
 PYMONGO_MUST_HAVE_DNS = os.environ.get("PYMONGO_MUST_HAVE_DNS")
 
@@ -74,23 +74,23 @@ class TestAtlasConnect(unittest.TestCase):
     @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
     @unittest.skipUnless(HAS_SNI, 'Free tier requires SNI support')
     def test_srv_free_tier(self):
-        _connect(SRV_ATLAS_FREE)
+        _connect(ATLAS_SRV_FREE)
 
     @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
     def test_srv_replica_set(self):
-        _connect(SRV_ATLAS_REPL)
+        _connect(ATLAS_SRV_REPL)
 
     @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
     def test_srv_sharded_cluster(self):
-        _connect(SRV_ATLAS_SHRD)
+        _connect(ATLAS_SRV_SHRD)
 
     @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
     def test_srv_tls_11(self):
-        _connect(SRV_ATLAS_TLS11)
+        _connect(ATLAS_SRV_TLS11)
 
     @unittest.skipUnless(HAS_DNS, 'SRV requires dnspython')
     def test_srv_tls_12(self):
-        _connect(SRV_ATLAS_TLS12)
+        _connect(ATLAS_SRV_TLS12)
 
     @unittest.skipUnless(PYMONGO_MUST_HAVE_DNS, 'dnspython is optional')
     def test_dnspython_was_installed(self):
