@@ -255,6 +255,18 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
+    def pool_ready(self, event):
+        """Abstract method to handle a :class:`PoolReadyEvent`.
+
+        Emitted when a Connection Pool is marked ready.
+
+        :Parameters:
+          - `event`: An instance of :class:`PoolReadyEvent`.
+
+        .. versionadded:: 4.0
+        """
+        raise NotImplementedError
+
     def pool_cleared(self, event):
         """Abstract method to handle a `PoolClearedEvent`.
 
@@ -690,6 +702,18 @@ class PoolCreatedEvent(_PoolEvent):
     def __repr__(self):
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.address, self.__options)
+
+
+class PoolReadyEvent(_PoolEvent):
+    """Published when a Connection Pool is marked ready.
+
+    :Parameters:
+     - `address`: The address (host, port) pair of the server this Pool is
+       attempting to connect to.
+
+    .. versionadded:: 4.0
+    """
+    __slots__ = ()
 
 
 class PoolClearedEvent(_PoolEvent):
@@ -1472,6 +1496,16 @@ class _EventListeners(object):
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.pool_created(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_pool_ready(self, address):
+        """Publish a :class:`PoolReadyEvent` to all pool listeners.
+        """
+        event = PoolReadyEvent(address)
+        for subscriber in self.__cmap_listeners:
+            try:
+                subscriber.pool_ready(event)
             except Exception:
                 _handle_exception()
 

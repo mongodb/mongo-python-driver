@@ -39,14 +39,18 @@ from pymongo.uri_parser import parse_uri
 from test import unittest, IntegrationTest
 from test.utils import (assertion_context,
                         cdecimal_patched,
+                        CMAPListener,
                         client_context,
                         Barrier,
                         get_pool,
+                        HeartbeatEventListener,
                         server_name_to_type,
                         rs_or_single_client,
+                        single_client,
                         TestCreator,
                         wait_until)
 from test.utils_spec_runner import SpecRunner, SpecRunnerThread
+from test.pymongo_mocks import DummyMonitor
 
 
 # Location of JSON test specifications.
@@ -54,27 +58,7 @@ _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'discovery_and_monitoring')
 
 
-class MockMonitor(object):
-    def __init__(self, server_description, topology, pool, topology_settings):
-        self._server_description = server_description
-
-    def cancel_check(self):
-        pass
-
-    def open(self):
-        pass
-
-    def close(self):
-        pass
-
-    def join(self):
-        pass
-
-    def request_check(self):
-        pass
-
-
-def create_mock_topology(uri, monitor_class=MockMonitor):
+def create_mock_topology(uri, monitor_class=DummyMonitor):
     parsed_uri = parse_uri(uri)
     replica_set_name = None
     direct_connection = None
@@ -316,6 +300,46 @@ class TestIgnoreStaleErrors(IntegrationTest):
 
         # Server should be selectable.
         client.admin.command('ping')
+
+
+class CMAPHeartbeatListener(HeartbeatEventListener, CMAPListener):
+    pass
+
+
+class TestPoolManagement(IntegrationTest):
+    @client_context.require_failCommand_appName
+    def test_pool_unpause(self):
+        # This test implements the prose test "Connection Pool Management"
+        listener = CMAPHeartbeatListener()
+        client = single_client(appName="SDAMPoolManagementTest",
+                               heartbeatFrequencyMS=500,
+                               event_listeners=[listener])
+        self.addCleanup(client.close)
+        # Assert that ConnectionPoolReadyEvent occurs after the first
+        # ServerHeartbeatSucceededEvent.
+        listener.wait_for_event(monitoring.PoolReadyEvent, 1)
+        pool_ready = listener.events_by_type(monitoring.PoolReadyEvent)[0]
+        hb_succeeded = listener.events_by_type(
+            monitoring.ServerHeartbeatSucceededEvent)[0]
+        self.assertGreater(
+            listener.events.index(pool_ready),
+            listener.events.index(hb_succeeded))
+
+        listener.reset()
+        fail_ismaster = {
+            'mode': {'times': 2},
+            'data': {
+                'failCommands': ['isMaster'],
+                'errorCode': 1234,
+                'appName': 'SDAMPoolManagementTest',
+            },
+        }
+        with self.fail_point(fail_ismaster):
+            listener.wait_for_event(monitoring.ServerHeartbeatFailedEvent, 1)
+            listener.wait_for_event(monitoring.PoolClearedEvent, 1)
+            listener.wait_for_event(
+                monitoring.ServerHeartbeatSucceededEvent, 1)
+            listener.wait_for_event(monitoring.PoolReadyEvent, 1)
 
 
 class TestIntegration(SpecRunner):

@@ -57,6 +57,27 @@ class MockPool(Pool):
             yield sock_info
 
 
+class DummyMonitor(object):
+    def __init__(self, server_description, topology, pool, topology_settings):
+        self._server_description = server_description
+        self.opened = False
+
+    def cancel_check(self):
+        pass
+
+    def join(self):
+        pass
+
+    def open(self):
+        self.opened = True
+
+    def request_check(self):
+        pass
+
+    def close(self):
+        self.opened = False
+
+
 class MockMonitor(Monitor):
     def __init__(
             self,

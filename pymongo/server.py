@@ -61,7 +61,7 @@ class Server(object):
             self._events.put((self._listener.publish_server_closed,
                               (self._description.address, self._topology_id)))
         self._monitor.close()
-        self._pool.reset()
+        self._pool.reset_without_pause()
 
     def request_check(self):
         """Check the server's state soon."""

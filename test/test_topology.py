@@ -37,24 +37,7 @@ from pymongo.server_selectors import (any_server_selector,
 from pymongo.settings import TopologySettings
 from test import client_knobs, unittest
 from test.utils import MockPool, wait_until
-
-
-class MockMonitor(object):
-    def __init__(self, server_description, topology, pool, topology_settings):
-        self._server_description = server_description
-        self.opened = False
-
-    def cancel_check(self):
-        pass
-
-    def open(self):
-        self.opened = True
-
-    def request_check(self):
-        pass
-
-    def close(self):
-        self.opened = False
+from test.pymongo_mocks import DummyMonitor
 
 
 class SetNameDiscoverySettings(TopologySettings):
@@ -68,7 +51,7 @@ address = ('a', 27017)
 def create_mock_topology(
         seeds=None,
         replica_set_name=None,
-        monitor_class=MockMonitor):
+        monitor_class=DummyMonitor):
     partitioned_seeds = list(imap(common.partition_node, seeds or ['a']))
     topology_settings = TopologySettings(
         partitioned_seeds,
@@ -501,7 +484,7 @@ class TestMultiServerTopology(TopologyTest):
         topology_settings = SetNameDiscoverySettings(
             seeds=[address],
             pool_class=MockPool,
-            monitor_class=MockMonitor)
+            monitor_class=DummyMonitor)
 
         t = Topology(topology_settings)
         self.assertEqual(t.description.replica_set_name, None)
@@ -537,7 +520,7 @@ class TestMultiServerTopology(TopologyTest):
         topology_settings = SetNameDiscoverySettings(
             seeds=[address],
             pool_class=MockPool,
-            monitor_class=MockMonitor)
+            monitor_class=DummyMonitor)
 
         t = Topology(topology_settings)
         self.assertEqual(t.description.replica_set_name, None)

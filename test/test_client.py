@@ -62,6 +62,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
+from pymongo.topology import _ErrorContext
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
@@ -1090,7 +1091,8 @@ class TestClient(IntegrationTest):
         client = rs_or_single_client(maxPoolSize=3, waitQueueMultiple=2)
         pool = get_pool(client)
         self.assertEqual(pool.opts.wait_queue_multiple, 2)
-        self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
+        self.assertEqual(pool.max_waiters, 6)
+        self.assertEqual(pool.max_pool_size, 3)
 
     def test_socketKeepAlive(self):
         for socketKeepAlive in [True, False]:
@@ -1341,7 +1343,7 @@ class TestClient(IntegrationTest):
         self.assertTrue(sock_info.closed)
 
         # The semaphore was decremented despite the error.
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        self.assertEqual(0, pool.requests)
 
     @client_context.require_auth
     def test_auth_network_error(self):
@@ -1546,7 +1548,9 @@ class TestClient(IntegrationTest):
 
             def run(self):
                 while self.running:
-                    self.pool.reset()
+                    exc = AutoReconnect('mock pool error')
+                    ctx = _ErrorContext(exc, 0, pool.generation, False)
+                    client._topology.handle_error(pool.address, ctx)
                     time.sleep(0.001)
 
         t = ResetPoolThread(pool)
@@ -1680,7 +1684,7 @@ class TestExhaustCursor(IntegrationTest):
 
         # The socket was checked in and the semaphore was decremented.
         self.assertIn(sock_info, pool.sockets)
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        self.assertEqual(0, pool.requests)
 
     def test_exhaust_getmore_server_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
@@ -1739,7 +1743,7 @@ class TestExhaustCursor(IntegrationTest):
 
         # The socket was closed and the semaphore was decremented.
         self.assertNotIn(sock_info, pool.sockets)
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        self.assertEqual(0, pool.requests)
 
     def test_exhaust_getmore_network_error(self):
         # When doing a getmore on an exhaust cursor, the socket stays checked
@@ -1766,7 +1770,7 @@ class TestExhaustCursor(IntegrationTest):
 
         # The socket was closed and the semaphore was decremented.
         self.assertNotIn(sock_info, pool.sockets)
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        self.assertEqual(0, pool.requests)
 
 
 class TestClientLazyConnect(IntegrationTest):

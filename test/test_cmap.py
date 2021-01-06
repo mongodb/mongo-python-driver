@@ -16,6 +16,7 @@
 
 import os
 import sys
+import threading
 import time
 
 sys.path[0:0] = [""]
@@ -35,23 +36,27 @@ from pymongo.monitoring import (ConnectionCheckedInEvent,
                                 ConnectionCreatedEvent,
                                 ConnectionReadyEvent,
                                 PoolCreatedEvent,
+                                PoolReadyEvent,
                                 PoolClearedEvent,
                                 PoolClosedEvent)
 from pymongo.read_preferences import ReadPreference
-from pymongo.pool import _PoolClosedError
+from pymongo.pool import _PoolClosedError, PoolState
 
-from test import (IntegrationTest,
+from test import (client_knobs,
+                  IntegrationTest,
                   unittest)
 from test.utils import (camel_to_snake,
                         client_context,
                         CMAPListener,
                         get_pool,
                         get_pools,
+                        OvertCommandListener,
                         rs_or_single_client,
                         single_client,
                         TestCreator,
                         wait_until)
 from test.utils_spec_runner import SpecRunnerThread
+from test.pymongo_mocks import DummyMonitor
 
 
 OBJECT_TYPES = {
@@ -64,6 +69,7 @@ OBJECT_TYPES = {
     'ConnectionReady': ConnectionReadyEvent,
     'ConnectionCheckOutStarted': ConnectionCheckOutStartedEvent,
     'ConnectionPoolCreated': PoolCreatedEvent,
+    'ConnectionPoolReady': PoolReadyEvent,
     'ConnectionPoolCleared': PoolClearedEvent,
     'ConnectionPoolClosed': PoolClosedEvent,
     # Error types.
@@ -98,13 +104,15 @@ class TestCMAP(IntegrationTest):
         thread.join()
         if thread.exc:
             raise thread.exc
+        self.assertFalse(thread.ops)
 
     def wait_for_event(self, op):
         """Run the 'waitForEvent' operation."""
         event = OBJECT_TYPES[op['event']]
         count = op['count']
+        timeout = op.get('timeout', 10000) / 1000.0
         wait_until(lambda: self.listener.event_count(event) >= count,
-                   'find %s %s event(s)' % (count, event))
+                   'find %s %s event(s)' % (count, event), timeout=timeout)
 
     def check_out(self, op):
         """Run the 'checkOut' operation."""
@@ -120,6 +128,10 @@ class TestCMAP(IntegrationTest):
         label = op['connection']
         sock_info = self.labels[label]
         self.pool.return_socket(sock_info)
+
+    def ready(self, op):
+        """Run the 'ready' operation."""
+        self.pool.ready()
 
     def clear(self, op):
         """Run the 'clear' operation."""
@@ -213,9 +225,13 @@ class TestCMAP(IntegrationTest):
 
         opts = test['poolOptions'].copy()
         opts['event_listeners'] = [self.listener]
-        client = single_client(**opts)
+        opts['_monitor_class'] = DummyMonitor
+        with client_knobs(kill_cursor_frequency=.05,
+                          min_heartbeat_interval=.05):
+            client = single_client(**opts)
         self.addCleanup(client.close)
-        self.pool = get_pool(client)
+        # self.pool = get_pools(client)[0]
+        self.pool = list(client._get_topology()._servers.values())[0].pool
 
         # Map of target names to Thread objects.
         self.targets = dict()
@@ -342,13 +358,14 @@ class TestCMAP(IntegrationTest):
             client.admin.command('isMaster')
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
-        self.assertIsInstance(listener.events[1],
-                              ConnectionCheckOutStartedEvent)
+        self.assertIsInstance(listener.events[1], PoolReadyEvent)
         self.assertIsInstance(listener.events[2],
+                              ConnectionCheckOutStartedEvent)
+        self.assertIsInstance(listener.events[3],
                               ConnectionCheckOutFailedEvent)
-        self.assertIsInstance(listener.events[3], PoolClearedEvent)
+        self.assertIsInstance(listener.events[4], PoolClearedEvent)
 
-        failed_event = listener.events[2]
+        failed_event = listener.events[3]
         self.assertEqual(
             failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
@@ -363,17 +380,16 @@ class TestCMAP(IntegrationTest):
             client.admin.command('isMaster')
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
-        self.assertIsInstance(listener.events[1],
+        self.assertIsInstance(listener.events[1], PoolReadyEvent)
+        self.assertIsInstance(listener.events[2],
                               ConnectionCheckOutStartedEvent)
-        self.assertIsInstance(listener.events[2], ConnectionCreatedEvent)
+        self.assertIsInstance(listener.events[3], ConnectionCreatedEvent)
         # Error happens here.
-        self.assertIsInstance(listener.events[3], ConnectionClosedEvent)
-        self.assertIsInstance(listener.events[4],
+        self.assertIsInstance(listener.events[4], ConnectionClosedEvent)
+        self.assertIsInstance(listener.events[5],
                               ConnectionCheckOutFailedEvent)
-
-        failed_event = listener.events[4]
-        self.assertEqual(
-            failed_event.reason, ConnectionCheckOutFailedReason.CONN_ERROR)
+        self.assertEqual(listener.events[5].reason,
+                         ConnectionCheckOutFailedReason.CONN_ERROR)
 
     #
     # Extra non-spec tests
@@ -397,6 +413,73 @@ class TestCMAP(IntegrationTest):
         self.assertRepr(PoolCreatedEvent(host, {}))
         self.assertRepr(PoolClearedEvent(host))
         self.assertRepr(PoolClosedEvent(host))
+
+    def test_close_leaves_pool_unpaused(self):
+        # Needed until we implement PYTHON-2463. This test is related to
+        # test_threads.TestThreads.test_client_disconnect
+        listener = CMAPListener()
+        client = single_client(event_listeners=[listener])
+        client.admin.command('ping')
+        pool = get_pool(client)
+        client.close()
+        self.assertEqual(1, listener.event_count(PoolClearedEvent))
+        self.assertEqual(PoolState.READY, pool.state)
+        # Checking out a connection should succeed
+        with pool.get_socket({}):
+            pass
+
+    @client_context.require_version_max(4, 3)  # Remove after SERVER-53624.
+    @client_context.require_retryable_writes
+    @client_context.require_failCommand_fail_point
+    def test_pool_paused_error_is_retryable(self):
+        cmap_listener = CMAPListener()
+        cmd_listener = OvertCommandListener()
+        client = rs_or_single_client(
+            maxPoolSize=1,
+            heartbeatFrequencyMS=500,
+            event_listeners=[cmap_listener, cmd_listener])
+        self.addCleanup(client.close)
+        threads = [InsertThread(client.pymongo_test.test) for _ in range(3)]
+        fail_command = {
+            'mode': {'times': 1},
+            'data': {
+                'failCommands': ['insert'],
+                'blockConnection': True,
+                'blockTimeMS': 1000,
+                'errorCode': 91
+            },
+        }
+        with self.fail_point(fail_command):
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            for thread in threads:
+                self.assertTrue(thread.passed)
+
+        # The two threads in the wait queue fail the initial connection check
+        # out attempt and then succeed on retry.
+        self.assertEqual(
+            2, cmap_listener.event_count(ConnectionCheckOutFailedEvent))
+
+        # Connection check out failures are not reflected in command
+        # monitoring because we only publish command events _after_ checking
+        # out a connection.
+        self.assertEqual(4, len(cmd_listener.results['started']))
+        self.assertEqual(3, len(cmd_listener.results['succeeded']))
+        self.assertEqual(1, len(cmd_listener.results['failed']))
+
+
+class InsertThread(threading.Thread):
+    def __init__(self, collection):
+        super(InsertThread, self).__init__()
+        self.daemon = True
+        self.collection = collection
+        self.passed = False
+
+    def run(self):
+        self.collection.insert_one({})
+        self.passed = True
 
 
 def create_test(scenario_def, test, name):

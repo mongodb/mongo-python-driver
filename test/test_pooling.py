@@ -176,7 +176,9 @@ class _TestPoolingBase(unittest.TestCase):
         pool_options = client_context.client._topology_settings.pool_options
         kwargs['ssl_context'] = pool_options.ssl_context
         kwargs['ssl_match_hostname'] = pool_options.ssl_match_hostname
-        return Pool(pair, PoolOptions(*args, **kwargs))
+        pool = Pool(pair, PoolOptions(*args, **kwargs))
+        pool.ready()
+        return pool
 
 
 class TestPooling(_TestPoolingBase):
@@ -483,7 +485,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         joinall(threads)
         self.assertEqual(nthreads, self.n_passed)
         self.assertTrue(len(cx_pool.sockets) > 1)
-        self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
+        self.assertEqual(0, cx_pool.requests)
 
     def test_max_pool_size_none(self):
         c = rs_or_single_client(maxPoolSize=None)
@@ -529,6 +531,7 @@ class TestPoolMaxSize(_TestPoolingBase):
                 connect_timeout=1,
                 socket_timeout=1,
                 wait_queue_timeout=1))
+        test_pool.ready()
 
         # First call to get_socket fails; if pool doesn't release its semaphore
         # then the second call raises "ConnectionFailure: Timed out waiting for

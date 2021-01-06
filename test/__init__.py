@@ -687,6 +687,21 @@ class ClientContext(object):
                              "Sessions not supported",
                              func=func)
 
+    def supports_retryable_writes(self):
+        if self.storage_engine == 'mmapv1':
+            return False
+        if not self.sessions_enabled:
+            return False
+        if self.version.at_least(3, 6):
+            return self.is_mongos or self.is_rs
+        return False
+
+    def require_retryable_writes(self, func):
+        """Run a test only if the deployment supports retryable writes."""
+        return self._require(self.supports_retryable_writes,
+                             "This server does not support retryable writes",
+                             func=func)
+
     def supports_transactions(self):
         if self.storage_engine == 'mmapv1':
             return False
