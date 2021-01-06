@@ -2028,8 +2028,8 @@ axes:
   - id: requireApiVersion
     display_name: "requireApiVersion"
     values:
-      - id: "requireApiVersion"
-        display_name: "requireApiVersion"
+      - id: "requireApiVersion1"
+        display_name: "requireApiVersion1"
         tags: [ "requireApiVersion_tag" ]
         variables:
           REQUIRE_API_VERSION: "1"
@@ -2625,6 +2625,7 @@ buildvariants:
     requireApiVersion: "*"
   display_name: "requireApiVersion ${python-version}"
   tasks:
+    # Versioned API was introduced in MongoDB 4.7
     - "test-latest-standalone"
 
 - matrix_name: "ocsp-test"

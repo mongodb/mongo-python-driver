@@ -114,6 +114,12 @@ class ServerApi(object):
 
 
 def _add_to_command(cmd, server_api):
+    """Internal helper which adds API versioning options to a command.
+
+    :Parameters:
+      - `cmd`: The command.
+      - `server_api` (optional): A :class:`ServerApi` or ``None``.
+    """
     if not server_api:
         return
     cmd['apiVersion'] = server_api.version

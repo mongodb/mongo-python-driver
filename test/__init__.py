@@ -779,8 +779,9 @@ def sanitize_cmd(cmd):
     cp.pop('$db', None)
     cp.pop('$readPreference', None)
     cp.pop('lsid', None)
-    # Versioned api parameters
-    cp.pop('apiVersion', None)
+    if MONGODB_API_VERSION:
+        # Versioned api parameters
+        cp.pop('apiVersion', None)
     # OP_MSG encoding may move the payload type one field to the
     # end of the command. Do the same here.
     name = next(iter(cp))
