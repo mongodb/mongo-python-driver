@@ -428,6 +428,7 @@ class TestCMAP(IntegrationTest):
         with pool.get_socket({}):
             pass
 
+    @client_context.require_version_max(4, 3)  # Remove after SERVER-53624.
     @client_context.require_retryable_writes
     @client_context.require_failCommand_fail_point
     def test_pool_paused_error_is_retryable(self):
