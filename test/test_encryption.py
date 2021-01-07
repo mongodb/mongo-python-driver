@@ -45,6 +45,7 @@ from pymongo.errors import (BulkWriteError,
                             InvalidOperation,
                             OperationFailure,
                             WriteError)
+from pymongo.monitoring import register
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 from pymongo.write_concern import WriteConcern
@@ -53,6 +54,7 @@ from test import unittest, IntegrationTest, PyMongoTestCase, client_context
 from test.utils import (TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
+                        TopologyEventListener,
                         WhiteListEventListener,
                         rs_or_single_client,
                         wait_until)
@@ -1356,6 +1358,96 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin,
         }}""")
         return self._test_automatic(
             expected_document_extjson, {"secret_gcp": "string0"})
+
+
+class TestDeadlock(EncryptionIntegrationTest):
+    def setUp(self):
+        self.client_test = rs_or_single_client(
+            maxPoolSize=1, readConcernLevel='majority', w='majority',
+            uuidRepresentation='standard')
+        self.addCleanup(self.client_test.close)
+
+        self.client_keyvault_listener = OvertCommandListener()
+        self.client_keyvault = rs_or_single_client(
+            maxPoolSize=1, readConcernLevel='majority', w='majority',
+            event_listeners=[self.client_keyvault_listener])
+        self.addCleanup(self.client_keyvault.close)
+
+        self.client_test.keyvault.datakeys.drop()
+        self.client_test.db.coll.drop()
+        self.client_test.keyvault.datakeys.insert_one(
+            json_data('external', 'external-key.json'))
+        db_coll = self.client_test.db.create_collection(
+            'coll', validator={'$jsonSchema': json_data(
+                'external', 'external-schema.json')},
+            codec_options=OPTS)
+
+        client_encryption = ClientEncryption(
+            kms_providers={'local': {'key': LOCAL_MASTER_KEY}},
+            key_vault_namespace='keyvault.datakeys',
+            key_vault_client=self.client_test, codec_options=OPTS)
+        self.ciphertext = client_encryption.encrypt(
+            'string0', Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_alt_name='local')
+        client_encryption.close()
+
+        self.client_listener = OvertCommandListener()
+        self.topology_listener = TopologyEventListener()
+        register(self.topology_listener)
+        self.optargs = ({'local': {'key': LOCAL_MASTER_KEY}}, 'keyvault.datakeys')
+
+    def test_case_1(self):
+        opts = AutoEncryptionOpts(
+            *self.optargs,
+            bypass_auto_encryption=False,
+            key_vault_client=None)
+
+        client_encrypted = rs_or_single_client(
+            maxPoolSize=1, readConcernLevel='majority', w='majority',
+            auto_encryption_opts=opts, event_listeners=[self.client_listener])
+        client_encrypted.db.coll.insert_one(
+            {"_id": 0, "encrypted": "string0"})
+
+        result = client_encrypted.db.coll.find_one({"_id": 0})
+        self.assertEqual(result, {"_id": 0, "encrypted": "string0"})
+
+        # TODO: check self.client_listener commandStartedEvent expectations
+        # TODO: should self.client_listener contain events from spawned interalClient?
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened'])-1, 2)
+
+        client_encrypted.close()
+
+    def test_case_2(self):
+        opts = AutoEncryptionOpts(
+            *self.optargs,
+            bypass_auto_encryption=False,
+            key_vault_client=self.client_keyvault)
+
+        client_encrypted = rs_or_single_client(
+            maxPoolSize=1, readConcernLevel='majority', w='majority',
+            auto_encryption_opts=opts, event_listeners=[self.client_listener])
+        self.addCleanup(client_encrypted.close)
+        client_encrypted.db.coll.insert_one(
+            {"_id": 0, "encrypted": "string0"})
+
+        result = client_encrypted.db.coll.find_one({"_id": 0})
+        self.assertEqual(result, {"_id": 0, "encrypted": "string0"})
+
+        cev = self.client_listener.results['started']
+        # self.assertEqual(cev[0].command_name, 'listCollections')
+        # self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[0].command_name, 'insert')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'find')
+        self.assertEqual(cev[1].database_name, 'db')
+
+        kev = self.client_keyvault_listener.results['started']
+        self.assertEqual(kev[0].command_name, 'find')
+        self.assertEqual(kev[0].database_name, 'keyvault')
+
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened'])-1, 2)
 
 
 if __name__ == "__main__":

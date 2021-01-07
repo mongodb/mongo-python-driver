@@ -246,6 +246,9 @@ class _EncryptionIO(MongoCryptCallback):
             self.mongocryptd_client = None
 
 
+internal_client = None
+
+
 class _Encrypter(object):
     def __init__(self, io_callbacks, opts):
         """Encrypts and decrypts MongoDB commands.
@@ -325,7 +328,32 @@ class _Encrypter(object):
         :Returns:
           A :class:`_CommandEncrypter` for this client.
         """
-        key_vault_client = opts._key_vault_client or client
+        # import ipdb; ipdb.set_trace()
+
+        def get_internal_client():
+            global internal_client
+            if internal_client is not None:
+                return internal_client
+            # TODO: only change spec-defined options and keep all others the same
+            internal_client = MongoClient(replicaSet='repl0', minPoolSize=0, uuidRepresentation='standard')
+            return internal_client
+
+        if opts._key_vault_client is not None:
+            key_vault_client = opts._key_vault_client
+        elif client.max_pool_size is None:
+            # Unlimited pool size, use the same client.
+            key_vault_client = client
+        else:
+            # Limited pool size, use internal client.
+            key_vault_client = get_internal_client()
+
+        if opts._bypass_auto_encryption:
+            metadata_client = None
+        elif client.max_pool_size is None:
+            metadata_client = client
+        else:
+            metadata_client = get_internal_client()
+
         db, coll = opts._key_vault_namespace.split('.', 1)
         key_vault_coll = key_vault_client[db][coll]
 
@@ -334,7 +362,7 @@ class _Encrypter(object):
             serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS)
 
         io_callbacks = _EncryptionIO(
-            client, key_vault_coll, mongocryptd_client, opts)
+            metadata_client, key_vault_coll, mongocryptd_client, opts)
         return _Encrypter(io_callbacks, opts)
 
 
