@@ -246,6 +246,9 @@ class _EncryptionIO(MongoCryptCallback):
             self.mongocryptd_client = None
 
 
+# TODO: don't use a global for this - it causes a single internal MongoClient
+# to be shared across multiple parent MongoClient instances that are configured
+# for automatic encryption.
 internal_client = None
 
 

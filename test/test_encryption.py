@@ -1412,9 +1412,8 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(result, {"_id": 0, "encrypted": "string0"})
 
         # TODO: check self.client_listener commandStartedEvent expectations
-        # TODO: should self.client_listener contain events from spawned interalClient?
         # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
-        self.assertEqual(len(self.topology_listener.results['opened'])-1, 2)
+        self.assertEqual(len(self.topology_listener.results['opened']), 2)
 
         client_encrypted.close()
 
@@ -1435,6 +1434,7 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(result, {"_id": 0, "encrypted": "string0"})
 
         cev = self.client_listener.results['started']
+        # TODO: enable these checks once internal client inherits command listener from parent
         # self.assertEqual(cev[0].command_name, 'listCollections')
         # self.assertEqual(cev[0].database_name, 'db')
         self.assertEqual(cev[0].command_name, 'insert')
@@ -1447,7 +1447,7 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(kev[0].database_name, 'keyvault')
 
         # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
-        self.assertEqual(len(self.topology_listener.results['opened'])-1, 2)
+        self.assertEqual(len(self.topology_listener.results['opened']), 2)
 
 
 if __name__ == "__main__":
