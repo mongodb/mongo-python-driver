@@ -27,7 +27,3 @@
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
       .. autoattribute:: read_concern
-
-
-   .. autoclass:: pymongo.database.SystemJS
-      :members:
