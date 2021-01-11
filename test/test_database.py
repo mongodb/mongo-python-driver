@@ -806,35 +806,6 @@ class TestDatabase(IntegrationTest):
                          db.dereference(DBRef("test", 4),
                                         projection={"_id": False}))
 
-    @client_context.require_no_auth
-    @client_context.require_version_max(4, 1, 0)
-    def test_eval(self):
-        db = self.client.pymongo_test
-        db.test.drop()
-
-        with ignore_deprecations():
-            self.assertRaises(TypeError, db.eval, None)
-            self.assertRaises(TypeError, db.eval, 5)
-            self.assertRaises(TypeError, db.eval, [])
-
-            self.assertEqual(3, db.eval("function (x) {return x;}", 3))
-            self.assertEqual(3, db.eval(u"function (x) {return x;}", 3))
-
-            self.assertEqual(None,
-                             db.eval("function (x) {db.test.save({y:x});}", 5))
-            self.assertEqual(db.test.find_one()["y"], 5)
-
-            self.assertEqual(5, db.eval("function (x, y) {return x + y;}", 2, 3))
-            self.assertEqual(5, db.eval("function () {return 5;}"))
-            self.assertEqual(5, db.eval("2 + 3;"))
-
-            self.assertEqual(5, db.eval(Code("2 + 3;")))
-            self.assertRaises(OperationFailure, db.eval, Code("return i;"))
-            self.assertEqual(2, db.eval(Code("return i;", {"i": 2})))
-            self.assertEqual(5, db.eval(Code("i + 3;", {"i": 2})))
-
-            self.assertRaises(OperationFailure, db.eval, "5 ++ 5;")
-
     # TODO some of these tests belong in the collection level testing.
     def test_insert_find_one(self):
         db = self.client.pymongo_test

@@ -15,6 +15,7 @@ Breaking Changes in 4.0
 .......................
 
 - Removed support for Python 2.7, 3.4, and 3.5. Python 3.6+ is now required.
+- Removed :meth:`~pymongo.database.Database.eval` and :class:`~pymongo.database.SystemJS`.
 - Removed :mod:`~pymongo.thread_util`.
 
 Notable improvements
