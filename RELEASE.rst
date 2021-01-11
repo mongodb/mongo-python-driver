@@ -102,3 +102,7 @@ Doing a Release
 
 15. Announce the release on:
     https://developer.mongodb.com/community/forums/c/community/release-notes/
+
+16. File a ticket for DOCS highlighting changes in server version and Python
+    version compatibility or the lack thereof:
+    https://jira.mongodb.org/projects/DOCS
