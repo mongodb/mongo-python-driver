@@ -176,6 +176,7 @@ class _TestPoolingBase(unittest.TestCase):
         pool_options = client_context.client._topology_settings.pool_options
         kwargs['ssl_context'] = pool_options.ssl_context
         kwargs['ssl_match_hostname'] = pool_options.ssl_match_hostname
+        kwargs['server_api'] = pool_options.server_api
         return Pool(pair, PoolOptions(*args, **kwargs))
 
 

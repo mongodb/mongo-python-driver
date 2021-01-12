@@ -125,6 +125,7 @@ def _parse_pool_options(options):
     event_listeners = options.get('event_listeners')
     appname = options.get('appname')
     driver = options.get('driver')
+    server_api = options.get('server_api')
     compression_settings = CompressionSettings(
         options.get('compressors', []),
         options.get('zlibcompressionlevel', -1))
@@ -138,7 +139,8 @@ def _parse_pool_options(options):
                        _EventListeners(event_listeners),
                        appname,
                        driver,
-                       compression_settings)
+                       compression_settings,
+                       server_api=server_api)
 
 
 class ClientOptions(object):

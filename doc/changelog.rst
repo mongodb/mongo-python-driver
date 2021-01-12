@@ -4,6 +4,19 @@ Changelog
 Changes in Version 3.12.0
 -------------------------
 
+Notable improvements
+....................
+
+- Support for MongoDB Versioned API, see :class:`~pymongo.server_api.ServerApi`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.12 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.12 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=29594
+
 
 Changes in Version 3.11.1
 -------------------------

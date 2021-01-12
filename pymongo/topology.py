@@ -680,7 +680,9 @@ class Topology(object):
             ssl_match_hostname=options.ssl_match_hostname,
             event_listeners=options.event_listeners,
             appname=options.appname,
-            driver=options.driver)
+            driver=options.driver,
+            server_api=options.server_api,
+        )
 
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)

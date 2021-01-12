@@ -297,6 +297,9 @@ class _Transaction(object):
     def active(self):
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
 
+    def starting(self):
+        return self.state == _TxnState.STARTING
+
     def reset(self):
         self.state = _TxnState.NONE
         self.sharded = False
@@ -761,6 +764,12 @@ class ClientSession(object):
         .. versionadded:: 3.10
         """
         return self._transaction.active()
+
+    @property
+    def _starting_transaction(self):
+        """True if this session is starting a multi-statement transaction.
+        """
+        return self._transaction.starting()
 
     @property
     def _pinned_address(self):
