@@ -54,6 +54,7 @@ Sub-modules:
    read_preferences
    results
    son_manipulator
+   server_api
    uri_parser
    write_concern
    event_loggers

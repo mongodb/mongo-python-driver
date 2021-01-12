@@ -45,6 +45,7 @@ from pymongo.monitoring import (
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult
+from pymongo.server_api import ServerApi
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
@@ -106,8 +107,17 @@ def is_run_on_requirement_satisfied(requirement):
         max_version_satisfied = Version.from_string(
             req_max_server_version) >= client_context.version
 
+    params_satisfied = True
+    params = requirement.get('serverParameters')
+    if params:
+        for param, val in params.items():
+            if param not in client_context.server_parameters:
+                params_satisfied = False
+            elif client_context.server_parameters[param] != val:
+                params_satisfied = False
+
     return (topology_satisfied and min_version_satisfied and
-            max_version_satisfied)
+            max_version_satisfied and params_satisfied)
 
 
 def parse_collection_or_database_options(options):
@@ -200,6 +210,11 @@ class EntityMapUtil(object):
             if client_context.is_mongos and spec.get('useMultipleMongoses'):
                 kwargs['h'] = client_context.mongos_seeds()
             kwargs.update(spec.get('uriOptions', {}))
+            server_api = spec.get('serverApi')
+            if server_api:
+                kwargs['server_api'] = ServerApi(
+                    server_api['version'], strict=server_api.get('strict'),
+                    deprecation_errors=server_api.get('deprecationErrors'))
             client = rs_or_single_client(**kwargs)
             self[spec['id']] = client
             self._test_class.addCleanup(client.close)
@@ -478,6 +493,12 @@ class MatchEvaluatorUtil(object):
             command = spec.get('command')
             database_name = spec.get('databaseName')
             if command:
+                if actual.command_name == 'update':
+                    # TODO: remove this once PYTHON-1744 is done.
+                    # Add upsert and multi fields back into expectations.
+                    for update in command['updates']:
+                        update.setdefault('upsert', False)
+                        update.setdefault('multi', False)
                 self.match_result(command, actual.command)
             if database_name:
                 self._test_class.assertEqual(
@@ -503,7 +524,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     Specification of the test suite being currently run is available as
     a class attribute ``TEST_SPEC``.
     """
-    SCHEMA_VERSION = Version.from_string('1.0')
+    SCHEMA_VERSION = Version.from_string('1.1')
 
     @staticmethod
     def should_run_on(run_on_spec):

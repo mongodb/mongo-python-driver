@@ -48,6 +48,7 @@ import pymongo.errors
 from bson.son import SON
 from pymongo import common, message
 from pymongo.common import partition_node
+from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
 from test.version import Version
 
@@ -90,6 +91,8 @@ if CA_PEM:
     TLS_OPTIONS['tlsCAFile'] = CA_PEM
 
 COMPRESSORS = os.environ.get("COMPRESSORS")
+MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
+
 
 def is_server_resolvable():
     """Returns True if 'server' is resolvable."""
@@ -200,6 +203,7 @@ class ClientContext(object):
         self.version = Version(-1)  # Needs to be comparable with Version
         self.auth_enabled = False
         self.test_commands_enabled = False
+        self.server_parameters = None
         self.is_mongos = False
         self.mongoses = []
         self.is_rs = False
@@ -212,9 +216,11 @@ class ClientContext(object):
         self.client = None
         self.conn_lock = threading.Lock()
         self.is_data_lake = False
-
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
+        if MONGODB_API_VERSION:
+            server_api = ServerApi(MONGODB_API_VERSION)
+            self.default_client_options["server_api"] = server_api
 
     @property
     def ismaster(self):
@@ -226,8 +232,7 @@ class ClientContext(object):
             timeout_ms = 10000
         else:
             timeout_ms = 5000
-        if COMPRESSORS:
-            kwargs["compressors"] = COMPRESSORS
+        kwargs.update(self.default_client_options)
         client = pymongo.MongoClient(
             host, port, serverSelectionTimeoutMS=timeout_ms, **kwargs)
         try:
@@ -341,6 +346,8 @@ class ClientContext(object):
                 self.nodes = set([(host, port)])
             self.w = len(ismaster.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
+            self.server_parameters = self.client.admin.command(
+                'getParameter', '*')
 
             if 'enableTestCommands=1' in self.cmd_line['argv']:
                 self.test_commands_enabled = True
@@ -723,6 +730,12 @@ class ClientContext(object):
                              "Transactions are not supported",
                              func=func)
 
+    def require_no_api_version(self, func):
+        """Skip this test when testing with requireApiVersion."""
+        return self._require(lambda: not MONGODB_API_VERSION,
+                             "This test does not work with requireApiVersion",
+                             func=func)
+
     def mongos_seeds(self):
         return ','.join('%s:%s' % address for address in self.mongoses)
 
@@ -766,6 +779,9 @@ def sanitize_cmd(cmd):
     cp.pop('$db', None)
     cp.pop('$readPreference', None)
     cp.pop('lsid', None)
+    if MONGODB_API_VERSION:
+        # Versioned api parameters
+        cp.pop('apiVersion', None)
     # OP_MSG encoding may move the payload type one field to the
     # end of the command. Do the same here.
     name = next(iter(cp))

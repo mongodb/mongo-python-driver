@@ -704,6 +704,12 @@ class Database(common.BaseObject):
         .. note:: :meth:`command` does **not** apply any custom TypeDecoders
            when decoding the command response.
 
+        .. note:: If this client has been configured to use MongoDB Versioned
+           API (see :ref:`versioned-api-ref`), then :meth:`command` will
+           automactically add API versioning options to the given command.
+           Explicitly adding API versioning options in the command and
+           declaring an API version on the client is not supported.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 

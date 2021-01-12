@@ -307,6 +307,7 @@ class _Query(object):
             self.name = 'explain'
             cmd = SON([('explain', cmd)])
         session = self.session
+        sock_info.add_server_api(cmd, session)
         if session:
             session._apply_to(cmd, False, self.read_preference)
             # Explain does not support readConcern.
@@ -892,6 +893,7 @@ class _BulkWriteContext(object):
         self.compress = True if sock_info.compression_context else False
         self.op_type = op_type
         self.codec = codec
+        sock_info.add_server_api(command, session)
 
     def _batch_command(self, docs):
         namespace = self.db_name + '.$cmd'

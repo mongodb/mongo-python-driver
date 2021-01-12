@@ -364,6 +364,7 @@ class BulkAuthorizationTestBase(BulkTestBase):
 
     @classmethod
     @client_context.require_auth
+    @client_context.require_no_api_version
     def setUpClass(cls):
         super(BulkAuthorizationTestBase, cls).setUpClass()
 
