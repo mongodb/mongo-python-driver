@@ -69,5 +69,7 @@ can be changed to this with MongoDB <= 4.0::
   >>> from bson.code import Code
   >>> result = database.command('eval', Code('function (x) {return x;}'), args=[3]).get('retval')
 
+There is no replacement for eval with MongoDB 4.2+.
+
 Removed features with no migration path
 ---------------------------------------
