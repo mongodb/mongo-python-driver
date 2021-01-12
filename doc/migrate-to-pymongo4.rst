@@ -26,6 +26,13 @@ PyMongo 4.0 are backported in PyMongo 3.12 making migration much easier.
 .. note:: Users of PyMongo 2.X who wish to upgrade to 4.x must first upgrade
    to PyMongo 3.x by following the :doc:`migrate-to-pymongo3`.
 
+Python 3.6+
+-----------
+
+PyMongo 4.0 drops support for Python 2.7, 3.4, and 3.5. Users who wish to
+upgrade to 4.x must first upgrade to Python 3.6+. Users upgrading from
+Python 2 should consult the :doc:`python3`.
+
 Enable Deprecation Warnings
 ---------------------------
 
