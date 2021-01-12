@@ -103,6 +103,6 @@ Doing a Release
 15. Announce the release on:
     https://developer.mongodb.com/community/forums/c/community/release-notes/
 
-16. File a ticket for DOCS highlighting changes in server version and Python
+16. File a ticket for DOCSP highlighting changes in server version and Python
     version compatibility or the lack thereof, for example:
-    https://jira.mongodb.org/browse/DOCS-12644
+    https://jira.mongodb.org/browse/DOCSP-13536
