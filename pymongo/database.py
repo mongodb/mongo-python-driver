@@ -146,14 +146,6 @@ class Database(common.BaseObject):
                 self.__outgoing_manipulators.insert(0, manipulator)
 
     @property
-    def system_js(self):
-        """**DEPRECATED**: :class:`SystemJS` helper for this :class:`Database`.
-
-        See the documentation for :class:`SystemJS` for more details.
-        """
-        return SystemJS(self)
-
-    @property
     def client(self):
         """The client instance for this :class:`Database`."""
         return self.__client
@@ -1547,77 +1539,3 @@ class Database(common.BaseObject):
                                                                self.__name))
         return self[dbref.collection].find_one(
             {"_id": dbref.id}, session=session, **kwargs)
-
-    def eval(self, code, *args):
-        """**DEPRECATED**: Evaluate a JavaScript expression in MongoDB.
-
-        :Parameters:
-          - `code`: string representation of JavaScript code to be
-            evaluated
-          - `args` (optional): additional positional arguments are
-            passed to the `code` being evaluated
-
-        .. warning:: the eval command is deprecated in MongoDB 3.0 and
-          will be removed in a future server version.
-        """
-        warnings.warn("Database.eval() is deprecated",
-                      DeprecationWarning, stacklevel=2)
-
-        if not isinstance(code, Code):
-            code = Code(code)
-
-        result = self.command("$eval", code, args=args)
-        return result.get("retval", None)
-
-    def __call__(self, *args, **kwargs):
-        """This is only here so that some API misusages are easier to debug.
-        """
-        raise TypeError("'Database' object is not callable. If you meant to "
-                        "call the '%s' method on a '%s' object it is "
-                        "failing because no such method exists." % (
-                            self.__name, self.__client.__class__.__name__))
-
-
-class SystemJS(object):
-    """**DEPRECATED**: Helper class for dealing with stored JavaScript.
-    """
-
-    def __init__(self, database):
-        """**DEPRECATED**: Get a system js helper for the database `database`.
-
-        SystemJS will be removed in PyMongo 4.0.
-        """
-        warnings.warn("SystemJS is deprecated",
-                      DeprecationWarning, stacklevel=2)
-
-        if not database.write_concern.acknowledged:
-            database = database.client.get_database(
-                database.name, write_concern=DEFAULT_WRITE_CONCERN)
-        # can't just assign it since we've overridden __setattr__
-        object.__setattr__(self, "_db", database)
-
-    def __setattr__(self, name, code):
-        self._db.system.js.replace_one(
-            {"_id": name}, {"_id": name, "value": Code(code)}, True)
-
-    def __setitem__(self, name, code):
-        self.__setattr__(name, code)
-
-    def __delattr__(self, name):
-        self._db.system.js.delete_one({"_id": name})
-
-    def __delitem__(self, name):
-        self.__delattr__(name)
-
-    def __getattr__(self, name):
-        return lambda *args: self._db.eval(Code("function() { "
-                                                "return this[name].apply("
-                                                "this, arguments); }",
-                                                scope={'name': name}), *args)
-
-    def __getitem__(self, name):
-        return self.__getattr__(name)
-
-    def list(self):
-        """Get a list of the names of the functions stored in this database."""
-        return [x["_id"] for x in self._db.system.js.find(projection=["_id"])]

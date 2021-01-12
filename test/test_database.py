@@ -806,35 +806,6 @@ class TestDatabase(IntegrationTest):
                          db.dereference(DBRef("test", 4),
                                         projection={"_id": False}))
 
-    @client_context.require_no_auth
-    @client_context.require_version_max(4, 1, 0)
-    def test_eval(self):
-        db = self.client.pymongo_test
-        db.test.drop()
-
-        with ignore_deprecations():
-            self.assertRaises(TypeError, db.eval, None)
-            self.assertRaises(TypeError, db.eval, 5)
-            self.assertRaises(TypeError, db.eval, [])
-
-            self.assertEqual(3, db.eval("function (x) {return x;}", 3))
-            self.assertEqual(3, db.eval(u"function (x) {return x;}", 3))
-
-            self.assertEqual(None,
-                             db.eval("function (x) {db.test.save({y:x});}", 5))
-            self.assertEqual(db.test.find_one()["y"], 5)
-
-            self.assertEqual(5, db.eval("function (x, y) {return x + y;}", 2, 3))
-            self.assertEqual(5, db.eval("function () {return 5;}"))
-            self.assertEqual(5, db.eval("2 + 3;"))
-
-            self.assertEqual(5, db.eval(Code("2 + 3;")))
-            self.assertRaises(OperationFailure, db.eval, Code("return i;"))
-            self.assertEqual(2, db.eval(Code("return i;", {"i": 2})))
-            self.assertEqual(5, db.eval(Code("i + 3;", {"i": 2})))
-
-            self.assertRaises(OperationFailure, db.eval, "5 ++ 5;")
-
     # TODO some of these tests belong in the collection level testing.
     def test_insert_find_one(self):
         db = self.client.pymongo_test
@@ -909,48 +880,6 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(db.test.find_one())
         db.test.delete_many({})
         self.assertFalse(db.test.find_one())
-
-    @client_context.require_no_auth
-    @client_context.require_version_max(4, 1, 0)
-    def test_system_js(self):
-        db = self.client.pymongo_test
-        db.system.js.delete_many({})
-
-        self.assertEqual(0, db.system.js.count_documents({}))
-        db.system_js.add = "function(a, b) { return a + b; }"
-        self.assertEqual('add', db.system.js.find_one()['_id'])
-        self.assertEqual(1, db.system.js.count_documents({}))
-        self.assertEqual(6, db.system_js.add(1, 5))
-        del db.system_js.add
-        self.assertEqual(0, db.system.js.count_documents({}))
-
-        db.system_js['add'] = "function(a, b) { return a + b; }"
-        self.assertEqual('add', db.system.js.find_one()['_id'])
-        self.assertEqual(1, db.system.js.count_documents({}))
-        self.assertEqual(6, db.system_js['add'](1, 5))
-        del db.system_js['add']
-        self.assertEqual(0, db.system.js.count_documents({}))
-        self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
-
-        # TODO right now CodeWScope doesn't work w/ system js
-        # db.system_js.scope = Code("return hello;", {"hello": 8})
-        # self.assertEqual(8, db.system_js.scope())
-
-        self.assertRaises(OperationFailure, db.system_js.non_existant)
-
-    def test_system_js_list(self):
-        db = self.client.pymongo_test
-        db.system.js.delete_many({})
-        self.assertEqual([], db.system_js.list())
-
-        db.system_js.foo = "function() { return 'blah'; }"
-        self.assertEqual(["foo"], db.system_js.list())
-
-        db.system_js.bar = "function() { return 'baz'; }"
-        self.assertEqual(set(["foo", "bar"]), set(db.system_js.list()))
-
-        del db.system_js.foo
-        self.assertEqual(["bar"], db.system_js.list())
 
     def test_command_response_without_ok(self):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted

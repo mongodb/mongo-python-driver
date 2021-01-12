@@ -7,7 +7,8 @@ PyMongo 4 Migration Guide
 
   from pymongo import MongoClient, ReadPreference
   client = MongoClient()
-  collection = client.my_database.my_collection
+  database = client.my_database
+  collection = database.my_collection
 
 PyMongo 4.0 brings a number of improvements as well as some backward breaking
 changes. This guide provides a roadmap for migrating an existing application
@@ -51,3 +52,21 @@ Warnings can also be changed to errors::
 
 Removed features with no migration path
 ---------------------------------------
+
+Database.eval, Database.system_js, and SystemJS are removed
+...........................................................
+
+Removed :meth:`~pymongo.database.Database.eval`,
+:data:`~pymongo.database.Database.system_js` and
+:class:`~pymongo.database.SystemJS`. The eval command was deprecated in
+MongoDB 3.0 and removed in MongoDB 4.2. There is no replacement for eval with
+MongoDB 4.2+.
+
+However, on MongoDB <= 4.0, code like this::
+
+  >>> result = database.eval('function (x) {return x;}', 3)
+
+can be changed to this::
+
+  >>> from bson.code import Code
+  >>> result = database.command('eval', Code('function (x) {return x;}'), args=[3]).get('retval')
