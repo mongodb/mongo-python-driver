@@ -881,48 +881,6 @@ class TestDatabase(IntegrationTest):
         db.test.delete_many({})
         self.assertFalse(db.test.find_one())
 
-    @client_context.require_no_auth
-    @client_context.require_version_max(4, 1, 0)
-    def test_system_js(self):
-        db = self.client.pymongo_test
-        db.system.js.delete_many({})
-
-        self.assertEqual(0, db.system.js.count_documents({}))
-        db.system_js.add = "function(a, b) { return a + b; }"
-        self.assertEqual('add', db.system.js.find_one()['_id'])
-        self.assertEqual(1, db.system.js.count_documents({}))
-        self.assertEqual(6, db.system_js.add(1, 5))
-        del db.system_js.add
-        self.assertEqual(0, db.system.js.count_documents({}))
-
-        db.system_js['add'] = "function(a, b) { return a + b; }"
-        self.assertEqual('add', db.system.js.find_one()['_id'])
-        self.assertEqual(1, db.system.js.count_documents({}))
-        self.assertEqual(6, db.system_js['add'](1, 5))
-        del db.system_js['add']
-        self.assertEqual(0, db.system.js.count_documents({}))
-        self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
-
-        # TODO right now CodeWScope doesn't work w/ system js
-        # db.system_js.scope = Code("return hello;", {"hello": 8})
-        # self.assertEqual(8, db.system_js.scope())
-
-        self.assertRaises(OperationFailure, db.system_js.non_existant)
-
-    def test_system_js_list(self):
-        db = self.client.pymongo_test
-        db.system.js.delete_many({})
-        self.assertEqual([], db.system_js.list())
-
-        db.system_js.foo = "function() { return 'blah'; }"
-        self.assertEqual(["foo"], db.system_js.list())
-
-        db.system_js.bar = "function() { return 'baz'; }"
-        self.assertEqual(set(["foo", "bar"]), set(db.system_js.list()))
-
-        del db.system_js.foo
-        self.assertEqual(["bar"], db.system_js.list())
-
     def test_command_response_without_ok(self):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted
         # command document will have no 'ok' field. We should raise

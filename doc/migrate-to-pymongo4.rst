@@ -56,7 +56,8 @@ Database
 The "eval" method and SystemJS class are removed
 ................................................
 
-Removed :meth:`~pymongo.database.Database.eval` and
+Removed :meth:`~pymongo.database.Database.eval`,
+:data:`~pymongo.database.Database.system_js` and
 :class:`~pymongo.database.SystemJS`. The eval command was deprecated in
 MongoDB 3.0 and removed in MongoDB 4.2.
 
