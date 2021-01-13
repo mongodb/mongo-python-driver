@@ -920,14 +920,15 @@ def teardown():
     if garbage:
         assert False, '\n'.join(garbage)
     c = client_context.client
-    if c and not client_context.is_data_lake:
-        c.drop_database("pymongo-pooling-tests")
-        c.drop_database("pymongo_test")
-        c.drop_database("pymongo_test1")
-        c.drop_database("pymongo_test2")
-        c.drop_database("pymongo_test_mike")
-        c.drop_database("pymongo_test_bernie")
-    c.close()
+    if c:
+        if not client_context.is_data_lake:
+            c.drop_database("pymongo-pooling-tests")
+            c.drop_database("pymongo_test")
+            c.drop_database("pymongo_test1")
+            c.drop_database("pymongo_test2")
+            c.drop_database("pymongo_test_mike")
+            c.drop_database("pymongo_test_bernie")
+        c.close()
 
     # Jython does not support gc.get_objects.
     if not sys.platform.startswith('java'):

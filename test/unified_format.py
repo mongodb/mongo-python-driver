@@ -674,9 +674,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return self.__entityOperation_createChangeStream(
             target, *args, **kwargs)
 
-    def _databaseOperation_runCommand(self, target, *args, **kwargs):
+    def _databaseOperation_runCommand(self, target, **kwargs):
         self.__raise_if_unsupported('runCommand', target, Database)
-        return target.command(*args, **kwargs)
+        # Ensure the first key is the command name.
+        ordered_command = SON([(kwargs.pop('command_name'), 1)])
+        ordered_command.update(kwargs['command'])
+        kwargs['command'] = ordered_command
+        return target.command(**kwargs)
 
     def __entityOperation_aggregate(self, target, *args, **kwargs):
         self.__raise_if_unsupported('aggregate', target, Database, Collection)
