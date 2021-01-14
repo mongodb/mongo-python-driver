@@ -68,7 +68,6 @@
       .. automethod:: options
       .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
-      .. automethod:: parallel_scan
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
       .. automethod:: group

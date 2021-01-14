@@ -1737,52 +1737,6 @@ class TestCollection(IntegrationTest):
 
             self.assertTrue(cursor.alive)
 
-    @client_context.require_no_mongos
-    @client_context.require_version_max(4, 1, 0)
-    @ignore_deprecations
-    def test_parallel_scan(self):
-        db = self.db
-        db.drop_collection("test")
-        if client_context.has_secondaries:
-            # Test that getMore messages are sent to the right server.
-            db = self.client.get_database(
-                db.name,
-                read_preference=ReadPreference.SECONDARY,
-                write_concern=WriteConcern(w=self.w))
-
-        coll = db.test
-        coll.insert_many([{'_id': i} for i in range(8000)])
-        docs = []
-        threads = [threading.Thread(target=docs.extend, args=(cursor,))
-                   for cursor in coll.parallel_scan(3)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        self.assertEqual(
-            set(range(8000)),
-            set(doc['_id'] for doc in docs))
-
-    @client_context.require_no_mongos
-    @client_context.require_version_min(3, 3, 10)
-    @client_context.require_version_max(4, 1, 0)
-    @client_context.require_test_commands
-    @ignore_deprecations
-    def test_parallel_scan_max_time_ms(self):
-            self.client.admin.command("configureFailPoint",
-                                      "maxTimeAlwaysTimeOut",
-                                      mode="alwaysOn")
-            try:
-                self.assertRaises(ExecutionTimeout,
-                                  self.db.test.parallel_scan,
-                                  3,
-                                  maxTimeMS=1)
-            finally:
-                self.client.admin.command("configureFailPoint",
-                                          "maxTimeAlwaysTimeOut",
-                                          mode="off")
-
     def test_large_limit(self):
         db = self.db
         db.drop_collection("test_large_limit")
