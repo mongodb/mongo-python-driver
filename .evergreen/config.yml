@@ -349,16 +349,6 @@ functions:
           ${PREPARE_SHELL}
           PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mockupdb-tests.sh
 
-  "run cdecimal tests":
-     - command: shell.exec
-       type: test
-       params:
-         working_dir: "src"
-         script: |
-           set -o xtrace
-           ${PREPARE_SHELL}
-           PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-cdecimal-tests.sh
-
   "run doctests":
      - command: shell.exec
        type: test
@@ -1178,15 +1168,6 @@ tasks:
             VERSION: "latest"
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
-
-    - name: "cdecimal"
-      tags: ["cdecimal"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "latest"
-            TOPOLOGY: "server"
-        - func: "run cdecimal tests"
 
     - name: "no-server"
       tags: ["no-server"]

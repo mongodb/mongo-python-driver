@@ -89,7 +89,7 @@ is incompatible with PyMongo.
 Dependencies
 ============
 
-PyMongo supports CPython 2.7, 3.4+, PyPy, and PyPy3.5+.
+PyMongo supports CPython 3.4+ and PyPy3.5+.
 
 Optional dependencies:
 
@@ -119,9 +119,6 @@ PyMongo::
 
   $ python -m pip install pymongo[tls]
 
-.. note:: Users of Python versions older than 2.7.9 will also
-  receive the dependencies for OCSP when using the tls extra.
-
 OCSP (Online Certificate Status Protocol) requires `PyOpenSSL
 <https://pypi.org/project/pyOpenSSL/>`_, `requests
 <https://pypi.org/project/requests/>`_ and `service_identity
@@ -148,16 +145,6 @@ You can install all dependencies automatically with the following
 command::
 
   $ python -m pip install pymongo[gssapi,aws,ocsp,snappy,srv,tls,zstd,encryption]
-
-Other optional packages:
-
-- `backports.pbkdf2 <https://pypi.python.org/pypi/backports.pbkdf2/>`_,
-  improves authentication performance with SCRAM-SHA-1 and SCRAM-SHA-256.
-  It especially improves performance on Python versions older than 2.7.8.
-- `monotonic <https://pypi.python.org/pypi/monotonic>`_ adds support for
-  a monotonic clock, which improves reliability in environments
-  where clock adjustments are frequent. Not needed in Python 3.
-
 
 Additional dependencies are:
 

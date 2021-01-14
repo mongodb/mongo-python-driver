@@ -33,10 +33,10 @@ Doing a Release
 
 1. PyMongo is tested on Evergreen. Ensure the latest commit are passing CI
    as expected: https://evergreen.mongodb.com/waterfall/mongo-python-driver.
-   To test locally, ``python setup.py test`` will build the C extensions and
-   test. ``python tools/clean.py`` will remove the extensions,
-   and then ``python setup.py --no_ext test`` will run the tests without
-   them. You can also run the doctests: ``python setup.py doc -t``.
+   To test locally, ``python3 setup.py test`` will build the C extensions and
+   test. ``python3 tools/clean.py`` will remove the extensions,
+   and then ``python3 setup.py --no_ext test`` will run the tests without
+   them. You can also run the doctests: ``python3 setup.py doc -t``.
 
 2. Check Jira to ensure all the tickets in this version have been completed.
 
@@ -63,17 +63,11 @@ Doing a Release
    the next steps let's assume we unpacked these files into the following paths::
 
      $ ls path/to/manylinux
-     pymongo-<version>-cp27-cp27m-manylinux1_i686.whl
-     ...
      pymongo-<version>-cp38-cp38-manylinux2014_x86_64.whl
-     $ ls path/to/mac/
-     pymongo-<version>-cp27-cp27m-macosx_10_14_intel.whl
      ...
-     pymongo-<version>-py2.7-macosx-10.14-intel.egg
      $ ls path/to/windows/
-     pymongo-<version>-cp27-cp27m-win32.whl
-     ...
      pymongo-<version>-cp38-cp38-win_amd64.whl
+     ...
 
 10. Build the source distribution::
 

@@ -18,9 +18,9 @@ effort to release at least one minor version that *deprecates* it. We add
 `DeprecationWarning`_. You can ensure your code is future-proof by running
 your code with the latest PyMongo release and looking for DeprecationWarnings.
 
-Starting with Python 2.7, the interpreter silences DeprecationWarnings by
-default. For example, the following code uses the deprecated ``insert``
-method but does not raise any warning:
+The interpreter silences DeprecationWarnings by default. For example, the
+following code uses the deprecated ``insert`` method but does not raise any
+warning:
 
 .. code-block:: python
 
@@ -32,13 +32,13 @@ method but does not raise any warning:
 
 To print deprecation warnings to stderr, run python with "-Wd"::
 
-  $ python -Wd insert.py
+  $ python3 -Wd insert.py
   insert.py:4: DeprecationWarning: insert is deprecated. Use insert_one or insert_many instead.
     client.test.test.insert({})
 
 You can turn warnings into exceptions with "python -We"::
 
-  $ python -We insert.py
+  $ python3 -We insert.py
   Traceback (most recent call last):
     File "insert.py", line 4, in <module>
       client.test.test.insert({})
@@ -55,8 +55,8 @@ deprecated PyMongo features.
 .. _semantic versioning: http://semver.org/
 
 .. _DeprecationWarning:
-  https://docs.python.org/2/library/exceptions.html#exceptions.DeprecationWarning
+  https://docs.python.org/3/library/exceptions.html#DeprecationWarning
 
-.. _the warnings module: https://docs.python.org/2/library/warnings.html
+.. _the warnings module: https://docs.python.org/3/library/warnings.html
 
-.. _the -W command line option: https://docs.python.org/2/using/cmdline.html#cmdoption-W
+.. _the -W command line option: https://docs.python.org/3/using/cmdline.html#cmdoption-w

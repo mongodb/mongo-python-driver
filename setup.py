@@ -5,8 +5,8 @@ import sys
 import warnings
 
 
-if sys.version_info[:2] < (2, 7):
-    raise RuntimeError("Python version >= 2.7 required.")
+if sys.version_info[:2] < (3, 4):
+    raise RuntimeError("Python version >= 3.4 required.")
 
 
 # Hack to silence atexit traceback in some Python versions
@@ -15,14 +15,7 @@ try:
 except ImportError:
     pass
 
-# Don't force people to install setuptools unless
-# we have to.
-try:
-    from setuptools import setup, __version__ as _setuptools_version
-except ImportError:
-    from ez_setup import use_setuptools
-    use_setuptools()
-    from setuptools import setup, __version__ as _setuptools_version
+from setuptools import setup, __version__ as _setuptools_version
 
 from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
@@ -152,45 +145,45 @@ class doc(Command):
             raise RuntimeError(
                 "You must install Sphinx to build or test the documentation.")
 
-        if sys.version_info[0] >= 3:
-            import doctest
-            from doctest import OutputChecker as _OutputChecker
+        # TODO: Convert all the docs to Python 3 and delete all this.
+        import doctest
+        from doctest import OutputChecker as _OutputChecker
 
-            # Match u or U (possibly followed by r or R), removing it.
-            # r/R can follow u/U but not precede it. Don't match the
-            # single character string 'u' or 'U'.
-            _u_literal_re = re.compile(
-                r"(\W|^)(?<![\'\"])[uU]([rR]?[\'\"])", re.UNICODE)
-             # Match b or B (possibly followed by r or R), removing.
-             # r/R can follow b/B but not precede it. Don't match the
-             # single character string 'b' or 'B'.
-            _b_literal_re = re.compile(
-                r"(\W|^)(?<![\'\"])[bB]([rR]?[\'\"])", re.UNICODE)
+        # Match u or U (possibly followed by r or R), removing it.
+        # r/R can follow u/U but not precede it. Don't match the
+        # single character string 'u' or 'U'.
+        _u_literal_re = re.compile(
+            r"(\W|^)(?<![\'\"])[uU]([rR]?[\'\"])", re.UNICODE)
+         # Match b or B (possibly followed by r or R), removing.
+         # r/R can follow b/B but not precede it. Don't match the
+         # single character string 'b' or 'B'.
+        _b_literal_re = re.compile(
+            r"(\W|^)(?<![\'\"])[bB]([rR]?[\'\"])", re.UNICODE)
 
-            class _StringPrefixFixer(_OutputChecker):
+        class _StringPrefixFixer(_OutputChecker):
 
-                def check_output(self, want, got, optionflags):
-                    # The docstrings are written with python 2.x in mind.
-                    # To make the doctests pass in python 3 we have to
-                    # strip the 'u' prefix from the expected results. The
-                    # actual results won't have that prefix.
-                    want = re.sub(_u_literal_re, r'\1\2', want)
-                    # We also have to strip the 'b' prefix from the actual
-                    # results since python 2.x expected results won't have
-                    # that prefix.
-                    got = re.sub(_b_literal_re, r'\1\2', got)
-                    return super(
-                        _StringPrefixFixer, self).check_output(
-                            want, got, optionflags)
+            def check_output(self, want, got, optionflags):
+                # The docstrings are written with python 2.x in mind.
+                # To make the doctests pass in python 3 we have to
+                # strip the 'u' prefix from the expected results. The
+                # actual results won't have that prefix.
+                want = re.sub(_u_literal_re, r'\1\2', want)
+                # We also have to strip the 'b' prefix from the actual
+                # results since python 2.x expected results won't have
+                # that prefix.
+                got = re.sub(_b_literal_re, r'\1\2', got)
+                return super(
+                    _StringPrefixFixer, self).check_output(
+                        want, got, optionflags)
 
-                def output_difference(self, example, got, optionflags):
-                    example.want = re.sub(_u_literal_re, r'\1\2', example.want)
-                    got = re.sub(_b_literal_re, r'\1\2', got)
-                    return super(
-                        _StringPrefixFixer, self).output_difference(
-                            example, got, optionflags)
+            def output_difference(self, example, got, optionflags):
+                example.want = re.sub(_u_literal_re, r'\1\2', example.want)
+                got = re.sub(_b_literal_re, r'\1\2', got)
+                return super(
+                    _StringPrefixFixer, self).output_difference(
+                        example, got, optionflags)
 
-            doctest.OutputChecker = _StringPrefixFixer
+        doctest.OutputChecker = _StringPrefixFixer
 
         if self.test:
             path = os.path.join(
@@ -327,45 +320,10 @@ extras_require = {
     'encryption': ['pymongocrypt<2.0.0'],
     'ocsp': pyopenssl_reqs,
     'snappy': ['python-snappy'],
-    'tls': [],
     'zstd': ['zstandard'],
     'aws': ['pymongo-auth-aws<2.0.0'],
+    'srv': ["dnspython>=1.16.0,<2.0.0"],
 }
-
-# https://jira.mongodb.org/browse/PYTHON-2117
-# Environment marker support didn't settle down until version 20.10
-# https://setuptools.readthedocs.io/en/latest/history.html#v20-10-0
-_use_env_markers = tuple(map(int, _setuptools_version.split('.')[:2])) > (20, 9)
-
-# TLS and DNS extras
-# We install PyOpenSSL and service_identity for Python < 2.7.9 to
-# get support for SNI, which is required to connection to Altas
-# free and shared tier.
-if sys.version_info[0] == 2:
-    if _use_env_markers:
-        # For building wheels on Python versions >= 2.7.9
-        for req in pyopenssl_reqs:
-            extras_require['tls'].append(
-                "%s ; python_full_version < '2.7.9'" % (req,))
-        if sys.platform == 'win32':
-            extras_require['tls'].append(
-                "wincertstore>=0.2 ; python_full_version < '2.7.9'")
-        else:
-            extras_require['tls'].append(
-                "certifi ; python_full_version < '2.7.9'")
-    elif sys.version_info < (2, 7, 9):
-        # For installing from source or egg files on Python versions
-        # older than 2.7.9, or systems that have setuptools versions
-        # older than 20.10.
-        extras_require['tls'].extend(pyopenssl_reqs)
-        if sys.platform == 'win32':
-            extras_require['tls'].append("wincertstore>=0.2")
-        else:
-            extras_require['tls'].append("certifi")
-    extras_require.update({'srv': ["dnspython>=1.16.0,<1.17.0"]})
-    extras_require.update({'tls': ["ipaddress"]})
-else:
-    extras_require.update({'srv': ["dnspython>=1.16.0,<2.0.0"]})
 
 # GSSAPI extras
 if sys.platform == 'win32':
@@ -404,7 +362,7 @@ setup(
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
     install_requires=[],
     license="Apache License, Version 2.0",
-    python_requires=">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*",
+    python_requires=">=3.4",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
@@ -412,8 +370,6 @@ setup(
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
