@@ -1970,18 +1970,27 @@ axes:
           test_pyopenssl: true
         batchtime: 10080  # 7 days
 
-  - id: requireApiVersion
-    display_name: "requireApiVersion"
+  - id: versionedApi
+    display_name: "versionedApi"
     values:
+      # Test against a cluster with requireApiVersion=1.
       - id: "requireApiVersion1"
         display_name: "requireApiVersion1"
-        tags: [ "requireApiVersion_tag" ]
+        tags: [ "versionedApi_tag" ]
         variables:
           # REQUIRE_API_VERSION is set to make drivers-evergreen-tools
           # start a cluster with the requireApiVersion parameter.
           REQUIRE_API_VERSION: "1"
           # MONGODB_API_VERSION is the apiVersion to use in the test suite.
           MONGODB_API_VERSION: "1"
+      # Test against a cluster with acceptAPIVersion2 but without
+      # requireApiVersion, and don't automatically add apiVersion to
+      # clients created in the test suite.
+      - id: "acceptAPIVersion2"
+        display_name: "acceptAPIVersion2"
+        tags: [ "versionedApi_tag" ]
+        variables:
+          ORCHESTRATION_FILE: "versioned-api-testing.json"
 
 buildvariants:
 - matrix_name: "tests-all"
@@ -2514,8 +2523,9 @@ buildvariants:
     platform: ubuntu-16.04
     python-version: ["3.6", "3.9"]
     auth: "auth"
-    requireApiVersion: "*"
-  display_name: "requireApiVersion ${python-version}"
+    versionedApi: "*"
+  display_name: "Versioned API ${versionedApi} ${python-version}"
+  batchtime: 10080  # 7 days
   tasks:
     # Versioned API was introduced in MongoDB 4.7
     - "test-latest-standalone"
