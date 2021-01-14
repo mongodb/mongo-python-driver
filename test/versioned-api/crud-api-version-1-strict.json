@@ -141,6 +141,7 @@
     },
     {
       "description": "aggregate on database appends declared API version",
+      "skipReason": "DRIVERS-1505 $listLocalSessions is not supported in API version 1",
       "operations": [
         {
           "name": "aggregate",
