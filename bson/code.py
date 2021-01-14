@@ -15,7 +15,7 @@
 """Tools for representing JavaScript code in BSON.
 """
 
-from bson.py3compat import abc, string_type, PY3, text_type
+from collections.abc import Mapping as _Mapping
 
 
 class Code(str):
@@ -49,14 +49,10 @@ class Code(str):
     _type_marker = 13
 
     def __new__(cls, code, scope=None, **kwargs):
-        if not isinstance(code, string_type):
-            raise TypeError("code must be an "
-                            "instance of %s" % (string_type.__name__))
+        if not isinstance(code, str):
+            raise TypeError("code must be an instance of str")
 
-        if not PY3 and isinstance(code, text_type):
-            self = str.__new__(cls, code.encode('utf8'))
-        else:
-            self = str.__new__(cls, code)
+        self = str.__new__(cls, code)
 
         try:
             self.__scope = code.scope
@@ -64,7 +60,7 @@ class Code(str):
             self.__scope = None
 
         if scope is not None:
-            if not isinstance(scope, abc.Mapping):
+            if not isinstance(scope, _Mapping):
                 raise TypeError("scope must be an instance of dict")
             if self.__scope is not None:
                 self.__scope.update(scope)

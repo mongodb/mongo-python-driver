@@ -15,14 +15,15 @@
 """Tools for representing raw BSON documents.
 """
 
+from collections.abc import Mapping as _Mapping
+
 from bson import _raw_to_dict, _get_object_size
-from bson.py3compat import abc, iteritems
 from bson.codec_options import (
     DEFAULT_CODEC_OPTIONS as DEFAULT, _RAW_BSON_DOCUMENT_MARKER)
 from bson.son import SON
 
 
-class RawBSONDocument(abc.Mapping):
+class RawBSONDocument(_Mapping):
     """Representation for a MongoDB document that provides access to the raw
     BSON bytes that compose it.
 
@@ -88,7 +89,7 @@ class RawBSONDocument(abc.Mapping):
 
     def items(self):
         """Lazily decode and iterate elements in this document."""
-        return iteritems(self.__inflated)
+        return self.__inflated.items()
 
     @property
     def __inflated(self):

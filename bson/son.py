@@ -21,8 +21,7 @@ dictionary."""
 import copy
 import re
 
-from bson.py3compat import abc, iteritems
-
+from collections.abc import Mapping as _Mapping
 
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type
@@ -178,10 +177,10 @@ class SON(dict):
         def transform_value(value):
             if isinstance(value, list):
                 return [transform_value(v) for v in value]
-            elif isinstance(value, abc.Mapping):
+            elif isinstance(value, _Mapping):
                 return dict([
                     (k, transform_value(v))
-                    for k, v in iteritems(value)])
+                    for k, v in value.items()])
             else:
                 return value
 

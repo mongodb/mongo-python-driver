@@ -126,8 +126,6 @@ from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
-from bson.py3compat import (PY3, iteritems, integer_types, string_type,
-                            text_type)
 from bson.regex import Regex
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
@@ -443,10 +441,10 @@ def _json_convert(obj, json_options=DEFAULT_JSON_OPTIONS):
     """Recursive helper method that converts BSON types so they can be
     converted into json.
     """
-    if hasattr(obj, 'iteritems') or hasattr(obj, 'items'):  # PY3 support
+    if hasattr(obj, 'items'):
         return SON(((k, _json_convert(v, json_options))
-                    for k, v in iteritems(obj)))
-    elif hasattr(obj, '__iter__') and not isinstance(obj, (text_type, bytes)):
+                    for k, v in obj.items()))
+    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes)):
         return list((_json_convert(v, json_options) for v in obj))
     try:
         return default(obj, json_options)
@@ -518,7 +516,7 @@ def _parse_legacy_uuid(doc, json_options):
     """Decode a JSON legacy $uuid to Python UUID."""
     if len(doc) != 1:
         raise TypeError('Bad $uuid, extra field(s): %s' % (doc,))
-    if not isinstance(doc["$uuid"], text_type):
+    if not isinstance(doc["$uuid"], str):
         raise TypeError('$uuid must be a string: %s' % (doc,))
     if json_options.uuid_representation == UuidRepresentation.UNSPECIFIED:
         return Binary.from_uuid(uuid.UUID(doc["$uuid"]))
@@ -542,7 +540,7 @@ def _binary_or_uuid(data, subtype, json_options):
             uuid_representation = UuidRepresentation.PYTHON_LEGACY
         return binary_value.as_uuid(uuid_representation)
 
-    if PY3 and subtype == 0:
+    if subtype == 0:
         return data
     return Binary(data, subtype)
 
@@ -561,9 +559,9 @@ def _parse_canonical_binary(doc, json_options):
     binary = doc["$binary"]
     b64 = binary["base64"]
     subtype = binary["subType"]
-    if not isinstance(b64, string_type):
+    if not isinstance(b64, str):
         raise TypeError('$binary base64 must be a string: %s' % (doc,))
-    if not isinstance(subtype, string_type) or len(subtype) > 2:
+    if not isinstance(subtype, str) or len(subtype) > 2:
         raise TypeError('$binary subType must be a string at most 2 '
                         'characters: %s' % (doc,))
     if len(binary) != 2:
@@ -580,7 +578,7 @@ def _parse_canonical_datetime(doc, json_options):
     if len(doc) != 1:
         raise TypeError('Bad $date, extra field(s): %s' % (doc,))
     # mongoexport 2.6 and newer
-    if isinstance(dtm, string_type):
+    if isinstance(dtm, str):
         # Parse offset
         if dtm[-1] == 'Z':
             dt = dtm[:-1]
@@ -645,7 +643,7 @@ def _parse_canonical_symbol(doc):
     symbol = doc['$symbol']
     if len(doc) != 1:
         raise TypeError('Bad $symbol, extra field(s): %s' % (doc,))
-    return text_type(symbol)
+    return str(symbol)
 
 
 def _parse_canonical_code(doc):
@@ -704,7 +702,7 @@ def _parse_canonical_int32(doc):
     i_str = doc['$numberInt']
     if len(doc) != 1:
         raise TypeError('Bad $numberInt, extra field(s): %s' % (doc,))
-    if not isinstance(i_str, string_type):
+    if not isinstance(i_str, str):
         raise TypeError('$numberInt must be string: %s' % (doc,))
     return int(i_str)
 
@@ -722,7 +720,7 @@ def _parse_canonical_double(doc):
     d_str = doc['$numberDouble']
     if len(doc) != 1:
         raise TypeError('Bad $numberDouble, extra field(s): %s' % (doc,))
-    if not isinstance(d_str, string_type):
+    if not isinstance(d_str, str):
         raise TypeError('$numberDouble must be string: %s' % (doc,))
     return float(d_str)
 
@@ -732,7 +730,7 @@ def _parse_canonical_decimal128(doc):
     d_str = doc['$numberDecimal']
     if len(doc) != 1:
         raise TypeError('Bad $numberDecimal, extra field(s): %s' % (doc,))
-    if not isinstance(d_str, string_type):
+    if not isinstance(d_str, str):
         raise TypeError('$numberDecimal must be string: %s' % (doc,))
     return Decimal128(d_str)
 
@@ -809,7 +807,7 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
             flags += "u"
         if obj.flags & re.VERBOSE:
             flags += "x"
-        if isinstance(obj.pattern, text_type):
+        if isinstance(obj.pattern, str):
             pattern = obj.pattern
         else:
             pattern = obj.pattern.decode('utf-8')
@@ -831,7 +829,7 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
             ('$scope', _json_convert(obj.scope, json_options))])
     if isinstance(obj, Binary):
         return _encode_binary(obj, obj.subtype, json_options)
-    if PY3 and isinstance(obj, bytes):
+    if isinstance(obj, bytes):
         return _encode_binary(obj, 0, json_options)
     if isinstance(obj, uuid.UUID):
         if json_options.strict_uuid:
@@ -845,10 +843,10 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
     if isinstance(obj, bool):
         return obj
     if (json_options.json_mode == JSONMode.CANONICAL and
-            isinstance(obj, integer_types)):
+            isinstance(obj, int)):
         if -2 ** 31 <= obj < 2 ** 31:
-            return {'$numberInt': text_type(obj)}
-        return {'$numberLong': text_type(obj)}
+            return {'$numberInt': str(obj)}
+        return {'$numberLong': str(obj)}
     if json_options.json_mode != JSONMode.LEGACY and isinstance(obj, float):
         if math.isnan(obj):
             return {'$numberDouble': 'NaN'}
@@ -859,5 +857,5 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
             # repr() will return the shortest string guaranteed to produce the
             # original value, when float() is called on it. str produces a
             # shorter string in Python 2.
-            return {'$numberDouble': text_type(repr(obj))}
+            return {'$numberDouble': str(repr(obj))}
     raise TypeError("%r is not JSON serializable" % obj)

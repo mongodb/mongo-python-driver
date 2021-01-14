@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import datetime
+import sys
 import uuid
+
+sys.path[0:0] = [""]
 
 from bson import decode, encode
 from bson.binary import Binary, JAVA_LEGACY

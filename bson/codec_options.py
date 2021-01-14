@@ -14,18 +14,19 @@
 
 """Tools for specifying BSON codec options."""
 
+import abc
 import datetime
 import warnings
 
-from abc import abstractmethod
 from collections import namedtuple
-
-from bson.py3compat import ABC, abc, abstractproperty, string_type
+from collections.abc import MutableMapping as _MutableMapping
 
 from bson.binary import (UuidRepresentation,
                          ALL_UUID_REPRESENTATIONS,
                          UUID_REPRESENTATION_NAMES)
 
+def _abstractproperty(func):
+    return property(abc.abstractmethod(func))
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
@@ -36,7 +37,7 @@ def _raw_document_class(document_class):
     return marker == _RAW_BSON_DOCUMENT_MARKER
 
 
-class TypeEncoder(ABC):
+class TypeEncoder(abc.ABC):
     """Base class for defining type codec classes which describe how a
     custom type can be transformed to one of the types BSON understands.
 
@@ -45,18 +46,18 @@ class TypeEncoder(ABC):
 
     See :ref:`custom-type-type-codec` documentation for an example.
     """
-    @abstractproperty
+    @_abstractproperty
     def python_type(self):
         """The Python type to be converted into something serializable."""
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def transform_python(self, value):
         """Convert the given Python object into something serializable."""
         pass
 
 
-class TypeDecoder(ABC):
+class TypeDecoder(abc.ABC):
     """Base class for defining type codec classes which describe how a
     BSON type can be transformed to a custom type.
 
@@ -65,12 +66,12 @@ class TypeDecoder(ABC):
 
     See :ref:`custom-type-type-codec` documentation for an example.
     """
-    @abstractproperty
+    @_abstractproperty
     def bson_type(self):
         """The BSON type to be converted into our own type."""
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def transform_bson(self, value):
         """Convert the given BSON value into our own type."""
         pass
@@ -188,7 +189,7 @@ class CodecOptions(_options_base):
       '\\x16\\x00\\x00\\x00\\x07_id\\x00[0\\x165\\x91\\x10\\xea\\x14\\xe8\\xc5\\x8b\\x93\\x00'
 
     The document class can be any type that inherits from
-    :class:`~collections.MutableMapping`::
+    :class:`~collections.abc.MutableMapping`::
 
       >>> class AttributeDict(dict):
       ...     # A dict that supports attribute access.
@@ -212,7 +213,7 @@ class CodecOptions(_options_base):
     :Parameters:
       - `document_class`: BSON documents returned in queries will be decoded
         to an instance of this class. Must be a subclass of
-        :class:`~collections.MutableMapping`. Defaults to :class:`dict`.
+        :class:`~collections.abc.MutableMapping`. Defaults to :class:`dict`.
       - `tz_aware`: If ``True``, BSON datetimes will be decoded to timezone
         aware instances of :class:`~datetime.datetime`. Otherwise they will be
         naive. Defaults to ``False``.
@@ -247,11 +248,11 @@ class CodecOptions(_options_base):
                 uuid_representation=None,
                 unicode_decode_error_handler="strict",
                 tzinfo=None, type_registry=None):
-        if not (issubclass(document_class, abc.MutableMapping) or
+        if not (issubclass(document_class, _MutableMapping) or
                 _raw_document_class(document_class)):
             raise TypeError("document_class must be dict, bson.son.SON, "
                             "bson.raw_bson.RawBSONDocument, or a "
-                            "sublass of collections.MutableMapping")
+                            "sublass of collections.abc.MutableMapping")
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
         if uuid_representation is None:
@@ -259,7 +260,7 @@ class CodecOptions(_options_base):
         elif uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError("uuid_representation must be a value "
                              "from bson.binary.UuidRepresentation")
-        if not isinstance(unicode_decode_error_handler, (string_type, None)):
+        if not isinstance(unicode_decode_error_handler, (str, None)):
             raise ValueError("unicode_decode_error_handler must be a string "
                              "or None")
         if tzinfo is not None:

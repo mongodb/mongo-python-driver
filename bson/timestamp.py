@@ -18,7 +18,6 @@
 import calendar
 import datetime
 
-from bson.py3compat import integer_types
 from bson.tz_util import utc
 
 UPPERBOUND = 4294967296
@@ -52,9 +51,9 @@ class Timestamp(object):
             if time.utcoffset() is not None:
                 time = time - time.utcoffset()
             time = int(calendar.timegm(time.timetuple()))
-        if not isinstance(time, integer_types):
+        if not isinstance(time, int):
             raise TypeError("time must be an instance of int")
-        if not isinstance(inc, integer_types):
+        if not isinstance(inc, int):
             raise TypeError("inc must be an instance of int")
         if not 0 <= time < UPPERBOUND:
             raise ValueError("time must be contained in [0, 2**32)")

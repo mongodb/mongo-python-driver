@@ -23,18 +23,6 @@ import decimal
 import struct
 import sys
 
-from bson.py3compat import (PY3 as _PY3,
-                            string_type as _string_type)
-
-
-if _PY3:
-    _from_bytes = int.from_bytes  # pylint: disable=no-member, invalid-name
-else:
-    import binascii
-    def _from_bytes(value, dummy, _int=int, _hexlify=binascii.hexlify):
-        "An implementation of int.from_bytes for python 2.x."
-        return _int(_hexlify(value), 16)
-
 
 _PACK_64 = struct.Struct("<Q").pack
 _UNPACK_64 = struct.Struct("<Q").unpack
@@ -66,16 +54,9 @@ _CTX_OPTIONS = {
     'flags': [],
     'traps': [decimal.InvalidOperation,
               decimal.Overflow,
-              decimal.Inexact]
+              decimal.Inexact],
+    'clamp': 1
 }
-
-try:
-    # Python >= 3.3, cdecimal
-    decimal.Context(clamp=1)  # pylint: disable=unexpected-keyword-arg
-    _CTX_OPTIONS['clamp'] = 1
-except TypeError:
-    # Python < 3.3
-    _CTX_OPTIONS['_clamp'] = 1
 
 _DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())
 
@@ -237,7 +218,7 @@ class Decimal128(object):
     _type_marker = 19
 
     def __init__(self, value):
-        if isinstance(value, (_string_type, decimal.Decimal)):
+        if isinstance(value, (str, decimal.Decimal)):
             self.__high, self.__low = _decimal_to_128(value)
         elif isinstance(value, (list, tuple)):
             if len(value) != 2:
@@ -285,7 +266,7 @@ class Decimal128(object):
 
         # cdecimal only accepts a tuple for digits.
         digits = tuple(
-            int(digit) for digit in str(_from_bytes(arr, 'big')))
+            int(digit) for digit in str(int.from_bytes(arr, 'big')))
 
         with decimal.localcontext(_DEC128_CTX) as ctx:
             return ctx.create_decimal((sign, digits, exponent))

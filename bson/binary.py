@@ -15,8 +15,6 @@
 from uuid import UUID
 from warnings import warn
 
-from bson.py3compat import PY3
-
 """Tools for representing BSON binary data.
 """
 
@@ -318,7 +316,7 @@ class Binary(bytes):
     def __getnewargs__(self):
         # Work around http://bugs.python.org/issue7382
         data = super(Binary, self).__getnewargs__()[0]
-        if PY3 and not isinstance(data, bytes):
+        if not isinstance(data, bytes):
             data = data.encode('latin-1')
         return data, self.__subtype
 
