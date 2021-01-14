@@ -1336,32 +1336,6 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertTrue('inprog' in succeeded.reply)
         self.assertTrue('ok' in succeeded.reply)
 
-        if not client_context.is_mongos:
-            with ignore_deprecations():
-                self.client.fsync(lock=True)
-                self.listener.results.clear()
-                self.client.unlock()
-                # Wait for async unlock...
-                wait_until(
-                    lambda: not self.client.is_locked, "unlock the database")
-            started = results['started'][0]
-            succeeded = results['succeeded'][0]
-            self.assertEqual(0, len(results['failed']))
-            self.assertIsInstance(started, monitoring.CommandStartedEvent)
-            expected = {'fsyncUnlock': 1}
-            self.assertEqualCommand(expected, started.command)
-            self.assertEqual('admin', started.database_name)
-            self.assertEqual('fsyncUnlock', started.command_name)
-            self.assertIsInstance(started.request_id, int)
-            self.assertEqual(self.client.address, started.connection_id)
-            self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
-            self.assertIsInstance(succeeded.duration_micros, int)
-            self.assertEqual(started.command_name, succeeded.command_name)
-            self.assertEqual(started.request_id, succeeded.request_id)
-            self.assertEqual(started.connection_id, succeeded.connection_id)
-            self.assertTrue('info' in succeeded.reply)
-            self.assertTrue('ok' in succeeded.reply)
-
     def test_sensitive_commands(self):
         listeners = self.client._event_listeners
 
