@@ -28,9 +28,9 @@ createvirtualenv () {
 }
 
 # Usage:
-# testinstall /path/to/python /path/to/.whl/or/.egg ["no-virtualenv"]
+# testinstall /path/to/python /path/to/.whl ["no-virtualenv"]
 # * param1: Python binary to test
-# * param2: Path to the wheel or egg file to install
+# * param2: Path to the wheel to install
 # * param3 (optional): If set to a non-empty string, don't create a virtualenv. Used in manylinux containers.
 testinstall () {
     PYTHON=$1
@@ -42,11 +42,7 @@ testinstall () {
         PYTHON=python
     fi
 
-    if [[ $RELEASE == *.egg ]]; then
-        $PYTHON -m easy_install $RELEASE
-    else
-        $PYTHON -m pip install --upgrade $RELEASE
-    fi
+    $PYTHON -m pip install --upgrade $RELEASE
     cd tools
     $PYTHON fail_if_no_c.py
     $PYTHON -m pip uninstall -y pymongo

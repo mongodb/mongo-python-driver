@@ -8,14 +8,8 @@ rm -rf validdist
 mkdir -p validdist
 mv dist/* validdist || true
 
-for VERSION in 2.7 3.4 3.5 3.6 3.7 3.8 3.9; do
-    if [[ $VERSION == "2.7" ]]; then
-        PYTHON=/System/Library/Frameworks/Python.framework/Versions/2.7/bin/python
-        rm -rf build
-        $PYTHON setup.py bdist_egg
-    else
-        PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
-    fi
+for VERSION in 3.4 3.5 3.6 3.7 3.8 3.9; do
+    PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
     rm -rf build
 
     # Install wheel if not already there.
