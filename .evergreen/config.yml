@@ -866,7 +866,6 @@ tasks:
     - name: "release"
       tags: ["release"]
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
-      git_tag_only: true
       commands:
         - command: shell.exec
           type: test
@@ -2712,6 +2711,7 @@ buildvariants:
   matrix_spec:
     platform: [ubuntu-20.04, windows-64-vsMulti-small, macos-1014]
   display_name: "Release ${platform}"
+  batchtime: 20160 # 14 days
   tasks:
     - name: "release"
 
