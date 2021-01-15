@@ -28,7 +28,7 @@ createvirtualenv () {
     if [[ $PYTHON_VERSION == "3.4" ]]; then
         # pip 19.2 dropped support for Python 3.4.
         python -m pip install --upgrade 'pip<19.2'
-    if [[ $PYTHON_VERSION == "3.5" ]]; then
+    elif [[ $PYTHON_VERSION == "3.5" ]]; then
         # pip 21 will drop support for 3.5.
         python -m pip install --upgrade 'pip<21'
     else
