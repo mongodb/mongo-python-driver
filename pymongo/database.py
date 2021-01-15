@@ -37,7 +37,6 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
 _INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
-_SYSTEM_FILTER = {"filter": {"name": {"$regex": r"^(?!system\.)"}}}
 
 
 def _check_name(name):
@@ -862,31 +861,6 @@ class Database(common.BaseObject):
 
         return [result["name"]
                 for result in self.list_collections(session=session, **kwargs)]
-
-    def collection_names(self, include_system_collections=True,
-                         session=None):
-        """**DEPRECATED**: Get a list of all the collection names in this
-        database.
-
-        :Parameters:
-          - `include_system_collections` (optional): if ``False`` list
-            will not include system collections (e.g ``system.indexes``)
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
-
-        .. versionchanged:: 3.7
-           Deprecated. Use :meth:`list_collection_names` instead.
-
-        .. versionchanged:: 3.6
-           Added ``session`` parameter.
-        """
-        warnings.warn("collection_names is deprecated. Use "
-                      "list_collection_names instead.",
-                      DeprecationWarning, stacklevel=2)
-        kws = {} if include_system_collections else _SYSTEM_FILTER
-        return [result["name"]
-                for result in self.list_collections(session=session,
-                                                    nameOnly=True, **kws)]
 
     def drop_collection(self, name_or_collection, session=None):
         """Drop a collection.

@@ -227,12 +227,11 @@ class TestSession(IntegrationTest):
         client.close()
         self.assertEqual(len(listener.results['started']), 0)
 
-    @ignore_deprecations  # fsync and unlock
     def test_client(self):
         client = self.client
         ops = [
             (client.server_info, [], {}),
-            (client.database_names, [], {}),
+            (client.list_database_names, [], {}),
             (client.drop_database, ['pymongo_test'], {}),
         ]
 
@@ -244,7 +243,6 @@ class TestSession(IntegrationTest):
         ops = [
             (db.command, ['ping'], {}),
             (db.create_collection, ['collection'], {}),
-            (db.collection_names, [], {}),
             (db.list_collection_names, [], {}),
             (db.validate_collection, ['collection'], {}),
             (db.drop_collection, ['collection'], {}),
@@ -1129,7 +1127,7 @@ class TestSessionsMultiAuth(IntegrationTest):
                 db.collection.bulk_write([InsertOne({})], session=s)
 
             with self.assertRaisesRegex(InvalidOperation, err):
-                db.collection_names(session=s)
+                db.list_collection_names(session=s)
 
             with self.assertRaisesRegex(InvalidOperation, err):
                 db.collection.find_one(session=s)
@@ -1147,7 +1145,7 @@ class TestSessionsMultiAuth(IntegrationTest):
 
         for name, f in [
             ('bulk_write', lambda: db.collection.bulk_write([InsertOne({})])),
-            ('collection_names', db.collection_names),
+            ('list_collection_names', db.list_collection_names),
             ('find_one', db.collection.find_one),
             ('aggregate', lambda: list(db.collection.aggregate([])))
         ]:

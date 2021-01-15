@@ -96,6 +96,37 @@ collection::
 
 .. _currentOp command: https://docs.mongodb.com/manual/reference/command/currentOp/
 
+MongoClient.database_names is removed
+.....................................
+
+Removed :meth:`pymongo.mongo_client.MongoClient.database_names`. Use
+:meth:`~pymongo.mongo_client.MongoClient.list_database_names` instead. Code like
+this::
+
+    names = client.database_names()
+
+can be changed to this::
+
+    names = client.list_database_names()
+
+Database
+--------
+
+Database.collection_names is removed
+....................................
+
+Removed :meth:`pymongo.database.Database.collection_names`. Use
+:meth:`~pymongo.database.Database.list_collection_names` instead. Code like
+this::
+
+    names = client.collection_names()
+    non_system_names = client.collection_names(include_system_collections=False)
+
+can be changed to this::
+
+    names = client.list_collection_names()
+    non_system_names = client.list_collection_names(filter={"name": {"$regex": r"^(?!system\\.)"}})
+
 Removed features with no migration path
 ---------------------------------------
 

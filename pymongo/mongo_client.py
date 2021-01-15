@@ -1931,24 +1931,6 @@ class MongoClient(common.BaseObject):
         return [doc["name"]
                 for doc in self.list_databases(session, nameOnly=True)]
 
-    def database_names(self, session=None):
-        """**DEPRECATED**: Get a list of the names of all databases on the
-        connected server.
-
-        :Parameters:
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
-
-        .. versionchanged:: 3.7
-           Deprecated. Use :meth:`list_database_names` instead.
-
-        .. versionchanged:: 3.6
-           Added ``session`` parameter.
-        """
-        warnings.warn("database_names is deprecated. Use list_database_names "
-                      "instead.", DeprecationWarning, stacklevel=2)
-        return self.list_database_names(session)
-
     def drop_database(self, name_or_database, session=None):
         """Drop a database.
 
