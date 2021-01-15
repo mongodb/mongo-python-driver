@@ -23,8 +23,6 @@ from bson.int64 import Int64
 from bson.son import SON
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from bson.py3compat import text_type, StringIO
-from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
@@ -34,6 +32,8 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.read_preferences import ReadPreference
+
+from gridfs.errors import CorruptGridFile, FileExists, NoFile
 
 try:
     _SEEK_SET = os.SEEK_SET
@@ -195,7 +195,7 @@ class GridIn(object):
         object.__setattr__(self, "_coll", coll)
         object.__setattr__(self, "_chunks", coll.chunks)
         object.__setattr__(self, "_file", kwargs)
-        object.__setattr__(self, "_buffer", StringIO())
+        object.__setattr__(self, "_buffer", io.BytesIO())
         object.__setattr__(self, "_position", 0)
         object.__setattr__(self, "_chunk_number", 0)
         object.__setattr__(self, "_closed", False)
@@ -297,7 +297,7 @@ class GridIn(object):
         """
         self.__flush_data(self._buffer.getvalue())
         self._buffer.close()
-        self._buffer = StringIO()
+        self._buffer = io.BytesIO()
 
     def __flush(self):
         """Flush the file to the database.
@@ -369,15 +369,15 @@ class GridIn(object):
             read = data.read
         except AttributeError:
             # string
-            if not isinstance(data, (text_type, bytes)):
+            if not isinstance(data, (str, bytes)):
                 raise TypeError("can only write strings or file-like objects")
-            if isinstance(data, text_type):
+            if isinstance(data, str):
                 try:
                     data = data.encode(self.encoding)
                 except AttributeError:
                     raise TypeError("must specify an encoding for file in "
-                                    "order to write %s" % (text_type.__name__,))
-            read = StringIO(data).read
+                                    "order to write str")
+            read = io.BytesIO(data).read
 
         if self._buffer.tell() > 0:
             # Make sure to flush only when _buffer is complete
@@ -560,7 +560,7 @@ class GridOut(object):
             return EMPTY
 
         received = 0
-        data = StringIO()
+        data = io.BytesIO()
         while received < size:
             chunk_data = self.readchunk()
             received += len(chunk_data)
@@ -595,7 +595,7 @@ class GridOut(object):
             return EMPTY
 
         received = 0
-        data = StringIO()
+        data = io.BytesIO()
         while received < size:
             chunk_data = self.readchunk()
             pos = chunk_data.find(NEWLN, 0, size)

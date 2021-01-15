@@ -20,7 +20,14 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 .. mongodoc:: gridfs
 """
 
-from bson.py3compat import abc
+from collections import abc
+
+from pymongo import (ASCENDING,
+                     DESCENDING)
+from pymongo.common import UNAUTHORIZED_CODES, validate_string
+from pymongo.database import Database
+from pymongo.errors import ConfigurationError, OperationFailure
+
 from gridfs.errors import NoFile
 from gridfs.grid_file import (GridIn,
                               GridOut,
@@ -28,12 +35,6 @@ from gridfs.grid_file import (GridIn,
                               DEFAULT_CHUNK_SIZE,
                               _clear_entity_type_registry,
                               _disallow_transactions)
-from pymongo import (ASCENDING,
-                     DESCENDING)
-from pymongo.common import UNAUTHORIZED_CODES, validate_string
-from pymongo.database import Database
-from pymongo.errors import ConfigurationError, OperationFailure
-
 
 class GridFS(object):
     """An instance of GridFS on top of a single Database.
