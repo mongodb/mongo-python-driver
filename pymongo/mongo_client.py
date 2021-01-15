@@ -1549,38 +1549,6 @@ class MongoClient(common.BaseObject):
         """
         return database.Database(self, name)
 
-    def close_cursor(self, cursor_id, address=None):
-        """DEPRECATED - Send a kill cursors message soon with the given id.
-
-        Raises :class:`TypeError` if `cursor_id` is not an instance of
-        ``(int, long)``.
-
-        This method may be called from a :class:`~pymongo.cursor.Cursor`
-        destructor during garbage collection, so it isn't safe to take a
-        lock or do network I/O. Instead, we schedule the cursor to be closed
-        soon on a background thread.
-
-        :Parameters:
-          - `cursor_id`: id of cursor to close
-          - `address` (optional): (host, port) pair of the cursor's server.
-            If it is not provided, the client attempts to close the cursor on
-            the primary or standalone, or a mongos server.
-
-        .. versionchanged:: 3.7
-           Deprecated.
-
-        .. versionchanged:: 3.0
-           Added ``address`` parameter.
-        """
-        warnings.warn(
-            "close_cursor is deprecated.",
-            DeprecationWarning,
-            stacklevel=2)
-        if not isinstance(cursor_id, integer_types):
-            raise TypeError("cursor_id must be an instance of (int, long)")
-
-        self._close_cursor(cursor_id, address)
-
     def _close_cursor(self, cursor_id, address):
         """Send a kill cursors message with the given id.
 
@@ -1604,37 +1572,6 @@ class MongoClient(common.BaseObject):
         except PyMongoError:
             # Make another attempt to kill the cursor later.
             self.__kill_cursors_queue.append((address, [cursor_id]))
-
-    def kill_cursors(self, cursor_ids, address=None):
-        """DEPRECATED - Send a kill cursors message soon with the given ids.
-
-        Raises :class:`TypeError` if `cursor_ids` is not an instance of
-        ``list``.
-
-        :Parameters:
-          - `cursor_ids`: list of cursor ids to kill
-          - `address` (optional): (host, port) pair of the cursor's server.
-            If it is not provided, the client attempts to close the cursor on
-            the primary or standalone, or a mongos server.
-
-        .. versionchanged:: 3.3
-           Deprecated.
-
-        .. versionchanged:: 3.0
-           Now accepts an `address` argument. Schedules the cursors to be
-           closed on a background thread instead of sending the message
-           immediately.
-        """
-        warnings.warn(
-            "kill_cursors is deprecated.",
-            DeprecationWarning,
-            stacklevel=2)
-
-        if not isinstance(cursor_ids, list):
-            raise TypeError("cursor_ids must be a list")
-
-        # "Atomic", needs no lock.
-        self.__kill_cursors_queue.append((address, cursor_ids))
 
     def _kill_cursors(self, cursor_ids, address, topology, session):
         """Send a kill cursors message with the given ids."""

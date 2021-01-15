@@ -1171,10 +1171,6 @@ class Cursor(object):
     def cursor_id(self):
         """Returns the id of the cursor
 
-        Useful if you need to manage cursor ids and want to handle killing
-        cursors manually using
-        :meth:`~pymongo.mongo_client.MongoClient.kill_cursors`
-
         .. versionadded:: 2.2
         """
         return self.__id

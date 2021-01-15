@@ -42,6 +42,3 @@
       .. automethod:: get_database
       .. automethod:: server_info
       .. automethod:: watch
-      .. automethod:: close_cursor
-      .. automethod:: kill_cursors
-      .. automethod:: set_cursor_manager
