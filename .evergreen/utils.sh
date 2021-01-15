@@ -24,13 +24,23 @@ createvirtualenv () {
     fi
     # Upgrade to the latest versions of pip setuptools wheel so that
     # pip can always download the latest cryptography+cffi wheels.
-    python -m pip install --upgrade pip setuptools wheel
+    PYTHON_VERSION=$(python -c 'import sys;print("%s.%s" % sys.version_info[:2])')
+    if [[ $PYTHON_VERSION == "3.4" ]]; then
+        # pip 19.2 dropped support for Python 3.4.
+        python -m pip install --upgrade 'pip<19.2'
+    elif [[ $PYTHON_VERSION == "3.5" ]]; then
+        # pip 21 will drop support for 3.5.
+        python -m pip install --upgrade 'pip<21'
+    else
+        python -m pip install --upgrade pip
+    fi
+    python -m pip install --upgrade setuptools wheel
 }
 
 # Usage:
-# testinstall /path/to/python /path/to/.whl/or/.egg ["no-virtualenv"]
+# testinstall /path/to/python /path/to/.whl ["no-virtualenv"]
 # * param1: Python binary to test
-# * param2: Path to the wheel or egg file to install
+# * param2: Path to the wheel to install
 # * param3 (optional): If set to a non-empty string, don't create a virtualenv. Used in manylinux containers.
 testinstall () {
     PYTHON=$1
@@ -42,11 +52,7 @@ testinstall () {
         PYTHON=python
     fi
 
-    if [[ $RELEASE == *.egg ]]; then
-        $PYTHON -m easy_install $RELEASE
-    else
-        $PYTHON -m pip install --upgrade $RELEASE
-    fi
+    $PYTHON -m pip install --upgrade $RELEASE
     cd tools
     $PYTHON fail_if_no_c.py
     $PYTHON -m pip uninstall -y pymongo
