@@ -323,40 +323,6 @@ class TestSession(IntegrationTest):
 
         self._test_ops(client, *ops)
 
-    @client_context.require_no_mongos
-    @client_context.require_version_max(4, 1, 0)
-    @ignore_deprecations
-    def test_parallel_collection_scan(self):
-        listener = self.listener
-        client = self.client
-        coll = client.pymongo_test.collection
-        coll.insert_many([{'_id': i} for i in range(1000)])
-
-        listener.results.clear()
-
-        def scan(session=None):
-            cursors = coll.parallel_scan(4, session=session)
-            for c in cursors:
-                c.batch_size(2)
-                list(c)
-
-        listener.results.clear()
-        with client.start_session() as session:
-            scan(session)
-        cursor_lsids = {}
-        for event in listener.results['started']:
-            self.assertIn(
-                'lsid', event.command,
-                "parallel_scan sent no lsid with %s" % (event.command_name, ))
-
-            if event.command_name == 'getMore':
-                cursor_id = event.command['getMore']
-                if cursor_id in cursor_lsids:
-                    self.assertEqual(cursor_lsids[cursor_id],
-                                     event.command['lsid'])
-                else:
-                    cursor_lsids[cursor_id] = event.command['lsid']
-
     def test_cursor_clone(self):
         coll = self.client.pymongo_test.collection
         # Ensure some batches.
@@ -874,14 +840,6 @@ class TestCausalConsistency(unittest.TestCase):
                 lambda coll, session: coll.inline_map_reduce(
                     'function() {}', 'function() {}', session=session),
                 exception=map_reduce_exc)
-        if (not client_context.is_mongos and
-                not client_context.version.at_least(4, 1, 0)):
-            def scan(coll, session):
-                cursors = coll.parallel_scan(1, session=session)
-                for cur in cursors:
-                    list(cur)
-            self._test_reads(
-                lambda coll, session: scan(coll, session=session))
 
         self.assertRaises(
             ConfigurationError,

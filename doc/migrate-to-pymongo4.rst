@@ -116,3 +116,12 @@ can be changed to this::
 
   >>> from bson.code import Code
   >>> result = database.command('eval', Code('function (x) {return x;}'), args=[3]).get('retval')
+
+
+Collection.parallel_scan is removed
+...................................
+
+Removed :meth:`~pymongo.collection.Collection.parallel_scan`. MongoDB 4.2
+removed the `parallelCollectionScan command`_.  There is no replacement.
+
+.. _parallelCollectionScan command: https://docs.mongodb.com/manual/reference/command/parallelCollectionScan/
