@@ -46,6 +46,3 @@
       .. automethod:: close_cursor
       .. automethod:: kill_cursors
       .. automethod:: set_cursor_manager
-      .. autoattribute:: is_locked
-      .. automethod:: fsync
-      .. automethod:: unlock

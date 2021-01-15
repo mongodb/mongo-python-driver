@@ -230,27 +230,11 @@ class TestSession(IntegrationTest):
     @ignore_deprecations  # fsync and unlock
     def test_client(self):
         client = self.client
-
-        # Make sure if the test fails we unlock the server.
-        def unlock():
-            try:
-                client.unlock()
-            except OperationFailure:
-                pass
-
-        self.addCleanup(unlock)
-
         ops = [
             (client.server_info, [], {}),
             (client.database_names, [], {}),
             (client.drop_database, ['pymongo_test'], {}),
         ]
-
-        if not client_context.is_mongos:
-            ops.extend([
-                (client.fsync, [], {'lock': True}),
-                (client.unlock, [], {}),
-            ])
 
         self._test_ops(client, *ops)
 

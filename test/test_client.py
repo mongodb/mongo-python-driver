@@ -1148,44 +1148,6 @@ class TestClient(IntegrationTest):
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_bernie" in dbs)
 
-    @ignore_deprecations
-    @client_context.require_no_mongos
-    def test_fsync_lock_unlock(self):
-        if server_is_master_with_slave(client_context.client):
-            raise SkipTest('SERVER-7714')
-
-        self.assertFalse(self.client.is_locked)
-        # async flushing not supported on windows...
-        if sys.platform not in ('cygwin', 'win32'):
-            # Work around async becoming a reserved keyword in Python 3.7
-            opts = {'async': True}
-            self.client.fsync(**opts)
-            self.assertFalse(self.client.is_locked)
-        self.client.fsync(lock=True)
-        self.assertTrue(self.client.is_locked)
-        locked = True
-        self.client.unlock()
-        for _ in range(5):
-            locked = self.client.is_locked
-            if not locked:
-                break
-            time.sleep(1)
-        self.assertFalse(locked)
-
-    def test_deprecated_methods(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            with self.assertRaisesRegex(DeprecationWarning,
-                                        'is_locked is deprecated'):
-                _ = self.client.is_locked
-            if not client_context.is_mongos:
-                with self.assertRaisesRegex(DeprecationWarning,
-                                            'fsync is deprecated'):
-                    self.client.fsync(lock=True)
-                with self.assertRaisesRegex(DeprecationWarning,
-                                            'unlock is deprecated'):
-                    self.client.unlock()
-
     def test_contextlib(self):
         client = rs_or_single_client()
         client.pymongo_test.drop_collection("test")

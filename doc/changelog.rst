@@ -18,6 +18,9 @@ Breaking Changes in 4.0
 - Removed :meth:`~pymongo.database.Database.eval`,
   :data:`~pymongo.database.Database.system_js` and
   :class:`~pymongo.database.SystemJS`.
+- Removed :meth:`pymongo.mongo_client.MongoClient.fsync`,
+  :meth:`pymongo.mongo_client.MongoClient.unlock`, and
+  :attr:`pymongo.mongo_client.MongoClient.is_locked`.
 - Removed :mod:`~pymongo.thread_util`.
 
 Notable improvements
