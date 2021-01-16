@@ -38,7 +38,7 @@ _MONGOS_MODES = (
 
 
 def _validate_tag_sets(tag_sets):
-    """Validate tag sets for a MongoReplicaSetClient.
+    """Validate tag sets for a MongoClient.
     """
     if tag_sets is None:
         return tag_sets
@@ -144,7 +144,7 @@ class _ServerMode(object):
         To specify a priority-order for tag sets, provide a list of
         tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
         set, ``{}``, means "read from any member that matches the mode,
-        ignoring tags." MongoReplicaSetClient tries each set of tags in turn
+        ignoring tags." MongoClient tries each set of tags in turn
         until it finds a set of tags with at least one matching member.
 
            .. seealso:: `Data-Center Awareness

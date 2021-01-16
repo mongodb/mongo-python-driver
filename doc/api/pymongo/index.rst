@@ -9,10 +9,6 @@
 
       Alias for :class:`pymongo.mongo_client.MongoClient`.
 
-   .. data:: MongoReplicaSetClient
-
-      Alias for :class:`pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
-
    .. data:: ReadPreference
 
       Alias for :class:`pymongo.read_preferences.ReadPreference`.
@@ -46,7 +42,6 @@ Sub-modules:
    errors
    message
    mongo_client
-   mongo_replica_set_client
    monitoring
    operations
    pool
