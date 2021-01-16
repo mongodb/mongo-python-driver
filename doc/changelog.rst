@@ -21,6 +21,8 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.mongo_client.MongoClient.fsync`,
   :meth:`pymongo.mongo_client.MongoClient.unlock`, and
   :attr:`pymongo.mongo_client.MongoClient.is_locked`.
+- Removed :meth:`pymongo.mongo_client.MongoClient.database_names`.
+- Removed :meth:`pymongo.database.Database.collection_names`.
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
 - Removed :mod:`pymongo.thread_util`.
 

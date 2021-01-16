@@ -712,22 +712,16 @@ class TestClient(IntegrationTest):
             for doc in cursor:
                 self.assertEqual(["name"], list(doc))
 
-    def _test_list_names(self, meth):
+    def test_list_database_names(self):
         self.client.pymongo_test.test.insert_one({"dummy": u"object"})
         self.client.pymongo_test_mike.test.insert_one({"dummy": u"object"})
         cmd_docs = self.client.admin.command("listDatabases")["databases"]
         cmd_names = [doc["name"] for doc in cmd_docs]
 
-        db_names = meth()
+        db_names = self.client.list_database_names()
         self.assertTrue("pymongo_test" in db_names)
         self.assertTrue("pymongo_test_mike" in db_names)
         self.assertEqual(db_names, cmd_names)
-
-    def test_list_database_names(self):
-        self._test_list_names(self.client.list_database_names)
-
-    def test_database_names(self):
-        self._test_list_names(self.client.database_names)
 
     def test_drop_database(self):
         self.assertRaises(TypeError, self.client.drop_database, 5)

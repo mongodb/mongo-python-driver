@@ -160,7 +160,6 @@ class TestSingleSlaveOk(TestReadPreferencesBase):
         self.assertEqual(10, len(list(coll.find())))
 
         # Test some database helpers.
-        self.assertIsNotNone(db.collection_names())
         self.assertIsNotNone(db.list_collection_names())
         self.assertIsNotNone(db.validate_collection("test"))
         self.assertIsNotNone(db.command("ping"))
