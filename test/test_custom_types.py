@@ -858,6 +858,7 @@ class TestCollectionChangeStreamsWCustomTypes(
     @client_context.require_no_standalone
     def setUpClass(cls):
         super(TestCollectionChangeStreamsWCustomTypes, cls).setUpClass()
+        cls.db.test.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()
@@ -879,6 +880,7 @@ class TestDatabaseChangeStreamsWCustomTypes(
     @client_context.require_no_standalone
     def setUpClass(cls):
         super(TestDatabaseChangeStreamsWCustomTypes, cls).setUpClass()
+        cls.db.test.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()
@@ -900,6 +902,7 @@ class TestClusterChangeStreamsWCustomTypes(
     @client_context.require_no_standalone
     def setUpClass(cls):
         super(TestClusterChangeStreamsWCustomTypes, cls).setUpClass()
+        cls.db.test.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()
