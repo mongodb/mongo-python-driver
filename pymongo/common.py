@@ -63,7 +63,8 @@ MAX_SUPPORTED_WIRE_VERSION = 9
 # Frequency to call ismaster on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
 
-# Frequency to process kill-cursors, in seconds. See MongoClient.close_cursor.
+# Frequency to clean up unclosed cursors, in seconds.
+# See MongoClient._process_kill_cursors.
 KILL_CURSOR_FREQUENCY = 1
 
 # Frequency to process events queue, in seconds.

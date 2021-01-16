@@ -139,6 +139,23 @@ can be changed to this::
 Removed features with no migration path
 ---------------------------------------
 
+cursor_manager support is removed
+.................................
+
+Removed :class:`pymongo.cursor_manager.CursorManager`,
+:mod:`pymongo.cursor_manager`, and
+:meth:`pymongo.mongo_client.MongoClient.set_cursor_manager`.
+
+MongoClient.close_cursor is removed
+...................................
+
+Removed :meth:`pymongo.mongo_client.MongoClient.close_cursor` and
+:meth:`pymongo.mongo_client.MongoClient.kill_cursors`. Instead, close cursors
+with :meth:`pymongo.cursor.Cursor.close` or
+:meth:`pymongo.command_cursor.CommandCursor.close`.
+
+.. _killCursors command: https://docs.mongodb.com/manual/reference/command/killCursors/
+
 Database.eval, Database.system_js, and SystemJS are removed
 ...........................................................
 
@@ -156,7 +173,6 @@ can be changed to this::
 
   >>> from bson.code import Code
   >>> result = database.command('eval', Code('function (x) {return x;}'), args=[3]).get('retval')
-
 
 Collection.parallel_scan is removed
 ...................................

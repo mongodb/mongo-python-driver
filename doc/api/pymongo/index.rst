@@ -34,7 +34,6 @@ Sub-modules:
    collection
    command_cursor
    cursor
-   cursor_manager
    database
    driver_info
    encryption

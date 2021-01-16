@@ -24,6 +24,12 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.mongo_client.MongoClient.database_names`.
 - Removed :meth:`pymongo.database.Database.collection_names`.
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
+- Removed :meth:`pymongo.mongo_client.MongoClient.close_cursor`. Use
+  :meth:`pymongo.cursor.Cursor.close` instead.
+- Removed :meth:`pymongo.mongo_client.MongoClient.kill_cursors`.
+- Removed :class:`pymongo.cursor_manager.CursorManager` and
+  :mod:`pymongo.cursor_manager`.
+- Removed :meth:`pymongo.mongo_client.MongoClient.set_cursor_manager`.
 - Removed :mod:`pymongo.thread_util`.
 - Removed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
 
