@@ -54,7 +54,10 @@ MongoReplicaSetClient
 ---------------------
 
 Removed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
-Use :class:`pymongo.mongo_client.MongoClient` instead.
+Since PyMongo 3.0, ``MongoReplicaSetClient`` has been identical to
+:class:`pymongo.mongo_client.MongoClient`. Applications can simply replace
+``MongoReplicaSetClient`` with :class:`pymongo.mongo_client.MongoClient` and
+get the same behavior.
 
 MongoClient
 -----------
