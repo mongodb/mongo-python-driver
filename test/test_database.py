@@ -163,19 +163,20 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(u"test.foo" in db.list_collection_names())
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
-    def _test_collection_names(self, meth, **no_system_kwargs):
+    def test_list_collection_names(self):
         db = Database(self.client, "pymongo_test")
         db.test.insert_one({"dummy": u"object"})
         db.test.mike.insert_one({"dummy": u"object"})
 
-        colls = getattr(db, meth)()
+        colls = db.list_collection_names()
         self.assertTrue("test" in colls)
         self.assertTrue("test.mike" in colls)
         for coll in colls:
             self.assertTrue("$" not in coll)
 
         db.systemcoll.test.insert_one({})
-        no_system_collections = getattr(db, meth)(**no_system_kwargs)
+        no_system_collections = db.list_collection_names(
+                filter={"name": {"$regex": r"^(?!system\.)"}})
         for coll in no_system_collections:
             self.assertTrue(not coll.startswith("system."))
         self.assertIn("systemcoll.test", no_system_collections)
@@ -186,18 +187,9 @@ class TestDatabase(IntegrationTest):
             db["coll" + str(i)].insert_one({})
         # No Error
         try:
-            getattr(db, meth)()
+            db.list_collection_names()
         finally:
             self.client.drop_database("many_collections")
-
-    def test_collection_names(self):
-        self._test_collection_names(
-            'collection_names', include_system_collections=False)
-
-    def test_list_collection_names(self):
-        self._test_collection_names(
-            'list_collection_names', filter={
-                "name": {"$regex": r"^(?!system\.)"}})
 
     def test_list_collection_names_filter(self):
         listener = OvertCommandListener()
