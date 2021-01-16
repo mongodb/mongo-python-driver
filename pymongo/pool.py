@@ -14,6 +14,7 @@
 
 import contextlib
 import copy
+import ipaddress
 import os
 import platform
 import socket
@@ -21,14 +22,7 @@ import sys
 import threading
 import collections
 
-
-from pymongo.ssl_support import (
-    SSLError as _SSLError,
-    HAS_SNI as _HAVE_SNI,
-    IPADDR_SAFE as _IPADDR_SAFE)
-
 from bson import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import imap, itervalues, _unicode, PY3
 from bson.son import SON
 from pymongo import auth, helpers, __version__
 from pymongo.client_session import _validate_session_write_concern
@@ -65,51 +59,19 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 # Always use our backport so we always have support for IP address matching
 from pymongo.ssl_match_hostname import match_hostname
+from pymongo.ssl_support import (
+    SSLError as _SSLError,
+    HAS_SNI as _HAVE_SNI,
+    IPADDR_SAFE as _IPADDR_SAFE)
 
 # For SNI support. According to RFC6066, section 3, IPv4 and IPv6 literals are
 # not permitted for SNI hostname.
-try:
-    from ipaddress import ip_address
-    def is_ip_address(address):
-        try:
-            ip_address(_unicode(address))
-            return True
-        except (ValueError, UnicodeError):
-            return False
-except ImportError:
-    if hasattr(socket, 'inet_pton') and socket.has_ipv6:
-        # Most *nix, recent Windows
-        def is_ip_address(address):
-            try:
-                # inet_pton rejects IPv4 literals with leading zeros
-                # (e.g. 192.168.0.01), inet_aton does not, and we
-                # can connect to them without issue. Use inet_aton.
-                socket.inet_aton(address)
-                return True
-            except socket.error:
-                try:
-                    socket.inet_pton(socket.AF_INET6, address)
-                    return True
-                except socket.error:
-                    return False
-    else:
-        # No inet_pton
-        def is_ip_address(address):
-            try:
-                socket.inet_aton(address)
-                return True
-            except socket.error:
-                if ':' in address:
-                    # ':' is not a valid character for a hostname. If we get
-                    # here a few things have to be true:
-                    #   - We're on a recent version of python 2.7 (2.7.9+).
-                    #     Older 2.7 versions don't support SNI.
-                    #   - We're on Windows XP or some unusual Unix that doesn't
-                    #     have inet_pton.
-                    #   - The application is using IPv6 literals with TLS, which
-                    #     is pretty unusual.
-                    return True
-                return False
+def is_ip_address(address):
+    try:
+        ipaddress.ip_address(address)
+        return True
+    except (ValueError, UnicodeError):
+        return False
 
 try:
     from fcntl import fcntl, F_GETFD, F_SETFD, FD_CLOEXEC
@@ -246,17 +208,17 @@ else:
 if platform.python_implementation().startswith('PyPy'):
     _METADATA['platform'] = ' '.join(
         (platform.python_implementation(),
-         '.'.join(imap(str, sys.pypy_version_info)),
-         '(Python %s)' % '.'.join(imap(str, sys.version_info))))
+         '.'.join(map(str, sys.pypy_version_info)),
+         '(Python %s)' % '.'.join(map(str, sys.version_info))))
 elif sys.platform.startswith('java'):
     _METADATA['platform'] = ' '.join(
         (platform.python_implementation(),
-         '.'.join(imap(str, sys.version_info)),
+         '.'.join(map(str, sys.version_info)),
          '(%s)' % ' '.join((platform.system(), platform.release()))))
 else:
     _METADATA['platform'] = ' '.join(
         (platform.python_implementation(),
-         '.'.join(imap(str, sys.version_info))))
+         '.'.join(map(str, sys.version_info))))
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
@@ -288,19 +250,10 @@ def _raise_connection_failure(address, error, msg_prefix=None):
     else:
         raise AutoReconnect(msg)
 
-if PY3:
-    def _cond_wait(condition, deadline):
-        timeout = deadline - _time() if deadline else None
-        return condition.wait(timeout)
-else:
-    def _cond_wait(condition, deadline):
-        timeout = deadline - _time() if deadline else None
-        condition.wait(timeout)
-        # Python 2.7 always returns False for wait(),
-        # manually check for a timeout.
-        if timeout and _time() >= deadline:
-            return False
-        return True
+
+def _cond_wait(condition, deadline):
+    timeout = deadline - _time() if deadline else None
+    return condition.wait(timeout)
 
 
 class PoolOptions(object):
@@ -517,7 +470,7 @@ def _speculative_context(all_credentials):
     """Return the _AuthContext to use for speculative auth, if any.
     """
     if all_credentials and len(all_credentials) == 1:
-        creds = next(itervalues(all_credentials))
+        creds = next(iter(all_credentials.values()))
         return auth._AuthContext.from_credentials(creds)
     return None
 
@@ -822,7 +775,7 @@ class SocketInfo(object):
           - `all_credentials`: dict, maps auth source to MongoCredential.
         """
         if all_credentials or self.authset:
-            cached = set(itervalues(all_credentials))
+            cached = set(all_credentials.values())
             authset = self.authset.copy()
 
             # Logout any credentials that no longer exist in the cache.

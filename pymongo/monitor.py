@@ -18,8 +18,6 @@ import atexit
 import threading
 import weakref
 
-from bson.py3compat import PY3
-
 from pymongo import common, periodic_executor
 from pymongo.errors import (NotMasterError,
                             OperationFailure,
@@ -34,10 +32,9 @@ from pymongo.srv_resolver import _SrvResolver
 
 def _sanitize(error):
     """PYTHON-2433 Clear error traceback info."""
-    if PY3:
-        error.__traceback__ = None
-        error.__context__ = None
-        error.__cause__ = None
+    error.__traceback__ = None
+    error.__context__ = None
+    error.__cause__ = None
 
 
 class MonitorBase(object):

@@ -16,10 +16,8 @@
 
 import warnings
 
-from bson.code import Code
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
-from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
 from pymongo import auth, common
 from pymongo.aggregation import _DatabaseAggregationCommand
@@ -33,7 +31,6 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
-from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
 _INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
@@ -102,14 +99,13 @@ class Database(common.BaseObject):
             write_concern or client.write_concern,
             read_concern or client.read_concern)
 
-        if not isinstance(name, string_type):
-            raise TypeError("name must be an instance "
-                            "of %s" % (string_type.__name__,))
+        if not isinstance(name, str):
+            raise TypeError("name must be an instance of str")
 
         if name != '$external':
             _check_name(name)
 
-        self.__name = _unicode(name)
+        self.__name = name
         self.__client = client
 
         self.__incoming_manipulators = []
@@ -612,7 +608,7 @@ class Database(common.BaseObject):
                  write_concern=None,
                  parse_write_concern_error=False, session=None, **kwargs):
         """Internal command helper."""
-        if isinstance(command, string_type):
+        if isinstance(command, str):
             command = SON([(command, value)])
 
         command.update(kwargs)
@@ -887,15 +883,14 @@ class Database(common.BaseObject):
         if isinstance(name, Collection):
             name = name.name
 
-        if not isinstance(name, string_type):
-            raise TypeError("name_or_collection must be an "
-                            "instance of %s" % (string_type.__name__,))
+        if not isinstance(name, str):
+            raise TypeError("name_or_collection must be an instance of str")
 
         self.__client._purge_index(self.__name, name)
 
         with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
-                sock_info, 'drop', value=_unicode(name),
+                sock_info, 'drop', value=name,
                 allowable_errors=['ns not found', 26],
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
@@ -937,11 +932,11 @@ class Database(common.BaseObject):
         if isinstance(name, Collection):
             name = name.name
 
-        if not isinstance(name, string_type):
-            raise TypeError("name_or_collection must be an instance of "
-                            "%s or Collection" % (string_type.__name__,))
+        if not isinstance(name, str):
+            raise TypeError("name_or_collection must be an instance of str or "
+                            "Collection")
 
-        cmd = SON([("validate", _unicode(name)),
+        cmd = SON([("validate", name),
                    ("scandata", scandata),
                    ("full", full)])
         if background is not None:
@@ -957,7 +952,7 @@ class Database(common.BaseObject):
                 raise CollectionInvalid("%s invalid: %s" % (name, info))
         # Sharded results
         elif "raw" in result:
-            for _, res in iteritems(result["raw"]):
+            for _, res in result["raw"].items():
                 if "result" in res:
                     info = res["result"]
                     if (info.find("exception") != -1 or
@@ -1313,13 +1308,11 @@ class Database(common.BaseObject):
         warnings.warn("add_user is deprecated and will be removed in PyMongo "
                       "4.0. Use db.command with createUser or updateUser "
                       "instead", DeprecationWarning, stacklevel=2)
-        if not isinstance(name, string_type):
-            raise TypeError("name must be an "
-                            "instance of %s" % (string_type.__name__,))
+        if not isinstance(name, str):
+            raise TypeError("name must be an instance of str")
         if password is not None:
-            if not isinstance(password, string_type):
-                raise TypeError("password must be an "
-                                "instance of %s" % (string_type.__name__,))
+            if not isinstance(password, str):
+                raise TypeError("password must be an instance of str")
             if len(password) == 0:
                 raise ValueError("password can't be empty")
         if read_only is not None:
@@ -1440,19 +1433,16 @@ class Database(common.BaseObject):
 
         .. mongodoc:: authenticate
         """
-        if name is not None and not isinstance(name, string_type):
-            raise TypeError("name must be an "
-                            "instance of %s" % (string_type.__name__,))
-        if password is not None and not isinstance(password, string_type):
-            raise TypeError("password must be an "
-                            "instance of %s" % (string_type.__name__,))
-        if source is not None and not isinstance(source, string_type):
-            raise TypeError("source must be an "
-                            "instance of %s" % (string_type.__name__,))
+        if name is not None and not isinstance(name, str):
+            raise TypeError("name must be an instance of str")
+        if password is not None and not isinstance(password, str):
+            raise TypeError("password must be an instance of str")
+        if source is not None and not isinstance(source, str):
+            raise TypeError("source must be an instance of str")
         common.validate_auth_mechanism('mechanism', mechanism)
 
         validated_options = common._CaseInsensitiveDictionary()
-        for option, value in iteritems(kwargs):
+        for option, value in kwargs.items():
             normalized, val = common.validate_auth_option(option, value)
             validated_options[normalized] = val
 

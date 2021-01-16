@@ -22,39 +22,18 @@ client-side field level encryption is enabled. See
 import os
 import subprocess
 import sys
-import time
 
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
 _THIS_FILE = os.path.realpath(__file__)
 
-if sys.version_info[0] < 3:
-    def _popen_wait(popen, timeout):
-        """Implement wait timeout support for Python 2."""
-        from pymongo.monotonic import time as _time
-        deadline = _time() + timeout
-        # Initial delay of 1ms
-        delay = .0005
-        while True:
-            returncode = popen.poll()
-            if returncode is not None:
-                return returncode
-
-            remaining = deadline - _time()
-            if remaining <= 0:
-                # Just return None instead of raising an error.
-                return None
-            delay = min(delay * 2, remaining, .5)
-            time.sleep(delay)
-
-else:
-    def _popen_wait(popen, timeout):
-        """Implement wait timeout support for Python 3."""
-        try:
-            return popen.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            # Silence TimeoutExpired errors.
-            return None
+def _popen_wait(popen, timeout):
+    """Implement wait timeout support for Python 3."""
+    try:
+        return popen.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        # Silence TimeoutExpired errors.
+        return None
 
 
 def _silence_resource_warning(popen):

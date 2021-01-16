@@ -14,7 +14,6 @@
 
 """An implementation of RFC4013 SASLprep."""
 
-from bson.py3compat import text_type as _text_type
 
 try:
     import stringprep
@@ -22,7 +21,7 @@ except ImportError:
     HAVE_STRINGPREP = False
     def saslprep(data):
         """SASLprep dummy"""
-        if isinstance(data, _text_type):
+        if isinstance(data, str):
             raise TypeError(
                 "The stringprep module is not available. Usernames and "
                 "passwords must be ASCII strings.")
@@ -61,7 +60,7 @@ else:
         :Returns:
         The SASLprep'ed version of `data`.
         """
-        if not isinstance(data, _text_type):
+        if not isinstance(data, str):
             return data
 
         if prohibit_unassigned_code_points:

@@ -17,12 +17,10 @@
 import datetime
 import warnings
 
+from collections import abc
+
 from bson.code import Code
 from bson.objectid import ObjectId
-from bson.py3compat import (_unicode,
-                            abc,
-                            integer_types,
-                            string_type)
 from bson.raw_bson import RawBSONDocument
 from bson.codec_options import CodecOptions
 from bson.son import SON
@@ -162,9 +160,8 @@ class Collection(common.BaseObject):
             write_concern or database.write_concern,
             read_concern or database.read_concern)
 
-        if not isinstance(name, string_type):
-            raise TypeError("name must be an instance "
-                            "of %s" % (string_type.__name__,))
+        if not isinstance(name, str):
+            raise TypeError("name must be an instance of str")
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
@@ -181,7 +178,7 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(kwargs.pop('collation', None))
 
         self.__database = database
-        self.__name = _unicode(name)
+        self.__name = name
         self.__full_name = _UJOIN % (self.__database.name, self.__name)
         if create or kwargs or collation:
             self.__create(kwargs, collation, session)
@@ -805,7 +802,7 @@ class Collection(common.BaseObject):
             elif not acknowledged:
                 raise ConfigurationError(
                     'hint is unsupported for unacknowledged writes.')
-            if not isinstance(hint, string_type):
+            if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             update_doc['hint'] = hint
 
@@ -1156,7 +1153,7 @@ class Collection(common.BaseObject):
             elif not acknowledged:
                 raise ConfigurationError(
                     'hint is unsupported for unacknowledged writes.')
-            if not isinstance(hint, string_type):
+            if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             delete_doc['hint'] = hint
         command = SON([('delete', self.name),
@@ -1686,7 +1683,7 @@ class Collection(common.BaseObject):
         cmd = SON([('aggregate', self.__name),
                    ('pipeline', pipeline),
                    ('cursor', {})])
-        if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
+        if "hint" in kwargs and not isinstance(kwargs["hint"], str):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
@@ -1774,7 +1771,7 @@ class Collection(common.BaseObject):
             if "query" in kwargs:
                 raise ConfigurationError("can't pass both filter and query")
             kwargs["query"] = filter
-        if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
+        if "hint" in kwargs and not isinstance(kwargs["hint"], str):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
@@ -1983,7 +1980,7 @@ class Collection(common.BaseObject):
         warnings.warn("ensure_index is deprecated. Use create_index instead.",
                       DeprecationWarning, stacklevel=2)
         # The types supported by datetime.timedelta.
-        if not (isinstance(cache_for, integer_types) or
+        if not (isinstance(cache_for, int) or
                 isinstance(cache_for, float)):
             raise TypeError("cache_for must be an integer or float.")
 
@@ -2079,8 +2076,8 @@ class Collection(common.BaseObject):
         if isinstance(index_or_name, list):
             name = helpers._gen_index_name(index_or_name)
 
-        if not isinstance(name, string_type):
-            raise TypeError("index_or_name must be an index name or list")
+        if not isinstance(name, str):
+            raise TypeError("index_or_name must be an instance of str or list")
 
         self.__database.client._purge_index(
             self.__database.name, self.__name, name)
@@ -2537,7 +2534,7 @@ class Collection(common.BaseObject):
                       "stage or the map_reduce method instead.",
                       DeprecationWarning, stacklevel=2)
         group = {}
-        if isinstance(key, string_type):
+        if isinstance(key, str):
             group["$keyf"] = Code(key)
         elif key is not None:
             group = {"key": helpers._fields_list_to_dict(key, "key")}
@@ -2586,9 +2583,8 @@ class Collection(common.BaseObject):
            when connected to MongoDB >= 3.4.
 
         """
-        if not isinstance(new_name, string_type):
-            raise TypeError("new_name must be an "
-                            "instance of %s" % (string_type.__name__,))
+        if not isinstance(new_name, str):
+            raise TypeError("new_name must be an instance of str")
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
@@ -2645,9 +2641,8 @@ class Collection(common.BaseObject):
            Support the `collation` option.
 
         """
-        if not isinstance(key, string_type):
-            raise TypeError("key must be an "
-                            "instance of %s" % (string_type.__name__,))
+        if not isinstance(key, str):
+            raise TypeError("key must be an instance of str")
         cmd = SON([("distinct", self.__name),
                    ("key", key)])
         if filter is not None:
@@ -2759,9 +2754,8 @@ class Collection(common.BaseObject):
         .. mongodoc:: mapreduce
 
         """
-        if not isinstance(out, (string_type, abc.Mapping)):
-            raise TypeError("'out' must be an instance of "
-                            "%s or a mapping" % (string_type.__name__,))
+        if not isinstance(out, (str, abc.Mapping)):
+            raise TypeError("'out' must be an instance of str or a mapping")
 
         response = self._map_reduce(map, reduce, out, session,
                                     ReadPreference.PRIMARY, **kwargs)
@@ -2847,7 +2841,7 @@ class Collection(common.BaseObject):
             common.validate_boolean("upsert", upsert)
             cmd["upsert"] = upsert
         if hint is not None:
-            if not isinstance(hint, string_type):
+            if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
 
         write_concern = self._write_concern_for_cmd(cmd, session)
@@ -3264,7 +3258,7 @@ class Collection(common.BaseObject):
         return self._delete_retryable(
             spec_or_id, multi, write_concern, collation=collation)
 
-    def find_and_modify(self, query={}, update=None,
+    def find_and_modify(self, query=None, update=None,
                         upsert=False, sort=None, full_response=False,
                         manipulate=False, **kwargs):
         """Update and return an object.

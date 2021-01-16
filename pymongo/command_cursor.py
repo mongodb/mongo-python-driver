@@ -16,7 +16,6 @@
 
 from collections import deque
 
-from bson.py3compat import integer_types
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             NotMasterError,
@@ -57,7 +56,7 @@ class CommandCursor(object):
 
         self.batch_size(batch_size)
 
-        if (not isinstance(max_await_time_ms, integer_types)
+        if (not isinstance(max_await_time_ms, int)
                 and max_await_time_ms is not None):
             raise TypeError("max_await_time_ms must be an integer or None")
 
@@ -108,7 +107,7 @@ class CommandCursor(object):
         :Parameters:
           - `batch_size`: The size of each batch of results requested.
         """
-        if not isinstance(batch_size, integer_types):
+        if not isinstance(batch_size, int):
             raise TypeError("batch_size must be an integer")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")

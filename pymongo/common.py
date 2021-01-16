@@ -18,10 +18,12 @@
 import datetime
 import warnings
 
+from collections import abc, OrderedDict
+from urllib.parse import unquote_plus
+
 from bson import SON
 from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, TypeRegistry
-from bson.py3compat import abc, integer_types, iteritems, string_type, PY3
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (validate_compressors,
@@ -37,16 +39,7 @@ from pymongo.ssl_support import (validate_cert_reqs,
                                  validate_allow_invalid_certs)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
-try:
-    from collections import OrderedDict
-    ORDERED_TYPES = (SON, OrderedDict)
-except ImportError:
-    ORDERED_TYPES = (SON,)
-
-if PY3:
-    from urllib.parse import unquote_plus
-else:
-    from urllib import unquote_plus
+ORDERED_TYPES = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
@@ -170,7 +163,7 @@ def validate_boolean(option, value):
 
 def validate_boolean_or_string(option, value):
     """Validates that value is True, False, 'true', or 'false'."""
-    if isinstance(value, string_type):
+    if isinstance(value, str):
         if value not in ('true', 'false'):
             raise ValueError("The value of %s must be "
                              "'true' or 'false'" % (option,))
@@ -181,9 +174,9 @@ def validate_boolean_or_string(option, value):
 def validate_integer(option, value):
     """Validates that 'value' is an integer (or basestring representation).
     """
-    if isinstance(value, integer_types):
+    if isinstance(value, int):
         return value
-    elif isinstance(value, string_type):
+    elif isinstance(value, str):
         try:
             return int(value)
         except ValueError:
@@ -244,10 +237,10 @@ def validate_string(option, value):
     """Validates that 'value' is an instance of `basestring` for Python 2
     or `str` for Python 3.
     """
-    if isinstance(value, string_type):
+    if isinstance(value, str):
         return value
-    raise TypeError("Wrong type for %s, value must be "
-                    "an instance of %s" % (option, string_type.__name__))
+    raise TypeError("Wrong type for %s, value must be an instance of "
+                    "str" % (option,))
 
 
 def validate_string_or_none(option, value):
@@ -261,9 +254,9 @@ def validate_string_or_none(option, value):
 def validate_int_or_basestring(option, value):
     """Validates that 'value' is an integer or string.
     """
-    if isinstance(value, integer_types):
+    if isinstance(value, int):
         return value
-    elif isinstance(value, string_type):
+    elif isinstance(value, str):
         try:
             return int(value)
         except ValueError:
@@ -275,9 +268,9 @@ def validate_int_or_basestring(option, value):
 def validate_non_negative_int_or_basestring(option, value):
     """Validates that 'value' is an integer or string.
     """
-    if isinstance(value, integer_types):
+    if isinstance(value, int):
         return value
-    elif isinstance(value, string_type):
+    elif isinstance(value, str):
         try:
             val = int(value)
         except ValueError:
@@ -722,7 +715,7 @@ URI_OPTIONS_DEPRECATION_MAP = {
 
 # Augment the option validator map with pymongo-specific option information.
 URI_OPTIONS_VALIDATOR_MAP.update(NONSPEC_OPTIONS_VALIDATOR_MAP)
-for optname, aliases in iteritems(URI_OPTIONS_ALIAS_MAP):
+for optname, aliases in URI_OPTIONS_ALIAS_MAP.items():
     for alias in aliases:
         if alias not in URI_OPTIONS_VALIDATOR_MAP:
             URI_OPTIONS_VALIDATOR_MAP[alias] = (
@@ -785,7 +778,7 @@ def get_validated_options(options, warn=True):
         get_normed_key = lambda x: x.lower()
         get_setter_key = lambda x: x
 
-    for opt, value in iteritems(options):
+    for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
             validator = URI_OPTIONS_VALIDATOR_MAP.get(

@@ -180,9 +180,8 @@ will not add that listener to existing client instances.
   handler first.
 """
 
-from collections import namedtuple
+from collections import abc, namedtuple
 
-from bson.py3compat import abc
 from pymongo.helpers import _handle_exception
 
 _Listeners = namedtuple('Listeners',

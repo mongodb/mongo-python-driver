@@ -14,8 +14,6 @@
 
 """Operation class definitions."""
 
-from bson.py3compat import string_type
-
 from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.collation import validate_collation_or_none
@@ -84,7 +82,7 @@ class DeleteOne(object):
         if filter is not None:
             validate_is_mapping("filter", filter)
         if hint is not None:
-            if not isinstance(hint, string_type):
+            if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
         self._filter = filter
         self._collation = collation
@@ -138,7 +136,7 @@ class DeleteMany(object):
         if filter is not None:
             validate_is_mapping("filter", filter)
         if hint is not None:
-            if not isinstance(hint, string_type):
+            if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
         self._filter = filter
         self._collation = collation
@@ -198,7 +196,7 @@ class ReplaceOne(object):
         if upsert is not None:
             validate_boolean("upsert", upsert)
         if hint is not None:
-            if not isinstance(hint, string_type):
+            if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
 
         self._filter = filter
@@ -243,7 +241,7 @@ class _UpdateOp(object):
         if array_filters is not None:
             validate_list("array_filters", array_filters)
         if hint is not None:
-            if not isinstance(hint, string_type):
+            if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
 
 

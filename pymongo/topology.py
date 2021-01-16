@@ -15,16 +15,11 @@
 """Internal class to monitor a topology of one or more servers."""
 
 import os
+import queue
 import random
 import threading
 import warnings
 import weakref
-
-from bson.py3compat import itervalues, PY3
-if PY3:
-    import queue as Queue
-else:
-    import Queue
 
 from pymongo import (common,
                      helpers,
@@ -62,7 +57,7 @@ def process_events_queue(queue_ref):
     while True:
         try:
             event = q.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             break
         else:
             fn, args = event
@@ -85,7 +80,7 @@ class Topology(object):
         self.__events_executor = None
 
         if self._publish_server or self._publish_tp:
-            self._events = Queue.Queue(maxsize=100)
+            self._events = queue.Queue(maxsize=100)
 
         if self._publish_tp:
             self._events.put((self._listeners.publish_topology_opened,
@@ -556,7 +551,7 @@ class Topology(object):
                 self._srv_monitor.open()
 
         # Ensure that the monitors are open.
-        for server in itervalues(self._servers):
+        for server in self._servers.values():
             server.open()
 
     def _is_stale_error(self, address, err_ctx):

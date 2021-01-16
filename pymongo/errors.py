@@ -14,8 +14,6 @@
 
 """Exceptions raised by PyMongo."""
 
-import sys
-
 from bson.errors import *
 
 try:
@@ -49,17 +47,6 @@ class PyMongoError(Exception):
     def _remove_error_label(self, label):
         """Remove the given label from this error."""
         self._error_labels.discard(label)
-
-    if sys.version_info[0] == 2:
-        def __str__(self):
-            if isinstance(self._message, unicode):
-                return self._message.encode('utf-8', errors='replace')
-            return str(self._message)
-
-        def __unicode__(self):
-            if isinstance(self._message, unicode):
-                return self._message
-            return unicode(self._message, 'utf-8', errors='replace')
 
 
 class ProtocolError(PyMongoError):
@@ -103,8 +90,6 @@ class NetworkTimeout(AutoReconnect):
 def _format_detailed_error(message, details):
     if details is not None:
         message = "%s, full error: %s" % (message, details)
-        if sys.version_info[0] == 2 and isinstance(message, unicode):
-            message = message.encode('utf-8', errors='replace')
     return message
 
 

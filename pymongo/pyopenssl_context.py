@@ -32,9 +32,6 @@ from service_identity import (
     CertificateError as _SICertificateError,
     VerificationError as _SIVerificationError)
 
-from cryptography.hazmat.backends import default_backend as _default_backend
-
-from bson.py3compat import _unicode
 from pymongo.errors import CertificateError as _CertificateError
 from pymongo.monotonic import time as _time
 from pymongo.ocsp_support import (
@@ -72,7 +69,7 @@ _REVERSE_VERIFY_MAP = dict(
 
 def _is_ip_address(address):
     try:
-        _ip_address(_unicode(address))
+        _ip_address(address)
         return True
     except (ValueError, UnicodeError):
         return False
@@ -316,9 +313,9 @@ class SSLContext(object):
             if self.check_hostname and server_hostname is not None:
                 try:
                     if _is_ip_address(server_hostname):
-                        _verify_ip_address(ssl_conn, _unicode(server_hostname))
+                        _verify_ip_address(ssl_conn, server_hostname)
                     else:
-                        _verify_hostname(ssl_conn, _unicode(server_hostname))
+                        _verify_hostname(ssl_conn, server_hostname)
                 except (_SICertificateError, _SIVerificationError) as exc:
                     raise _CertificateError(str(exc))
         return ssl_conn

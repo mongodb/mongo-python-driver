@@ -20,22 +20,16 @@ try:
 except ImportError:
     _HAVE_DNSPYTHON = False
 
-from bson.py3compat import PY3
-
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
 
-if PY3:
-    # dnspython can return bytes or str from various parts
-    # of its API depending on version. We always want str.
-    def maybe_decode(text):
-        if isinstance(text, bytes):
-            return text.decode()
-        return text
-else:
-    def maybe_decode(text):
-        return text
+# dnspython can return bytes or str from various parts
+# of its API depending on version. We always want str.
+def maybe_decode(text):
+    if isinstance(text, bytes):
+        return text.decode()
+    return text
 
 
 class _SrvResolver(object):

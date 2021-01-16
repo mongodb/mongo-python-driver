@@ -40,8 +40,6 @@ import weakref
 from collections import defaultdict
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import (integer_types,
-                            string_type)
 from bson.son import SON
 from pymongo import (common,
                      database,
@@ -616,7 +614,7 @@ class MongoClient(common.BaseObject):
         """
         if host is None:
             host = self.HOST
-        if isinstance(host, string_type):
+        if isinstance(host, str):
             host = [host]
         if port is None:
             port = self.PORT
@@ -1563,8 +1561,8 @@ class MongoClient(common.BaseObject):
 
         The cursor is closed synchronously on the current thread.
         """
-        if not isinstance(cursor_id, integer_types):
-            raise TypeError("cursor_id must be an instance of (int, long)")
+        if not isinstance(cursor_id, int):
+            raise TypeError("cursor_id must be an instance of int")
 
         try:
             self._kill_cursors(
@@ -1856,9 +1854,9 @@ class MongoClient(common.BaseObject):
         if isinstance(name, database.Database):
             name = name.name
 
-        if not isinstance(name, string_type):
+        if not isinstance(name, str):
             raise TypeError("name_or_database must be an instance "
-                            "of %s or a Database" % (string_type.__name__,))
+                            "of str or a Database")
 
         self._purge_index(name)
         with self._socket_for_writes(session) as sock_info:

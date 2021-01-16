@@ -14,8 +14,6 @@
 
 """Tools for working with read concerns."""
 
-from bson.py3compat import string_type
-
 
 class ReadConcern(object):
     """ReadConcern
@@ -32,7 +30,7 @@ class ReadConcern(object):
     """
 
     def __init__(self, level=None):
-        if level is None or isinstance(level, string_type):
+        if level is None or isinstance(level, str):
             self.__level = level
         else:
             raise TypeError(

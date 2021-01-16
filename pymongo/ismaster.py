@@ -16,7 +16,6 @@
 
 import itertools
 
-from bson.py3compat import imap
 from pymongo import common
 from pymongo.server_type import SERVER_TYPE
 
@@ -78,7 +77,7 @@ class IsMaster(object):
     @property
     def all_hosts(self):
         """List of hosts, passives, and arbiters known to this server."""
-        return set(imap(common.clean_node, itertools.chain(
+        return set(map(common.clean_node, itertools.chain(
             self._doc.get('hosts', []),
             self._doc.get('passives', []),
             self._doc.get('arbiters', []))))

@@ -14,7 +14,8 @@
 
 """Utilities for choosing which member of a replica set to read from."""
 
-from bson.py3compat import abc, integer_types
+from collections import abc
+
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import (member_with_tags_server_selector,
@@ -72,7 +73,7 @@ def _validate_max_staleness(max_staleness):
     if max_staleness == -1:
         return -1
 
-    if not isinstance(max_staleness, integer_types):
+    if not isinstance(max_staleness, int):
         raise TypeError(_invalid_max_staleness_msg(max_staleness))
 
     if max_staleness <= 0:

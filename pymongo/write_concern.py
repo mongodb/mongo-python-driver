@@ -14,7 +14,6 @@
 
 """Tools for working with write concerns."""
 
-from bson.py3compat import integer_types, string_type
 from pymongo.errors import ConfigurationError
 
 
@@ -53,7 +52,7 @@ class WriteConcern(object):
         self.__acknowledged = True
 
         if wtimeout is not None:
-            if not isinstance(wtimeout, integer_types):
+            if not isinstance(wtimeout, int):
                 raise TypeError("wtimeout must be an integer")
             if wtimeout < 0:
                 raise ValueError("wtimeout cannot be less than 0")
@@ -76,11 +75,11 @@ class WriteConcern(object):
             raise ConfigurationError("Cannot set w to 0 and j to True")
 
         if w is not None:
-            if isinstance(w, integer_types):
+            if isinstance(w, int):
                 if w < 0:
                     raise ValueError("w cannot be less than 0")
                 self.__acknowledged = w > 0
-            elif not isinstance(w, string_type):
+            elif not isinstance(w, str):
                 raise TypeError("w must be an integer or string")
             self.__document["w"] = w
 

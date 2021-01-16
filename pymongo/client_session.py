@@ -100,9 +100,10 @@ Classes
 import collections
 import uuid
 
+from collections.abc import Mapping as _Mapping
+
 from bson.binary import Binary
 from bson.int64 import Int64
-from bson.py3compat import abc, integer_types
 from bson.son import SON
 from bson.timestamp import Timestamp
 
@@ -157,7 +158,7 @@ class SessionOptions(object):
 
 class TransactionOptions(object):
     """Options for :meth:`ClientSession.start_transaction`.
-    
+
     :Parameters:
       - `read_concern` (optional): The
         :class:`~pymongo.read_concern.ReadConcern` to use for this transaction.
@@ -208,7 +209,7 @@ class TransactionOptions(object):
                                 "pymongo.read_preferences for valid "
                                 "options." % (read_preference,))
         if max_commit_time_ms is not None:
-            if not isinstance(max_commit_time_ms, integer_types):
+            if not isinstance(max_commit_time_ms, int):
                 raise TypeError(
                     "max_commit_time_ms must be an integer or None")
 
@@ -715,7 +716,7 @@ class ClientSession(object):
             :data:`~pymongo.client_session.ClientSession.cluster_time` from
             another `ClientSession` instance.
         """
-        if not isinstance(cluster_time, abc.Mapping):
+        if not isinstance(cluster_time, _Mapping):
             raise TypeError(
                 "cluster_time must be a subclass of collections.Mapping")
         if not isinstance(cluster_time.get("clusterTime"), Timestamp):

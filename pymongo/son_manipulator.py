@@ -33,9 +33,10 @@ the modern methods :meth:`~pymongo.collection.Collection.bulk_write`,
 :meth:`~pymongo.collection.Collection.find_one_and_update`.
 """
 
+from collections import abc
+
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.py3compat import abc
 from bson.son import SON
 
 

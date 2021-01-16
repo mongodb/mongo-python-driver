@@ -21,9 +21,6 @@ from collections import deque
 
 from bson import RE_TYPE
 from bson.code import Code
-from bson.py3compat import (iteritems,
-                            integer_types,
-                            string_type)
 from bson.son import SON
 from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping
@@ -156,7 +153,7 @@ class Cursor(object):
             warnings.warn("the 'modifiers' parameter is deprecated",
                           DeprecationWarning, stacklevel=2)
             validate_is_mapping("modifiers", modifiers)
-        if not isinstance(batch_size, integer_types):
+        if not isinstance(batch_size, int):
             raise TypeError("batch_size must be an integer")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
@@ -288,7 +285,7 @@ class Cursor(object):
                            "query_flags", "modifiers", "collation", "empty",
                            "show_record_id", "return_key", "allow_disk_use",
                            "snapshot", "exhaust")
-        data = dict((k, v) for k, v in iteritems(self.__dict__)
+        data = dict((k, v) for k, v in self.__dict__.items()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
             data = self._deepcopy(data)
@@ -472,7 +469,7 @@ class Cursor(object):
 
         .. mongodoc:: limit
         """
-        if not isinstance(limit, integer_types):
+        if not isinstance(limit, int):
             raise TypeError("limit must be an integer")
         if self.__exhaust:
             raise InvalidOperation("Can't use limit and exhaust together.")
@@ -501,7 +498,7 @@ class Cursor(object):
         :Parameters:
           - `batch_size`: The size of each batch of results requested.
         """
-        if not isinstance(batch_size, integer_types):
+        if not isinstance(batch_size, int):
             raise TypeError("batch_size must be an integer")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
@@ -522,7 +519,7 @@ class Cursor(object):
         :Parameters:
           - `skip`: the number of results to skip
         """
-        if not isinstance(skip, integer_types):
+        if not isinstance(skip, int):
             raise TypeError("skip must be an integer")
         if skip < 0:
             raise ValueError("skip must be >= 0")
@@ -544,7 +541,7 @@ class Cursor(object):
         :Parameters:
           - `max_time_ms`: the time limit after which the operation is aborted
         """
-        if (not isinstance(max_time_ms, integer_types)
+        if (not isinstance(max_time_ms, int)
                 and max_time_ms is not None):
             raise TypeError("max_time_ms must be an integer or None")
         self.__check_okay_to_chain()
@@ -569,7 +566,7 @@ class Cursor(object):
 
         .. versionadded:: 3.2
         """
-        if (not isinstance(max_await_time_ms, integer_types)
+        if (not isinstance(max_await_time_ms, int)
                 and max_await_time_ms is not None):
             raise TypeError("max_await_time_ms must be an integer or None")
         self.__check_okay_to_chain()
@@ -636,7 +633,7 @@ class Cursor(object):
             self.__limit = limit
             return self
 
-        if isinstance(index, integer_types):
+        if isinstance(index, int):
             if index < 0:
                 raise IndexError("Cursor instances do not support negative "
                                  "indices")
@@ -877,7 +874,7 @@ class Cursor(object):
             self.__hint = None
             return
 
-        if isinstance(index, string_type):
+        if isinstance(index, str):
             self.__hint = index
         else:
             self.__hint = helpers._index_document(index)
@@ -1241,7 +1238,7 @@ class Cursor(object):
         if not hasattr(x, 'items'):
             y, is_list, iterator = [], True, enumerate(x)
         else:
-            y, is_list, iterator = {}, False, iteritems(x)
+            y, is_list, iterator = {}, False, x.items()
 
         if memo is None:
             memo = {}

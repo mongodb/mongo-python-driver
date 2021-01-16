@@ -21,7 +21,6 @@ import struct
 
 
 from bson import _decode_all_selective
-from bson.py3compat import PY3
 
 from pymongo import helpers, message
 from pymongo.common import MAX_MESSAGE_SIZE
@@ -30,7 +29,6 @@ from pymongo.errors import (AutoReconnect,
                             NotMasterError,
                             OperationFailure,
                             ProtocolError,
-                            NetworkTimeout,
                             _OperationCancelled)
 from pymongo.message import _UNPACK_REPLY, _OpMsg
 from pymongo.monotonic import time
@@ -250,47 +248,21 @@ def wait_for_read(sock_info, deadline):
             if deadline and time() > deadline:
                 raise socket.timeout("timed out")
 
-# memoryview was introduced in Python 2.7 but we only use it on Python 3
-# because before 2.7.4 the struct module did not support memoryview:
-# https://bugs.python.org/issue10212.
-# In Jython, using slice assignment on a memoryview results in a
-# NullPointerException.
-if not PY3:
-    def _receive_data_on_socket(sock_info, length, deadline):
-        buf = bytearray(length)
-        i = 0
-        while length:
-            try:
-                wait_for_read(sock_info, deadline)
-                chunk = sock_info.sock.recv(length)
-            except (IOError, OSError) as exc:
-                if _errno_from_exception(exc) == errno.EINTR:
-                    continue
-                raise
-            if chunk == b"":
-                raise AutoReconnect("connection closed")
+def _receive_data_on_socket(sock_info, length, deadline):
+    buf = bytearray(length)
+    mv = memoryview(buf)
+    bytes_read = 0
+    while bytes_read < length:
+        try:
+            wait_for_read(sock_info, deadline)
+            chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
+        except (IOError, OSError) as exc:
+            if _errno_from_exception(exc) == errno.EINTR:
+                continue
+            raise
+        if chunk_length == 0:
+            raise AutoReconnect("connection closed")
 
-            buf[i:i + len(chunk)] = chunk
-            i += len(chunk)
-            length -= len(chunk)
+        bytes_read += chunk_length
 
-        return bytes(buf)
-else:
-    def _receive_data_on_socket(sock_info, length, deadline):
-        buf = bytearray(length)
-        mv = memoryview(buf)
-        bytes_read = 0
-        while bytes_read < length:
-            try:
-                wait_for_read(sock_info, deadline)
-                chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
-            except (IOError, OSError) as exc:
-                if _errno_from_exception(exc) == errno.EINTR:
-                    continue
-                raise
-            if chunk_length == 0:
-                raise AutoReconnect("connection closed")
-
-            bytes_read += chunk_length
-
-        return mv
+    return mv

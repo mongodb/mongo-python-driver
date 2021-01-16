@@ -17,7 +17,8 @@
 import sys
 import traceback
 
-from bson.py3compat import abc, iteritems, itervalues, string_type
+from collections import abc
+
 from bson.son import SON
 from pymongo import ASCENDING
 from pymongo.errors import (CursorNotFound,
@@ -68,7 +69,7 @@ def _index_list(key_or_list, direction=None):
     if direction is not None:
         return [(key_or_list, direction)]
     else:
-        if isinstance(key_or_list, string_type):
+        if isinstance(key_or_list, str):
             return [(key_or_list, ASCENDING)]
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, "
@@ -84,7 +85,7 @@ def _index_document(index_list):
     if isinstance(index_list, abc.Mapping):
         raise TypeError("passing a dict to sort/create_index/hint is not "
                         "allowed - use a list of tuples instead. did you "
-                        "mean %r?" % list(iteritems(index_list)))
+                        "mean %r?" % list(index_list.items()))
     elif not isinstance(index_list, (list, tuple)):
         raise TypeError("must use a list of (key, direction) pairs, "
                         "not: " + repr(index_list))
@@ -93,9 +94,10 @@ def _index_document(index_list):
 
     index = SON()
     for (key, value) in index_list:
-        if not isinstance(key, string_type):
-            raise TypeError("first item in each key pair must be a string")
-        if not isinstance(value, (string_type, int, abc.Mapping)):
+        if not isinstance(key, str):
+            raise TypeError(
+                "first item in each key pair must be an instance of str")
+        if not isinstance(value, (str, int, abc.Mapping)):
             raise TypeError("second item in each key pair must be 1, -1, "
                             "'2d', or another valid MongoDB index specifier.")
         index[key] = value
@@ -128,7 +130,7 @@ def _check_command_response(response, max_wire_version,
     # Mongos returns the error details in a 'raw' object
     # for some errors.
     if "raw" in response:
-        for shard in itervalues(response["raw"]):
+        for shard in response["raw"].values():
             # Grab the first non-empty raw error from a shard.
             if shard.get("errmsg") and not shard.get("ok"):
                 details = shard
@@ -257,10 +259,9 @@ def _fields_list_to_dict(fields, option_name):
         return fields
 
     if isinstance(fields, (abc.Sequence, abc.Set)):
-        if not all(isinstance(field, string_type) for field in fields):
+        if not all(isinstance(field, str) for field in fields):
             raise TypeError("%s must be a list of key names, each an "
-                            "instance of %s" % (option_name,
-                                                string_type.__name__))
+                            "instance of str" % (option_name,))
         return dict.fromkeys(fields, 1)
 
     raise TypeError("%s must be a mapping or "

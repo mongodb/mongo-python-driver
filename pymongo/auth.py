@@ -20,10 +20,15 @@ import hmac
 import os
 import socket
 
-try:
-    from urllib import quote
-except ImportError:
-    from urllib.parse import quote
+from base64 import standard_b64decode, standard_b64encode
+from collections import namedtuple
+from urllib.parse import quote
+
+from bson.binary import Binary
+from bson.son import SON
+from pymongo.auth_aws import _authenticate_aws
+from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.saslprep import saslprep
 
 HAVE_KERBEROS = True
 _USE_PRINCIPAL = False
@@ -36,16 +41,6 @@ except ImportError:
         import kerberos
     except ImportError:
         HAVE_KERBEROS = False
-
-from base64 import standard_b64decode, standard_b64encode
-from collections import namedtuple
-
-from bson.binary import Binary
-from bson.py3compat import string_type, _unicode, PY3
-from bson.son import SON
-from pymongo.auth_aws import _authenticate_aws
-from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.saslprep import saslprep
 
 
 MECHANISMS = frozenset(
@@ -159,94 +154,9 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
             mech, source_database, user, passwd, None, _Cache())
 
 
-if PY3:
-    def _xor(fir, sec):
-        """XOR two byte strings together (python 3.x)."""
-        return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
-
-
-    _from_bytes = int.from_bytes
-    _to_bytes = int.to_bytes
-else:
-    from binascii import (hexlify as _hexlify,
-                          unhexlify as _unhexlify)
-
-
-    def _xor(fir, sec):
-        """XOR two byte strings together (python 2.x)."""
-        return b"".join([chr(ord(x) ^ ord(y)) for x, y in zip(fir, sec)])
-
-
-    def _from_bytes(value, dummy, _int=int, _hexlify=_hexlify):
-        """An implementation of int.from_bytes for python 2.x."""
-        return _int(_hexlify(value), 16)
-
-
-    def _to_bytes(value, length, dummy, _unhexlify=_unhexlify):
-        """An implementation of int.to_bytes for python 2.x."""
-        fmt = '%%0%dx' % (2 * length,)
-        return _unhexlify(fmt % value)
-
-
-try:
-    # The fastest option, if it's been compiled to use OpenSSL's HMAC.
-    from backports.pbkdf2 import pbkdf2_hmac as _hi
-except ImportError:
-    try:
-        # Python 2.7.8+, or Python 3.4+.
-        from hashlib import pbkdf2_hmac as _hi
-    except ImportError:
-
-        def _hi(hash_name, data, salt, iterations):
-            """A simple implementation of PBKDF2-HMAC."""
-            mac = hmac.HMAC(data, None, getattr(hashlib, hash_name))
-
-            def _digest(msg, mac=mac):
-                """Get a digest for msg."""
-                _mac = mac.copy()
-                _mac.update(msg)
-                return _mac.digest()
-
-            from_bytes = _from_bytes
-            to_bytes = _to_bytes
-
-            _u1 = _digest(salt + b'\x00\x00\x00\x01')
-            _ui = from_bytes(_u1, 'big')
-            for _ in range(iterations - 1):
-                _u1 = _digest(_u1)
-                _ui ^= from_bytes(_u1, 'big')
-            return to_bytes(_ui, mac.digest_size, 'big')
-
-try:
-    from hmac import compare_digest
-except ImportError:
-    if PY3:
-        def _xor_bytes(a, b):
-            return a ^ b
-    else:
-        def _xor_bytes(a, b, _ord=ord):
-            return _ord(a) ^ _ord(b)
-
-    # Python 2.x < 2.7.7
-    # Note: This method is intentionally obtuse to prevent timing attacks. Do
-    # not refactor it!
-    # References:
-    #  - http://bugs.python.org/issue14532
-    #  - http://bugs.python.org/issue14955
-    #  - http://bugs.python.org/issue15061
-    def compare_digest(a, b, _xor_bytes=_xor_bytes):
-        left = None
-        right = b
-        if len(a) == len(b):
-            left = a
-            result = 0
-        if len(a) != len(b):
-            left = b
-            result = 1
-
-        for x, y in zip(left, right):
-            result |= _xor_bytes(x, y)
-        return result == 0
+def _xor(fir, sec):
+    """XOR two byte strings together (python 3.x)."""
+    return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
 
 
 def _parse_scram_response(response):
@@ -313,7 +223,7 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     # Salt and / or iterations could change for a number of different
     # reasons. Either changing invalidates the cache.
     if not client_key or salt != csalt or iterations != citerations:
-        salted_pass = _hi(
+        salted_pass = hashlib.pbkdf2_hmac(
             digest, data, standard_b64decode(salt), iterations)
         client_key = _hmac(salted_pass, b"Client Key", digestmod).digest()
         server_key = _hmac(salted_pass, b"Server Key", digestmod).digest()
@@ -333,7 +243,7 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     res = sock_info.command(source, cmd)
 
     parsed = _parse_scram_response(res['payload'])
-    if not compare_digest(parsed[b'v'], server_sig):
+    if not hmac.compare_digest(parsed[b'v'], server_sig):
         raise OperationFailure("Server returned an invalid signature.")
 
     # A third empty challenge may be required if the server does not support
@@ -350,19 +260,17 @@ def _authenticate_scram(credentials, sock_info, mechanism):
 def _password_digest(username, password):
     """Get a password digest to use for authentication.
     """
-    if not isinstance(password, string_type):
-        raise TypeError("password must be an "
-                        "instance of %s" % (string_type.__name__,))
+    if not isinstance(password, str):
+        raise TypeError("password must be an instance of str")
     if len(password) == 0:
         raise ValueError("password can't be empty")
-    if not isinstance(username, string_type):
-        raise TypeError("password must be an "
-                        "instance of  %s" % (string_type.__name__,))
+    if not isinstance(username, str):
+        raise TypeError("username must be an instance of str")
 
     md5hash = hashlib.md5()
     data = "%s:mongo:%s" % (username, password)
     md5hash.update(data.encode('utf-8'))
-    return _unicode(md5hash.hexdigest())
+    return md5hash.hexdigest()
 
 
 def _auth_key(nonce, username, password):
@@ -372,7 +280,7 @@ def _auth_key(nonce, username, password):
     md5hash = hashlib.md5()
     data = "%s%s%s" % (nonce, username, digest)
     md5hash.update(data.encode('utf-8'))
-    return _unicode(md5hash.hexdigest())
+    return md5hash.hexdigest()
 
 
 def _canonicalize_hostname(hostname):

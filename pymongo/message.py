@@ -24,15 +24,15 @@ import datetime
 import random
 import struct
 
+from io import BytesIO as _BytesIO
+
 import bson
 from bson import (CodecOptions,
-                  decode,
                   encode,
                   _dict_to_bson,
                   _make_c_string)
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.raw_bson import _inflate_bson, DEFAULT_RAW_BSON_OPTIONS
-from bson.py3compat import b, StringIO
 from bson.son import SON
 
 try:
@@ -1111,7 +1111,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
 
     send_safe = safe or not continue_on_error
     last_error = None
-    data = StringIO()
+    data = _BytesIO()
     data.write(struct.pack("<i", int(continue_on_error)))
     data.write(_make_c_string(collection_name))
     message_length = begin_loc = data.tell()
@@ -1259,7 +1259,7 @@ def _encode_batched_op_msg(
     """Encode the next batched insert, update, or delete operation
     as OP_MSG.
     """
-    buf = StringIO()
+    buf = _BytesIO()
 
     to_send, _ = _batched_op_msg_impl(
         operation, command, docs, check_keys, ack, opts, ctx, buf)
@@ -1286,7 +1286,7 @@ def _batched_op_msg_compressed(
 def _batched_op_msg(
         operation, command, docs, check_keys, ack, opts, ctx):
     """OP_MSG implementation entry point."""
-    buf = StringIO()
+    buf = _BytesIO()
 
     # Save space for message length and request id
     buf.write(_ZERO_64)
@@ -1346,7 +1346,7 @@ def _encode_batched_write_command(
         namespace, operation, command, docs, check_keys, opts, ctx):
     """Encode the next batched insert, update, or delete command.
     """
-    buf = StringIO()
+    buf = _BytesIO()
 
     to_send, _ = _batched_write_command_impl(
         namespace, operation, command, docs, check_keys, opts, ctx, buf)
@@ -1359,7 +1359,7 @@ def _batched_write_command(
         namespace, operation, command, docs, check_keys, opts, ctx):
     """Create the next batched insert, update, or delete command.
     """
-    buf = StringIO()
+    buf = _BytesIO()
 
     # Save space for message length and request id
     buf.write(_ZERO_64)
@@ -1415,7 +1415,7 @@ def _batched_write_command_impl(
     # No options
     buf.write(_ZERO_32)
     # Namespace as C string
-    buf.write(b(namespace))
+    buf.write(namespace.encode('utf8'))
     buf.write(_ZERO_8)
     # Skip: 0, Limit: -1
     buf.write(_SKIPLIM)
@@ -1442,7 +1442,7 @@ def _batched_write_command_impl(
     idx = 0
     for doc in docs:
         # Encode the current operation
-        key = b(str(idx))
+        key = str(idx).encode('utf8')
         value = encode(doc, check_keys, opts)
         # Is there enough room to add this document? max_cmd_size accounts for
         # the two trailing null bytes.

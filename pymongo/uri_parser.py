@@ -17,12 +17,7 @@
 import re
 import warnings
 
-from bson.py3compat import string_type, PY3
-
-if PY3:
-    from urllib.parse import unquote_plus
-else:
-    from urllib import unquote_plus
+from urllib.parse import unquote_plus
 
 from pymongo.common import (
     get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
@@ -53,12 +48,8 @@ def parse_userinfo(userinfo):
        Now uses `urllib.unquote_plus` so `+` characters must be escaped.
     """
     if '@' in userinfo or userinfo.count(':') > 1:
-        if PY3:
-            quote_fn = "urllib.parse.quote_plus"
-        else:
-            quote_fn = "urllib.quote_plus"
         raise InvalidURI("Username and password must be escaped according to "
-                         "RFC 3986, use %s()." % quote_fn)
+                         "RFC 3986, use urllib.parse.quote_plus")
     user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
@@ -113,7 +104,7 @@ def parse_host(entity, default_port=DEFAULT_PORT):
                              "address literal must be enclosed in '[' "
                              "and ']' according to RFC 2732.")
         host, port = host.split(':', 1)
-    if isinstance(port, string_type):
+    if isinstance(port, str):
         if not port.isdigit() or int(port) > 65535 or int(port) <= 0:
             raise ValueError("Port must be an integer between 0 and 65535: %s"
                              % (port,))
