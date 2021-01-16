@@ -39,10 +39,10 @@ from pymongo.write_concern import WriteConcern
 
 from test import (SkipTest,
                   client_context,
+                  IntegrationTest,
                   unittest,
                   db_user,
                   db_pwd)
-from test.test_replica_set_client import TestReplicaSetClientBase
 from test.utils import (connected,
                         ignore_deprecations,
                         one,
@@ -87,7 +87,7 @@ class TestReadPreferenceObjects(unittest.TestCase):
             self.assertEqual(pref, copy.deepcopy(pref))
 
 
-class TestReadPreferencesBase(TestReplicaSetClientBase):
+class TestReadPreferencesBase(IntegrationTest):
 
     @classmethod
     @client_context.require_secondaries_count(1)
@@ -100,7 +100,7 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
         self.client.pymongo_test.test.drop()
         self.client.get_database(
             "pymongo_test",
-            write_concern=WriteConcern(w=self.w)).test.insert_many(
+            write_concern=WriteConcern(w=client_context.w)).test.insert_many(
                 [{'_id': i} for i in range(10)])
 
         self.addCleanup(self.client.pymongo_test.test.drop)
@@ -130,7 +130,7 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
     def assertReadsFrom(self, expected, **kwargs):
         c = rs_client(**kwargs)
         wait_until(
-            lambda: len(c.nodes - c.arbiters) == self.w,
+            lambda: len(c.nodes - c.arbiters) == client_context.w,
             "discovered all nodes")
 
         used = self.read_from_which_kind(c)
@@ -284,7 +284,7 @@ class TestReadPreferences(TestReadPreferencesBase):
             read_preference=ReadPreference.NEAREST,
             localThresholdMS=10000)  # 10 seconds
 
-        data_members = set(self.hosts).difference(set(self.arbiters))
+        data_members = {self.client.primary} | self.client.secondaries
 
         # This is a probabilistic test; track which members we've read from so
         # far, and keep reading until we've used all the members or give up.
@@ -347,7 +347,7 @@ _PREF_MAP = [
 ]
 
 
-class TestCommandAndReadPreference(TestReplicaSetClientBase):
+class TestCommandAndReadPreference(IntegrationTest):
 
     @classmethod
     @client_context.require_secondaries_count(1)
@@ -355,7 +355,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         super(TestCommandAndReadPreference, cls).setUpClass()
         cls.c = ReadPrefTester(
             client_context.pair,
-            replicaSet=cls.name,
+            replicaSet=client_context.replica_set_name,
             # Ignore round trip times, to test ReadPreference modes only.
             localThresholdMS=1000*1000)
         if client_context.auth_enabled:
@@ -363,7 +363,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         cls.client_version = Version.from_client(cls.c)
         # mapReduce and group fail with no collection
         coll = cls.c.pymongo_test.get_collection(
-            'test', write_concern=WriteConcern(w=cls.w))
+            'test', write_concern=WriteConcern(w=client_context.w))
         coll.insert_one({})
 
     @classmethod

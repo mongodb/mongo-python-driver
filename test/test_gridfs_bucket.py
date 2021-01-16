@@ -30,14 +30,13 @@ from bson.py3compat import StringIO, string_type
 from bson.son import SON
 from gridfs.errors import NoFile, CorruptGridFile
 from pymongo.errors import (ConfigurationError,
-                            ConnectionFailure,
+                            NotMasterError,
                             ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from test import (client_context,
                   unittest,
                   IntegrationTest)
-from test.test_replica_set_client import TestReplicaSetClientBase
 from test.utils import (ignore_deprecations,
                         joinall,
                         one,
@@ -504,7 +503,7 @@ class TestGridfs(IntegrationTest):
         self.assertIsNone(gout.md5)
 
 
-class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
+class TestGridfsBucketReplicaSet(IntegrationTest):
 
     @classmethod
     @client_context.require_secondaries_count(1)
@@ -517,7 +516,7 @@ class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
 
     def test_gridfs_replica_set(self):
         rsc = rs_client(
-            w=self.w,
+            w=client_context.w,
             read_preference=ReadPreference.SECONDARY)
 
         gfs = gridfs.GridFSBucket(rsc.gfsbucketreplica, 'gfsbucketreplicatest')
@@ -526,10 +525,7 @@ class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
         self.assertEqual(b'foo', content)
 
     def test_gridfs_secondary(self):
-        primary_host, primary_port = self.primary
-        primary_connection = single_client(primary_host, primary_port)
-
-        secondary_host, secondary_port = one(self.secondaries)
+        secondary_host, secondary_port = one(self.client.secondaries)
         secondary_connection = single_client(
             secondary_host, secondary_port,
             read_preference=ReadPreference.SECONDARY)
@@ -540,13 +536,13 @@ class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
             secondary_connection.gfsbucketreplica, 'gfsbucketsecondarytest')
 
         # This won't detect secondary, raises error
-        self.assertRaises(ConnectionFailure, gfs.upload_from_stream,
+        self.assertRaises(NotMasterError, gfs.upload_from_stream,
                           "test_filename", b'foo')
 
     def test_gridfs_secondary_lazy(self):
         # Should detect it's connected to secondary and not attempt to
         # create index.
-        secondary_host, secondary_port = one(self.secondaries)
+        secondary_host, secondary_port = one(self.client.secondaries)
         client = single_client(
             secondary_host,
             secondary_port,
@@ -560,7 +556,7 @@ class TestGridfsBucketReplicaSet(TestReplicaSetClientBase):
         # Connects, doesn't create index.
         self.assertRaises(NoFile, gfs.open_download_stream_by_name,
                           "test_filename")
-        self.assertRaises(ConnectionFailure, gfs.upload_from_stream,
+        self.assertRaises(NotMasterError, gfs.upload_from_stream,
                           "test_filename", b'data')
 
 

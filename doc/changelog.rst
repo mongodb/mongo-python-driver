@@ -25,6 +25,7 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.database.Database.collection_names`.
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
 - Removed :mod:`pymongo.thread_util`.
+- Removed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
 
 Notable improvements
 ....................

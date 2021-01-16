@@ -1001,8 +1001,7 @@ class MongoClient(common.BaseObject):
         `replicaSet` option.
 
         .. versionadded:: 3.0
-           MongoClient gained this property in version 3.0 when
-           MongoReplicaSetClient's functionality was merged in.
+           MongoClient gained this property in version 3.0.
         """
         return self._topology.get_primary()
 
@@ -1015,8 +1014,7 @@ class MongoClient(common.BaseObject):
         client was created without the `replicaSet` option.
 
         .. versionadded:: 3.0
-           MongoClient gained this property in version 3.0 when
-           MongoReplicaSetClient's functionality was merged in.
+           MongoClient gained this property in version 3.0.
         """
         return self._topology.get_secondaries()
 

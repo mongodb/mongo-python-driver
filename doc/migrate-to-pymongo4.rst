@@ -50,6 +50,15 @@ Warnings can also be changed to errors::
 .. note:: Not all deprecated features raise :exc:`DeprecationWarning` when
   used. See `Removed features with no migration path`_.
 
+MongoReplicaSetClient
+---------------------
+
+Removed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
+Since PyMongo 3.0, ``MongoReplicaSetClient`` has been identical to
+:class:`pymongo.mongo_client.MongoClient`. Applications can simply replace
+``MongoReplicaSetClient`` with :class:`pymongo.mongo_client.MongoClient` and
+get the same behavior.
+
 MongoClient
 -----------
 

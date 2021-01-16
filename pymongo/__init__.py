@@ -89,7 +89,6 @@ from pymongo.common import (MIN_SUPPORTED_WIRE_VERSION,
                             MAX_SUPPORTED_WIRE_VERSION)
 from pymongo.cursor import CursorType
 from pymongo.mongo_client import MongoClient
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.operations import (IndexModel,
                                 InsertOne,
                                 DeleteOne,
