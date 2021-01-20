@@ -165,7 +165,6 @@ $PYTHON -c 'import sys; print(sys.version)'
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 COVERAGE_ARGS=""
 if [ -n "$COVERAGE" -a $PYTHON_IMPL = "CPython" ]; then
-    COVERAGE_BIN="$(dirname "$PYTHON")/coverage"
     if $PYTHON -m coverage --version; then
         echo "INFO: coverage is installed, running tests with coverage..."
         COVERAGE_ARGS="-m coverage run --branch"
