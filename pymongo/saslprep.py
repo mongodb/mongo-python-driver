@@ -24,7 +24,7 @@ except ImportError:
         if isinstance(data, str):
             raise TypeError(
                 "The stringprep module is not available. Usernames and "
-                "passwords must be ASCII strings.")
+                "passwords must be instances of bytes.")
         return data
 else:
     HAVE_STRINGPREP = True
@@ -74,8 +74,8 @@ else:
         # commonly mapped to nothing characters to, well, nothing.
         in_table_c12 = stringprep.in_table_c12
         in_table_b1 = stringprep.in_table_b1
-        data = u"".join(
-            [u"\u0020" if in_table_c12(elt) else elt
+        data = "".join(
+            ["\u0020" if in_table_c12(elt) else elt
              for elt in data if not in_table_b1(elt)])
 
         # RFC3454 section 2, step 2 - Normalize

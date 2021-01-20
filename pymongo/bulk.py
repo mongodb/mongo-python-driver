@@ -54,12 +54,6 @@ _WRITE_CONCERN_ERROR = 64
 _COMMANDS = ('insert', 'update', 'delete')
 
 
-# These string literals are used when we create fake server return
-# documents client side. We use unicode literals in python 2.x to
-# match the actual return values from the server.
-_UOP = u"op"
-
-
 class _Run(object):
     """Represents a batch of write operations.
     """
@@ -123,7 +117,7 @@ def _merge_command(run, full_result, offset, result):
             idx = doc["index"] + offset
             replacement["index"] = run.index(idx)
             # Add the failed operation to the error document.
-            replacement[_UOP] = run.ops[idx]
+            replacement["op"] = run.ops[idx]
             full_result["writeErrors"].append(replacement)
 
     wc_error = result.get("writeConcernError")

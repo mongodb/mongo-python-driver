@@ -52,7 +52,6 @@ from pymongo.results import (BulkWriteResult,
                              UpdateResult)
 from pymongo.write_concern import WriteConcern
 
-_UJOIN = u"%s.%s"
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
 _HAYSTACK_MSG = (
     "geoHaystack indexes are deprecated as of MongoDB 4.4."
@@ -179,7 +178,7 @@ class Collection(common.BaseObject):
 
         self.__database = database
         self.__name = name
-        self.__full_name = _UJOIN % (self.__database.name, self.__name)
+        self.__full_name = "%s.%s" % (self.__database.name, self.__name)
         if create or kwargs or collation:
             self.__create(kwargs, collation, session)
 
@@ -272,7 +271,7 @@ class Collection(common.BaseObject):
           - `name`: the name of the collection to get
         """
         if name.startswith('_'):
-            full_name = _UJOIN % (self.__name, name)
+            full_name = "%s.%s" % (self.__name, name)
             raise AttributeError(
                 "Collection has no attribute %r. To access the %s"
                 " collection, use database['%s']." % (
@@ -281,7 +280,7 @@ class Collection(common.BaseObject):
 
     def __getitem__(self, name):
         return Collection(self.__database,
-                          _UJOIN % (self.__name, name),
+                          "%s.%s" % (self.__name, name),
                           False,
                           self.codec_options,
                           self.read_preference,

@@ -712,8 +712,8 @@ class TestClient(IntegrationTest):
                 self.assertEqual(["name"], list(doc))
 
     def test_list_database_names(self):
-        self.client.pymongo_test.test.insert_one({"dummy": u"object"})
-        self.client.pymongo_test_mike.test.insert_one({"dummy": u"object"})
+        self.client.pymongo_test.test.insert_one({"dummy": "object"})
+        self.client.pymongo_test_mike.test.insert_one({"dummy": "object"})
         cmd_docs = self.client.admin.command("listDatabases")["databases"]
         cmd_names = [doc["name"] for doc in cmd_docs]
 
@@ -726,8 +726,8 @@ class TestClient(IntegrationTest):
         self.assertRaises(TypeError, self.client.drop_database, 5)
         self.assertRaises(TypeError, self.client.drop_database, None)
 
-        self.client.pymongo_test.test.insert_one({"dummy": u"object"})
-        self.client.pymongo_test2.test.insert_one({"dummy": u"object"})
+        self.client.pymongo_test.test.insert_one({"dummy": "object"})
+        self.client.pymongo_test2.test.insert_one({"dummy": "object"})
         dbs = self.client.list_database_names()
         self.assertIn("pymongo_test", dbs)
         self.assertIn("pymongo_test2", dbs)
@@ -1134,8 +1134,8 @@ class TestClient(IntegrationTest):
             uri += '/?replicaSet=' + client_context.replica_set_name
 
         client = rs_or_single_client_noauth(uri)
-        client.pymongo_test.test.insert_one({"dummy": u"object"})
-        client.pymongo_test_bernie.test.insert_one({"dummy": u"object"})
+        client.pymongo_test.test.insert_one({"dummy": "object"})
+        client.pymongo_test_bernie.test.insert_one({"dummy": "object"})
 
         dbs = client.list_database_names()
         self.assertTrue("pymongo_test" in dbs)

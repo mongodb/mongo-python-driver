@@ -53,12 +53,11 @@ _RETRYABLE_ERROR_CODES = _NOT_MASTER_CODES | frozenset([
     9001,  # SocketException
     262,   # ExceededTimeLimit
 ])
-_UUNDER = u"_"
 
 
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over."""
-    return _UUNDER.join(["%s_%s" % item for item in keys])
+    return "_".join(["%s_%s" % item for item in keys])
 
 
 def _index_list(key_or_list, direction=None):

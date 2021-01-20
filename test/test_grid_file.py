@@ -506,21 +506,21 @@ Bye"""))
 
     def test_write_unicode(self):
         f = GridIn(self.db.fs)
-        self.assertRaises(TypeError, f.write, u"foo")
+        self.assertRaises(TypeError, f.write, "foo")
 
         f = GridIn(self.db.fs, encoding="utf-8")
-        f.write(u"foo")
+        f.write("foo")
         f.close()
 
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(b"foo", g.read())
 
         f = GridIn(self.db.fs, encoding="iso-8859-1")
-        f.write(u"aé")
+        f.write("aé")
         f.close()
 
         g = GridOut(self.db.fs, f._id)
-        self.assertEqual(u"aé".encode("iso-8859-1"), g.read())
+        self.assertEqual("aé".encode("iso-8859-1"), g.read())
 
     def test_set_after_close(self):
         f = GridIn(self.db.fs, _id="foo", bar="baz")

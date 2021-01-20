@@ -50,14 +50,11 @@ class TestObjectId(unittest.TestCase):
     def test_unicode(self):
         a = ObjectId()
         self.assertEqual(a, ObjectId(a))
-        self.assertEqual(ObjectId("123456789012123456789012"),
-                         ObjectId(u"123456789012123456789012"))
-        self.assertRaises(InvalidId, ObjectId, u"hello")
+        self.assertRaises(InvalidId, ObjectId, "hello")
 
     def test_from_hex(self):
         ObjectId("123456789012123456789012")
         self.assertRaises(InvalidId, ObjectId, "123456789012123456789G12")
-        self.assertRaises(InvalidId, ObjectId, u"123456789012123456789G12")
 
     def test_repr_str(self):
         self.assertEqual(repr(ObjectId("1234567890abcdef12345678")),

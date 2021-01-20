@@ -385,14 +385,14 @@ class TestGridfs(IntegrationTest):
         self.assertFalse(self.fs.exists({"foo": {"$gt": 12}}))
 
     def test_put_unicode(self):
-        self.assertRaises(TypeError, self.fs.put, u"hello")
+        self.assertRaises(TypeError, self.fs.put, "hello")
 
-        oid = self.fs.put(u"hello", encoding="utf-8")
+        oid = self.fs.put("hello", encoding="utf-8")
         self.assertEqual(b"hello", self.fs.get(oid).read())
         self.assertEqual("utf-8", self.fs.get(oid).encoding)
 
-        oid = self.fs.put(u"aé", encoding="iso-8859-1")
-        self.assertEqual(u"aé".encode("iso-8859-1"), self.fs.get(oid).read())
+        oid = self.fs.put("aé", encoding="iso-8859-1")
+        self.assertEqual("aé".encode("iso-8859-1"), self.fs.get(oid).read())
         self.assertEqual("iso-8859-1", self.fs.get(oid).encoding)
 
     def test_missing_length_iter(self):

@@ -36,9 +36,8 @@ class TestDBRef(unittest.TestCase):
         self.assertRaises(TypeError, DBRef, None, a)
         self.assertRaises(TypeError, DBRef, "coll", a, 5)
         self.assertTrue(DBRef("coll", a))
-        self.assertTrue(DBRef(u"coll", a))
-        self.assertTrue(DBRef(u"coll", 5))
-        self.assertTrue(DBRef(u"coll", 5, "database"))
+        self.assertTrue(DBRef("coll", 5))
+        self.assertTrue(DBRef("coll", 5, "database"))
 
     def test_read_only(self):
         a = DBRef("coll", ObjectId())
@@ -59,7 +58,7 @@ class TestDBRef(unittest.TestCase):
         self.assertEqual(repr(DBRef("coll",
                                     ObjectId("1234567890abcdef12345678"))),
                          "DBRef('coll', ObjectId('1234567890abcdef12345678'))")
-        self.assertEqual(repr(DBRef(u"coll",
+        self.assertEqual(repr(DBRef("coll",
                               ObjectId("1234567890abcdef12345678"))),
                          "DBRef(%s, ObjectId('1234567890abcdef12345678'))"
                          % (repr(u'coll'),)
@@ -75,23 +74,21 @@ class TestDBRef(unittest.TestCase):
         obj_id = ObjectId("1234567890abcdef12345678")
 
         self.assertEqual(DBRef('foo', 5), DBRef('foo', 5))
-        self.assertEqual(DBRef("coll", obj_id), DBRef(u"coll", obj_id))
+        self.assertEqual(DBRef("coll", obj_id), DBRef("coll", obj_id))
         self.assertNotEqual(DBRef("coll", obj_id),
-                            DBRef(u"coll", obj_id, "foo"))
+                            DBRef("coll", obj_id, "foo"))
         self.assertNotEqual(DBRef("coll", obj_id), DBRef("col", obj_id))
         self.assertNotEqual(DBRef("coll", obj_id),
                             DBRef("coll", ObjectId(b"123456789011")))
         self.assertNotEqual(DBRef("coll", obj_id), 4)
-        self.assertEqual(DBRef("coll", obj_id, "foo"),
-                         DBRef(u"coll", obj_id, "foo"))
         self.assertNotEqual(DBRef("coll", obj_id, "foo"),
-                            DBRef(u"coll", obj_id, "bar"))
+                            DBRef("coll", obj_id, "bar"))
 
         # Explicitly test inequality
         self.assertFalse(DBRef('foo', 5) != DBRef('foo', 5))
-        self.assertFalse(DBRef("coll", obj_id) != DBRef(u"coll", obj_id))
+        self.assertFalse(DBRef("coll", obj_id) != DBRef("coll", obj_id))
         self.assertFalse(DBRef("coll", obj_id, "foo") !=
-                         DBRef(u"coll", obj_id, "foo"))
+                         DBRef("coll", obj_id, "foo"))
 
     def test_kwargs(self):
         self.assertEqual(DBRef("coll", 5, foo="bar"),

@@ -132,17 +132,17 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(doc, decoder(encoder(doc)))
 
         helper({})
-        helper({"test": u"hello"})
+        helper({"test": "hello"})
         self.assertTrue(isinstance(decoder(encoder(
             {"hello": "world"}))["hello"], str))
         helper({"mike": -10120})
         helper({"long": Int64(10)})
         helper({"really big long": 2147483648})
-        helper({u"hello": 0.0013109})
+        helper({"hello": 0.0013109})
         helper({"something": True})
         helper({"false": False})
-        helper({"an array": [1, True, 3.8, u"world"]})
-        helper({"an object": doc_class({"test": u"something"})})
+        helper({"an array": [1, True, 3.8, "world"]})
+        helper({"an object": doc_class({"test": "something"})})
         helper({"a binary": Binary(b"test", 100)})
         helper({"a binary": Binary(b"test", 128)})
         helper({"a binary": Binary(b"test", 254)})
@@ -191,7 +191,7 @@ class TestBSON(unittest.TestCase):
 
     def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
-        self.assertRaises(TypeError, is_valid, u"test")
+        self.assertRaises(TypeError, is_valid, "test")
         self.assertRaises(TypeError, is_valid, 10.4)
 
         self.assertInvalid(b"test")
@@ -277,22 +277,22 @@ class TestBSON(unittest.TestCase):
                               qcheck.gen_string(qcheck.gen_range(0, 40)))
 
     def test_basic_decode(self):
-        self.assertEqual({"test": u"hello world"},
+        self.assertEqual({"test": "hello world"},
                          decode(b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C"
                                 b"\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F"
                                 b"\x72\x6C\x64\x00\x00"))
-        self.assertEqual([{"test": u"hello world"}, {}],
+        self.assertEqual([{"test": "hello world"}, {}],
                          decode_all(b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
                                     b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
                                     b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                                     b"\x05\x00\x00\x00\x00"))
-        self.assertEqual([{"test": u"hello world"}, {}],
+        self.assertEqual([{"test": "hello world"}, {}],
                          list(decode_iter(
                             b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
                             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
                             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                             b"\x05\x00\x00\x00\x00")))
-        self.assertEqual([{"test": u"hello world"}, {}],
+        self.assertEqual([{"test": "hello world"}, {}],
                          list(decode_file_iter(BytesIO(
                             b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
                             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
@@ -380,11 +380,11 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual(encode({}), BSON(b"\x05\x00\x00\x00\x00"))
         self.assertEqual(encode({}), b"\x05\x00\x00\x00\x00")
-        self.assertEqual(encode({"test": u"hello world"}),
+        self.assertEqual(encode({"test": "hello world"}),
                          b"\x1B\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0C\x00"
                          b"\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C"
                          b"\x64\x00\x00")
-        self.assertEqual(encode({u"mike": 100}),
+        self.assertEqual(encode({"mike": 100}),
                          b"\x0F\x00\x00\x00\x10\x6D\x69\x6B\x65\x00\x64\x00"
                          b"\x00\x00\x00")
         self.assertEqual(encode({"hello": 1.5}),
@@ -433,7 +433,7 @@ class TestBSON(unittest.TestCase):
                          b"=\x00\x00\x00\x0f$field\x000\x00\x00\x00\x1f\x00"
                          b"\x00\x00return function(){ return x; }\x00\t\x00"
                          b"\x00\x00\x08x\x00\x00\x00\x00")
-        unicode_empty_scope = Code(u"function(){ return 'héllo';}", {})
+        unicode_empty_scope = Code("function(){ return 'héllo';}", {})
         self.assertEqual(encode({'$field': unicode_empty_scope}),
                          b"8\x00\x00\x00\x0f$field\x00+\x00\x00\x00\x1e\x00"
                          b"\x00\x00function(){ return 'h\xc3\xa9llo';}\x00\x05"
@@ -660,10 +660,10 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidDocument, encode, {8.9: "test"})
 
     def test_utf8(self):
-        w = {u"aéあ": u"aéあ"}
+        w = {"aéあ": "aéあ"}
         self.assertEqual(w, decode(encode(w)))
 
-        # b'a\xe9' == u"aé".encode("iso-8859-1")
+        # b'a\xe9' == "aé".encode("iso-8859-1")
         iso8859_bytes = b'a\xe9'
         y = {"hello": iso8859_bytes}
         # Stored as BSON binary subtype 0.
@@ -678,16 +678,16 @@ class TestBSON(unittest.TestCase):
         # This test doesn't make much sense in Python2
         # since {'a': '\x00'} == {'a': u'\x00'}.
         # Decoding here actually returns {'a': '\x00'}
-        doc = {"a": u"\x00"}
+        doc = {"a": "\x00"}
         self.assertEqual(doc, decode(encode(doc)))
 
         self.assertRaises(InvalidDocument, encode, {b"\x00": "a"})
-        self.assertRaises(InvalidDocument, encode, {u"\x00": "a"})
+        self.assertRaises(InvalidDocument, encode, {"\x00": "a"})
 
         self.assertRaises(InvalidDocument, encode,
                           {"a": re.compile(b"ab\x00c")})
         self.assertRaises(InvalidDocument, encode,
-                          {"a": re.compile(u"ab\x00c")})
+                          {"a": re.compile("ab\x00c")})
 
     def test_move_id(self):
         self.assertEqual(b"\x19\x00\x00\x00\x02_id\x00\x02\x00\x00\x00a\x00"
@@ -996,11 +996,11 @@ class TestCodecOptions(unittest.TestCase):
 
         dec = decode(invalid_key,
                      CodecOptions(unicode_decode_error_handler="replace"))
-        self.assertEqual(dec, {replaced_key: u"foobar"})
+        self.assertEqual(dec, {replaced_key: "foobar"})
 
         dec = decode(invalid_key,
                      CodecOptions(unicode_decode_error_handler="ignore"))
-        self.assertEqual(dec, {ignored_key: u"foobar"})
+        self.assertEqual(dec, {ignored_key: "foobar"})
 
         self.assertRaises(InvalidBSON, decode, invalid_key, CodecOptions(
             unicode_decode_error_handler="strict"))
@@ -1014,11 +1014,11 @@ class TestCodecOptions(unittest.TestCase):
 
         dec = decode(invalid_val,
                      CodecOptions(unicode_decode_error_handler="replace"))
-        self.assertEqual(dec, {u"keystr": replaced_val})
+        self.assertEqual(dec, {"keystr": replaced_val})
 
         dec = decode(invalid_val,
                      CodecOptions(unicode_decode_error_handler="ignore"))
-        self.assertEqual(dec, {u"keystr": ignored_val})
+        self.assertEqual(dec, {"keystr": ignored_val})
 
         self.assertRaises(InvalidBSON, decode, invalid_val, CodecOptions(
             unicode_decode_error_handler="strict"))

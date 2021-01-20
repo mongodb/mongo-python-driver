@@ -81,8 +81,6 @@ _FIELD_MAP = {
     'delete': 'deletes'
 }
 
-_UJOIN = u"%s.%s"
-
 _UNICODE_REPLACE_CODEC_OPTIONS = CodecOptions(
     unicode_decode_error_handler='replace')
 
@@ -263,7 +261,7 @@ class _Query(object):
         self._as_command = None
 
     def namespace(self):
-        return _UJOIN % (self.db, self.coll)
+        return "%s.%s" % (self.db, self.coll)
 
     def use_command(self, sock_info, exhaust):
         use_find_cmd = False
@@ -346,7 +344,7 @@ class _Query(object):
                     set_slave_ok, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size
-            ns = _UJOIN % (self.db, "$cmd")
+            ns = "%s.%s" % (self.db, "$cmd")
             ntoreturn = -1  # All DB commands return 1 document
         else:
             # OP_QUERY treats ntoreturn of -1 and 1 the same, return
@@ -393,7 +391,7 @@ class _GetMore(object):
         self._as_command = None
 
     def namespace(self):
-        return _UJOIN % (self.db, self.coll)
+        return "%s.%s" % (self.db, self.coll)
 
     def use_command(self, sock_info, exhaust):
         sock_info.validate_session(self.client, self.session)
@@ -435,7 +433,7 @@ class _GetMore(object):
                     False, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size
-            ns = _UJOIN % (self.db, "$cmd")
+            ns = "%s.%s" % (self.db, "$cmd")
             return query(0, ns, 0, -1, spec, None, self.codec_options, ctx=ctx)
 
         return get_more(ns, self.ntoreturn, self.cursor_id, ctx)
