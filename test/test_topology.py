@@ -426,53 +426,12 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
                          t.description.topology_type)
 
-    def test_handle_getlasterror(self):
-        t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, ('a', 27017), {
-            'ok': 1,
-            'ismaster': True,
-            'setName': 'rs',
-            'hosts': ['a', 'b']})
-
-        got_ismaster(t, ('b', 27017), {
-            'ok': 1,
-            'ismaster': False,
-            'secondary': True,
-            'setName': 'rs',
-            'hosts': ['a', 'b']})
-
-        t.handle_getlasterror(('a', 27017), 'not master')
-        self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
-        self.assertEqual(SERVER_TYPE.RSSecondary, get_type(t, 'b'))
-        self.assertEqual('rs', t.description.replica_set_name)
-        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
-                         t.description.topology_type)
-
-        got_ismaster(t, ('a', 27017), {
-            'ok': 1,
-            'ismaster': True,
-            'setName': 'rs',
-            'hosts': ['a', 'b']})
-
-        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
-        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                         t.description.topology_type)
-
     def test_handle_error_removed_server(self):
         t = create_mock_topology(replica_set_name='rs')
 
         # No error resetting a server not in the TopologyDescription.
         errctx = _ErrorContext(AutoReconnect('mock'), 0, 0, True)
         t.handle_error(('b', 27017), errctx)
-
-        # Server was *not* added as type Unknown.
-        self.assertFalse(t.has_server(('b', 27017)))
-
-    def test_handle_getlasterror_removed_server(self):
-        t = create_mock_topology(replica_set_name='rs')
-
-        # No error resetting a server not in the TopologyDescription.
-        t.handle_getlasterror(('b', 27017), 'not master')
 
         # Server was *not* added as type Unknown.
         self.assertFalse(t.has_server(('b', 27017)))

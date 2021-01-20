@@ -1033,25 +1033,6 @@ class TestLegacy(IntegrationTest):
                          coll.group([], {"_id": uu},
                                     {"count": 0}, reduce))
 
-    def test_last_status(self):
-        # Tests many legacy API elements.
-        # We must call getlasterror on same socket as the last operation.
-        db = rs_or_single_client(maxPoolSize=1).pymongo_test
-        collection = db.test_last_status
-        collection.remove({})
-        collection.save({"i": 1})
-
-        collection.update({"i": 1}, {"$set": {"i": 2}}, w=0)
-        # updatedExisting is always false on mongos after an OP_MSG
-        # unacknowledged write.
-        if not (client_context.version >= (3, 6) and client_context.is_mongos):
-            self.assertTrue(db.last_status()["updatedExisting"])
-        wait_until(lambda: collection.find_one({"i": 2}),
-                   "found updated w=0 doc")
-
-        collection.update({"i": 1}, {"$set": {"i": 500}}, w=0)
-        self.assertFalse(db.last_status()["updatedExisting"])
-
     def test_auto_ref_and_deref(self):
         # Legacy API.
         db = self.client.pymongo_test

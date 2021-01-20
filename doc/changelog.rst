@@ -23,6 +23,10 @@ Breaking Changes in 4.0
   :attr:`pymongo.mongo_client.MongoClient.is_locked`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.database_names`.
 - Removed :meth:`pymongo.database.Database.collection_names`.
+- Removed :meth:`pymongo.database.Database.error`,
+  :meth:`pymongo.database.Database.last_status`,
+  :meth:`pymongo.database.Database.previous_error`,
+  :meth:`pymongo.database.Database.reset_error_history`.
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.close_cursor`. Use
   :meth:`pymongo.cursor.Cursor.close` instead.
