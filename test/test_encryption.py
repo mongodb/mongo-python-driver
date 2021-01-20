@@ -31,7 +31,6 @@ from bson.binary import (Binary,
                          STANDARD,
                          UUID_SUBTYPE)
 from bson.codec_options import CodecOptions
-from bson.py3compat import _unicode
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
@@ -455,7 +454,7 @@ AZURE_CREDS = {
 
 GCP_CREDS = {
     'email': os.environ.get('FLE_GCP_EMAIL', ''),
-    'privateKey': _unicode(os.environ.get('FLE_GCP_PRIVATEKEY', ''))}
+    'privateKey': os.environ.get('FLE_GCP_PRIVATEKEY', '')}
 
 
 class TestSpec(SpecRunner):
@@ -1307,7 +1306,7 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin,
             'AQGVERPgAAAAAAAAAAAAAAAC5DbBSwPwfSlBrDtRuglvNvCXD1KzDuCKY2P+4bRFtHDjpTOE2XuytPAUaAbXf1orsPq59PVZmsbTZbt2CB8qaQ==')
 
     def test_automatic(self):
-        expected_document_extjson = textwrap.dedent(""" 
+        expected_document_extjson = textwrap.dedent("""
         {"secret_azure": {
             "$binary": {
                 "base64": "AQGVERPgAAAAAAAAAAAAAAAC5DbBSwPwfSlBrDtRuglvNvCXD1KzDuCKY2P+4bRFtHDjpTOE2XuytPAUaAbXf1orsPq59PVZmsbTZbt2CB8qaQ==",
@@ -1333,7 +1332,7 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin,
             'ARgj/gAAAAAAAAAAAAAAAAACwFd+Y5Ojw45GUXNvbcIpN9YkRdoHDHkR4kssdn0tIMKlDQOLFkWFY9X07IRlXsxPD8DcTiKnl6XINK28vhcGlg==')
 
     def test_automatic(self):
-        expected_document_extjson = textwrap.dedent(""" 
+        expected_document_extjson = textwrap.dedent("""
         {"secret_gcp": {
             "$binary": {
                 "base64": "ARgj/gAAAAAAAAAAAAAAAAACwFd+Y5Ojw45GUXNvbcIpN9YkRdoHDHkR4kssdn0tIMKlDQOLFkWFY9X07IRlXsxPD8DcTiKnl6XINK28vhcGlg==",

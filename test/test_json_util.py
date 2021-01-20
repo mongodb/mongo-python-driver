@@ -39,8 +39,6 @@ from bson.tz_util import FixedOffset, utc
 
 from test import unittest, IntegrationTest
 
-PY3 = sys.version_info[0] == 3
-
 
 class TestJsonUtil(unittest.TestCase):
     def round_tripped(self, doc, **kwargs):
@@ -336,10 +334,7 @@ class TestJsonUtil(unittest.TestCase):
             doc, json_util.loads(ext_json_str, json_options=options))
 
     def test_binary(self):
-        if PY3:
-            bin_type_dict = {"bin": b"\x00\x01\x02\x03\x04"}
-        else:
-            bin_type_dict = {"bin": Binary(b"\x00\x01\x02\x03\x04")}
+        bin_type_dict = {"bin": b"\x00\x01\x02\x03\x04"}
         md5_type_dict = {
             "md5": Binary(b' n7\x18\xaf\t/\xd1\xd1/\x80\xca\xe7q\xcc\xac',
                 MD5_SUBTYPE)}
@@ -352,10 +347,7 @@ class TestJsonUtil(unittest.TestCase):
         # Binary with subtype 0 is decoded into bytes in Python 3.
         bin = json_util.loads(
             '{"bin": {"$binary": "AAECAwQ=", "$type": "00"}}')['bin']
-        if PY3:
-            self.assertEqual(type(bin), bytes)
-        else:
-            self.assertEqual(type(bin), Binary)
+        self.assertEqual(type(bin), bytes)
 
         # PYTHON-443 ensure old type formats are supported
         json_bin_dump = json_util.dumps(bin_type_dict)

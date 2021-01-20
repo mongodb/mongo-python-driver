@@ -21,7 +21,6 @@ import warnings
 sys.path[0:0] = [""]
 
 from bson.objectid import ObjectId
-from bson.py3compat import text_type
 from bson.son import SON
 from pymongo import CursorType, monitoring, InsertOne, UpdateOne, DeleteOne
 from pymongo.command_cursor import CommandCursor
@@ -37,10 +36,8 @@ from test import (client_context,
                   unittest)
 from test.utils import (EventListener,
                         get_pool,
-                        ignore_deprecations,
                         rs_or_single_client,
-                        single_client,
-                        wait_until)
+                        single_client)
 
 
 class TestCommandMonitoring(PyMongoTestCase):
@@ -821,7 +818,7 @@ class TestCommandMonitoring(PyMongoTestCase):
         error = errors[0]
         self.assertEqual(0, error.get('index'))
         self.assertIsInstance(error.get('code'), int)
-        self.assertIsInstance(error.get('errmsg'), text_type)
+        self.assertIsInstance(error.get('errmsg'), str)
 
     def test_legacy_writes(self):
         with warnings.catch_warnings():

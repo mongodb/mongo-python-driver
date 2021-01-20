@@ -14,22 +14,14 @@
 
 """Tests for Decimal128."""
 
-import codecs
-import glob
-import json
-import os.path
 import pickle
 import sys
 
-from binascii import unhexlify
-from decimal import Decimal, DecimalException
+from decimal import Decimal
 
 sys.path[0:0] = [""]
 
-from bson import BSON
 from bson.decimal128 import Decimal128, create_decimal128_context
-from bson.json_util import dumps, loads
-from bson.py3compat import b
 from test import client_context, unittest
 
 class TestDecimal128(unittest.TestCase):

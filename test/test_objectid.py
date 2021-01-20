@@ -23,7 +23,6 @@ sys.path[0:0] = [""]
 
 from bson.errors import InvalidId
 from bson.objectid import ObjectId, _MAX_COUNTER_VALUE
-from bson.py3compat import PY3, _unicode
 from bson.tz_util import (FixedOffset,
                           utc)
 from test import SkipTest, unittest
@@ -50,7 +49,7 @@ class TestObjectId(unittest.TestCase):
 
     def test_unicode(self):
         a = ObjectId()
-        self.assertEqual(a, ObjectId(_unicode(a)))
+        self.assertEqual(a, ObjectId(a))
         self.assertEqual(ObjectId("123456789012123456789012"),
                          ObjectId(u"123456789012123456789012"))
         self.assertRaises(InvalidId, ObjectId, u"hello")
@@ -139,13 +138,9 @@ class TestObjectId(unittest.TestCase):
             b"object\np2\nNtp3\nRp4\n"
             b"S'M\\x9afV\\x13v\\xc0\\x0b\\x88\\x00\\x00\\x00'\np5\nb.")
 
-        if PY3:
-            # Have to load using 'latin-1' since these were pickled in python2.x.
-            oid_1_9 = pickle.loads(pickled_with_1_9, encoding='latin-1')
-            oid_1_10 = pickle.loads(pickled_with_1_10, encoding='latin-1')
-        else:
-            oid_1_9 = pickle.loads(pickled_with_1_9)
-            oid_1_10 = pickle.loads(pickled_with_1_10)
+        # Have to load using 'latin-1' since these were pickled in python2.x.
+        oid_1_9 = pickle.loads(pickled_with_1_9, encoding='latin-1')
+        oid_1_10 = pickle.loads(pickled_with_1_10, encoding='latin-1')
 
         self.assertEqual(oid_1_9, ObjectId("4d9a66561376c00b88000000"))
         self.assertEqual(oid_1_9, oid_1_10)

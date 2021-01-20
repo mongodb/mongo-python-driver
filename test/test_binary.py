@@ -17,6 +17,7 @@
 import array
 import base64
 import copy
+import mmap
 import pickle
 import platform
 import sys
@@ -29,11 +30,12 @@ import bson
 from bson import decode, encode
 from bson.binary import *
 from bson.codec_options import CodecOptions
-from bson.py3compat import PY3
 from bson.son import SON
+
 from pymongo.common import validate_uuid_representation
 from pymongo.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
+
 from test import client_context, unittest, IntegrationTest
 from test.utils import ignore_deprecations
 
@@ -328,14 +330,9 @@ class TestBinary(unittest.TestCase):
         b1 = Binary(b'123', 2)
 
         # For testing backwards compatibility with pre-2.4 pymongo
-        if PY3:
-            p = (b"\x80\x03cbson.binary\nBinary\nq\x00C\x03123q\x01\x85q"
-                 b"\x02\x81q\x03}q\x04X\x10\x00\x00\x00_Binary__subtypeq"
-                 b"\x05K\x02sb.")
-        else:
-            p = (b"ccopy_reg\n_reconstructor\np0\n(cbson.binary\nBinary\np1\nc"
-                 b"__builtin__\nstr\np2\nS'123'\np3\ntp4\nRp5\n(dp6\nS'_Binary"
-                 b"__subtype'\np7\nI2\nsb.")
+        p = (b"\x80\x03cbson.binary\nBinary\nq\x00C\x03123q\x01\x85q"
+             b"\x02\x81q\x03}q\x04X\x10\x00\x00\x00_Binary__subtypeq"
+             b"\x05K\x02sb.")
 
         if not sys.version.startswith('3.0'):
             self.assertEqual(b1, pickle.loads(p))
@@ -357,16 +354,11 @@ class TestBinary(unittest.TestCase):
 
         self.assertEqual(b0, Binary(memoryview(b'123'), 2))
         self.assertEqual(b0, Binary(bytearray(b'123'), 2))
-        # mmap.mmap and array.array only expose the
-        # buffer interface in python 3.x
-        if PY3:
-            # No mmap module in Jython
-            import mmap
-            with mmap.mmap(-1, len(b'123')) as mm:
-                mm.write(b'123')
-                mm.seek(0)
-                self.assertEqual(b0, Binary(mm, 2))
-            self.assertEqual(b0, Binary(array.array('B', b'123'), 2))
+        with mmap.mmap(-1, len(b'123')) as mm:
+            mm.write(b'123')
+            mm.seek(0)
+            self.assertEqual(b0, Binary(mm, 2))
+        self.assertEqual(b0, Binary(array.array('B', b'123'), 2))
 
 
 class TestUuidSpecExplicitCoding(unittest.TestCase):
@@ -377,9 +369,7 @@ class TestUuidSpecExplicitCoding(unittest.TestCase):
 
     @staticmethod
     def _hex_to_bytes(hexstring):
-        if PY3:
-            return bytes.fromhex(hexstring)
-        return hexstring.decode("hex")
+        return bytes.fromhex(hexstring)
 
     # Explicit encoding prose test #1
     def test_encoding_1(self):
@@ -482,9 +472,7 @@ class TestUuidSpecImplicitCoding(IntegrationTest):
 
     @staticmethod
     def _hex_to_bytes(hexstring):
-        if PY3:
-            return bytes.fromhex(hexstring)
-        return hexstring.decode("hex")
+        return bytes.fromhex(hexstring)
 
     def _get_coll_w_uuid_rep(self, uuid_rep):
         codec_options = self.client.codec_options.with_options(

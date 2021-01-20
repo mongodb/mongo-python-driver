@@ -19,7 +19,6 @@ import sys
 import threading
 import time
 import uuid
-import warnings
 
 sys.path[0:0] = [""]
 
@@ -27,14 +26,11 @@ from bson.binary import PYTHON_LEGACY, STANDARD
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from bson.py3compat import string_type
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEOHAYSTACK
-from pymongo.database import Database
 from pymongo.common import partition_node
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
-                            CursorNotFound,
                             DocumentTooLarge,
                             DuplicateKeyError,
                             InvalidDocument,
@@ -42,7 +38,6 @@ from pymongo.errors import (BulkWriteError,
                             OperationFailure,
                             WriteConcernError,
                             WTimeoutError)
-from pymongo.message import _CursorAddress
 from pymongo.operations import IndexModel
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
@@ -143,14 +138,8 @@ class TestLegacy(IntegrationTest):
         self.assertEqual(doc["_id"], _id)
         self.assertTrue(isinstance(_id, ObjectId))
 
-        doc_class = dict
-        # Work around http://bugs.jython.org/issue1728
-        if (sys.platform.startswith('java') and
-                sys.version_info[:3] >= (2, 5, 2)):
-            doc_class = SON
-
         db = self.client.get_database(
-            db.name, codec_options=CodecOptions(document_class=doc_class))
+            db.name, codec_options=CodecOptions(document_class=dict))
 
         def remove_insert_find_one(doc):
             db.test.remove({})
@@ -2315,7 +2304,7 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
 
         failed = result['writeConcernErrors'][0]
         self.assertEqual(64, failed['code'])
-        self.assertTrue(isinstance(failed['errmsg'], string_type))
+        self.assertTrue(isinstance(failed['errmsg'], str))
 
         self.coll.delete_many({})
         self.coll.create_index('a', unique=True)
@@ -2413,12 +2402,12 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
         failed = result['writeErrors'][0]
         self.assertEqual(2, failed['index'])
         self.assertEqual(11000, failed['code'])
-        self.assertTrue(isinstance(failed['errmsg'], string_type))
+        self.assertTrue(isinstance(failed['errmsg'], str))
         self.assertEqual(1, failed['op']['a'])
 
         failed = result['writeConcernErrors'][0]
         self.assertEqual(64, failed['code'])
-        self.assertTrue(isinstance(failed['errmsg'], string_type))
+        self.assertTrue(isinstance(failed['errmsg'], str))
 
         upserts = result['upserted']
         self.assertEqual(1, len(upserts))

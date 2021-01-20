@@ -18,8 +18,9 @@ import copy
 import os
 import sys
 
+from io import BytesIO
+
 from bson import DBRef
-from bson.py3compat import StringIO
 from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, InsertOne, IndexModel, OFF, monitoring
 from pymongo.common import _MAX_END_SESSIONS
@@ -465,7 +466,7 @@ class TestSession(IntegrationTest):
             for f in files:
                 f.read()
 
-        sio = StringIO()
+        sio = BytesIO()
 
         self._test_ops(
             client,

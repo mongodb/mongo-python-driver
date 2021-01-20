@@ -18,7 +18,6 @@ import sys
 
 sys.path[0:0] = [""]
 
-from bson.py3compat import imap
 from pymongo import common
 from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_type import SERVER_TYPE
@@ -52,7 +51,7 @@ def create_mock_topology(
         seeds=None,
         replica_set_name=None,
         monitor_class=DummyMonitor):
-    partitioned_seeds = list(imap(common.partition_node, seeds or ['a']))
+    partitioned_seeds = list(map(common.partition_node, seeds or ['a']))
     topology_settings = TopologySettings(
         partitioned_seeds,
         replica_set_name=replica_set_name,

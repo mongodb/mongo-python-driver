@@ -33,7 +33,6 @@ from bson.decimal128 import Decimal128
 from bson.dbref import DBRef
 from bson.errors import InvalidBSON, InvalidId
 from bson.json_util import JSONMode
-from bson.py3compat import text_type, b
 from bson.son import SON
 
 from test import unittest
@@ -56,7 +55,7 @@ _NON_PARSE_ERRORS = set([
 
 _DEPRECATED_BSON_TYPES = {
     # Symbol
-    '0x0E': text_type,
+    '0x0E': str,
     # Undefined
     '0x06': type(None),
     # DBPointer
@@ -122,7 +121,7 @@ def create_test(case_spec):
                 encode_extjson = to_extjson
                 encode_bson = to_bson
 
-            cB = binascii.unhexlify(b(valid_case['canonical_bson']))
+            cB = binascii.unhexlify(valid_case['canonical_bson'].encode('utf8'))
             cEJ = valid_case['canonical_extjson']
             rEJ = valid_case.get('relaxed_extjson')
             dEJ = valid_case.get('degenerate_extjson')
@@ -139,7 +138,7 @@ def create_test(case_spec):
             if deprecated:
                 if 'converted_bson' in valid_case:
                     converted_bson = binascii.unhexlify(
-                        b(valid_case['converted_bson']))
+                        valid_case['converted_bson'].encode('utf8'))
                     self.assertEqual(encode_bson(decoded_bson), converted_bson)
                     self.assertJsonEqual(
                         encode_extjson(decode_bson(converted_bson)),
@@ -167,7 +166,7 @@ def create_test(case_spec):
 
             # Test round-tripping degenerate bson.
             if 'degenerate_bson' in valid_case:
-                dB = binascii.unhexlify(b(valid_case['degenerate_bson']))
+                dB = binascii.unhexlify(valid_case['degenerate_bson'].encode('utf8'))
                 self.assertEqual(encode_bson(decode_bson(dB)), cB)
 
             # Test round-tripping degenerate extended json.
@@ -186,7 +185,7 @@ def create_test(case_spec):
         for decode_error_case in case_spec.get('decodeErrors', []):
             with self.assertRaises(InvalidBSON):
                 decode_bson(
-                    binascii.unhexlify(b(decode_error_case['bson'])))
+                    binascii.unhexlify(decode_error_case['bson'].encode('utf8')))
 
         for parse_error_case in case_spec.get('parseErrors', []):
             if bson_type == '0x13':

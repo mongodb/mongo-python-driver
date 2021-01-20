@@ -14,23 +14,20 @@
 
 """Utilities for testing driver specs."""
 
-import copy
 import functools
 import threading
 
+from collections import abc
 
 from bson import decode, encode
 from bson.binary import Binary, STANDARD
 from bson.codec_options import CodecOptions
 from bson.int64 import Int64
-from bson.py3compat import iteritems, abc, string_type, text_type
 from bson.son import SON
 
 from gridfs import GridFSBucket
 
-from pymongo import (client_session,
-                     helpers,
-                     operations)
+from pymongo import client_session
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import (BulkWriteError,
@@ -43,20 +40,16 @@ from pymongo.write_concern import WriteConcern
 
 from test import (client_context,
                   client_knobs,
-                  IntegrationTest,
-                  unittest)
+                  IntegrationTest)
 from test.utils import (camel_to_snake,
                         camel_to_snake_args,
-                        camel_to_upper_camel,
                         CompareType,
                         CMAPListener,
                         OvertCommandListener,
                         parse_spec_options,
-                        parse_read_preference,
                         prepare_spec_arguments,
                         rs_client,
-                        ServerAndTopologyEventListener,
-                        HeartbeatEventListener)
+                        ServerAndTopologyEventListener)
 
 
 class SpecRunnerThread(threading.Thread):
@@ -594,7 +587,7 @@ def expect_any_error(op):
 
 def expect_error_message(expected_result):
     if isinstance(expected_result, dict):
-        return isinstance(expected_result['errorContains'], text_type)
+        return isinstance(expected_result['errorContains'], str)
 
     return False
 

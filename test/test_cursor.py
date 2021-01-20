@@ -27,7 +27,6 @@ sys.path[0:0] = [""]
 
 from bson import decode_all
 from bson.code import Code
-from bson.py3compat import PY3
 from bson.son import SON
 from pymongo import (ASCENDING,
                      DESCENDING,
@@ -40,7 +39,6 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference
 from test import (client_context,
                   unittest,
                   IntegrationTest)
@@ -48,9 +46,6 @@ from test.utils import (EventListener,
                         ignore_deprecations,
                         rs_or_single_client,
                         WhiteListEventListener)
-
-if PY3:
-    long = int
 
 
 class TestCursor(IntegrationTest):
@@ -167,7 +162,7 @@ class TestCursor(IntegrationTest):
         coll.insert_one({"amalia": 2})
 
         coll.find().max_time_ms(None)
-        coll.find().max_time_ms(long(1))
+        coll.find().max_time_ms(1)
 
         cursor = coll.find().max_time_ms(999)
         self.assertEqual(999, cursor._Cursor__max_time_ms)
@@ -215,7 +210,7 @@ class TestCursor(IntegrationTest):
         coll.insert_one({"amalia": 2})
 
         coll.find().max_await_time_ms(None)
-        coll.find().max_await_time_ms(long(1))
+        coll.find().max_await_time_ms(1)
 
         # When cursor is not tailable_await
         cursor = coll.find()
@@ -414,7 +409,7 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, db.test.find().limit, None)
         self.assertRaises(TypeError, db.test.find().limit, "hello")
         self.assertRaises(TypeError, db.test.find().limit, 5.5)
-        self.assertTrue(db.test.find().limit(long(5)))
+        self.assertTrue(db.test.find().limit(5))
 
         db.test.drop()
         db.test.insert_many([{"x": i} for i in range(100)])
@@ -560,7 +555,7 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, db.test.find().batch_size, "hello")
         self.assertRaises(TypeError, db.test.find().batch_size, 5.5)
         self.assertRaises(ValueError, db.test.find().batch_size, -1)
-        self.assertTrue(db.test.find().batch_size(long(5)))
+        self.assertTrue(db.test.find().batch_size(5))
         a = db.test.find()
         for _ in a:
             break
@@ -684,7 +679,7 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, db.test.find().skip, "hello")
         self.assertRaises(TypeError, db.test.find().skip, 5.5)
         self.assertRaises(ValueError, db.test.find().skip, -5)
-        self.assertTrue(db.test.find().skip(long(5)))
+        self.assertTrue(db.test.find().skip(5))
 
         db.drop_collection("test")
 
@@ -1059,7 +1054,7 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(5, len(list(self.db.test.find()[20:25])))
         self.assertEqual(5, len(list(
-            self.db.test.find()[long(20):long(25)])))
+            self.db.test.find()[20:25])))
         for a, b in zip(count(20), self.db.test.find()[20:25]):
             self.assertEqual(a, b['i'])
 
@@ -1104,7 +1099,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(50, self.db.test.find()[50]['i'])
         self.assertEqual(50, self.db.test.find().skip(50)[0]['i'])
         self.assertEqual(50, self.db.test.find().skip(49)[1]['i'])
-        self.assertEqual(50, self.db.test.find()[long(50)]['i'])
+        self.assertEqual(50, self.db.test.find()[50]['i'])
         self.assertEqual(99, self.db.test.find()[99]['i'])
 
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)

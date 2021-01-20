@@ -20,10 +20,12 @@
 import datetime
 import sys
 import zipfile
+
+from io import BytesIO
+
 sys.path[0:0] = [""]
 
 from bson.objectid import ObjectId
-from bson.py3compat import StringIO
 from gridfs import GridFS
 from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               _SEEK_CUR,
@@ -234,7 +236,7 @@ class TestGridFile(IntegrationTest):
 
         cursor = GridOutCursor(self.db.fs, {})
         cursor_clone = cursor.clone()
-        
+
         cursor_dict = cursor.__dict__.copy()
         cursor_dict.pop('_Cursor__session')
         cursor_clone_dict = cursor_clone.__dict__.copy()
@@ -301,7 +303,7 @@ class TestGridFile(IntegrationTest):
 
         five = GridIn(self.db.fs, chunk_size=2)
         five.write(b"hello")
-        buffer = StringIO(b" world")
+        buffer = BytesIO(b" world")
         five.write(buffer)
         five.write(b" and mongodb")
         five.close()
@@ -567,7 +569,7 @@ Bye"""))
     def test_prechunked_string(self):
 
         def write_me(s, chunk_size):
-            buf = StringIO(s)
+            buf = BytesIO(s)
             infile = GridIn(self.db.fs)
             while True:
                 to_write = buf.read(chunk_size)
@@ -646,7 +648,7 @@ Bye"""))
         self.assertIn("getMore", listener.started_command_names())
 
     def test_zip(self):
-        zf = StringIO()
+        zf = BytesIO()
         z = zipfile.ZipFile(zf, "w")
         z.writestr("test.txt", b"hello world")
         z.close()

@@ -41,7 +41,6 @@ from test.utils import (assertion_context,
                         cdecimal_patched,
                         CMAPListener,
                         client_context,
-                        Barrier,
                         get_pool,
                         HeartbeatEventListener,
                         server_name_to_type,
@@ -263,7 +262,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
 
     def test_ignore_stale_connection_errors(self):
         N_THREADS = 5
-        barrier = Barrier(N_THREADS, timeout=30)
+        barrier = threading.Barrier(N_THREADS, timeout=30)
         client = rs_or_single_client(minPoolSize=N_THREADS)
         self.addCleanup(client.close)
 

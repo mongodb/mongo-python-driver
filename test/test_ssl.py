@@ -450,9 +450,6 @@ class TestSSL(IntegrationTest):
         if sys.platform == "win32":
             raise SkipTest("Can't test system ca certs on Windows.")
 
-        if sys.version_info < (2, 7, 9):
-            raise SkipTest("Can't load system CA certificates.")
-
         if (ssl.OPENSSL_VERSION.lower().startswith('libressl') and
                 sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL):
             raise SkipTest(

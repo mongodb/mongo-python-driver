@@ -25,10 +25,11 @@ import re
 import sys
 import types
 
+from collections import abc
+
 from bson import json_util, Code, Decimal128, DBRef, SON, Int64, MaxKey, MinKey
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from bson.py3compat import abc, integer_types, iteritems, text_type, PY3
 from bson.regex import Regex, RE_TYPE
 
 from gridfs import GridFSBucket
@@ -182,7 +183,7 @@ class EntityMapUtil(object):
                 item,))
 
     def __setitem__(self, key, value):
-        if not isinstance(key, text_type):
+        if not isinstance(key, str):
             self._test_class.fail(
                 'Expected entity name of type str, got %s' % (type(key)))
 
@@ -197,7 +198,7 @@ class EntityMapUtil(object):
                 "Entity spec %s did not contain exactly one top-level key" % (
                     entity_spec,))
 
-        entity_type, spec = next(iteritems(entity_spec))
+        entity_type, spec = next(iter(entity_spec.items()))
         if entity_type == 'client':
             kwargs = {}
             observe_events = spec.get('observeEvents', [])
@@ -298,21 +299,16 @@ class EntityMapUtil(object):
             return self._session_lsids[session_name]
 
 
-if not PY3:
-    binary_types = (Binary,)
-    long_types = (Int64, long)
-    unicode_type = unicode
-else:
-    binary_types = (Binary, bytes)
-    long_types = (Int64,)
-    unicode_type = str
+binary_types = (Binary, bytes)
+long_types = (Int64,)
+unicode_type = str
 
 
 BSON_TYPE_ALIAS_MAP = {
     # https://docs.mongodb.com/manual/reference/operator/query/type/
     # https://pymongo.readthedocs.io/en/stable/api/bson/index.html
     'double': (float,),
-    'string': (text_type,),
+    'string': (str,),
     'object': (abc.Mapping,),
     'array': (abc.MutableSequence,),
     'binData': binary_types,
@@ -421,11 +417,11 @@ class MatchEvaluatorUtil(object):
             else:
                 nested = expectation[key_to_compare]
                 if isinstance(nested, abc.Mapping) and len(nested) == 1:
-                    opname, spec = next(iteritems(nested))
+                    opname, spec = next(iter(nested.items()))
                     if opname.startswith('$$'):
                         is_special_op = True
         elif len(expectation) == 1:
-            opname, spec = next(iteritems(expectation))
+            opname, spec = next(iter(expectation.items()))
             if opname.startswith('$$'):
                 is_special_op = True
                 key_to_compare = None
@@ -445,7 +441,7 @@ class MatchEvaluatorUtil(object):
             return
 
         self._test_class.assertIsInstance(actual, abc.Mapping)
-        for key, value in iteritems(expectation):
+        for key, value in expectation.items():
             if self._evaluate_if_special_operation(expectation, actual, key):
                 continue
 
@@ -473,7 +469,7 @@ class MatchEvaluatorUtil(object):
                 return
 
         # account for flexible numerics in element-wise comparison
-        if (isinstance(expectation, integer_types) or
+        if (isinstance(expectation, int) or
                 isinstance(expectation, float)):
             self._test_class.assertEqual(expectation, actual)
         else:
@@ -481,7 +477,7 @@ class MatchEvaluatorUtil(object):
             self._test_class.assertEqual(expectation, actual)
 
     def match_event(self, expectation, actual):
-        event_type, spec = next(iteritems(expectation))
+        event_type, spec = next(iter(expectation.items()))
 
         # every event type has the commandName field
         command_name = spec.get('commandName')

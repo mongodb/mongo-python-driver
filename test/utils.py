@@ -30,18 +30,16 @@ import warnings
 from collections import defaultdict
 from functools import partial
 
-from bson import json_util, py3compat
+from bson import json_util
 from bson.objectid import ObjectId
-from bson.py3compat import iteritems, string_type
 from bson.son import SON
 
 from pymongo import (MongoClient,
                      monitoring, operations, read_preferences)
 from pymongo.collection import ReturnDocument
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.monitoring import _SENSITIVE_COMMANDS, ConnectionPoolListener
-from pymongo.pool import (_CancellationContext,
-                          PoolOptions)
+from pymongo.monitoring import _SENSITIVE_COMMANDS
+from pymongo.pool import _CancellationContext
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
@@ -52,12 +50,6 @@ from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   db_user,
                   db_pwd)
-
-if sys.version_info[0] < 3:
-    # Python 2.7, use our backport.
-    from test.barrier import Barrier
-else:
-    from threading import Barrier
 
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
@@ -289,7 +281,7 @@ class ScenarioDict(dict):
         def convert(v):
             if isinstance(v, collections.Mapping):
                 return ScenarioDict(v)
-            if isinstance(v, (py3compat.string_type, bytes)):
+            if isinstance(v, (str, bytes)):
                 return v
             if isinstance(v, collections.Sequence):
                 return [convert(item) for item in v]
@@ -974,7 +966,8 @@ def assertion_context(msg):
         yield
     except AssertionError as exc:
         msg = '%s (%s)' % (exc, msg)
-        py3compat.reraise(type(exc), msg, sys.exc_info()[2])
+        exc_type, exc_val, exc_tb = sys.exc_info()
+        raise exc_type(exc_val).with_traceback(exc_tb)
 
 
 def parse_spec_options(opts):
@@ -998,8 +991,8 @@ def parse_spec_options(opts):
 
     if 'hint' in opts:
         hint = opts.pop('hint')
-        if not isinstance(hint, string_type):
-            hint = list(iteritems(hint))
+        if not isinstance(hint, str):
+            hint = list(hint.items())
         opts['hint'] = hint
 
     # Properly format 'hint' arguments for the Bulk API tests.
@@ -1011,17 +1004,17 @@ def parse_spec_options(opts):
                 args = req.pop('arguments', {})
                 if 'hint' in args:
                     hint = args.pop('hint')
-                    if not isinstance(hint, string_type):
-                        hint = list(iteritems(hint))
+                    if not isinstance(hint, str):
+                        hint = list(hint.items())
                     args['hint'] = hint
                 req['arguments'] = args
             else:
                 # Unified test format
-                bulk_model, spec = next(iteritems(req))
+                bulk_model, spec = next(iter(req.items()))
                 if 'hint' in spec:
                     hint = spec.pop('hint')
-                    if not isinstance(hint, string_type):
-                        hint = list(iteritems(hint))
+                    if not isinstance(hint, str):
+                        hint = list(hint.items())
                     spec['hint'] = hint
         opts['requests'] = reqs
 
@@ -1035,7 +1028,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map,
         # PyMongo accepts sort as list of tuples.
         if arg_name == "sort":
             sort_dict = arguments[arg_name]
-            arguments[arg_name] = list(iteritems(sort_dict))
+            arguments[arg_name] = list(sort_dict.items())
         # Named "key" instead not fieldName.
         if arg_name == "fieldName":
             arguments["key"] = arguments.pop(arg_name)
@@ -1057,7 +1050,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map,
                     bulk_arguments = camel_to_snake_args(request["arguments"])
                 else:
                     # Unified test format
-                    bulk_model, spec = next(iteritems(request))
+                    bulk_model, spec = next(iter(request.items()))
                     bulk_class = getattr(operations, camel_to_upper_camel(bulk_model))
                     bulk_arguments = camel_to_snake_args(spec)
                 requests.append(bulk_class(**dict(bulk_arguments)))

@@ -12,21 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
-import traceback
 import datetime
+import random
 import re
 import sys
+import traceback
+
 sys.path[0:0] = [""]
 
-from bson.binary import Binary
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.py3compat import MAXSIZE, PY3, iteritems
 from bson.son import SON
-
-if PY3:
-    unichr = chr
 
 gen_target = 100
 reduction_attempts = 10
@@ -59,7 +55,7 @@ def gen_int():
 
 
 def gen_float():
-    return lambda: (random.random() - 0.5) * MAXSIZE
+    return lambda: (random.random() - 0.5) * sys.maxsize
 
 
 def gen_boolean():
@@ -74,12 +70,8 @@ def gen_printable_string(gen_length):
     return lambda: "".join(gen_list(gen_printable_char(), gen_length)())
 
 
-if PY3:
-    def gen_char(set=None):
-        return lambda: bytes([random.randint(0, 255)])
-else:
-    def gen_char(set=None):
-        return lambda: chr(random.randint(0, 255))
+def gen_char(set=None):
+    return lambda: bytes([random.randint(0, 255)])
 
 
 def gen_string(gen_length):
@@ -87,7 +79,7 @@ def gen_string(gen_length):
 
 
 def gen_unichar():
-    return lambda: unichr(random.randint(1, 0xFFF))
+    return lambda: chr(random.randint(1, 0xFFF))
 
 
 def gen_unicode(gen_length):
@@ -150,15 +142,9 @@ def gen_dbref():
 
 def gen_mongo_value(depth, ref):
 
-    bintype = Binary
-    if PY3:
-        # If we used Binary in python3 tests would fail since we
-        # decode BSON binary subtype 0 to bytes. Testing this with
-        # bytes in python3 makes a lot more sense.
-        bintype = bytes
     choices = [gen_unicode(gen_range(0, 50)),
                gen_printable_string(gen_range(0, 50)),
-               my_map(gen_string(gen_range(0, 1000)), bintype),
+               my_map(gen_string(gen_range(0, 1000)), bytes),
                gen_int(),
                gen_float(),
                gen_boolean(),
@@ -195,7 +181,7 @@ def simplify(case):  # TODO this is a hack
             return (True, simplified)
         else:
             # simplify a value
-            simplified_items = list(iteritems(simplified))
+            simplified_items = list(simplified.items())
             if not len(simplified_items):
                 return (False, case)
             (key, value) = random.choice(simplified_items)

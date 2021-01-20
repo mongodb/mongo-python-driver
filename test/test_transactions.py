@@ -17,9 +17,9 @@
 import os
 import sys
 
-sys.path[0:0] = [""]
+from io import BytesIO
 
-from bson.py3compat import StringIO
+sys.path[0:0] = [""]
 
 from pymongo import client_session, WriteConcern
 from pymongo.client_session import TransactionOptions
@@ -270,8 +270,8 @@ class TestTransactions(TransactionsBase):
             (gfs.exists, ()),
             (gridfs_open_upload_stream, ('name',)),
             (bucket.upload_from_stream, ('name', b'data',)),
-            (bucket.download_to_stream, (1, StringIO(),)),
-            (bucket.download_to_stream_by_name, ('name', StringIO(),)),
+            (bucket.download_to_stream, (1, BytesIO(),)),
+            (bucket.download_to_stream_by_name, ('name', BytesIO(),)),
             (bucket.delete, (1,)),
             (bucket.find, ()),
             (bucket.open_download_stream, (1,)),

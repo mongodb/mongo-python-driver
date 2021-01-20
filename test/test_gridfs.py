@@ -16,21 +16,23 @@
 
 """Tests for the gridfs package.
 """
-import sys
-sys.path[0:0] = [""]
 
 import datetime
+import sys
 import threading
 import time
-import gridfs
+
+from io import BytesIO
+
+sys.path[0:0] = [""]
 
 from bson.binary import Binary
-from bson.py3compat import StringIO, string_type
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import (ConfigurationError,
                             NotMasterError,
                             ServerSelectionTimeoutError)
 from pymongo.read_preferences import ReadPreference
+import gridfs
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from test import (client_context,
                   unittest,
@@ -156,7 +158,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(oid, raw["_id"])
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(255 * 1024, raw["chunkSize"])
-        self.assertTrue(isinstance(raw["md5"], string_type))
+        self.assertTrue(isinstance(raw["md5"], str))
 
     def test_corrupt_chunk(self):
         files_id = self.fs.put(b'foobar')
@@ -311,23 +313,38 @@ class TestGridfs(IntegrationTest):
         time.sleep(0.01)
         three = self.fs.put(b"baz", filename="test", author="author2")
 
-        self.assertEqual(b"foo", self.fs.get_version(filename="test", author="author1", version=-2).read())
-        self.assertEqual(b"bar", self.fs.get_version(filename="test", author="author1", version=-1).read())
-        self.assertEqual(b"foo", self.fs.get_version(filename="test", author="author1", version=0).read())
-        self.assertEqual(b"bar", self.fs.get_version(filename="test", author="author1", version=1).read())
-        self.assertEqual(b"baz", self.fs.get_version(filename="test", author="author2", version=0).read())
-        self.assertEqual(b"baz", self.fs.get_version(filename="test", version=-1).read())
-        self.assertEqual(b"baz", self.fs.get_version(filename="test", version=2).read())
+        self.assertEqual(
+            b"foo",
+            self.fs.get_version(
+                filename="test", author="author1", version=-2).read())
+        self.assertEqual(
+            b"bar", self.fs.get_version(
+                filename="test", author="author1", version=-1).read())
+        self.assertEqual(
+            b"foo", self.fs.get_version(
+                filename="test", author="author1", version=0).read())
+        self.assertEqual(
+            b"bar", self.fs.get_version(
+                filename="test", author="author1", version=1).read())
+        self.assertEqual(
+            b"baz", self.fs.get_version(
+                filename="test", author="author2", version=0).read())
+        self.assertEqual(
+            b"baz", self.fs.get_version(filename="test", version=-1).read())
+        self.assertEqual(
+            b"baz", self.fs.get_version(filename="test", version=2).read())
 
-        self.assertRaises(NoFile, self.fs.get_version, filename="test", author="author3")
-        self.assertRaises(NoFile, self.fs.get_version, filename="test", author="author1", version=2)
+        self.assertRaises(
+            NoFile, self.fs.get_version, filename="test", author="author3")
+        self.assertRaises(
+            NoFile, self.fs.get_version, filename="test", author="author1", version=2)
 
         self.fs.delete(one)
         self.fs.delete(two)
         self.fs.delete(three)
 
     def test_put_filelike(self):
-        oid = self.fs.put(StringIO(b"hello world"), chunk_size=1)
+        oid = self.fs.put(BytesIO(b"hello world"), chunk_size=1)
         self.assertEqual(11, self.db.fs.chunks.count_documents({}))
         self.assertEqual(b"hello world", self.fs.get(oid).read())
 

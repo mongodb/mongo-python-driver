@@ -13,22 +13,21 @@
 # limitations under the License.
 
 """Test GridFSBucket class."""
+
 import copy
 import datetime
 import os
-import sys
 import re
+import sys
 
 from json import loads
-
-import gridfs
 
 sys.path[0:0] = [""]
 
 from bson import Binary
 from bson.int64 import Int64
 from bson.json_util import object_hook
-from bson.py3compat import bytes_from_hex
+import gridfs
 from gridfs.errors import NoFile, CorruptGridFile
 from test import (unittest,
                   IntegrationTest)
@@ -210,7 +209,7 @@ def create_tests():
                 for key, val in jsn.items():
                     if key in ("data", "source", "result"):
                         if "$hex" in val:
-                            jsn[key] = Binary(bytes_from_hex(val['$hex']))
+                            jsn[key] = Binary(bytes.fromhex(val['$hex']))
                     if isinstance(jsn[key], dict):
                         str2hex(jsn[key])
                     if isinstance(jsn[key], list):

@@ -23,7 +23,6 @@ import threading
 import time
 import uuid
 
-from contextlib import contextmanager
 from itertools import product
 
 sys.path[0:0] = ['']
@@ -33,7 +32,6 @@ from bson.binary import (ALL_UUID_REPRESENTATIONS,
                          Binary,
                          STANDARD,
                          PYTHON_LEGACY)
-from bson.py3compat import iteritems
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 
 from pymongo import MongoClient
@@ -1093,7 +1091,7 @@ class TestAllScenarios(unittest.TestCase):
     def assert_dict_is_subset(self, superdict, subdict):
         """Check that subdict is a subset of superdict."""
         exempt_fields = ["documentKey", "_id", "getMore"]
-        for key, value in iteritems(subdict):
+        for key, value in subdict.items():
             if key not in superdict:
                 self.fail('Key %s not found in %s' % (key, superdict))
             if isinstance(value, dict):
@@ -1111,7 +1109,7 @@ class TestAllScenarios(unittest.TestCase):
     def check_event(self, event, expectation_dict):
         if event is None:
             self.fail()
-        for key, value in iteritems(expectation_dict):
+        for key, value in expectation_dict.items():
             if isinstance(value, dict):
                 self.assert_dict_is_subset(getattr(event, key), value)
             else:
@@ -1149,9 +1147,9 @@ def get_change_stream(client, scenario_def, test):
     cs_pipeline = test["changeStreamPipeline"]
     options = test["changeStreamOptions"]
     cs_options = {}
-    for key, value in iteritems(options):
+    for key, value in options.items():
         cs_options[camel_to_snake(key)] = value
-    
+
     # Create and return change stream
     return cs_target.watch(pipeline=cs_pipeline, **cs_options)
 
@@ -1203,12 +1201,12 @@ def create_test(scenario_def, test):
                 for change, expected_changes in zip(changes, test["result"]["success"]):
                     self.assert_dict_is_subset(change, expected_changes)
                 self.assertEqual(len(changes), len(test["result"]["success"]))
-        
+
         finally:
             # Check for expected events
             results = self.listener.results
             for idx, expectation in enumerate(test.get("expectations", [])):
-                for event_type, event_desc in iteritems(expectation):
+                for event_type, event_desc in expectation.items():
                     results_key = event_type.split("_")[1]
                     event = results[results_key][idx] if len(results[results_key]) > idx else None
                     self.check_event(event, event_desc)

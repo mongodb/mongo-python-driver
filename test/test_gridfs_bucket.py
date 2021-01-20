@@ -21,13 +21,13 @@ import itertools
 import threading
 import time
 
-import gridfs
+from io import BytesIO
 
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.objectid import ObjectId
-from bson.py3compat import StringIO, string_type
 from bson.son import SON
+import gridfs
 from gridfs.errors import NoFile, CorruptGridFile
 from pymongo.errors import (ConfigurationError,
                             NotMasterError,
@@ -131,7 +131,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(oid, raw["_id"])
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(255 * 1024, raw["chunkSize"])
-        self.assertTrue(isinstance(raw["md5"], string_type))
+        self.assertTrue(isinstance(raw["md5"], str))
 
     def test_corrupt_chunk(self):
         files_id = self.fs.upload_from_stream("test_filename",
@@ -293,7 +293,7 @@ class TestGridfs(IntegrationTest):
 
     def test_upload_from_stream(self):
         oid = self.fs.upload_from_stream("test_file",
-                                         StringIO(b"hello world"),
+                                         BytesIO(b"hello world"),
                                          chunk_size_bytes=1)
         self.assertEqual(11, self.db.fs.chunks.count_documents({}))
         self.assertEqual(b"hello world",
@@ -303,7 +303,7 @@ class TestGridfs(IntegrationTest):
         oid = ObjectId()
         self.fs.upload_from_stream_with_id(oid,
                                            "test_file_custom_id",
-                                           StringIO(b"custom id"),
+                                           BytesIO(b"custom id"),
                                            chunk_size_bytes=1)
         self.assertEqual(b"custom id",
                          self.fs.open_download_stream(oid).read())
@@ -416,11 +416,11 @@ class TestGridfs(IntegrationTest):
             {"files_id": gin._id}))
 
     def test_download_to_stream(self):
-        file1 = StringIO(b"hello world")
+        file1 = BytesIO(b"hello world")
         # Test with one chunk.
         oid = self.fs.upload_from_stream("one_chunk", file1)
         self.assertEqual(1, self.db.fs.chunks.count_documents({}))
-        file2 = StringIO()
+        file2 = BytesIO()
         self.fs.download_to_stream(oid, file2)
         file1.seek(0)
         file2.seek(0)
@@ -434,18 +434,18 @@ class TestGridfs(IntegrationTest):
                                          file1,
                                          chunk_size_bytes=1)
         self.assertEqual(11, self.db.fs.chunks.count_documents({}))
-        file2 = StringIO()
+        file2 = BytesIO()
         self.fs.download_to_stream(oid, file2)
         file1.seek(0)
         file2.seek(0)
         self.assertEqual(file1.read(), file2.read())
 
     def test_download_to_stream_by_name(self):
-        file1 = StringIO(b"hello world")
+        file1 = BytesIO(b"hello world")
         # Test with one chunk.
         oid = self.fs.upload_from_stream("one_chunk", file1)
         self.assertEqual(1, self.db.fs.chunks.count_documents({}))
-        file2 = StringIO()
+        file2 = BytesIO()
         self.fs.download_to_stream_by_name("one_chunk", file2)
         file1.seek(0)
         file2.seek(0)
@@ -458,7 +458,7 @@ class TestGridfs(IntegrationTest):
         self.fs.upload_from_stream("many_chunks", file1, chunk_size_bytes=1)
         self.assertEqual(11, self.db.fs.chunks.count_documents({}))
 
-        file2 = StringIO()
+        file2 = BytesIO()
         self.fs.download_to_stream_by_name("many_chunks", file2)
         file1.seek(0)
         file2.seek(0)

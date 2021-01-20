@@ -23,7 +23,6 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from bson.py3compat import MAXSIZE
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.message import _maybe_add_read_preference
@@ -430,7 +429,7 @@ class TestCommandAndReadPreference(IntegrationTest):
         # the collection already exists.
         self._test_primary_helper(
             lambda: self.c.pymongo_test.create_collection(
-                'some_collection%s' % random.randint(0, MAXSIZE)))
+                'some_collection%s' % random.randint(0, sys.maxsize)))
 
     @client_context.require_version_max(4, 1, 0, -1)
     def test_group(self):

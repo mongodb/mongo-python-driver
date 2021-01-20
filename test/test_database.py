@@ -21,13 +21,11 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.int64 import Int64
 from bson.regex import Regex
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.py3compat import string_type, text_type, PY3
 from bson.son import SON
 from pymongo import (ALL,
                      auth,
@@ -61,10 +59,6 @@ from test.utils import (EventListener,
                         IMPOSSIBLE_WRITE_CONCERN,
                         OvertCommandListener)
 from test.test_custom_types import DECIMAL_CODECOPTS
-
-
-if PY3:
-    long = int
 
 
 class TestDatabaseNoConnect(unittest.TestCase):
@@ -432,10 +426,10 @@ class TestDatabase(IntegrationTest):
         # These basically clue us in to server changes.
         self.assertTrue(isinstance(info[0]['responseLength'], int))
         self.assertTrue(isinstance(info[0]['millis'], int))
-        self.assertTrue(isinstance(info[0]['client'], string_type))
-        self.assertTrue(isinstance(info[0]['user'], string_type))
-        self.assertTrue(isinstance(info[0]['ns'], string_type))
-        self.assertTrue(isinstance(info[0]['op'], string_type))
+        self.assertTrue(isinstance(info[0]['client'], str))
+        self.assertTrue(isinstance(info[0]['user'], str))
+        self.assertTrue(isinstance(info[0]['ns'], str))
+        self.assertTrue(isinstance(info[0]['op'], str))
         self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
 
     @client_context.require_no_mongos
@@ -513,7 +507,7 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, auth._password_digest, None)
 
         self.assertTrue(isinstance(auth._password_digest("mike", "password"),
-                                   text_type))
+                                   str))
         self.assertEqual(auth._password_digest("mike", "password"),
                          u"cd7e45b3b2767dc2fa9b6b548457ed00")
         self.assertEqual(auth._password_digest("mike", "password"),
@@ -828,7 +822,7 @@ class TestDatabase(IntegrationTest):
     def test_long(self):
         db = self.client.pymongo_test
         db.test.drop()
-        db.test.insert_one({"x": long(9223372036854775807)})
+        db.test.insert_one({"x": 9223372036854775807})
         retrieved = db.test.find_one()['x']
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)

@@ -26,7 +26,6 @@ except ImportError:
 sys.path[0:0] = [""]
 
 from bson.binary import JAVA_LEGACY
-from bson.py3compat import string_type, _unicode
 from pymongo import ReadPreference
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.uri_parser import (parse_userinfo,
@@ -169,7 +168,7 @@ class TestURI(unittest.TestCase):
                          split_options('connectTimeoutMS=0.1'))
         self.assertTrue(split_options('connectTimeoutMS=300'))
         self.assertTrue(isinstance(split_options('w=5')['w'], int))
-        self.assertTrue(isinstance(split_options('w=5.5')['w'], string_type))
+        self.assertTrue(isinstance(split_options('w=5.5')['w'], str))
         self.assertTrue(split_options('w=foo'))
         self.assertTrue(split_options('w=majority'))
         self.assertTrue(split_options('wtimeoutms=500'))

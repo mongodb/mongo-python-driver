@@ -24,6 +24,7 @@ import socket
 import struct
 import sys
 import time
+import _thread as thread
 import threading
 import warnings
 
@@ -31,7 +32,6 @@ sys.path[0:0] = [""]
 
 from bson import encode
 from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
-from bson.py3compat import thread
 from bson.son import SON
 from bson.tz_util import utc
 import pymongo
@@ -90,7 +90,6 @@ from test.utils import (assertRaisesExactly,
                         rs_client,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
-                        server_is_master_with_slave,
                         single_client,
                         wait_until)
 

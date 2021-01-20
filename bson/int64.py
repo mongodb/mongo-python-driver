@@ -14,13 +14,7 @@
 
 """A BSON wrapper for long (int in python3)"""
 
-from bson.py3compat import PY3
-
-if PY3:
-    long = int
-
-
-class Int64(long):
+class Int64(int):
     """Representation of the BSON int64 type.
 
     This is necessary because every integral number is an :class:`int` in

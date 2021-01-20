@@ -14,14 +14,11 @@
 
 """Test the collection module."""
 
-import json
 import os
-import re
 import sys
 
 sys.path[0:0] = [""]
 
-from bson.py3compat import iteritems
 from pymongo import operations, WriteConcern
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
@@ -35,7 +32,7 @@ from pymongo.operations import (InsertOne,
                                 UpdateOne,
                                 UpdateMany)
 
-from test import unittest, client_context, IntegrationTest
+from test import unittest, IntegrationTest
 from test.utils import (camel_to_snake, camel_to_upper_camel,
                         camel_to_snake_args, drop_collections, TestCreator)
 
@@ -113,7 +110,7 @@ def run_operation(collection, test):
             # PyMongo accepts sort as list of tuples.
             if arg_name == "sort":
                 sort_dict = arguments[arg_name]
-                arguments[arg_name] = list(iteritems(sort_dict))
+                arguments[arg_name] = list(sort_dict.items())
             # Named "key" instead not fieldName.
             if arg_name == "fieldName":
                 arguments["key"] = arguments.pop(arg_name)

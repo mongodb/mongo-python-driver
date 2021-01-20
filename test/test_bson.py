@@ -16,13 +16,18 @@
 
 """Test the bson module."""
 
+import array
 import collections
 import datetime
+import mmap
 import os
 import re
 import sys
 import tempfile
 import uuid
+
+from collections import abc, OrderedDict
+from io import BytesIO
 
 sys.path[0:0] = [""]
 
@@ -42,22 +47,17 @@ from bson.codec_options import CodecOptions
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
-from bson.py3compat import abc, iteritems, PY3, StringIO, text_type
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.errors import (InvalidBSON,
-                         InvalidDocument,
-                         InvalidStringData)
+                         InvalidDocument)
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.tz_util import (FixedOffset,
                           utc)
 
-from test import qcheck, SkipTest, unittest
+from test import qcheck, unittest
 from test.utils import ExceptionCatchingThread
-
-if PY3:
-    long = int
 
 
 class NotADict(abc.MutableMapping):
@@ -134,7 +134,7 @@ class TestBSON(unittest.TestCase):
         helper({})
         helper({"test": u"hello"})
         self.assertTrue(isinstance(decoder(encoder(
-            {"hello": "world"}))["hello"], text_type))
+            {"hello": "world"}))["hello"], str))
         helper({"mike": -10120})
         helper({"long": Int64(10)})
         helper({"really big long": 2147483648})
@@ -293,7 +293,7 @@ class TestBSON(unittest.TestCase):
                             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                             b"\x05\x00\x00\x00\x00")))
         self.assertEqual([{"test": u"hello world"}, {}],
-                         list(decode_file_iter(StringIO(
+                         list(decode_file_iter(BytesIO(
                             b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
                             b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
                             b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
@@ -305,14 +305,11 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(docs, decode_all(bytearray(bs)))
         self.assertEqual(docs, decode_all(memoryview(bs)))
         self.assertEqual(docs, decode_all(memoryview(b'1' + bs + b'1')[1:-1]))
-        if PY3:
-            import array
-            import mmap
-            self.assertEqual(docs, decode_all(array.array('B', bs)))
-            with mmap.mmap(-1, len(bs)) as mm:
-                mm.write(bs)
-                mm.seek(0)
-                self.assertEqual(docs, decode_all(mm))
+        self.assertEqual(docs, decode_all(array.array('B', bs)))
+        with mmap.mmap(-1, len(bs)) as mm:
+            mm.write(bs)
+            mm.seek(0)
+            self.assertEqual(docs, decode_all(mm))
 
     def test_decode_buffer_protocol(self):
         doc = {'foo': 'bar'}
@@ -321,21 +318,18 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(doc, decode(bytearray(bs)))
         self.assertEqual(doc, decode(memoryview(bs)))
         self.assertEqual(doc, decode(memoryview(b'1' + bs + b'1')[1:-1]))
-        if PY3:
-            import array
-            import mmap
-            self.assertEqual(doc, decode(array.array('B', bs)))
-            with mmap.mmap(-1, len(bs)) as mm:
-                mm.write(bs)
-                mm.seek(0)
-                self.assertEqual(doc, decode(mm))
+        self.assertEqual(doc, decode(array.array('B', bs)))
+        with mmap.mmap(-1, len(bs)) as mm:
+            mm.write(bs)
+            mm.seek(0)
+            self.assertEqual(doc, decode(mm))
 
     def test_invalid_decodes(self):
         # Invalid object size (not enough bytes in document for even
         # an object size of first object.
         # NOTE: decode_all and decode_iter don't care, not sure if they should?
         self.assertRaises(InvalidBSON, list,
-                          decode_file_iter(StringIO(b"\x1B")))
+                          decode_file_iter(BytesIO(b"\x1B")))
 
         bad_bsons = [
             # An object size that's too small to even include the object size,
@@ -366,7 +360,7 @@ class TestBSON(unittest.TestCase):
             with self.assertRaises(InvalidBSON, msg=msg):
                 list(decode_iter(data))
             with self.assertRaises(InvalidBSON, msg=msg):
-                list(decode_file_iter(StringIO(data)))
+                list(decode_file_iter(BytesIO(data)))
             with tempfile.TemporaryFile() as scratch:
                 scratch.write(data)
                 scratch.seek(0, os.SEEK_SET)
@@ -498,10 +492,7 @@ class TestBSON(unittest.TestCase):
         # Since `bytes` are stored as Binary you can't use them
         # as keys in python 3.x. Using binary data as a key makes
         # no sense in BSON anyway and little sense in python.
-        if PY3:
-            self.assertRaises(InvalidDocument, encode, doc)
-        else:
-            self.assertTrue(encode(doc))
+        self.assertRaises(InvalidDocument, encode, doc)
 
     def test_datetime_encode_decode(self):
         # Negative timestamps
@@ -604,13 +595,6 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(d, decode(encode(d)))
 
     def test_bad_encode(self):
-        if not PY3:
-            # Python3 treats this as a unicode string which won't raise
-            # an exception. If we passed the string as bytes instead we
-            # still wouldn't get an error since we store bytes as BSON
-            # binary subtype 0.
-            self.assertRaises(InvalidStringData, encode,
-                              {"lalala": '\xf4\xe0\xf0\xe1\xc0 Color Touch'})
         # Work around what seems like a regression in python 3.5.0.
         # See http://bugs.python.org/issue25222
         if sys.version_info[:2] < (3, 5):
@@ -622,13 +606,13 @@ class TestBSON(unittest.TestCase):
                 self.assertRaises(Exception, encode, evil_data)
 
     def test_overflow(self):
-        self.assertTrue(encode({"x": long(9223372036854775807)}))
+        self.assertTrue(encode({"x": 9223372036854775807}))
         self.assertRaises(OverflowError, encode,
-                          {"x": long(9223372036854775808)})
+                          {"x": 9223372036854775808})
 
-        self.assertTrue(encode({"x": long(-9223372036854775808)}))
+        self.assertTrue(encode({"x": -9223372036854775808}))
         self.assertRaises(OverflowError, encode,
-                          {"x": long(-9223372036854775809)})
+                          {"x": -9223372036854775809})
 
     def test_small_long_encode_decode(self):
         encoded1 = encode({'x': 256})
@@ -682,25 +666,10 @@ class TestBSON(unittest.TestCase):
         # b'a\xe9' == u"aé".encode("iso-8859-1")
         iso8859_bytes = b'a\xe9'
         y = {"hello": iso8859_bytes}
-        if PY3:
-            # Stored as BSON binary subtype 0.
-            out = decode(encode(y))
-            self.assertTrue(isinstance(out['hello'], bytes))
-            self.assertEqual(out['hello'], iso8859_bytes)
-        else:
-            # Python 2.
-            try:
-                encode(y)
-            except InvalidStringData as e:
-                self.assertTrue(repr(iso8859_bytes) in str(e))
-
-            # The next two tests only make sense in python 2.x since
-            # you can't use `bytes` type as document keys in python 3.x.
-            x = {u"aéあ".encode("utf-8"): u"aéあ".encode("utf-8")}
-            self.assertEqual(w, decode(encode(x)))
-
-            z = {iso8859_bytes: "hello"}
-            self.assertRaises(InvalidStringData, encode, z)
+        # Stored as BSON binary subtype 0.
+        out = decode(encode(y))
+        self.assertTrue(isinstance(out['hello'], bytes))
+        self.assertEqual(out['hello'], iso8859_bytes)
 
     def test_null_character(self):
         doc = {"a": "\x00"}
@@ -767,24 +736,20 @@ class TestBSON(unittest.TestCase):
         class _myfloat(float):
             pass
 
-        class _myunicode(text_type):
+        class _myunicode(str):
             pass
 
         d = {'a': _myint(42), 'b': _myfloat(63.9),
              'c': _myunicode('hello world')
             }
         d2 = decode(encode(d))
-        for key, value in iteritems(d2):
+        for key, value in d2.items():
             orig_value = d[key]
             orig_type = orig_value.__class__.__bases__[0]
             self.assertEqual(type(value), orig_type)
             self.assertEqual(value, orig_type(value))
 
     def test_ordered_dict(self):
-        try:
-            from collections import OrderedDict
-        except ImportError:
-            raise SkipTest("No OrderedDict")
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(
             d, decode(encode(d), CodecOptions(document_class=OrderedDict)))

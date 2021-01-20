@@ -19,7 +19,6 @@
 import contextlib
 import re
 import sys
-import threading
 
 from codecs import utf_8_decode
 from collections import defaultdict
@@ -32,7 +31,6 @@ from bson.regex import Regex
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from bson.py3compat import itervalues
 from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
@@ -376,7 +374,7 @@ class TestCollection(IntegrationTest):
         reindexed = db.test.reindex()
         if 'raw' in reindexed:
             # mongos
-            for result in itervalues(reindexed['raw']):
+            for result in reindexed['raw'].values():
                 check_result(result)
         else:
             check_result(reindexed)
@@ -1348,12 +1346,6 @@ class TestCollection(IntegrationTest):
         # Once more for good measure.
         self.assertIn('E11000 duplicate key error',
                       str(ctx.exception))
-
-        if sys.version_info[0] == 2:
-            # Test unicode(error) conversion.
-            self.assertIn('E11000 duplicate key error',
-                          unicode(ctx.exception))
-
 
     def test_wtimeout(self):
         # Ensure setting wtimeout doesn't disable write concern altogether.

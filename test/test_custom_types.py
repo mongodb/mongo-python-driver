@@ -17,6 +17,7 @@
 import datetime
 import sys
 import tempfile
+
 from collections import OrderedDict
 from decimal import Decimal
 from random import random
@@ -39,7 +40,6 @@ from bson.codec_options import (CodecOptions, TypeCodec, TypeDecoder,
 from bson.errors import InvalidDocument
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
-from bson.py3compat import text_type
 
 from gridfs import GridIn, GridOut
 
@@ -110,7 +110,7 @@ UNINT_CODECOPTS = CodecOptions(type_registry=TypeRegistry(
 
 
 class UppercaseTextDecoder(TypeDecoder):
-    bson_type = text_type
+    bson_type = str
     def transform_bson(self, value):
         return value.upper()
 
