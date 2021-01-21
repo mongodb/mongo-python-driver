@@ -317,9 +317,6 @@ class TestSession(IntegrationTest):
             (coll.aggregate, [[]], {}),
         ])
 
-        if client_context.supports_reindex:
-            ops.append((coll.reindex, [], {}))
-
         self._test_ops(client, *ops)
 
     def test_cursor_clone(self):
@@ -909,10 +906,6 @@ class TestCausalConsistency(unittest.TestCase):
         self._test_writes(
             lambda coll, session: coll.drop_indexes(session=session))
 
-        if client_context.supports_reindex:
-            self._test_writes(
-                lambda coll, session: coll.reindex(session=session))
-
     def _test_no_read_concern(self, op):
         coll = self.client.pymongo_test.test
         with self.client.start_session() as sess:
@@ -975,10 +968,6 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.database.current_op(session=session))
         self._test_no_read_concern(
             lambda coll, session: coll.find({}, session=session).explain())
-
-        if client_context.supports_reindex:
-            self._test_no_read_concern(
-                lambda coll, session: coll.reindex(session=session))
 
     @client_context.require_no_standalone
     @client_context.require_version_max(4, 1, 0)

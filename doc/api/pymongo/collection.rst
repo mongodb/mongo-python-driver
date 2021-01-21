@@ -60,7 +60,6 @@
       .. automethod:: create_indexes
       .. automethod:: drop_index
       .. automethod:: drop_indexes
-      .. automethod:: reindex
       .. automethod:: list_indexes
       .. automethod:: index_information
       .. automethod:: drop
@@ -77,4 +76,3 @@
       .. automethod:: update(spec, document, upsert=False, manipulate=False, multi=False, check_keys=True, **kwargs)
       .. automethod:: remove(spec_or_id=None, multi=True, **kwargs)
       .. automethod:: find_and_modify
-      .. automethod:: ensure_index

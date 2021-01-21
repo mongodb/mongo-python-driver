@@ -143,14 +143,6 @@ class TestCollation(unittest.TestCase):
             ci_cmd['indexes'][0]['collation'])
 
     @raisesConfigurationErrorForOldMongoDB
-    def test_ensure_index(self):
-        self.db.test.ensure_index('foo', collation=self.collation)
-        ci_cmd = self.listener.results['started'][0].command
-        self.assertEqual(
-            self.collation.document,
-            ci_cmd['indexes'][0]['collation'])
-
-    @raisesConfigurationErrorForOldMongoDB
     def test_aggregate(self):
         self.db.test.aggregate([{'$group': {'_id': 42}}],
                                collation=self.collation)

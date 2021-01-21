@@ -136,6 +136,47 @@ can be changed to this::
     names = client.list_collection_names()
     non_system_names = client.list_collection_names(filter={"name": {"$regex": r"^(?!system\\.)"}})
 
+
+Collection
+----------
+
+Collection.ensure_index is removed
+..................................
+
+Removed :meth:`pymongo.collection.Collection.ensure_index`. Use
+:meth:`~pymongo.collection.Collection.create_index` or
+:meth:`~pymongo.collection.Collection.create_indexes` instead. Note that
+``ensure_index`` maintained an in memory cache of recently created indexes
+whereas the newer methods do not. Applications should avoid frequent calls
+to :meth:`~pymongo.collection.Collection.create_index` or
+:meth:`~pymongo.collection.Collection.create_indexes`. Code like this::
+
+  def persist(self, document):
+      my_collection.ensure_index('a', unique=True)
+      my_collection.insert_one(document)
+
+Can be changed to this::
+
+  def persist(self, document):
+      if not self.created_index:
+          my_collection.create_index('a', unique=True)
+          self.created_index = True
+      my_collection.insert_one(document)
+
+Collection.reindex is removed
+.............................
+
+Removed :meth:`pymongo.collection.Collection.reindex`. Run the
+`reIndex command`_ directly instead. Code like this::
+
+  >>> result = database.my_collection.reindex()
+
+can be changed to this::
+
+  >>> result = database.command('reIndex', 'my_collection')
+
+.. _reIndex command: https://docs.mongodb.com/manual/reference/command/reIndex/
+
 Removed features with no migration path
 ---------------------------------------
 
