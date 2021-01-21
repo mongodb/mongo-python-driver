@@ -31,17 +31,14 @@ from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _CollectionRawAggregationCommand)
 from pymongo.bulk import BulkOperationBuilder, _Bulk
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
-from pymongo.common import ORDERED_TYPES
 from pymongo.collation import validate_collation_or_none
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
-from pymongo.errors import (BulkWriteError,
-                            ConfigurationError,
+from pymongo.errors import (ConfigurationError,
                             InvalidName,
                             InvalidOperation,
                             OperationFailure)
-from pymongo.helpers import (_check_write_command_response,
-                             _raise_last_error)
+from pymongo.helpers import _check_write_command_response
 from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import IndexModel
 from pymongo.read_preferences import ReadPreference
@@ -604,52 +601,6 @@ class Collection(common.BaseObject):
         if not isinstance(doc, RawBSONDocument):
             return doc.get('_id')
 
-    def _insert(self, docs, ordered=True, check_keys=True,
-                manipulate=False, write_concern=None, op_id=None,
-                bypass_doc_val=False, session=None):
-        """Internal insert helper."""
-        if isinstance(docs, abc.Mapping):
-            return self._insert_one(
-                docs, ordered, check_keys, manipulate, write_concern, op_id,
-                bypass_doc_val, session)
-
-        ids = []
-
-        if manipulate:
-            def gen():
-                """Generator that applies SON manipulators to each document
-                and adds _id if necessary.
-                """
-                _db = self.__database
-                for doc in docs:
-                    # Apply user-configured SON manipulators. This order of
-                    # operations is required for backwards compatibility,
-                    # see PYTHON-709.
-                    doc = _db._apply_incoming_manipulators(doc, self)
-                    if not (isinstance(doc, RawBSONDocument) or '_id' in doc):
-                        doc['_id'] = ObjectId()
-
-                    doc = _db._apply_incoming_copying_manipulators(doc, self)
-                    ids.append(doc['_id'])
-                    yield doc
-        else:
-            def gen():
-                """Generator that only tracks existing _ids."""
-                for doc in docs:
-                    # Don't inflate RawBSONDocument by touching fields.
-                    if not isinstance(doc, RawBSONDocument):
-                        ids.append(doc.get('_id'))
-                    yield doc
-
-        write_concern = write_concern or self._write_concern_for(session)
-        blk = _Bulk(self, ordered, bypass_doc_val)
-        blk.ops = [(message._INSERT, doc) for doc in gen()]
-        try:
-            blk.execute(write_concern, session=session)
-        except BulkWriteError as bwe:
-            _raise_last_error(bwe.details)
-        return ids
-
     def insert_one(self, document, bypass_document_validation=False,
                    session=None):
         """Insert a single document.
@@ -694,10 +645,10 @@ class Collection(common.BaseObject):
 
         write_concern = self._write_concern_for(session)
         return InsertOneResult(
-            self._insert(document,
-                         write_concern=write_concern,
-                         bypass_doc_val=bypass_document_validation,
-                         session=session),
+            self._insert_one(
+                document, ordered=True, check_keys=True, manipulate=False,
+                write_concern=write_concern, op_id=None,
+                bypass_doc_val=bypass_document_validation, session=session),
             write_concern.acknowledged)
 
     def insert_many(self, documents, ordered=True,
@@ -3067,184 +3018,6 @@ class Collection(common.BaseObject):
                                       sort, upsert, return_document,
                                       array_filters, hint=hint,
                                       session=session, **kwargs)
-
-    def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
-        """Save a document in this collection.
-
-        **DEPRECATED** - Use :meth:`insert_one` or :meth:`replace_one` instead.
-
-        .. versionchanged:: 3.0
-           Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
-           operations.
-        """
-        warnings.warn("save is deprecated. Use insert_one or replace_one "
-                      "instead", DeprecationWarning, stacklevel=2)
-        common.validate_is_document_type("to_save", to_save)
-
-        write_concern = None
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        if kwargs:
-            write_concern = WriteConcern(**kwargs)
-
-        if not (isinstance(to_save, RawBSONDocument) or "_id" in to_save):
-            return self._insert(
-                to_save, True, check_keys, manipulate, write_concern)
-        else:
-            self._update_retryable(
-                {"_id": to_save["_id"]}, to_save, True,
-                check_keys, False, manipulate, write_concern,
-                collation=collation)
-            return to_save.get("_id")
-
-    def insert(self, doc_or_docs, manipulate=True,
-               check_keys=True, continue_on_error=False, **kwargs):
-        """Insert a document(s) into this collection.
-
-        **DEPRECATED** - Use :meth:`insert_one` or :meth:`insert_many` instead.
-
-        .. versionchanged:: 3.0
-           Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
-           operations.
-        """
-        warnings.warn("insert is deprecated. Use insert_one or insert_many "
-                      "instead.", DeprecationWarning, stacklevel=2)
-        write_concern = None
-        if kwargs:
-            write_concern = WriteConcern(**kwargs)
-        return self._insert(doc_or_docs, not continue_on_error,
-                            check_keys, manipulate, write_concern)
-
-    def update(self, spec, document, upsert=False, manipulate=False,
-               multi=False, check_keys=True, **kwargs):
-        """Update a document(s) in this collection.
-
-        **DEPRECATED** - Use :meth:`replace_one`, :meth:`update_one`, or
-        :meth:`update_many` instead.
-
-        .. versionchanged:: 3.0
-           Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
-           operations.
-        """
-        warnings.warn("update is deprecated. Use replace_one, update_one or "
-                      "update_many instead.", DeprecationWarning, stacklevel=2)
-        common.validate_is_mapping("spec", spec)
-        common.validate_is_mapping("document", document)
-        if document:
-            # If a top level key begins with '$' this is a modify operation
-            # and we should skip key validation. It doesn't matter which key
-            # we check here. Passing a document with a mix of top level keys
-            # starting with and without a '$' is invalid and the server will
-            # raise an appropriate exception.
-            first = next(iter(document))
-            if first.startswith('$'):
-                check_keys = False
-
-        write_concern = None
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        if kwargs:
-            write_concern = WriteConcern(**kwargs)
-        return self._update_retryable(
-            spec, document, upsert, check_keys, multi, manipulate,
-            write_concern, collation=collation)
-
-    def remove(self, spec_or_id=None, multi=True, **kwargs):
-        """Remove a document(s) from this collection.
-
-        **DEPRECATED** - Use :meth:`delete_one` or :meth:`delete_many` instead.
-
-        .. versionchanged:: 3.0
-           Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
-           operations.
-        """
-        warnings.warn("remove is deprecated. Use delete_one or delete_many "
-                      "instead.", DeprecationWarning, stacklevel=2)
-        if spec_or_id is None:
-            spec_or_id = {}
-        if not isinstance(spec_or_id, abc.Mapping):
-            spec_or_id = {"_id": spec_or_id}
-        write_concern = None
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        if kwargs:
-            write_concern = WriteConcern(**kwargs)
-        return self._delete_retryable(
-            spec_or_id, multi, write_concern, collation=collation)
-
-    def find_and_modify(self, query=None, update=None,
-                        upsert=False, sort=None, full_response=False,
-                        manipulate=False, **kwargs):
-        """Update and return an object.
-
-        **DEPRECATED** - Use :meth:`find_one_and_delete`,
-        :meth:`find_one_and_replace`, or :meth:`find_one_and_update` instead.
-        """
-        warnings.warn("find_and_modify is deprecated, use find_one_and_delete"
-                      ", find_one_and_replace, or find_one_and_update instead",
-                      DeprecationWarning, stacklevel=2)
-
-        if not update and not kwargs.get('remove', None):
-            raise ValueError("Must either update or remove")
-
-        if update and kwargs.get('remove', None):
-            raise ValueError("Can't do both update and remove")
-
-        # No need to include empty args
-        if query:
-            kwargs['query'] = query
-        if update:
-            kwargs['update'] = update
-        if upsert:
-            kwargs['upsert'] = upsert
-        if sort:
-            # Accept a list of tuples to match Cursor's sort parameter.
-            if isinstance(sort, list):
-                kwargs['sort'] = helpers._index_document(sort)
-            # Accept OrderedDict, SON, and dict with len == 1 so we
-            # don't break existing code already using find_and_modify.
-            elif (isinstance(sort, ORDERED_TYPES) or
-                  isinstance(sort, dict) and len(sort) == 1):
-                warnings.warn("Passing mapping types for `sort` is deprecated,"
-                              " use a list of (key, direction) pairs instead",
-                              DeprecationWarning, stacklevel=2)
-                kwargs['sort'] = sort
-            else:
-                raise TypeError("sort must be a list of (key, direction) "
-                                "pairs, a dict of len 1, or an instance of "
-                                "SON or OrderedDict")
-
-        fields = kwargs.pop("fields", None)
-        if fields is not None:
-            kwargs["fields"] = helpers._fields_list_to_dict(fields, "fields")
-
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-
-        cmd = SON([("findAndModify", self.__name)])
-        cmd.update(kwargs)
-
-        write_concern = self._write_concern_for_cmd(cmd, None)
-
-        def _find_and_modify(session, sock_info, retryable_write):
-            if (sock_info.max_wire_version >= 4 and
-                    not write_concern.is_server_default):
-                cmd['writeConcern'] = write_concern.document
-            result = self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                collation=collation,
-                session=session, retryable_write=retryable_write,
-                user_fields=_FIND_AND_MODIFY_DOC_FIELDS)
-
-            _check_write_command_response(result)
-            return result
-
-        out = self.__database.client._retryable_write(
-            write_concern.acknowledged, _find_and_modify, None)
-
-        if full_response:
-            return out
-        else:
-            document = out.get('value')
-            if manipulate:
-                document = self.__database._fix_outgoing(document, self)
-            return document
 
     def __iter__(self):
         return self

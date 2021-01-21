@@ -24,7 +24,7 @@ warning:
 
 .. code-block:: python
 
-    # "insert.py"
+    # "insert.py" (with PyMongo 3.X)
     from pymongo import MongoClient
 
     client = MongoClient()

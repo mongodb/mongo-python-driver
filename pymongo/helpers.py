@@ -234,17 +234,6 @@ def _check_write_command_response(result):
         _raise_write_concern_error(error)
 
 
-def _raise_last_error(bulk_write_result):
-    """Backward compatibility helper for insert error handling.
-    """
-    # Prefer write errors over write concern errors
-    write_errors = bulk_write_result.get("writeErrors")
-    if write_errors:
-        _raise_last_write_error(write_errors)
-
-    _raise_write_concern_error(bulk_write_result["writeConcernErrors"][-1])
-
-
 def _fields_list_to_dict(fields, option_name):
     """Takes a sequence of field names and returns a matching dictionary.
 

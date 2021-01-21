@@ -295,8 +295,8 @@ class TestBulk(BulkTestBase):
         self.assertEqual(self.coll.count_documents({'foo': 'bar'}), 1)
 
     def test_numerous_inserts(self):
-        # Ensure we don't exceed server's 1000-document batch size limit.
-        n_docs = 2100
+        # Ensure we don't exceed server's maxWriteBatchSize size limit.
+        n_docs = self.client.max_write_batch_size + 100
         requests = [InsertOne({}) for _ in range(n_docs)]
         result = self.coll.bulk_write(requests, ordered=False)
         self.assertEqual(n_docs, result.inserted_count)

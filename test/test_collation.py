@@ -217,30 +217,8 @@ class TestCollation(unittest.TestCase):
             self.collation.document,
             command['deletes'][0]['collation'])
 
-        self.listener.results.clear()
-        self.db.test.remove({'foo': 42}, collation=self.collation)
-        command = self.listener.results['started'][0].command
-        self.assertEqual(
-            self.collation.document,
-            command['deletes'][0]['collation'])
-
     @raisesConfigurationErrorForOldMongoDB
     def test_update(self):
-        self.db.test.update({'foo': 42}, {'$set': {'foo': 'bar'}},
-                            collation=self.collation)
-        command = self.listener.results['started'][0].command
-        self.assertEqual(
-            self.collation.document,
-            command['updates'][0]['collation'])
-
-        self.listener.results.clear()
-        self.db.test.save({'_id': 12345}, collation=self.collation)
-        command = self.listener.results['started'][0].command
-        self.assertEqual(
-            self.collation.document,
-            command['updates'][0]['collation'])
-
-        self.listener.results.clear()
         self.db.test.replace_one({'foo': 42}, {'foo': 43},
                                  collation=self.collation)
         command = self.listener.results['started'][0].command
@@ -266,11 +244,6 @@ class TestCollation(unittest.TestCase):
 
     @raisesConfigurationErrorForOldMongoDB
     def test_find_and(self):
-        self.db.test.find_and_modify({'foo': 42}, {'$set': {'foo': 43}},
-                                     collation=self.collation)
-        self.assertCollationInLastCommand()
-
-        self.listener.results.clear()
         self.db.test.find_one_and_delete({'foo': 42}, collation=self.collation)
         self.assertCollationInLastCommand()
 

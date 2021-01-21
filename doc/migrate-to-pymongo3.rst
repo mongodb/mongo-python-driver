@@ -340,14 +340,14 @@ this::
 
   >>> oid = collection.insert({"a": 2}, w="majority")
 
-can be changed to this with PyMongo 2.9 or later:
+can be changed to this with PyMongo 3 or later:
 
 .. doctest::
 
   >>> from pymongo import WriteConcern
   >>> coll2 = collection.with_options(
   ...     write_concern=WriteConcern(w="majority"))
-  >>> oid = coll2.insert({"a": 2})
+  >>> oid = coll2.insert_one({"a": 2})
 
 .. seealso:: :meth:`~pymongo.database.Database.get_collection`
 

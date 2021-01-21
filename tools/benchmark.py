@@ -1,4 +1,4 @@
-# Copyright 2009-2015 MongoDB, Inc.
+# Copyright 2009-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -60,12 +60,12 @@ def insert(db, collection, object):
     for i in range(per_trial):
         to_insert = object.copy()
         to_insert["x"] = i
-        db[collection].insert(to_insert)
+        db[collection].insert_one(to_insert)
 
 
 def insert_batch(db, collection, object):
-    for i in range(per_trial / batch_size):
-        db[collection].insert([object] * batch_size)
+    for i in range(int(per_trial / batch_size)):
+        db[collection].insert_many([object.copy() for _ in range(batch_size)])
 
 
 def find_one(db, collection, x):
@@ -88,12 +88,12 @@ def timed(name, function, args=[], setup=None):
         function(*args)
         times.append(time.time() - start)
     best_time = min(times)
-    print("{0:s}{1:d}".format(name + (60 - len(name)) * ".", per_trial / best_time))
+    print("{0:s}{1}".format(name + (60 - len(name)) * ".", per_trial / best_time))
     return best_time
 
 
 def main():
-    c = mongo_client.MongoClient(connectTimeoutMS=60*1000)  # jack up timeout
+    c = mongo_client.MongoClient()
     c.drop_database("benchmark")
     db = c.benchmark
 
@@ -104,11 +104,11 @@ def main():
     timed("insert (large, no index)", insert,
           [db, 'large_none', large], setup_insert)
 
-    db.small_index.create_index("x", ASCENDING)
+    db.small_index.create_index([("x", ASCENDING)])
     timed("insert (small, indexed)", insert, [db, 'small_index', small])
-    db.medium_index.create_index("x", ASCENDING)
+    db.medium_index.create_index([("x", ASCENDING)])
     timed("insert (medium, indexed)", insert, [db, 'medium_index', medium])
-    db.large_index.create_index("x", ASCENDING)
+    db.large_index.create_index([("x", ASCENDING)])
     timed("insert (large, indexed)", insert, [db, 'large_index', large])
 
     timed("batch insert (small, no index)", insert_batch,

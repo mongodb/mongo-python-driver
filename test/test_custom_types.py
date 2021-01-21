@@ -49,7 +49,7 @@ from pymongo.message import _CursorAddress
 
 from test import client_context, unittest
 from test.test_client import IntegrationTest
-from test.utils import ignore_deprecations, rs_client
+from test.utils import rs_client
 
 
 class DecimalEncoder(TypeEncoder):
@@ -691,22 +691,6 @@ class TestCollectionWCustomType(IntegrationTest):
         self.assertIsInstance(doc['x'], UndecipherableInt64Type)
         self.assertEqual(doc['x'].value, 3)
         self.assertIsNone(c.find_one())
-
-    @ignore_deprecations
-    def test_find_and_modify_w_custom_type_decoder(self):
-        db = self.db
-        c = db.get_collection('test', codec_options=UNINT_DECODER_CODECOPTS)
-        c.insert_one({'_id': 1, 'x': Int64(1)})
-
-        doc = c.find_and_modify({'_id': 1}, {'$inc': {'x': Int64(10)}})
-        self.assertEqual(doc['_id'], 1)
-        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
-        self.assertEqual(doc['x'].value, 1)
-
-        doc = c.find_one()
-        self.assertEqual(doc['_id'], 1)
-        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
-        self.assertEqual(doc['x'].value, 11)
 
 
 class TestGridFileCustomType(IntegrationTest):

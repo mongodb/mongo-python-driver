@@ -88,7 +88,7 @@ test_creator = TestCreator(create_test, TestAllScenarios, _TEST_PATH)
 test_creator.create_tests()
 
 
-def _retryable_single_statement_ops(coll):
+def retryable_single_statement_ops(coll):
     return [
         (coll.bulk_write, [[InsertOne({}), InsertOne({})]], {}),
         (coll.bulk_write, [[InsertOne({}),
@@ -110,29 +110,6 @@ def _retryable_single_statement_ops(coll):
     ]
 
 
-def retryable_single_statement_ops(coll):
-    return _retryable_single_statement_ops(coll) + [
-        # Deprecated methods.
-        # Insert with single or multiple documents.
-        (coll.insert, [{}], {}),
-        (coll.insert, [[{}]], {}),
-        (coll.insert, [[{}, {}]], {}),
-        # Save with and without an _id.
-        (coll.save, [{}], {}),
-        (coll.save, [{'_id': ObjectId()}], {}),
-        # Non-multi update.
-        (coll.update, [{}, {'$set': {'a': 1}}], {}),
-        # Non-multi remove.
-        (coll.remove, [{}], {'multi': False}),
-        # Replace.
-        (coll.find_and_modify, [{}, {'a': 3}], {}),
-        # Update.
-        (coll.find_and_modify, [{}, {'$set': {'a': 1}}], {}),
-        # Delete.
-        (coll.find_and_modify, [{}, {}], {'remove': True}),
-    ]
-
-
 def non_retryable_single_statement_ops(coll):
     return [
         (coll.bulk_write, [[UpdateOne({}, {'$set': {'a': 1}}),
@@ -140,25 +117,6 @@ def non_retryable_single_statement_ops(coll):
         (coll.bulk_write, [[DeleteOne({}), DeleteMany({})]], {}),
         (coll.update_many, [{}, {'$set': {'a': 1}}], {}),
         (coll.delete_many, [{}], {}),
-        # Deprecated methods.
-        # Multi remove.
-        (coll.remove, [{}], {}),
-        # Multi update.
-        (coll.update, [{}, {'$set': {'a': 1}}], {'multi': True}),
-        # Unacknowledged deprecated methods.
-        (coll.insert, [{}], {'w': 0}),
-        # Unacknowledged Non-multi update.
-        (coll.update, [{}, {'$set': {'a': 1}}], {'w': 0}),
-        # Unacknowledged Non-multi remove.
-        (coll.remove, [{}], {'multi': False, 'w': 0}),
-        # Unacknowledged Replace.
-        (coll.find_and_modify, [{}, {'a': 3}], {'writeConcern': {'w': 0}}),
-        # Unacknowledged Update.
-        (coll.find_and_modify, [{}, {'$set': {'a': 1}}],
-         {'writeConcern': {'w': 0}}),
-        # Unacknowledged Delete.
-        (coll.find_and_modify, [{}, {}],
-         {'remove': True, 'writeConcern': {'w': 0}}),
     ]
 
 
@@ -533,7 +491,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
             topology.select_server = select_server
             raise ConnectionFailure('Connection refused')
 
-        for method, args, kwargs in _retryable_single_statement_ops(
+        for method, args, kwargs in retryable_single_statement_ops(
                 client.db.retryable_write_test):
             listener.results.clear()
             topology.select_server = raise_connection_err_select_server

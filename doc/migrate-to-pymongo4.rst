@@ -140,6 +140,103 @@ can be changed to this::
 Collection
 ----------
 
+Collection.insert is removed
+............................
+
+Removed :meth:`pymongo.collection.Collection.insert`. Use
+:meth:`~pymongo.collection.Collection.insert_one` or
+:meth:`~pymongo.collection.Collection.insert_many` instead.
+
+Code like this::
+
+  collection.insert({'doc': 1})
+  collection.insert([{'doc': 2}, {'doc': 3}])
+
+Can be changed to this::
+
+  collection.insert_one({'my': 'document'})
+  collection.insert_many([{'doc': 2}, {'doc': 3}])
+
+Collection.save is removed
+..........................
+
+Removed :meth:`pymongo.collection.Collection.save`. Applications will
+get better performance using :meth:`~pymongo.collection.Collection.insert_one`
+to insert a new document and :meth:`~pymongo.collection.Collection.update_one`
+to update an existing document. Code like this::
+
+  doc = collection.find_one({"_id": "some id"})
+  doc["some field"] = <some value>
+  db.collection.save(doc)
+
+Can be changed to this::
+
+  result = collection.update_one({"_id": "some id"}, {"$set": {"some field": <some value>}})
+
+If performance is not a concern and refactoring is untenable, ``save`` can be
+implemented like so::
+
+  def save(doc):
+      if '_id' in doc:
+          collection.replace_one({'_id': doc['_id']}, doc, upsert=True)
+          return doc['_id']
+      else:
+          res = collection.insert_one(doc)
+          return res.inserted_id
+
+Collection.update is removed
+............................
+
+Removed :meth:`pymongo.collection.Collection.update`. Use
+:meth:`~pymongo.collection.Collection.update_one`
+to update a single document or
+:meth:`~pymongo.collection.Collection.update_many` to update multiple
+documents. Code like this::
+
+  collection.update({}, {'$set': {'a': 1}})
+  collection.update({}, {'$set': {'b': 1}}, multi=True)
+
+Can be changed to this::
+
+  collection.update_one({}, {'$set': {'a': 1}})
+  collection.update_many({}, {'$set': {'b': 1}})
+
+Collection.remove is removed
+............................
+
+Removed :meth:`pymongo.collection.Collection.remove`. Use
+:meth:`~pymongo.collection.Collection.delete_one`
+to delete a single document or
+:meth:`~pymongo.collection.Collection.delete_many` to delete multiple
+documents. Code like this::
+
+  collection.remove({'a': 1}, multi=False)
+  collection.remove({'b': 1})
+
+Can be changed to this::
+
+  collection.delete_one({'a': 1})
+  collection.delete_many({'b': 1})
+
+Collection.find_and_modify is removed
+.....................................
+
+Removed :meth:`pymongo.collection.Collection.find_and_modify`. Use
+:meth:`~pymongo.collection.Collection.find_one_and_update`,
+:meth:`~pymongo.collection.Collection.find_one_and_replace`, or
+:meth:`~pymongo.collection.Collection.find_one_and_delete` instead.
+Code like this::
+
+  updated_doc = collection.find_and_modify({'a': 1}, {'$set': {'b': 1}})
+  replaced_doc = collection.find_and_modify({'b': 1}, {'c': 1})
+  deleted_doc = collection.find_and_modify({'c': 1}, remove=True)
+
+Can be changed to this::
+
+  updated_doc = collection.find_one_and_update({'a': 1}, {'$set': {'b': 1}})
+  replaced_doc = collection.find_one_and_replace({'b': 1}, {'c': 1})
+  deleted_doc = collection.find_one_and_delete({'c': 1})
+
 Collection.ensure_index is removed
 ..................................
 
@@ -152,16 +249,16 @@ to :meth:`~pymongo.collection.Collection.create_index` or
 :meth:`~pymongo.collection.Collection.create_indexes`. Code like this::
 
   def persist(self, document):
-      my_collection.ensure_index('a', unique=True)
-      my_collection.insert_one(document)
+      collection.ensure_index('a', unique=True)
+      collection.insert_one(document)
 
 Can be changed to this::
 
   def persist(self, document):
       if not self.created_index:
-          my_collection.create_index('a', unique=True)
+          collection.create_index('a', unique=True)
           self.created_index = True
-      my_collection.insert_one(document)
+      collection.insert_one(document)
 
 Collection.reindex is removed
 .............................

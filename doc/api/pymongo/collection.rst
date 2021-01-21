@@ -71,8 +71,3 @@
       .. automethod:: initialize_ordered_bulk_op
       .. automethod:: group
       .. automethod:: count
-      .. automethod:: insert(doc_or_docs, manipulate=True, check_keys=True, continue_on_error=False, **kwargs)
-      .. automethod:: save(to_save, manipulate=True, check_keys=True, **kwargs)
-      .. automethod:: update(spec, document, upsert=False, manipulate=False, multi=False, check_keys=True, **kwargs)
-      .. automethod:: remove(spec_or_id=None, multi=True, **kwargs)
-      .. automethod:: find_and_modify

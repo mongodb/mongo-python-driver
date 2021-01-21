@@ -847,6 +847,39 @@ class TestCollection(IntegrationTest):
         self.assertRaises(
             DocumentTooLarge, coll.delete_one, {'data': large})
 
+    def test_write_large_document(self):
+        max_size = self.db.client.max_bson_size
+        half_size = int(max_size / 2)
+        max_str = "x" * max_size
+        half_str = "x" * half_size
+        self.assertEqual(max_size, 16777216)
+
+        self.assertRaises(OperationFailure, self.db.test.insert_one,
+                          {"foo": max_str})
+        self.assertRaises(OperationFailure, self.db.test.replace_one,
+                          {}, {"foo": max_str}, upsert=True)
+        self.assertRaises(OperationFailure, self.db.test.delete_one,
+                          {"foo": max_str})
+        self.assertRaises(OperationFailure, self.db.test.insert_many,
+                          [{"x": 1}, {"foo": max_str}])
+        self.db.test.insert_many(
+            [{"foo": "x" * half_size}, {"foo": "x" * half_size}])
+
+        self.db.test.insert_one({"bar": "x"})
+        # Use w=0 here to test legacy doc size checking in all server versions
+        unack_coll = self.db.test.with_options(write_concern=WriteConcern(w=0))
+        self.assertRaises(DocumentTooLarge, unack_coll.replace_one,
+                          {"bar": "x"}, {"bar": "x" * (max_size - 14)})
+        # This will pass with OP_UPDATE or the update command.
+        self.db.test.replace_one({"bar": "x"}, {"bar": "x" * (max_size - 32)})
+
+    def test_bad_dbref(self):
+        # Incomplete DBRefs.
+        ref_only = {'ref': {'$ref': 'collection'}}
+        id_only = {'ref': {'$id': ObjectId()}}
+        self.assertRaises(InvalidDocument, self.db.test.insert_one, ref_only)
+        self.assertRaises(InvalidDocument, self.db.test.insert_one, id_only)
+
     @client_context.require_version_min(3, 1, 9, -1)
     def test_insert_bypass_document_validation(self):
         db = self.db
@@ -1941,12 +1974,78 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, docs[0]["x"])
 
     def test_numerous_inserts(self):
-        # Ensure we don't exceed server's 1000-document batch size limit.
+        # Ensure we don't exceed server's maxWriteBatchSize size limit.
         self.db.test.drop()
-        n_docs = 2100
+        n_docs = self.client.max_write_batch_size + 100
         self.db.test.insert_many([{} for _ in range(n_docs)])
         self.assertEqual(n_docs, self.db.test.count_documents({}))
         self.db.test.drop()
+
+    def test_insert_many_large_batch(self):
+        # Tests legacy insert.
+        db = self.client.test_insert_large_batch
+        self.addCleanup(self.client.drop_database, 'test_insert_large_batch')
+        max_bson_size = self.client.max_bson_size
+        # Write commands are limited to 16MB + 16k per batch
+        big_string = 'x' * int(max_bson_size / 2)
+
+        # Batch insert that requires 2 batches.
+        successful_insert = [{'x': big_string}, {'x': big_string},
+                             {'x': big_string}, {'x': big_string}]
+        db.collection_0.insert_many(successful_insert)
+        self.assertEqual(4, db.collection_0.count_documents({}))
+
+        db.collection_0.drop()
+
+        # Test that inserts fail after first error.
+        insert_second_fails = [{'_id': 'id0', 'x': big_string},
+                               {'_id': 'id0', 'x': big_string},
+                               {'_id': 'id1', 'x': big_string},
+                               {'_id': 'id2', 'x': big_string}]
+
+        with self.assertRaises(BulkWriteError):
+            db.collection_1.insert_many(insert_second_fails)
+
+        self.assertEqual(1, db.collection_1.count_documents({}))
+
+        db.collection_1.drop()
+
+        # 2 batches, 2nd insert fails, unacknowledged, ordered.
+        unack_coll = db.collection_2.with_options(
+            write_concern=WriteConcern(w=0))
+        unack_coll.insert_many(insert_second_fails)
+        wait_until(lambda: 1 == db.collection_2.count_documents({}),
+                   'insert 1 document', timeout=60)
+
+        db.collection_2.drop()
+
+        # 2 batches, ids of docs 0 and 1 are dupes, ids of docs 2 and 3 are
+        # dupes. Acknowledged, unordered.
+        insert_two_failures = [{'_id': 'id0', 'x': big_string},
+                               {'_id': 'id0', 'x': big_string},
+                               {'_id': 'id1', 'x': big_string},
+                               {'_id': 'id1', 'x': big_string}]
+
+        with self.assertRaises(OperationFailure) as context:
+            db.collection_3.insert_many(insert_two_failures, ordered=False)
+
+        self.assertIn('id1', str(context.exception))
+
+        # Only the first and third documents should be inserted.
+        self.assertEqual(2, db.collection_3.count_documents({}))
+
+        db.collection_3.drop()
+
+        # 2 batches, 2 errors, unacknowledged, unordered.
+        unack_coll = db.collection_4.with_options(
+            write_concern=WriteConcern(w=0))
+        unack_coll.insert_many(insert_two_failures, ordered=False)
+
+        # Only the first and third documents are inserted.
+        wait_until(lambda: 2 == db.collection_4.count_documents({}),
+                   'insert 2 documents', timeout=60)
+
+        db.collection_4.drop()
 
     def test_map_reduce(self):
         db = self.db
@@ -2168,12 +2267,6 @@ class TestCollection(IntegrationTest):
         db.command('ismaster')
         results.clear()
         if client_context.version.at_least(3, 1, 9, -1):
-            c_w0.find_and_modify(
-                {'_id': 1}, {'$set': {'foo': 'bar'}})
-            self.assertEqual(
-                {'w': 0}, results['started'][0].command['writeConcern'])
-            results.clear()
-
             c_w0.find_one_and_update(
                 {'_id': 1}, {'$set': {'foo': 'bar'}})
             self.assertEqual(
@@ -2214,11 +2307,6 @@ class TestCollection(IntegrationTest):
                     {'w': 0}, results['started'][0].command['writeConcern'])
                 results.clear()
         else:
-            c_w0.find_and_modify(
-                {'_id': 1}, {'$set': {'foo': 'bar'}})
-            self.assertNotIn('writeConcern', results['started'][0].command)
-            results.clear()
-
             c_w0.find_one_and_update(
                 {'_id': 1}, {'$set': {'foo': 'bar'}})
             self.assertNotIn('writeConcern', results['started'][0].command)
@@ -2231,10 +2319,6 @@ class TestCollection(IntegrationTest):
             c_w0.find_one_and_delete({'_id': 1})
             self.assertNotIn('writeConcern', results['started'][0].command)
             results.clear()
-
-        c_default.find_and_modify({'_id': 1}, {'$set': {'foo': 'bar'}})
-        self.assertNotIn('writeConcern', results['started'][0].command)
-        results.clear()
 
         c_default.find_one_and_update({'_id': 1}, {'$set': {'foo': 'bar'}})
         self.assertNotIn('writeConcern', results['started'][0].command)
