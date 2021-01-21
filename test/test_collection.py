@@ -1299,11 +1299,11 @@ class TestCollection(IntegrationTest):
         self.addCleanup(coll.drop)
 
         coll.create_index('a', unique=True)
-        coll.insert_one({'a': u'unicode \U0001f40d'})
+        coll.insert_one({'a': 'unicode \U0001f40d'})
         with self.assertRaisesRegex(
                 DuplicateKeyError,
                 'E11000 duplicate key error') as ctx:
-            coll.insert_one({'a': u'unicode \U0001f40d'})
+            coll.insert_one({'a': 'unicode \U0001f40d'})
 
         # Once more for good measure.
         self.assertIn('E11000 duplicate key error',

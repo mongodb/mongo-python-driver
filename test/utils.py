@@ -890,16 +890,6 @@ def is_greenthread_patched():
     return gevent_monkey_patched() or eventlet_monkey_patched()
 
 
-def cdecimal_patched():
-    """Check if Python 2.7 cdecimal patching is active."""
-    try:
-        import decimal
-        import cdecimal
-        return decimal is cdecimal
-    except ImportError:
-        return False
-
-
 def disable_replication(client):
     """Disable replication on all secondaries, requires MongoDB 3.2."""
     for host, port in client.secondaries:

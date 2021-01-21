@@ -145,46 +145,6 @@ class doc(Command):
             raise RuntimeError(
                 "You must install Sphinx to build or test the documentation.")
 
-        # TODO: Convert all the docs to Python 3 and delete all this.
-        import doctest
-        from doctest import OutputChecker as _OutputChecker
-
-        # Match u or U (possibly followed by r or R), removing it.
-        # r/R can follow u/U but not precede it. Don't match the
-        # single character string 'u' or 'U'.
-        _u_literal_re = re.compile(
-            r"(\W|^)(?<![\'\"])[uU]([rR]?[\'\"])", re.UNICODE)
-         # Match b or B (possibly followed by r or R), removing.
-         # r/R can follow b/B but not precede it. Don't match the
-         # single character string 'b' or 'B'.
-        _b_literal_re = re.compile(
-            r"(\W|^)(?<![\'\"])[bB]([rR]?[\'\"])", re.UNICODE)
-
-        class _StringPrefixFixer(_OutputChecker):
-
-            def check_output(self, want, got, optionflags):
-                # The docstrings are written with python 2.x in mind.
-                # To make the doctests pass in python 3 we have to
-                # strip the 'u' prefix from the expected results. The
-                # actual results won't have that prefix.
-                want = re.sub(_u_literal_re, r'\1\2', want)
-                # We also have to strip the 'b' prefix from the actual
-                # results since python 2.x expected results won't have
-                # that prefix.
-                got = re.sub(_b_literal_re, r'\1\2', got)
-                return super(
-                    _StringPrefixFixer, self).check_output(
-                        want, got, optionflags)
-
-            def output_difference(self, example, got, optionflags):
-                example.want = re.sub(_u_literal_re, r'\1\2', example.want)
-                got = re.sub(_b_literal_re, r'\1\2', got)
-                return super(
-                    _StringPrefixFixer, self).output_difference(
-                        example, got, optionflags)
-
-        doctest.OutputChecker = _StringPrefixFixer
-
         if self.test:
             path = os.path.join(
                 os.path.abspath('.'), "doc", "_build", "doctest")

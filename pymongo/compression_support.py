@@ -142,10 +142,6 @@ def decompress(data, compressor_id):
         # https://github.com/andrix/python-snappy/issues/65
         # This only matters when data is a memoryview since
         # id(bytes(data)) == id(data) when data is a bytes.
-        # NOTE: bytes(memoryview) returns the memoryview repr
-        # in Python 2.7. The right thing to do in 2.7 is call
-        # memoryview.tobytes(), but we currently only use
-        # memoryview in Python 3.x.
         return snappy.uncompress(bytes(data))
     elif compressor_id == ZlibContext.compressor_id:
         return zlib.decompress(data)

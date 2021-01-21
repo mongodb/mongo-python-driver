@@ -147,8 +147,8 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary(b"test", 128)})
         helper({"a binary": Binary(b"test", 254)})
         helper({"another binary": Binary(b"test", 2)})
-        helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
-        helper(SON([(u'test negative dst',
+        helper(SON([('test dst', datetime.datetime(1993, 4, 4, 2))]))
+        helper(SON([('test negative dst',
                      datetime.datetime(1, 1, 1, 1, 1, 1))]))
         helper({"big float": float(10000000000)})
         helper({"ref": DBRef("coll", 5)})
@@ -653,7 +653,7 @@ class TestBSON(unittest.TestCase):
     # The C extension was segfaulting on unicode RegExs, so we have this test
     # that doesn't really test anything but the lack of a segfault.
     def test_unicode_regex(self):
-        regex = re.compile(u'revisi\xf3n')
+        regex = re.compile('revisi\xf3n')
         decode(encode({"regex": regex}))
 
     def test_non_string_keys(self):
@@ -675,9 +675,6 @@ class TestBSON(unittest.TestCase):
         doc = {"a": "\x00"}
         self.assertEqual(doc, decode(encode(doc)))
 
-        # This test doesn't make much sense in Python2
-        # since {'a': '\x00'} == {'a': u'\x00'}.
-        # Decoding here actually returns {'a': '\x00'}
         doc = {"a": "\x00"}
         self.assertEqual(doc, decode(encode(doc)))
 
@@ -770,8 +767,8 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(doc1, decode(doc1_bson))
 
         # Valid Python regex, with flags.
-        re2 = re.compile(u'.*', re.I | re.M | re.S | re.U | re.X)
-        bson_re2 = Regex(u'.*', re.I | re.M | re.S | re.U | re.X)
+        re2 = re.compile('.*', re.I | re.M | re.S | re.U | re.X)
+        bson_re2 = Regex('.*', re.I | re.M | re.S | re.U | re.X)
 
         doc2_with_re = {'r': re2}
         doc2_with_bson_re = {'r': bson_re2}

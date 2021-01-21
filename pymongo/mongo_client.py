@@ -26,9 +26,9 @@ access:
   >>> from pymongo import MongoClient
   >>> c = MongoClient()
   >>> c.test_database
-  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), u'test_database')
+  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test_database')
   >>> c['test-database']
-  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), u'test-database')
+  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
 """
 
 import contextlib
@@ -118,12 +118,7 @@ class MongoClient(common.BaseObject):
         passwords reserved characters like ':', '/', '+' and '@' must be
         percent encoded following RFC 2396::
 
-            try:
-                # Python 3.x
-                from urllib.parse import quote_plus
-            except ImportError:
-                # Python 2.x
-                from urllib import quote_plus
+            from urllib.parse import quote_plus
 
             uri = "mongodb://%s:%s@%s" % (
                 quote_plus(user), quote_plus(password), host)

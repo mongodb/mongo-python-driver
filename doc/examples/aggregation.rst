@@ -58,15 +58,15 @@ eg "$sort":
   ... ]
   >>> import pprint
   >>> pprint.pprint(list(db.things.aggregate(pipeline)))
-  [{u'_id': u'cat', u'count': 3},
-   {u'_id': u'dog', u'count': 2},
-   {u'_id': u'mouse', u'count': 1}]
+  [{'_id': 'cat', 'count': 3},
+   {'_id': 'dog', 'count': 2},
+   {'_id': 'mouse', 'count': 1}]
 
 To run an explain plan for this aggregation use the
 :meth:`~pymongo.database.Database.command` method::
 
   >>> db.command('aggregate', 'things', pipeline=pipeline, explain=True)
-  {u'ok': 1.0, u'stages': [...]}
+  {'ok': 1.0, 'stages': [...]}
 
 As well as simple aggregations the aggregation framework provides projection
 capabilities to reshape the returned data. Using projections and aggregation,
@@ -123,9 +123,9 @@ iterate over the result collection:
   >>> for doc in result.find().sort("_id"):
   ...   pprint.pprint(doc)
   ...
-  {u'_id': u'cat', u'value': 3.0}
-  {u'_id': u'dog', u'value': 2.0}
-  {u'_id': u'mouse', u'value': 1.0}
+  {'_id': 'cat', 'value': 3.0}
+  {'_id': 'dog', 'value': 2.0}
+  {'_id': 'mouse', 'value': 1.0}
 
 Advanced Map/Reduce
 -------------------
@@ -140,7 +140,7 @@ response to the map/reduce command, rather than just the result collection:
 
   >>> pprint.pprint(
   ...     db.things.map_reduce(mapper, reducer, "myresults", full_response=True))
-  {...u'ok': 1.0,... u'result': u'myresults'...}
+  {...'ok': 1.0,... 'result': 'myresults'...}
 
 All of the optional map/reduce parameters are also supported, simply pass them
 as keyword arguments. In this example we use the `query` parameter to limit the
@@ -153,8 +153,8 @@ documents that will be mapped over:
   >>> for doc in results.find().sort("_id"):
   ...   pprint.pprint(doc)
   ...
-  {u'_id': u'cat', u'value': 1.0}
-  {u'_id': u'dog', u'value': 1.0}
+  {'_id': 'cat', 'value': 1.0}
+  {'_id': 'dog', 'value': 1.0}
 
 You can use :class:`~bson.son.SON` or :class:`collections.OrderedDict` to
 specify a different database to store the result collection:
@@ -168,6 +168,6 @@ specify a different database to store the result collection:
   ...         reducer,
   ...         out=SON([("replace", "results"), ("db", "outdb")]),
   ...         full_response=True))
-  {...u'ok': 1.0,... u'result': {u'collection': u'results', u'db': u'outdb'}...}
+  {...'ok': 1.0,... 'result': {'collection': 'results', 'db': 'outdb'}...}
 
 .. seealso:: The full list of options for MongoDB's `map reduce engine <http://www.mongodb.org/display/DOCS/MapReduce>`_

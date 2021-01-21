@@ -30,9 +30,9 @@ from test.test_client import IntegrationTest
 
 class TestRawBSONDocument(IntegrationTest):
 
-    # {u'_id': ObjectId('556df68b6e32ab21a95e0785'),
-    #  u'name': u'Sherlock',
-    #  u'addresses': [{u'street': u'Baker Street'}]}
+    # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
+    #  'name': 'Sherlock',
+    #  'addresses': [{'street': 'Baker Street'}]}
     bson_string = (
         b'Z\x00\x00\x00\x07_id\x00Um\xf6\x8bn2\xab!\xa9^\x07\x85\x02name\x00\t'
         b'\x00\x00\x00Sherlock\x00\x04addresses\x00&\x00\x00\x00\x030\x00\x1e'
@@ -99,8 +99,8 @@ class TestRawBSONDocument(IntegrationTest):
         self.assertEqual(raw_coll.find_one(), raw)
 
     def test_with_codec_options(self):
-        # {u'date': datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
-        #  u'_id': UUID('026fab8f-975f-4965-9fbf-85ad874c60ff')}
+        # {'date': datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
+        #  '_id': UUID('026fab8f-975f-4965-9fbf-85ad874c60ff')}
         # encoded with JAVA_LEGACY uuid representation.
         bson_string = (
             b'-\x00\x00\x00\x05_id\x00\x10\x00\x00\x00\x03eI_\x97\x8f\xabo\x02'
@@ -143,8 +143,8 @@ class TestRawBSONDocument(IntegrationTest):
 
         # Make sure that CodecOptions are preserved.
         # {'embedded': [
-        #   {u'date': datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
-        #    u'_id': UUID('026fab8f-975f-4965-9fbf-85ad874c60ff')}
+        #   {'date': datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
+        #    '_id': UUID('026fab8f-975f-4965-9fbf-85ad874c60ff')}
         # ]}
         # encoded with JAVA_LEGACY uuid representation.
         bson_string = (

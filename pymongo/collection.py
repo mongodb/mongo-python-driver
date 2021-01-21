@@ -439,8 +439,8 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
-          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634ef')}
-          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634f0')}
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
           ...
           >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
@@ -458,9 +458,9 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
-          {u'x': 1, u'_id': ObjectId('54f62e60fba5226811f634f0')}
-          {u'y': 1, u'_id': ObjectId('54f62ee2fba5226811f634f1')}
-          {u'z': 1, u'_id': ObjectId('54f62ee28891e756a6e1abd5')}
+          {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
+          {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
+          {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
 
         :Parameters:
           - `requests`: A list of write operations (see examples above).
@@ -660,7 +660,7 @@ class Collection(common.BaseObject):
           >>> result.inserted_id
           ObjectId('54f112defba522406c9cc208')
           >>> db.test.find_one({'x': 1})
-          {u'x': 1, u'_id': ObjectId('54f112defba522406c9cc208')}
+          {'x': 1, '_id': ObjectId('54f112defba522406c9cc208')}
 
         :Parameters:
           - `document`: The document to insert. Must be a mutable mapping
@@ -876,7 +876,7 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
-          {u'x': 1, u'_id': ObjectId('54f4c5befba5220aa4d6dee7')}
+          {'x': 1, '_id': ObjectId('54f4c5befba5220aa4d6dee7')}
           >>> result = db.test.replace_one({'x': 1}, {'y': 1})
           >>> result.matched_count
           1
@@ -885,7 +885,7 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
-          {u'y': 1, u'_id': ObjectId('54f4c5befba5220aa4d6dee7')}
+          {'y': 1, '_id': ObjectId('54f4c5befba5220aa4d6dee7')}
 
         The *upsert* option can be used to insert a new document if a matching
         document does not exist.
@@ -898,7 +898,7 @@ class Collection(common.BaseObject):
           >>> result.upserted_id
           ObjectId('54f11e5c8891e756a6e1abd4')
           >>> db.test.find_one({'x': 1})
-          {u'x': 1, u'_id': ObjectId('54f11e5c8891e756a6e1abd4')}
+          {'x': 1, '_id': ObjectId('54f11e5c8891e756a6e1abd4')}
 
         :Parameters:
           - `filter`: A query that matches the document to replace.
@@ -955,9 +955,9 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find():
           ...     print(doc)
           ...
-          {u'x': 1, u'_id': 0}
-          {u'x': 1, u'_id': 1}
-          {u'x': 1, u'_id': 2}
+          {'x': 1, '_id': 0}
+          {'x': 1, '_id': 1}
+          {'x': 1, '_id': 2}
           >>> result = db.test.update_one({'x': 1}, {'$inc': {'x': 3}})
           >>> result.matched_count
           1
@@ -966,9 +966,9 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find():
           ...     print(doc)
           ...
-          {u'x': 4, u'_id': 0}
-          {u'x': 1, u'_id': 1}
-          {u'x': 1, u'_id': 2}
+          {'x': 4, '_id': 0}
+          {'x': 1, '_id': 1}
+          {'x': 1, '_id': 2}
 
         :Parameters:
           - `filter`: A query that matches the document to update.
@@ -1031,9 +1031,9 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find():
           ...     print(doc)
           ...
-          {u'x': 1, u'_id': 0}
-          {u'x': 1, u'_id': 1}
-          {u'x': 1, u'_id': 2}
+          {'x': 1, '_id': 0}
+          {'x': 1, '_id': 1}
+          {'x': 1, '_id': 2}
           >>> result = db.test.update_many({'x': 1}, {'$inc': {'x': 3}})
           >>> result.matched_count
           3
@@ -1042,9 +1042,9 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find():
           ...     print(doc)
           ...
-          {u'x': 4, u'_id': 0}
-          {u'x': 4, u'_id': 1}
-          {u'x': 4, u'_id': 2}
+          {'x': 4, '_id': 0}
+          {'x': 4, '_id': 1}
+          {'x': 4, '_id': 2}
 
         :Parameters:
           - `filter`: A query that matches the documents to update.
@@ -2123,10 +2123,10 @@ class Collection(common.BaseObject):
         like this:
 
         >>> db.test.create_index("x", unique=True)
-        u'x_1'
+        'x_1'
         >>> db.test.index_information()
-        {u'_id_': {u'key': [(u'_id', 1)]},
-         u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
+        {'_id_': {'key': [('_id', 1)]},
+         'x_1': {'unique': True, 'key': [('x', 1)]}}
 
         :Parameters:
           - `session` (optional): a
@@ -2800,7 +2800,7 @@ class Collection(common.BaseObject):
           >>> db.test.count_documents({'x': 1})
           2
           >>> db.test.find_one_and_delete({'x': 1})
-          {u'x': 1, u'_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
+          {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
           >>> db.test.count_documents({'x': 1})
           1
 
@@ -2809,17 +2809,17 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find({'x': 1}):
           ...     print(doc)
           ...
-          {u'x': 1, u'_id': 0}
-          {u'x': 1, u'_id': 1}
-          {u'x': 1, u'_id': 2}
+          {'x': 1, '_id': 0}
+          {'x': 1, '_id': 1}
+          {'x': 1, '_id': 2}
           >>> db.test.find_one_and_delete(
           ...     {'x': 1}, sort=[('_id', pymongo.DESCENDING)])
-          {u'x': 1, u'_id': 2}
+          {'x': 1, '_id': 2}
 
         The *projection* option can be used to limit the fields returned.
 
           >>> db.test.find_one_and_delete({'x': 1}, projection={'_id': False})
-          {u'x': 1}
+          {'x': 1}
 
         :Parameters:
           - `filter`: A query that matches the document to delete.
@@ -2877,17 +2877,17 @@ class Collection(common.BaseObject):
           >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
-          {u'x': 1, u'_id': 0}
-          {u'x': 1, u'_id': 1}
-          {u'x': 1, u'_id': 2}
+          {'x': 1, '_id': 0}
+          {'x': 1, '_id': 1}
+          {'x': 1, '_id': 2}
           >>> db.test.find_one_and_replace({'x': 1}, {'y': 1})
-          {u'x': 1, u'_id': 0}
+          {'x': 1, '_id': 0}
           >>> for doc in db.test.find({}):
           ...     print(doc)
           ...
-          {u'y': 1, u'_id': 0}
-          {u'x': 1, u'_id': 1}
-          {u'x': 1, u'_id': 2}
+          {'y': 1, '_id': 0}
+          {'x': 1, '_id': 1}
+          {'x': 1, '_id': 2}
 
         :Parameters:
           - `filter`: A query that matches the document to replace.
@@ -2953,7 +2953,7 @@ class Collection(common.BaseObject):
 
           >>> db.test.find_one_and_update(
           ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
-          {u'_id': 665, u'done': False, u'count': 25}}
+          {'_id': 665, 'done': False, 'count': 25}}
 
         Returns ``None`` if no document matches the filter.
 
@@ -2971,7 +2971,7 @@ class Collection(common.BaseObject):
           ...     {'_id': 'userid'},
           ...     {'$inc': {'seq': 1}},
           ...     return_document=ReturnDocument.AFTER)
-          {u'_id': u'userid', u'seq': 1}
+          {'_id': 'userid', 'seq': 1}
 
         You can limit the fields returned with the *projection* option.
 
@@ -2980,7 +2980,7 @@ class Collection(common.BaseObject):
           ...     {'$inc': {'seq': 1}},
           ...     projection={'seq': True, '_id': False},
           ...     return_document=ReturnDocument.AFTER)
-          {u'seq': 2}
+          {'seq': 2}
 
         The *upsert* option can be used to create the document if it doesn't
         already exist.
@@ -2993,20 +2993,20 @@ class Collection(common.BaseObject):
           ...     projection={'seq': True, '_id': False},
           ...     upsert=True,
           ...     return_document=ReturnDocument.AFTER)
-          {u'seq': 1}
+          {'seq': 1}
 
         If multiple documents match *filter*, a *sort* can be applied.
 
           >>> for doc in db.test.find({'done': True}):
           ...     print(doc)
           ...
-          {u'_id': 665, u'done': True, u'result': {u'count': 26}}
-          {u'_id': 701, u'done': True, u'result': {u'count': 17}}
+          {'_id': 665, 'done': True, 'result': {'count': 26}}
+          {'_id': 701, 'done': True, 'result': {'count': 17}}
           >>> db.test.find_one_and_update(
           ...     {'done': True},
           ...     {'$set': {'final': True}},
           ...     sort=[('_id', pymongo.DESCENDING)])
-          {u'_id': 701, u'done': True, u'result': {u'count': 17}}
+          {'_id': 701, 'done': True, 'result': {'count': 17}}
 
         :Parameters:
           - `filter`: A query that matches the document to update.

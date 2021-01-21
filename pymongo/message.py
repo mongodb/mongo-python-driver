@@ -1574,8 +1574,6 @@ class _OpReply(object):
         # PYTHON-945: ignore starting_from field.
         flags, cursor_id, _, number_returned = cls.UNPACK_FROM(msg)
 
-        # Convert Python 3 memoryview to bytes. Note we should call
-        # memoryview.tobytes() if we start using memoryview in Python 2.7.
         documents = bytes(msg[20:])
         return cls(flags, cursor_id, number_returned, documents)
 
@@ -1649,8 +1647,6 @@ class _OpMsg(object):
         if len(msg) != first_payload_size + 5:
             raise ProtocolError("Unsupported OP_MSG reply: >1 section")
 
-        # Convert Python 3 memoryview to bytes. Note we should call
-        # memoryview.tobytes() if we start using memoryview in Python 2.7.
         payload_document = bytes(msg[5:])
         return cls(flags, payload_document)
 
@@ -1699,17 +1695,17 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     # listIndexes
     if 'cursor' in cmd:
         result = {
-            u'cursor': {
-                u'firstBatch': docs,
-                u'id': reply.cursor_id,
-                u'ns': u'%s.%s' % (db, coll)
+            'cursor': {
+                'firstBatch': docs,
+                'id': reply.cursor_id,
+                'ns': '%s.%s' % (db, coll)
             },
-            u'ok': 1.0
+            'ok': 1.0
         }
     # fsyncUnlock, currentOp
     else:
         result = docs[0] if docs else {}
-        result[u'ok'] = 1.0
+        result['ok'] = 1.0
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         listeners.publish_command_success(

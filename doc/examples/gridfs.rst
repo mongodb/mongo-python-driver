@@ -52,7 +52,7 @@ file:
 .. doctest::
 
   >>> fs.get(a).read()
-  'hello world'
+  b'hello world'
 
 :meth:`~gridfs.GridFS.get` returns a file-like object, so we get the
 file's contents by calling :meth:`~gridfs.grid_file.GridOut.read`.
@@ -68,11 +68,11 @@ keyword arguments:
   >>> b = fs.put(fs.get(a), filename="foo", bar="baz")
   >>> out = fs.get(b)
   >>> out.read()
-  'hello world'
+  b'hello world'
   >>> out.filename
-  u'foo'
+  'foo'
   >>> out.bar
-  u'baz'
+  'baz'
   >>> out.upload_date
   datetime.datetime(...)
 

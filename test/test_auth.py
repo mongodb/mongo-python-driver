@@ -18,11 +18,7 @@ import os
 import sys
 import threading
 
-try:
-    from urllib.parse import quote_plus
-except ImportError:
-    # Python 2
-    from urllib import quote_plus
+from urllib.parse import quote_plus
 
 sys.path[0:0] = [""]
 
@@ -516,63 +512,63 @@ class TestSCRAM(unittest.TestCase):
 
         if HAVE_STRINGPREP:
             # Test the use of SASLprep on passwords. For example,
-            # saslprep(u'\u2136') becomes u'IV' and saslprep(u'I\u00ADX')
-            # becomes u'IX'. SASLprep is only supported when the standard
+            # saslprep('\u2136') becomes 'IV' and saslprep('I\u00ADX')
+            # becomes 'IX'. SASLprep is only supported when the standard
             # library provides stringprep.
             client_context.create_user(
                 'testscram',
-                u'\u2168',
-                u'\u2163',
+                '\u2168',
+                '\u2163',
                 roles=['dbOwner'],
                 mechanisms=['SCRAM-SHA-256'])
 
             client_context.create_user(
                 'testscram',
-                u'IX',
-                u'IX',
+                'IX',
+                'IX',
                 roles=['dbOwner'],
                 mechanisms=['SCRAM-SHA-256'])
 
             self.assertTrue(
-                client.testscram.authenticate(u'\u2168', u'\u2163'))
+                client.testscram.authenticate('\u2168', '\u2163'))
             client.testscram.command('dbstats')
             client.testscram.logout()
             self.assertTrue(
                 client.testscram.authenticate(
-                    u'\u2168', u'\u2163', mechanism='SCRAM-SHA-256'))
+                    '\u2168', '\u2163', mechanism='SCRAM-SHA-256'))
             client.testscram.command('dbstats')
             client.testscram.logout()
             self.assertTrue(
-                client.testscram.authenticate(u'\u2168', u'IV'))
+                client.testscram.authenticate('\u2168', 'IV'))
             client.testscram.command('dbstats')
             client.testscram.logout()
 
             self.assertTrue(
-                client.testscram.authenticate(u'IX', u'I\u00ADX'))
+                client.testscram.authenticate('IX', 'I\u00ADX'))
             client.testscram.command('dbstats')
             client.testscram.logout()
             self.assertTrue(
                 client.testscram.authenticate(
-                    u'IX', u'I\u00ADX', mechanism='SCRAM-SHA-256'))
+                    'IX', 'I\u00ADX', mechanism='SCRAM-SHA-256'))
             client.testscram.command('dbstats')
             client.testscram.logout()
             self.assertTrue(
-                client.testscram.authenticate(u'IX', u'IX'))
+                client.testscram.authenticate('IX', 'IX'))
             client.testscram.command('dbstats')
             client.testscram.logout()
 
             client = rs_or_single_client_noauth(
-                u'mongodb://\u2168:\u2163@%s:%d/testscram' % (host, port))
+                'mongodb://\u2168:\u2163@%s:%d/testscram' % (host, port))
             client.testscram.command('dbstats')
             client = rs_or_single_client_noauth(
-                u'mongodb://\u2168:IV@%s:%d/testscram' % (host, port))
+                'mongodb://\u2168:IV@%s:%d/testscram' % (host, port))
             client.testscram.command('dbstats')
 
             client = rs_or_single_client_noauth(
-                u'mongodb://IX:I\u00ADX@%s:%d/testscram' % (host, port))
+                'mongodb://IX:I\u00ADX@%s:%d/testscram' % (host, port))
             client.testscram.command('dbstats')
             client = rs_or_single_client_noauth(
-                u'mongodb://IX:IX@%s:%d/testscram' % (host, port))
+                'mongodb://IX:IX@%s:%d/testscram' % (host, port))
             client.testscram.command('dbstats')
 
         self.listener.results.clear()

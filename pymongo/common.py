@@ -234,8 +234,7 @@ def validate_non_negative_integer_or_none(option, value):
 
 
 def validate_string(option, value):
-    """Validates that 'value' is an instance of `basestring` for Python 2
-    or `str` for Python 3.
+    """Validates that 'value' is an instance of `str`.
     """
     if isinstance(value, str):
         return value

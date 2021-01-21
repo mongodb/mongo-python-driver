@@ -27,8 +27,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'PyMongo'
-copyright = u'MongoDB, Inc. 2008-present. MongoDB, Mongo, and the leaf logo are registered trademarks of MongoDB, Inc'
+project = 'PyMongo'
+copyright = 'MongoDB, Inc. 2008-present. MongoDB, Mongo, and the leaf logo are registered trademarks of MongoDB, Inc'
 html_show_sphinx = False
 
 # The version info for the project you're documenting, acts as replacement for
@@ -152,8 +152,8 @@ htmlhelp_basename = 'PyMongo' + release.replace('.', '_')
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'PyMongo.tex', u'PyMongo Documentation',
-   u'Michael Dirolf', 'manual'),
+  ('index', 'PyMongo.tex', 'PyMongo Documentation',
+   'Michael Dirolf', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

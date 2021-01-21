@@ -38,7 +38,6 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.uri_parser import parse_uri
 from test import unittest, IntegrationTest
 from test.utils import (assertion_context,
-                        cdecimal_patched,
                         CMAPListener,
                         client_context,
                         get_pool,
@@ -357,15 +356,6 @@ class TestIntegration(SpecRunner):
         self.assertTrue(event.startswith('Pool') or event.startswith('Conn'))
         event_type = getattr(monitoring, event)
         return self.pool_listener.event_count(event_type)
-
-    def maybe_skip_scenario(self, test):
-        """Override to skip threaded tests when cdecimal is installed on 2.7
-        """
-        super(TestIntegration, self).maybe_skip_scenario(test)
-        # PYTHON-2332
-        ops = [op['name'] for op in test['operations']]
-        if cdecimal_patched() and 'startThread' in ops:
-            raise unittest.SkipTest('PYTHON-2332 test fails with cdecimal')
 
     def assert_event_count(self, event, count):
         """Run the assertEventCount test operation.

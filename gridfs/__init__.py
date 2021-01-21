@@ -107,12 +107,11 @@ class GridFS(object):
           finally:
               f.close()
 
-        `data` can be either an instance of :class:`str` (:class:`bytes`
-        in python 3) or a file-like object providing a :meth:`read` method.
-        If an `encoding` keyword argument is passed, `data` can also be a
-        :class:`unicode` (:class:`str` in python 3) instance, which will
-        be encoded as `encoding` before being written. Any keyword arguments
-        will be passed through to the created file - see
+        `data` can be either an instance of :class:`bytes` or a file-like
+        object providing a :meth:`read` method. If an `encoding` keyword
+        argument is passed, `data` can also be a :class:`str` instance, which
+        will be encoded as `encoding` before being written. Any keyword
+        arguments will be passed through to the created file - see
         :meth:`~gridfs.grid_file.GridIn` for possible arguments. Returns the
         ``"_id"`` of the created file.
 

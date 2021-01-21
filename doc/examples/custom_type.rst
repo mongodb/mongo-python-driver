@@ -138,7 +138,7 @@ Now, we can seamlessly encode and decode instances of
   >>> mydoc = collection.find_one()
   >>> import pprint
   >>> pprint.pprint(mydoc)
-  {u'_id': ObjectId('...'), u'num': Decimal('45.321')}
+  {'_id': ObjectId('...'), 'num': Decimal('45.321')}
 
 
 We can see what's actually being saved to the database by creating a fresh
@@ -149,7 +149,7 @@ MongoDB:
 
   >>> vanilla_collection = db.get_collection('test')
   >>> pprint.pprint(vanilla_collection.find_one())
-  {u'_id': ObjectId('...'), u'num': Decimal128('45.321')}
+  {'_id': ObjectId('...'), 'num': Decimal128('45.321')}
 
 
 Encoding Subtypes
@@ -217,7 +217,7 @@ object, we can seamlessly encode instances of ``DecimalInt``:
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> pprint.pprint(mydoc)
-  {u'_id': ObjectId('...'), u'num': Decimal('45.321')}
+  {'_id': ObjectId('...'), 'num': Decimal('45.321')}
 
 Note that the ``transform_bson`` method of the base codec class results in
 these values being decoded as ``Decimal`` (and not ``DecimalInt``).
@@ -310,7 +310,7 @@ We can now seamlessly encode instances of :py:class:`~decimal.Decimal`:
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> pprint.pprint(mydoc)
-  {u'_id': ObjectId('...'), u'num': Decimal128('45.321')}
+  {'_id': ObjectId('...'), 'num': Decimal128('45.321')}
 
 
 .. note::

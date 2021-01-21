@@ -70,7 +70,7 @@ class ObjectId(object):
 
         By default, ``ObjectId()`` creates a new unique identifier. The
         optional parameter `oid` can be an :class:`ObjectId`, or any 12
-        :class:`bytes` or, in Python 2, any 12-character :class:`str`.
+        :class:`bytes`.
 
         For example, the 12 bytes b'foo-bar-quux' do not follow the ObjectId
         specification but they are acceptable input::
@@ -78,13 +78,9 @@ class ObjectId(object):
           >>> ObjectId(b'foo-bar-quux')
           ObjectId('666f6f2d6261722d71757578')
 
-        `oid` can also be a :class:`unicode` or :class:`str` of 24 hex digits::
+        `oid` can also be a :class:`str` of 24 hex digits::
 
           >>> ObjectId('0123456789ab0123456789ab')
-          ObjectId('0123456789ab0123456789ab')
-          >>>
-          >>> # A u-prefixed unicode literal:
-          >>> ObjectId(u'0123456789ab0123456789ab')
           ObjectId('0123456789ab0123456789ab')
 
         Raises :class:`~bson.errors.InvalidId` if `oid` is not 12 bytes nor
@@ -201,7 +197,6 @@ class ObjectId(object):
         """
         if isinstance(oid, ObjectId):
             self.__id = oid.binary
-        # bytes or unicode in python 2, str in python 3
         elif isinstance(oid, str):
             if len(oid) == 24:
                 try:

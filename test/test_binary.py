@@ -97,10 +97,7 @@ class TestBinary(unittest.TestCase):
         self.assertRaises(ValueError, Binary, b"hello", 256)
         self.assertTrue(Binary(b"hello", 0))
         self.assertTrue(Binary(b"hello", 255))
-        if platform.python_implementation() != "Jython":
-            # Jython's memoryview accepts unicode strings...
-            # https://bugs.jython.org/issue2784
-            self.assertRaises(TypeError, Binary, "hello")
+        self.assertRaises(TypeError, Binary, "hello")
 
     def test_subtype(self):
         one = Binary(b"hello")

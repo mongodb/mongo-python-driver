@@ -20,11 +20,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-try:
-    from urllib.parse import quote_plus
-except ImportError:
-    # Python 2
-    from urllib import quote_plus
+from urllib.parse import quote_plus
 
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,

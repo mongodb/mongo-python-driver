@@ -111,7 +111,7 @@ set::
   >>> from time import sleep
   >>> c = MongoClient(replicaset='foo'); print(c.nodes); sleep(0.1); print(c.nodes)
   frozenset([])
-  frozenset([(u'localhost', 27019), (u'localhost', 27017), (u'localhost', 27018)])
+  frozenset([('localhost', 27019), ('localhost', 27017), ('localhost', 27018)])
 
 You need not wait for replica set discovery in your application, however.
 If you need to do any operation with a MongoClient, such as a
@@ -132,7 +132,7 @@ connect to the replica set and perform a couple of basic operations::
   >>> db.test.insert_one({"x": 1}).inserted_id
   ObjectId('...')
   >>> db.test.find_one()
-  {u'x': 1, u'_id': ObjectId('...')}
+  {'x': 1, '_id': ObjectId('...')}
 
 By checking the host and port, we can see that we're connected to
 *localhost:27017*, which is the current primary::
@@ -162,7 +162,7 @@ general). At that point the driver will connect to the new primary and
 the operation will succeed::
 
   >>> db.test.find_one()
-  {u'x': 1, u'_id': ObjectId('...')}
+  {'x': 1, '_id': ObjectId('...')}
   >>> db.client.address
   ('localhost', 27018)
 

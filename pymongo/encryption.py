@@ -364,12 +364,12 @@ class ClientEncryption(object):
                 These are the Azure Active Directory credentials used to
                 generate Azure Key Vault messages.
               - `gcp`: Map with "email" as a string and "privateKey"
-                as `bytes` or a base64 encoded string (unicode on Python 2).
+                as `bytes` or a base64 encoded string.
                 Additionally, "endpoint" may also be specified as a string
                 (defaults to 'oauth2.googleapis.com'). These are the
                 credentials used to generate Google Cloud KMS messages.
               - `local`: Map with "key" as `bytes` (96 bytes in length) or
-                a base64 encoded string (unicode on Python 2) which decodes
+                a base64 encoded string which decodes
                 to 96 bytes. "key" is the master key used to encrypt/decrypt
                 data keys. This key should be generated and stored as securely
                 as possible.

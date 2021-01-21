@@ -144,11 +144,8 @@ class GridIn(object):
           - ``"chunkSize"`` or ``"chunk_size"``: size of each of the
             chunks, in bytes (default: 255 kb)
 
-          - ``"encoding"``: encoding used for this file. In Python 2,
-            any :class:`unicode` that is written to the file will be
-            converted to a :class:`str`. In Python 3, any :class:`str`
-            that is written to the file will be converted to
-            :class:`bytes`.
+          - ``"encoding"``: encoding used for this file. Any :class:`str`
+            that is written to the file will be converted to :class:`bytes`.
 
         :Parameters:
           - `root_collection`: root collection to write to
@@ -345,15 +342,14 @@ class GridIn(object):
         `data` can be either a string of bytes or a file-like object
         (implementing :meth:`read`). If the file has an
         :attr:`encoding` attribute, `data` can also be a
-        :class:`unicode` (:class:`str` in python 3) instance, which
-        will be encoded as :attr:`encoding` before being written.
+        :class:`str` instance, which will be encoded as
+        :attr:`encoding` before being written.
 
         Due to buffering, the data may not actually be written to the
         database until the :meth:`close` method is called. Raises
         :class:`ValueError` if this file is already closed. Raises
         :class:`TypeError` if `data` is not an instance of
-        :class:`str` (:class:`bytes` in python 3), a file-like object,
-        or an instance of :class:`unicode` (:class:`str` in python 3).
+        :class:`bytes`, a file-like object, or an instance of :class:`str`.
         Unicode data is only allowed if the file has an :attr:`encoding`
         attribute.
 

@@ -16,30 +16,6 @@ command::
 
   $ python -m pip install pymongo[tls]
 
-Starting with PyMongo 3.11 this installs `PyOpenSSL
-<https://pypi.org/project/pyOpenSSL/>`_, `requests`_
-and `service_identity
-<https://pypi.org/project/service_identity/>`_
-for users of Python versions older than 2.7.9. PyOpenSSL supports SNI for these
-old Python versions allowing applictions to connect to Altas free and shared
-tier instances.
-
-Earlier versions of PyMongo require you to manually install the dependencies
-listed below.
-
-Python 2.x
-``````````
-The `ipaddress`_ module is required on all platforms.
-
-When using CPython < 2.7.9 or PyPy < 2.5.1:
-
-- On Windows, the `wincertstore`_ module is required.
-- On all other platforms, the `certifi`_ module is required.
-
-.. _ipaddress: https://pypi.python.org/pypi/ipaddress
-.. _wincertstore: https://pypi.python.org/pypi/wincertstore
-.. _certifi: https://pypi.python.org/pypi/certifi
-
 .. warning:: Industry best practices recommend, and some regulations require,
   the use of TLS 1.1 or newer. Though no application changes are required for
   PyMongo to make use of the newest protocols, some operating systems or
@@ -128,8 +104,7 @@ Or, in the URI::
 Specifying a certificate revocation list
 ........................................
 
-Python 2.7.9+ (pypy 2.5.1+) and 3.4+ provide support for certificate revocation
-lists. The ``tlsCRLFile`` option takes a path to a CRL file. It can be passed
+The ``tlsCRLFile`` option takes a path to a CRL file. It can be passed
 as a keyword argument::
 
   >>> client = pymongo.MongoClient('example.com',
@@ -161,9 +136,8 @@ the ``ssl_keyfile`` option::
   ...                              tlsCertificateKeyFile='/path/to/client.pem',
   ...                              ssl_keyfile='/path/to/key.pem')
 
-Python 2.7.9+ (pypy 2.5.1+) and 3.3+ support providing a password or passphrase
-to decrypt encrypted private keys. Use the ``tlsCertificateKeyFilePassword``
-option::
+Python supports providing a password or passphrase to decrypt encrypted
+private keys. Use the ``tlsCertificateKeyFilePassword`` option::
 
   >>> client = pymongo.MongoClient('example.com',
   ...                              tls=True,

@@ -22,7 +22,7 @@ Creating a geospatial index in pymongo is easy:
   >>> from pymongo import MongoClient, GEO2D
   >>> db = MongoClient().geo_example
   >>> db.places.create_index([("loc", GEO2D)])
-  u'loc_2d'
+  'loc_2d'
 
 Inserting Places
 ----------------
@@ -53,9 +53,9 @@ Using the geospatial index we can find documents near another point:
   >>> for doc in db.places.find({"loc": {"$near": [3, 6]}}).limit(3):
   ...   pprint.pprint(doc)
   ...
-  {u'_id': ObjectId('...'), u'loc': [2, 5]}
-  {u'_id': ObjectId('...'), u'loc': [4, 4]}
-  {u'_id': ObjectId('...'), u'loc': [1, 2]}
+  {'_id': ObjectId('...'), 'loc': [2, 5]}
+  {'_id': ObjectId('...'), 'loc': [4, 4]}
+  {'_id': ObjectId('...'), 'loc': [1, 2]}
 
 .. note:: If using :data:`pymongo.GEOSPHERE`, using $nearSphere is recommended.
 
@@ -68,9 +68,9 @@ The $maxDistance operator requires the use of :class:`~bson.son.SON`:
   >>> for doc in db.places.find(query).limit(3):
   ...   pprint.pprint(doc)
   ...
-  {u'_id': ObjectId('...'), u'loc': [2, 5]}
-  {u'_id': ObjectId('...'), u'loc': [4, 4]}
-  {u'_id': ObjectId('...'), u'loc': [1, 2]}
+  {'_id': ObjectId('...'), 'loc': [2, 5]}
+  {'_id': ObjectId('...'), 'loc': [4, 4]}
+  {'_id': ObjectId('...'), 'loc': [1, 2]}
 
 It's also possible to query for all items within a given rectangle
 (specified by lower-left and upper-right coordinates):
@@ -80,8 +80,8 @@ It's also possible to query for all items within a given rectangle
   >>> query = {"loc": {"$within": {"$box": [[2, 2], [5, 6]]}}}
   >>> for doc in db.places.find(query).sort('_id'):
   ...     pprint.pprint(doc)
-  {u'_id': ObjectId('...'), u'loc': [2, 5]}
-  {u'_id': ObjectId('...'), u'loc': [4, 4]}
+  {'_id': ObjectId('...'), 'loc': [2, 5]}
+  {'_id': ObjectId('...'), 'loc': [4, 4]}
 
 Or circle (specified by center point and radius):
 
@@ -91,15 +91,15 @@ Or circle (specified by center point and radius):
   >>> for doc in db.places.find(query).sort('_id'):
   ...   pprint.pprint(doc)
   ...
-  {u'_id': ObjectId('...'), u'loc': [2, 5]}
-  {u'_id': ObjectId('...'), u'loc': [1, 2]}
-  {u'_id': ObjectId('...'), u'loc': [4, 4]}
+  {'_id': ObjectId('...'), 'loc': [2, 5]}
+  {'_id': ObjectId('...'), 'loc': [1, 2]}
+  {'_id': ObjectId('...'), 'loc': [4, 4]}
 
 geoNear queries are also supported using :class:`~bson.son.SON`::
 
   >>> from bson.son import SON
   >>> db.command(SON([('geoNear', 'places'), ('near', [1, 2])]))
-  {u'ok': 1.0, u'stats': ...}
+  {'ok': 1.0, 'stats': ...}
 
 .. warning:: Starting in MongoDB version 4.0, MongoDB deprecates the **geoNear** command. Use one of the following operations instead.
 

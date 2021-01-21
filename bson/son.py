@@ -33,7 +33,7 @@ class SON(dict):
 
     A subclass of dict that maintains ordering of keys and provides a
     few extra niceties for dealing with SON. SON provides an API
-    similar to collections.OrderedDict from Python 2.7+.
+    similar to collections.OrderedDict.
     """
 
     def __init__(self, data=None, **kwargs):

@@ -49,8 +49,8 @@ else:
 
         :Parameters:
           - `data`: The string to SASLprep. Unicode strings
-            (python 2.x unicode, 3.x str) are supported. Byte strings
-            (python 2.x str, 3.x bytes) are ignored.
+            (:class:`str`) are supported. Byte strings
+            (:class:`bytes`) are ignored.
           - `prohibit_unassigned_code_points`: True / False. RFC 3454
             and RFCs for various SASL mechanisms distinguish between
             `queries` (unassigned code points allowed) and

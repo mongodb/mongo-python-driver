@@ -72,8 +72,6 @@ class Selection(object):
     def __bool__(self):
         return bool(self.server_descriptions)
 
-    __nonzero__ = __bool__  # Python 2.
-
     def __getitem__(self, item):
         return self.server_descriptions[item]
 

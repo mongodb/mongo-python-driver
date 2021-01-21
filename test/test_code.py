@@ -54,7 +54,7 @@ class TestCode(unittest.TestCase):
         self.assertEqual(str(with_scope), str(another_scope))
         self.assertEqual({'new_var': 42, 'my_var': 5}, another_scope.scope)
         # No error.
-        Code(u'héllø world¡')
+        Code('héllø world¡')
 
     def test_repr(self):
         c = Code("hello world", {})

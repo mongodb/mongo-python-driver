@@ -238,7 +238,7 @@ Therefore, Python dicts are not guaranteed to show keys in the order they are
 stored in BSON. Here, "a" is shown before "b":
 
   >>> print(collection.find_one())
-  {u'_id': 1.0, u'subdocument': {u'a': 1.0, u'b': 1.0}}
+  {'_id': 1.0, 'subdocument': {'a': 1.0, 'b': 1.0}}
 
 To preserve order when reading BSON, use the :class:`~bson.son.SON` class,
 which is a dict that remembers its key order. First, get a handle to the
@@ -264,7 +264,7 @@ Now, documents and subdocuments in query results are represented with
 .. doctest:: key-order
 
   >>> print(collection_son.find_one())
-  SON([(u'_id', 1.0), (u'subdocument', SON([(u'b', 1.0), (u'a', 1.0)]))])
+  SON([('_id', 1.0), ('subdocument', SON([('b', 1.0), ('a', 1.0)]))])
 
 The subdocument's actual storage layout is now visible: "b" is before "a".
 
@@ -287,7 +287,7 @@ There are two solutions. First, you can match the subdocument field-by-field:
 
   >>> collection.find_one({'subdocument.a': 1.0,
   ...                      'subdocument.b': 1.0})
-  {u'_id': 1.0, u'subdocument': {u'a': 1.0, u'b': 1.0}}
+  {'_id': 1.0, 'subdocument': {'a': 1.0, 'b': 1.0}}
 
 The query matches any subdocument with an "a" of 1.0 and a "b" of 1.0,
 regardless of the order you specify them in Python or the order they are stored
@@ -298,7 +298,7 @@ The second solution is to use a :class:`~bson.son.SON` to specify the key order:
 
   >>> query = {'subdocument': SON([('b', 1.0), ('a', 1.0)])}
   >>> collection.find_one(query)
-  {u'_id': 1.0, u'subdocument': {u'a': 1.0, u'b': 1.0}}
+  {'_id': 1.0, 'subdocument': {'a': 1.0, 'b': 1.0}}
 
 The key order you use when you create a :class:`~bson.son.SON` is preserved
 when it is serialized to BSON and used as a query. Thus you can create a

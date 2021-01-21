@@ -225,7 +225,7 @@ else:
 # while the main thread holds the import lock, getaddrinfo deadlocks trying
 # to import the IDNA codec. Import it here, where presumably we're on the
 # main thread, to avoid the deadlock. See PYTHON-607.
-u'foo'.encode('idna')
+'foo'.encode('idna')
 
 
 def _raise_connection_failure(address, error, msg_prefix=None):

@@ -30,7 +30,7 @@ Example usage (deserialization):
 
    >>> from bson.json_util import loads
    >>> loads('[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "80", "$binary": "AQIDBA=="}}]')
-   [{u'foo': [1, 2]}, {u'bar': {u'hello': u'world'}}, {u'code': Code('function x() { return 1; }', {})}, {u'bin': Binary('...', 128)}]
+   [{'foo': [1, 2]}, {'bar': {'hello': 'world'}}, {'code': Code('function x() { return 1; }', {})}, {'bin': Binary(b'...', 128)}]
 
 Example usage (serialization):
 
@@ -855,7 +855,6 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
             return {'$numberDouble': representation}
         elif json_options.json_mode == JSONMode.CANONICAL:
             # repr() will return the shortest string guaranteed to produce the
-            # original value, when float() is called on it. str produces a
-            # shorter string in Python 2.
+            # original value, when float() is called on it.
             return {'$numberDouble': str(repr(obj))}
     raise TypeError("%r is not JSON serializable" % obj)

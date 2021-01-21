@@ -22,11 +22,9 @@ Python Type                              BSON Type      Supported Direction
 None                                     null           both
 bool                                     boolean        both
 int [#int]_                              int32 / int64  py -> bson
-long                                     int64          py -> bson
 `bson.int64.Int64`                       int64          both
 float                                    number (real)  both
-string                                   string         py -> bson
-unicode                                  string         both
+str                                      string         both
 list                                     array          both
 dict / `SON`                             object         both
 datetime.datetime [#dt]_ [#dt2]_         date           both
@@ -36,16 +34,10 @@ compiled re [#re]_                       regex          py -> bson
 `bson.objectid.ObjectId`                 oid            both
 `bson.dbref.DBRef`                       dbref          both
 None                                     undefined      bson -> py
-unicode                                  code           bson -> py
-`bson.code.Code`                         code           py -> bson
-unicode                                  symbol         bson -> py
-bytes (Python 3) [#bytes]_               binary         both
+`bson.code.Code`                         code           both
+str                                      symbol         bson -> py
+bytes [#bytes]_                          binary         both
 =======================================  =============  ===================
-
-Note that, when using Python 2.x, to save binary data it must be wrapped as
-an instance of `bson.binary.Binary`. Otherwise it will be saved as a BSON
-string and retrieved as unicode. Users of Python 3.x can use the Python bytes
-type.
 
 .. [#int] A Python int will be saved as a BSON int32 or BSON int64 depending
    on its size. A BSON int32 will always decode to a Python int. A BSON
@@ -58,10 +50,8 @@ type.
    objects from ``re.compile()`` are both saved as BSON regular expressions.
    BSON regular expressions are decoded as :class:`~bson.regex.Regex`
    instances.
-.. [#bytes] The bytes type from Python 3.x is encoded as BSON binary with
-   subtype 0. In Python 3.x it will be decoded back to bytes. In Python 2.x
-   it will be decoded to an instance of :class:`~bson.binary.Binary` with
-   subtype 0.
+.. [#bytes] The bytes type is encoded as BSON binary with
+   subtype 0. It will be decoded back to bytes.
 """
 
 import calendar
@@ -161,7 +151,7 @@ def _get_int(data, view, position, dummy0, dummy1, dummy2):
 
 
 def _get_c_string(data, view, position, opts):
-    """Decode a BSON 'C' string to python unicode string."""
+    """Decode a BSON 'C' string to python str."""
     end = data.index(b"\x00", position)
     return _utf_8_decode(view[position:end],
                          opts.unicode_decode_error_handler, True)[0], end + 1
@@ -173,7 +163,7 @@ def _get_float(data, view, position, dummy0, dummy1, dummy2):
 
 
 def _get_string(data, view, position, obj_end, opts, dummy):
-    """Decode a BSON string to python unicode string."""
+    """Decode a BSON string to python str."""
     length = _UNPACK_INT_FROM(data, position)[0]
     position += 4
     if length < 1 or obj_end - position < length:
@@ -573,7 +563,7 @@ def _encode_list(name, value, check_keys, opts):
 
 
 def _encode_text(name, value, dummy0, dummy1):
-    """Encode a python unicode (python 2.x) / str (python 3.x)."""
+    """Encode a python str."""
     value = _utf_8_encode(value)[0]
     return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"
 
@@ -616,12 +606,11 @@ def _encode_none(name, dummy0, dummy1, dummy2):
 def _encode_regex(name, value, dummy0, dummy1):
     """Encode a python regex or bson.regex.Regex."""
     flags = value.flags
-    # Python 2 common case
-    if flags == 0:
-        return b"\x0B" + name + _make_c_string_check(value.pattern) + b"\x00"
     # Python 3 common case
-    elif flags == re.UNICODE:
+    if flags == re.UNICODE:
         return b"\x0B" + name + _make_c_string_check(value.pattern) + b"u\x00"
+    elif flags == 0:
+        return b"\x0B" + name + _make_c_string_check(value.pattern) + b"\x00"
     else:
         sflags = b""
         if flags & re.IGNORECASE:

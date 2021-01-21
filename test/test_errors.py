@@ -58,13 +58,13 @@ class TestErrors(PyMongoTestCase):
             self.assertIn("full error", traceback.format_exc())
 
     def test_unicode_strs_operation_failure(self):
-        exc = OperationFailure(u'unicode \U0001f40d', 10,
-                               {"errmsg": u'unicode \U0001f40d'})
+        exc = OperationFailure('unicode \U0001f40d', 10,
+                               {"errmsg": 'unicode \U0001f40d'})
         self._test_unicode_strs(exc)
 
     def test_unicode_strs_not_master_error(self):
-        exc = NotMasterError(u'unicode \U0001f40d',
-                             {"errmsg": u'unicode \U0001f40d'})
+        exc = NotMasterError('unicode \U0001f40d',
+                             {"errmsg": 'unicode \U0001f40d'})
         self._test_unicode_strs(exc)
 
     def assertPyMongoErrorEqual(self, exc1, exc2):

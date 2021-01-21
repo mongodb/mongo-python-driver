@@ -57,7 +57,7 @@ class DBRef(object):
 
     @property
     def collection(self):
-        """Get the name of this DBRef's collection as unicode.
+        """Get the name of this DBRef's collection.
         """
         return self.__collection
 
