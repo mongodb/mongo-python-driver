@@ -1473,10 +1473,6 @@ class MongoClient(common.BaseObject):
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, None)
 
-    def _handle_getlasterror(self, address, error_msg):
-        """Clear our pool for a server, mark it Unknown, and check it soon."""
-        self._topology.handle_getlasterror(address, error_msg)
-
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.address == other.address

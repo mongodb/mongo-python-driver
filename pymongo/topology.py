@@ -428,16 +428,6 @@ class Topology(object):
             self._request_check_all()
             self._condition.wait(wait_time)
 
-    def handle_getlasterror(self, address, error_msg):
-        """Clear our pool for a server, mark it Unknown, and check it soon."""
-        error = NotMasterError(error_msg, {'code': 10107, 'errmsg': error_msg})
-        with self._lock:
-            server = self._servers.get(address)
-            if server:
-                self._process_change(
-                    ServerDescription(address, error=error), True)
-                server.request_check()
-
     def update_pool(self, all_credentials):
         # Remove any stale sockets and add new sockets if pool is too small.
         servers = []

@@ -174,6 +174,17 @@ can be changed to this::
   >>> from bson.code import Code
   >>> result = database.command('eval', Code('function (x) {return x;}'), args=[3]).get('retval')
 
+Database.error, Database.last_status, Database.previous_error, and Database.reset_error_history are removed
+...........................................................................................................
+
+Removed :meth:`pymongo.database.Database.error`,
+:meth:`pymongo.database.Database.last_status`,
+:meth:`pymongo.database.Database.previous_error`, and
+:meth:`pymongo.database.Database.reset_error_history`.
+These methods are obsolete: all MongoDB write operations use an acknowledged
+write concern and report their errors by default. These methods were
+deprecated in PyMongo 2.8.
+
 Collection.parallel_scan is removed
 ...................................
 
