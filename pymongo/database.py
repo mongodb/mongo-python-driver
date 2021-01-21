@@ -30,7 +30,6 @@ from pymongo.errors import (CollectionInvalid,
                             OperationFailure)
 from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
-from pymongo.son_manipulator import SONManipulator
 
 
 _INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
@@ -108,38 +107,6 @@ class Database(common.BaseObject):
         self.__name = name
         self.__client = client
 
-        self.__incoming_manipulators = []
-        self.__incoming_copying_manipulators = []
-        self.__outgoing_manipulators = []
-        self.__outgoing_copying_manipulators = []
-
-    def add_son_manipulator(self, manipulator):
-        """Add a new son manipulator to this database.
-
-        **DEPRECATED** - `add_son_manipulator` is deprecated.
-
-        .. versionchanged:: 3.0
-          Deprecated add_son_manipulator.
-        """
-        warnings.warn("add_son_manipulator is deprecated",
-                      DeprecationWarning, stacklevel=2)
-        base = SONManipulator()
-        def method_overwritten(instance, method):
-            """Test if this method has been overridden."""
-            return (getattr(
-                instance, method).__func__ != getattr(base, method).__func__)
-
-        if manipulator.will_copy():
-            if method_overwritten(manipulator, "transform_incoming"):
-                self.__incoming_copying_manipulators.insert(0, manipulator)
-            if method_overwritten(manipulator, "transform_outgoing"):
-                self.__outgoing_copying_manipulators.insert(0, manipulator)
-        else:
-            if method_overwritten(manipulator, "transform_incoming"):
-                self.__incoming_manipulators.insert(0, manipulator)
-            if method_overwritten(manipulator, "transform_outgoing"):
-                self.__outgoing_manipulators.insert(0, manipulator)
-
     @property
     def client(self):
         """The client instance for this :class:`Database`."""
@@ -149,66 +116,6 @@ class Database(common.BaseObject):
     def name(self):
         """The name of this :class:`Database`."""
         return self.__name
-
-    @property
-    def incoming_manipulators(self):
-        """**DEPRECATED**: All incoming SON manipulators.
-
-        .. versionchanged:: 3.5
-          Deprecated.
-
-        .. versionadded:: 2.0
-        """
-        warnings.warn("Database.incoming_manipulators() is deprecated",
-                      DeprecationWarning, stacklevel=2)
-
-        return [manipulator.__class__.__name__
-                for manipulator in self.__incoming_manipulators]
-
-    @property
-    def incoming_copying_manipulators(self):
-        """**DEPRECATED**: All incoming SON copying manipulators.
-
-        .. versionchanged:: 3.5
-          Deprecated.
-
-        .. versionadded:: 2.0
-        """
-        warnings.warn("Database.incoming_copying_manipulators() is deprecated",
-                      DeprecationWarning, stacklevel=2)
-
-        return [manipulator.__class__.__name__
-                for manipulator in self.__incoming_copying_manipulators]
-
-    @property
-    def outgoing_manipulators(self):
-        """**DEPRECATED**: All outgoing SON manipulators.
-
-        .. versionchanged:: 3.5
-          Deprecated.
-
-        .. versionadded:: 2.0
-        """
-        warnings.warn("Database.outgoing_manipulators() is deprecated",
-                      DeprecationWarning, stacklevel=2)
-
-        return [manipulator.__class__.__name__
-                for manipulator in self.__outgoing_manipulators]
-
-    @property
-    def outgoing_copying_manipulators(self):
-        """**DEPRECATED**: All outgoing SON copying manipulators.
-
-        .. versionchanged:: 3.5
-          Deprecated.
-
-        .. versionadded:: 2.0
-        """
-        warnings.warn("Database.outgoing_copying_manipulators() is deprecated",
-                      DeprecationWarning, stacklevel=2)
-
-        return [manipulator.__class__.__name__
-                for manipulator in self.__outgoing_copying_manipulators]
 
     def with_options(self, codec_options=None, read_preference=None,
                      write_concern=None, read_concern=None):
@@ -406,42 +313,6 @@ class Database(common.BaseObject):
             return Collection(self, name, True, codec_options,
                               read_preference, write_concern,
                               read_concern, session=s, **kwargs)
-
-    def _apply_incoming_manipulators(self, son, collection):
-        """Apply incoming manipulators to `son`."""
-        for manipulator in self.__incoming_manipulators:
-            son = manipulator.transform_incoming(son, collection)
-        return son
-
-    def _apply_incoming_copying_manipulators(self, son, collection):
-        """Apply incoming copying manipulators to `son`."""
-        for manipulator in self.__incoming_copying_manipulators:
-            son = manipulator.transform_incoming(son, collection)
-        return son
-
-    def _fix_incoming(self, son, collection):
-        """Apply manipulators to an incoming SON object before it gets stored.
-
-        :Parameters:
-          - `son`: the son object going into the database
-          - `collection`: the collection the son object is being saved in
-        """
-        son = self._apply_incoming_manipulators(son, collection)
-        son = self._apply_incoming_copying_manipulators(son, collection)
-        return son
-
-    def _fix_outgoing(self, son, collection):
-        """Apply manipulators to a SON object as it comes out of the database.
-
-        :Parameters:
-          - `son`: the son object coming out of the database
-          - `collection`: the collection the son object was saved in
-        """
-        for manipulator in reversed(self.__outgoing_manipulators):
-            son = manipulator.transform_outgoing(son, collection)
-        for manipulator in reversed(self.__outgoing_copying_manipulators):
-            son = manipulator.transform_outgoing(son, collection)
-        return son
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform a database-level aggregation.

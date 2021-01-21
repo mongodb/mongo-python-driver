@@ -108,7 +108,7 @@ class Cursor(object):
                  limit=0, no_cursor_timeout=False,
                  cursor_type=CursorType.NON_TAILABLE,
                  sort=None, allow_partial_results=False, oplog_replay=False,
-                 modifiers=None, batch_size=0, manipulate=True,
+                 modifiers=None, batch_size=0,
                  collation=None, hint=None, max_scan=None, max_time_ms=None,
                  max=None, min=None, return_key=False, show_record_id=False,
                  snapshot=False, comment=None, session=None,
@@ -181,7 +181,6 @@ class Cursor(object):
         self.__max_await_time_ms = None
         self.__max = max
         self.__min = min
-        self.__manipulate = manipulate
         self.__collation = validate_collation_or_none(collation)
         self.__return_key = return_key
         self.__show_record_id = show_record_id
@@ -281,7 +280,7 @@ class Cursor(object):
         values_to_clone = ("spec", "projection", "skip", "limit",
                            "max_time_ms", "max_await_time_ms", "comment",
                            "max", "min", "ordering", "explain", "hint",
-                           "batch_size", "max_scan", "manipulate",
+                           "batch_size", "max_scan",
                            "query_flags", "modifiers", "collation", "empty",
                            "show_record_id", "return_key", "allow_disk_use",
                            "snapshot", "exhaust")
@@ -1198,12 +1197,7 @@ class Cursor(object):
         if self.__empty:
             raise StopIteration
         if len(self.__data) or self._refresh():
-            if self.__manipulate:
-                _db = self.__collection.database
-                return _db._fix_outgoing(self.__data.popleft(),
-                                         self.__collection)
-            else:
-                return self.__data.popleft()
+            return self.__data.popleft()
         else:
             raise StopIteration
 
@@ -1277,14 +1271,7 @@ class RawBatchCursor(Cursor):
 
         .. mongodoc:: cursors
         """
-        manipulate = kwargs.get('manipulate')
-        kwargs['manipulate'] = False
         super(RawBatchCursor, self).__init__(*args, **kwargs)
-
-        # Throw only after cursor's initialized, to prevent errors in __del__.
-        if manipulate:
-            raise InvalidOperation(
-                "Cannot use RawBatchCursor with manipulate=True")
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):

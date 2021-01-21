@@ -268,8 +268,7 @@ class CommandCursor(object):
         if not len(self.__data) and not self.__killed and get_more_allowed:
             self._refresh()
         if len(self.__data):
-            coll = self.__collection
-            return coll.database._fix_outgoing(self.__data.popleft(), coll)
+            return self.__data.popleft()
         else:
             return None
 

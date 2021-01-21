@@ -274,6 +274,38 @@ can be changed to this::
 
 .. _reIndex command: https://docs.mongodb.com/manual/reference/command/reIndex/
 
+SONManipulator is removed
+-------------------------
+
+Removed :mod:`pymongo.son_manipulator`,
+:class:`pymongo.son_manipulator.SONManipulator`,
+:class:`pymongo.son_manipulator.ObjectIdInjector`,
+:class:`pymongo.son_manipulator.ObjectIdShuffler`,
+:class:`pymongo.son_manipulator.AutoReference`,
+:class:`pymongo.son_manipulator.NamespaceInjector`,
+:meth:`pymongo.database.Database.add_son_manipulator`,
+:attr:`pymongo.database.Database.outgoing_copying_manipulators`,
+:attr:`pymongo.database.Database.outgoing_manipulators`,
+:attr:`pymongo.database.Database.incoming_copying_manipulators`, and
+:attr:`pymongo.database.Database.incoming_manipulators`.
+
+Removed the ``manipulate`` parameter from
+:meth:`~pymongo.collection.Collection.find`,
+:meth:`~pymongo.collection.Collection.find_one`, and
+:meth:`~pymongo.cursor.Cursor`.
+
+The :class:`pymongo.son_manipulator.SONManipulator` API has limitations as a
+technique for transforming your data and was deprecated in PyMongo 3.0.
+Instead, it is more flexible and straightforward to transform outgoing
+documents in your own code before passing them to PyMongo, and transform
+incoming documents after receiving them from PyMongo.
+
+Alternatively, if your application uses the ``SONManipulator`` API to convert
+custom types to BSON, the :class:`~bson.codec_options.TypeCodec` and
+:class:`~bson.codec_options.TypeRegistry` APIs may be a suitable alternative.
+For more information, see the
+:doc:`custom type example <examples/custom_type>`.
+
 Removed features with no migration path
 ---------------------------------------
 

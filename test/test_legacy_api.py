@@ -14,10 +14,7 @@
 
 """Test various legacy / deprecated API features."""
 
-import itertools
 import sys
-import threading
-import time
 import uuid
 
 sys.path[0:0] = [""]
@@ -25,25 +22,16 @@ sys.path[0:0] = [""]
 from bson.binary import PYTHON_LEGACY, STANDARD
 from bson.code import Code
 from bson.codec_options import CodecOptions
-from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import ASCENDING, DESCENDING, GEOHAYSTACK
+from pymongo import ASCENDING, GEOHAYSTACK
 from pymongo.common import partition_node
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
-                            DuplicateKeyError,
                             InvalidDocument,
                             InvalidOperation,
-                            OperationFailure,
-                            WriteConcernError,
-                            WTimeoutError)
+                            OperationFailure)
 from pymongo.operations import IndexModel
-from pymongo.son_manipulator import (AutoReference,
-                                     NamespaceInjector,
-                                     ObjectIdShuffler,
-                                     SONManipulator)
-from pymongo.write_concern import WriteConcern
-from test import client_context, qcheck, unittest, SkipTest
+from test import client_context, unittest, SkipTest
 from test.test_client import IntegrationTest
 from test.test_bulk import BulkTestBase, BulkAuthorizationTestBase
 from test.utils import (DeprecationFilter,
@@ -63,11 +51,6 @@ class TestDeprecations(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         cls.deprecation_filter.stop()
-
-    def test_add_son_manipulator_deprecation(self):
-        db = self.client.pymongo_test
-        self.assertRaises(DeprecationWarning,
-                          lambda: db.add_son_manipulator(AutoReference(db)))
 
     def test_geoHaystack_deprecation(self):
         self.addCleanup(self.db.test.drop)
