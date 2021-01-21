@@ -705,9 +705,6 @@ class MongoClient(common.BaseObject):
 
         self._event_listeners = options.pool_options.event_listeners
 
-        self.__index_cache = {}
-        self.__index_cache_lock = threading.Lock()
-
         super(MongoClient, self).__init__(options.codec_options,
                                           options.read_preference,
                                           options.write_concern,
