@@ -28,6 +28,8 @@ Breaking Changes in 4.0
   :meth:`pymongo.database.Database.previous_error`,
   :meth:`pymongo.database.Database.reset_error_history`.
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
+- Removed :meth:`pymongo.collection.Collection.ensure_index`.
+- Removed :meth:`pymongo.collection.Collection.reindex`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.close_cursor`. Use
   :meth:`pymongo.cursor.Cursor.close` instead.
 - Removed :meth:`pymongo.mongo_client.MongoClient.kill_cursors`.

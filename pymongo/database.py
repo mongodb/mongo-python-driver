@@ -886,8 +886,6 @@ class Database(common.BaseObject):
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
 
-        self.__client._purge_index(self.__name, name)
-
         with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
                 sock_info, 'drop', value=name,

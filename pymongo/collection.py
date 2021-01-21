@@ -1970,42 +1970,6 @@ class Collection(common.BaseObject):
         index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
 
-    def ensure_index(self, key_or_list, cache_for=300, **kwargs):
-        """**DEPRECATED** - Ensures that an index exists on this collection.
-
-        .. versionchanged:: 3.0
-            **DEPRECATED**
-        """
-        warnings.warn("ensure_index is deprecated. Use create_index instead.",
-                      DeprecationWarning, stacklevel=2)
-        # The types supported by datetime.timedelta.
-        if not (isinstance(cache_for, int) or
-                isinstance(cache_for, float)):
-            raise TypeError("cache_for must be an integer or float.")
-
-        if "drop_dups" in kwargs:
-            kwargs["dropDups"] = kwargs.pop("drop_dups")
-
-        if "bucket_size" in kwargs:
-            kwargs["bucketSize"] = kwargs.pop("bucket_size")
-
-        index = IndexModel(key_or_list, **kwargs)
-        name = index.document["name"]
-
-        # Note that there is a race condition here. One thread could
-        # check if the index is cached and be preempted before creating
-        # and caching the index. This means multiple threads attempting
-        # to create the same index concurrently could send the index
-        # to the server two or more times. This has no practical impact
-        # other than wasted round trips.
-        if not self.__database.client._cached(self.__database.name,
-                                              self.__name, name):
-            self.__create_indexes([index], session=None)
-            self.__database.client._cache_index(self.__database.name,
-                                                self.__name, name, cache_for)
-            return name
-        return None
-
     def drop_indexes(self, session=None, **kwargs):
         """Drops all indexes on this collection.
 
@@ -2031,7 +1995,6 @@ class Collection(common.BaseObject):
            when connected to MongoDB >= 3.4.
 
         """
-        self.__database.client._purge_index(self.__database.name, self.__name)
         self.drop_index("*", session=session, **kwargs)
 
     def drop_index(self, index_or_name, session=None, **kwargs):
@@ -2048,8 +2011,8 @@ class Collection(common.BaseObject):
         .. warning::
 
           if a custom name was used on index creation (by
-          passing the `name` parameter to :meth:`create_index` or
-          :meth:`ensure_index`) the index **must** be dropped by name.
+          passing the `name` parameter to :meth:`create_index`) the index
+          **must** be dropped by name.
 
         :Parameters:
           - `index_or_name`: index (or name of index) to drop
@@ -2078,8 +2041,6 @@ class Collection(common.BaseObject):
         if not isinstance(name, str):
             raise TypeError("index_or_name must be an instance of str or list")
 
-        self.__database.client._purge_index(
-            self.__database.name, self.__name, name)
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         cmd.update(kwargs)
         with self._socket_for_writes(session) as sock_info:
@@ -2089,55 +2050,6 @@ class Collection(common.BaseObject):
                           allowable_errors=["ns not found", 26],
                           write_concern=self._write_concern_for(session),
                           session=session)
-
-    def reindex(self, session=None, **kwargs):
-        """Rebuilds all indexes on this collection.
-
-        **DEPRECATED** - The :meth:`~reindex` method is deprecated and will be
-        removed in PyMongo 4.0. Use :meth:`~pymongo.database.Database.command`
-        to run the ``reIndex`` command directly instead::
-
-          db.command({"reIndex": "<collection_name>"})
-
-        .. note:: Starting in MongoDB 4.6, the `reIndex` command can only be
-          run when connected to a standalone mongod.
-
-        :Parameters:
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): optional arguments to the reIndex
-            command (like maxTimeMS) can be passed as keyword arguments.
-
-        .. warning:: reindex blocks all other operations (indexes
-           are built in the foreground) and will be slow for large
-           collections.
-
-        .. versionchanged:: 3.11
-           Deprecated.
-
-        .. versionchanged:: 3.6
-           Added ``session`` parameter. Added support for arbitrary keyword
-           arguments.
-
-        .. versionchanged:: 3.5
-           We no longer apply this collection's write concern to this operation.
-           MongoDB 3.4 silently ignored the write concern. MongoDB 3.6+ returns
-           an error if we include the write concern.
-
-        .. versionchanged:: 3.4
-           Apply this collection's write concern automatically to this operation
-           when connected to MongoDB >= 3.4.
-        """
-        warnings.warn("The reindex method is deprecated and will be removed in "
-                      "PyMongo 4.0. Use the Database.command method to run the "
-                      "reIndex command instead.",
-                      DeprecationWarning, stacklevel=2)
-        cmd = SON([("reIndex", self.__name)])
-        cmd.update(kwargs)
-        with self._socket_for_writes(session) as sock_info:
-            return self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                session=session)
 
     def list_indexes(self, session=None):
         """Get a cursor over the index documents for this collection.

@@ -343,48 +343,10 @@ class TestCollection(IntegrationTest):
                 ExecutionTimeout, coll.drop_index, "foo", maxTimeMS=1)
             self.assertRaises(
                 ExecutionTimeout, coll.drop_indexes, maxTimeMS=1)
-            self.assertRaises(
-                ExecutionTimeout, coll.reindex, maxTimeMS=1)
         finally:
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",
                                       mode="off")
-
-    def test_reindex(self):
-        if not client_context.supports_reindex:
-            raise unittest.SkipTest(
-                "reindex is no longer supported by mongos 4.1+")
-        db = self.db
-        db.drop_collection("test")
-        db.test.insert_one({"foo": "bar", "who": "what", "when": "how"})
-        db.test.create_index("foo")
-        db.test.create_index("who")
-        db.test.create_index("when")
-        info = db.test.index_information()
-
-        def check_result(result):
-            self.assertEqual(4, result['nIndexes'])
-            indexes = result['indexes']
-            names = [idx['name'] for idx in indexes]
-            for name in names:
-                self.assertTrue(name in info)
-            for key in info:
-                self.assertTrue(key in names)
-
-        reindexed = db.test.reindex()
-        if 'raw' in reindexed:
-            # mongos
-            for result in reindexed['raw'].values():
-                check_result(result)
-        else:
-            check_result(reindexed)
-
-        coll = Collection(
-            self.db,
-            'test',
-            write_concern=WriteConcern(w=100))
-        # No error since writeConcern is not sent.
-        coll.reindex()
 
     def test_list_indexes(self):
         db = self.db

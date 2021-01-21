@@ -740,18 +740,6 @@ class ClientContext(object):
         return ','.join('%s:%s' % address for address in self.mongoses)
 
     @property
-    def supports_reindex(self):
-        """Does the connected server support reindex?"""
-        return not ((self.version.at_least(4, 1, 0) and self.is_mongos) or
-                    (self.version.at_least(4, 5, 0) and (
-                            self.is_mongos or self.is_rs)))
-
-    @property
-    def supports_getpreverror(self):
-        """Does the connected server support getpreverror?"""
-        return not (self.version.at_least(4, 1, 0) or self.is_mongos)
-
-    @property
     def supports_failCommand_fail_point(self):
         """Does the server support the failCommand fail point?"""
         if self.is_mongos:

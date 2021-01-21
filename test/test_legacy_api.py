@@ -93,17 +93,6 @@ class TestDeprecations(IntegrationTest):
         self.assertRaises(DeprecationWarning,
                           lambda: db.add_son_manipulator(AutoReference(db)))
 
-    def test_ensure_index_deprecation(self):
-        try:
-            self.assertRaises(
-                DeprecationWarning,
-                lambda: self.db.test.ensure_index('i'))
-        finally:
-            self.db.test.drop()
-
-    def test_reindex_deprecation(self):
-        self.assertRaises(DeprecationWarning, lambda: self.db.test.reindex())
-
     def test_geoHaystack_deprecation(self):
         self.addCleanup(self.db.test.drop)
         keys = [("pos", GEOHAYSTACK), ("type", ASCENDING)]
@@ -766,7 +755,7 @@ class TestLegacy(IntegrationTest):
         c.insert({'_id': 1, 'i': 1})
 
         # Test that we raise DuplicateKeyError when appropriate.
-        c.ensure_index('i', unique=True)
+        c.create_index('i', unique=True)
         self.assertRaises(DuplicateKeyError,
                           c.find_and_modify, query={'i': 1, 'j': 1},
                           update={'$set': {'k': 1}}, upsert=True)
@@ -1194,148 +1183,6 @@ class TestLegacy(IntegrationTest):
         self.assertEqual([], db.outgoing_manipulators)
         self.assertEqual(['AutoReference'],
                          db.outgoing_copying_manipulators)
-
-    def test_ensure_index(self):
-        db = self.db
-
-        self.assertRaises(TypeError, db.test.ensure_index, {"hello": 1})
-        self.assertRaises(TypeError,
-                          db.test.ensure_index, {"hello": 1}, cache_for='foo')
-
-        db.test.drop_indexes()
-
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.test.drop_indexes()
-        self.assertEqual("foo",
-                         db.test.ensure_index("goodbye", name="foo"))
-        self.assertEqual(None, db.test.ensure_index("goodbye", name="foo"))
-
-        db.test.drop_indexes()
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.drop_collection("test")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
-        db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", cache_for=1))
-        time.sleep(1.2)
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        # Make sure the expiration time is updated.
-        self.assertEqual(None,
-                         db.test.ensure_index("goodbye"))
-
-        # Clean up indexes for later tests
-        db.test.drop_indexes()
-
-    @client_context.require_version_max(4, 1)  # PYTHON-1734
-    def test_ensure_index_threaded(self):
-        coll = self.db.threaded_index_creation
-        index_docs = []
-
-        class Indexer(threading.Thread):
-            def run(self):
-                coll.ensure_index('foo0')
-                coll.ensure_index('foo1')
-                coll.ensure_index('foo2')
-                index_docs.append(coll.index_information())
-
-        try:
-            threads = []
-            for _ in range(10):
-                t = Indexer()
-                t.setDaemon(True)
-                threads.append(t)
-
-            for thread in threads:
-                thread.start()
-
-            joinall(threads)
-
-            first = index_docs[0]
-            for index_doc in index_docs[1:]:
-                self.assertEqual(index_doc, first)
-        finally:
-            coll.drop()
-
-    def test_ensure_purge_index_threaded(self):
-        coll = self.db.threaded_index_creation
-
-        class Indexer(threading.Thread):
-            def run(self):
-                coll.ensure_index('foo')
-                try:
-                    coll.drop_index('foo')
-                except OperationFailure:
-                    # The index may have already been dropped.
-                    pass
-                coll.ensure_index('foo')
-                coll.drop_indexes()
-                coll.create_index('foo')
-
-        try:
-            threads = []
-            for _ in range(10):
-                t = Indexer()
-                t.setDaemon(True)
-                threads.append(t)
-
-            for thread in threads:
-                thread.start()
-
-            joinall(threads)
-
-            self.assertTrue('foo_1' in coll.index_information())
-        finally:
-            coll.drop()
-
-    @client_context.require_version_max(4, 1)  # PYTHON-1734
-    def test_ensure_unique_index_threaded(self):
-        coll = self.db.test_unique_threaded
-        coll.drop()
-        coll.insert_many([{'foo': i} for i in range(10000)])
-
-        class Indexer(threading.Thread):
-            def run(self):
-                try:
-                    coll.ensure_index('foo', unique=True)
-                    coll.insert_one({'foo': 'bar'})
-                    coll.insert_one({'foo': 'bar'})
-                except OperationFailure:
-                    pass
-
-        threads = []
-        for _ in range(10):
-            t = Indexer()
-            t.setDaemon(True)
-            threads.append(t)
-
-        for i in range(10):
-            threads[i].start()
-
-        joinall(threads)
-
-        self.assertEqual(10001, coll.count())
-        coll.drop()
-
 
 class TestLegacyBulk(BulkTestBase):
 
