@@ -594,16 +594,14 @@ class TestBSON(unittest.TestCase):
         d = {"x": datetime.datetime(1993, 4, 4, 2)}
         self.assertEqual(d, decode(encode(d)))
 
+    @unittest.skip('Disabled due to http://bugs.python.org/issue25222')
     def test_bad_encode(self):
-        # Work around what seems like a regression in python 3.5.0.
-        # See http://bugs.python.org/issue25222
-        if sys.version_info[:2] < (3, 5):
-            evil_list = {'a': []}
-            evil_list['a'].append(evil_list)
-            evil_dict = {}
-            evil_dict['a'] = evil_dict
-            for evil_data in [evil_dict, evil_list]:
-                self.assertRaises(Exception, encode, evil_data)
+        evil_list = {'a': []}
+        evil_list['a'].append(evil_list)
+        evil_dict = {}
+        evil_dict['a'] = evil_dict
+        for evil_data in [evil_dict, evil_list]:
+            self.assertRaises(Exception, encode, evil_data)
 
     def test_overflow(self):
         self.assertTrue(encode({"x": 9223372036854775807}))

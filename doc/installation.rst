@@ -28,7 +28,7 @@ To upgrade using pip::
 Dependencies
 ------------
 
-PyMongo supports CPython 3.4+ and PyPy3.5+.
+PyMongo supports CPython 3.5+ and PyPy3.5+.
 
 Optional dependencies:
 
@@ -133,7 +133,7 @@ See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
 for a more detailed explanation.
 
 **Lion (10.7) and newer** - PyMongo's C extensions can be built against
-versions of Python 3.4+ downloaded from python.org. In all cases Xcode must be
+versions of Python 3.5+ downloaded from python.org. In all cases Xcode must be
 installed with 'UNIX Development Support'.
 
 **Xcode 5.1**: Starting with version 5.1 the version of clang that ships with
@@ -163,20 +163,10 @@ Installing from source on Windows
 If you want to install PyMongo with C extensions from source the following
 requirements apply to both CPython and ActiveState's ActivePython:
 
-64-bit Windows
-~~~~~~~~~~~~~~
+Windows
+~~~~~~~
 
-For Python 3.5 and newer install Visual Studio 2015. For Python 3.4
-install Visual Studio 2010. You must use the full version of Visual Studio
-2010 as Visual C++ Express does not provide 64-bit compilers. Make sure that
-you check the "x64 Compilers and Tools" option under Visual C++.
-
-32-bit Windows
-~~~~~~~~~~~~~~
-
-For Python 3.5 and newer install Visual Studio 2015.
-
-For Python 3.4 install Visual C++ 2010 Express.
+Install Visual Studio 2015+.
 
 .. _install-no-c:
 

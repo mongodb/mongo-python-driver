@@ -22,7 +22,6 @@ ls dist
 
 # Check for any unexpected files.
 unexpected=$(find dist \! \( -iname dist -or \
-                             -iname '*cp34*' -or \
                              -iname '*cp35*' -or \
                              -iname '*cp36*' -or \
                              -iname '*cp37*' -or \

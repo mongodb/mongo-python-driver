@@ -8,7 +8,7 @@ rm -rf validdist
 mkdir -p validdist
 mv dist/* validdist || true
 
-for VERSION in 3.4 3.5 3.6 3.7 3.8 3.9; do
+for VERSION in 3.5 3.6 3.7 3.8 3.9; do
     PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
     rm -rf build
 

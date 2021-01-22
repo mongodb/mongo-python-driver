@@ -280,9 +280,6 @@ class ClientUnitTest(unittest.TestCase):
             readpreference=ReadPreference.NEAREST.mongos_mode)
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
-    @unittest.skipIf(
-        sys.version_info[0] == 3 and sys.version_info[1] == 4,
-        "PYTHON-2442: workaround namedtuple._asdict() bug on Python 3.4")
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         metadata['application'] = {'name': 'foobar'}

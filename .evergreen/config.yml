@@ -1582,10 +1582,6 @@ axes:
         display_name: "Archlinux"
         run_on: archlinux-test
         batchtime: 10080  # 7 days
-      - id: debian81
-        display_name: "Debian 8.1"
-        run_on: debian81-test
-        batchtime: 10080  # 7 days
       - id: debian92
         display_name: "Debian 9.2"
         run_on: debian92-test
@@ -1607,6 +1603,9 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-62-64-bit/master/latest/libmongocrypt.tar.gz
+      # Note that rhel70 isn't currently used since it doesn't
+      # have a system Python 3. We'll switch to rhel70 as our main test
+      # system (using /opt/python) in a future change.
       - id: rhel70
         display_name: "RHEL 7.0"
         run_on: rhel70-small
@@ -1623,12 +1622,6 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel72-zseries-test/master/latest/libmongocrypt.tar.gz
-      - id: suse12-x86-64-test
-        display_name: "SUSE 12 (x86_64)"
-        run_on: suse12-sp5-small
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/suse12-64/master/latest/libmongocrypt.tar.gz
       - id: ubuntu-16.04
         display_name: "Ubuntu 16.04"
         run_on: ubuntu1604-test
@@ -1779,10 +1772,6 @@ axes:
     values:
       # Note: always display platform with python-version to avoid ambiguous display names.
       # Linux
-      - id: "3.4"
-        display_name: "Python 3.4"
-        variables:
-           PYTHON_BINARY: "/opt/python/3.4/bin/python3"
       - id: "3.5"
         display_name: "Python 3.5"
         batchtime: 10080  # 7 days
@@ -1820,10 +1809,6 @@ axes:
   - id: python-version-windows
     display_name: "Python"
     values:
-      - id: "3.4"
-        display_name: "Python 3.4"
-        variables:
-          PYTHON_BINARY: "C:/python/Python34/python.exe"
       - id: "3.5"
         display_name: "Python 3.5"
         variables:
@@ -1848,10 +1833,6 @@ axes:
   - id: python-version-windows-32
     display_name: "Python"
     values:
-      - id: "3.4"
-        display_name: "32-bit Python 3.4"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python34/python.exe"
       - id: "3.5"
         display_name: "32-bit Python 3.5"
         variables:
@@ -2047,7 +2028,6 @@ buildvariants:
     platform:
       # OSes that support versions of MongoDB>=3.2 with SSL.
       - ubuntu-16.04
-      - suse12-x86-64-test
       - rhel71-power8-test
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
@@ -2106,7 +2086,6 @@ buildvariants:
   matrix_spec:
     platform:
       # OSes that support versions of MongoDB>=3.4 <4.2 with SSL.
-      - debian81
       - ubuntu1604-power8-test
       - ubuntu1604-arm64-small
     auth-ssl: "*"
@@ -2147,7 +2126,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: &rhel62-pythons ["3.4", "3.5", "3.6", "pypy3.5", "pypy3.6"]
+    python-version: &rhel62-pythons ["3.5", "3.6", "pypy3.5", "pypy3.6"]
     auth: "*"
     ssl: "*"
     coverage: "*"
@@ -2163,14 +2142,14 @@ buildvariants:
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["3.4", "3.5", "3.6", "3.7", "3.8", "3.9"]
+    python-version: ["3.5", "3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: ubuntu-16.04
-    python-version: ["3.4", "3.5", "3.6", "3.8", "3.9"]
+    python-version: ["3.5", "3.6", "3.8", "3.9"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2218,7 +2197,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: ["3.4", "3.5", "3.6"]
+    python-version: ["3.5", "3.6"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
@@ -2273,7 +2252,7 @@ buildvariants:
   matrix_spec:
     # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
     platform: ubuntu-16.04
-    python-version: ["3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy3.5", "pypy3.6"]
+    python-version: ["3.5", "3.6", "3.7", "3.8", "3.9", "pypy3.5", "pypy3.6"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
@@ -2450,7 +2429,13 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: rhel62
-    python-version: ["3.4", "3.6"]
+    # The toolchain doesn't currently include mod-wsgi
+    # built for CPython 3.5 or 3.8, mod-wsgi doesn't yet
+    # claim to support 3.9. Python 3.7+ won't build on rhel6
+    # and we need to do some work to migrate mod-wsgi testing
+    # to a different OS. For now we're stuck just testing with
+    # Python 3.6.
+    python-version: ["3.6"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
@@ -2468,7 +2453,7 @@ buildvariants:
 - matrix_name: "tests-doctests"
   matrix_spec:
     platform: rhel62
-    python-version: ["3.4"]
+    python-version: ["3.5"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
      - name: "doctests"
@@ -2510,7 +2495,7 @@ buildvariants:
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["3.4", "3.8"]
+    python-version: ["3.5", "3.9"]
     auth: "auth"
     c-extensions: "*"
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
@@ -2532,7 +2517,7 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["3.4", "3.8", "3.9"]
+    python-version: ["3.5", "3.8", "3.9"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2556,7 +2541,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version-windows: ["3.4", "3.9"]
+    python-version-windows: ["3.5", "3.9"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"

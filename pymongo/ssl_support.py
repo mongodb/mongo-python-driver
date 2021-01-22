@@ -132,17 +132,13 @@ if HAVE_SSL:
             if _ssl.IS_PYOPENSSL:
                 raise ConfigurationError(
                     "ssl_crlfile cannot be used with PyOpenSSL")
-            if not hasattr(ctx, "verify_flags"):
-                raise ConfigurationError(
-                    "Support for ssl_crlfile requires "
-                    "python 2.7.9+ (pypy 2.5.1+) or  3.4+")
             # Match the server's behavior.
             ctx.verify_flags = getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
         elif cert_reqs != CERT_NONE:
-            # CPython 3.4+ ssl module only, doesn't exist in PyOpenSSL
+            # CPython ssl module only, doesn't exist in PyOpenSSL
             if hasattr(ctx, "load_default_certs"):
                 ctx.load_default_certs()
             # Always useless on Windows.
