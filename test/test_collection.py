@@ -858,8 +858,6 @@ class TestCollection(IntegrationTest):
                           {"foo": max_str})
         self.assertRaises(OperationFailure, self.db.test.replace_one,
                           {}, {"foo": max_str}, upsert=True)
-        self.assertRaises(OperationFailure, self.db.test.delete_one,
-                          {"foo": max_str})
         self.assertRaises(OperationFailure, self.db.test.insert_many,
                           [{"x": 1}, {"foo": max_str}])
         self.db.test.insert_many([{"foo": half_str}, {"foo": half_str}])
