@@ -862,8 +862,7 @@ class TestCollection(IntegrationTest):
                           {"foo": max_str})
         self.assertRaises(OperationFailure, self.db.test.insert_many,
                           [{"x": 1}, {"foo": max_str}])
-        self.db.test.insert_many(
-            [{"foo": "x" * half_size}, {"foo": "x" * half_size}])
+        self.db.test.insert_many([{"foo": half_str}, {"foo": half_str}])
 
         self.db.test.insert_one({"bar": "x"})
         # Use w=0 here to test legacy doc size checking in all server versions
@@ -1303,21 +1302,7 @@ class TestCollection(IntegrationTest):
                           {"text": text})
 
         self.assertRaises(DuplicateKeyError,
-                          db.test.insert,
-                          {"text": text})
-
-        self.assertRaises(DuplicateKeyError,
-                          db.test.insert,
-                          [{"text": text}])
-
-        self.assertRaises(DuplicateKeyError,
                           db.test.replace_one,
-                          {"_id": ObjectId()},
-                          {"text": text},
-                          upsert=True)
-
-        self.assertRaises(DuplicateKeyError,
-                          db.test.update,
                           {"_id": ObjectId()},
                           {"text": text},
                           upsert=True)
@@ -2289,10 +2274,6 @@ class TestCollection(IntegrationTest):
                     'test',
                     write_concern=WriteConcern(
                         w=len(client_context.nodes) + 1))
-                self.assertRaises(
-                    WriteConcernError,
-                    c_wc_error.find_and_modify,
-                    {'_id': 1}, {'$set': {'foo': 'bar'}})
                 self.assertRaises(
                     WriteConcernError,
                     c_wc_error.find_one_and_update,
