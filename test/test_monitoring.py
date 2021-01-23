@@ -863,7 +863,7 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertEqual(documents, docs)
         self.assertEqual(6, count)
 
-    def test_legacy_insert_many(self):
+    def test_insert_many_unacknowledged(self):
         # On legacy servers this uses bulk OP_INSERT.
         coll = self.client.pymongo_test.test
         coll.drop()
