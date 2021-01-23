@@ -30,6 +30,11 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
 - Removed :meth:`pymongo.collection.Collection.ensure_index`.
 - Removed :meth:`pymongo.collection.Collection.reindex`.
+- Removed :meth:`pymongo.collection.Collection.save`
+- Removed :meth:`pymongo.collection.Collection.insert`
+- Removed :meth:`pymongo.collection.Collection.update`
+- Removed :meth:`pymongo.collection.Collection.remove`
+- Removed :meth:`pymongo.collection.Collection.find_and_modify`
 - Removed :meth:`pymongo.mongo_client.MongoClient.close_cursor`. Use
   :meth:`pymongo.cursor.Cursor.close` instead.
 - Removed :meth:`pymongo.mongo_client.MongoClient.kill_cursors`.

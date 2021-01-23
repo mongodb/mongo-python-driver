@@ -53,7 +53,7 @@ class Regex(object):
           >>> pattern = re.compile('.*')
           >>> regex = Regex.from_native(pattern)
           >>> regex.flags ^= re.UNICODE
-          >>> db.collection.insert({'pattern': regex})
+          >>> db.collection.insert_one({'pattern': regex})
 
         :Parameters:
           - `regex`: A regular expression object from ``re.compile()``.

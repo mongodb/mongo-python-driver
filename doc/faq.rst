@@ -202,6 +202,9 @@ documents that already have an ``_id`` field, added by your application.
 Key order in subdocuments -- why does my query work in the shell but not PyMongo?
 ---------------------------------------------------------------------------------
 
+..
+  Note: We should rework this section now that Python 3.6+ has ordered dict.
+
 .. testsetup:: key-order
 
   from bson.son import SON
@@ -220,9 +223,9 @@ is displayed:
 .. code-block:: javascript
 
   > // mongo shell.
-  > db.collection.insert( { "_id" : 1, "subdocument" : { "b" : 1, "a" : 1 } } )
+  > db.collection.insertOne( { "_id" : 1, "subdocument" : { "b" : 1, "a" : 1 } } )
   WriteResult({ "nInserted" : 1 })
-  > db.collection.find()
+  > db.collection.findOne()
   { "_id" : 1, "subdocument" : { "b" : 1, "a" : 1 } }
 
 PyMongo represents BSON documents as Python dicts by default, and the order

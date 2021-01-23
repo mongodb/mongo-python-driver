@@ -17,10 +17,17 @@
 import collections
 import unittest
 
+from pymongo.errors import ConfigurationError
 from pymongo.write_concern import WriteConcern
 
 
 class TestWriteConcern(unittest.TestCase):
+
+    def test_invalid(self):
+        # Can't use fsync and j options together
+        self.assertRaises(ConfigurationError, WriteConcern, j=True, fsync=True)
+        # Can't use w=0 and j options together
+        self.assertRaises(ConfigurationError, WriteConcern, w=0, j=True)
 
     def test_equality(self):
         concern = WriteConcern(j=True, wtimeout=3000)
