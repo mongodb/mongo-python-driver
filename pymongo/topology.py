@@ -18,17 +18,14 @@ import os
 import queue
 import random
 import threading
+import time
 import warnings
 import weakref
 
 from pymongo import (common,
                      helpers,
                      periodic_executor)
-from pymongo.pool import PoolOptions
-from pymongo.topology_description import (updated_topology_description,
-                                          _updated_topology_description_srv_polling,
-                                          TopologyDescription,
-                                          SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE)
+from pymongo.client_session import _ServerSessionPool
 from pymongo.errors import (ConnectionFailure,
                             ConfigurationError,
                             NetworkTimeout,
@@ -37,7 +34,7 @@ from pymongo.errors import (ConnectionFailure,
                             PyMongoError,
                             ServerSelectionTimeoutError)
 from pymongo.monitor import SrvMonitor
-from pymongo.monotonic import time as _time
+from pymongo.pool import PoolOptions
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
@@ -46,7 +43,10 @@ from pymongo.server_selectors import (any_server_selector,
                                       readable_server_selector,
                                       writable_server_selector,
                                       Selection)
-from pymongo.client_session import _ServerSessionPool
+from pymongo.topology_description import (updated_topology_description,
+                                          _updated_topology_description_srv_polling,
+                                          TopologyDescription,
+                                          SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE)
 
 
 def process_events_queue(queue_ref):
@@ -200,7 +200,7 @@ class Topology(object):
 
     def _select_servers_loop(self, selector, timeout, address):
         """select_servers() guts. Hold the lock when calling this."""
-        now = _time()
+        now = time.monotonic()
         end_time = now + timeout
         server_descriptions = self._description.apply_selector(
             selector, address, custom_selector=self._settings.server_selector)
@@ -221,7 +221,7 @@ class Topology(object):
             # held the lock until now.
             self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
             self._description.check_compatible()
-            now = _time()
+            now = time.monotonic()
             server_descriptions = self._description.apply_selector(
                 selector, address,
                 custom_selector=self._settings.server_selector)

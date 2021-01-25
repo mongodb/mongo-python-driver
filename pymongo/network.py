@@ -18,6 +18,7 @@ import datetime
 import errno
 import socket
 import struct
+import time
 
 
 from bson import _decode_all_selective
@@ -31,7 +32,6 @@ from pymongo.errors import (AutoReconnect,
                             ProtocolError,
                             _OperationCancelled)
 from pymongo.message import _UNPACK_REPLY, _OpMsg
-from pymongo.monotonic import time
 from pymongo.socket_checker import _errno_from_exception
 
 
@@ -185,7 +185,7 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
     """Receive a raw BSON message or raise socket.error."""
     timeout = sock_info.sock.gettimeout()
     if timeout:
-        deadline = time() + timeout
+        deadline = time.monotonic() + timeout
     else:
         deadline = None
     # Ignore the response's request id.
@@ -236,7 +236,7 @@ def wait_for_read(sock_info, deadline):
                 # Wait up to 500ms for the socket to become readable and then
                 # check for cancellation.
                 if deadline:
-                    timeout = max(min(deadline - time(), _POLL_TIMEOUT), 0.001)
+                    timeout = max(min(deadline - time.monotonic(), _POLL_TIMEOUT), 0.001)
                 else:
                     timeout = _POLL_TIMEOUT
                 readable = sock_info.socket_checker.select(
@@ -245,7 +245,7 @@ def wait_for_read(sock_info, deadline):
                 raise _OperationCancelled('isMaster cancelled')
             if readable:
                 return
-            if deadline and time() > deadline:
+            if deadline and time.monotonic() > deadline:
                 raise socket.timeout("timed out")
 
 def _receive_data_on_socket(sock_info, length, deadline):

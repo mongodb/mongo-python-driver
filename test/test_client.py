@@ -53,7 +53,6 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
 from pymongo.mongo_client import MongoClient
-from pymongo.monotonic import time as monotonic_time
 from pymongo.driver_info import DriverInfo
 from pymongo.pool import SocketInfo, _METADATA
 from pymongo.read_preferences import ReadPreference
@@ -1549,9 +1548,9 @@ class TestClient(IntegrationTest):
 
         # Assert that application operations do not block.
         for _ in range(10):
-            start = monotonic_time()
+            start = time.monotonic()
             client.admin.command('ping')
-            total = monotonic_time() - start
+            total = time.monotonic() - start
             # Each ping command should not take more than 2 seconds
             self.assertLess(total, 2)
 

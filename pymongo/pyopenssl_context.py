@@ -18,6 +18,7 @@ context.
 
 import socket as _socket
 import ssl as _stdlibssl
+import time
 
 from errno import EINTR as _EINTR
 
@@ -33,7 +34,6 @@ from service_identity import (
     VerificationError as _SIVerificationError)
 
 from pymongo.errors import CertificateError as _CertificateError
-from pymongo.monotonic import time as _time
 from pymongo.ocsp_support import (
     _load_trusted_ca_certs,
     _ocsp_callback)
@@ -98,14 +98,14 @@ class _sslConn(_SSL.Connection):
     def _call(self, call, *args, **kwargs):
         timeout = self.gettimeout()
         if timeout:
-            start = _time()
+            start = time.monotonic()
         while True:
             try:
                 return call(*args, **kwargs)
             except _RETRY_ERRORS:
                 self.socket_checker.select(
                     self, True, True, timeout)
-                if timeout and _time() - start > timeout:
+                if timeout and time.monotonic() - start > timeout:
                     raise _socket.timeout("timed out")
                 continue
 

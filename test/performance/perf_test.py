@@ -18,6 +18,7 @@ import multiprocessing as mp
 import os
 import sys
 import tempfile
+import time
 import warnings
 
 try:
@@ -31,7 +32,6 @@ from bson import decode, encode
 from bson.json_util import loads
 from gridfs import GridFSBucket
 from pymongo import MongoClient
-from pymongo.monotonic import time
 from test import client_context, host, port, unittest
 
 NUM_ITERATIONS = 100
@@ -59,11 +59,11 @@ def tearDownModule():
 
 class Timer(object):
     def __enter__(self):
-        self.start = time()
+        self.start = time.monotonic()
         return self
 
     def __exit__(self, *args):
-        self.end = time()
+        self.end = time.monotonic()
         self.interval = self.end - self.start
 
 
@@ -107,10 +107,10 @@ class PerformanceTest(object):
 
     def runTest(self):
         results = []
-        start = time()
+        start = time.monotonic()
         self.max_iterations = NUM_ITERATIONS
         for i in range(NUM_ITERATIONS):
-            if time() - start > MAX_ITERATION_TIME:
+            if time.monotonic() - start > MAX_ITERATION_TIME:
                 warnings.warn('Test timed out, completed %s iterations.' % i)
                 break
             self.before()

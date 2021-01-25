@@ -98,6 +98,7 @@ Classes
 """
 
 import collections
+import time
 import uuid
 
 from collections.abc import Mapping as _Mapping
@@ -107,7 +108,6 @@ from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
 
-from pymongo import monotonic
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
@@ -336,7 +336,7 @@ _WITH_TRANSACTION_RETRY_TIME_LIMIT = 120
 
 def _within_time_limit(start_time):
     """Are we within the with_transaction retry limit?"""
-    return monotonic.time() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
+    return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
 
 
 class ClientSession(object):
@@ -518,7 +518,7 @@ class ClientSession(object):
 
         .. versionadded:: 3.9
         """
-        start_time = monotonic.time()
+        start_time = time.monotonic()
         while True:
             self.start_transaction(
                 read_concern, write_concern, read_preference,
@@ -797,7 +797,7 @@ class ClientSession(object):
     def _apply_to(self, command, is_retryable, read_preference):
         self._check_ended()
 
-        self._server_session.last_use = monotonic.time()
+        self._server_session.last_use = time.monotonic()
         command['lsid'] = self._server_session.session_id
 
         if not self.in_transaction:
@@ -842,7 +842,7 @@ class _ServerSession(object):
     def __init__(self, generation):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
         self.session_id = {'id': Binary(uuid.uuid4().bytes, 4)}
-        self.last_use = monotonic.time()
+        self.last_use = time.monotonic()
         self._transaction_id = 0
         self.dirty = False
         self.generation = generation
@@ -856,7 +856,7 @@ class _ServerSession(object):
         self.dirty = True
 
     def timed_out(self, session_timeout_minutes):
-        idle_seconds = monotonic.time() - self.last_use
+        idle_seconds = time.monotonic() - self.last_use
 
         # Timed out if we have less than a minute to live.
         return idle_seconds > (session_timeout_minutes - 1) * 60

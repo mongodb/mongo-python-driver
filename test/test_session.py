@@ -17,6 +17,7 @@
 import copy
 import os
 import sys
+import time
 
 from io import BytesIO
 
@@ -27,7 +28,6 @@ from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
-from pymongo.monotonic import time as _time
 from pymongo.read_concern import ReadConcern
 from test import IntegrationTest, client_context, db_user, db_pwd, unittest, SkipTest
 from test.utils import (ignore_deprecations,
@@ -108,7 +108,7 @@ class TestSession(IntegrationTest):
         for f, args, kw in ops:
             with client.start_session() as s:
                 last_use = s._server_session.last_use
-                start = _time()
+                start = time.monotonic()
                 self.assertLessEqual(last_use, start)
                 listener.results.clear()
                 # In case "f" modifies its inputs.

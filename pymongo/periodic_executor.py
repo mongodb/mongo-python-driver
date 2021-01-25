@@ -18,8 +18,6 @@ import threading
 import time
 import weakref
 
-from pymongo.monotonic import time as _time
-
 
 class PeriodicExecutor(object):
     def __init__(self, interval, min_interval, target, name=None):
@@ -135,8 +133,8 @@ class PeriodicExecutor(object):
             if self._skip_sleep:
                 self._skip_sleep = False
             else:
-                deadline = _time() + self._interval
-                while not self._stopped and _time() < deadline:
+                deadline = time.monotonic() + self._interval
+                while not self._stopped and time.monotonic() < deadline:
                     time.sleep(self._min_interval)
                     if self._event:
                         break  # Early wake.

@@ -12,6 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
+import collections
 import contextlib
 import copy
 import ipaddress
@@ -20,7 +21,7 @@ import platform
 import socket
 import sys
 import threading
-import collections
+import time
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -48,7 +49,6 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             PyMongoError)
 from pymongo.ismaster import IsMaster
-from pymongo.monotonic import time as _time
 from pymongo.monitoring import (ConnectionCheckOutFailedReason,
                                 ConnectionClosedReason)
 from pymongo.network import (command,
@@ -250,7 +250,7 @@ def _raise_connection_failure(address, error, msg_prefix=None):
 
 
 def _cond_wait(condition, deadline):
-    timeout = deadline - _time() if deadline else None
+    timeout = deadline - time.monotonic() if deadline else None
     return condition.wait(timeout)
 
 
@@ -502,7 +502,7 @@ class SocketInfo(object):
         self.id = id
         self.authset = set()
         self.closed = False
-        self.last_checkin_time = _time()
+        self.last_checkin_time = time.monotonic()
         self.performed_handshake = False
         self.is_writable = False
         self.max_wire_version = MAX_WIRE_VERSION
@@ -862,14 +862,14 @@ class SocketInfo(object):
             _add_to_command(command, self.opts.server_api)
 
     def update_last_checkin_time(self):
-        self.last_checkin_time = _time()
+        self.last_checkin_time = time.monotonic()
 
     def update_is_writable(self, is_writable):
         self.is_writable = is_writable
 
     def idle_time_seconds(self):
         """Seconds since this socket was last checked into its pool."""
-        return _time() - self.last_checkin_time
+        return time.monotonic() - self.last_checkin_time
 
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In
@@ -1336,7 +1336,7 @@ class Pool:
 
         # Get a free socket or create one.
         if self.opts.wait_queue_timeout:
-            deadline = _time() + self.opts.wait_queue_timeout
+            deadline = time.monotonic() + self.opts.wait_queue_timeout
         else:
             deadline = None
 

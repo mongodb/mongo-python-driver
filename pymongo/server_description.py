@@ -14,10 +14,11 @@
 
 """Represent one server the driver is connected to."""
 
+import time
+
 from bson import EPOCH_NAIVE
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
-from pymongo.monotonic import time as _time
 
 
 class ServerDescription(object):
@@ -67,7 +68,7 @@ class ServerDescription(object):
         self._ls_timeout_minutes = ismaster.logical_session_timeout_minutes
         self._round_trip_time = round_trip_time
         self._me = ismaster.me
-        self._last_update_time = _time()
+        self._last_update_time = time.monotonic()
         self._error = error
         self._topology_version = ismaster.topology_version
         if error:

@@ -16,6 +16,7 @@
 
 import atexit
 import threading
+import time
 import weakref
 
 from pymongo import common, periodic_executor
@@ -23,7 +24,6 @@ from pymongo.errors import (NotMasterError,
                             OperationFailure,
                             _OperationCancelled)
 from pymongo.ismaster import IsMaster
-from pymongo.monotonic import time as _time
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
@@ -208,7 +208,7 @@ class Monitor(MonitorBase):
 
         Returns a ServerDescription.
         """
-        start = _time()
+        start = time.monotonic()
         try:
             try:
                 return self._check_once()
@@ -223,7 +223,7 @@ class Monitor(MonitorBase):
             _sanitize(error)
             sd = self._server_description
             address = sd.address
-            duration = _time() - start
+            duration = time.monotonic() - start
             if self._publish:
                 awaited = sd.is_server_type_known and sd.topology_version
                 self._listeners.publish_server_heartbeat_failed(
@@ -265,7 +265,7 @@ class Monitor(MonitorBase):
         Can raise ConnectionFailure or OperationFailure.
         """
         cluster_time = self._topology.max_cluster_time()
-        start = _time()
+        start = time.monotonic()
         if conn.more_to_come:
             # Read the next streaming isMaster (MongoDB 4.4+).
             response = IsMaster(conn._next_reply(), awaitable=True)
@@ -280,7 +280,7 @@ class Monitor(MonitorBase):
         else:
             # New connection handshake or polling isMaster (MongoDB <4.4).
             response = conn._ismaster(cluster_time, None, None, None)
-        return response, _time() - start
+        return response, time.monotonic() - start
 
 
 class SrvMonitor(MonitorBase):
@@ -388,9 +388,9 @@ class _RttMonitor(MonitorBase):
         with self._pool.get_socket({}) as sock_info:
             if self._executor._stopped:
                 raise Exception('_RttMonitor closed')
-            start = _time()
+            start = time.monotonic()
             sock_info.ismaster()
-            return _time() - start
+            return time.monotonic() - start
 
 
 # Close monitors to cancel any in progress streaming checks before joining
