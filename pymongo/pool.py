@@ -18,6 +18,7 @@ import copy
 import ipaddress
 import os
 import platform
+import ssl
 import socket
 import sys
 import threading
@@ -57,8 +58,6 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
-# Always use our backport so we always have support for IP address matching
-from pymongo.ssl_match_hostname import match_hostname
 from pymongo.ssl_support import (
     SSLError as _SSLError,
     HAS_SNI as _HAVE_SNI,
@@ -1017,7 +1016,7 @@ def _configured_socket(address, options):
                 getattr(ssl_context, "check_hostname", False) and
                 options.ssl_match_hostname):
             try:
-                match_hostname(sock.getpeercert(), hostname=host)
+                ssl.match_hostname(sock.getpeercert(), hostname=host)
             except CertificateError:
                 sock.close()
                 raise
