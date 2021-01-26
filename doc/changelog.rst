@@ -27,6 +27,8 @@ Breaking Changes in 4.0
   :meth:`pymongo.database.Database.last_status`,
   :meth:`pymongo.database.Database.previous_error`,
   :meth:`pymongo.database.Database.reset_error_history`.
+- Removed :meth:`pymongo.database.Database.add_user` and
+  :meth:`pymongo.database.Database.remove_user`.
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
 - Removed :meth:`pymongo.collection.Collection.ensure_index`.
 - Removed :meth:`pymongo.collection.Collection.reindex`.

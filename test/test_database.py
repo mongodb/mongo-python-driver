@@ -470,164 +470,22 @@ class TestDatabase(IntegrationTest):
                          "81e0e2364499209f466e75926a162d73")
 
     @client_context.require_auth
-    def test_authenticate_add_remove_user(self):
-        # "self.client" is logged in as root.
-        auth_db = self.client.pymongo_test
-
-        def check_auth(username, password):
-            c = rs_or_single_client_noauth(
-                username=username,
-                password=password,
-                authSource="pymongo_test")
-
-            c.pymongo_test.collection.find_one()
-
-        # Configuration errors
-        self.assertRaises(ValueError, auth_db.add_user, "user", '')
-        self.assertRaises(TypeError, auth_db.add_user, "user", 'password', 15)
-        self.assertRaises(TypeError, auth_db.add_user,
-                          "user", 'password', 'True')
-        self.assertRaises(ConfigurationError, auth_db.add_user,
-                          "user", 'password', True, roles=['read'])
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            self.assertRaises(DeprecationWarning, auth_db.add_user,
-                              "user", "password")
-            self.assertRaises(DeprecationWarning, auth_db.add_user,
-                              "user", "password", True)
-
-        with ignore_deprecations():
-            self.assertRaises(ConfigurationError, auth_db.add_user,
-                              "user", "password", digestPassword=True)
-
-        # Add / authenticate / remove
-        auth_db.add_user("mike", "password", roles=["read"])
-        self.addCleanup(remove_all_users, auth_db)
-        self.assertRaises(TypeError, check_auth, 5, "password")
-        self.assertRaises(TypeError, check_auth, "mike", 5)
-        self.assertRaises(OperationFailure,
-                          check_auth, "mike", "not a real password")
-        self.assertRaises(OperationFailure, check_auth, "faker", "password")
-        check_auth("mike", "password")
-
-        if not client_context.version.at_least(3, 7, 2) or HAVE_STRINGPREP:
-            # Unicode name and password.
-            check_auth("mike", "password")
-
-            auth_db.remove_user("mike")
-            self.assertRaises(
-                OperationFailure, check_auth, "mike", "password")
-
-            # Add / authenticate / change password
-            self.assertRaises(
-                OperationFailure, check_auth, "Gustave", "Dor\xe9")
-            auth_db.add_user("Gustave", "Dor\xe9", roles=["read"])
-            check_auth("Gustave", "Dor\xe9")
-
-            # Change password.
-            auth_db.add_user("Gustave", "password", roles=["read"])
-            self.assertRaises(
-                OperationFailure, check_auth, "Gustave", "Dor\xe9")
-            check_auth("Gustave", "password")
-
-    @client_context.require_auth
-    @ignore_deprecations
-    def test_make_user_readonly(self):
-        # "self.client" is logged in as root.
-        auth_db = self.client.pymongo_test
-
-        # Make a read-write user.
-        auth_db.add_user('jesse', 'pw')
-        self.addCleanup(remove_all_users, auth_db)
-
-        # Check that we're read-write by default.
-        c = rs_or_single_client_noauth(username='jesse',
-                                       password='pw',
-                                       authSource='pymongo_test')
-
-        c.pymongo_test.collection.insert_one({})
-
-        # Make the user read-only.
-        auth_db.add_user('jesse', 'pw', read_only=True)
-
-        c = rs_or_single_client_noauth(username='jesse',
-                                       password='pw',
-                                       authSource='pymongo_test')
-
-        self.assertRaises(OperationFailure,
-                          c.pymongo_test.collection.insert_one,
-                          {})
-
-    @client_context.require_auth
-    @ignore_deprecations
-    def test_default_roles(self):
-        # "self.client" is logged in as root.
-        auth_admin = self.client.admin
-        auth_admin.add_user('test_default_roles', 'pass')
-        self.addCleanup(client_context.drop_user, 'admin', 'test_default_roles')
-        info = auth_admin.command(
-            'usersInfo', 'test_default_roles')['users'][0]
-
-        self.assertEqual("root", info['roles'][0]['role'])
-
-        # Read only "admin" user
-        auth_admin.add_user('ro-admin', 'pass', read_only=True)
-        self.addCleanup(client_context.drop_user, 'admin', 'ro-admin')
-        info = auth_admin.command('usersInfo', 'ro-admin')['users'][0]
-        self.assertEqual("readAnyDatabase", info['roles'][0]['role'])
-
-        # "Non-admin" user
-        auth_db = self.client.pymongo_test
-        auth_db.add_user('user', 'pass')
-        self.addCleanup(remove_all_users, auth_db)
-        info = auth_db.command('usersInfo', 'user')['users'][0]
-        self.assertEqual("dbOwner", info['roles'][0]['role'])
-
-        # Read only "Non-admin" user
-        auth_db.add_user('ro-user', 'pass', read_only=True)
-        info = auth_db.command('usersInfo', 'ro-user')['users'][0]
-        self.assertEqual("read", info['roles'][0]['role'])
-
-    @client_context.require_auth
-    @ignore_deprecations
-    def test_new_user_cmds(self):
-        # "self.client" is logged in as root.
-        auth_db = self.client.pymongo_test
-        auth_db.add_user("amalia", "password", roles=["userAdmin"])
-        self.addCleanup(client_context.drop_user, "pymongo_test", "amalia")
-
-        db = rs_or_single_client_noauth(username="amalia",
-                                        password="password",
-                                        authSource="pymongo_test").pymongo_test
-
-        # This tests the ability to update user attributes.
-        db.add_user("amalia", "new_password",
-                    customData={"secret": "koalas"})
-
-        user_info = db.command("usersInfo", "amalia")
-        self.assertTrue(user_info["users"])
-        amalia_user = user_info["users"][0]
-        self.assertEqual(amalia_user["user"], "amalia")
-        self.assertEqual(amalia_user["customData"], {"secret": "koalas"})
-
-    @client_context.require_auth
     @ignore_deprecations
     def test_authenticate_multiple(self):
         # "self.client" is logged in as root.
         self.client.drop_database("pymongo_test")
         self.client.drop_database("pymongo_test1")
-        admin_db_auth = self.client.admin
         users_db_auth = self.client.pymongo_test
 
-        admin_db_auth.add_user(
+        client_context.create_user(
+            'admin',
             'ro-admin',
             'pass',
             roles=["userAdmin", "readAnyDatabase"])
 
         self.addCleanup(client_context.drop_user, 'admin', 'ro-admin')
-        users_db_auth.add_user(
-            'user', 'pass', roles=["userAdmin", "readWrite"])
+        client_context.create_user(
+            'pymongo_test', 'user', 'pass', roles=["userAdmin", "readWrite"])
         self.addCleanup(remove_all_users, users_db_auth)
 
         # Non-root client.

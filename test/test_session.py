@@ -258,19 +258,6 @@ class TestSession(IntegrationTest):
 
         self._test_ops(client, *ops)
 
-    @client_context.require_auth
-    @ignore_deprecations
-    def test_user_admin(self):
-        client = self.client
-        db = client.pymongo_test
-
-        self._test_ops(
-            client,
-            (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
-            # Do it again to test updateUser command.
-            (db.add_user, ['session-test', 'pass'], {'roles': ['read']}),
-            (db.remove_user, ['session-test'], {}))
-
     @staticmethod
     def collection_write_ops(coll):
         """Generate database write ops for tests."""
