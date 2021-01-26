@@ -237,6 +237,16 @@ Can be changed to this::
   replaced_doc = collection.find_one_and_replace({'b': 1}, {'c': 1})
   deleted_doc = collection.find_one_and_delete({'c': 1})
 
+Collection.group is removed
+...........................
+
+Removed :meth:`pymongo.collection.Collection.group`. This method was
+deprecated in PyMongo 3.5. MongoDB 4.2 removed the `group command`_.
+Use :meth:`~pymongo.collection.Collection.aggregate` with the ``$group`` stage
+instead.
+
+.. _group command: https://docs.mongodb.com/manual/reference/command/group/
+
 Collection.ensure_index is removed
 ..................................
 

@@ -360,7 +360,7 @@ class TestCommandAndReadPreference(IntegrationTest):
         if client_context.auth_enabled:
             cls.c.admin.authenticate(db_user, db_pwd)
         cls.client_version = Version.from_client(cls.c)
-        # mapReduce and group fail with no collection
+        # mapReduce fails if the collection does not exist.
         coll = cls.c.pymongo_test.get_collection(
             'test', write_concern=WriteConcern(w=client_context.w))
         coll.insert_one({})
@@ -430,13 +430,6 @@ class TestCommandAndReadPreference(IntegrationTest):
         self._test_primary_helper(
             lambda: self.c.pymongo_test.create_collection(
                 'some_collection%s' % random.randint(0, sys.maxsize)))
-
-    @client_context.require_version_max(4, 1, 0, -1)
-    def test_group(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            self._test_coll_helper(True, self.c.pymongo_test.test, 'group',
-                                   {'a': 1}, {}, {}, 'function() { }')
 
     def test_map_reduce(self):
         self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',

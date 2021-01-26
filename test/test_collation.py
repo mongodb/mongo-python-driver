@@ -189,14 +189,6 @@ class TestCollation(unittest.TestCase):
             self.last_command_started()['explain']['collation'])
 
     @raisesConfigurationErrorForOldMongoDB
-    @client_context.require_version_max(4, 1, 0, -1)
-    def test_group(self):
-        self.db.test.group('foo', {'foo': {'$gt': 42}}, {},
-                           'function(a, b) { return a; }',
-                           collation=self.collation)
-        self.assertCollationInLastCommand()
-
-    @raisesConfigurationErrorForOldMongoDB
     def test_map_reduce(self):
         self.db.test.map_reduce('function() {}', 'function() {}', 'output',
                                 collation=self.collation)

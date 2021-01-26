@@ -35,6 +35,7 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.collection.Collection.update`.
 - Removed :meth:`pymongo.collection.Collection.remove`.
 - Removed :meth:`pymongo.collection.Collection.find_and_modify`.
+- Removed :meth:`pymongo.collection.Collection.group`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.close_cursor`. Use
   :meth:`pymongo.cursor.Cursor.close` instead.
 - Removed :meth:`pymongo.mongo_client.MongoClient.kill_cursors`.
