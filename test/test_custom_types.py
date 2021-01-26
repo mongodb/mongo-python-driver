@@ -588,19 +588,6 @@ class TestCollectionWCustomType(IntegrationTest):
         for doc_cls in [RawBSONDocument, OrderedDict]:
             run_test(doc_cls)
 
-    @client_context.require_version_max(4, 1, 0, -1)
-    def test_group_w_custom_type(self):
-        db = self.db
-        test = db.get_collection('test', codec_options=UNINT_CODECOPTS)
-        test.insert_many([
-            {'sku': 'a', 'qty': UndecipherableInt64Type(2)},
-            {'sku': 'b', 'qty': UndecipherableInt64Type(5)},
-            {'sku': 'a', 'qty': UndecipherableInt64Type(1)}])
-
-        self.assertEqual([{'sku': 'b', 'qty': UndecipherableInt64Type(5)},],
-                         test.group(["sku", "qty"], {"sku": "b"}, {},
-                                    "function (obj, prev) { }"))
-
     def test_aggregate_w_custom_type_decoder(self):
         db = self.db
         db.test.insert_many([

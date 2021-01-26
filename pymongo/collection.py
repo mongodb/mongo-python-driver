@@ -2366,46 +2366,6 @@ class Collection(common.BaseObject):
             batch_size, collation, start_at_operation_time, session,
             start_after)
 
-    def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
-        """Perform a query similar to an SQL *group by* operation.
-
-        **DEPRECATED** - The group command was deprecated in MongoDB 3.4. The
-        :meth:`~group` method is deprecated and will be removed in PyMongo 4.0.
-        Use :meth:`~aggregate` with the `$group` stage or :meth:`~map_reduce`
-        instead.
-
-        .. versionchanged:: 3.5
-           Deprecated the group method.
-        .. versionchanged:: 3.4
-           Added the `collation` option.
-        .. versionchanged:: 2.2
-           Removed deprecated argument: command
-        """
-        warnings.warn("The group method is deprecated and will be removed in "
-                      "PyMongo 4.0. Use the aggregate method with the $group "
-                      "stage or the map_reduce method instead.",
-                      DeprecationWarning, stacklevel=2)
-        group = {}
-        if isinstance(key, str):
-            group["$keyf"] = Code(key)
-        elif key is not None:
-            group = {"key": helpers._fields_list_to_dict(key, "key")}
-        group["ns"] = self.__name
-        group["$reduce"] = Code(reduce)
-        group["cond"] = condition
-        group["initial"] = initial
-        if finalize is not None:
-            group["finalize"] = Code(finalize)
-
-        cmd = SON([("group", group)])
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        cmd.update(kwargs)
-
-        with self._socket_for_reads(session=None) as (sock_info, slave_ok):
-            return self._command(sock_info, cmd, slave_ok,
-                                 collation=collation,
-                                 user_fields={'retval': 1})["retval"]
-
     def rename(self, new_name, session=None, **kwargs):
         """Rename this collection.
 
