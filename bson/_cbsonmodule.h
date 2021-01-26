@@ -45,12 +45,6 @@
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 
-#if PY_MAJOR_VERSION >= 3
-#define BYTES_FORMAT_STRING "y#"
-#else
-#define BYTES_FORMAT_STRING "s#"
-#endif
-
 typedef struct type_registry_t {
     PyObject* encoder_map;
     PyObject* decoder_map;

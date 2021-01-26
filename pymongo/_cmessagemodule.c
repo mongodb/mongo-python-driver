@@ -31,12 +31,7 @@ struct module_state {
 };
 
 /* See comments about module initialization in _cbsonmodule.c */
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
 
 #define DOC_TOO_LARGE_FMT "BSON document too large (%d bytes)" \
                           " - the connected server supports" \
@@ -270,7 +265,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
 
     /* objectify buffer */
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
+    result = Py_BuildValue("iy#i", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
@@ -370,7 +365,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
 
     /* objectify buffer */
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
+    result = Py_BuildValue("iy#i", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
@@ -507,7 +502,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         buffer, length_location, (int32_t)message_length);
 
     /* objectify buffer */
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
+    result = Py_BuildValue("iy#i", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            max_size);
@@ -568,7 +563,7 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
         buffer, length_location, (int32_t)message_length);
 
     /* objectify buffer */
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
+    result = Py_BuildValue("iy#", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer));
 fail:
@@ -684,7 +679,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
         buffer, length_location, (int32_t)message_length);
 
     /* objectify buffer */
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING "ii", request_id,
+    result = Py_BuildValue("iy#ii", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            total_size,
@@ -704,11 +699,7 @@ static void
 _set_document_too_large(int size, long max) {
     PyObject* DocumentTooLarge = _error("DocumentTooLarge");
     if (DocumentTooLarge) {
-#if PY_MAJOR_VERSION >= 3
         PyObject* error = PyUnicode_FromFormat(DOC_TOO_LARGE_FMT, size, max);
-#else
-        PyObject* error = PyString_FromFormat(DOC_TOO_LARGE_FMT, size, max);
-#endif
         if (error) {
             PyErr_SetObject(DocumentTooLarge, error);
             Py_DECREF(error);
@@ -733,7 +724,7 @@ _send_insert(PyObject* self, PyObject* ctx,
     /* The max_doc_size parameter for legacy_bulk_insert is the max size of
      * any document in buffer. We enforced max size already, pass 0 here. */
     return PyObject_CallMethod(ctx, "legacy_bulk_insert",
-                               "i" BYTES_FORMAT_STRING "iNOi",
+                               "iy#iNOi",
                                request_id,
                                buffer_get_buffer(buffer),
                                (Py_ssize_t)buffer_get_position(buffer),
@@ -792,11 +783,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
      */
     send_safe = (safe || !continue_on_error);
     max_bson_size_obj = PyObject_GetAttrString(ctx, "max_bson_size");
-#if PY_MAJOR_VERSION >= 3
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
-#else
-    max_bson_size = PyInt_AsLong(max_bson_size_obj);
-#endif
     Py_XDECREF(max_bson_size_obj);
     if (max_bson_size == -1) {
         destroy_codec_options(&options);
@@ -805,11 +792,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     }
 
     max_message_size_obj = PyObject_GetAttrString(ctx, "max_message_size");
-#if PY_MAJOR_VERSION >= 3
     max_message_size = PyLong_AsLong(max_message_size_obj);
-#else
-    max_message_size = PyInt_AsLong(max_message_size_obj);
-#endif
     Py_XDECREF(max_message_size_obj);
     if (max_message_size == -1) {
         destroy_codec_options(&options);
@@ -1080,33 +1063,21 @@ _batched_op_msg(
     char* flags = ack ? "\x00\x00\x00\x00" : "\x02\x00\x00\x00";
 
     max_bson_size_obj = PyObject_GetAttrString(ctx, "max_bson_size");
-#if PY_MAJOR_VERSION >= 3
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
-#else
-    max_bson_size = PyInt_AsLong(max_bson_size_obj);
-#endif
     Py_XDECREF(max_bson_size_obj);
     if (max_bson_size == -1) {
         return 0;
     }
 
     max_write_batch_size_obj = PyObject_GetAttrString(ctx, "max_write_batch_size");
-#if PY_MAJOR_VERSION >= 3
     max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
-#else
-    max_write_batch_size = PyInt_AsLong(max_write_batch_size_obj);
-#endif
     Py_XDECREF(max_write_batch_size_obj);
     if (max_write_batch_size == -1) {
         return 0;
     }
 
     max_message_size_obj = PyObject_GetAttrString(ctx, "max_message_size");
-#if PY_MAJOR_VERSION >= 3
     max_message_size = PyLong_AsLong(max_message_size_obj);
-#else
-    max_message_size = PyInt_AsLong(max_message_size_obj);
-#endif
     Py_XDECREF(max_message_size_obj);
     if (max_message_size == -1) {
         return 0;
@@ -1295,7 +1266,7 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
         goto fail;
     }
 
-    result = Py_BuildValue(BYTES_FORMAT_STRING "O",
+    result = Py_BuildValue("y#O",
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            to_publish);
@@ -1364,7 +1335,7 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     position = buffer_get_position(buffer);
     buffer_write_int32_at_position(buffer, 0, (int32_t)position);
     buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING "O", request_id,
+    result = Py_BuildValue("iy#O", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            to_publish);
@@ -1400,11 +1371,7 @@ _batched_write_command(
     PyObject* iterator = NULL;
 
     max_bson_size_obj = PyObject_GetAttrString(ctx, "max_bson_size");
-#if PY_MAJOR_VERSION >= 3
     max_bson_size = PyLong_AsLong(max_bson_size_obj);
-#else
-    max_bson_size = PyInt_AsLong(max_bson_size_obj);
-#endif
     Py_XDECREF(max_bson_size_obj);
     if (max_bson_size == -1) {
         return 0;
@@ -1416,11 +1383,7 @@ _batched_write_command(
     max_cmd_size = max_bson_size + 16382;
 
     max_write_batch_size_obj = PyObject_GetAttrString(ctx, "max_write_batch_size");
-#if PY_MAJOR_VERSION >= 3
     max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
-#else
-    max_write_batch_size = PyInt_AsLong(max_write_batch_size_obj);
-#endif
     Py_XDECREF(max_write_batch_size_obj);
     if (max_write_batch_size == -1) {
         return 0;
@@ -1430,11 +1393,7 @@ _batched_write_command(
     // Normally this this value is equal to max_bson_size (16MiB). However,
     // when auto encryption is enabled max_split_size is reduced to 2MiB.
     max_split_size_obj = PyObject_GetAttrString(ctx, "max_split_size");
-#if PY_MAJOR_VERSION >= 3
     max_split_size = PyLong_AsLong(max_split_size_obj);
-#else
-    max_split_size = PyInt_AsLong(max_split_size_obj);
-#endif
     Py_XDECREF(max_split_size_obj);
     if (max_split_size == -1) {
         return 0;
@@ -1640,7 +1599,7 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
         goto fail;
     }
 
-    result = Py_BuildValue(BYTES_FORMAT_STRING "O",
+    result = Py_BuildValue("y#O",
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            to_publish);
@@ -1713,7 +1672,7 @@ _cbson_batched_write_command(PyObject* self, PyObject* args) {
     position = buffer_get_position(buffer);
     buffer_write_int32_at_position(buffer, 0, (int32_t)position);
     buffer_write_int32_at_position(buffer, 4, (int32_t)request_id);
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING "O", request_id,
+    result = Py_BuildValue("iy#O", request_id,
                            buffer_get_buffer(buffer),
                            (Py_ssize_t)buffer_get_position(buffer),
                            to_publish);
@@ -1749,7 +1708,6 @@ static PyMethodDef _CMessageMethods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define INITERROR return NULL
 static int _cmessage_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->_cbson);
@@ -1775,11 +1733,6 @@ static struct PyModuleDef moduledef = {
 
 PyMODINIT_FUNC
 PyInit__cmessage(void)
-#else
-#define INITERROR return
-PyMODINIT_FUNC
-init_cmessage(void)
-#endif
 {
     PyObject *_cbson = NULL;
     PyObject *c_api_object = NULL;
@@ -1800,22 +1753,13 @@ init_cmessage(void)
     if (c_api_object == NULL) {
         goto fail;
     }
-#if PY_VERSION_HEX >= 0x03010000
     _cbson_API = (void **)PyCapsule_GetPointer(c_api_object, "_cbson._C_API");
-#else
-    _cbson_API = (void **)PyCObject_AsVoidPtr(c_api_object);
-#endif
     if (_cbson_API == NULL) {
         goto fail;
     }
 
-#if PY_MAJOR_VERSION >= 3
     /* Returns a new reference. */
     m = PyModule_Create(&moduledef);
-#else
-    /* Returns a borrowed reference. */
-    m = Py_InitModule("_cmessage", _CMessageMethods);
-#endif
     if (m == NULL) {
         goto fail;
     }
@@ -1824,16 +1768,10 @@ init_cmessage(void)
 
     Py_DECREF(c_api_object);
 
-#if PY_MAJOR_VERSION >= 3
     return m;
-#else
-    return;
-#endif
 
 fail:
-#if PY_MAJOR_VERSION >= 3
     Py_XDECREF(m);
-#endif
     Py_XDECREF(c_api_object);
     Py_XDECREF(_cbson);
     INITERROR;
