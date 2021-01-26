@@ -140,6 +140,14 @@ can be changed to this::
 Collection
 ----------
 
+The useCursor option for Collection.aggregate is removed
+........................................................
+
+Removed the ``useCursor`` option for
+:meth:`~pymongo.collection.Collection.aggregate` which was deprecated in
+PyMongo 3.6. The option was only necessary when upgrading from MongoDB 2.4
+to MongoDB 2.6.
+
 Collection.insert is removed
 ............................
 

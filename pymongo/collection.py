@@ -2124,19 +2124,9 @@ class Collection(common.BaseObject):
 
     def _aggregate(self, aggregation_command, pipeline, cursor_class, session,
                    explicit_session, **kwargs):
-        # Remove things that are not command options.
-        use_cursor = True
-        if "useCursor" in kwargs:
-            warnings.warn(
-                "The useCursor option is deprecated "
-                "and will be removed in PyMongo 4.0",
-                DeprecationWarning, stacklevel=2)
-            use_cursor = common.validate_boolean(
-                "useCursor", kwargs.pop("useCursor", True))
-
         cmd = aggregation_command(
             self, cursor_class, pipeline, kwargs, explicit_session,
-            user_fields={'cursor': {'firstBatch': 1}}, use_cursor=use_cursor)
+            user_fields={'cursor': {'firstBatch': 1}})
         return self.__database.client._retryable_read(
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
@@ -2155,13 +2145,10 @@ class Collection(common.BaseObject):
           - `maxTimeMS` (int): The maximum amount of time to allow the operation
             to run in milliseconds.
           - `batchSize` (int): The maximum number of documents to return per
-            batch. Ignored if the connected mongod or mongos does not support
-            returning aggregate results using a cursor, or `useCursor` is
-            ``False``.
+            batch.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
-          - `useCursor` (bool): Deprecated. Will be removed in PyMongo 4.0.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`, except when ``$out`` or ``$merge`` are used, in
@@ -2186,6 +2173,8 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
+        .. versionchanged:: 4.0
+           Removed the ``useCursor`` option.
         .. versionchanged:: 3.9
            Apply this collection's read concern to pipelines containing the
            `$out` stage when connected to MongoDB >= 4.2.

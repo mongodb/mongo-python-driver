@@ -1615,12 +1615,7 @@ class TestCollection(IntegrationTest):
         self.assertRaises(TypeError, db.test.aggregate, "wow")
 
         pipeline = {"$project": {"_id": False, "foo": True}}
-        # MongoDB 3.5.1+ requires either the 'cursor' or 'explain' options.
-        if client_context.version.at_least(3, 5, 1):
-            result = db.test.aggregate([pipeline])
-        else:
-            result = db.test.aggregate([pipeline], useCursor=False)
-
+        result = db.test.aggregate([pipeline])
         self.assertTrue(isinstance(result, CommandCursor))
         self.assertEqual([{'foo': [1, 2]}], list(result))
 
@@ -1639,11 +1634,7 @@ class TestCollection(IntegrationTest):
         coll = db.get_collection(
             'test',
             codec_options=CodecOptions(document_class=RawBSONDocument))
-        # MongoDB 3.5.1+ requires either the 'cursor' or 'explain' options.
-        if client_context.version.at_least(3, 5, 1):
-            result = coll.aggregate([pipeline])
-        else:
-            result = coll.aggregate([pipeline], useCursor=False)
+        result = coll.aggregate([pipeline])
         self.assertTrue(isinstance(result, CommandCursor))
         first_result = next(result)
         self.assertIsInstance(first_result, RawBSONDocument)
@@ -1653,9 +1644,6 @@ class TestCollection(IntegrationTest):
         db = self.db
         projection = {'$project': {'_id': '$_id'}}
         cursor = db.test.aggregate([projection], cursor={})
-        self.assertTrue(isinstance(cursor, CommandCursor))
-
-        cursor = db.test.aggregate([projection], useCursor=True)
         self.assertTrue(isinstance(cursor, CommandCursor))
 
     def test_aggregation_cursor(self):
