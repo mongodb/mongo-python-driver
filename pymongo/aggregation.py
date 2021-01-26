@@ -169,15 +169,6 @@ class _AggregationCommand(object):
 
 
 class _CollectionAggregationCommand(_AggregationCommand):
-    def __init__(self, *args, **kwargs):
-        # Pop additional option and initialize parent class.
-        use_cursor = kwargs.pop("use_cursor", True)
-        super(_CollectionAggregationCommand, self).__init__(*args, **kwargs)
-
-        # Remove the cursor document if the user has set use_cursor to False.
-        self._use_cursor = use_cursor
-        if not self._use_cursor:
-            self._options.pop("cursor", None)
 
     @property
     def _aggregation_target(self):
@@ -201,7 +192,7 @@ class _CollectionRawAggregationCommand(_CollectionAggregationCommand):
         super(_CollectionRawAggregationCommand, self).__init__(*args, **kwargs)
 
         # For raw-batches, we set the initial batchSize for the cursor to 0.
-        if self._use_cursor and not self._performs_write:
+        if not self._performs_write:
             self._options["cursor"]["batchSize"] = 0
 
 
