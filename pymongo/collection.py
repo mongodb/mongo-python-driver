@@ -554,15 +554,9 @@ class Collection(common.BaseObject):
 
     def _insert_one(
             self, doc, ordered,
-            check_keys, manipulate, write_concern, op_id, bypass_doc_val,
+            check_keys, write_concern, op_id, bypass_doc_val,
             session):
         """Internal helper for inserting a single document."""
-        if manipulate:
-            doc = self.__database._apply_incoming_manipulators(doc, self)
-            if not isinstance(doc, RawBSONDocument) and '_id' not in doc:
-                doc['_id'] = ObjectId()
-            doc = self.__database._apply_incoming_copying_manipulators(doc,
-                                                                       self)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
         command = SON([('insert', self.name),
@@ -646,7 +640,7 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return InsertOneResult(
             self._insert_one(
-                document, ordered=True, check_keys=True, manipulate=False,
+                document, ordered=True, check_keys=True,
                 write_concern=write_concern, op_id=None,
                 bypass_doc_val=bypass_document_validation, session=session),
             write_concern.acknowledged)
@@ -712,14 +706,12 @@ class Collection(common.BaseObject):
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     def _update(self, sock_info, criteria, document, upsert=False,
-                check_keys=True, multi=False, manipulate=False,
+                check_keys=True, multi=False,
                 write_concern=None, op_id=None, ordered=True,
                 bypass_doc_val=False, collation=None, array_filters=None,
                 hint=None, session=None, retryable_write=False):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
-        if manipulate:
-            document = self.__database._fix_incoming(document, self)
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
@@ -801,7 +793,7 @@ class Collection(common.BaseObject):
 
     def _update_retryable(
             self, criteria, document, upsert=False,
-            check_keys=True, multi=False, manipulate=False,
+            check_keys=True, multi=False,
             write_concern=None, op_id=None, ordered=True,
             bypass_doc_val=False, collation=None, array_filters=None,
             hint=None, session=None):
@@ -809,7 +801,7 @@ class Collection(common.BaseObject):
         def _update(session, sock_info, retryable_write):
             return self._update(
                 sock_info, criteria, document, upsert=upsert,
-                check_keys=check_keys, multi=multi, manipulate=manipulate,
+                check_keys=check_keys, multi=multi,
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 bypass_doc_val=bypass_doc_val, collation=collation,
                 array_filters=array_filters, hint=hint, session=session,
@@ -1346,8 +1338,6 @@ class Collection(common.BaseObject):
             oplogReplay query flag. Default: False.
           - `batch_size` (optional): Limits the number of documents returned in
             a single batch.
-          - `manipulate` (optional): **DEPRECATED** - If True, apply any
-            outgoing SON manipulators before returning. Default: True.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.

@@ -908,7 +908,7 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(cursor, cursor.rewind())
 
-    # manipulate, oplog_reply, and snapshot are all deprecated.
+    # oplog_reply, and snapshot are all deprecated.
     @ignore_deprecations
     def test_clone(self):
         self.db.test.insert_many([{"x": i} for i in range(1, 4)])
@@ -956,7 +956,6 @@ class TestCursor(IntegrationTest):
                                    allow_partial_results=True,
                                    oplog_replay=True,
                                    batch_size=123,
-                                   manipulate=False,
                                    collation={'locale': 'en_US'},
                                    hint=[("_id", 1)],
                                    max_scan=100,
@@ -1465,11 +1464,6 @@ class TestRawBatchCursor(IntegrationTest):
         batches = list(c.find_raw_batches().sort('_id'))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
-
-    def test_manipulate(self):
-        c = self.db.test
-        with self.assertRaises(InvalidOperation):
-            c.find_raw_batches(manipulate=True)
 
     def test_explain(self):
         c = self.db.test

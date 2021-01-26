@@ -30,11 +30,11 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
 - Removed :meth:`pymongo.collection.Collection.ensure_index`.
 - Removed :meth:`pymongo.collection.Collection.reindex`.
-- Removed :meth:`pymongo.collection.Collection.save`
-- Removed :meth:`pymongo.collection.Collection.insert`
-- Removed :meth:`pymongo.collection.Collection.update`
-- Removed :meth:`pymongo.collection.Collection.remove`
-- Removed :meth:`pymongo.collection.Collection.find_and_modify`
+- Removed :meth:`pymongo.collection.Collection.save`.
+- Removed :meth:`pymongo.collection.Collection.insert`.
+- Removed :meth:`pymongo.collection.Collection.update`.
+- Removed :meth:`pymongo.collection.Collection.remove`.
+- Removed :meth:`pymongo.collection.Collection.find_and_modify`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.close_cursor`. Use
   :meth:`pymongo.cursor.Cursor.close` instead.
 - Removed :meth:`pymongo.mongo_client.MongoClient.kill_cursors`.
@@ -43,6 +43,21 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.mongo_client.MongoClient.set_cursor_manager`.
 - Removed :mod:`pymongo.thread_util`.
 - Removed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
+- Removed :mod:`pymongo.son_manipulator`,
+  :class:`pymongo.son_manipulator.SONManipulator`,
+  :class:`pymongo.son_manipulator.ObjectIdInjector`,
+  :class:`pymongo.son_manipulator.ObjectIdShuffler`,
+  :class:`pymongo.son_manipulator.AutoReference`,
+  :class:`pymongo.son_manipulator.NamespaceInjector`,
+  :meth:`pymongo.database.Database.add_son_manipulator`,
+  :attr:`pymongo.database.Database.outgoing_copying_manipulators`,
+  :attr:`pymongo.database.Database.outgoing_manipulators`,
+  :attr:`pymongo.database.Database.incoming_copying_manipulators`, and
+  :attr:`pymongo.database.Database.incoming_manipulators`.
+- Removed the ``manipulate`` parameter from
+  :meth:`~pymongo.collection.Collection.find`,
+  :meth:`~pymongo.collection.Collection.find_one`, and
+  :meth:`~pymongo.cursor.Cursor`.
 
 Notable improvements
 ....................
