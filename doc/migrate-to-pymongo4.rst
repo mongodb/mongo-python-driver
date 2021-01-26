@@ -136,6 +136,39 @@ can be changed to this::
     names = client.list_collection_names()
     non_system_names = client.list_collection_names(filter={"name": {"$regex": r"^(?!system\\.)"}})
 
+Database.add_user is removed
+............................
+
+Removed :meth:`pymongo.database.Database.add_user`  which was deprecated in
+PyMongo 3.6. Use the `createUser command`_ or `updateUser command`_ instead.
+To create a user::
+
+  db.command("createUser", "admin", pwd="password", roles=["dbAdmin"])
+
+To create a read-only user::
+
+  db.command("createUser", "user", pwd="password", roles=["read"])
+
+To change a password::
+
+  db.command("updateUser", "user", pwd="newpassword")
+
+Or change roles::
+
+  db.command("updateUser", "user", roles=["readWrite"])
+
+.. _createUser command: https://docs.mongodb.com/manual/reference/command/createUser/
+.. _updateUser command: https://docs.mongodb.com/manual/reference/command/updateUser/
+
+Database.remove_user is removed
+...............................
+
+Removed :meth:`pymongo.database.Database.remove_user` which was deprecated in
+PyMongo 3.6. Use the `dropUser command`_ instead::
+
+  db.command("dropUser", "user")
+
+.. _dropUser command: https://docs.mongodb.com/manual/reference/command/createUser/
 
 Collection
 ----------
