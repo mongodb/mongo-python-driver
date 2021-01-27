@@ -514,7 +514,7 @@ functions:
         silent: true
         script: |
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='python -c "import sys, urllib as ul; sys.stdout.write(ul.quote_plus(sys.argv[1]))"'
+            alias urlencode='${python3_binary} -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
             USER=$(urlencode ${iam_auth_ecs_account})
             PASS=$(urlencode ${iam_auth_ecs_secret_access_key})
             MONGODB_URI="mongodb://$USER:$PASS@localhost"
@@ -541,7 +541,7 @@ functions:
           else
             . mongovenv/bin/activate
           fi
-          pip install boto3
+          pip install --upgrade boto3
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           mongo aws_e2e_assume_role.js
     - command: shell.exec
@@ -552,8 +552,8 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias urlencode='python -c "import sys, urllib as ul; sys.stdout.write(ul.quote_plus(sys.argv[1]))"'
-            alias jsonkey='python -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
+            alias urlencode='${python3_binary} -c "import sys, urllib.parse as ulp; sys.stdout.write(ulp.quote_plus(sys.argv[1]))"'
+            alias jsonkey='${python3_binary} -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
             USER=$(jsonkey AccessKeyId)
             USER=$(urlencode $USER)
             PASS=$(jsonkey SecretAccessKey)
@@ -626,7 +626,7 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            alias jsonkey='python -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
+            alias jsonkey='${python3_binary} -c "import json,sys;sys.stdout.write(json.load(sys.stdin)[sys.argv[1]])" < ${DRIVERS_TOOLS}/.evergreen/auth_aws/creds.json'
             export AWS_ACCESS_KEY_ID=$(jsonkey AccessKeyId)
             export AWS_SECRET_ACCESS_KEY=$(jsonkey SecretAccessKey)
             export AWS_SESSION_TOKEN=$(jsonkey SessionToken)
@@ -649,6 +649,12 @@ functions:
           if [ "${skip_ECS_auth_test}" = "true" ]; then
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
+          fi
+          # The mongovenv was created earlier in "run aws auth test with assume role credentials".
+          if [ "Windows_NT" = "$OS" ]; then
+            . mongovenv/Scripts/activate
+          else
+            . mongovenv/bin/activate
           fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           cat <<EOF > setup.js
