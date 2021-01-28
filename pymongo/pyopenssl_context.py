@@ -18,14 +18,15 @@ context.
 
 import socket as _socket
 import ssl as _stdlibssl
-import time
+import sys as _sys
+import time as _time
 
 from errno import EINTR as _EINTR
 
-# service_identity requires this for py27, so it should always be available
 from ipaddress import ip_address as _ip_address
 
-from OpenSSL import SSL as _SSL
+from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
+from OpenSSL import crypto as _crypto, SSL as _SSL
 from service_identity.pyopenssl import (
     verify_hostname as _verify_hostname,
     verify_ip_address as _verify_ip_address)
@@ -33,13 +34,21 @@ from service_identity import (
     CertificateError as _SICertificateError,
     VerificationError as _SIVerificationError)
 
-from pymongo.errors import CertificateError as _CertificateError
+from pymongo.errors import (
+    CertificateError as _CertificateError,
+    ConfigurationError as _ConfigurationError)
 from pymongo.ocsp_support import (
     _load_trusted_ca_certs,
     _ocsp_callback)
 from pymongo.ocsp_cache import _OCSPCache
 from pymongo.socket_checker import (
     _errno_from_exception, SocketChecker as _SocketChecker)
+
+try:
+    import certifi
+    _HAVE_CERTIFI = True
+except ImportError:
+    _HAVE_CERTIFI = False
 
 PROTOCOL_SSLv23 = _SSL.SSLv23_METHOD
 # Always available
@@ -98,14 +107,14 @@ class _sslConn(_SSL.Connection):
     def _call(self, call, *args, **kwargs):
         timeout = self.gettimeout()
         if timeout:
-            start = time.monotonic()
+            start = _time.monotonic()
         while True:
             try:
                 return call(*args, **kwargs)
             except _RETRY_ERRORS:
                 self.socket_checker.select(
                     self, True, True, timeout)
-                if timeout and time.monotonic() - start > timeout:
+                if timeout and _time.monotonic() - start > timeout:
                     raise _socket.timeout("timed out")
                 continue
 
@@ -271,6 +280,44 @@ class SSLContext(object):
         """
         self._ctx.load_verify_locations(cafile, capath)
         self._callback_data.trusted_ca_certs = _load_trusted_ca_certs(cafile)
+
+    def _load_certifi(self):
+        """Attempt to load CA certs from certifi."""
+        if _HAVE_CERTIFI:
+            self.load_verify_locations(certifi.where())
+        else:
+            raise _ConfigurationError(
+                "tlsAllowInvalidCertificates is False but no system "
+                "CA certificates could be loaded. Please install the "
+                "certifi package, or provide a path to a CA file using "
+                "the tlsCAFile option")
+
+    def _load_wincerts(self, store):
+        """Attempt to load CA certs from Windows trust store."""
+        cert_store = self._ctx.get_cert_store()
+        oid = _stdlibssl.Purpose.SERVER_AUTH.oid
+        for cert, encoding, trust in _stdlibssl.enum_certificates(store):
+            if encoding == "x509_asn":
+                if trust is True or oid in trust:
+                    cert_store.add_cert(
+                        _crypto.X509.from_cryptography(
+                            _load_der_x509_certificate(cert)))
+
+    def load_default_certs(self):
+        """A PyOpenSSL version of load_default_certs from CPython."""
+        # PyOpenSSL is incapable of loading CA certs from Windows, and mostly
+        # incapable on macOS.
+        # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
+        if _sys.platform == "win32":
+            try:
+                for storename in ('CA', 'ROOT'):
+                    self._load_wincerts(storename)
+            except PermissionError:
+                # Fall back to certifi
+                self._load_certifi()
+        elif _sys.platform == "darwin":
+            self._load_certifi()
+        self._ctx.set_default_verify_paths()
 
     def set_default_verify_paths(self):
         """Specify that the platform provided CA certificates are to be used

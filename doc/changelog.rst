@@ -63,6 +63,8 @@ Breaking Changes in 4.0
   :meth:`~pymongo.collection.Collection.find`,
   :meth:`~pymongo.collection.Collection.find_one`, and
   :meth:`~pymongo.cursor.Cursor`.
+- The "tls" install extra is no longer necessary or supported and will be
+  ignored by pip.
 
 Notable improvements
 ....................

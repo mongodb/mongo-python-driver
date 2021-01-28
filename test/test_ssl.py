@@ -336,25 +336,21 @@ class TestSSL(IntegrationTest):
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
-
-        # Python > 2.7.9. If SSLContext doesn't have load_default_certs
-        # it also doesn't have check_hostname.
         ctx = get_ssl_context(
             None, None, None, None, ssl.CERT_NONE, None, False, True)
-        if hasattr(ctx, 'load_default_certs'):
+        self.assertFalse(ctx.check_hostname)
+        ctx = get_ssl_context(
+            None, None, None, None, ssl.CERT_NONE, None, True, True)
+        self.assertFalse(ctx.check_hostname)
+        ctx = get_ssl_context(
+            None, None, None, None, ssl.CERT_REQUIRED, None, False, True)
+        self.assertFalse(ctx.check_hostname)
+        ctx = get_ssl_context(
+            None, None, None, None, ssl.CERT_REQUIRED, None, True, True)
+        if _PY37PLUS or _HAVE_PYOPENSSL:
+            self.assertTrue(ctx.check_hostname)
+        else:
             self.assertFalse(ctx.check_hostname)
-            ctx = get_ssl_context(
-                None, None, None, None, ssl.CERT_NONE, None, True, True)
-            self.assertFalse(ctx.check_hostname)
-            ctx = get_ssl_context(
-                None, None, None, None, ssl.CERT_REQUIRED, None, False, True)
-            self.assertFalse(ctx.check_hostname)
-            ctx = get_ssl_context(
-                None, None, None, None, ssl.CERT_REQUIRED, None, True, True)
-            if _PY37PLUS:
-                self.assertTrue(ctx.check_hostname)
-            else:
-                self.assertFalse(ctx.check_hostname)
 
         response = self.client.admin.command('ismaster')
 

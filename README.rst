@@ -110,19 +110,12 @@ Support for mongodb+srv:// URIs requires `dnspython
 
   $ python -m pip install pymongo[srv]
 
-TLS / SSL support may require `ipaddress
-<https://pypi.python.org/pypi/ipaddress>`_ and `certifi
-<https://pypi.python.org/pypi/certifi>`_ or `wincertstore
-<https://pypi.python.org/pypi/wincertstore>`_ depending on the Python
-version in use. The necessary dependencies can be installed along with
-PyMongo::
-
-  $ python -m pip install pymongo[tls]
-
 OCSP (Online Certificate Status Protocol) requires `PyOpenSSL
 <https://pypi.org/project/pyOpenSSL/>`_, `requests
-<https://pypi.org/project/requests/>`_ and `service_identity
-<https://pypi.org/project/service_identity/>`_::
+<https://pypi.org/project/requests/>`_, `service_identity
+<https://pypi.org/project/service_identity/>`_ and may
+require `certifi
+<https://pypi.python.org/pypi/certifi>`_::
 
   $ python -m pip install pymongo[ocsp]
 

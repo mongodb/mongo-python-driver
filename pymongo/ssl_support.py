@@ -14,9 +14,7 @@
 
 """Support for SSL in PyMongo."""
 
-import atexit
 import sys
-import threading
 
 from pymongo.errors import ConfigurationError
 
@@ -30,22 +28,6 @@ except ImportError:
     except ImportError:
         HAVE_SSL = False
 
-HAVE_CERTIFI = False
-try:
-    import certifi
-    HAVE_CERTIFI = True
-except ImportError:
-    pass
-
-HAVE_WINCERTSTORE = False
-try:
-    from wincertstore import CertFile
-    HAVE_WINCERTSTORE = True
-except ImportError:
-    pass
-
-_WINCERTSLOCK = threading.Lock()
-_WINCERTS = None
 
 if HAVE_SSL:
     # Note: The validate* functions below deal with users passing
@@ -81,17 +63,6 @@ if HAVE_SSL:
         if boolean_cert_reqs:
             return CERT_NONE
         return CERT_REQUIRED
-
-    def _load_wincerts():
-        """Set _WINCERTS to an instance of wincertstore.Certfile."""
-        global _WINCERTS
-
-        certfile = CertFile()
-        certfile.addstore("CA")
-        certfile.addstore("ROOT")
-        atexit.register(certfile.close)
-
-        _WINCERTS = certfile
 
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
@@ -138,30 +109,7 @@ if HAVE_SSL:
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
         elif cert_reqs != CERT_NONE:
-            # CPython ssl module only, doesn't exist in PyOpenSSL
-            if hasattr(ctx, "load_default_certs"):
-                ctx.load_default_certs()
-            # Always useless on Windows.
-            elif (sys.platform != "win32" and
-                  hasattr(ctx, "set_default_verify_paths")):
-                ctx.set_default_verify_paths()
-            # This is needed with PyOpenSSL on Windows
-            # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
-            elif sys.platform == "win32" and HAVE_WINCERTSTORE:
-                with _WINCERTSLOCK:
-                    if _WINCERTS is None:
-                        _load_wincerts()
-                ctx.load_verify_locations(_WINCERTS.name)
-            # This is necessary with PyOpenSSL on macOS when homebrew isn't
-            # installed.
-            # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
-            elif HAVE_CERTIFI:
-                ctx.load_verify_locations(certifi.where())
-            else:
-                raise ConfigurationError(
-                    "`ssl_cert_reqs` is not ssl.CERT_NONE and no system "
-                    "CA certificates could be loaded. `ssl_ca_certs` is "
-                    "required.")
+            ctx.load_default_certs()
         ctx.verify_mode = verify_mode
         return ctx
 else:

@@ -6,16 +6,6 @@ configuration options supported by PyMongo. See `the server documentation
 <http://docs.mongodb.org/manual/tutorial/configure-ssl/>`_ to configure
 MongoDB.
 
-Dependencies
-............
-
-For connections using TLS/SSL, PyMongo may require third party dependencies as
-determined by your version of Python. With PyMongo 3.3+, you can install
-PyMongo 3.3+ and any TLS/SSL-related dependencies using the following pip
-command::
-
-  $ python -m pip install pymongo[tls]
-
 .. warning:: Industry best practices recommend, and some regulations require,
   the use of TLS 1.1 or newer. Though no application changes are required for
   PyMongo to make use of the newest protocols, some operating systems or

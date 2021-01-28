@@ -275,6 +275,11 @@ ext_modules = [Extension('bson._cbson',
 # in set_default_verify_paths we should really avoid.
 # service_identity 18.1.0 introduced support for IP addr matching.
 pyopenssl_reqs = ["pyopenssl>=17.2.0", "requests<3.0.0", "service_identity>=18.1.0"]
+if sys.platform in ('win32', 'darwin'):
+    # Fallback to certifi on Windows if we can't load CA certs from the system
+    # store and just use certifi on macOS.
+    # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
+    pyopenssl_reqs.append('certifi')
 
 extras_require = {
     'encryption': ['pymongocrypt<2.0.0'],
