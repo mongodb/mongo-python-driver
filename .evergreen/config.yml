@@ -496,6 +496,7 @@ functions:
         script: |
           ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate_venv.sh
           mongo aws_e2e_regular_aws.js
     - command: shell.exec
       type: test
@@ -524,15 +525,8 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          # The aws_e2e_assume_role script requires python3 with boto3.
-          virtualenv -p ${python3_binary} mongovenv
-          if [ "Windows_NT" = "$OS" ]; then
-            . mongovenv/Scripts/activate
-          else
-            . mongovenv/bin/activate
-          fi
-          pip install --upgrade boto3
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate_venv.sh
           mongo aws_e2e_assume_role.js
     - command: shell.exec
       type: test
@@ -571,13 +565,8 @@ functions:
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
-          # The mongovenv was created earlier in "run aws auth test with assume role credentials".
-          if [ "Windows_NT" = "$OS" ]; then
-            . mongovenv/Scripts/activate
-          else
-            . mongovenv/bin/activate
-          fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate_venv.sh
           mongo aws_e2e_ec2.js
     - command: shell.exec
       type: test
@@ -640,13 +629,8 @@ functions:
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
-          # The mongovenv was created earlier in "run aws auth test with assume role credentials".
-          if [ "Windows_NT" = "$OS" ]; then
-            . mongovenv/Scripts/activate
-          else
-            . mongovenv/bin/activate
-          fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate_venv.sh
           cat <<EOF > setup.js
           const mongo_binaries = "$MONGODB_BINARIES";
           const project_dir = "$PROJECT_DIRECTORY";
