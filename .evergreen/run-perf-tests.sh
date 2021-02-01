@@ -22,7 +22,7 @@ pip install simplejson
 
 python setup.py build_ext -i
 start_time=$(date +%s)
-python test/performance/perf_test.py
+python test/performance/perf_test.py --locals
 end_time=$(date +%s)
 elapsed_secs=$((end_time-start_time))
 

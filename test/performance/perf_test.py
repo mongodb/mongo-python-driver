@@ -399,7 +399,7 @@ def insert_json_file_with_file_id(filename):
 
 def read_json_file(filename):
     coll = proc_client.perftest.corpus
-    temp = tempfile.TemporaryFile()
+    temp = tempfile.TemporaryFile(mode='w')
     try:
         temp.writelines(
             [json.dumps(doc) + '\n' for
