@@ -447,6 +447,8 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(isinstance(info[0]['op'], string_type))
         self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
 
+    # SERVER-47817 removes the resetError command.
+    @client_context.require_version_max(4, 9)
     @client_context.require_no_mongos
     @ignore_deprecations
     def test_errors(self):
