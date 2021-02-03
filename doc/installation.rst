@@ -47,6 +47,9 @@ Dependencies
 
 PyMongo supports CPython 2.7, 3.4+, PyPy, and PyPy3.5+.
 
+.. warning:: Support for Python 2.7, 3.4 and 3.5 is deprecated. Those Python
+    versions will not be supported by PyMongo 4.
+
 Optional dependencies:
 
 GSSAPI authentication requires `pykerberos
