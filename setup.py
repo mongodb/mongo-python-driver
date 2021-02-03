@@ -322,6 +322,18 @@ ext_modules = [Extension('bson._cbson',
 # in set_default_verify_paths we should really avoid.
 # service_identity 18.1.0 introduced support for IP addr matching.
 pyopenssl_reqs = ["pyopenssl>=17.2.0", "requests<3.0.0", "service_identity>=18.1.0"]
+# PyOpenSSL is incapable of loading system CA certs on Windows
+# and mostly incapable on macOS.
+# https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
+if sys.platform == 'win32':
+    # wincertstore appears dead and only claims support for
+    # Python versions <= 3.4.
+    if sys.version_info[:2] < (3, 5):
+        pyopenssl_reqs.append("wincertstore>=0.2")
+    else:
+        pyopenssl_reqs.append("certifi")
+elif sys.platform == "darwin":
+    pyopenssl_reqs.append("certifi")
 
 extras_require = {
     'encryption': ['pymongocrypt<2.0.0'],
@@ -347,21 +359,11 @@ if sys.version_info[0] == 2:
         for req in pyopenssl_reqs:
             extras_require['tls'].append(
                 "%s ; python_full_version < '2.7.9'" % (req,))
-        if sys.platform == 'win32':
-            extras_require['tls'].append(
-                "wincertstore>=0.2 ; python_full_version < '2.7.9'")
-        else:
-            extras_require['tls'].append(
-                "certifi ; python_full_version < '2.7.9'")
     elif sys.version_info < (2, 7, 9):
         # For installing from source or egg files on Python versions
         # older than 2.7.9, or systems that have setuptools versions
         # older than 20.10.
         extras_require['tls'].extend(pyopenssl_reqs)
-        if sys.platform == 'win32':
-            extras_require['tls'].append("wincertstore>=0.2")
-        else:
-            extras_require['tls'].append("certifi")
     extras_require.update({'srv': ["dnspython>=1.16.0,<1.17.0"]})
     extras_require.update({'tls': ["ipaddress"]})
 else:
