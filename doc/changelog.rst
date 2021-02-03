@@ -7,8 +7,8 @@ Changes in Version 3.11.3
 Issues Resolved
 ...............
 
-Version 3.11.3 fixes a bug that prevented PyMongo from retrying writes on
-MongoDB 4.4+ (`PYTHON-2452`_)
+Version 3.11.3 fixes a bug that prevented PyMongo from retrying writes after
+a ``writeConcernError`` on MongoDB 4.4+ (`PYTHON-2452`_)
 
 See the `PyMongo 3.11.3 release notes in JIRA`_ for the list of resolved issues
 in this release.
