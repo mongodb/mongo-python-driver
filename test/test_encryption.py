@@ -504,11 +504,6 @@ class TestSpec(SpecRunner):
         desc = test['description'].lower()
         if 'type=symbol' in desc:
             self.skipTest('PyMongo does not support the symbol type')
-        if desc == 'explain a find with deterministic encryption':
-            # PyPy and Python 3.6+ have ordered dict.
-            if sys.version_info[:2] < (3, 6) and 'PyPy' not in sys.version:
-                self.skipTest(
-                    'explain test does not work without ordered dict')
 
     def setup_scenario(self, scenario_def):
         """Override a test's setup."""

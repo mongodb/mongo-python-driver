@@ -38,7 +38,4 @@ if hasattr(_ssl, "VERIFY_CRL_CHECK_LEAF"):
 # making it the obvious version to start using SSLConext.check_hostname.
 # Python 3.6 might have been a good version, but it suffers
 # from https://bugs.python.org/issue32185.
-# We'll use our bundled match_hostname for older Python
-# versions, which also supports IP address matching
-# with Python < 3.5.
 CHECK_HOSTNAME_SAFE = _sys.version_info[:2] >= (3, 7)

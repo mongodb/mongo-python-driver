@@ -28,7 +28,7 @@ To upgrade using pip::
 Dependencies
 ------------
 
-PyMongo supports CPython 3.5+ and PyPy3.5+.
+PyMongo supports CPython 3.6+ and PyPy3.6+.
 
 Optional dependencies:
 
@@ -133,7 +133,7 @@ See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
 for a more detailed explanation.
 
 **Lion (10.7) and newer** - PyMongo's C extensions can be built against
-versions of Python 3.5+ downloaded from python.org. In all cases Xcode must be
+versions of Python 3.6+ downloaded from python.org. In all cases Xcode must be
 installed with 'UNIX Development Support'.
 
 **Xcode 5.1**: Starting with version 5.1 the version of clang that ships with

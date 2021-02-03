@@ -1762,11 +1762,6 @@ axes:
     values:
       # Note: always display platform with python-version to avoid ambiguous display names.
       # Linux
-      - id: "3.5"
-        display_name: "Python 3.5"
-        batchtime: 10080  # 7 days
-        variables:
-           PYTHON_BINARY: "/opt/python/3.5/bin/python3"
       - id: "3.6"
         display_name: "Python 3.6"
         variables:
@@ -1783,10 +1778,6 @@ axes:
         display_name: "Python 3.9"
         variables:
           PYTHON_BINARY: "/opt/python/3.9/bin/python3"
-      - id: "pypy3.5"
-        display_name: "PyPy 3.5"
-        variables:
-           PYTHON_BINARY: "/opt/python/pypy3.5/bin/pypy3"
       - id: "pypy3.6"
         display_name: "PyPy 3.6"
         variables:
@@ -1799,10 +1790,6 @@ axes:
   - id: python-version-windows
     display_name: "Python"
     values:
-      - id: "3.5"
-        display_name: "Python 3.5"
-        variables:
-          PYTHON_BINARY: "C:/python/Python35/python.exe"
       - id: "3.6"
         display_name: "Python 3.6"
         variables:
@@ -1823,10 +1810,6 @@ axes:
   - id: python-version-windows-32
     display_name: "Python"
     values:
-      - id: "3.5"
-        display_name: "32-bit Python 3.5"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python35/python.exe"
       - id: "3.6"
         display_name: "32-bit Python 3.6"
         variables:
@@ -2116,7 +2099,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: &rhel62-pythons ["3.5", "3.6", "pypy3.5", "pypy3.6"]
+    python-version: &rhel62-pythons ["3.6", "pypy3.6"]
     auth: "*"
     ssl: "*"
     coverage: "*"
@@ -2132,14 +2115,14 @@ buildvariants:
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["3.5", "3.6", "3.7", "3.8", "3.9"]
+    python-version: ["3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: ubuntu-16.04
-    python-version: ["3.5", "3.6", "3.8", "3.9"]
+    python-version: ["3.6", "3.8", "3.9"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2152,7 +2135,7 @@ buildvariants:
 - matrix_name: "tests-pyopenssl-pypy"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy3.5", "pypy3.6"]
+    python-version: ["pypy3.6"]
     auth: "auth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2187,7 +2170,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: ["3.5", "3.6"]
+    python-version: ["3.6"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
@@ -2199,7 +2182,7 @@ buildvariants:
 - matrix_name: "tests-pypy-debian-test-encryption"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy3.5", "pypy3.6"]
+    python-version: ["pypy3.6"]
     auth-ssl: noauth-nossl
     encryption: "*"
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
@@ -2215,7 +2198,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: rhel62
-     python-version: ["pypy3.5", "pypy3.6"]
+     python-version: ["pypy3.6"]
      c-extensions: "*"
      auth-ssl: "*"
      coverage: "*"
@@ -2242,13 +2225,13 @@ buildvariants:
   matrix_spec:
     # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
     platform: ubuntu-16.04
-    python-version: ["3.5", "3.6", "3.7", "3.8", "3.9", "pypy3.5", "pypy3.6"]
+    python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: ubuntu-16.04
-     python-version: ["pypy3.5", "pypy3.6"]
+     python-version: ["pypy3.6"]
      c-extensions: "with-c-extensions"
      compression: "*"
    # PYTHON-2365 Some tests fail with CPython 3.8+ and python-snappy
@@ -2281,7 +2264,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: rhel62
-     python-version: ["pypy3.5", "pypy3.6"]
+     python-version: ["pypy3.6"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2420,7 +2403,7 @@ buildvariants:
   matrix_spec:
     platform: rhel62
     # The toolchain doesn't currently include mod-wsgi
-    # built for CPython 3.5 or 3.8, mod-wsgi doesn't yet
+    # built for CPython 3.8, mod-wsgi doesn't yet
     # claim to support 3.9. Python 3.7+ won't build on rhel6
     # and we need to do some work to migrate mod-wsgi testing
     # to a different OS. For now we're stuck just testing with
@@ -2443,7 +2426,7 @@ buildvariants:
 - matrix_name: "tests-doctests"
   matrix_spec:
     platform: rhel62
-    python-version: ["3.5"]
+    python-version: ["3.6"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
      - name: "doctests"
@@ -2485,7 +2468,7 @@ buildvariants:
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["3.5", "3.9"]
+    python-version: ["3.6", "3.9"]
     auth: "auth"
     c-extensions: "*"
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
@@ -2507,7 +2490,7 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: ubuntu-16.04
-    python-version: ["3.5", "3.8", "3.9"]
+    python-version: ["3.6", "3.9"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2519,7 +2502,7 @@ buildvariants:
 - matrix_name: "ocsp-test-pypy"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy3.5", "pypy3.6"]
+    python-version: ["pypy3.6"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2531,7 +2514,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version-windows: ["3.5", "3.9"]
+    python-version-windows: ["3.6", "3.9"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"

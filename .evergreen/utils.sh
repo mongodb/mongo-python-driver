@@ -22,15 +22,7 @@ createvirtualenv () {
     else
         . $VENVPATH/bin/activate
     fi
-    # Upgrade to the latest versions of pip setuptools wheel so that
-    # pip can always download the latest cryptography+cffi wheels.
-    PYTHON_VERSION=$(python -c 'import sys;print("%s.%s" % sys.version_info[:2])')
-    if [[ $PYTHON_VERSION == "3.5" ]]; then
-        # pip 21 will drop support for 3.5.
-        python -m pip install --upgrade 'pip<21'
-    else
-        python -m pip install --upgrade pip
-    fi
+    python -m pip install --upgrade pip
     python -m pip install --upgrade setuptools wheel
 }
 

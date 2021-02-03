@@ -89,7 +89,7 @@ is incompatible with PyMongo.
 Dependencies
 ============
 
-PyMongo supports CPython 3.5+ and PyPy3.5+.
+PyMongo supports CPython 3.6+ and PyPy3.6+.
 
 Optional dependencies:
 
