@@ -223,6 +223,17 @@ class ClientContext(object):
             self.default_client_options["server_api"] = server_api
 
     @property
+    def client_options(self):
+        """Return the MongoClient options for creating a duplicate client."""
+        opts = client_context.default_client_options.copy()
+        if client_context.auth_enabled:
+            opts['username'] = db_user
+            opts['password'] = db_pwd
+        if self.replica_set_name:
+            opts['replicaSet'] = self.replica_set_name
+        return opts
+
+    @property
     def ismaster(self):
         return self.client.admin.command('isMaster')
 

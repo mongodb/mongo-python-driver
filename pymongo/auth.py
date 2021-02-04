@@ -580,7 +580,3 @@ def authenticate(credentials, sock_info):
     auth_func = _AUTH_MAP.get(mechanism)
     auth_func(credentials, sock_info)
 
-
-def logout(source, sock_info):
-    """Log out from a database."""
-    sock_info.command(source, {'logout': 1})

@@ -30,8 +30,6 @@ from pymongo.ssl_support import HAVE_SSL, get_ssl_context, validate_cert_reqs, _
 from pymongo.write_concern import WriteConcern
 from test import (IntegrationTest,
                   client_context,
-                  db_pwd,
-                  db_user,
                   SkipTest,
                   unittest,
                   HAVE_IPADDRESS)
@@ -548,14 +546,7 @@ class TestSSL(IntegrationTest):
     @client_context.require_ssl_certfile
     def test_mongodb_x509_auth(self):
         host, port = client_context.host, client_context.port
-        ssl_client = MongoClient(
-            client_context.pair,
-            ssl=True,
-            ssl_cert_reqs=ssl.CERT_NONE,
-            ssl_certfile=CLIENT_PEM)
-        self.addCleanup(remove_all_users, ssl_client['$external'])
-
-        ssl_client.admin.authenticate(db_user, db_pwd)
+        self.addCleanup(remove_all_users, client_context.client['$external'])
 
         # Give x509 user all necessary privileges.
         client_context.create_user('$external', MONGODB_X509_USERNAME, roles=[

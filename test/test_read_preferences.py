@@ -19,7 +19,6 @@ import copy
 import pickle
 import random
 import sys
-import warnings
 
 sys.path[0:0] = [""]
 
@@ -39,9 +38,7 @@ from pymongo.write_concern import WriteConcern
 from test import (SkipTest,
                   client_context,
                   IntegrationTest,
-                  unittest,
-                  db_user,
-                  db_pwd)
+                  unittest)
 from test.utils import (connected,
                         ignore_deprecations,
                         one,
@@ -312,7 +309,7 @@ class TestReadPreferences(TestReadPreferencesBase):
 class ReadPrefTester(MongoClient):
     def __init__(self, *args, **kwargs):
         self.has_read_from = set()
-        client_options = client_context.default_client_options.copy()
+        client_options = client_context.client_options
         client_options.update(kwargs)
         super(ReadPrefTester, self).__init__(*args, **client_options)
 
@@ -354,11 +351,8 @@ class TestCommandAndReadPreference(IntegrationTest):
         super(TestCommandAndReadPreference, cls).setUpClass()
         cls.c = ReadPrefTester(
             client_context.pair,
-            replicaSet=client_context.replica_set_name,
             # Ignore round trip times, to test ReadPreference modes only.
             localThresholdMS=1000*1000)
-        if client_context.auth_enabled:
-            cls.c.admin.authenticate(db_user, db_pwd)
         cls.client_version = Version.from_client(cls.c)
         # mapReduce fails if the collection does not exist.
         coll = cls.c.pymongo_test.get_collection(

@@ -771,17 +771,10 @@ class SocketInfo(object):
         :Parameters:
           - `all_credentials`: dict, maps auth source to MongoCredential.
         """
-        if all_credentials or self.authset:
-            cached = set(all_credentials.values())
-            authset = self.authset.copy()
-
-            # Logout any credentials that no longer exist in the cache.
-            for credentials in authset - cached:
-                auth.logout(credentials.source, self)
-                self.authset.discard(credentials)
-
-            for credentials in cached - authset:
-                self.authenticate(credentials)
+        if all_credentials:
+            for credentials in all_credentials.values():
+                if credentials not in self.authset:
+                    self.authenticate(credentials)
 
         # CMAP spec says to publish the ready event only after authenticating
         # the connection.
@@ -815,10 +808,6 @@ class SocketInfo(object):
                 raise InvalidOperation(
                     'Can only use session with the MongoClient that'
                     ' started it')
-            if session._authset != self.authset:
-                raise InvalidOperation(
-                    'Cannot use session after authenticating with different'
-                    ' credentials')
 
     def close_socket(self, reason):
         """Close this connection with a reason."""

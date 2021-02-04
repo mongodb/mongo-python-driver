@@ -351,12 +351,11 @@ class ClientSession(object):
     :class:`ClientSession`, call
     :meth:`~pymongo.mongo_client.MongoClient.start_session`.
     """
-    def __init__(self, client, server_session, options, authset, implicit):
+    def __init__(self, client, server_session, options, implicit):
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client = client
         self._server_session = server_session
         self._options = options
-        self._authset = authset
         self._cluster_time = None
         self._operation_time = None
         # Is this an implicitly created session?

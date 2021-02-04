@@ -17,7 +17,6 @@
 import datetime
 import re
 import sys
-import warnings
 
 sys.path[0:0] = [""]
 
@@ -43,17 +42,12 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.mongo_client import MongoClient
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.saslprep import HAVE_STRINGPREP
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   SkipTest,
                   unittest,
                   IntegrationTest)
-from test.utils import (EventListener,
-                        ignore_deprecations,
-                        remove_all_users,
-                        rs_or_single_client_noauth,
-                        rs_or_single_client,
+from test.utils import (rs_or_single_client,
                         server_started_with_auth,
                         wait_until,
                         IMPOSSIBLE_WRITE_CONCERN,
@@ -468,87 +462,6 @@ class TestDatabase(IntegrationTest):
                          "cd7e45b3b2767dc2fa9b6b548457ed00")
         self.assertEqual(auth._password_digest("Gustave", "Dor\xe9"),
                          "81e0e2364499209f466e75926a162d73")
-
-    @client_context.require_auth
-    @ignore_deprecations
-    def test_authenticate_multiple(self):
-        # "self.client" is logged in as root.
-        self.client.drop_database("pymongo_test")
-        self.client.drop_database("pymongo_test1")
-        users_db_auth = self.client.pymongo_test
-
-        client_context.create_user(
-            'admin',
-            'ro-admin',
-            'pass',
-            roles=["userAdmin", "readAnyDatabase"])
-
-        self.addCleanup(client_context.drop_user, 'admin', 'ro-admin')
-        client_context.create_user(
-            'pymongo_test', 'user', 'pass', roles=["userAdmin", "readWrite"])
-        self.addCleanup(remove_all_users, users_db_auth)
-
-        # Non-root client.
-        listener = EventListener()
-        client = rs_or_single_client_noauth(event_listeners=[listener])
-        admin_db = client.admin
-        users_db = client.pymongo_test
-        other_db = client.pymongo_test1
-
-        self.assertRaises(OperationFailure, users_db.test.find_one)
-        self.assertEqual(listener.started_command_names(), ['find'])
-        listener.reset()
-
-        # Regular user should be able to query its own db, but
-        # no other.
-        users_db.authenticate('user', 'pass')
-        if client_context.version.at_least(3, 0):
-            self.assertEqual(listener.started_command_names()[0], 'saslStart')
-        else:
-            self.assertEqual(listener.started_command_names()[0], 'getnonce')
-
-        self.assertEqual(0, users_db.test.count_documents({}))
-        self.assertRaises(OperationFailure, other_db.test.find_one)
-
-        listener.reset()
-        # Admin read-only user should be able to query any db,
-        # but not write.
-        admin_db.authenticate('ro-admin', 'pass')
-        if client_context.version.at_least(3, 0):
-            self.assertEqual(listener.started_command_names()[0], 'saslStart')
-        else:
-            self.assertEqual(listener.started_command_names()[0], 'getnonce')
-        self.assertEqual(None, other_db.test.find_one())
-        self.assertRaises(OperationFailure,
-                          other_db.test.insert_one, {})
-
-        # Close all sockets.
-        client.close()
-
-        listener.reset()
-        # We should still be able to write to the regular user's db.
-        self.assertTrue(users_db.test.delete_many({}))
-        names = listener.started_command_names()
-        if client_context.version.at_least(4, 4, -1):
-            # No speculation with multiple users (but we do skipEmptyExchange).
-            self.assertEqual(
-                names, ['saslStart', 'saslContinue', 'saslStart',
-                        'saslContinue', 'delete'])
-        elif client_context.version.at_least(3, 0):
-            self.assertEqual(
-                names, ['saslStart', 'saslContinue', 'saslContinue',
-                        'saslStart', 'saslContinue', 'saslContinue', 'delete'])
-        else:
-            self.assertEqual(
-                names, ['getnonce', 'authenticate',
-                        'getnonce', 'authenticate', 'delete'])
-
-        # And read from other dbs...
-        self.assertEqual(0, other_db.test.count_documents({}))
-
-        # But still not write to other dbs.
-        self.assertRaises(OperationFailure,
-                          other_db.test.insert_one, {})
 
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first
