@@ -2,10 +2,7 @@
 
 docker version
 
-# 2020-03-20-2fda31c Was the last release to include Python 3.4.
-images=(quay.io/pypa/manylinux1_x86_64:2020-03-20-2fda31c \
-        quay.io/pypa/manylinux1_i686:2020-03-20-2fda31c \
-        quay.io/pypa/manylinux1_x86_64 \
+images=(quay.io/pypa/manylinux1_x86_64 \
         quay.io/pypa/manylinux1_i686 \
         quay.io/pypa/manylinux2014_x86_64 \
         quay.io/pypa/manylinux2014_i686 \
