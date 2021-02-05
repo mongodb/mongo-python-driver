@@ -412,6 +412,12 @@ class TestCreator(object):
             return client_context.version <= max_ver
         return True
 
+    @staticmethod
+    def valid_require_auth(run_on_req):
+        if run_on_req.get('requireAuth'):
+            return client_context.auth_enabled
+        return True
+
     def should_run_on(self, scenario_def):
         run_on = scenario_def.get('runOn', [])
         if not run_on:
@@ -421,7 +427,8 @@ class TestCreator(object):
         for req in run_on:
             if (self.valid_topology(req) and
                     self.min_server_version(req) and
-                    self.max_server_version(req)):
+                    self.max_server_version(req) and
+                    self.valid_require_auth(req)):
                 return True
         return False
 

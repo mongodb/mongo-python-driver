@@ -612,7 +612,7 @@ class Topology(object):
         elif issubclass(exc_type, OperationFailure):
             # Do not request an immediate check since the server is likely
             # shutting down.
-            if error.code in helpers._NOT_MASTER_CODES:
+            if error.code in helpers._NOT_MASTER_CODES or error.code == 18:
                 self._process_change(ServerDescription(address, error=error))
                 # Clear the pool.
                 server.reset()
