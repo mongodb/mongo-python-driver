@@ -447,6 +447,17 @@ AWS_CREDS = {
     'secretAccessKey': os.environ.get('FLE_AWS_SECRET', '')
 }
 
+AWS_TEMP_CREDS = {
+    'accessKeyId': os.environ.get('CSFLE_AWS_TEMP_ACCESS_KEY_ID', ''),
+    'secretAccessKey': os.environ.get('CSFLE_AWS_TEMP_SECRET_ACCESS_KEY', ''),
+    'sessionToken': os.environ.get('CSFLE_AWS_TEMP_SESSION_TOKEN', '')
+}
+
+AWS_TEMP_NO_SESSION_CREDS = {
+    'accessKeyId': os.environ.get('CSFLE_AWS_TEMP_ACCESS_KEY_ID', ''),
+    'secretAccessKey': os.environ.get('CSFLE_AWS_TEMP_SECRET_ACCESS_KEY', '')
+}
+
 AZURE_CREDS = {
     'tenantId': os.environ.get('FLE_AZURE_TENANTID', ''),
     'clientId': os.environ.get('FLE_AZURE_CLIENTID', ''),
@@ -471,15 +482,25 @@ class TestSpec(SpecRunner):
         kms_providers = opts['kms_providers']
         if 'aws' in kms_providers:
             kms_providers['aws'] = AWS_CREDS
-            if not any(AWS_CREDS.values()):
+            if not all(AWS_CREDS.values()):
                 self.skipTest('AWS environment credentials are not set')
+        if 'awsTemporary' in kms_providers:
+            kms_providers['aws'] = AWS_TEMP_CREDS
+            del kms_providers['awsTemporary']
+            if not all(AWS_TEMP_CREDS.values()):
+                self.skipTest('AWS Temp environment credentials are not set')
+        if 'awsTemporaryNoSessionToken' in kms_providers:
+            kms_providers['aws'] = AWS_TEMP_NO_SESSION_CREDS
+            del kms_providers['awsTemporaryNoSessionToken']
+            if not all(AWS_TEMP_NO_SESSION_CREDS.values()):
+                self.skipTest('AWS Temp environment credentials are not set')
         if 'azure' in kms_providers:
             kms_providers['azure'] = AZURE_CREDS
-            if not any(AZURE_CREDS.values()):
+            if not all(AZURE_CREDS.values()):
                 self.skipTest('Azure environment credentials are not set')
         if 'gcp' in kms_providers:
             kms_providers['gcp'] = GCP_CREDS
-            if not any(AZURE_CREDS.values()):
+            if not all(AZURE_CREDS.values()):
                 self.skipTest('GCP environment credentials are not set')
         if 'key_vault_namespace' not in opts:
             opts['key_vault_namespace'] = 'keyvault.datakeys'
