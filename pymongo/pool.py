@@ -800,8 +800,7 @@ class SocketInfo(object):
     def validate_session(self, client, session):
         """Validate this session before use with client.
 
-        Raises error if this session is logged in as a different user or
-        the client is not the one that created the session.
+        Raises error if the client is not the one that created the session.
         """
         if session:
             if session._client is not client:
