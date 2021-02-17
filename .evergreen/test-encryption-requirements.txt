@@ -1,2 +1,4 @@
 cffi>=1.12.0,<2
-cryptography>=2,<4
+cryptography>=2
+# boto3 is required by drivers-evergreen-tools/.evergreen/csfle/set-temp-creds.sh
+boto3<2

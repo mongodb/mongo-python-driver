@@ -136,7 +136,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
 
     # Get access to the AWS temporary credentials:
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
-    python -m pip install boto3
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 fi
 
