@@ -17,13 +17,10 @@
 import threading
 
 from test import (client_context,
-                  db_user,
-                  db_pwd,
                   IntegrationTest,
                   unittest)
-from test.utils import rs_or_single_client_noauth, rs_or_single_client
+from test.utils import rs_or_single_client
 from test.utils import joinall
-from pymongo.errors import OperationFailure
 
 
 @client_context.require_connection
@@ -201,35 +198,6 @@ class TestThreads(IntegrationTest):
 
         for t in threads:
             self.assertTrue(t.passed)
-
-
-class TestThreadsAuth(IntegrationTest):
-    @classmethod
-    @client_context.require_auth
-    def setUpClass(cls):
-        super(TestThreadsAuth, cls).setUpClass()
-
-    def test_auto_auth_login(self):
-        # Create the database upfront to workaround SERVER-39167.
-        self.client.auth_test.test.insert_one({})
-        self.addCleanup(self.client.drop_database, "auth_test")
-        client = rs_or_single_client_noauth()
-        self.assertRaises(OperationFailure, client.auth_test.test.find_one)
-
-        # Admin auth
-        client.admin.authenticate(db_user, db_pwd)
-
-        nthreads = 10
-        threads = []
-        for _ in range(nthreads):
-            t = AutoAuthenticateThreads(client.auth_test.test, 10)
-            t.start()
-            threads.append(t)
-
-        joinall(threads)
-
-        for t in threads:
-            self.assertTrue(t.success)
 
 
 if __name__ == "__main__":

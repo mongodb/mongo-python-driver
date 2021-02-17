@@ -73,31 +73,6 @@ class AutoAuthenticateThread(threading.Thread):
         self.success = True
 
 
-class DBAuthenticateThread(threading.Thread):
-    """Used in testing threaded authentication.
-
-    This does db.test.find_one() with a 1-second delay to ensure it must
-    check out and authenticate multiple sockets from the pool concurrently.
-
-    :Parameters:
-      `db`: An auth-protected db with a 'test' collection containing one
-      document.
-    """
-
-    def __init__(self, db, username, password):
-        super(DBAuthenticateThread, self).__init__()
-        self.db = db
-        self.username = username
-        self.password = password
-        self.success = False
-
-    def run(self):
-        self.db.authenticate(self.username, self.password)
-        assert self.db.test.find_one({'$where': delay(1)}) is not None
-        self.success = True
-
-
-
 class TestGSSAPI(unittest.TestCase):
 
     @classmethod
@@ -314,24 +289,6 @@ class TestSASLPlain(unittest.TestCase):
             client.ldap.test.find_one()
 
     def test_sasl_plain_bad_credentials(self):
-
-        with ignore_deprecations():
-            client = MongoClient(SASL_HOST, SASL_PORT)
-
-            # Bad username
-            self.assertRaises(OperationFailure, client.ldap.authenticate,
-                              'not-user', SASL_PASS, SASL_DB, 'PLAIN')
-            self.assertRaises(OperationFailure, client.ldap.test.find_one)
-            self.assertRaises(OperationFailure, client.ldap.test.insert_one,
-                              {"failed": True})
-
-            # Bad password
-            self.assertRaises(OperationFailure, client.ldap.authenticate,
-                              SASL_USER, 'not-pwd', SASL_DB, 'PLAIN')
-            self.assertRaises(OperationFailure, client.ldap.test.find_one)
-            self.assertRaises(OperationFailure, client.ldap.test.insert_one,
-                              {"failed": True})
-
         def auth_string(user, password):
             uri = ('mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;'
                    'authSource=%s' % (quote_plus(user),
@@ -368,12 +325,6 @@ class TestSCRAMSHA1(unittest.TestCase):
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
 
-        with ignore_deprecations():
-            client = rs_or_single_client_noauth()
-            self.assertTrue(client.pymongo_test.authenticate(
-                'user', 'pass', mechanism='SCRAM-SHA-1'))
-            client.pymongo_test.command('dbstats')
-
         client = rs_or_single_client_noauth(
             'mongodb://user:pass@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1'
             % (host, port))
@@ -391,6 +342,7 @@ class TestSCRAMSHA1(unittest.TestCase):
             db.command('dbstats')
 
 
+# https://github.com/mongodb/specifications/blob/master/source/auth/auth.rst#scram-sha-256-and-mechanism-negotiation
 class TestSCRAM(unittest.TestCase):
 
     @client_context.require_auth
@@ -432,148 +384,50 @@ class TestSCRAM(unittest.TestCase):
             self.assertEqual(
                 started, ['saslStart', 'saslContinue', 'saslContinue'])
 
-    @ignore_deprecations
     def test_scram(self):
-        host, port = client_context.host, client_context.port
-
+        # Step 1: create users
         client_context.create_user(
-            'testscram',
-            'sha1',
-            'pwd',
-            roles=['dbOwner'],
+            'testscram', 'sha1', 'pwd', roles=['dbOwner'],
             mechanisms=['SCRAM-SHA-1'])
-
         client_context.create_user(
-            'testscram',
-            'sha256',
-            'pwd',
-            roles=['dbOwner'],
+            'testscram', 'sha256', 'pwd', roles=['dbOwner'],
             mechanisms=['SCRAM-SHA-256'])
-
         client_context.create_user(
-            'testscram',
-            'both',
-            'pwd',
-            roles=['dbOwner'],
+            'testscram', 'both', 'pwd', roles=['dbOwner'],
             mechanisms=['SCRAM-SHA-1', 'SCRAM-SHA-256'])
 
+        # Step 2: verify auth success cases
         client = rs_or_single_client_noauth(
-            event_listeners=[self.listener])
-        self.assertTrue(
-            client.testscram.authenticate('sha1', 'pwd'))
+            username='sha1', password='pwd', authSource='testscram')
         client.testscram.command('dbstats')
-        client.testscram.logout()
-        self.assertTrue(
-            client.testscram.authenticate(
-                'sha1', 'pwd', mechanism='SCRAM-SHA-1'))
+
+        client = rs_or_single_client_noauth(
+            username='sha1', password='pwd', authSource='testscram',
+            authMechanism='SCRAM-SHA-1')
         client.testscram.command('dbstats')
-        client.testscram.logout()
-        self.assertRaises(
-            OperationFailure,
-            client.testscram.authenticate,
-            'sha1', 'pwd', mechanism='SCRAM-SHA-256')
 
-        self.assertTrue(
-            client.testscram.authenticate('sha256', 'pwd'))
+        client = rs_or_single_client_noauth(
+            username='sha256', password='pwd', authSource='testscram')
         client.testscram.command('dbstats')
-        client.testscram.logout()
-        self.assertTrue(
-            client.testscram.authenticate(
-                'sha256', 'pwd', mechanism='SCRAM-SHA-256'))
+
+        client = rs_or_single_client_noauth(
+            username='sha256', password='pwd', authSource='testscram',
+            authMechanism='SCRAM-SHA-256')
         client.testscram.command('dbstats')
-        client.testscram.logout()
-        self.assertRaises(
-            OperationFailure,
-            client.testscram.authenticate,
-            'sha256', 'pwd', mechanism='SCRAM-SHA-1')
 
-        self.listener.results.clear()
-        self.assertTrue(
-            client.testscram.authenticate('both', 'pwd'))
-        started = self.listener.results['started'][0]
-        self.assertEqual(started.command.get('mechanism'), 'SCRAM-SHA-256')
+        # Step 2: SCRAM-SHA-1 and SCRAM-SHA-256
+        client = rs_or_single_client_noauth(
+            username='both', password='pwd', authSource='testscram',
+            authMechanism='SCRAM-SHA-1')
         client.testscram.command('dbstats')
-        client.testscram.logout()
-        self.assertTrue(
-            client.testscram.authenticate(
-                'both', 'pwd', mechanism='SCRAM-SHA-256'))
+        client = rs_or_single_client_noauth(
+            username='both', password='pwd', authSource='testscram',
+            authMechanism='SCRAM-SHA-256')
         client.testscram.command('dbstats')
-        client.testscram.logout()
-        self.assertTrue(
-            client.testscram.authenticate(
-                'both', 'pwd', mechanism='SCRAM-SHA-1'))
-        client.testscram.command('dbstats')
-        client.testscram.logout()
-
-        self.assertRaises(
-            OperationFailure,
-            client.testscram.authenticate,
-            'not-a-user', 'pwd')
-
-        if HAVE_STRINGPREP:
-            # Test the use of SASLprep on passwords. For example,
-            # saslprep('\u2136') becomes 'IV' and saslprep('I\u00ADX')
-            # becomes 'IX'. SASLprep is only supported when the standard
-            # library provides stringprep.
-            client_context.create_user(
-                'testscram',
-                '\u2168',
-                '\u2163',
-                roles=['dbOwner'],
-                mechanisms=['SCRAM-SHA-256'])
-
-            client_context.create_user(
-                'testscram',
-                'IX',
-                'IX',
-                roles=['dbOwner'],
-                mechanisms=['SCRAM-SHA-256'])
-
-            self.assertTrue(
-                client.testscram.authenticate('\u2168', '\u2163'))
-            client.testscram.command('dbstats')
-            client.testscram.logout()
-            self.assertTrue(
-                client.testscram.authenticate(
-                    '\u2168', '\u2163', mechanism='SCRAM-SHA-256'))
-            client.testscram.command('dbstats')
-            client.testscram.logout()
-            self.assertTrue(
-                client.testscram.authenticate('\u2168', 'IV'))
-            client.testscram.command('dbstats')
-            client.testscram.logout()
-
-            self.assertTrue(
-                client.testscram.authenticate('IX', 'I\u00ADX'))
-            client.testscram.command('dbstats')
-            client.testscram.logout()
-            self.assertTrue(
-                client.testscram.authenticate(
-                    'IX', 'I\u00ADX', mechanism='SCRAM-SHA-256'))
-            client.testscram.command('dbstats')
-            client.testscram.logout()
-            self.assertTrue(
-                client.testscram.authenticate('IX', 'IX'))
-            client.testscram.command('dbstats')
-            client.testscram.logout()
-
-            client = rs_or_single_client_noauth(
-                'mongodb://\u2168:\u2163@%s:%d/testscram' % (host, port))
-            client.testscram.command('dbstats')
-            client = rs_or_single_client_noauth(
-                'mongodb://\u2168:IV@%s:%d/testscram' % (host, port))
-            client.testscram.command('dbstats')
-
-            client = rs_or_single_client_noauth(
-                'mongodb://IX:I\u00ADX@%s:%d/testscram' % (host, port))
-            client.testscram.command('dbstats')
-            client = rs_or_single_client_noauth(
-                'mongodb://IX:IX@%s:%d/testscram' % (host, port))
-            client.testscram.command('dbstats')
 
         self.listener.results.clear()
         client = rs_or_single_client_noauth(
-            'mongodb://both:pwd@%s:%d/testscram' % (host, port),
+            username='both', password='pwd', authSource='testscram',
             event_listeners=[self.listener])
         client.testscram.command('dbstats')
         if client_context.version.at_least(4, 4, -1):
@@ -584,17 +438,26 @@ class TestSCRAM(unittest.TestCase):
             started = self.listener.results['started'][0]
             self.assertEqual(started.command.get('mechanism'), 'SCRAM-SHA-256')
 
+        # Step 3: verify auth failure conditions
         client = rs_or_single_client_noauth(
-            'mongodb://both:pwd@%s:%d/testscram?authMechanism=SCRAM-SHA-1'
-            % (host, port))
-        client.testscram.command('dbstats')
+            username='sha1', password='pwd', authSource='testscram',
+            authMechanism='SCRAM-SHA-256')
+        with self.assertRaises(OperationFailure):
+            client.testscram.command('dbstats')
 
         client = rs_or_single_client_noauth(
-            'mongodb://both:pwd@%s:%d/testscram?authMechanism=SCRAM-SHA-256'
-            % (host, port))
-        client.testscram.command('dbstats')
+            username='sha256', password='pwd', authSource='testscram',
+            authMechanism='SCRAM-SHA-1')
+        with self.assertRaises(OperationFailure):
+            client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            username='not-a-user', password='pwd', authSource='testscram')
+        with self.assertRaises(OperationFailure):
+            client.testscram.command('dbstats')
 
         if client_context.is_rs:
+            host, port = client_context.host, client_context.port
             uri = ('mongodb://both:pwd@%s:%d/testscram'
                    '?replicaSet=%s' % (host, port,
                                        client_context.replica_set_name))
@@ -603,6 +466,62 @@ class TestSCRAM(unittest.TestCase):
             db = client.get_database(
                 'testscram', read_preference=ReadPreference.SECONDARY)
             db.command('dbstats')
+
+    @unittest.skipUnless(HAVE_STRINGPREP, 'Cannot test without stringprep')
+    def test_scram_saslprep(self):
+        # Step 4: test SASLprep
+        host, port = client_context.host, client_context.port
+        # Test the use of SASLprep on passwords. For example,
+        # saslprep('\u2136') becomes 'IV' and saslprep('I\u00ADX')
+        # becomes 'IX'. SASLprep is only supported when the standard
+        # library provides stringprep.
+        client_context.create_user(
+            'testscram', '\u2168', '\u2163', roles=['dbOwner'],
+            mechanisms=['SCRAM-SHA-256'])
+        client_context.create_user(
+            'testscram', 'IX', 'IX', roles=['dbOwner'],
+            mechanisms=['SCRAM-SHA-256'])
+
+        client = rs_or_single_client_noauth(
+            username='\u2168', password='\u2163', authSource='testscram')
+        client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            username='\u2168', password='\u2163', authSource='testscram',
+            authMechanism='SCRAM-SHA-256')
+        client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            username='\u2168', password='IV', authSource='testscram')
+        client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            username='IX', password='I\u00ADX', authSource='testscram')
+        client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            username='IX', password='I\u00ADX', authSource='testscram',
+            authMechanism='SCRAM-SHA-256')
+        client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            username='IX', password='IX', authSource='testscram',
+            authMechanism='SCRAM-SHA-256')
+        client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            'mongodb://\u2168:\u2163@%s:%d/testscram' % (host, port))
+        client.testscram.command('dbstats')
+        client = rs_or_single_client_noauth(
+            'mongodb://\u2168:IV@%s:%d/testscram' % (host, port))
+        client.testscram.command('dbstats')
+
+        client = rs_or_single_client_noauth(
+            'mongodb://IX:I\u00ADX@%s:%d/testscram' % (host, port))
+        client.testscram.command('dbstats')
+        client = rs_or_single_client_noauth(
+            'mongodb://IX:IX@%s:%d/testscram' % (host, port))
+        client.testscram.command('dbstats')
 
     def test_cache(self):
         client = single_client()
@@ -645,38 +564,6 @@ class TestSCRAM(unittest.TestCase):
         threads = []
         for _ in range(4):
             threads.append(AutoAuthenticateThread(coll))
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-            self.assertTrue(thread.success)
-
-class TestThreadedAuth(unittest.TestCase):
-
-    @client_context.require_auth
-    def test_db_authenticate_threaded(self):
-
-        db = client_context.client.db
-        coll = db.test
-        coll.drop()
-        coll.insert_one({'_id': 1})
-
-        client_context.create_user(
-            'db',
-            'user',
-            'pass',
-            roles=['dbOwner'])
-        self.addCleanup(db.command, 'dropUser', 'user')
-
-        db = rs_or_single_client_noauth().db
-        db.authenticate('user', 'pass')
-        # No error.
-        db.authenticate('user', 'pass')
-
-        db = rs_or_single_client_noauth().db
-        threads = []
-        for _ in range(4):
-            threads.append(DBAuthenticateThread(db, 'user', 'pass'))
         for thread in threads:
             thread.start()
         for thread in threads:

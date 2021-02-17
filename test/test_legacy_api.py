@@ -15,13 +15,9 @@
 """Test various legacy / deprecated API features."""
 
 import sys
-import uuid
 
 sys.path[0:0] = [""]
 
-from bson.binary import PYTHON_LEGACY, STANDARD
-from bson.code import Code
-from bson.codec_options import CodecOptions
 from bson.son import SON
 from pymongo import ASCENDING, GEOHAYSTACK
 from pymongo.common import partition_node
@@ -1113,10 +1109,9 @@ class TestLegacyBulkAuthorization(BulkAuthorizationTestBase):
     def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = rs_or_single_client_noauth()
-        db = cli.pymongo_test
-        coll = db.test
-        db.authenticate('readonly', 'pw')
+        cli = rs_or_single_client_noauth(
+            username='readonly', password='pw', authSource='pymongo_test')
+        coll = cli.pymongo_test.test
         bulk = coll.initialize_ordered_bulk_op()
         bulk.insert({'x': 1})
         self.assertRaises(OperationFailure, bulk.execute)
@@ -1124,10 +1119,9 @@ class TestLegacyBulkAuthorization(BulkAuthorizationTestBase):
     def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = rs_or_single_client_noauth()
-        db = cli.pymongo_test
-        coll = db.test
-        db.authenticate('noremove', 'pw')
+        cli = rs_or_single_client_noauth(
+            username='noremove', password='pw', authSource='pymongo_test')
+        coll = cli.pymongo_test.test
         bulk = coll.initialize_ordered_bulk_op()
         bulk.insert({'x': 1})
         bulk.find({'x': 2}).upsert().replace_one({'x': 2})

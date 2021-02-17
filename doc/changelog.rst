@@ -23,6 +23,8 @@ Breaking Changes in 4.0
   :attr:`pymongo.mongo_client.MongoClient.is_locked`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.database_names`.
 - Removed :meth:`pymongo.database.Database.collection_names`.
+- Removed :meth:`pymongo.database.Database.authenticate` and
+  :meth:`pymongo.database.Database.logout`.
 - Removed :meth:`pymongo.database.Database.error`,
   :meth:`pymongo.database.Database.last_status`,
   :meth:`pymongo.database.Database.previous_error`,

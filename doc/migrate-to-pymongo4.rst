@@ -121,6 +121,27 @@ can be changed to this::
 Database
 --------
 
+Database.authenticate and Database.logout are removed
+.....................................................
+
+Removed :meth:`pymongo.database.Database.authenticate` and
+:meth:`pymongo.database.Database.logout`. Authenticating multiple users
+on the same client conflicts with support for logical sessions in MongoDB 3.6+.
+To authenticate as multiple users, create multiple instances of
+:class:`~pymongo.mongo_client.MongoClient`. Code like this::
+
+    client = MongoClient()
+    client.admin.authenticate('user1', 'pass1')
+    client.admin.authenticate('user2', 'pass2')
+
+can be changed to this::
+
+    client1 = MongoClient(username='user1', password='pass1')
+    client2 = MongoClient(username='user2', password='pass2')
+
+Alternatively, create a single user that contains all the authentication privileges
+required by your application.
+
 Database.collection_names is removed
 ....................................
 

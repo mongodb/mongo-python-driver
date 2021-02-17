@@ -35,7 +35,7 @@ from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
 from bson.son import SON
 from bson.tz_util import utc
 import pymongo
-from pymongo import auth, message
+from pymongo import message
 from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.command_cursor import CommandCursor
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
@@ -80,7 +80,6 @@ from test.utils import (assertRaisesExactly,
                         FunctionCallRecorder,
                         get_pool,
                         gevent_monkey_patched,
-                        ignore_deprecations,
                         is_greenthread_patched,
                         lazy_client_trial,
                         NTHREADS,
@@ -909,37 +908,6 @@ class TestClient(IntegrationTest):
             rs_or_single_client(username="ad min", password="foo").server_info()
 
     @client_context.require_auth
-    @ignore_deprecations
-    def test_multiple_logins(self):
-        client_context.create_user(
-            'pymongo_test', 'user1', 'pass', roles=['readWrite'])
-        client_context.create_user(
-            'pymongo_test', 'user2', 'pass', roles=['readWrite'])
-        self.addCleanup(remove_all_users, self.client.pymongo_test)
-
-        client = rs_or_single_client_noauth(
-            "mongodb://user1:pass@%s:%d/pymongo_test" % (
-                client_context.host, client_context.port))
-
-        client.pymongo_test.test.find_one()
-        with self.assertRaises(OperationFailure):
-            # Can't log in to the same database with multiple users.
-            client.pymongo_test.authenticate('user2', 'pass')
-
-        client.pymongo_test.test.find_one()
-        client.pymongo_test.logout()
-        with self.assertRaises(OperationFailure):
-            client.pymongo_test.test.find_one()
-
-        client.pymongo_test.authenticate('user2', 'pass')
-        client.pymongo_test.test.find_one()
-
-        with self.assertRaises(OperationFailure):
-            client.pymongo_test.authenticate('user1', 'pass')
-
-        client.pymongo_test.test.find_one()
-
-    @client_context.require_auth
     def test_lazy_auth_raises_operation_failure(self):
         lazy_client = rs_or_single_client_noauth(
             "mongodb://user:wrong@%s/pymongo_test" % (client_context.host,),
@@ -1305,12 +1273,6 @@ class TestClient(IntegrationTest):
         c = connected(rs_or_single_client(maxPoolSize=1,
                                           waitQueueTimeoutMS=1,
                                           retryReads=False))
-
-        # Simulate an authenticate() call on a different socket.
-        credentials = auth._build_credentials_tuple(
-            'DEFAULT', 'admin', db_user, db_pwd, {}, None)
-
-        c._cache_credentials('test', credentials, connect=False)
 
         # Cause a network error on the actual socket.
         pool = get_pool(c)

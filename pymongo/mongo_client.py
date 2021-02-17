@@ -708,7 +708,7 @@ class MongoClient(common.BaseObject):
         self.__all_credentials = {}
         creds = options.credentials
         if creds:
-            self._cache_credentials(creds.source, creds)
+            self.__all_credentials[creds.source] = creds
 
         self._topology_settings = TopologySettings(
             seeds=seeds,
@@ -752,38 +752,6 @@ class MongoClient(common.BaseObject):
             from pymongo.encryption import _Encrypter
             self._encrypter = _Encrypter.create(
                 self, self.__options.auto_encryption_opts)
-
-    def _cache_credentials(self, source, credentials, connect=False):
-        """Save a set of authentication credentials.
-
-        The credentials are used to login a socket whenever one is created.
-        If `connect` is True, verify the credentials on the server first.
-        """
-        # Don't let other threads affect this call's data.
-        all_credentials = self.__all_credentials.copy()
-
-        if source in all_credentials:
-            # Nothing to do if we already have these credentials.
-            if credentials == all_credentials[source]:
-                return
-            raise OperationFailure('Another user is already authenticated '
-                                   'to this database. You must logout first.')
-
-        if connect:
-            server = self._get_topology().select_server(
-                writable_preferred_server_selector)
-
-            # get_socket() logs out of the database if logged in with old
-            # credentials, and logs in with new ones.
-            with server.get_socket(all_credentials) as sock_info:
-                sock_info.authenticate(credentials)
-
-        # If several threads run _cache_credentials at once, last one wins.
-        self.__all_credentials[source] = credentials
-
-    def _purge_credentials(self, source):
-        """Purge credentials from the authentication cache."""
-        self.__all_credentials.pop(source, None)
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
@@ -1594,19 +1562,11 @@ class MongoClient(common.BaseObject):
             helpers._handle_exception()
 
     def __start_session(self, implicit, **kwargs):
-        # Driver Sessions Spec: "If startSession is called when multiple users
-        # are authenticated drivers MUST raise an error with the error message
-        # 'Cannot call startSession when multiple users are authenticated.'"
-        authset = set(self.__all_credentials.values())
-        if len(authset) > 1:
-            raise InvalidOperation("Cannot call start_session when"
-                                   " multiple users are authenticated")
-
         # Raises ConfigurationError if sessions are not supported.
         server_session = self._get_server_session()
         opts = client_session.SessionOptions(**kwargs)
         return client_session.ClientSession(
-            self, server_session, opts, authset, implicit)
+            self, server_session, opts, implicit)
 
     def start_session(self,
                       causal_consistency=True,
@@ -1617,9 +1577,7 @@ class MongoClient(common.BaseObject):
         :class:`~pymongo.client_session.SessionOptions`. See the
         :mod:`~pymongo.client_session` module for details and examples.
 
-        Requires MongoDB 3.6. It is an error to call :meth:`start_session`
-        if this client has been authenticated to multiple databases using the
-        deprecated method :meth:`~pymongo.database.Database.authenticate`.
+        Requires MongoDB 3.6.
 
         A :class:`~pymongo.client_session.ClientSession` may only be used with
         the MongoClient that started it. :class:`ClientSession` instances are
@@ -1655,7 +1613,7 @@ class MongoClient(common.BaseObject):
             # should always opt-in.
             return self.__start_session(True, causal_consistency=False)
         except (ConfigurationError, InvalidOperation):
-            # Sessions not supported, or multiple users authenticated.
+            # Sessions not supported.
             return None
 
     @contextlib.contextmanager
