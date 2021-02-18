@@ -385,6 +385,10 @@ functions:
             export FLE_AZURE_CLIENTSECRET="${fle_azure_clientsecret}"
             export FLE_GCP_EMAIL="${fle_gcp_email}"
             export FLE_GCP_PRIVATEKEY="${fle_gcp_privatekey}"
+            # Needed for generating temporary aws credentials.
+            export AWS_ACCESS_KEY_ID="${fle_aws_key}"
+            export AWS_SECRET_ACCESS_KEY="${fle_aws_secret}"
+            export AWS_DEFAULT_REGION=us-east-1
           EOT
           fi
     - command: shell.exec
