@@ -371,7 +371,8 @@ class ClientEncryption(object):
 
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
                 These are the AWS access key ID and AWS secret access key used
-                to generate KMS messages.
+                to generate KMS messages. An optional "sessionToken" may be
+                included to support temporary AWS credentials.
               - `azure`: Map with "tenantId", "clientId", and "clientSecret" as
                 strings. Additionally, "identityPlatformEndpoint" may also be
                 specified as a string (defaults to 'login.microsoftonline.com').
