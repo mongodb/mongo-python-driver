@@ -268,7 +268,7 @@ class _Encrypter(object):
         def _get_internal_client(encrypter, mongo_client):
             if encrypter._internal_client is not None:
                 return encrypter._internal_client
-            internal_client = mongo_client.duplicate(
+            internal_client = mongo_client._duplicate(
                 minPoolSize=0, auto_encryption_opts=None)
             encrypter._internal_client = internal_client
             return internal_client
