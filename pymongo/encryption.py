@@ -265,12 +265,12 @@ class _Encrypter(object):
         self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._internal_client = None
 
-        def get_internal_client(self, client):
-            if self._internal_client is not None:
-                return self._internal_client
-            internal_client = client.duplicate(minPoolSize=0,
-                                               auto_encryption_opts=None)
-            self._internal_client = internal_client
+        def _get_internal_client(encrypter, mongo_client):
+            if encrypter._internal_client is not None:
+                return encrypter._internal_client
+            internal_client = mongo_client.duplicate(
+                minPoolSize=0, auto_encryption_opts=None)
+            encrypter._internal_client = internal_client
             return internal_client
 
         if opts._key_vault_client is not None:
@@ -280,7 +280,7 @@ class _Encrypter(object):
             key_vault_client = client
         else:
             # Limited pool size, use internal client.
-            key_vault_client = get_internal_client(self)
+            key_vault_client = _get_internal_client(self, client)
 
         if opts._bypass_auto_encryption:
             metadata_client = None
@@ -289,7 +289,7 @@ class _Encrypter(object):
             metadata_client = client
         else:
             # Limited pool size, use internal client.
-            metadata_client = get_internal_client(self)
+            metadata_client = _get_internal_client(self, client)
 
         db, coll = opts._key_vault_namespace.split('.', 1)
         key_vault_coll = key_vault_client[db][coll]
