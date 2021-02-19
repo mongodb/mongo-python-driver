@@ -750,7 +750,7 @@ class MongoClient(common.BaseObject):
         self._encrypter = None
         if self.__options.auto_encryption_opts:
             from pymongo.encryption import _Encrypter
-            self._encrypter = _Encrypter.create(
+            self._encrypter = _Encrypter(
                 self, self.__options.auto_encryption_opts)
 
     def _server_property(self, attr_name):

@@ -246,30 +246,64 @@ class _EncryptionIO(MongoCryptCallback):
             self.mongocryptd_client = None
 
 
-# TODO: don't use a global for this - it causes a single internal MongoClient
-# to be shared across multiple parent MongoClient instances that are configured
-# for automatic encryption.
-internal_client = None
-
-
 class _Encrypter(object):
-    def __init__(self, io_callbacks, opts):
-        """Encrypts and decrypts MongoDB commands.
+    """
+    Encrypts and decrypts MongoDB commands.
 
-        This class is used to support automatic encryption and decryption of
-        MongoDB commands.
+    This class is used to support automatic encryption and decryption of
+    MongoDB commands."""
+    def __init__(self, client, opts):
+        """Create a _Encrypter for a client.
 
         :Parameters:
-          - `io_callbacks`: A :class:`MongoCryptCallback`.
+          - `client`: The encrypted MongoClient.
           - `opts`: The encrypted client's :class:`AutoEncryptionOpts`.
         """
         if opts._schema_map is None:
             schema_map = None
         else:
             schema_map = _dict_to_bson(opts._schema_map, False, _DATA_KEY_OPTS)
+        self._bypass_auto_encryption = opts._bypass_auto_encryption
+        self._internal_client = None
+
+        def get_internal_client(self):
+            if self._internal_client is not None:
+                return self._internal_client
+            # TODO: only change spec-defined options and keep all others the same
+            internal_client = MongoClient(
+                replicaSet='repl0', minPoolSize=0, uuidRepresentation='standard')
+            self._internal_client = internal_client
+            return internal_client
+
+        if opts._key_vault_client is not None:
+            key_vault_client = opts._key_vault_client
+        elif client.max_pool_size is None:
+            # Unlimited pool size, use the same client.
+            key_vault_client = client
+        else:
+            # Limited pool size, use internal client.
+            key_vault_client = get_internal_client(self)
+
+        if opts._bypass_auto_encryption:
+            metadata_client = None
+        elif client.max_pool_size is None:
+            # Unlimited pool size, use the same client.
+            metadata_client = client
+        else:
+            # Limited pool size, use internal client.
+            metadata_client = get_internal_client(self)
+
+        db, coll = opts._key_vault_namespace.split('.', 1)
+        key_vault_coll = key_vault_client[db][coll]
+
+        mongocryptd_client = MongoClient(
+            opts._mongocryptd_uri, connect=False,
+            serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS)
+
+        io_callbacks = _EncryptionIO(
+            metadata_client, key_vault_coll, mongocryptd_client, opts)
         self._auto_encrypter = AutoEncrypter(io_callbacks, MongoCryptOptions(
             opts._kms_providers, schema_map))
-        self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._closed = False
 
     def encrypt(self, database, cmd, check_keys, codec_options):
@@ -319,54 +353,6 @@ class _Encrypter(object):
         """Cleanup resources."""
         self._closed = True
         self._auto_encrypter.close()
-
-    @staticmethod
-    def create(client, opts):
-        """Create a _CommandEncyptor for a client.
-
-        :Parameters:
-          - `client`: The encrypted MongoClient.
-          - `opts`: The encrypted client's :class:`AutoEncryptionOpts`.
-
-        :Returns:
-          A :class:`_CommandEncrypter` for this client.
-        """
-        # import ipdb; ipdb.set_trace()
-
-        def get_internal_client():
-            global internal_client
-            if internal_client is not None:
-                return internal_client
-            # TODO: only change spec-defined options and keep all others the same
-            internal_client = MongoClient(replicaSet='repl0', minPoolSize=0, uuidRepresentation='standard')
-            return internal_client
-
-        if opts._key_vault_client is not None:
-            key_vault_client = opts._key_vault_client
-        elif client.max_pool_size is None:
-            # Unlimited pool size, use the same client.
-            key_vault_client = client
-        else:
-            # Limited pool size, use internal client.
-            key_vault_client = get_internal_client()
-
-        if opts._bypass_auto_encryption:
-            metadata_client = None
-        elif client.max_pool_size is None:
-            metadata_client = client
-        else:
-            metadata_client = get_internal_client()
-
-        db, coll = opts._key_vault_namespace.split('.', 1)
-        key_vault_coll = key_vault_client[db][coll]
-
-        mongocryptd_client = MongoClient(
-            opts._mongocryptd_uri, connect=False,
-            serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS)
-
-        io_callbacks = _EncryptionIO(
-            metadata_client, key_vault_coll, mongocryptd_client, opts)
-        return _Encrypter(io_callbacks, opts)
 
 
 class Algorithm(object):
