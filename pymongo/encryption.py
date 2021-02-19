@@ -268,7 +268,8 @@ class _Encrypter(object):
         def get_internal_client(self, client):
             if self._internal_client is not None:
                 return self._internal_client
-            internal_client = client.duplicate(minPoolSize=0)
+            internal_client = client.duplicate(minPoolSize=0,
+                                               auto_encryption_opts=None)
             self._internal_client = internal_client
             return internal_client
 
