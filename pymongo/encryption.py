@@ -247,8 +247,7 @@ class _EncryptionIO(MongoCryptCallback):
 
 
 class _Encrypter(object):
-    """
-    Encrypts and decrypts MongoDB commands.
+    """Encrypts and decrypts MongoDB commands.
 
     This class is used to support automatic encryption and decryption of
     MongoDB commands."""
@@ -266,12 +265,10 @@ class _Encrypter(object):
         self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._internal_client = None
 
-        def get_internal_client(self):
+        def get_internal_client(self, client):
             if self._internal_client is not None:
                 return self._internal_client
-            # TODO: only change spec-defined options and keep all others the same
-            internal_client = MongoClient(
-                replicaSet='repl0', minPoolSize=0, uuidRepresentation='standard')
+            internal_client = client.duplicate(minPoolSize=0)
             self._internal_client = internal_client
             return internal_client
 

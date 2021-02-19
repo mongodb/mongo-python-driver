@@ -607,6 +607,14 @@ class MongoClient(common.BaseObject):
 
                client.__my_database__
         """
+        self.__init_kwargs = {'host': host,
+                              'port': port,
+                              'document_class': document_class,
+                              'tz_aware': tz_aware,
+                              'connect': connect,
+                              'type_registry': type_registry,
+                              **kwargs}
+
         if host is None:
             host = self.HOST
         if isinstance(host, str):
@@ -752,6 +760,11 @@ class MongoClient(common.BaseObject):
             from pymongo.encryption import _Encrypter
             self._encrypter = _Encrypter(
                 self, self.__options.auto_encryption_opts)
+
+    def _duplicate(self, **kwargs):
+        args = self.__init_kwargs.copy()
+        args.update(kwargs)
+        return MongoClient(**args)
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
