@@ -1396,58 +1396,193 @@ class TestDeadlock(EncryptionIntegrationTest):
         register(self.topology_listener)
         self.optargs = ({'local': {'key': LOCAL_MASTER_KEY}}, 'keyvault.datakeys')
 
-    def test_case_1(self):
-        opts = AutoEncryptionOpts(
-            *self.optargs,
-            bypass_auto_encryption=False,
-            key_vault_client=None)
-
+    def _run_test(self, max_pool_size, auto_encryption_opts):
         client_encrypted = rs_or_single_client(
-            maxPoolSize=1, readConcernLevel='majority', w='majority',
-            auto_encryption_opts=opts, event_listeners=[self.client_listener])
-        client_encrypted.db.coll.insert_one(
-            {"_id": 0, "encrypted": "string0"})
+            readConcernLevel='majority',
+            w='majority',
+            maxPoolSize=max_pool_size,
+            auto_encryption_opts=auto_encryption_opts,
+            event_listeners=[self.client_listener])
+
+        if auto_encryption_opts._bypass_auto_encryption == True:
+            self.client_test.db.coll.insert_one(
+                {"_id": 0, "encrypted": self.ciphertext})
+        elif auto_encryption_opts._bypass_auto_encryption == False:
+            client_encrypted.db.coll.insert_one(
+                {"_id": 0, "encrypted": "string0"})
+        else:
+            raise RuntimeError("bypass_auto_encryption must be a bool")
 
         result = client_encrypted.db.coll.find_one({"_id": 0})
         self.assertEqual(result, {"_id": 0, "encrypted": "string0"})
 
-        # TODO: check self.client_listener commandStartedEvent expectations
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
-        self.assertEqual(len(self.topology_listener.results['opened']), 2)
-
-        client_encrypted.close()
-
-    def test_case_2(self):
-        opts = AutoEncryptionOpts(
-            *self.optargs,
-            bypass_auto_encryption=False,
-            key_vault_client=self.client_keyvault)
-
-        client_encrypted = rs_or_single_client(
-            maxPoolSize=1, readConcernLevel='majority', w='majority',
-            auto_encryption_opts=opts, event_listeners=[self.client_listener])
         self.addCleanup(client_encrypted.close)
-        client_encrypted.db.coll.insert_one(
-            {"_id": 0, "encrypted": "string0"})
 
-        result = client_encrypted.db.coll.find_one({"_id": 0})
-        self.assertEqual(result, {"_id": 0, "encrypted": "string0"})
+    def test_case_1(self):
+        self._run_test(max_pool_size=1,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=False,
+                           key_vault_client=None))
 
         cev = self.client_listener.results['started']
-        # TODO: enable these checks once internal client inherits command listener from parent
-        # self.assertEqual(cev[0].command_name, 'listCollections')
-        # self.assertEqual(cev[0].database_name, 'db')
-        self.assertEqual(cev[0].command_name, 'insert')
+        self.assertEqual(len(cev), 4)
+        self.assertEqual(cev[0].command_name, 'listCollections')
         self.assertEqual(cev[0].database_name, 'db')
         self.assertEqual(cev[1].command_name, 'find')
-        self.assertEqual(cev[1].database_name, 'db')
-
-        kev = self.client_keyvault_listener.results['started']
-        self.assertEqual(kev[0].command_name, 'find')
-        self.assertEqual(kev[0].database_name, 'keyvault')
+        self.assertEqual(cev[1].database_name, 'keyvault')
+        self.assertEqual(cev[2].command_name, 'insert')
+        self.assertEqual(cev[2].database_name, 'db')
+        self.assertEqual(cev[3].command_name, 'find')
+        self.assertEqual(cev[3].database_name, 'db')
 
         # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 2)
+
+    def test_case_2(self):
+        self._run_test(max_pool_size=1,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=False,
+                           key_vault_client=self.client_keyvault))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 3)
+        self.assertEqual(cev[0].command_name, 'listCollections')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'insert')
+        self.assertEqual(cev[1].database_name, 'db')
+        self.assertEqual(cev[2].command_name, 'find')
+        self.assertEqual(cev[2].database_name, 'db')
+
+        cev = self.client_keyvault_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'keyvault')
+
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened']), 2)
+
+    def test_case_3(self):
+        self._run_test(max_pool_size=1,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=True,
+                           key_vault_client=None))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 2)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'find')
+        self.assertEqual(cev[1].database_name, 'keyvault')
+
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened']), 2)
+
+    def test_case_4(self):
+        self._run_test(max_pool_size=1,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=True,
+                           key_vault_client=self.client_keyvault))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'db')
+
+        cev = self.client_keyvault_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'keyvault')
+
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+    def test_case_5(self):
+        self._run_test(max_pool_size=None,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=False,
+                           key_vault_client=None))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 5)
+        self.assertEqual(cev[0].command_name, 'listCollections')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'listCollections')
+        self.assertEqual(cev[1].database_name, 'keyvault')
+        self.assertEqual(cev[2].command_name, 'find')
+        self.assertEqual(cev[2].database_name, 'keyvault')
+        self.assertEqual(cev[3].command_name, 'insert')
+        self.assertEqual(cev[3].database_name, 'db')
+        self.assertEqual(cev[4].command_name, 'find')
+        self.assertEqual(cev[4].database_name, 'db')
+
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+    def test_case_6(self):
+        self._run_test(max_pool_size=None,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=False,
+                           key_vault_client=self.client_keyvault))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 3)
+        self.assertEqual(cev[0].command_name, 'listCollections')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'insert')
+        self.assertEqual(cev[1].database_name, 'db')
+        self.assertEqual(cev[2].command_name, 'find')
+        self.assertEqual(cev[2].database_name, 'db')
+
+        cev = self.client_keyvault_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'keyvault')
+
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+    def test_case_7(self):
+        self._run_test(max_pool_size=None,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=True,
+                           key_vault_client=None))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 2)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'find')
+        self.assertEqual(cev[1].database_name, 'keyvault')
+
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+    def test_case_8(self):
+        self._run_test(max_pool_size=None,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=True,
+                           key_vault_client=self.client_keyvault))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'db')
+
+        cev = self.client_keyvault_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'keyvault')
+
+        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
 
 
 if __name__ == "__main__":
