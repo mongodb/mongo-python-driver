@@ -45,7 +45,6 @@ from pymongo.errors import (BulkWriteError,
                             InvalidOperation,
                             OperationFailure,
                             WriteError)
-from pymongo.monitoring import register
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 from pymongo.write_concern import WriteConcern
@@ -1377,7 +1376,7 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.client_test.db.coll.drop()
         self.client_test.keyvault.datakeys.insert_one(
             json_data('external', 'external-key.json'))
-        db_coll = self.client_test.db.create_collection(
+        _ = self.client_test.db.create_collection(
             'coll', validator={'$jsonSchema': json_data(
                 'external', 'external-schema.json')},
             codec_options=OPTS)
@@ -1393,7 +1392,6 @@ class TestDeadlock(EncryptionIntegrationTest):
 
         self.client_listener = OvertCommandListener()
         self.topology_listener = TopologyEventListener()
-        register(self.topology_listener)
         self.optargs = ({'local': {'key': LOCAL_MASTER_KEY}}, 'keyvault.datakeys')
 
     def _run_test(self, max_pool_size, auto_encryption_opts):
@@ -1402,7 +1400,7 @@ class TestDeadlock(EncryptionIntegrationTest):
             w='majority',
             maxPoolSize=max_pool_size,
             auto_encryption_opts=auto_encryption_opts,
-            event_listeners=[self.client_listener])
+            event_listeners=[self.client_listener, self.topology_listener])
 
         if auto_encryption_opts._bypass_auto_encryption == True:
             self.client_test.db.coll.insert_one(
