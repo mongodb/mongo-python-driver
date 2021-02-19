@@ -1359,7 +1359,8 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin,
             expected_document_extjson, {"secret_gcp": "string0"})
 
 
-class TestDeadlock(EncryptionIntegrationTest):
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#deadlock-tests
+class TestDeadlockProse(EncryptionIntegrationTest):
     def setUp(self):
         self.client_test = rs_or_single_client(
             maxPoolSize=1, readConcernLevel='majority', w='majority',
