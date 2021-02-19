@@ -1434,7 +1434,6 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(cev[3].command_name, 'find')
         self.assertEqual(cev[3].database_name, 'db')
 
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 2)
 
     def test_case_2(self):
@@ -1458,7 +1457,6 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(cev[0].command_name, 'find')
         self.assertEqual(cev[0].database_name, 'keyvault')
 
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 2)
 
     def test_case_3(self):
@@ -1475,7 +1473,6 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(cev[1].command_name, 'find')
         self.assertEqual(cev[1].database_name, 'keyvault')
 
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 2)
 
     def test_case_4(self):
@@ -1495,7 +1492,6 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(cev[0].command_name, 'find')
         self.assertEqual(cev[0].database_name, 'keyvault')
 
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 1)
 
     def test_case_5(self):
@@ -1518,7 +1514,6 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(cev[4].command_name, 'find')
         self.assertEqual(cev[4].database_name, 'db')
 
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 1)
 
     def test_case_6(self):
@@ -1542,7 +1537,6 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(cev[0].command_name, 'find')
         self.assertEqual(cev[0].database_name, 'keyvault')
 
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 1)
 
     def test_case_7(self):
@@ -1559,7 +1553,6 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(cev[1].command_name, 'find')
         self.assertEqual(cev[1].database_name, 'keyvault')
 
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 1)
 
     def test_case_8(self):
@@ -1579,7 +1572,6 @@ class TestDeadlock(EncryptionIntegrationTest):
         self.assertEqual(cev[0].command_name, 'find')
         self.assertEqual(cev[0].database_name, 'keyvault')
 
-        # TODO: why is mongocrpytd_client topology opened event not included in the expected count?
         self.assertEqual(len(self.topology_listener.results['opened']), 1)
 
 

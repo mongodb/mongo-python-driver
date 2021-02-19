@@ -489,6 +489,15 @@ class MongoClient(common.BaseObject):
             configures this client to automatically encrypt collection commands
             and automatically decrypt results. See
             :ref:`automatic-client-side-encryption` for an example.
+            If a :class:`MongoClient` is configured with
+            ``auto_encryption_opts`` and a non-zero ``maxPoolSize``, a separate
+            internal ``MongoClient`` is created if any of the following are
+            true:
+
+              - A ``key_vault_client`` is not passed to
+                :class:`~pymongo.encryption_options.AutoEncryptionOpts`
+              - ``bypass_auto_encrpytion=False`` is passed to
+                :class:`~pymongo.encryption_options.AutoEncryptionOpts`
 
           | **Versioned API options:**
           | (If not set explicitly, Versioned API will not be enabled.)
