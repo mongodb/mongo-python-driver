@@ -6,7 +6,7 @@
     }
   ],
   "database_name": "sdam-tests",
-  "collection_name": "auth-error",
+  "collection_name": "auth-network-timeout-error",
   "data": [
     {
       "_id": 1
@@ -17,7 +17,7 @@
   ],
   "tests": [
     {
-      "description": "Reset server and pool after AuthenticationFailure error",
+      "description": "Reset server and pool after network timeout error during authentication",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
@@ -27,13 +27,16 @@
           "failCommands": [
             "saslContinue"
           ],
-          "appName": "authErrorTest",
-          "errorCode": 18
+          "blockConnection": true,
+          "blockTimeMS": 500,
+          "appName": "authNetworkTimeoutErrorTest"
         }
       },
       "clientOptions": {
         "retryWrites": false,
-        "appname": "authErrorTest"
+        "appname": "authNetworkTimeoutErrorTest",
+        "connectTimeoutMS": 250,
+        "socketTimeoutMS": 250
       },
       "operations": [
         {
@@ -102,7 +105,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "auth-error",
+              "insert": "auth-network-timeout-error",
               "documents": [
                 {
                   "_id": 5

@@ -1,12 +1,11 @@
 {
   "runOn": [
     {
-      "minServerVersion": "4.4",
-      "authEnabled": true
+      "minServerVersion": "4.4"
     }
   ],
   "database_name": "sdam-tests",
-  "collection_name": "auth-error",
+  "collection_name": "find-network-timeout-error",
   "data": [
     {
       "_id": 1
@@ -17,7 +16,7 @@
   ],
   "tests": [
     {
-      "description": "Reset server and pool after AuthenticationFailure error",
+      "description": "Ignore network timeout error on find",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
@@ -25,60 +24,37 @@
         },
         "data": {
           "failCommands": [
-            "saslContinue"
+            "find"
           ],
-          "appName": "authErrorTest",
-          "errorCode": 18
+          "blockConnection": true,
+          "blockTimeMS": 500,
+          "appName": "findNetworkTimeoutErrorTest"
         }
       },
       "clientOptions": {
         "retryWrites": false,
-        "appname": "authErrorTest"
+        "retryReads": false,
+        "appname": "findNetworkTimeoutErrorTest",
+        "socketTimeoutMS": 250
       },
       "operations": [
         {
-          "name": "insertMany",
+          "name": "find",
           "object": "collection",
           "arguments": {
-            "documents": [
-              {
-                "_id": 3
-              },
-              {
-                "_id": 4
-              }
-            ]
+            "filter": {
+              "_id": 1
+            }
           },
           "error": true
         },
         {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "event": "ServerMarkedUnknownEvent",
-            "count": 1
-          }
-        },
-        {
-          "name": "waitForEvent",
-          "object": "testRunner",
-          "arguments": {
-            "event": "PoolClearedEvent",
-            "count": 1
-          }
-        },
-        {
-          "name": "insertMany",
+          "name": "insertOne",
           "object": "collection",
           "arguments": {
-            "documents": [
-              {
-                "_id": 5
-              },
-              {
-                "_id": 6
-              }
-            ]
+            "document": {
+              "_id": 3
+            }
           }
         },
         {
@@ -86,7 +62,7 @@
           "object": "testRunner",
           "arguments": {
             "event": "ServerMarkedUnknownEvent",
-            "count": 1
+            "count": 0
           }
         },
         {
@@ -94,7 +70,7 @@
           "object": "testRunner",
           "arguments": {
             "event": "PoolClearedEvent",
-            "count": 1
+            "count": 0
           }
         }
       ],
@@ -102,13 +78,19 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "auth-error",
+              "find": "find-network-timeout-error"
+            },
+            "command_name": "find",
+            "database_name": "sdam-tests"
+          }
+        },
+        {
+          "command_started_event": {
+            "command": {
+              "insert": "find-network-timeout-error",
               "documents": [
                 {
-                  "_id": 5
-                },
-                {
-                  "_id": 6
+                  "_id": 3
                 }
               ]
             },
@@ -127,10 +109,7 @@
               "_id": 2
             },
             {
-              "_id": 5
-            },
-            {
-              "_id": 6
+              "_id": 3
             }
           ]
         }
