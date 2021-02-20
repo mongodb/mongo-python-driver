@@ -32,6 +32,7 @@ access:
 """
 
 import contextlib
+import copy
 import datetime
 import threading
 import warnings
@@ -490,9 +491,9 @@ class MongoClient(common.BaseObject):
             and automatically decrypt results. See
             :ref:`automatic-client-side-encryption` for an example.
             If a :class:`MongoClient` is configured with
-            ``auto_encryption_opts`` and a non-zero ``maxPoolSize``, a separate
-            internal ``MongoClient`` is created if any of the following are
-            true:
+            ``auto_encryption_opts`` and a non-None ``maxPoolSize``, a
+            separate internal ``MongoClient`` is created if any of the
+            following are true:
 
               - A ``key_vault_client`` is not passed to
                 :class:`~pymongo.encryption_options.AutoEncryptionOpts`
@@ -771,7 +772,7 @@ class MongoClient(common.BaseObject):
                 self, self.__options.auto_encryption_opts)
 
     def _duplicate(self, **kwargs):
-        args = self.__init_kwargs.copy()
+        args = copy.deepcopy(self.__init_kwargs)
         args.update(kwargs)
         return MongoClient(**args)
 

@@ -347,6 +347,9 @@ class _Encrypter(object):
         """Cleanup resources."""
         self._closed = True
         self._auto_encrypter.close()
+        if self._internal_client:
+            self._internal_client.close()
+            self._internal_client = None
 
 
 class Algorithm(object):
