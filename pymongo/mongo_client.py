@@ -32,7 +32,6 @@ access:
 """
 
 import contextlib
-import copy
 import datetime
 import threading
 import warnings
@@ -772,7 +771,7 @@ class MongoClient(common.BaseObject):
                 self, self.__options.auto_encryption_opts)
 
     def _duplicate(self, **kwargs):
-        args = copy.deepcopy(self.__init_kwargs)
+        args = self.__init_kwargs.copy()
         args.update(kwargs)
         return MongoClient(**args)
 
