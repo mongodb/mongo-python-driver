@@ -567,7 +567,6 @@ class Topology(object):
 
     def _handle_error(self, address, err_ctx):
         if self._is_stale_error(address, err_ctx):
-            print('ignoring stale error')
             return
 
         server = self._servers[address]
@@ -624,7 +623,6 @@ class Topology(object):
         May reset the server to Unknown, clear the pool, and request an
         immediate check depending on the error and the context.
         """
-        print(address, err_ctx, err_ctx.error)
         with self._lock:
             self._handle_error(address, err_ctx)
 

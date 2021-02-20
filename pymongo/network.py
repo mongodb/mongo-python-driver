@@ -83,8 +83,6 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
     name = next(iter(spec))
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
-    if name == 'insert':
-        print(f'Running command {spec["documents"]}')
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
