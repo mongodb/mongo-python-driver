@@ -1,5 +1,5 @@
 {
-  "description": "Stale generation timeout error beforeHandshakeCompletes",
+  "description": "Stale topologyVersion LegacyNotPrimary error",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -51,54 +51,27 @@
       }
     },
     {
-      "description": "Non-stale application network error",
+      "description": "Ignore stale LegacyNotPrimary error (topologyVersion less)",
       "applicationErrors": [
         {
           "address": "a:27017",
           "when": "afterHandshakeCompletes",
           "maxWireVersion": 9,
-          "type": "network"
-        }
-      ],
-      "outcome": {
-        "servers": {
-          "a:27017": {
-            "type": "Unknown",
-            "topologyVersion": null,
-            "pool": {
-              "generation": 1
-            }
-          }
-        },
-        "topologyType": "ReplicaSetNoPrimary",
-        "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
-      }
-    },
-    {
-      "description": "Primary A is rediscovered",
-      "responses": [
-        [
-          "a:27017",
-          {
-            "ok": 1,
-            "ismaster": true,
-            "hosts": [
-              "a:27017"
-            ],
-            "setName": "rs",
-            "minWireVersion": 0,
-            "maxWireVersion": 9,
+          "type": "command",
+          "response": {
+            "ok": 0,
+            "errmsg": "LegacyNotPrimary",
+            "code": 10058,
             "topologyVersion": {
               "processId": {
                 "$oid": "000000000000000000000001"
               },
               "counter": {
-                "$numberLong": "1"
+                "$numberLong": "0"
               }
             }
           }
-        ]
+        }
       ],
       "outcome": {
         "servers": {
@@ -114,7 +87,7 @@
               }
             },
             "pool": {
-              "generation": 1
+              "generation": 0
             }
           }
         },
@@ -124,14 +97,26 @@
       }
     },
     {
-      "description": "Ignore stale timeout error (stale generation)",
+      "description": "Ignore stale LegacyNotPrimary error (topologyVersion equal)",
       "applicationErrors": [
         {
           "address": "a:27017",
-          "generation": 0,
-          "when": "beforeHandshakeCompletes",
+          "when": "afterHandshakeCompletes",
           "maxWireVersion": 9,
-          "type": "timeout"
+          "type": "command",
+          "response": {
+            "ok": 0,
+            "errmsg": "LegacyNotPrimary",
+            "code": 10058,
+            "topologyVersion": {
+              "processId": {
+                "$oid": "000000000000000000000001"
+              },
+              "counter": {
+                "$numberLong": "1"
+              }
+            }
+          }
         }
       ],
       "outcome": {
@@ -148,7 +133,7 @@
               }
             },
             "pool": {
-              "generation": 1
+              "generation": 0
             }
           }
         },
