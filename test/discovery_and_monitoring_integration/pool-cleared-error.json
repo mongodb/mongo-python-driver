@@ -1,7 +1,11 @@
 {
   "runOn": [
     {
-      "minServerVersion": "4.4"
+      "minServerVersion": "4.4",
+      "topology": [
+        "replicaset\"",
+        "sharded"
+      ]
     }
   ],
   "database_name": "sdam-tests",
