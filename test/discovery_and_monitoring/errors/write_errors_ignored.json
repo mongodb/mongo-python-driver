@@ -1,5 +1,5 @@
 {
-  "description": "writeError field is ignored",
+  "description": "writeErrors field is ignored",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -62,7 +62,6 @@
             "ok": 1,
             "writeErrors": [
               {
-                "ok": 0,
                 "errmsg": "NotMasterNoSlaveOk",
                 "code": 13435
               }
