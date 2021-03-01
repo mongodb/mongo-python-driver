@@ -143,6 +143,24 @@ class EventListener(monitoring.CommandListener):
         self.results.clear()
 
 
+class TopologyEventListener(monitoring.TopologyListener):
+    def __init__(self):
+        self.results = defaultdict(list)
+
+    def closed(self, event):
+        self.results['closed'].append(event)
+
+    def description_changed(self, event):
+        self.results['description_changed'].append(event)
+
+    def opened(self, event):
+        self.results['opened'].append(event)
+
+    def reset(self):
+        """Reset the state of this listener."""
+        self.results.clear()
+
+
 class WhiteListEventListener(EventListener):
 
     def __init__(self, *commands):

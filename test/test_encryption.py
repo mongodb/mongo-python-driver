@@ -53,6 +53,7 @@ from test import unittest, IntegrationTest, PyMongoTestCase, client_context
 from test.utils import (TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
+                        TopologyEventListener,
                         WhiteListEventListener,
                         rs_or_single_client,
                         wait_until)
@@ -1356,6 +1357,223 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin,
         }}""")
         return self._test_automatic(
             expected_document_extjson, {"secret_gcp": "string0"})
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#deadlock-tests
+class TestDeadlockProse(EncryptionIntegrationTest):
+    def setUp(self):
+        self.client_test = rs_or_single_client(
+            maxPoolSize=1, readConcernLevel='majority', w='majority',
+            uuidRepresentation='standard')
+        self.addCleanup(self.client_test.close)
+
+        self.client_keyvault_listener = OvertCommandListener()
+        self.client_keyvault = rs_or_single_client(
+            maxPoolSize=1, readConcernLevel='majority', w='majority',
+            event_listeners=[self.client_keyvault_listener])
+        self.addCleanup(self.client_keyvault.close)
+
+        self.client_test.keyvault.datakeys.drop()
+        self.client_test.db.coll.drop()
+        self.client_test.keyvault.datakeys.insert_one(
+            json_data('external', 'external-key.json'))
+        _ = self.client_test.db.create_collection(
+            'coll', validator={'$jsonSchema': json_data(
+                'external', 'external-schema.json')},
+            codec_options=OPTS)
+
+        client_encryption = ClientEncryption(
+            kms_providers={'local': {'key': LOCAL_MASTER_KEY}},
+            key_vault_namespace='keyvault.datakeys',
+            key_vault_client=self.client_test, codec_options=OPTS)
+        self.ciphertext = client_encryption.encrypt(
+            'string0', Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_alt_name='local')
+        client_encryption.close()
+
+        self.client_listener = OvertCommandListener()
+        self.topology_listener = TopologyEventListener()
+        self.optargs = ({'local': {'key': LOCAL_MASTER_KEY}}, 'keyvault.datakeys')
+
+    def _run_test(self, max_pool_size, auto_encryption_opts):
+        client_encrypted = rs_or_single_client(
+            readConcernLevel='majority',
+            w='majority',
+            maxPoolSize=max_pool_size,
+            auto_encryption_opts=auto_encryption_opts,
+            event_listeners=[self.client_listener, self.topology_listener])
+
+        if auto_encryption_opts._bypass_auto_encryption == True:
+            self.client_test.db.coll.insert_one(
+                {"_id": 0, "encrypted": self.ciphertext})
+        elif auto_encryption_opts._bypass_auto_encryption == False:
+            client_encrypted.db.coll.insert_one(
+                {"_id": 0, "encrypted": "string0"})
+        else:
+            raise RuntimeError("bypass_auto_encryption must be a bool")
+
+        result = client_encrypted.db.coll.find_one({"_id": 0})
+        self.assertEqual(result, {"_id": 0, "encrypted": "string0"})
+
+        self.addCleanup(client_encrypted.close)
+
+    def test_case_1(self):
+        self._run_test(max_pool_size=1,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=False,
+                           key_vault_client=None))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 4)
+        self.assertEqual(cev[0].command_name, 'listCollections')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'find')
+        self.assertEqual(cev[1].database_name, 'keyvault')
+        self.assertEqual(cev[2].command_name, 'insert')
+        self.assertEqual(cev[2].database_name, 'db')
+        self.assertEqual(cev[3].command_name, 'find')
+        self.assertEqual(cev[3].database_name, 'db')
+
+        self.assertEqual(len(self.topology_listener.results['opened']), 2)
+
+    def test_case_2(self):
+        self._run_test(max_pool_size=1,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=False,
+                           key_vault_client=self.client_keyvault))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 3)
+        self.assertEqual(cev[0].command_name, 'listCollections')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'insert')
+        self.assertEqual(cev[1].database_name, 'db')
+        self.assertEqual(cev[2].command_name, 'find')
+        self.assertEqual(cev[2].database_name, 'db')
+
+        cev = self.client_keyvault_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'keyvault')
+
+        self.assertEqual(len(self.topology_listener.results['opened']), 2)
+
+    def test_case_3(self):
+        self._run_test(max_pool_size=1,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=True,
+                           key_vault_client=None))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 2)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'find')
+        self.assertEqual(cev[1].database_name, 'keyvault')
+
+        self.assertEqual(len(self.topology_listener.results['opened']), 2)
+
+    def test_case_4(self):
+        self._run_test(max_pool_size=1,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=True,
+                           key_vault_client=self.client_keyvault))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'db')
+
+        cev = self.client_keyvault_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'keyvault')
+
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+    def test_case_5(self):
+        self._run_test(max_pool_size=None,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=False,
+                           key_vault_client=None))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 5)
+        self.assertEqual(cev[0].command_name, 'listCollections')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'listCollections')
+        self.assertEqual(cev[1].database_name, 'keyvault')
+        self.assertEqual(cev[2].command_name, 'find')
+        self.assertEqual(cev[2].database_name, 'keyvault')
+        self.assertEqual(cev[3].command_name, 'insert')
+        self.assertEqual(cev[3].database_name, 'db')
+        self.assertEqual(cev[4].command_name, 'find')
+        self.assertEqual(cev[4].database_name, 'db')
+
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+    def test_case_6(self):
+        self._run_test(max_pool_size=None,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=False,
+                           key_vault_client=self.client_keyvault))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 3)
+        self.assertEqual(cev[0].command_name, 'listCollections')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'insert')
+        self.assertEqual(cev[1].database_name, 'db')
+        self.assertEqual(cev[2].command_name, 'find')
+        self.assertEqual(cev[2].database_name, 'db')
+
+        cev = self.client_keyvault_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'keyvault')
+
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+    def test_case_7(self):
+        self._run_test(max_pool_size=None,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=True,
+                           key_vault_client=None))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 2)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'db')
+        self.assertEqual(cev[1].command_name, 'find')
+        self.assertEqual(cev[1].database_name, 'keyvault')
+
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+    def test_case_8(self):
+        self._run_test(max_pool_size=None,
+                       auto_encryption_opts=AutoEncryptionOpts(
+                           *self.optargs,
+                           bypass_auto_encryption=True,
+                           key_vault_client=self.client_keyvault))
+
+        cev = self.client_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'db')
+
+        cev = self.client_keyvault_listener.results['started']
+        self.assertEqual(len(cev), 1)
+        self.assertEqual(cev[0].command_name, 'find')
+        self.assertEqual(cev[0].database_name, 'keyvault')
+
+        self.assertEqual(len(self.topology_listener.results['opened']), 1)
 
 
 if __name__ == "__main__":

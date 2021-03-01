@@ -489,6 +489,15 @@ class MongoClient(common.BaseObject):
             configures this client to automatically encrypt collection commands
             and automatically decrypt results. See
             :ref:`automatic-client-side-encryption` for an example.
+            If a :class:`MongoClient` is configured with
+            ``auto_encryption_opts`` and a non-None ``maxPoolSize``, a
+            separate internal ``MongoClient`` is created if any of the
+            following are true:
+
+              - A ``key_vault_client`` is not passed to
+                :class:`~pymongo.encryption_options.AutoEncryptionOpts`
+              - ``bypass_auto_encrpytion=False`` is passed to
+                :class:`~pymongo.encryption_options.AutoEncryptionOpts`
 
           | **Versioned API options:**
           | (If not set explicitly, Versioned API will not be enabled.)
@@ -607,6 +616,14 @@ class MongoClient(common.BaseObject):
 
                client.__my_database__
         """
+        self.__init_kwargs = {'host': host,
+                              'port': port,
+                              'document_class': document_class,
+                              'tz_aware': tz_aware,
+                              'connect': connect,
+                              'type_registry': type_registry,
+                              **kwargs}
+
         if host is None:
             host = self.HOST
         if isinstance(host, str):
@@ -750,8 +767,13 @@ class MongoClient(common.BaseObject):
         self._encrypter = None
         if self.__options.auto_encryption_opts:
             from pymongo.encryption import _Encrypter
-            self._encrypter = _Encrypter.create(
+            self._encrypter = _Encrypter(
                 self, self.__options.auto_encryption_opts)
+
+    def _duplicate(self, **kwargs):
+        args = self.__init_kwargs.copy()
+        args.update(kwargs)
+        return MongoClient(**args)
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
