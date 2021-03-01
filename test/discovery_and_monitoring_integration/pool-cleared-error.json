@@ -1,7 +1,7 @@
 {
   "runOn": [
     {
-      "minServerVersion": "4.4",
+      "minServerVersion": "4.9",
       "topology": [
         "replicaset",
         "sharded"
@@ -42,6 +42,8 @@
                 "failCommands": [
                   "insert"
                 ],
+                "blockConnection": true,
+                "blockTimeMS": 100,
                 "closeConnection": true,
                 "appName": "poolClearedErrorTest"
               }
