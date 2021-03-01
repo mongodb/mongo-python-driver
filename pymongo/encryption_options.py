@@ -29,7 +29,8 @@ class AutoEncryptionOpts(object):
     """Options to configure automatic client-side field level encryption."""
 
     def __init__(self, kms_providers, key_vault_namespace,
-                 key_vault_client=None, schema_map=None,
+                 key_vault_client=None,
+                 schema_map=None,
                  bypass_auto_encryption=False,
                  mongocryptd_uri='mongodb://localhost:27020',
                  mongocryptd_bypass_spawn=False,
