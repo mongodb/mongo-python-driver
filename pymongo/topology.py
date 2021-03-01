@@ -39,7 +39,8 @@ from pymongo.errors import (ConnectionFailure,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure,
-                            ServerSelectionTimeoutError)
+                            ServerSelectionTimeoutError,
+                            WriteError)
 from pymongo.monitor import SrvMonitor
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
@@ -573,6 +574,9 @@ class Topology(object):
             # Server Discovery And Monitoring Spec: "When an application
             # operation fails because of any network error besides a socket
             # timeout...."
+            return
+        elif issubclass(exc_type, WriteError):
+            # Ignore writeErrors.
             return
         elif issubclass(exc_type, NotMasterError):
             # As per the SDAM spec if:

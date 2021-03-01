@@ -29,7 +29,8 @@ from pymongo.errors import (AutoReconnect,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure)
-from pymongo.helpers import _check_command_response
+from pymongo.helpers import (_check_command_response,
+                             _check_write_command_response)
 from pymongo.ismaster import IsMaster
 from pymongo.server_description import ServerDescription, SERVER_TYPE
 from pymongo.settings import TopologySettings
@@ -112,6 +113,7 @@ def got_app_error(topology, app_error):
     try:
         if error_type == 'command':
             _check_command_response(app_error['response'], max_wire_version)
+            _check_write_command_response(app_error['response'])
         elif error_type == 'network':
             raise AutoReconnect('mock non-timeout network error')
         elif error_type == 'timeout':
