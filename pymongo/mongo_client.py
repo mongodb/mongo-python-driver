@@ -629,8 +629,8 @@ class MongoClient(common.BaseObject):
                               'document_class': document_class,
                               'tz_aware': tz_aware,
                               'connect': connect,
-                              'type_registry': type_registry,
-                              **kwargs}
+                              'type_registry': type_registry}
+        self.__init_kwargs.update(kwargs)
 
         if host is None:
             host = self.HOST
