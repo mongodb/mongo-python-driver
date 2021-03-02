@@ -45,6 +45,7 @@ from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
+from test.unified_format import generate_test_classes
 from test.utils import (
     EventListener, WhiteListEventListener, rs_or_single_client, wait_until)
 
@@ -1039,7 +1040,7 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin,
             pass
 
 
-class TestAllScenarios(unittest.TestCase):
+class TestAllLegacyScenarios(unittest.TestCase):
 
     @classmethod
     @client_context.require_connection
@@ -1122,8 +1123,7 @@ class TestAllScenarios(unittest.TestCase):
 
 
 _TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'change_streams'
-)
+    os.path.dirname(os.path.realpath(__file__)), 'change_streams')
 
 
 def camel_to_snake(camel):
@@ -1217,7 +1217,7 @@ def create_test(scenario_def, test):
 
 
 def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
+    for dirpath, _, filenames in os.walk(os.path.join(_TEST_PATH, 'legacy')):
         dirname = os.path.split(dirpath)[-1]
 
         for filename in filenames:
@@ -1253,10 +1253,15 @@ def create_tests():
                     str(test['description'].replace(" ", "_")))
 
                 new_test.__name__ = test_name
-                setattr(TestAllScenarios, new_test.__name__, new_test)
+                setattr(TestAllLegacyScenarios, new_test.__name__, new_test)
 
 
 create_tests()
+
+
+globals().update(generate_test_classes(
+    os.path.join(_TEST_PATH, 'unified'),
+    module=__name__,))
 
 
 if __name__ == '__main__':
