@@ -58,8 +58,13 @@ fi
 
 if [ -z "$PYTHON_BINARY" ]; then
     # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
-    # system python3 doesn't exist. This seems to only be an issue on RHEL 7.x.
+    # system python3 doesn't exist or exists but is older than 3.6.
     PYTHON=$(command -v python3 || command -v /opt/mongodbtoolchain/v2/bin/python3) || true
+    if $PYTHON -c "import sys; exit(sys.version_info[1] > 5)"; then
+        # runs when sys.version_info[1] <= 5
+        # always use toolchain python if python binary is older than 3.6
+        PYTHON=$(command -v /opt/mongodbtoolchain/v2/bin/python3) || true
+    fi
     if [ -z "$PYTHON" ]; then
         echo "Cannot test without python3 installed!"
         exit 1
