@@ -57,16 +57,6 @@ fi
 . .evergreen/utils.sh
 
 if [ -z "$PYTHON_BINARY" ]; then
-    function is_python_36() {
-        if [ -z "$1" ]; then
-            return 1
-        elif $1 -c "import sys; exit(sys.version_info[:2] < (3, 6))"; then
-            # runs when sys.version_info[:2] >= (3, 6)
-            return 0
-        else
-            return 1
-        fi
-    }
     # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
     # system python3 doesn't exist or exists but is older than 3.6.
     if is_python_36 $(command -v python3); then
