@@ -236,16 +236,9 @@ def _raise_connection_failure(address, error, msg_prefix=None):
     if msg_prefix:
         msg = msg_prefix + msg
     if isinstance(error, socket.timeout):
-        raise NetworkTimeout(msg)
-    elif isinstance(error, _SSLError) and 'timed out' in str(error):
-        # CPython 2.7 and PyPy 2.x do not distinguish network
-        # timeouts from other SSLErrors (https://bugs.python.org/issue10272).
-        # Luckily, we can work around this limitation because the phrase
-        # 'timed out' appears in all the timeout related SSLErrors raised
-        # on the above platforms.
-        raise NetworkTimeout(msg)
+        raise NetworkTimeout(msg) from error
     else:
-        raise AutoReconnect(msg)
+        raise AutoReconnect(msg) from error
 
 
 def _cond_wait(condition, deadline):
