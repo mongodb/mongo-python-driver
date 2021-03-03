@@ -57,17 +57,24 @@ fi
 . .evergreen/utils.sh
 
 if [ -z "$PYTHON_BINARY" ]; then
+    function is_python_36() {
+        if [ -z "$1" ]; then
+            return 1
+        elif $1 -c "import sys; exit(sys.version_info[:2] < (3, 6))"; then
+            # runs when sys.version_info[:2] >= (3, 6)
+            return 0
+        else
+            return 1
+        fi
+    }
     # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
     # system python3 doesn't exist or exists but is older than 3.6.
-    PYTHON=$(command -v python3 || command -v /opt/mongodbtoolchain/v2/bin/python3) || true
-    if $PYTHON -c "import sys; exit(sys.version_info[1] > 5)"; then
-        # runs when sys.version_info[1] <= 5
-        # always use toolchain python if python binary is older than 3.6
-        PYTHON=$(command -v /opt/mongodbtoolchain/v2/bin/python3) || true
-    fi
-    if [ -z "$PYTHON" ]; then
-        echo "Cannot test without python3 installed!"
-        exit 1
+    if is_python_36 $(command -v python3); then
+        PYTHON=$(command -v python3)
+    elif is_python_36 $(command -v /opt/mongodbtoolchain/v2/bin/python3); then
+        PYTHON=$(command -v /opt/mongodbtoolchain/v2/bin/python3)
+    else
+        echo "Cannot test without python3.6+ installed!"
     fi
 elif [ "$COMPRESSORS" = "snappy" ]; then
     $PYTHON_BINARY -m virtualenv --never-download snappytest
