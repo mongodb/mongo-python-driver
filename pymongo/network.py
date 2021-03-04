@@ -26,8 +26,7 @@ from bson import _decode_all_selective
 from pymongo import helpers, message
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import decompress, _NO_COMPRESSION
-from pymongo.errors import (AutoReconnect,
-                            NotMasterError,
+from pymongo.errors import (NotMasterError,
                             OperationFailure,
                             ProtocolError,
                             _OperationCancelled)
@@ -261,7 +260,7 @@ def _receive_data_on_socket(sock_info, length, deadline):
                 continue
             raise
         if chunk_length == 0:
-            raise AutoReconnect("connection closed")
+            raise OSError("connection closed")
 
         bytes_read += chunk_length
 

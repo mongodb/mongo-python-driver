@@ -1568,6 +1568,18 @@ class TestClient(IntegrationTest):
             # AssertionError: 4 != 22 within 5 delta (18 difference)
             self.assertAlmostEqual(initial_count, final_count, delta=10)
 
+    @client_context.require_failCommand_fail_point
+    def test_network_error_message(self):
+        client = single_client(retryReads=False)
+        self.addCleanup(client.close)
+        client.admin.command('ping')  # connect
+        with self.fail_point({'mode': {'times': 1},
+                              'data': {'closeConnection': True,
+                                       'failCommands': ['find']}}):
+            expected = '%s:%s: connection closed' % client.address
+            with self.assertRaisesRegex(AutoReconnect, expected):
+                client.pymongo_test.test.find_one({})
+
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""
