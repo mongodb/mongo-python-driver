@@ -38,6 +38,7 @@ _SHUTDOWN_CODES = frozenset([
 # "node is recovering" error codes (of which the "node is shutting down"
 # errors are a subset).
 _NOT_MASTER_CODES = frozenset([
+    10058,  # LegacyNotPrimary <=3.2 "not master" error code
     10107,  # NotMaster
     13435,  # NotMasterNoSlaveOk
     11602,  # InterruptedDueToReplStateChange
@@ -147,8 +148,9 @@ def _check_command_response(response, max_wire_version,
             return
 
     # Server is "not master" or "recovering"
-    if code in _NOT_MASTER_CODES:
-        raise NotMasterError(errmsg, response)
+    if code is not None:
+        if code in _NOT_MASTER_CODES:
+            raise NotMasterError(errmsg, response)
     elif "not master" in errmsg or "node is recovering" in errmsg:
         raise NotMasterError(errmsg, response)
 

@@ -1,5 +1,5 @@
 {
-  "description": "Stale generation timeout error beforeHandshakeCompletes",
+  "description": "Do not check errmsg when code exists",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -51,54 +51,19 @@
       }
     },
     {
-      "description": "Non-stale application network error",
+      "description": "errmsg \"not master\" gets ignored when error code exists",
       "applicationErrors": [
         {
           "address": "a:27017",
           "when": "afterHandshakeCompletes",
           "maxWireVersion": 9,
-          "type": "network"
+          "type": "command",
+          "response": {
+            "ok": 0,
+            "errmsg": "not master",
+            "code": 1
+          }
         }
-      ],
-      "outcome": {
-        "servers": {
-          "a:27017": {
-            "type": "Unknown",
-            "topologyVersion": null,
-            "pool": {
-              "generation": 1
-            }
-          }
-        },
-        "topologyType": "ReplicaSetNoPrimary",
-        "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
-      }
-    },
-    {
-      "description": "Primary A is rediscovered",
-      "responses": [
-        [
-          "a:27017",
-          {
-            "ok": 1,
-            "ismaster": true,
-            "hosts": [
-              "a:27017"
-            ],
-            "setName": "rs",
-            "minWireVersion": 0,
-            "maxWireVersion": 9,
-            "topologyVersion": {
-              "processId": {
-                "$oid": "000000000000000000000001"
-              },
-              "counter": {
-                "$numberLong": "1"
-              }
-            }
-          }
-        ]
       ],
       "outcome": {
         "servers": {
@@ -114,7 +79,7 @@
               }
             },
             "pool": {
-              "generation": 1
+              "generation": 0
             }
           }
         },
@@ -124,14 +89,18 @@
       }
     },
     {
-      "description": "Ignore stale timeout error (stale generation)",
+      "description": "errmsg \"node is recovering\" gets ignored when error code exists",
       "applicationErrors": [
         {
           "address": "a:27017",
-          "generation": 0,
-          "when": "beforeHandshakeCompletes",
+          "when": "afterHandshakeCompletes",
           "maxWireVersion": 9,
-          "type": "timeout"
+          "type": "command",
+          "response": {
+            "ok": 0,
+            "errmsg": "node is recovering",
+            "code": 1
+          }
         }
       ],
       "outcome": {
@@ -148,7 +117,7 @@
               }
             },
             "pool": {
-              "generation": 1
+              "generation": 0
             }
           }
         },
