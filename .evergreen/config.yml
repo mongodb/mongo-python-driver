@@ -1833,6 +1833,10 @@ axes:
         display_name: "PyPy 3.6"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.6/bin/pypy3"
+      - id: "pypy3.7"
+        display_name: "PyPy 3.7"
+        variables:
+           PYTHON_BINARY: "/opt/python/pypy3.7/bin/pypy3"
       - id: "jython2.7"
         display_name: "Jython 2.7"
         batchtime: 10080  # 7 days
@@ -2194,26 +2198,26 @@ buildvariants:
     - ".4.4"
     - ".4.2"
 
-- matrix_name: "tests-python-version-rhel62-test-ssl"
+- matrix_name: "tests-python-version-amazon1-test-ssl"
   matrix_spec:
-    platform: rhel62
+    platform: awslinux
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: &rhel62-pythons ["2.7", "3.4", "3.5", "3.6", "pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+    python-version: &amazon1-pythons ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     auth: "*"
     ssl: "*"
     coverage: "*"
   exclude_spec:
-    - platform: rhel62
+    - platform: awslinux
       python-version: "*"
       auth: "noauth"
       ssl: "ssl"
       coverage: "*"
-    - platform: rhel62
+    - platform: awslinux
       python-version: "!jython2.7" # Test Jython with Auth/NoSSL
       auth: "auth"
       ssl: "nossl"
       coverage: "*"
-    - platform: rhel62
+    - platform: awslinux
       # PYTHON-498: disable Jython SSL tests
       python-version: "jython2.7"
       # EVG-1410: exlcude_spec must specifiy values for all axes
@@ -2246,7 +2250,7 @@ buildvariants:
 - matrix_name: "tests-pyopenssl-pypy"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7"]
     auth: "auth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2289,11 +2293,11 @@ buildvariants:
   tasks:
     - '.replica_set'
 
-- matrix_name: "tests-python-version-rhel62-test-encryption"
+- matrix_name: "tests-python-version-amazon1-test-encryption"
   matrix_spec:
-    platform: rhel62
+    platform: awslinux
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: ["2.7", "3.4", "3.5", "3.6"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
@@ -2305,56 +2309,40 @@ buildvariants:
 - matrix_name: "tests-pypy-debian-test-encryption"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7"]
     auth-ssl: noauth-nossl
     encryption: "*"
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
 
-- matrix_name: "tests-python-version-rhel62-without-c-extensions"
+- matrix_name: "tests-python-version-amazon1-without-c-extensions"
   matrix_spec:
-    platform: rhel62
-    python-version: *rhel62-pythons
+    platform: awslinux
+    python-version: *amazon1-pythons
     c-extensions: without-c-extensions
     auth-ssl: noauth-nossl
     coverage: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - platform: rhel62
-     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+   - platform: awslinux
+     python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
      c-extensions: "*"
      auth-ssl: "*"
      coverage: "*"
   display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
   tasks: *all-server-versions
 
-- matrix_name: "tests-python-version-ubuntu1604-without-c-extensions"
-  matrix_spec:
-    platform: ubuntu-16.04
-    python-version: &openssl-102-plus-pythons ["3.7", "3.8", "3.9"]
-    c-extensions: without-c-extensions
-    auth-ssl: noauth-nossl
-  display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
-  tasks:
-    - ".latest"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-    - ".3.6"
-    - ".3.4"
-    - ".3.2"
-
 - matrix_name: "tests-python-version-ubuntu16-compression"
   matrix_spec:
     # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
     platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: ubuntu-16.04
-     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+     python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
      c-extensions: "with-c-extensions"
      compression: "*"
   # Jython doesn't support some compression types.
@@ -2383,16 +2371,16 @@ buildvariants:
           - "test-4.0-standalone"
           - "test-3.6-standalone"
 
-- matrix_name: "tests-python-version-green-framework-rhel62"
+- matrix_name: "tests-python-version-green-framework-amazon1"
   matrix_spec:
-    platform: rhel62
-    python-version: *rhel62-pythons
+    platform: awslinux
+    python-version: *amazon1-pythons
     green-framework: "*"
     auth-ssl: "*"
   exclude_spec:
    # Don't test green frameworks on these Python versions.
-   - platform: rhel62
-     python-version: ["pypy", "pypy3.5", "pypy3.6", "jython2.7"]
+   - platform: awslinux
+     python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2414,35 +2402,16 @@ buildvariants:
   display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
   tasks: *all-server-versions
 
-- matrix_name: "tests-python-version-requires-openssl-102-plus-test-ssl"
-  matrix_spec:
-    platform: ubuntu-16.04
-    python-version: *openssl-102-plus-pythons
-    auth-ssl: "*"
-  display_name: "${python-version} OpenSSL 1.0.2 ${platform} ${auth-ssl}"
-  tasks:
-     - ".latest"
-     - ".4.4"
-     - ".4.2"
-     - ".4.0"
-     - ".3.6"
-     - ".3.4"
-     - ".3.2"
-
-- matrix_name: "tests-python-version-requires-openssl-102-plus-test-encryption"
-  matrix_spec:
-    platform: ubuntu-16.04
-    python-version: *openssl-102-plus-pythons
-    auth-ssl: "noauth-nossl"
-    encryption: "*"
-  display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
-  tasks: *encryption-server-versions
-
 - matrix_name: "tests-python-version-supports-openssl-110-test-ssl"
   matrix_spec:
     platform: debian92
-    python-version: *openssl-102-plus-pythons
-    auth-ssl: "*"
+    python-version: *amazon1-pythons
+    auth-ssl: "auth-ssl"
+  exclude_spec:
+   # Python 3.4 doesn't support OpenSSL 1.1.0+ so won't build on Debian 9+.
+   - platform: debian92
+     python-version: ["3.4"]
+     auth-ssl: "auth-ssl"
   display_name: "${python-version} OpenSSL 1.1.0 ${platform} ${auth-ssl}"
   tasks:
      - ".latest"
@@ -2456,16 +2425,16 @@ buildvariants:
   display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
 
-# Storage engine tests on RHEL 6.2 (x86_64) with Python 2.7.
+# Storage engine tests on Amazon1 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
-    platform: rhel62
+    platform: awslinux
     storage-engine: "*"
     python-version: 2.7
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
-        platform: rhel62
+        platform: awslinux
         storage-engine: ["inmemory"]
         python-version: "*"
       then:
@@ -2479,7 +2448,7 @@ buildvariants:
           - "test-3.2-standalone"
     - if:
         # MongoDB 4.2 drops support for MMAPv1
-        platform: rhel62
+        platform: awslinux
         storage-engine: ["mmapv1"]
         python-version: "*"
       then:
@@ -2492,7 +2461,7 @@ buildvariants:
           - "test-3.2-standalone"
     - if:
         # No need to test this on later server versions as it becomes the default
-        platform: rhel62
+        platform: awslinux
         storage-engine: ["wiredtiger"]
         python-version: "*"
       then:
@@ -2502,7 +2471,7 @@ buildvariants:
 # enableTestCommands=0 tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
-    platform: rhel62
+    platform: awslinux
     disableTestCommands: "*"
     python-version: "2.7"
   display_name: "Disable test commands ${python-version} ${platform}"
@@ -2512,7 +2481,7 @@ buildvariants:
 # setdefaultencoding tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "test-setdefaultencoding"
   matrix_spec:
-    platform: rhel62
+    platform: awslinux
     setdefaultencoding: "*"
     python-version: "2.7"
   display_name: "setdefaultencoding ${python-version} ${platform}"
@@ -2521,8 +2490,8 @@ buildvariants:
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:
-    platform: rhel62
-    python-version: *rhel62-pythons
+    platform: awslinux
+    python-version: *amazon1-pythons
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version}"
   tasks:
@@ -2539,9 +2508,14 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: rhel62
-    python-version: ["2.7", "3.4", "3.6"]
+    platform: awslinux
+    python-version: ["2.7", "3.4", "3.6", "3.7", "3.8", "3.9"]
     mod-wsgi-version: "*"
+  exclude_spec:
+   # mod-wsgi 3.5 won't build against CPython 3.8+
+   - platform: awslinux
+     python-version: ["3.8", "3.9"]
+     mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
      - name: "mod-wsgi-standalone"
@@ -2549,7 +2523,7 @@ buildvariants:
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
-    platform: rhel62
+    platform: awslinux
     python-version: 2.7
   display_name: "MockupDB Tests"
   tasks:
@@ -2557,7 +2531,7 @@ buildvariants:
 
 - matrix_name: "tests-doctests"
   matrix_spec:
-    platform: rhel62
+    platform: awslinux
     python-version: ["2.7", "3.4"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
@@ -2565,7 +2539,7 @@ buildvariants:
 
 - matrix_name: "cdecimal"
   matrix_spec:
-    platform: rhel62
+    platform: awslinux
     python-version: 2.7
   display_name: "cdecimal ${python-version} ${platform}"
   tasks:
@@ -2574,7 +2548,7 @@ buildvariants:
 - name: "no-server"
   display_name: "No server test"
   run_on:
-    - rhel62-small
+    - amazon1-2018-test
   tasks:
     - name: "no-server"
   expansions:
@@ -2598,16 +2572,8 @@ buildvariants:
 
 - matrix_name: "atlas-connect"
   matrix_spec:
-    platform: rhel62
-    python-version: *rhel62-pythons
-  display_name: "Atlas connect ${python-version} ${platform}"
-  tasks:
-    - name: "atlas-connect"
-
-- matrix_name: "atlas-connect-openssl-102-plus"
-  matrix_spec:
-    platform: debian92
-    python-version: *openssl-102-plus-pythons
+    platform: awslinux
+    python-version: *amazon1-pythons
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
     - name: "atlas-connect"
@@ -2649,7 +2615,7 @@ buildvariants:
 - matrix_name: "ocsp-test-pypy"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy", "pypy3.5", "pypy3.6"]
+    python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7"]
     mongodb-version: ["4.4", "latest"]
     auth: "noauth"
     ssl: "ssl"
