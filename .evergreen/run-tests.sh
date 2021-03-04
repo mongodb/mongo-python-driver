@@ -58,11 +58,13 @@ fi
 
 if [ -z "$PYTHON_BINARY" ]; then
     # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
-    # system python3 doesn't exist. This seems to only be an issue on RHEL 7.x.
-    PYTHON=$(command -v python3 || command -v /opt/mongodbtoolchain/v2/bin/python3) || true
-    if [ -z "$PYTHON" ]; then
-        echo "Cannot test without python3 installed!"
-        exit 1
+    # system python3 doesn't exist or exists but is older than 3.6.
+    if is_python_36 $(command -v python3); then
+        PYTHON=$(command -v python3)
+    elif is_python_36 $(command -v /opt/mongodbtoolchain/v2/bin/python3); then
+        PYTHON=$(command -v /opt/mongodbtoolchain/v2/bin/python3)
+    else
+        echo "Cannot test without python3.6+ installed!"
     fi
 elif [ "$COMPRESSORS" = "snappy" ]; then
     $PYTHON_BINARY -m virtualenv --never-download snappytest
