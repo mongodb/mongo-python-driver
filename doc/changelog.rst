@@ -67,6 +67,8 @@ Breaking Changes in 4.0
   :meth:`~pymongo.cursor.Cursor`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
+- PyMongoCrypt 1.1.0 or later is now required for client side field level
+  encryption support.
 
 Notable improvements
 ....................
