@@ -7,6 +7,9 @@ Changes in Version 3.12.0
 .. warning:: Support for Python 2.7, 3.4 and 3.5 is deprecated. Those Python
     versions will not be supported by PyMongo 4.
 
+- PyMongoCrypt 1.1.0 or later is now required for client side field level
+  encryption support.
+
 Notable improvements
 ....................
 
