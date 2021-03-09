@@ -336,7 +336,7 @@ elif sys.platform == "darwin":
     pyopenssl_reqs.append("certifi")
 
 extras_require = {
-    'encryption': ['pymongocrypt<2.0.0'],
+    'encryption': ['pymongocrypt>=1.1.0,<2.0.0'],
     'ocsp': pyopenssl_reqs,
     'snappy': ['python-snappy'],
     'tls': [],
