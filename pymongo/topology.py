@@ -582,7 +582,7 @@ class Topology(object):
         elif issubclass(exc_type, WriteError):
             # Ignore writeErrors.
             return
-        elif issubclass(exc_type, NotMasterError):
+        elif issubclass(exc_type, (NotMasterError, OperationFailure)):
             # As per the SDAM spec if:
             #   - the server sees a "not master" error, and
             #   - the server is not shutting down, and
@@ -591,14 +591,23 @@ class Topology(object):
             # as Unknown and request an immediate check of the server.
             # Otherwise, we clear the connection pool, mark the server as
             # Unknown and request an immediate check of the server.
-            err_code = error.details.get('code', -1)
-            is_shutting_down = err_code in helpers._SHUTDOWN_CODES
-            # Mark server Unknown, clear the pool, and request check.
-            self._process_change(ServerDescription(address, error=error))
-            if is_shutting_down or (err_ctx.max_wire_version <= 7):
+            if hasattr(error, 'code'):
+                err_code = error.code
+            else:
+                err_code = error.details.get('code', -1)
+            if err_code in helpers._NOT_MASTER_CODES:
+                is_shutting_down = err_code in helpers._SHUTDOWN_CODES
+                # Mark server Unknown, clear the pool, and request check.
+                self._process_change(ServerDescription(address, error=error))
+                if is_shutting_down or (err_ctx.max_wire_version <= 7):
+                    # Clear the pool.
+                    server.reset()
+                server.request_check()
+            elif not err_ctx.completed_handshake:
+                # Unknown command error during the connection handshake.
+                self._process_change(ServerDescription(address, error=error))
                 # Clear the pool.
                 server.reset()
-            server.request_check()
         elif issubclass(exc_type, ConnectionFailure):
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
@@ -609,13 +618,6 @@ class Topology(object):
             # reading or writing`_, clients MUST cancel the isMaster check on
             # that server and close the current monitoring connection."
             server._monitor.cancel_check()
-        elif issubclass(exc_type, OperationFailure):
-            # Do not request an immediate check since the server is likely
-            # shutting down.
-            if error.code in helpers._NOT_MASTER_CODES:
-                self._process_change(ServerDescription(address, error=error))
-                # Clear the pool.
-                server.reset()
 
     def handle_error(self, address, err_ctx):
         """Handle an application error.
