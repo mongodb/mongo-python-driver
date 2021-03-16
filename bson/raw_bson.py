@@ -13,6 +13,46 @@
 # limitations under the License.
 
 """Tools for representing raw BSON documents.
+
+Inserting and Retrieving RawBSONDocuments
+=========================================
+
+Example: Moving a document between different databases/collections
+.. code-block:: python
+
+  import bsonjs
+  from pymongo import MongoClient
+  from bson.raw_bson import RawBSONDocument
+
+  client = MongoClient("Localhost", 27017, document_class=RawBSONDocument)
+  db = client.db
+  doc = {"_id": 1, "test": "1"}
+  doc_bson = bsonjs.loads('{"_id": 1, "test": "1"}')
+
+  # add original document to collection
+  result = db.collection.insert_one(doc)
+  assert result.acknowledged
+
+  # retrieve doc from collection
+  retrieved_doc = db.collection.find_one({"test":"1"})
+  assert retrieved_doc.raw == doc_bson
+
+  # insert raw BSON into replica db/collection
+  replica_db = client.replica_db
+  result = replica_db.collection.insert_one(retrieved_doc)
+  assert result.acknowledged
+
+  # retrieve doc from replica db/collection
+  retrieved_replica_doc = replica_db.collection.find_one({"test":"1"})
+  assert retrieved_replica_doc.raw == doc_bson
+  assert bsonjs.dumps(retrieved_replica_doc.raw) == '{ "_id" : 1, "test" : "1" }'
+
+For use cases like moving documents across different databases or writing binary
+blobs to disk, using raw BSON documents provides better speed and avoids the
+overhead of decoding BSON to JSON.
+
+.. versionadded:: 3.12
+
 """
 
 from collections.abc import Mapping as _Mapping
