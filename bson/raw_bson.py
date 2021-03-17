@@ -30,7 +30,7 @@ Example: Moving a document between different databases/collections
   >>> import bson
   >>> from pymongo import MongoClient
   >>> from bson.raw_bson import RawBSONDocument
-  >>> client = MongoClient("localhost", 27017, document_class=bson.)
+  >>> client = MongoClient("localhost", 27017, document_class=RawBSONDocument)
   >>> db = client.db
   >>> result = db.test.insert_many([
   ...  {'a': 1},
@@ -42,8 +42,7 @@ Example: Moving a document between different databases/collections
   >>> for doc in db.test.find():
   ...    print(f"raw document: {doc.raw}")
   ...    print(f"decoded document: {bson.decode(doc.raw)}")
-  ...    result = replica_db.test.insert_one(doc)
-  ...    assert result.acknowledged
+  ...    replica_db.test.insert_one(doc)
   raw document: b'...'
   decoded document: {'_id': ObjectId('...'), 'a': 1}
   raw document: b'...'
@@ -67,8 +66,6 @@ Example: Moving a document between different databases/collections
 For use cases like moving documents across different databases or writing binary
 blobs to disk, using raw BSON documents provides better speed and avoids the
 overhead of decoding or encoding BSON.
-
-.. versionadded:: 3.12
 """
 
 from collections.abc import Mapping as _Mapping
