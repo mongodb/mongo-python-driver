@@ -40,7 +40,7 @@ Example: Moving a document between different databases/collections
   >>> for doc in db.test.find():
   ...    print(f"raw document: {doc.raw}")
   ...    print(f"decoded document: {bson.decode(doc.raw)}")
-  ...    replica_db.test.insert_one(doc)
+  ...    result = replica_db.test.insert_one(doc)
   raw document: b'...'
   decoded document: {'_id': ObjectId('...'), 'a': 1}
   raw document: b'...'
