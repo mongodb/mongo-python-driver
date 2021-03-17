@@ -13,6 +13,46 @@
 # limitations under the License.
 
 """Tools for representing raw BSON documents.
+
+Inserting and Retrieving RawBSONDocuments
+=========================================
+
+Example: Moving a document between different databases/collections
+
+.. testsetup::
+  from pymongo import MongoClient
+  client = MongoClient(document_class=RawBSONDocument)
+  client.drop_database('db')
+  client.drop_database('replica_db')
+
+.. doctest::
+
+  >>> import bson
+  >>> from pymongo import MongoClient
+  >>> from bson.raw_bson import RawBSONDocument
+  >>> client = MongoClient(document_class=RawBSONDocument)
+  >>> db = client.db
+  >>> result = db.test.insert_many([{'a': 1},
+  ...                               {'b': 1},
+  ...                               {'c': 1},
+  ...                               {'d': 1}])
+  >>> replica_db = client.replica_db
+  >>> for doc in db.test.find():
+  ...    print(f"raw document: {doc.raw}")
+  ...    print(f"decoded document: {bson.decode(doc.raw)}")
+  ...    result = replica_db.test.insert_one(doc)
+  raw document: b'...'
+  decoded document: {'_id': ObjectId('...'), 'a': 1}
+  raw document: b'...'
+  decoded document: {'_id': ObjectId('...'), 'b': 1}
+  raw document: b'...'
+  decoded document: {'_id': ObjectId('...'), 'c': 1}
+  raw document: b'...'
+  decoded document: {'_id': ObjectId('...'), 'd': 1}
+
+For use cases like moving documents across different databases or writing binary
+blobs to disk, using raw BSON documents provides better speed and avoids the
+overhead of decoding or encoding BSON.
 """
 
 from bson import _raw_to_dict, _get_object_size
