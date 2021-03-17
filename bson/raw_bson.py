@@ -32,18 +32,18 @@ Example: Moving a document between different databases/collections
   >>> from bson.raw_bson import RawBSONDocument
   >>> client = MongoClient("localhost", 27017, document_class=bson.)
   >>> db = client.db
-  >>> docs = [
+  >>> result = db.test.insert_many([
   ...  {'a': 1},
   ...  {'b': 1},
   ...  {'c': 1},
-  ...  {'d': 1}]
-  >>> result = db.test.insert_many(docs)
+  ...  {'d': 1}])
   >>> assert result.acknowledged
   >>> replica_db = client.replica_db
   >>> for doc in db.test.find():
   ...    print(f"raw document: {doc.raw}")
   ...    print(f"decoded document: {bson.decode(doc.raw)}")
-  ...    replica_db.test.insert_one(doc)
+  ...    result = replica_db.test.insert_one(doc)
+  ...    assert result.acknowledged
   raw document: b'...'
   decoded document: {'_id': ObjectId('...'), 'a': 1}
   raw document: b'...'
@@ -54,7 +54,7 @@ Example: Moving a document between different databases/collections
   decoded document: {'_id': ObjectId('...'), 'd': 1}
   >>> for doc in replica_db.test.find():
   ...    print(f"raw document: {doc.raw}")
-  ...    print(f"decoded document: {bson.decode(doc.raw)}")  
+  ...    print(f"decoded document: {bson.decode(doc.raw)}")
   raw document: b'...'
   decoded document: {'_id': ObjectId('...'), 'a': 1}
   raw document: b'...'
