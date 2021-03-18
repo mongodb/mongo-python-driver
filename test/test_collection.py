@@ -23,6 +23,8 @@ import sys
 from codecs import utf_8_decode
 from collections import defaultdict
 
+import bson
+
 sys.path[0:0] = [""]
 
 from bson import encode
@@ -785,6 +787,26 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, InsertManyResult))
         self.assertFalse(result.acknowledged)
         self.assertEqual(20, db.test.count_documents({}))
+
+    def test_insert_many_invalid(self):
+        db = self.db
+        db.test.drop()
+
+        with self.assertRaisesRegex(
+                TypeError, "documents must be a non-empty list"):
+            db.test.insert_many({})
+
+        with self.assertRaisesRegex(
+                TypeError, "documents must be a non-empty list"):
+            db.test.insert_many([])
+
+        with self.assertRaisesRegex(
+                TypeError, "documents must be a non-empty list"):
+            db.test.insert_many(1)
+
+        with self.assertRaisesRegex(
+                TypeError, "documents must be a non-empty list"):
+            db.test.insert_many(RawBSONDocument(bson.BSON.encode({'_id': 2})))
 
     def test_delete_one(self):
         self.db.test.drop()
