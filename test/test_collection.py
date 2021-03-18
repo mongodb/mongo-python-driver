@@ -876,7 +876,7 @@ class TestCollection(IntegrationTest):
         id_only = {'ref': {'$id': ObjectId()}}
         self.assertRaises(InvalidDocument, self.db.test.insert_one, ref_only)
         self.assertRaises(InvalidDocument, self.db.test.insert_one, id_only)
-
+x
     @client_context.require_version_min(3, 1, 9, -1)
     def test_insert_bypass_document_validation(self):
         db = self.db
