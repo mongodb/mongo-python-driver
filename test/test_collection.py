@@ -803,7 +803,7 @@ class TestCollection(IntegrationTest):
 
         with self.assertRaisesRegex(
                 TypeError, "documents must be a non-empty list"):
-            db.test.insert_many(RawBSONDocument(bson.BSON.encode({'_id': 2})))
+            db.test.insert_many(RawBSONDocument(encode({'_id': 2})))
 
     def test_delete_one(self):
         self.db.test.drop()
