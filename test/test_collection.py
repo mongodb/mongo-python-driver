@@ -23,8 +23,6 @@ import sys
 from codecs import utf_8_decode
 from collections import defaultdict
 
-import bson
-
 sys.path[0:0] = [""]
 
 from bson import encode
@@ -790,7 +788,6 @@ class TestCollection(IntegrationTest):
 
     def test_insert_many_invalid(self):
         db = self.db
-        db.test.drop()
 
         with self.assertRaisesRegex(
                 TypeError, "documents must be a non-empty list"):
