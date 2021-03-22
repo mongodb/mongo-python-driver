@@ -892,6 +892,14 @@ class MongoClient(common.BaseObject):
         return self._event_listeners.event_listeners
 
     @property
+    def topology_description(self):
+        """(id, topology_type, servers, etc.) of current topology
+
+        .. versionadded:: 3.12
+        """
+        return self._topology.description
+
+    @property
     def address(self):
         """(host, port) of the current standalone, primary, or mongos, or None.
 
