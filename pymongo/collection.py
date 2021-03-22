@@ -745,7 +745,9 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        if not isinstance(documents, abc.Iterable) or not documents:
+        if (not isinstance(documents, abc.Iterable)
+                or isinstance(documents, abc.Mapping)
+                or not documents):
             raise TypeError("documents must be a non-empty list")
         inserted_ids = []
         def gen():
