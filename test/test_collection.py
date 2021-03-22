@@ -786,6 +786,25 @@ class TestCollection(IntegrationTest):
         self.assertFalse(result.acknowledged)
         self.assertEqual(20, db.test.count_documents({}))
 
+    def test_insert_many_invalid(self):
+        db = self.db
+
+        with self.assertRaisesRegex(
+                TypeError, "documents must be a non-empty list"):
+            db.test.insert_many({})
+
+        with self.assertRaisesRegex(
+                TypeError, "documents must be a non-empty list"):
+            db.test.insert_many([])
+
+        with self.assertRaisesRegex(
+                TypeError, "documents must be a non-empty list"):
+            db.test.insert_many(1)
+
+        with self.assertRaisesRegex(
+                TypeError, "documents must be a non-empty list"):
+            db.test.insert_many(RawBSONDocument(encode({'_id': 2})))
+
     def test_delete_one(self):
         self.db.test.drop()
 
