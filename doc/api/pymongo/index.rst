@@ -48,6 +48,7 @@ Sub-modules:
    read_preferences
    results
    server_api
+   server_description
    topology_description
    uri_parser
    write_concern
