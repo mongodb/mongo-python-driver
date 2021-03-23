@@ -894,8 +894,8 @@ class MongoClient(common.BaseObject):
     @property
     def topology_description(self):
         """Returns the current :class:`~pymongo.topology_description.TopologyDescription`.
-        The returned object is immutable, and should be called periodically/as needed
-        to avoid using stale information.
+        The returned object is immutable, and should be accessed periodically/as needed
+        to avoid seeing stale topology information.
 
         .. versionadded:: 4.0
         """

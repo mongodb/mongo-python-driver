@@ -11,7 +11,7 @@ changes. For example, all APIs deprecated in PyMongo 3.X have been removed.
 Be sure to read the changes listed below and the :doc:`migrate-to-pymongo4`
 before upgrading from PyMongo 3.x.
 
-- Added :attr:`pymongo.mongo_client.MongoClient.topology_description`
+- Added :attr:`pymongo.mongo_client.MongoClient.topology_description`.
 
 Breaking Changes in 4.0
 .......................
