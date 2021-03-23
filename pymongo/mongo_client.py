@@ -897,7 +897,7 @@ class MongoClient(common.BaseObject):
         The returned object is immutable, and should be called periodically/as needed
         to avoid using stale information.
 
-        .. versionadded:: 3.12
+        .. versionadded:: 4.0
         """
         return self._topology.description
 
