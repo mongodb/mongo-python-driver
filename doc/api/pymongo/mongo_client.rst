@@ -15,6 +15,7 @@
          Raises :class:`~pymongo.errors.InvalidName` if an invalid database name is used.
 
       .. autoattribute:: event_listeners
+      .. autoattribute:: topology_description
       .. autoattribute:: address
       .. autoattribute:: primary
       .. autoattribute:: secondaries
