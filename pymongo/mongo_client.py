@@ -991,6 +991,28 @@ class MongoClient(common.BaseObject):
         return self._event_listeners.event_listeners
 
     @property
+    def topology_description(self):
+        """The description of the connected MongoDB deployment.
+
+        >>> client.topology_description
+        <TopologyDescription id: 605a7b04e76489833a7c6113, topology_type: ReplicaSetWithPrimary, servers: [<ServerDescription ('localhost', 27017) server_type: RSPrimary, rtt: 0.0007973677999995488>, <ServerDescription ('localhost', 27018) server_type: RSSecondary, rtt: 0.0005540556000003249>, <ServerDescription ('localhost', 27019) server_type: RSSecondary, rtt: 0.0010367483999999649>]>
+        >>> client.topology_description.topology_type_name
+        'ReplicaSetWithPrimary'
+
+        Note that the description is periodically updated in the background
+        but the returned object itself is immutable. Access this property again
+        to get a more recent
+        :class:`~pymongo.topology_description.TopologyDescription`.
+
+        :Returns:
+          An instance of
+          :class:`~pymongo.topology_description.TopologyDescription`.
+
+        .. versionadded:: 3.12
+        """
+        return self._topology.description
+
+    @property
     def address(self):
         """(host, port) of the current standalone, primary, or mongos, or None.
 

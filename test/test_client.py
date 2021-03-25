@@ -62,6 +62,8 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
+from pymongo.topology import _ErrorContext
+from pymongo.topology_description import TopologyDescription
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
@@ -602,6 +604,8 @@ class TestClient(IntegrationTest):
         self.assertFalse(c.secondaries)
         c = rs_or_single_client(connect=False)
         self.assertIsInstance(c.max_write_batch_size, int)
+        self.assertIsInstance(c.topology_description, TopologyDescription)
+        self.assertEqual(c.topology_description, c._topology._description)
 
         if client_context.is_rs:
             # The primary's host and port are from the replica set config.

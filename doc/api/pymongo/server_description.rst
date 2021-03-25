@@ -6,8 +6,4 @@
 .. automodule:: pymongo.server_description
 
    .. autoclass:: pymongo.server_description.ServerDescription()
-
-      .. autoattribute:: address
-      .. autoattribute:: all_hosts
-      .. autoattribute:: server_type
-      .. autoattribute:: server_type_name
+      :members:

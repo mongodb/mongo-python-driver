@@ -9,6 +9,8 @@ Changes in Version 3.12.0
 
 - PyMongoCrypt 1.1.0 or later is now required for client side field level
   encryption support.
+- Added :attr:`pymongo.mongo_client.MongoClient.topology_description`.
+
 
 Notable improvements
 ....................

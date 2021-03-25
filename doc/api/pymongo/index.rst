@@ -55,6 +55,8 @@ Sub-modules:
    results
    son_manipulator
    server_api
+   server_description
+   topology_description
    uri_parser
    write_concern
    event_loggers
