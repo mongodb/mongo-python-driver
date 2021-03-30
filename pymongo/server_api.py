@@ -19,27 +19,61 @@
 MongoDB Versioned API
 =====================
 
+Starting in MongoDB 5.0, applications can specify the server API version
+to use when creating a :class:`~pymongo.mongo_client.MongoClient`. Doing so
+ensures that the driver behaves in a manner compatible with that server API
+version, regardless of the server's actual release version.
+
+Declaring an API Version
+````````````````````````
+
 To configure MongoDB Versioned API, pass the ``server_api`` keyword option to
 :class:`~pymongo.mongo_client.MongoClient`::
 
-    from pymongo.mongo_client import MongoClient
-    from pymongo.server_api import ServerApi
+    >>> from pymongo.mongo_client import MongoClient
+    >>> from pymongo.server_api import ServerApi
+    >>>
+    >>> # Declare API version "1" for MongoClient "client"
+    >>> server_api = ServerApi('1')
+    >>> client = MongoClient(server_api=server_api)
 
-    client = MongoClient(server_api=ServerApi('1'))
+The declared API version is applied to all commands run through ``client``,
+including those sent through the generic command helper. Specifying versioned
+API options in the command document **and** declaring an API version
+on the client is not supported and will lead to undefined behaviour.
+To run any command without declaring a server API version or using a different
+API version, create a separate :class:`~pymongo.mongo_client.MongoClient`
+instance.
 
 Note that Versioned API requires MongoDB >=5.0.
 
 Strict Mode
 ```````````
 
-When ``strict`` mode is configured, commands that are not supported in the
-given :attr:`ServerApi.version` will fail. For example::
+Configuring ``strict`` mode will cause the MongoDB server to reject all
+commands that are not part of the declared :attr:`ServerApi.version`. This
+includes command options and aggregation pipeline stages.
 
-    >>> client = MongoClient(server_api=ServerApi('1', strict=True))
+For example::
+
+    >>> server_api=ServerApi('1', strict=True)
+    >>> client = MongoClient(server_api=server_api)
     >>> client.test.command('count', 'test')
     Traceback (most recent call last):
     ...
     pymongo.errors.OperationFailure: Provided apiStrict:true, but the command count is not in API Version 1, full error: {'ok': 0.0, 'errmsg': 'Provided apiStrict:true, but the command count is not in API Version 1', 'code': 323, 'codeName': 'APIStrictError'
+
+Detecting API Deprecations
+``````````````````````````
+
+The ``deprecationErrors`` option can be used to enable command failures
+when using functionality that is deprecated from the configured
+:attr:`ServerApi.version`. For example::
+
+    >>> server_api=ServerApi('1', deprecation_errors=True)
+    >>> client = MongoClient(server_api=server_api)
+
+Note that at the time of this writing, no deprecated APIs exist.
 
 Classes
 =======
