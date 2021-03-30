@@ -491,7 +491,7 @@ class ClientEncryption(object):
               client_encryption.create_data_key("local", keyAltNames=["name1"])
               # reference the key with the alternate name
               client_encryption.encrypt("457-55-5462", keyAltName="name1",
-                                        algorithm=Algorithm.Random)
+                                        algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
 
         :Returns:
           The ``_id`` of the created data key document as a
