@@ -56,7 +56,7 @@ includes command options and aggregation pipeline stages.
 
 For example::
 
-    >>> server_api=ServerApi('1', strict=True)
+    >>> server_api = ServerApi('1', strict=True)
     >>> client = MongoClient(server_api=server_api)
     >>> client.test.command('count', 'test')
     Traceback (most recent call last):
@@ -70,7 +70,7 @@ The ``deprecationErrors`` option can be used to enable command failures
 when using functionality that is deprecated from the configured
 :attr:`ServerApi.version`. For example::
 
-    >>> server_api=ServerApi('1', deprecation_errors=True)
+    >>> server_api = ServerApi('1', deprecation_errors=True)
     >>> client = MongoClient(server_api=server_api)
 
 Note that at the time of this writing, no deprecated APIs exist.
