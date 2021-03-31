@@ -4,18 +4,55 @@ Changelog
 Changes in Version 3.12.0
 -------------------------
 
-.. warning:: Support for Python 2.7, 3.4 and 3.5 is deprecated. Those Python
-    versions will not be supported by PyMongo 4.
+.. warning:: PyMongo 3.12.0 deprecates support for Python 2.7, 3.4 and 3.5.
+   These Python versions will not be supported by PyMongo 4.
 
 - PyMongoCrypt 1.1.0 or later is now required for client side field level
   encryption support.
-- Added :attr:`pymongo.mongo_client.MongoClient.topology_description`.
-
 
 Notable improvements
 ....................
 
 - Support for MongoDB Versioned API, see :class:`~pymongo.server_api.ServerApi`.
+- Added :attr:`pymongo.mongo_client.MongoClient.topology_description`.
+- Added hash support to :class:`~pymongo.mongo_client.MongoClient`,
+  :class:`~pymongo.database.Database` and
+  :class:`~pymongo.collection.Collection` (`PYTHON-2466`_).
+
+Bug fixes
+.........
+
+- Fixed a bug that could cause the driver to deadlock during automatic
+  client side field level encryption (`PYTHON-2472`_).
+- Fixed a bug that prevented PyMongo from retrying writes after
+  a ``writeConcernError`` on MongoDB 4.4+ (`PYTHON-2452`_).
+- Fixed a memory leak caused by failing SDAM monitor checks on Python 3 (`PYTHON-2433`_).
+- Fixed a regression that changed the string representation of
+  :exc:`~pymongo.errors.BulkWriteError` (`PYTHON-2438`_).
+- Fixed a bug that made it impossible to use
+  :meth:`bson.codec_options.CodecOptions.with_options` and
+  :meth:`~bson.json_util.JSONOptions.with_options` on some early versions of
+  Python 3.4 and Python 3.5 due to a bug in the standard library implementation
+  of :meth:`collections.namedtuple._asdict` (`PYTHON-2440`_).
+- Fixed a bug that resulted in a :exc:`TypeError` exception when a PyOpenSSL
+  socket was configured with a timeout of ``None`` (`PYTHON-2443`_).
+- Improved the error message returned by
+  :meth:`~pymongo.collection.Collection.insert_many` when supplied with an
+  argument of incorrect type (`PYTHON-1690`_).
+
+Deprecations
+............
+
+- Deprecated support for Python 2.7, 3.4 and 3.5.
+
+.. _PYTHON-2472: https://jira.mongodb.org/browse/PYTHON-2472
+.. _PYTHON-2466: https://jira.mongodb.org/browse/PYTHON-2466
+.. _PYTHON-2433: https://jira.mongodb.org/browse/PYTHON-2433
+.. _PYTHON-2438: https://jira.mongodb.org/browse/PYTHON-2438
+.. _PYTHON-2440: https://jira.mongodb.org/browse/PYTHON-2440
+.. _PYTHON-2443: https://jira.mongodb.org/browse/PYTHON-2443
+.. _PYTHON-2452: https://jira.mongodb.org/browse/PYTHON-2452
+.. _PYTHON-1690: https://jira.mongodb.org/browse/PYTHON-1690
 
 Issues Resolved
 ...............
