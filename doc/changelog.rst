@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Changes in Version 3.12.0
--------------------------
+Changes in Version 3.12.0b0
+---------------------------
 
 .. warning:: PyMongo 3.12.0 deprecates support for Python 2.7, 3.4 and 3.5.
    These Python versions will not be supported by PyMongo 4.
