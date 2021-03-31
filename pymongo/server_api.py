@@ -27,6 +27,8 @@ version, regardless of the server's actual release version.
 Declaring an API Version
 ````````````````````````
 
+.. attention: Versioned API requires MongoDB >=5.0.
+
 To configure MongoDB Versioned API, pass the ``server_api`` keyword option to
 :class:`~pymongo.mongo_client.MongoClient`::
 
@@ -38,14 +40,17 @@ To configure MongoDB Versioned API, pass the ``server_api`` keyword option to
     >>> client = MongoClient(server_api=server_api)
 
 The declared API version is applied to all commands run through ``client``,
-including those sent through the generic command helper. Specifying versioned
-API options in the command document **and** declaring an API version
-on the client is not supported and will lead to undefined behaviour.
+including those sent through the generic
+:meth:`~pymongo.database.Database.command` helper.
+
+.. note:: Declaring an API version on the
+   :class:`~pymongo.mongo_client.MongoClient` **and** specifying versioned
+   API options in :meth:`~pymongo.database.Database.command` command document
+   is not supported and will lead to undefined behaviour.
+
 To run any command without declaring a server API version or using a different
 API version, create a separate :class:`~pymongo.mongo_client.MongoClient`
 instance.
-
-Note that Versioned API requires MongoDB >=5.0.
 
 Strict Mode
 ```````````
