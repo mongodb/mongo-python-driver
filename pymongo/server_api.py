@@ -27,7 +27,7 @@ version, regardless of the server's actual release version.
 Declaring an API Version
 ````````````````````````
 
-.. attention: Versioned API requires MongoDB >=5.0.
+.. attention:: Versioned API requires MongoDB >=5.0.
 
 To configure MongoDB Versioned API, pass the ``server_api`` keyword option to
 :class:`~pymongo.mongo_client.MongoClient`::
