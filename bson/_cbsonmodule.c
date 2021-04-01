@@ -2501,7 +2501,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     codec_options_t options;
     PyObject* result = NULL;
     PyObject* options_obj;
-    Py_buffer view;
+    Py_buffer view = {0};
 
     if (! (PyArg_ParseTuple(args, "OO", &bson, &options_obj) &&
             convert_codec_options(options_obj, &options))) {
@@ -2580,7 +2580,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     PyObject* result = NULL;
     codec_options_t options;
     PyObject* options_obj;
-    Py_buffer view;
+    Py_buffer view = {0};
 
     if (!PyArg_ParseTuple(args, "O|O", &bson, &options_obj)) {
         return NULL;
