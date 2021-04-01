@@ -367,6 +367,13 @@ class TestBSON(unittest.TestCase):
                 with self.assertRaises(InvalidBSON, msg=msg):
                     list(decode_file_iter(scratch))
 
+    def test_invalid_field_name(self):
+        # Decode a truncated field
+        with self.assertRaises(InvalidBSON) as ctx:
+            decode(b'\x0b\x00\x00\x00\x02field\x00')
+        # Assert that the InvalidBSON error message is not empty.
+        self.assertTrue(str(ctx.exception))
+
     def test_data_timestamp(self):
         self.assertEqual({"test": Timestamp(4, 20)},
                          decode(b"\x13\x00\x00\x00\x11\x74\x65\x73\x74\x00\x14"
