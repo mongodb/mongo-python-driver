@@ -2342,7 +2342,7 @@ static int _element_to_dict(PyObject* self, const char* string,
     if (name_length > BSON_MAX_SIZE || position + name_length >= max) {
         PyObject* InvalidBSON = _error("InvalidBSON");
         if (InvalidBSON) {
-            PyErr_SetString(InvalidBSON, "invalid field name");
+            PyErr_SetString(InvalidBSON, "field name too large");
             Py_DECREF(InvalidBSON);
         }
         return -1;
