@@ -429,20 +429,30 @@ class Topology(object):
             self._request_check_all()
             self._condition.wait(wait_time)
 
+    def data_bearing_servers(self):
+        """Return a list of all data-bearing servers.
+
+        This includes any server that might be selected for an operation.
+        """
+        if self._description.topology_type == TOPOLOGY_TYPE.Single:
+            return self._description.known_servers
+        return self._description.readable_servers
+
     def update_pool(self, all_credentials):
         # Remove any stale sockets and add new sockets if pool is too small.
         servers = []
         with self._lock:
-            for server in self._servers.values():
-                servers.append((server, server._pool.generation))
+            # Only update pools for data-bearing servers.
+            for sd in self.data_bearing_servers():
+                server = self._servers[sd.address]
+                servers.append((server, server.pool.generation))
 
         for server, generation in servers:
-            pool = server._pool
             try:
-                pool.remove_stale_sockets(generation, all_credentials)
+                server.pool.remove_stale_sockets(generation, all_credentials)
             except PyMongoError as exc:
                 ctx = _ErrorContext(exc, 0, generation, False)
-                self.handle_error(pool.address, ctx)
+                self.handle_error(server.description.address, ctx)
                 raise
 
     def close(self):

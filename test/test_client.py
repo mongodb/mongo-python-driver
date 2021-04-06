@@ -35,7 +35,7 @@ from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
 from bson.son import SON
 from bson.tz_util import utc
 import pymongo
-from pymongo import message
+from pymongo import message, monitoring
 from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.command_cursor import CommandCursor
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
@@ -77,6 +77,7 @@ from test import (client_context,
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         connected,
+                        CMAPListener,
                         delay,
                         FunctionCallRecorder,
                         get_pool,
@@ -1942,6 +1943,62 @@ class TestMongoClientFailover(MockClientTest):
         self.assertTrue(ct.dead)
         self.assertIsNone(tt.get())
         self.assertIsNone(ct.get())
+
+
+class TestClientPool(MockClientTest):
+
+    def test_rs_client_does_not_maintain_pool_to_arbiters(self):
+        listener = CMAPListener()
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3', 'd:4'],
+            mongoses=[],
+            arbiters=['c:3'],  # c:3 is an arbiter.
+            down_hosts=['d:4'],  # d:4 is unreachable.
+            host=['a:1', 'b:2', 'c:3', 'd:4'],
+            replicaSet='rs',
+            minPoolSize=1,  # minPoolSize
+            event_listeners=[listener],
+        )
+        self.addCleanup(c.close)
+
+        wait_until(lambda: len(c.nodes) == 3, 'connect')
+        self.assertEqual(c.address, ('a', 1))
+        self.assertEqual(c.arbiters, set([('c', 3)]))
+        # Assert that we create 2 and only 2 pooled connections.
+        listener.wait_for_event(monitoring.ConnectionReadyEvent, 2)
+        self.assertEqual(
+            listener.event_count(monitoring.ConnectionCreatedEvent), 2)
+        # Assert that we do not create connections to arbiters.
+        arbiter = c._topology.get_server_by_address(('c', 3))
+        self.assertFalse(arbiter.pool.sockets)
+        # Assert that we do not create connections to unknown servers.
+        arbiter = c._topology.get_server_by_address(('d', 4))
+        self.assertFalse(arbiter.pool.sockets)
+
+    def test_direct_client_maintains_pool_to_arbiter(self):
+        listener = CMAPListener()
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            arbiters=['c:3'],  # c:3 is an arbiter.
+            host='c:3',
+            directConnection=True,
+            minPoolSize=1,  # minPoolSize
+            event_listeners=[listener],
+        )
+        self.addCleanup(c.close)
+
+        print(c.topology_description)
+        wait_until(lambda: len(c.nodes) == 1, 'connect')
+        self.assertEqual(c.address, ('c', 3))
+        # Assert that we create 1 pooled connection.
+        listener.wait_for_event(monitoring.ConnectionReadyEvent, 1)
+        self.assertEqual(
+            listener.event_count(monitoring.ConnectionCreatedEvent), 1)
+        arbiter = c._topology.get_server_by_address(('c', 3))
+        self.assertEqual(len(arbiter.pool.sockets), 1)
 
 
 if __name__ == "__main__":
