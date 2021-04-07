@@ -449,7 +449,7 @@ class ClientUnitTest(unittest.TestCase):
 
 class TestClient(IntegrationTest):
 
-    def test_max_idle_time_reaper(self):
+    def test_max_idle_time_reaper_default(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove sockets when maxIdleTimeMS not set
             client = rs_or_single_client()
@@ -460,6 +460,8 @@ class TestClient(IntegrationTest):
             self.assertTrue(sock_info in server._pool.sockets)
             client.close()
 
+    def test_max_idle_time_reaper_removes_stale_minPoolSize(self):
+        with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500,
                                          minPoolSize=1)
@@ -475,6 +477,8 @@ class TestClient(IntegrationTest):
                        "replace stale socket")
             client.close()
 
+    def test_max_idle_time_reaper_does_not_exceed_maxPoolSize(self):
+        with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper respects maxPoolSize when adding new sockets.
             client = rs_or_single_client(maxIdleTimeMS=500,
                                          minPoolSize=1,
@@ -491,6 +495,8 @@ class TestClient(IntegrationTest):
                        "replace stale socket")
             client.close()
 
+    def test_max_idle_time_reaper_removes_stale(self):
+        with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(any_server_selector)
