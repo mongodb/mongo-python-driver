@@ -237,7 +237,8 @@ class TestCMAP(IntegrationTest):
             # PoolReadyEvents. Instead, update the initial state before
             # opening the Topology.
             td = client_context.client._topology.description
-            sd = td.server_descriptions()[(client.HOST, client.PORT)]
+            sd = td.server_descriptions()[(client_context.host,
+                                           client_context.port)]
             client._topology._description = updated_topology_description(
                 client._topology._description, sd)
             client._get_topology()
