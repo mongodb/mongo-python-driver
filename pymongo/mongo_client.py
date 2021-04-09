@@ -680,15 +680,16 @@ class MongoClient(common.BaseObject):
         keyword_opts['tz_aware'] = tz_aware
         keyword_opts['connect'] = connect
 
-        # Handle security-option conflicts in combined options.
-        keyword_opts = _handle_security_options(keyword_opts)
         # Handle deprecated options in kwarg options.
         keyword_opts = _handle_option_deprecations(keyword_opts)
         # Validate kwarg options.
         keyword_opts = common._CaseInsensitiveDictionary(dict(common.validate(
             keyword_opts.cased_key(k), v) for k, v in keyword_opts.items()))
+
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
+        # Handle security-option conflicts in combined options.
+        opts = _handle_security_options(opts)
         # Normalize combined options.
         opts = _normalize_options(opts)
 
