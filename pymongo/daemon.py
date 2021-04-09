@@ -63,7 +63,7 @@ if sys.platform == 'win32':
                 _silence_resource_warning(popen)
         except FileNotFoundError as exc:
             raise Exception(
-                f'Failed to start {args[0]}: is it on your PATH: {exc}')
+                f'Failed to start {args[0]}: is it on your $PATH?\nOriginal exception: {exc}')
 else:
     # On Unix we spawn the daemon process with a double Popen.
     # 1) The first Popen runs this file as a Python script using the current
@@ -86,20 +86,16 @@ else:
                     stdin=devnull, stderr=devnull, stdout=devnull)
         except FileNotFoundError as exc:
             raise Exception(
-                f'Failed to start {args[0]}: is it on your PATH: {exc}')
+                f'Failed to start {args[0]}: is it on your $PATH?\nOriginal exception: {exc}')
 
     def _spawn_daemon_double_popen(args):
         """Spawn a daemon process using a double subprocess.Popen."""
         spawner_args = [sys.executable, _THIS_FILE]
         spawner_args.extend(args)
-        try:
-            temp_proc = subprocess.Popen(spawner_args, close_fds=True)
-            # Reap the intermediate child process to avoid creating zombie
-            # processes.
-            _popen_wait(temp_proc, _WAIT_TIMEOUT)
-        except FileNotFoundError as exc:
-            raise Exception(
-                f'Failed to start {args[0]}: is it on your PATH: {exc}')
+        temp_proc = subprocess.Popen(spawner_args, close_fds=True)
+        # Reap the intermediate child process to avoid creating zombie
+        # processes.
+        _popen_wait(temp_proc, _WAIT_TIMEOUT)
 
 
     def _spawn_daemon(args):
