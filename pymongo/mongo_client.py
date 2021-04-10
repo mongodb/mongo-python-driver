@@ -647,7 +647,7 @@ class MongoClient(common.BaseObject):
         username = None
         password = None
         dbase = None
-        opts = {}
+        opts = common._CaseInsensitiveDictionary()
         fqdn = None
         for entity in host:
             if "://" in entity:
