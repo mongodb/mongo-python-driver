@@ -23,9 +23,9 @@ import os
 import subprocess
 import sys
 
-# The maximum amount of time to wait for the intermediate subprocess.
 from pymongo.errors import PyMongoError
 
+# The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
 _THIS_FILE = os.path.realpath(__file__)
 
