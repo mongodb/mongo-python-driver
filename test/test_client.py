@@ -57,7 +57,7 @@ from pymongo.driver_info import DriverInfo
 from pymongo.pool import SocketInfo, _METADATA
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (any_server_selector,
+from pymongo.server_selectors import (readable_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
@@ -453,7 +453,8 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove sockets when maxIdleTimeMS not set
             client = rs_or_single_client()
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
@@ -465,7 +466,8 @@ class TestClient(IntegrationTest):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500,
                                          minPoolSize=1)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             # When the reaper runs at the same time as the get_socket, two
@@ -483,7 +485,8 @@ class TestClient(IntegrationTest):
             client = rs_or_single_client(maxIdleTimeMS=500,
                                          minPoolSize=1,
                                          maxPoolSize=1)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             # When the reaper runs at the same time as the get_socket,
@@ -499,7 +502,8 @@ class TestClient(IntegrationTest):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info_one:
                 pass
             # Assert that the pool does not close sockets prematurely.
@@ -515,12 +519,14 @@ class TestClient(IntegrationTest):
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=.1):
             client = rs_or_single_client()
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             self.assertEqual(0, len(server._pool.sockets))
 
             # Assert that pool started up at minPoolSize
             client = rs_or_single_client(minPoolSize=10)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             wait_until(lambda: 10 == len(server._pool.sockets),
                        "pool initialized with 10 sockets")
 
@@ -535,7 +541,8 @@ class TestClient(IntegrationTest):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
@@ -549,7 +556,8 @@ class TestClient(IntegrationTest):
 
             # Test that sockets are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
