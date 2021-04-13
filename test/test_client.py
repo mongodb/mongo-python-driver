@@ -445,6 +445,9 @@ class ClientUnitTest(unittest.TestCase):
             MongoClient('mongodb://localhost/?tlsInsecure=true',
                         connect=False, ssl_cert_reqs=True)
 
+        # Conflicting kwargs should raise InvalidURI
+        with self.assertRaises(InvalidURI):
+            MongoClient(ssl=True, tls=False)
 
 class TestClient(IntegrationTest):
 
