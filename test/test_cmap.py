@@ -41,6 +41,7 @@ from pymongo.monitoring import (ConnectionCheckedInEvent,
                                 PoolClosedEvent)
 from pymongo.read_preferences import ReadPreference
 from pymongo.pool import _PoolClosedError, PoolState
+from pymongo.topology_description import updated_topology_description
 
 from test import (client_knobs,
                   IntegrationTest,
@@ -226,12 +227,23 @@ class TestCMAP(IntegrationTest):
         opts = test['poolOptions'].copy()
         opts['event_listeners'] = [self.listener]
         opts['_monitor_class'] = DummyMonitor
+        opts['connect'] = False
         with client_knobs(kill_cursor_frequency=.05,
                           min_heartbeat_interval=.05):
             client = single_client(**opts)
+            # Update the SD to a known type because the DummyMonitor will not.
+            # Note we cannot simply call topology.on_change because that would
+            # internally call pool.ready() which introduces unexpected
+            # PoolReadyEvents. Instead, update the initial state before
+            # opening the Topology.
+            td = client_context.client._topology.description
+            sd = td.server_descriptions()[(client_context.host,
+                                           client_context.port)]
+            client._topology._description = updated_topology_description(
+                client._topology._description, sd)
+            client._get_topology()
         self.addCleanup(client.close)
-        # self.pool = get_pools(client)[0]
-        self.pool = list(client._get_topology()._servers.values())[0].pool
+        self.pool = list(client._topology._servers.values())[0].pool
 
         # Map of target names to Thread objects.
         self.targets = dict()

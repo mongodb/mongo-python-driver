@@ -106,13 +106,13 @@ class MockMonitor(Monitor):
 class MockClient(MongoClient):
     def __init__(
             self, standalones, members, mongoses, ismaster_hosts=None,
-            *args, **kwargs):
+            arbiters=None, down_hosts=None, *args, **kwargs):
         """A MongoClient connected to the default server, with a mock topology.
 
-        standalones, members, mongoses determine the configuration of the
-        topology. They are formatted like ['a:1', 'b:2']. ismaster_hosts
-        provides an alternative host list for the server's mocked ismaster
-        response; see test_connect_with_internal_ips.
+        standalones, members, mongoses, arbiters, and down_hosts determine the
+        configuration of the topology. They are formatted like ['a:1', 'b:2'].
+        ismaster_hosts provides an alternative host list for the server's
+        mocked ismaster response; see test_connect_with_internal_ips.
         """
         self.mock_standalones = standalones[:]
         self.mock_members = members[:]
@@ -122,6 +122,9 @@ class MockClient(MongoClient):
         else:
             self.mock_primary = None
 
+        # Hosts that should be considered an arbiter.
+        self.mock_arbiters = arbiters[:] if arbiters else []
+
         if ismaster_hosts is not None:
             self.mock_ismaster_hosts = ismaster_hosts
         else:
@@ -130,7 +133,7 @@ class MockClient(MongoClient):
         self.mock_mongoses = mongoses[:]
 
         # Hosts that should raise socket errors.
-        self.mock_down_hosts = []
+        self.mock_down_hosts = down_hosts[:] if down_hosts else []
 
         # Hostname -> (min wire version, max wire version)
         self.mock_wire_versions = {}
@@ -203,6 +206,10 @@ class MockClient(MongoClient):
 
             if self.mock_primary:
                 response['primary'] = self.mock_primary
+
+            if host in self.mock_arbiters:
+                response['arbiterOnly'] = True
+                response['secondary'] = False
         elif host in self.mock_mongoses:
             response = {
                 'ok': 1,
