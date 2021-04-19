@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.11.4
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.11.4 fixes a bug where a MongoClient would mistakenly attempt to
+create minPoolSize connections to arbiter nodes (`PYTHON-2634`_).
+
+See the `PyMongo 3.11.4 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2634: https://jira.mongodb.org/browse/PYTHON-2452
+.. _PyMongo 3.11.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30902
+
 Changes in Version 3.11.3
 -------------------------
 
