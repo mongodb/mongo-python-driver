@@ -35,7 +35,7 @@ from bson.py3compat import thread
 from bson.son import SON
 from bson.tz_util import utc
 import pymongo
-from pymongo import auth, message
+from pymongo import auth, message, monitoring
 from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.command_cursor import CommandCursor
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
@@ -58,7 +58,7 @@ from pymongo.driver_info import DriverInfo
 from pymongo.pool import SocketInfo, _METADATA
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (any_server_selector,
+from pymongo.server_selectors import (readable_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
@@ -76,6 +76,7 @@ from test import (client_context,
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         connected,
+                        CMAPListener,
                         delay,
                         FunctionCallRecorder,
                         get_pool,
@@ -452,21 +453,25 @@ class ClientUnitTest(unittest.TestCase):
 
 class TestClient(IntegrationTest):
 
-    def test_max_idle_time_reaper(self):
+    def test_max_idle_time_reaper_default(self):
         with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove sockets when maxIdleTimeMS not set
             client = rs_or_single_client()
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
             self.assertTrue(sock_info in server._pool.sockets)
             client.close()
 
+    def test_max_idle_time_reaper_removes_stale_minPoolSize(self):
+        with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper removes idle socket and replaces it with a new one
             client = rs_or_single_client(maxIdleTimeMS=500,
                                          minPoolSize=1)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             # When the reaper runs at the same time as the get_socket, two
@@ -478,11 +483,14 @@ class TestClient(IntegrationTest):
                        "replace stale socket")
             client.close()
 
+    def test_max_idle_time_reaper_does_not_exceed_maxPoolSize(self):
+        with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper respects maxPoolSize when adding new sockets.
             client = rs_or_single_client(maxIdleTimeMS=500,
                                          minPoolSize=1,
                                          maxPoolSize=1)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             # When the reaper runs at the same time as the get_socket,
@@ -494,9 +502,12 @@ class TestClient(IntegrationTest):
                        "replace stale socket")
             client.close()
 
+    def test_max_idle_time_reaper_removes_stale(self):
+        with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper has removed idle socket and NOT replaced it
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info_one:
                 pass
             # Assert that the pool does not close sockets prematurely.
@@ -512,12 +523,14 @@ class TestClient(IntegrationTest):
     def test_min_pool_size(self):
         with client_knobs(kill_cursor_frequency=.1):
             client = rs_or_single_client()
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             self.assertEqual(0, len(server._pool.sockets))
 
             # Assert that pool started up at minPoolSize
             client = rs_or_single_client(minPoolSize=10)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             wait_until(lambda: 10 == len(server._pool.sockets),
                        "pool initialized with 10 sockets")
 
@@ -532,7 +545,8 @@ class TestClient(IntegrationTest):
         # Use high frequency to test _get_socket_no_auth.
         with client_knobs(kill_cursor_frequency=99999999):
             client = rs_or_single_client(maxIdleTimeMS=500)
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
@@ -546,7 +560,8 @@ class TestClient(IntegrationTest):
 
             # Test that sockets are reused if maxIdleTimeMS is not set.
             client = rs_or_single_client()
-            server = client._get_topology().select_server(any_server_selector)
+            server = client._get_topology().select_server(
+                readable_server_selector)
             with server._pool.get_socket({}) as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
@@ -2006,6 +2021,61 @@ class TestMongoClientFailover(MockClientTest):
         self.assertTrue(ct.dead)
         self.assertIsNone(tt.get())
         self.assertIsNone(ct.get())
+
+
+class TestClientPool(MockClientTest):
+
+    def test_rs_client_does_not_maintain_pool_to_arbiters(self):
+        listener = CMAPListener()
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3', 'd:4'],
+            mongoses=[],
+            arbiters=['c:3'],  # c:3 is an arbiter.
+            down_hosts=['d:4'],  # d:4 is unreachable.
+            host=['a:1', 'b:2', 'c:3', 'd:4'],
+            replicaSet='rs',
+            minPoolSize=1,  # minPoolSize
+            event_listeners=[listener],
+        )
+        self.addCleanup(c.close)
+
+        wait_until(lambda: len(c.nodes) == 3, 'connect')
+        self.assertEqual(c.address, ('a', 1))
+        self.assertEqual(c.arbiters, set([('c', 3)]))
+        # Assert that we create 2 and only 2 pooled connections.
+        listener.wait_for_event(monitoring.ConnectionReadyEvent, 2)
+        self.assertEqual(
+            listener.event_count(monitoring.ConnectionCreatedEvent), 2)
+        # Assert that we do not create connections to arbiters.
+        arbiter = c._topology.get_server_by_address(('c', 3))
+        self.assertFalse(arbiter.pool.sockets)
+        # Assert that we do not create connections to unknown servers.
+        arbiter = c._topology.get_server_by_address(('d', 4))
+        self.assertFalse(arbiter.pool.sockets)
+
+    def test_direct_client_maintains_pool_to_arbiter(self):
+        listener = CMAPListener()
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            arbiters=['c:3'],  # c:3 is an arbiter.
+            host='c:3',
+            directConnection=True,
+            minPoolSize=1,  # minPoolSize
+            event_listeners=[listener],
+        )
+        self.addCleanup(c.close)
+
+        wait_until(lambda: len(c.nodes) == 1, 'connect')
+        self.assertEqual(c.address, ('c', 3))
+        # Assert that we create 1 pooled connection.
+        listener.wait_for_event(monitoring.ConnectionReadyEvent, 1)
+        self.assertEqual(
+            listener.event_count(monitoring.ConnectionCreatedEvent), 1)
+        arbiter = c._topology.get_server_by_address(('c', 3))
+        self.assertEqual(len(arbiter.pool.sockets), 1)
 
 
 if __name__ == "__main__":

@@ -430,15 +430,26 @@ class Topology(object):
                     ServerDescription(address, error=error), True)
                 server.request_check()
 
+    def data_bearing_servers(self):
+        """Return a list of all data-bearing servers.
+
+        This includes any server that might be selected for an operation.
+        """
+        if self._description.topology_type == TOPOLOGY_TYPE.Single:
+            return self._description.known_servers
+        return self._description.readable_servers
+
     def update_pool(self, all_credentials):
         # Remove any stale sockets and add new sockets if pool is too small.
         servers = []
         with self._lock:
-            for server in self._servers.values():
-                servers.append((server, server._pool.generation))
+            # Only update pools for data-bearing servers.
+            for sd in self.data_bearing_servers():
+                server = self._servers[sd.address]
+                servers.append((server, server.pool.generation))
 
         for server, generation in servers:
-            server._pool.remove_stale_sockets(generation, all_credentials)
+            server.pool.remove_stale_sockets(generation, all_credentials)
 
     def close(self):
         """Clear pools and terminate monitors. Topology reopens on demand."""

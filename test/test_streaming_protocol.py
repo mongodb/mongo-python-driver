@@ -215,7 +215,7 @@ class TestStreamingProtocol(IntegrationTest):
         self.assertTrue(hb_failed_events[0].awaited)
         # Depending on thread scheduling, the failed heartbeat could occur on
         # the second or third check.
-        events = [type(e) for e in hb_listener.results[:4]]
+        events = [type(e) for e in hb_listener.events[:4]]
         if events == [monitoring.ServerHeartbeatStartedEvent,
                       monitoring.ServerHeartbeatSucceededEvent,
                       monitoring.ServerHeartbeatStartedEvent,
