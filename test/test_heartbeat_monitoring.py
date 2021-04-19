@@ -51,12 +51,12 @@ class TestHeartbeatMonitoring(unittest.TestCase):
             # monitor thread may run multiple times during the execution
             # of this test.
             wait_until(
-                lambda: len(listener.results) >= expected_len,
+                lambda: len(listener.events) >= expected_len,
                 "publish all events")
 
         try:
             # zip gives us len(expected_results) pairs.
-            for expected, actual in zip(expected_results, listener.results):
+            for expected, actual in zip(expected_results, listener.events):
                 self.assertEqual(expected,
                                  actual.__class__.__name__)
                 self.assertEqual(actual.connection_id,
