@@ -144,6 +144,11 @@ class Cursor(object):
         if not isinstance(limit, int):
             raise TypeError("limit must be an instance of int")
         validate_boolean("no_cursor_timeout", no_cursor_timeout)
+        if no_cursor_timeout:
+            warnings.warn("use an explicit session with no_cursor_timeout=True"\
+                          "otherwise the cursor may still timeout after 30 minutes,"\
+                          "for more info see DOCS-11255",
+                          UserWarning, stacklevel=2)
         if cursor_type not in (CursorType.NON_TAILABLE, CursorType.TAILABLE,
                                CursorType.TAILABLE_AWAIT, CursorType.EXHAUST):
             raise ValueError("not a valid value for cursor_type")
