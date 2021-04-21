@@ -89,7 +89,7 @@ if sys.platform == 'win32':
                 _silence_resource_warning(popen)
         except FileNotFoundError as exc:
             warnings.warn('Failed to start %s: is it on your $PATH?\n'
-                          f'Original exception: %s' % (args[0], exc),
+                          'Original exception: %s' % (args[0], exc),
                           RuntimeWarning, stacklevel=2)
 else:
     # On Unix we spawn the daemon process with a double Popen.
@@ -113,7 +113,7 @@ else:
                     stdin=devnull, stderr=devnull, stdout=devnull)
         except FileNotFoundError as exc:
             warnings.warn('Failed to start %s: is it on your $PATH?\n'
-                          f'Original exception: %s' % (args[0], exc),
+                          'Original exception: %s' % (args[0], exc),
                           RuntimeWarning, stacklevel=2)
 
     def _spawn_daemon_double_popen(args):
