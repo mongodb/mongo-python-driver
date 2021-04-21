@@ -85,8 +85,8 @@ if sys.platform == 'win32':
                     stdin=devnull, stderr=devnull, stdout=devnull)
                 _silence_resource_warning(popen)
         except FileNotFoundError as exc:
-            raise PyMongoError(
-                f'Failed to start {args[0]}: is it on your $PATH?\nOriginal exception: {exc}')
+            raise PyMongoError('Failed to start %s: is it on your $PATH?\n'
+                               'Original exception: %s' % (args[0], exc))
 else:
     # On Unix we spawn the daemon process with a double Popen.
     # 1) The first Popen runs this file as a Python script using the current
@@ -108,8 +108,8 @@ else:
                     close_fds=True,
                     stdin=devnull, stderr=devnull, stdout=devnull)
         except FileNotFoundError as exc:
-            raise PyMongoError(
-                f'Failed to start {args[0]}: is it on your $PATH?\nOriginal exception: {exc}')
+            raise PyMongoError('Failed to start %s: is it on your $PATH?\n'
+                               'Original exception: %s' % (args[0], exc))
 
     def _spawn_daemon_double_popen(args):
         """Spawn a daemon process using a double subprocess.Popen."""
