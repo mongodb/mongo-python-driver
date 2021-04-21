@@ -24,6 +24,8 @@ import subprocess
 import sys
 import time
 
+from pymongo.errors import PyMongoError
+
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
 _THIS_FILE = os.path.realpath(__file__)
@@ -75,12 +77,16 @@ if sys.platform == 'win32':
 
     def _spawn_daemon(args):
         """Spawn a daemon process (Windows)."""
-        with open(os.devnull, 'r+b') as devnull:
-            popen = subprocess.Popen(
-                args,
-                creationflags=_DETACHED_PROCESS,
-                stdin=devnull, stderr=devnull, stdout=devnull)
-            _silence_resource_warning(popen)
+        try:
+            with open(os.devnull, 'r+b') as devnull:
+                popen = subprocess.Popen(
+                    args,
+                    creationflags=_DETACHED_PROCESS,
+                    stdin=devnull, stderr=devnull, stdout=devnull)
+                _silence_resource_warning(popen)
+        except FileNotFoundError as exc:
+            raise PyMongoError(
+                f'Failed to start {args[0]}: is it on your $PATH?\nOriginal exception: {exc}')
 else:
     # On Unix we spawn the daemon process with a double Popen.
     # 1) The first Popen runs this file as a Python script using the current
@@ -95,12 +101,15 @@ else:
     # we spawn the mongocryptd daemon process.
     def _spawn(args):
         """Spawn the process and silence stdout/stderr."""
-        with open(os.devnull, 'r+b') as devnull:
-            return subprocess.Popen(
-                args,
-                close_fds=True,
-                stdin=devnull, stderr=devnull, stdout=devnull)
-
+        try:
+            with open(os.devnull, 'r+b') as devnull:
+                return subprocess.Popen(
+                    args,
+                    close_fds=True,
+                    stdin=devnull, stderr=devnull, stdout=devnull)
+        except FileNotFoundError as exc:
+            raise PyMongoError(
+                f'Failed to start {args[0]}: is it on your $PATH?\nOriginal exception: {exc}')
 
     def _spawn_daemon_double_popen(args):
         """Spawn a daemon process using a double subprocess.Popen."""
