@@ -21,7 +21,7 @@ from pymongo.common import clean_node
 from pymongo.read_preferences import ReadPreference
 from test import client_context, IntegrationTest, unittest
 from test.utils_selection_tests import create_topology
-from test.utils import TestCreator, rs_client, OvertCommandListener
+from test.utils import TestCreator, rs_client, OvertCommandListener, wait_until
 
 
 # Location of JSON test specifications.
@@ -127,10 +127,14 @@ class TestProse(IntegrationTest):
     @client_context.require_multiple_mongoses
     def test_load_balancing(self):
         listener = OvertCommandListener()
+        # PYTHON-2584: Use a large localThresholdMS to avoid the impact of
+        # varying RTTs.
         client = rs_client(client_context.mongos_seeds(),
                            appName='loadBalancingTest',
-                           event_listeners=[listener])
+                           event_listeners=[listener],
+                           localThresholdMS=10000)
         self.addCleanup(client.close)
+        wait_until(lambda: len(client.nodes) == 2, 'discover both nodes')
         # Delay find commands on
         delay_finds = {
             'configureFailPoint': 'failCommand',
