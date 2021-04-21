@@ -127,7 +127,8 @@ class TestProse(IntegrationTest):
     @client_context.require_multiple_mongoses
     def test_load_balancing(self):
         listener = OvertCommandListener()
-        # Use a large localThresholdMS to avoid the impact of varying RTTs.
+        # PYTHON-2584: Use a large localThresholdMS to avoid the impact of
+        # varying RTTs.
         client = rs_client(client_context.mongos_seeds(),
                            appName='loadBalancingTest',
                            event_listeners=[listener],
