@@ -23,12 +23,13 @@ import os
 import subprocess
 import sys
 import time
+import warnings
 
-from pymongo.errors import PyMongoError
 
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
 _THIS_FILE = os.path.realpath(__file__)
+
 
 if sys.version_info[0] < 3:
     def _popen_wait(popen, timeout):
@@ -68,7 +69,9 @@ def _silence_resource_warning(popen):
     # "ResourceWarning: subprocess XXX is still running".
     # See https://bugs.python.org/issue38890 and
     # https://bugs.python.org/issue26741.
-    popen.returncode = 0
+    # popen is None when mongocryptd spawning fails
+    if popen is not None:
+        popen.returncode = 0
 
 
 if sys.platform == 'win32':
@@ -85,8 +88,9 @@ if sys.platform == 'win32':
                     stdin=devnull, stderr=devnull, stdout=devnull)
                 _silence_resource_warning(popen)
         except FileNotFoundError as exc:
-            raise PyMongoError('Failed to start %s: is it on your $PATH?\n'
-                               'Original exception: %s' % (args[0], exc))
+            warnings.warn('Failed to start %s: is it on your $PATH?\n'
+                          f'Original exception: %s' % (args[0], exc),
+                          RuntimeWarning, stacklevel=2)
 else:
     # On Unix we spawn the daemon process with a double Popen.
     # 1) The first Popen runs this file as a Python script using the current
@@ -108,8 +112,9 @@ else:
                     close_fds=True,
                     stdin=devnull, stderr=devnull, stdout=devnull)
         except FileNotFoundError as exc:
-            raise PyMongoError('Failed to start %s: is it on your $PATH?\n'
-                               'Original exception: %s' % (args[0], exc))
+            warnings.warn('Failed to start %s: is it on your $PATH?\n'
+                          f'Original exception: %s' % (args[0], exc),
+                          RuntimeWarning, stacklevel=2)
 
     def _spawn_daemon_double_popen(args):
         """Spawn a daemon process using a double subprocess.Popen."""
