@@ -48,7 +48,9 @@ def _silence_resource_warning(popen):
     # "ResourceWarning: subprocess XXX is still running".
     # See https://bugs.python.org/issue38890 and
     # https://bugs.python.org/issue26741.
-    popen.returncode = 0
+    # popen is None when mongocryptd spawning fails
+    if popen is not None:
+        popen.returncode = 0
 
 
 if sys.platform == 'win32':
@@ -68,7 +70,6 @@ if sys.platform == 'win32':
             warnings.warn(f'Failed to start {args[0]}: is it on your $PATH?\n'
                           f'Original exception: {exc}', RuntimeWarning,
                           stacklevel=2)
-            return subprocess.CompletedProcess(args, 0)
 else:
     # On Unix we spawn the daemon process with a double Popen.
     # 1) The first Popen runs this file as a Python script using the current
@@ -93,7 +94,6 @@ else:
             warnings.warn(f'Failed to start {args[0]}: is it on your $PATH?\n'
                           f'Original exception: {exc}', RuntimeWarning,
                           stacklevel=2)
-            return subprocess.CompletedProcess(args, 0)
 
 
     def _spawn_daemon_double_popen(args):
