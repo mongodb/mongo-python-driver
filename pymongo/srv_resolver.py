@@ -48,7 +48,7 @@ class _SrvResolver(object):
 
     def get_options(self):
         try:
-            results = resolver.query(self.__fqdn, 'TXT',
+            results = resolver.resolve(self.__fqdn, 'TXT',
                                      lifetime=self.__connect_timeout)
         except (resolver.NoAnswer, resolver.NXDOMAIN):
             # No TXT records
@@ -63,7 +63,7 @@ class _SrvResolver(object):
 
     def _resolve_uri(self, encapsulate_errors):
         try:
-            results = resolver.query('_mongodb._tcp.' + self.__fqdn, 'SRV',
+            results = resolver.resolve('_mongodb._tcp.' + self.__fqdn, 'SRV',
                                      lifetime=self.__connect_timeout)
         except Exception as exc:
             if not encapsulate_errors:
