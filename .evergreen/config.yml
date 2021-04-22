@@ -2434,7 +2434,7 @@ buildvariants:
 
 - matrix_name: "versioned-api-tests"
   matrix_spec:
-    platform: ubuntu-16.04
+    platform: ubuntu-18.04
     python-version: ["3.6", "3.9"]
     auth: "auth"
     versionedApi: "*"
