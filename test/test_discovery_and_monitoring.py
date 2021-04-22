@@ -329,7 +329,7 @@ class TestPoolManagement(IntegrationTest):
         fail_ismaster = {
             'mode': {'times': 2},
             'data': {
-                'failCommands': ['isMaster'],
+                'failCommands': ['isMaster', 'hello'],
                 'errorCode': 1234,
                 'appName': 'SDAMPoolManagementTest',
             },

@@ -30,6 +30,8 @@ def _get_server_type(doc):
     elif doc.get('setName'):
         if doc.get('hidden'):
             return SERVER_TYPE.RSOther
+        elif doc.get('isWritablePrimary'):
+            return SERVER_TYPE.RSPrimary
         elif doc.get('ismaster'):
             return SERVER_TYPE.RSPrimary
         elif doc.get('secondary'):

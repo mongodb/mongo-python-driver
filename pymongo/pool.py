@@ -536,7 +536,10 @@ class SocketInfo(object):
 
     def _ismaster(self, cluster_time, topology_version,
                   heartbeat_frequency, all_credentials):
-        cmd = SON([('ismaster', 1)])
+        if self.opts.server_api:
+            cmd = SON(hello=1)
+        else:
+            cmd = SON(ismaster=1)
         performing_handshake = not self.performed_handshake
         awaitable = False
         if performing_handshake:
