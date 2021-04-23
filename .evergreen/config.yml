@@ -1606,12 +1606,6 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
-      - id: rhel72-zseries-test
-        display_name: "RHEL 7.2 (zSeries)"
-        run_on: rhel72-zseries-test
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel72-zseries-test/master/latest/libmongocrypt.tar.gz
       - id: ubuntu-16.04
         display_name: "Ubuntu 16.04"
         run_on: ubuntu1604-test
@@ -1631,13 +1625,17 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
-      - id: ubuntu1604-power8-test
-        display_name: "Ubuntu 16.04 (POWER8)"
-        run_on: ubuntu1604-power8-test
+      - id: ubuntu1804-zseries
+        display_name: "Ubuntu 18.04 (zSeries)"
+        run_on: ubuntu1804-zseries-small
         batchtime: 10080  # 7 days
-      - id: ubuntu1804-arm64-test
+      - id: ubuntu1804-power8
+        display_name: "Ubuntu 18.04 (POWER8)"
+        run_on: ubuntu1804-power8-small
+        batchtime: 10080  # 7 days
+      - id: ubuntu1804-arm64
         display_name: "Ubuntu 18.04 (ARM64)"
-        run_on: ubuntu1804-arm64-test
+        run_on: ubuntu1804-arm64-small
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-arm64/master/latest/libmongocrypt.tar.gz
@@ -2052,17 +2050,17 @@ buildvariants:
   display_name: "Encryption ${platform} ${auth} ${ssl}"
   tasks: *encryption-server-versions
 
-# Test one server version (4.0) with zSeries, POWER8, and ARM.
+# Test one server version (4.2) with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
   matrix_spec:
     platform:
-      - rhel72-zseries-test
-      - ubuntu1604-power8-test
-      - ubuntu1804-arm64-test
+      - ubuntu1804-zseries # Ubuntu 18 or RHEL 8.x?
+      - ubuntu1804-power8 # Ubuntu 18 or RHEL 7?
+      - ubuntu1804-arm64
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
-    - ".4.0"
+    - ".4.2"
 
 - matrix_name: "tests-python-version-amazon1-test-ssl"
   matrix_spec:
