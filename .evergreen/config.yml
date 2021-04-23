@@ -1944,11 +1944,11 @@ axes:
           REQUIRE_API_VERSION: "1"
           # MONGODB_API_VERSION is the apiVersion to use in the test suite.
           MONGODB_API_VERSION: "1"
-      # Test against a cluster with acceptAPIVersion2 but without
+      # Test against a cluster with acceptApiVersion2 but without
       # requireApiVersion, and don't automatically add apiVersion to
       # clients created in the test suite.
-      - id: "acceptAPIVersion2"
-        display_name: "acceptAPIVersion2"
+      - id: "acceptApiVersion2"
+        display_name: "acceptApiVersion2"
         tags: [ "versionedApi_tag" ]
         variables:
           ORCHESTRATION_FILE: "versioned-api-testing.json"
@@ -2434,7 +2434,7 @@ buildvariants:
 
 - matrix_name: "versioned-api-tests"
   matrix_spec:
-    platform: ubuntu-16.04
+    platform: ubuntu-18.04
     python-version: ["3.6", "3.9"]
     auth: "auth"
     versionedApi: "*"
