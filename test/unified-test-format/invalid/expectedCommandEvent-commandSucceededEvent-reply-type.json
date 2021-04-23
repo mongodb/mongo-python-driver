@@ -1,5 +1,5 @@
 {
-  "description": "expectedEventsForClient-client-required",
+  "description": "expectedCommandEvent-commandSucceededEvent-reply-type",
   "schemaVersion": "1.0",
   "createEntities": [
     {
@@ -14,7 +14,14 @@
       "operations": [],
       "expectEvents": [
         {
-          "events": []
+          "client": "client0",
+          "events": [
+            {
+              "commandSucceededEvent": {
+                "reply": 0
+              }
+            }
+          ]
         }
       ]
     }

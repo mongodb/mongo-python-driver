@@ -1,5 +1,5 @@
 {
-  "description": "expectedEventsForClient-client-required",
+  "description": "expectedCommandEvent-additionalProperties",
   "schemaVersion": "1.0",
   "createEntities": [
     {
@@ -14,7 +14,12 @@
       "operations": [],
       "expectEvents": [
         {
-          "events": []
+          "client": "client0",
+          "events": [
+            {
+              "foo": 0
+            }
+          ]
         }
       ]
     }
