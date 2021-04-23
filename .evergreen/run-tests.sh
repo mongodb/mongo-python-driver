@@ -18,6 +18,11 @@ else
     set +x
 fi
 
+set -x
+python3 -m pip list
+python3 -c 'import pymongo.ssl_context'
+python3 -c 'import pymongo.pyopenssl_context'
+
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 PYTHON_BINARY=${PYTHON_BINARY:-}
