@@ -2016,8 +2016,14 @@ buildvariants:
       # MacOS introduced SSL support with MongoDB >= 3.2.
       # Older server versions (2.6, 3.0) are supported without SSL.
       - macos-1014
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
+    auth: "*"
+    ssl: "*"
+  exclude_spec:
+    # No point testing with SSL without auth.
+    - platform: macos-1014
+      auth: "noauth"
+      ssl: "ssl"
+  display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - ".latest"
     - ".4.4"
@@ -2029,7 +2035,8 @@ buildvariants:
   rules:
     - if:
         platform: macos-1014
-        auth-ssl: "noauth-nossl"
+        auth: "*"
+        ssl: "nossl"
       then:
         add_tasks:
           - ".3.0"
