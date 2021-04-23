@@ -16,6 +16,7 @@
 """Tools to parse and validate a MongoDB URI."""
 import re
 import warnings
+import os
 
 from urllib.parse import unquote_plus
 
@@ -416,8 +417,13 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         scheme_free = uri[SCHEME_LEN:]
     elif uri.startswith(SRV_SCHEME):
         if not _HAVE_DNSPYTHON:
+            python_path = os.getenv('_', "python")
             raise ConfigurationError('The "dnspython" module must be '
-                                     'installed to use mongodb+srv:// URIs')
+                                     'installed to use mongodb+srv:// URIs. '
+                                     'To fix this error install pymongo '
+                                     'with the srv extra:\n   '
+                                     '%s -m pip install "pymongo[srv]"'
+                                     % (python_path))
         is_srv = True
         scheme_free = uri[SRV_SCHEME_LEN:]
     else:
