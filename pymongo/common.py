@@ -162,12 +162,12 @@ def validate_boolean(option, value):
 
 
 def validate_boolean_or_string(option, value):
-    """Validates that value is True, False, 'true', or 'false'."""
+    """Validates that value is True, False, 'True', 'False', 'true', 'false'."""
     if isinstance(value, str):
-        if value not in ('true', 'false'):
+        if value not in ('true', 'false', 'True', 'False'):
             raise ValueError("The value of %s must be "
-                             "'true' or 'false'" % (option,))
-        return value == 'true'
+                             "'True', 'False', 'true' or 'false'" % (option,))
+        return value == 'true' or value == "True"
     return validate_boolean(option, value)
 
 
