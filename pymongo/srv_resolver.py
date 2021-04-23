@@ -16,6 +16,13 @@
 
 try:
     from dns import resolver
+
+    try:
+        # dnspython >= 2
+        from dns.resolver import resolve as _resolve
+    except ImportError:
+        # dnspython 1.X
+        from dns.resolver import query as _resolve
     _HAVE_DNSPYTHON = True
 except ImportError:
     _HAVE_DNSPYTHON = False
@@ -54,8 +61,8 @@ class _SrvResolver(object):
 
     def get_options(self):
         try:
-            results = resolver.query(self.__fqdn, 'TXT',
-                                     lifetime=self.__connect_timeout)
+            results = _resolve(self.__fqdn, 'TXT',
+                               lifetime=self.__connect_timeout)
         except (resolver.NoAnswer, resolver.NXDOMAIN):
             # No TXT records
             return None
@@ -69,8 +76,8 @@ class _SrvResolver(object):
 
     def _resolve_uri(self, encapsulate_errors):
         try:
-            results = resolver.query('_mongodb._tcp.' + self.__fqdn, 'SRV',
-                                     lifetime=self.__connect_timeout)
+            results = _resolve('_mongodb._tcp.' + self.__fqdn, 'SRV',
+                               lifetime=self.__connect_timeout)
         except Exception as exc:
             if not encapsulate_errors:
                 # Raise the original error.

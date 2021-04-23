@@ -398,11 +398,11 @@ class ClientUnitTest(unittest.TestCase):
         _HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_connection_timeout_ms_propagates_to_DNS_resolver(self):
         # Patch the resolver.
-        from pymongo.srv_resolver import resolver
-        patched_resolver = FunctionCallRecorder(resolver.query)
-        pymongo.srv_resolver.resolver.query = patched_resolver
+        from pymongo.srv_resolver import _resolve
+        patched_resolver = FunctionCallRecorder(_resolve)
+        pymongo.srv_resolver._resolve = patched_resolver
         def reset_resolver():
-            pymongo.srv_resolver.resolver.query = resolver.query
+            pymongo.srv_resolver._resolve = _resolve
         self.addCleanup(reset_resolver)
 
         # Setup.
