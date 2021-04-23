@@ -914,7 +914,8 @@ class Database(common.BaseObject):
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
 
-    def set_profiling_level(self, level, slow_ms=None, session=None):
+    def set_profiling_level(self, level, slow_ms=None, session=None,
+                            sample_rate=None, filter=None):
         """Set the database's profiling level.
 
         :Parameters:
@@ -925,6 +926,10 @@ class Database(common.BaseObject):
             slower than the `slow_ms` level will get written to the logs.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `sample_rate` (optional): The fraction of slow operations that
+            should be profiled or logged expressed as a float between 0 and 1.
+          - `filter` (optional): A filter expression that controls which
+            operations are profiled and logged.
 
         Possible `level` values:
 
@@ -942,6 +947,9 @@ class Database(common.BaseObject):
         (:data:`~pymongo.OFF`, :data:`~pymongo.SLOW_ONLY`,
         :data:`~pymongo.ALL`).
 
+        .. versionchanged:: 3.12
+           Added the ``sample_rate`` and ``filter`` parameters.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -953,10 +961,18 @@ class Database(common.BaseObject):
         if slow_ms is not None and not isinstance(slow_ms, int):
             raise TypeError("slow_ms must be an integer")
 
+        if sample_rate is not None and not isinstance(sample_rate, float):
+            raise TypeError(
+                "sample_rate must be a float, not %r" % (sample_rate,))
+
+        cmd = SON(profile=level)
         if slow_ms is not None:
-            self.command("profile", level, slowms=slow_ms, session=session)
-        else:
-            self.command("profile", level, session=session)
+            cmd['slowms'] = slow_ms
+        if sample_rate is not None:
+            cmd['sampleRate'] = sample_rate
+        if filter is not None:
+            cmd['filter'] = filter
+        self.command(cmd, session=session)
 
     def profiling_info(self, session=None):
         """Returns a list containing current profiling information.
