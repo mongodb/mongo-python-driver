@@ -1498,38 +1498,49 @@ class Collection(common.BaseObject):
 
         return RawBatchCursor(self, *args, **kwargs)
 
+    def _count_cmd(self, session, sock_info, slave_ok, cmd, collation):
+        """Internal count command helper."""
+        # XXX: "ns missing" checks can be removed when we drop support for
+        # MongoDB 3.0, see SERVER-17051.
+        res = self._command(
+            sock_info,
+            cmd,
+            slave_ok,
+            allowable_errors=["ns missing"],
+            codec_options=self.__write_response_codec_options,
+            read_concern=self.read_concern,
+            collation=collation,
+            session=session)
+        if res.get("errmsg", "") == "ns missing":
+            return 0
+        return int(res["n"])
+
     def _count(self, cmd, collation=None, session=None):
         """Internal count helper."""
         # XXX: "ns missing" checks can be removed when we drop support for
         # MongoDB 3.0, see SERVER-17051.
         def _cmd(session, server, sock_info, slave_ok):
-            res = self._command(
-                sock_info,
-                cmd,
-                slave_ok,
-                allowable_errors=["ns missing"],
-                codec_options=self.__write_response_codec_options,
-                read_concern=self.read_concern,
-                collation=collation,
-                session=session)
-            if res.get("errmsg", "") == "ns missing":
-                return 0
-            return int(res["n"])
+            return self._count_cmd(
+                session, sock_info, slave_ok, cmd, collation)
 
         return self.__database.client._retryable_read(
             _cmd, self._read_preference_for(session), session)
 
     def _aggregate_one_result(
-            self, sock_info, slave_ok, cmd, collation=None, session=None):
+            self, sock_info, slave_ok, cmd, collation, session):
         """Internal helper to run an aggregate that returns a single result."""
         result = self._command(
             sock_info,
             cmd,
             slave_ok,
+            allowable_errors=[26],  # Ignore NamespaceNotFound.
             codec_options=self.__write_response_codec_options,
             read_concern=self.read_concern,
             collation=collation,
             session=session)
+        # cursor will not be present for NamespaceNotFound errors.
+        if 'cursor' not in result:
+            return None
         batch = result['cursor']['firstBatch']
         return batch[0] if batch else None
 
@@ -1554,9 +1565,31 @@ class Collection(common.BaseObject):
         if 'session' in kwargs:
             raise ConfigurationError(
                 'estimated_document_count does not support sessions')
-        cmd = SON([('count', self.__name)])
-        cmd.update(kwargs)
-        return self._count(cmd)
+
+        def _cmd(session, server, sock_info, slave_ok):
+            if sock_info.max_wire_version >= 12:
+                # MongoDB 4.9+
+                pipeline = [
+                    {'$collStats': {'count': {}}},
+                    {'$group': {'_id': 1, 'n': {'$sum': '$count'}}},
+                ]
+                cmd = SON([('aggregate', self.__name),
+                           ('pipeline', pipeline),
+                           ('cursor', {})])
+                cmd.update(kwargs)
+                result = self._aggregate_one_result(
+                    sock_info, slave_ok, cmd, collation=None, session=session)
+                if not result:
+                    return 0
+                return int(result['n'])
+            else:
+                # MongoDB < 4.9
+                cmd = SON([('count', self.__name)])
+                cmd.update(kwargs)
+                return self._count_cmd(None, sock_info, slave_ok, cmd, None)
+
+        return self.__database.client._retryable_read(
+            _cmd, self.read_preference, None)
 
     def count_documents(self, filter, session=None, **kwargs):
         """Count the number of documents in this collection.
