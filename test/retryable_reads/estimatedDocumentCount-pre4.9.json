@@ -2,6 +2,7 @@
   "runOn": [
     {
       "minServerVersion": "4.0",
+      "maxServerVersion": "4.8.99",
       "topology": [
         "single",
         "replicaset"
@@ -9,6 +10,7 @@
     },
     {
       "minServerVersion": "4.1.7",
+      "maxServerVersion": "4.8.99",
       "topology": [
         "sharded"
       ]
@@ -16,21 +18,31 @@
   ],
   "database_name": "retryable-reads-tests",
   "collection_name": "coll",
-  "data": [],
+  "data": [
+    {
+      "_id": 1,
+      "x": 11
+    },
+    {
+      "_id": 2,
+      "x": 22
+    }
+  ],
   "tests": [
     {
-      "description": "ListIndexNames succeeds on first attempt",
+      "description": "EstimatedDocumentCount succeeds on first attempt",
       "operations": [
         {
-          "name": "listIndexNames",
-          "object": "collection"
+          "name": "estimatedDocumentCount",
+          "object": "collection",
+          "result": 2
         }
       ],
       "expectations": [
         {
           "command_started_event": {
             "command": {
-              "listIndexes": "coll"
+              "count": "coll"
             },
             "database_name": "retryable-reads-tests"
           }
@@ -38,7 +50,7 @@
       ]
     },
     {
-      "description": "ListIndexNames succeeds on second attempt",
+      "description": "EstimatedDocumentCount succeeds on second attempt",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
@@ -46,22 +58,23 @@
         },
         "data": {
           "failCommands": [
-            "listIndexes"
+            "count"
           ],
           "closeConnection": true
         }
       },
       "operations": [
         {
-          "name": "listIndexNames",
-          "object": "collection"
+          "name": "estimatedDocumentCount",
+          "object": "collection",
+          "result": 2
         }
       ],
       "expectations": [
         {
           "command_started_event": {
             "command": {
-              "listIndexes": "coll"
+              "count": "coll"
             },
             "database_name": "retryable-reads-tests"
           }
@@ -69,7 +82,7 @@
         {
           "command_started_event": {
             "command": {
-              "listIndexes": "coll"
+              "count": "coll"
             },
             "database_name": "retryable-reads-tests"
           }
@@ -77,7 +90,7 @@
       ]
     },
     {
-      "description": "ListIndexNames fails on first attempt",
+      "description": "EstimatedDocumentCount fails on first attempt",
       "clientOptions": {
         "retryReads": false
       },
@@ -88,14 +101,14 @@
         },
         "data": {
           "failCommands": [
-            "listIndexes"
+            "count"
           ],
           "closeConnection": true
         }
       },
       "operations": [
         {
-          "name": "listIndexNames",
+          "name": "estimatedDocumentCount",
           "object": "collection",
           "error": true
         }
@@ -104,7 +117,7 @@
         {
           "command_started_event": {
             "command": {
-              "listIndexes": "coll"
+              "count": "coll"
             },
             "database_name": "retryable-reads-tests"
           }
@@ -112,7 +125,7 @@
       ]
     },
     {
-      "description": "ListIndexNames fails on second attempt",
+      "description": "EstimatedDocumentCount fails on second attempt",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
@@ -120,14 +133,14 @@
         },
         "data": {
           "failCommands": [
-            "listIndexes"
+            "count"
           ],
           "closeConnection": true
         }
       },
       "operations": [
         {
-          "name": "listIndexNames",
+          "name": "estimatedDocumentCount",
           "object": "collection",
           "error": true
         }
@@ -136,7 +149,7 @@
         {
           "command_started_event": {
             "command": {
-              "listIndexes": "coll"
+              "count": "coll"
             },
             "database_name": "retryable-reads-tests"
           }
@@ -144,7 +157,7 @@
         {
           "command_started_event": {
             "command": {
-              "listIndexes": "coll"
+              "count": "coll"
             },
             "database_name": "retryable-reads-tests"
           }
