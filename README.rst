@@ -228,4 +228,4 @@ Or with Eventlet's::
 
     $ python green_framework_test.py eventlet
 
-.. _sphinx: http://sphinx.pocoo.org/
+.. _sphinx: https://www.sphinx-doc.org/en/master/
