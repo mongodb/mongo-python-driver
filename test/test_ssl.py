@@ -51,14 +51,13 @@ try:
     import OpenSSL
     import requests
     import service_identity
+    # Ensure service_identity>=18.1 is installed
+    from service_identity.pyopenssl import verify_ip_address
+    from pymongo.ocsp_support import _load_trusted_ca_certs
     _HAVE_PYOPENSSL = True
 except ImportError:
     pass
 
-if _HAVE_PYOPENSSL:
-    from pymongo.ocsp_support import _load_trusted_ca_certs
-else:
-    _load_trusted_ca_certs = None
 
 if HAVE_SSL:
     import ssl
@@ -164,7 +163,7 @@ class TestClientSSL(unittest.TestCase):
             ssl.CERT_REQUIRED)
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
-    def test_use_openssl_when_available(self):
+    def test_use_pyopenssl_when_available(self):
         self.assertTrue(_ssl.IS_PYOPENSSL)
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "Cannot test without PyOpenSSL")

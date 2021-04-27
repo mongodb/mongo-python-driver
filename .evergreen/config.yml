@@ -1626,16 +1626,6 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
-      - id: rhel71-power8-test
-        display_name: "RHEL 7.1 (POWER8)"
-        run_on: rhel71-power8-test
-        batchtime: 10080  # 7 days
-      - id: rhel72-zseries-test
-        display_name: "RHEL 7.2 (zSeries)"
-        run_on: rhel72-zseries-test
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel72-zseries-test/master/latest/libmongocrypt.tar.gz
       - id: suse12-x86-64-test
         display_name: "SUSE 12 (x86_64)"
         run_on: suse12-sp5-small
@@ -1661,19 +1651,17 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
-      - id: ubuntu1604-arm64-small
-        display_name: "Ubuntu 16.04 (ARM64)"
-        run_on: ubuntu1604-arm64-small
+      - id: ubuntu1804-zseries
+        display_name: "Ubuntu 18.04 (zSeries)"
+        run_on: ubuntu1804-zseries-small
         batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1604-arm64/master/latest/libmongocrypt.tar.gz
-      - id: ubuntu1604-power8-test
-        display_name: "Ubuntu 16.04 (POWER8)"
-        run_on: ubuntu1604-power8-test
+      - id: ubuntu1804-power8
+        display_name: "Ubuntu 18.04 (POWER8)"
+        run_on: ubuntu1804-power8-small
         batchtime: 10080  # 7 days
-      - id: ubuntu1804-arm64-test
+      - id: ubuntu1804-arm64
         display_name: "Ubuntu 18.04 (ARM64)"
-        run_on: ubuntu1804-arm64-test
+        run_on: ubuntu1804-arm64-small
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-arm64/master/latest/libmongocrypt.tar.gz
@@ -2103,7 +2091,6 @@ buildvariants:
       # OSes that support versions of MongoDB>=3.2 with SSL.
       - ubuntu-16.04
       - suse12-x86-64-test
-      - rhel71-power8-test
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2162,8 +2149,6 @@ buildvariants:
     platform:
       # OSes that support versions of MongoDB>=3.4 <4.2 with SSL.
       - debian81
-      - ubuntu1604-power8-test
-      - ubuntu1604-arm64-small
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2171,31 +2156,16 @@ buildvariants:
     - ".3.6"
     - ".3.4"
 
-- matrix_name: "test-os-requires-34"
+# Test one server version (4.2) with zSeries, POWER8, and ARM.
+- matrix_name: "test-different-cpu-architectures"
   matrix_spec:
     platform:
-      # OSes that support versions of MongoDB>=3.4 with SSL.
-      - rhel72-zseries-test
+      - ubuntu1804-zseries # Ubuntu 18 or RHEL 8.x?
+      - ubuntu1804-power8 # Ubuntu 18 or RHEL 7?
+      - ubuntu1804-arm64
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
-    - ".latest"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-    - ".3.6"
-    - ".3.4"
-
-- matrix_name: "test-os-requires-42"
-  matrix_spec:
-    platform:
-      # OSes that support versions of MongoDB>=4.2 with SSL.
-      - ubuntu1804-arm64-test
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
-  tasks:
-    - ".latest"
-    - ".4.4"
     - ".4.2"
 
 - matrix_name: "tests-python-version-amazon1-test-ssl"
