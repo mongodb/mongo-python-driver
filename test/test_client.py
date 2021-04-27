@@ -2009,7 +2009,6 @@ class TestClientPool(MockClientTest):
         )
         self.addCleanup(c.close)
 
-        print(c.topology_description)
         wait_until(lambda: len(c.nodes) == 1, 'connect')
         self.assertEqual(c.address, ('c', 3))
         # Assert that we create 1 pooled connection.
