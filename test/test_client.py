@@ -1964,6 +1964,7 @@ class TestMongoClientFailover(MockClientTest):
 
 class TestClientPool(MockClientTest):
 
+    @client_context.require_connection
     def test_rs_client_does_not_maintain_pool_to_arbiters(self):
         listener = CMAPListener()
         c = MockClient(
@@ -1993,6 +1994,7 @@ class TestClientPool(MockClientTest):
         arbiter = c._topology.get_server_by_address(('d', 4))
         self.assertFalse(arbiter.pool.sockets)
 
+    @client_context.require_connection
     def test_direct_client_maintains_pool_to_arbiter(self):
         listener = CMAPListener()
         c = MockClient(
@@ -2007,7 +2009,6 @@ class TestClientPool(MockClientTest):
         )
         self.addCleanup(c.close)
 
-        print(c.topology_description)
         wait_until(lambda: len(c.nodes) == 1, 'connect')
         self.assertEqual(c.address, ('c', 3))
         # Assert that we create 1 pooled connection.
