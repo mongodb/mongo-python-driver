@@ -16,13 +16,6 @@
 
 try:
     from dns import resolver
-
-    try:
-        # dnspython >= 2
-        from dns.resolver import resolve as _resolve
-    except ImportError:
-        # dnspython 1.X
-        from dns.resolver import query as _resolve
     _HAVE_DNSPYTHON = True
 except ImportError:
     _HAVE_DNSPYTHON = False
@@ -43,6 +36,15 @@ if PY3:
 else:
     def maybe_decode(text):
         return text
+
+
+# PYTHON-2667 Lazily call dns.resolver methods for compatibility with eventlet.
+def _resolve(*args, **kwargs):
+    if hasattr(resolver, 'resolve'):
+        # dnspython >= 2
+        return resolver.resolve(*args, **kwargs)
+    # dnspython 1.X
+    return resolver.query(*args, **kwargs)
 
 
 class _SrvResolver(object):
