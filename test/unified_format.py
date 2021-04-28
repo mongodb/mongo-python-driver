@@ -824,11 +824,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _testOperation_assertSessionPinned(self, spec):
         session = self.entity_map[spec['session']]
-        self.assertIsNotNone(session._pinned_address)
+        self.assertIsNotNone(session._transaction.pinned_address)
 
     def _testOperation_assertSessionUnpinned(self, spec):
         session = self.entity_map[spec['session']]
         self.assertIsNone(session._pinned_address)
+        self.assertIsNone(session._transaction.pinned_address)
 
     def __get_last_two_command_lsids(self, listener):
         cmd_started_events = []
