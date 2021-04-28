@@ -128,11 +128,6 @@ def run_operation(collection, test):
 
     result = cmd(**arguments)
 
-    if operation == "aggregate":
-        if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
-            out = collection.database[arguments["pipeline"][-1]["$out"]]
-            result = out.find()
-
     if isinstance(result, Cursor) or isinstance(result, CommandCursor):
         return list(result)
 
@@ -157,7 +152,8 @@ def create_test(scenario_def, test, name):
                 run_operation(self.db.test, test)
         else:
             result = run_operation(self.db.test, test)
-            check_result(self, expected_result, result)
+            if expected_result is not None:
+                check_result(self, expected_result, result)
 
         # Assert final state is expected.
         expected_c = test['outcome'].get('collection')

@@ -25,6 +25,12 @@ class TestCrudV2(SpecRunner):
     TEST_DB = None
     TEST_COLLECTION = None
 
+    def allowable_errors(self, op):
+        """Override expected error classes."""
+        errors = super(TestCrudV2, self).allowable_errors(op)
+        errors += (ValueError,)
+        return errors
+
     def get_scenario_db_name(self, scenario_def):
         """Crud spec says database_name is optional."""
         return scenario_def.get('database_name', self.TEST_DB)
