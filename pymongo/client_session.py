@@ -660,6 +660,7 @@ class ClientSession(object):
             pass
         finally:
             self._transaction.state = _TxnState.ABORTED
+            self._unpin_mongos()
 
     def _finish_transaction_with_retry(self, command_name):
         """Run commit or abort with one retry after any retryable error.
