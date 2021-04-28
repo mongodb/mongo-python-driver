@@ -419,6 +419,35 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(100, db.command("profile", -1)['slowms'])
 
     @client_context.require_no_mongos
+    @client_context.require_version_min(3, 6)
+    def test_profiling_sample_rate(self):
+        db = self.client.pymongo_test
+        with self.assertRaises(TypeError):
+            db.set_profiling_level(SLOW_ONLY, 50, sample_rate='1')
+        with self.assertRaises(TypeError):
+            db.set_profiling_level(SLOW_ONLY, 50, sample_rate=1)
+
+        db.set_profiling_level(SLOW_ONLY, 50, sample_rate=0.0)
+        db.set_profiling_level(SLOW_ONLY, 50, sample_rate=1.0)
+        db.set_profiling_level(SLOW_ONLY, 50, sample_rate=0.5)
+        profile = db.command("profile", -1)
+        self.assertEqual(50, profile['slowms'])
+        self.assertEqual(0.5, profile['sampleRate'])
+        db.set_profiling_level(OFF, 100)  # back to default
+        self.assertEqual(100, db.command("profile", -1)['slowms'])
+
+    @client_context.require_no_mongos
+    @client_context.require_version_min(4, 4, 2)
+    def test_profiling_filter(self):
+        db = self.client.pymongo_test
+        db.set_profiling_level(ALL, filter={'ns': {'$eq': 'test.test'}})
+        profile = db.command("profile", -1)
+        self.assertEqual({'ns': {'$eq': 'test.test'}}, profile['filter'])
+        # filter='unset' resets the filter back to the default.
+        db.set_profiling_level(OFF, 100, filter='unset')
+        self.assertEqual(100, db.command("profile", -1)['slowms'])
+
+    @client_context.require_no_mongos
     def test_profiling_info(self):
         db = self.client.pymongo_test
 
