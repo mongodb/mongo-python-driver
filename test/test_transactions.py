@@ -42,9 +42,9 @@ from test.utils_spec_runner import SpecRunner
 from test.unified_format import generate_test_classes
 
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(
+TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'transactions', 'legacy')
-_UNIFIED_TEST_PATH = os.path.join(
+UNIFIED_TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'transactions', 'unified')
 
 _TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
@@ -469,7 +469,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestTransactions, _TEST_PATH)
+test_creator = TestCreator(create_test, TestTransactions, TEST_PATH)
 test_creator.create_tests()
 
 
@@ -477,11 +477,8 @@ TestCreator(create_test, TestTransactionsConvenientAPI,
             TestTransactionsConvenientAPI.TEST_PATH).create_tests()
 
 
-UNIFIED_TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'versioned-api')
-
 # Generate unified tests.
-globals().update(generate_test_classes(_UNIFIED_TEST_PATH, module=__name__))
+globals().update(generate_test_classes(UNIFIED_TEST_PATH, module=__name__))
 
 
 if __name__ == "__main__":
