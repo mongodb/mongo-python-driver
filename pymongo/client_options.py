@@ -173,6 +173,7 @@ class ClientOptions(object):
         self.__server_selector = options.get(
             'server_selector', any_server_selector)
         self.__auto_encryption_opts = options.get('auto_encryption_opts')
+        self.__load_balanced = options.get('loadbalanced')
 
     @property
     def _options(self):
@@ -257,3 +258,8 @@ class ClientOptions(object):
     def auto_encryption_opts(self):
         """A :class:`~pymongo.encryption.AutoEncryptionOpts` or None."""
         return self.__auto_encryption_opts
+
+    @property
+    def load_balanced(self):
+        """True if the client was configured to connect to a load balancer."""
+        return self.__load_balanced
