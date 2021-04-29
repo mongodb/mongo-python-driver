@@ -31,7 +31,7 @@ from test.utils import wait_until
 
 
 TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'srv_seedlist')
+    os.path.dirname(os.path.realpath(__file__)), 'srv_seedlist', 'replica-set')
 
 class TestDNS(unittest.TestCase):
     pass
