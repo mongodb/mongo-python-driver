@@ -132,7 +132,9 @@ class TopologySettings(object):
         return self._load_balanced
 
     def get_topology_type(self):
-        if self.direct:
+        if self.load_balanced:
+            return TOPOLOGY_TYPE.LoadBalanced
+        elif self.direct:
             return TOPOLOGY_TYPE.Single
         elif self.replica_set_name is not None:
             return TOPOLOGY_TYPE.ReplicaSetNoPrimary

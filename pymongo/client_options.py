@@ -140,7 +140,8 @@ def _parse_pool_options(options):
                        appname,
                        driver,
                        compression_settings,
-                       server_api=server_api)
+                       server_api=server_api,
+                       load_balanced=options.get('loadbalanced'))
 
 
 class ClientOptions(object):

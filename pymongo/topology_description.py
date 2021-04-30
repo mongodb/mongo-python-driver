@@ -25,9 +25,9 @@ from pymongo.server_type import SERVER_TYPE
 
 
 # Enumeration for various kinds of MongoDB cluster topologies.
-TOPOLOGY_TYPE = namedtuple('TopologyType', ['Single', 'ReplicaSetNoPrimary',
-                                            'ReplicaSetWithPrimary', 'Sharded',
-                                            'Unknown'])(*range(5))
+TOPOLOGY_TYPE = namedtuple('TopologyType', [
+    'Single', 'ReplicaSetNoPrimary', 'ReplicaSetWithPrimary', 'Sharded',
+    'Unknown', 'LoadBalanced'])(*range(6))
 
 # Topologies compatible with SRV record polling.
 SRV_POLLING_TOPOLOGIES = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
@@ -63,7 +63,28 @@ class TopologyDescription(object):
 
         # Is PyMongo compatible with all servers' wire protocols?
         self._incompatible_err = None
+        if self._topology_type != TOPOLOGY_TYPE.LoadBalanced:
+            self._init_incompatible_err()
 
+        # Server Discovery And Monitoring Spec: Whenever a client updates the
+        # TopologyDescription from an ismaster response, it MUST set
+        # TopologyDescription.logicalSessionTimeoutMinutes to the smallest
+        # logicalSessionTimeoutMinutes value among ServerDescriptions of all
+        # data-bearing server types. If any have a null
+        # logicalSessionTimeoutMinutes, then
+        # TopologyDescription.logicalSessionTimeoutMinutes MUST be set to null.
+        readable_servers = self.readable_servers
+        if not readable_servers:
+            self._ls_timeout_minutes = None
+        elif any(s.logical_session_timeout_minutes is None
+                 for s in readable_servers):
+            self._ls_timeout_minutes = None
+        else:
+            self._ls_timeout_minutes = min(s.logical_session_timeout_minutes
+                                           for s in readable_servers)
+
+    def _init_incompatible_err(self):
+        """Internal compatibl check helper."""
         for s in self._server_descriptions.values():
             if not s.is_server_type_known:
                 continue
@@ -97,23 +118,6 @@ class TopologyDescription(object):
                        common.MIN_SUPPORTED_SERVER_VERSION))
 
                 break
-
-        # Server Discovery And Monitoring Spec: Whenever a client updates the
-        # TopologyDescription from an ismaster response, it MUST set
-        # TopologyDescription.logicalSessionTimeoutMinutes to the smallest
-        # logicalSessionTimeoutMinutes value among ServerDescriptions of all
-        # data-bearing server types. If any have a null
-        # logicalSessionTimeoutMinutes, then
-        # TopologyDescription.logicalSessionTimeoutMinutes MUST be set to null.
-        readable_servers = self.readable_servers
-        if not readable_servers:
-            self._ls_timeout_minutes = None
-        elif any(s.logical_session_timeout_minutes is None
-                 for s in readable_servers):
-            self._ls_timeout_minutes = None
-        else:
-            self._ls_timeout_minutes = min(s.logical_session_timeout_minutes
-                                           for s in readable_servers)
 
     def check_compatible(self):
         """Raise ConfigurationError if any server is incompatible.
@@ -243,8 +247,9 @@ class TopologyDescription(object):
                                              selector.min_wire_version,
                                              common_wv))
 
-        if self.topology_type == TOPOLOGY_TYPE.Single:
-            # Ignore selectors for standalone.
+        if self.topology_type in (TOPOLOGY_TYPE.Single,
+                                  TOPOLOGY_TYPE.LoadBalanced):
+            # Ignore selectors for standalone and load balancer mode.
             return self.known_servers
         elif address:
             # Ignore selectors when explicit address is requested.
@@ -306,6 +311,7 @@ _SERVER_TYPE_TO_TOPOLOGY_TYPE = {
     SERVER_TYPE.RSSecondary: TOPOLOGY_TYPE.ReplicaSetNoPrimary,
     SERVER_TYPE.RSArbiter: TOPOLOGY_TYPE.ReplicaSetNoPrimary,
     SERVER_TYPE.RSOther: TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+    # Note: SERVER_TYPE.LoadBalancer and Unknown are intentionally left out.
 }
 
 
