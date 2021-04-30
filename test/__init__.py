@@ -50,6 +50,7 @@ from pymongo import common, message
 from pymongo.common import partition_node
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
+from pymongo.uri_parser import parse_uri
 from test.version import Version
 
 if HAVE_SSL:
@@ -92,6 +93,14 @@ if CA_PEM:
 
 COMPRESSORS = os.environ.get("COMPRESSORS")
 MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
+TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
+SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
+MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
+if TEST_LOADBALANCER:
+    res = parse_uri(SINGLE_MONGOS_LB_URI)
+    host, port = res['nodelist'][0]
+    db_user = res['username'] or db_user
+    db_pwd = res['password'] or db_pwd
 
 
 def is_server_resolvable():
@@ -216,7 +225,9 @@ class ClientContext(object):
         self.client = None
         self.conn_lock = threading.Lock()
         self.is_data_lake = False
-        self.load_balancer = False
+        self.load_balancer = TEST_LOADBALANCER
+        if self.load_balancer:
+            self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
         if MONGODB_API_VERSION:
