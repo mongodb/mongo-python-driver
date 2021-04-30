@@ -376,9 +376,9 @@ def _check_options(nodes, options):
         if len(nodes) > 1:
             raise ConfigurationError(
                 'Cannot specify multiple hosts with loadBalanced=true')
-        if options.get('directconnection'):
+        if options.get('directconnection') is not None:
             raise ConfigurationError(
-                'Cannot specify directConnection=true with loadBalanced=true')
+                'Cannot specify directConnection with loadBalanced=true')
         if options.get('replicaset'):
             raise ConfigurationError(
                 'Cannot specify replicaSet with loadBalanced=true')
