@@ -30,7 +30,7 @@ from test import client_context, unittest
 from test.utils import wait_until
 
 
-_TEST_PATH = os.path.join(
+TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'srv_seedlist')
 
 class TestDNS(unittest.TestCase):
@@ -40,7 +40,6 @@ class TestDNS(unittest.TestCase):
 def create_test(test_case):
 
     @client_context.require_replica_set
-    @client_context.require_tls
     def run_test(self):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("DNS tests require the dnspython module")
@@ -48,6 +47,15 @@ def create_test(test_case):
         seeds = test_case['seeds']
         hosts = test_case['hosts']
         options = test_case.get('options')
+        parsed_options = test_case.get('parsed_options')
+        # See DRIVERS-1324, unless tls is explicitly set to False we need TLS.
+        needs_tls = not (options and (options.get('ssl') == False or
+                                      options.get('tls') == False))
+        if needs_tls and not client_context.tls:
+            self.skipTest('this test requires a TLS cluster')
+        if not needs_tls and client_context.tls:
+            self.skipTest('this test requires a non-TLS cluster')
+
         if seeds:
             seeds = split_hosts(','.join(seeds))
         if hosts:
@@ -63,18 +71,27 @@ def create_test(test_case):
                         'readPreferenceTags', opts.pop('readpreferencetags'))
                     opts['readPreferenceTags'] = rpts
                 self.assertEqual(result['options'], options)
+            if parsed_options:
+                for opt, expected in parsed_options.items():
+                    if opt == 'user':
+                        self.assertEqual(result['username'], expected)
+                    elif opt == 'password':
+                        self.assertEqual(result['password'], expected)
+                    elif opt == 'auth_database' or opt == 'db':
+                        self.assertEqual(result['database'], expected)
 
             hostname = next(iter(client_context.client.nodes))[0]
             # The replica set members must be configured as 'localhost'.
             if hostname == 'localhost':
                 copts = client_context.default_client_options.copy()
-                if client_context.tls is True:
-                    # Our test certs don't support the SRV hosts used in these tests.
-                    copts['ssl_match_hostname'] = False
+                # Remove tls since SRV parsing should add it automatically.
+                copts.pop('tls', None)
+                if client_context.tls:
+                    # Our test certs don't support the SRV hosts used in these
+                    # tests.
+                    copts['tlsAllowInvalidHostnames'] = True
 
                 client = MongoClient(uri, **copts)
-                # Force server selection
-                client.admin.command('ismaster')
                 wait_until(
                     lambda: hosts == client.nodes,
                     'match test hosts to client nodes')
@@ -90,7 +107,7 @@ def create_test(test_case):
 
 
 def create_tests():
-    for filename in glob.glob(os.path.join(_TEST_PATH, '*.json')):
+    for filename in glob.glob(os.path.join(TEST_PATH, '*.json')):
         test_suffix, _ = os.path.splitext(os.path.basename(filename))
         with open(filename) as dns_test_file:
             test_method = create_test(json.load(dns_test_file))
