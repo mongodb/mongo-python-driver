@@ -72,16 +72,13 @@ def create_test(test_case):
                     opts['readPreferenceTags'] = rpts
                 self.assertEqual(result['options'], options)
             if parsed_options:
-                for opt in parsed_options:
+                for opt, expected in parsed_options.items():
                     if opt == 'user':
-                        self.assertEqual(result['username'],
-                                         parsed_options[opt])
+                        self.assertEqual(result['username'], expected)
                     elif opt == 'password':
-                        self.assertEqual(result['password'],
-                                         parsed_options[opt])
+                        self.assertEqual(result['password'], expected)
                     elif opt == 'auth_database' or opt == 'db':
-                        self.assertEqual(result['database'],
-                                         parsed_options[opt])
+                        self.assertEqual(result['database'], expected)
 
             hostname = next(iter(client_context.client.nodes))[0]
             # The replica set members must be configured as 'localhost'.
@@ -89,7 +86,7 @@ def create_test(test_case):
                 copts = client_context.default_client_options.copy()
                 # Remove tls since SRV parsing should add it automatically.
                 copts.pop('tls', None)
-                if client_context.tls is True:
+                if client_context.tls:
                     # Our test certs don't support the SRV hosts used in these
                     # tests.
                     copts['tlsAllowInvalidHostnames'] = True
