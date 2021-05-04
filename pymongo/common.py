@@ -706,6 +706,14 @@ URI_OPTIONS_DEPRECATION_MAP = {
     'ssl_match_hostname': ('renamed', 'tlsAllowInvalidHostnames'),
     'ssl_crlfile': ('renamed', 'tlsCRLFile'),
     'ssl_ca_certs': ('renamed', 'tlsCAFile'),
+    'ssl_certfile': ('removed', (
+        'Instead of using ssl_certfile to specify the certificate file, '
+        'use tlsCertificateKeyFile to pass a single file containing both '
+        'the client certificate and the private key')),
+    'ssl_keyfile': ('removed', (
+        'Instead of using ssl_keyfile to specify the private keyfile, '
+        'use tlsCertificateKeyFile to pass a single file containing both '
+        'the client certificate and the private key')),
     'ssl_pem_passphrase': ('renamed', 'tlsCertificateKeyFilePassword'),
     'waitqueuemultiple': ('removed', (
         'Instead of using waitQueueMultiple to bound queuing, limit the size '
