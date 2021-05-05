@@ -362,7 +362,26 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
 _BAD_DB_CHARS = re.compile('[' + re.escape(r'/ "$') + ']')
 
 _ALLOWED_TXT_OPTS = frozenset(
-    ['authsource', 'authSource', 'replicaset', 'replicaSet'])
+    ['authsource', 'authSource', 'replicaset', 'replicaSet', 'loadbalanced',
+     'loadBalanced'])
+
+
+def _check_options(nodes, options):
+    # Ensure directConnection was not True if there are multiple seeds.
+    if len(nodes) > 1 and options.get('directconnection'):
+        raise ConfigurationError(
+            'Cannot specify multiple hosts with directConnection=true')
+
+    if options.get('loadbalanced'):
+        if len(nodes) > 1:
+            raise ConfigurationError(
+                'Cannot specify multiple hosts with loadBalanced=true')
+        if options.get('directconnection'):
+            raise ConfigurationError(
+                'Cannot specify directConnection=true with loadBalanced=true')
+        if options.get('replicaset'):
+            raise ConfigurationError(
+                'Cannot specify replicaSet with loadBalanced=true')
 
 
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
@@ -500,7 +519,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                 dns_options, validate, warn, normalize)
             if set(parsed_dns_options) - _ALLOWED_TXT_OPTS:
                 raise ConfigurationError(
-                    "Only authSource and replicaSet are supported from DNS")
+                    "Only authSource, replicaSet, and loadBalanced are "
+                    "supported from DNS")
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
@@ -508,9 +528,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             options["ssl"] = True if validate else 'true'
     else:
         nodes = split_hosts(hosts, default_port=default_port)
-        if len(nodes) > 1 and options.get('directConnection'):
-            raise ConfigurationError(
-                "Cannot specify multiple hosts with directConnection=true")
+
+    _check_options(nodes, options)
 
     return {
         'nodelist': nodes,
