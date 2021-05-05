@@ -73,7 +73,8 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import (_handle_option_deprecations,
                                 _handle_security_options,
-                                _normalize_options)
+                                _normalize_options,
+                                _check_options)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
 
@@ -700,11 +701,7 @@ class MongoClient(common.BaseObject):
         opts = _handle_security_options(opts)
         # Normalize combined options.
         opts = _normalize_options(opts)
-
-        # Ensure directConnection was not True if there are multiple seeds.
-        if len(seeds) > 1 and opts.get('directconnection'):
-            raise ConfigurationError(
-                "Cannot specify multiple hosts with directConnection=true")
+        _check_options(seeds, opts)
 
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
@@ -752,7 +749,9 @@ class MongoClient(common.BaseObject):
             server_selector=options.server_selector,
             heartbeat_frequency=options.heartbeat_frequency,
             fqdn=fqdn,
-            direct_connection=options.direct_connection)
+            direct_connection=options.direct_connection,
+            load_balanced=options.load_balanced,
+        )
 
         self._topology = Topology(self._topology_settings)
 

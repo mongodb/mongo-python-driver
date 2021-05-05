@@ -216,6 +216,7 @@ class ClientContext(object):
         self.client = None
         self.conn_lock = threading.Lock()
         self.is_data_lake = False
+        self.load_balancer = False
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
         if MONGODB_API_VERSION:
@@ -603,6 +604,12 @@ class ClientContext(object):
         """Run a test only if the client is not connected to a standalone."""
         return self._require(lambda: self.is_mongos or self.is_rs,
                              "Must be connected to a replica set or mongos",
+                             func=func)
+
+    def require_load_balancer(self, func):
+        """Run a test only if the client is connected to a load balancer."""
+        return self._require(lambda: self.load_balancer,
+                             "Must be connected to a load balancer",
                              func=func)
 
     def check_auth_with_sharding(self, func):

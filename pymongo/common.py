@@ -627,6 +627,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'replicaset': validate_string_or_none,
     'retryreads': validate_boolean_or_string,
     'retrywrites': validate_boolean_or_string,
+    'loadbalanced': validate_boolean_or_string,
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'sockettimeoutms': validate_timeout_or_none_or_zero,
     'ssl_keyfile': validate_readable,

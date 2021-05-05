@@ -30,16 +30,28 @@ from test import client_context, unittest
 from test.utils import wait_until
 
 
-TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'srv_seedlist')
+class TestDNSRepl(unittest.TestCase):
+    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             'srv_seedlist', 'replica-set')
+    load_balanced = False
 
-class TestDNS(unittest.TestCase):
-    pass
+    @client_context.require_replica_set
+    def setUp(self):
+        pass
+
+
+class TestDNSLoadBalanced(unittest.TestCase):
+    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             'srv_seedlist', 'load-balanced')
+    load_balanced = True
+
+    @client_context.require_load_balancer
+    def setUp(self):
+        pass
 
 
 def create_test(test_case):
 
-    @client_context.require_replica_set
     def run_test(self):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("DNS tests require the dnspython module")
@@ -91,6 +103,12 @@ def create_test(test_case):
                     # tests.
                     copts['tlsAllowInvalidHostnames'] = True
 
+                # The SRV spec tests assume drivers auto discover replica set
+                # members. This should be removed during PYTHON-2679.
+                if not self.load_balanced and (
+                        'directconnection' not in result['options']):
+                    copts['directConnection'] = False
+
                 client = MongoClient(uri, **copts)
                 wait_until(
                     lambda: hosts == client.nodes,
@@ -106,15 +124,17 @@ def create_test(test_case):
     return run_test
 
 
-def create_tests():
-    for filename in glob.glob(os.path.join(TEST_PATH, '*.json')):
+def create_tests(cls):
+    for filename in glob.glob(os.path.join(cls.TEST_PATH, '*.json')):
         test_suffix, _ = os.path.splitext(os.path.basename(filename))
         with open(filename) as dns_test_file:
             test_method = create_test(json.load(dns_test_file))
-        setattr(TestDNS, 'test_' + test_suffix, test_method)
+        setattr(cls, 'test_' + test_suffix, test_method)
 
 
-create_tests()
+create_tests(TestDNSRepl)
+create_tests(TestDNSLoadBalanced)
+
 
 class TestParsingErrors(unittest.TestCase):
 

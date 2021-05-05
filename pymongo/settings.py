@@ -39,7 +39,8 @@ class TopologySettings(object):
                  heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
                  server_selector=None,
                  fqdn=None,
-                 direct_connection=None):
+                 direct_connection=None,
+                 load_balanced=None):
         """Represent MongoClient's configuration.
 
         Take a list of (host, port) pairs and optional replica set name.
@@ -65,6 +66,7 @@ class TopologySettings(object):
             self._direct = (len(self._seeds) == 1 and not self.replica_set_name)
         else:
             self._direct = direct_connection
+        self._load_balanced = load_balanced
 
         self._topology_id = ObjectId()
         # Store the allocation traceback to catch unclosed clients in the
@@ -123,6 +125,11 @@ class TopologySettings(object):
         True if there is one seed and no replica_set_name.
         """
         return self._direct
+
+    @property
+    def load_balanced(self):
+        """True if the client was configured to connect to a load balancer."""
+        return self._load_balanced
 
     def get_topology_type(self):
         if self.direct:
