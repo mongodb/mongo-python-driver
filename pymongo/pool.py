@@ -49,6 +49,7 @@ from pymongo.errors import (AutoReconnect,
                             NotMasterError,
                             OperationFailure,
                             PyMongoError)
+from pymongo.hello import HelloCompat
 from pymongo.ismaster import IsMaster
 from pymongo.monitoring import (ConnectionCheckOutFailedReason,
                                 ConnectionClosedReason)
@@ -531,15 +532,18 @@ class SocketInfo(object):
         self.opts = pool.opts
         self.more_to_come = False
 
+    def hello_cmd(self):
+        if self.opts.server_api:
+            return SON([(HelloCompat.CMD, 1)])
+        else:
+            return SON([(HelloCompat.LEGACY_CMD, 1)])
+
     def ismaster(self, all_credentials=None):
         return self._ismaster(None, None, None, all_credentials)
 
     def _ismaster(self, cluster_time, topology_version,
                   heartbeat_frequency, all_credentials):
-        if self.opts.server_api:
-            cmd = SON(hello=1)
-        else:
-            cmd = SON(ismaster=1)
+        cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
         awaitable = False
         if performing_handshake:

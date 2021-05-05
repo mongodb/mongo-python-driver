@@ -487,9 +487,8 @@ def _authenticate_default(credentials, sock_info):
             mechs = sock_info.negotiated_mechanisms[credentials]
         else:
             source = credentials.source
-            cmd = SON([
-                ('ismaster', 1),
-                ('saslSupportedMechs', source + '.' + credentials.username)])
+            cmd = sock_info.hello_cmd()
+            cmd['saslSupportedMechs'] = source + '.' + credentials.username
             mechs = sock_info.command(
                 source, cmd, publish_events=False).get(
                 'saslSupportedMechs', [])
