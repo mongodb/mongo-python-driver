@@ -62,20 +62,6 @@ get the same behavior.
 MongoClient
 -----------
 
-Connection options changes
-..........................
-
-Connection options described in this section can be passed as keyword arguments
-to the :class:`pymongo.mongo_client.MongoClient` constructor, or via the
-connection string unless otherwise specified.
-
-#. Removed ``ssl_certfile`` and ``ssl_keyfile``. Instead of passing the client
-   certificate file and private key file separately using the ``ssl_certfile``,
-   and ``ssl_keyfile`` connection options respectively, users must now
-   concatenate their certificate and private key files and pass the resulting
-   concatenated file using the ``tlsCertificateKeyFile`` connection option.
-
-
 MongoClient.fsync is removed
 ............................
 
