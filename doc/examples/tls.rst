@@ -121,8 +121,8 @@ PyMongo can be configured to present a client certificate using the
 If the private key for the client certificate is stored in a separate file,
 it should be concatenated with the certificate file. For example, to
 concatenate a PEM-formatted certificate file ``cert.pem`` and a PEM-formatted
-keyfile ``key.pem`` into a single file ``combined.pem``, on *nix systems users
-can run::
+keyfile ``key.pem`` into a single file ``combined.pem``, on Unix systems,
+users can run::
 
   $ cat key.pem cert.pem > combined.pem
 
