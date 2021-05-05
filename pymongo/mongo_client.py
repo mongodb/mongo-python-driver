@@ -458,28 +458,18 @@ class MongoClient(common.BaseObject):
             certificates passed from the other end of the connection.
             Implies ``tls=True``. Defaults to ``None``.
           - `tlsCertificateKeyFile`: A file containing the client certificate
-            and private key. If you want to pass the certificate and private
-            key as separate files, use the ``ssl_certfile`` and ``ssl_keyfile``
-            options instead. Implies ``tls=True``. Defaults to ``None``.
+            and private key. Implies ``tls=True``. Defaults to ``None``.
           - `tlsCRLFile`: A file containing a PEM or DER formatted
             certificate revocation list. Only supported by python 2.7.9+
             (pypy 2.5.1+). Implies ``tls=True``. Defaults to ``None``.
           - `tlsCertificateKeyFilePassword`: The password or passphrase for
-            decrypting the private key in ``tlsCertificateKeyFile`` or
-            ``ssl_keyfile``. Only necessary if the private key is encrypted.
-            Only supported by python 2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults
-            to ``None``.
+            decrypting the private key in ``tlsCertificateKeyFile``. Only
+            necessary if the private key is encrypted. Only supported by
+            python 2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults to ``None``.
           - `tlsDisableOCSPEndpointCheck`: (boolean) If ``True``, disables
             certificate revocation status checking via the OCSP responder
             specified on the server certificate. Defaults to ``False``.
           - `ssl`: (boolean) Alias for ``tls``.
-          - `ssl_certfile`: The certificate file used to identify the local
-            connection against mongod. Implies ``tls=True``. Defaults to
-            ``None``.
-          - `ssl_keyfile`: The private keyfile used to identify the local
-            connection against mongod. Can be omitted if the keyfile is
-            included with the ``tlsCertificateKeyFile``. Implies ``tls=True``.
-            Defaults to ``None``.
 
           | **Read Concern options:**
           | (If not set explicitly, this will use the server default)
@@ -520,6 +510,10 @@ class MongoClient(common.BaseObject):
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
+           The following keyword arguments were deprecated:
+
+             - ``ssl_certfile`` and ``ssl_keyfile`` were deprecated in favor
+               of ``tlsCertificateKeyFile``.
 
         .. versionchanged:: 3.11
            Added the following keyword arguments and URI options:

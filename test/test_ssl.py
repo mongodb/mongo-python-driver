@@ -42,6 +42,7 @@ from test import (IntegrationTest,
 from test.utils import (EventListener,
                         cat_files,
                         connected,
+                        ignore_deprecations,
                         remove_all_users)
 
 
@@ -99,6 +100,7 @@ class TestClientSSL(unittest.TestCase):
                           MongoClient, ssl_certfile=CLIENT_PEM)
 
     @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
+    @ignore_deprecations
     def test_config_ssl(self):
         # Tests various ssl configurations
         self.assertRaises(ValueError, MongoClient, ssl='foo')
@@ -202,6 +204,7 @@ class TestSSL(IntegrationTest):
         self.assertClientWorks(self.client)
 
     @client_context.require_ssl_certfile
+    @ignore_deprecations
     def test_ssl_pem_passphrase(self):
         # Expects the server to be running with server.pem and ca.pem
         #
@@ -234,6 +237,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     @client_context.require_no_auth
+    @ignore_deprecations
     def test_cert_ssl_implicitly_set(self):
         # Expects the server to be running with server.pem and ca.pem
         #
@@ -257,6 +261,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     @client_context.require_no_auth
+    @ignore_deprecations
     def test_cert_ssl_validation(self):
         # Expects the server to be running with server.pem and ca.pem
         #
@@ -294,6 +299,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     @client_context.require_no_auth
+    @ignore_deprecations
     def test_cert_ssl_uri_support(self):
         # Expects the server to be running with server.pem and ca.pem
         #
@@ -307,6 +313,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     @client_context.require_no_auth
+    @ignore_deprecations
     def test_cert_ssl_validation_optional(self):
         # Expects the server to be running with server.pem and ca.pem
         #
@@ -337,6 +344,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     @client_context.require_server_resolvable
+    @ignore_deprecations
     def test_cert_ssl_validation_hostname_matching(self):
         # Expects the server to be running with server.pem and ca.pem
         #
@@ -404,6 +412,7 @@ class TestSSL(IntegrationTest):
                                   **self.credentials))
 
     @client_context.require_ssl_certfile
+    @ignore_deprecations
     def test_ssl_crlfile_support(self):
         if not hasattr(ssl, 'VERIFY_CRL_CHECK_LEAF') or _ssl.IS_PYOPENSSL:
             self.assertRaises(
@@ -442,6 +451,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     @client_context.require_server_resolvable
+    @ignore_deprecations
     def test_validation_with_system_ca_certs(self):
         # Expects the server to be running with server.pem and ca.pem.
         #
@@ -559,6 +569,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_auth
     @client_context.require_ssl_certfile
+    @ignore_deprecations
     def test_mongodb_x509_auth(self):
         host, port = client_context.host, client_context.port
         ssl_client = MongoClient(
@@ -667,6 +678,7 @@ class TestSSL(IntegrationTest):
             self.fail("Invalid certificate accepted.")
 
     @client_context.require_ssl_certfile
+    @ignore_deprecations
     def test_connect_with_ca_bundle(self):
         def remove(path):
             try:
