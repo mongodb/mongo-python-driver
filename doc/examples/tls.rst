@@ -120,25 +120,26 @@ PyMongo can be configured to present a client certificate using the
 
 If the private key for the client certificate is stored in a separate file,
 it should be concatenated with the certificate file. For example, to
-concatenate PEM-formatted certificate file ``cert.pem`` and keyfile ``key.pem``
-into a single file ``concat_client.pem``, on *nix systems users can run::
+concatenate a PEM-formatted certificate file ``cert.pem`` and a PEM-formatted
+keyfile ``key.pem`` into a single file ``combined.pem``, on *nix systems users
+can run::
 
-  $ cat key.pem cert.pem > concat_client.pem
+  $ cat key.pem cert.pem > combined.pem
 
 PyMongo can be configured with the concatenated certificate keyfile using the
 ``tlsCertificateKeyFile`` option::
 
   >>> client = pymongo.MongoClient('example.com',
   ...                              tls=True,
-  ...                              tlsCertificateKeyFile='/path/to/concat_client.pem')
+  ...                              tlsCertificateKeyFile='/path/to/combined.pem')
 
-Python supports providing a password or passphrase to decrypt encrypted
-private keys. Use the ``tlsCertificateKeyFilePassword`` option::
+If the private key contained in the certificate keyfile is encrypted, users
+can provide a password or passphrase to decrypt the encrypted private keys
+using the ``tlsCertificateKeyFilePassword`` option::
 
   >>> client = pymongo.MongoClient('example.com',
   ...                              tls=True,
-  ...                              tlsCertificateKeyFile='/path/to/client.pem',
-  ...                              ssl_keyfile='/path/to/key.pem',
+  ...                              tlsCertificateKeyFile='/path/to/combined.pem',
   ...                              tlsCertificateKeyFilePassword=<passphrase>)
 
 These options can also be passed as part of the MongoDB URI.

@@ -503,8 +503,8 @@ class MongoClient(common.BaseObject):
            Added the ``server_api`` keyword argument.
            The following keyword arguments were deprecated:
 
-             - ``ssl_certfile``
-             - ``ssl_keyfile``
+             - ``ssl_certfile`` and ``ssl_keyfile`` were deprecated in favor
+               of ``tlsCertificateKeyFile``.
 
         .. versionchanged:: 3.11
            Added the following keyword arguments and URI options:
