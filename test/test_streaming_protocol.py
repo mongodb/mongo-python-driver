@@ -49,7 +49,7 @@ class TestStreamingProtocol(IntegrationTest):
             'configureFailPoint': 'failCommand',
             'mode': {'times': 4},
             'data': {
-                'failCommands': ['isMaster'],
+                'failCommands': ['isMaster', 'hello'],
                 'closeConnection': False,
                 'errorCode': 10107,
                 'appName': 'failingIsMasterTest',
@@ -90,7 +90,7 @@ class TestStreamingProtocol(IntegrationTest):
             'configureFailPoint': 'failCommand',
             'mode': {'times': 1000},
             'data': {
-                'failCommands': ['isMaster'],
+                'failCommands': ['isMaster', 'hello'],
                 'blockConnection': True,
                 'blockTimeMS': 20,
                 # This can be uncommented after SERVER-49220 is fixed.
@@ -138,7 +138,7 @@ class TestStreamingProtocol(IntegrationTest):
         fail_ismaster = {
             'mode': {'times': 5},
             'data': {
-                'failCommands': ['isMaster'],
+                'failCommands': ['isMaster', 'hello'],
                 'errorCode': 1234,
                 'appName': 'SDAMMinHeartbeatFrequencyTest',
             },
@@ -186,7 +186,7 @@ class TestStreamingProtocol(IntegrationTest):
         fail_heartbeat = {
             'mode': {'times': 2},
             'data': {
-                'failCommands': ['isMaster'],
+                'failCommands': ['isMaster', 'hello'],
                 'closeConnection': True,
                 'appName': 'heartbeatEventAwaitedFlag',
             },

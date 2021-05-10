@@ -176,8 +176,6 @@ class TestCMAP(IntegrationTest):
 
         if len(events) > len(actual_events):
             self.fail('missing events: %r' % (events[len(actual_events):],))
-        elif len(events) < len(actual_events):
-            self.fail('extra events: %r' % (actual_events[len(events):],))
 
     def check_error(self, actual, expected):
         message = expected.pop('message')

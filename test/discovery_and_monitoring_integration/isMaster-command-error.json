@@ -1,7 +1,7 @@
 {
   "runOn": [
     {
-      "minServerVersion": "4.4"
+      "minServerVersion": "4.9"
     }
   ],
   "database_name": "sdam-tests",
@@ -17,7 +17,8 @@
         },
         "data": {
           "failCommands": [
-            "isMaster"
+            "isMaster",
+            "hello"
           ],
           "appName": "commandErrorHandshakeTest",
           "closeConnection": false,
@@ -128,7 +129,8 @@
               },
               "data": {
                 "failCommands": [
-                  "isMaster"
+                  "isMaster",
+                  "hello"
                 ],
                 "appName": "commandErrorCheckTest",
                 "closeConnection": false,
