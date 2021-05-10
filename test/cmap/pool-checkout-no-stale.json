@@ -22,6 +22,16 @@
     },
     {
       "name": "checkOut"
+    },
+    {
+      "name": "waitForEvent",
+      "event": "ConnectionClosed",
+      "count": 1
+    },
+    {
+      "name": "waitForEvent",
+      "event": "ConnectionCheckedOut",
+      "count": 2
     }
   ],
   "events": [
@@ -48,11 +58,6 @@
       "type": "ConnectionClosed",
       "connectionId": 1,
       "reason": "stale",
-      "address": 42
-    },
-    {
-      "type": "ConnectionCheckedOut",
-      "connectionId": 2,
       "address": 42
     }
   ],

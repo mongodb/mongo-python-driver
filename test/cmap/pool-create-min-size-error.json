@@ -4,7 +4,7 @@
   "description": "error during minPoolSize population clears pool",
   "runOn": [
     {
-      "minServerVersion": "4.2.0"
+      "minServerVersion": "4.9.0"
     }
   ],
   "failPoint": {
@@ -14,13 +14,16 @@
     },
     "data": {
       "failCommands": [
-        "isMaster"
+        "isMaster",
+        "hello"
       ],
-      "closeConnection": true
+      "closeConnection": true,
+      "appName": "poolCreateMinSizeErrorTest"
     }
   },
   "poolOptions": {
-    "minPoolSize": 1
+    "minPoolSize": 1,
+    "appName": "poolCreateMinSizeErrorTest"
   },
   "operations": [
     {
@@ -28,7 +31,7 @@
     },
     {
       "name": "waitForEvent",
-      "event": "ConnectionClosed",
+      "event": "ConnectionPoolCleared",
       "count": 1
     },
     {
