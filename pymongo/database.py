@@ -903,7 +903,7 @@ class Database(common.BaseObject):
         `profile command`_ with the level set to ``-1`` returns the current
         profiler information without changing it::
 
-           res = db.command('profile', -1)
+           res = db.command("profile", -1)
            profiling_level = res["was"]
 
         The format of ``res`` depends on the version of MongoDB in use.
@@ -940,7 +940,7 @@ class Database(common.BaseObject):
         can directly run the `profile command`_, using the :meth:`command`
         helper, e.g.::
 
-           res = db.command('profile', 2, filter={'op': 'query'})
+           res = db.command("profile", 2, filter={"op": "query"})
 
         :Parameters:
           - `level`: Specifies a profiling level, see list of possible values
