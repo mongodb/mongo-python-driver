@@ -74,10 +74,6 @@
       "address": 42
     },
     {
-      "type": "ConnectionPoolCleared",
-      "address": 42
-    },
-    {
       "type": "ConnectionCheckOutFailed",
       "reason": "connectionError",
       "address": 42
@@ -95,6 +91,7 @@
   ],
   "ignore": [
     "ConnectionPoolReady",
+    "ConnectionPoolCleared",
     "ConnectionPoolCreated",
     "ConnectionCreated",
     "ConnectionReady",

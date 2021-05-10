@@ -63,7 +63,8 @@
             "writeErrors": [
               {
                 "errmsg": "NotMasterNoSlaveOk",
-                "code": 13435
+                "code": 13435,
+                "index": 0
               }
             ]
           }
