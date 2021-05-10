@@ -898,12 +898,13 @@ class Database(common.BaseObject):
         """**DEPRECATED**: Get the database's current profiling level.
 
         Starting with PyMongo 3.12, this helper is obsolete. The functionality
-        provided by this helper is available in MongoDB 3.6+ using the
+        provided by this helper is available in MongoDB using the
         `profile command`_, which can be run using the :meth:`command`
         helper. Running the `profile command`_ with the level set to ``-1``
         returns the current profiler info without changing it::
 
-           profile_info = db.command({'profile': -1})
+           res = db.command('profile', -1)
+           profiling_level = res["was"]
 
         The format of ``profile_info`` depends on the version of MongoDB in use.
 
@@ -936,11 +937,11 @@ class Database(common.BaseObject):
         """**DEPRECATED**: Set the database's profiling level.
 
         Starting with PyMongo 3.12, this helper is obsolete. The functionality
-        provided by this helper is available in MongoDB 3.6+ using the
+        provided by this helper is available in MongoDB using the
         `profile command`_, which can be run using the :meth:`command`
         helper, e.g.::
 
-           profile_info = db.command({'profile': 2, 'filter': {'op': 'query'}})
+           res = db.command('profile', 2, filter={'op': 'query'})
 
         :Parameters:
           - `level`: Specifies a profiling level, see list of possible values
@@ -1012,7 +1013,9 @@ class Database(common.BaseObject):
         database profiler output users can run
         :meth:`~pymongo.collection.Collection.find` against the
         ``system.profile`` collection as detailed in the `profiler output`_
-        documentation.
+        documentation::
+
+           profiling_info = list(db["system.profile"].find())
 
         :Parameters:
           - `session` (optional): a
