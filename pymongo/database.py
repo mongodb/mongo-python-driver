@@ -897,16 +897,16 @@ class Database(common.BaseObject):
     def profiling_level(self, session=None):
         """**DEPRECATED**: Get the database's current profiling level.
 
-        Starting with PyMongo 3.12, this helper is obsolete. The functionality
-        provided by this helper is available in MongoDB using the
-        `profile command`_, which can be run using the :meth:`command`
-        helper. Running the `profile command`_ with the level set to ``-1``
-        returns the current profiler info without changing it::
+        Starting with PyMongo 3.12, this helper is obsolete. Instead, users
+        can run the `profile command`_, using the :meth:`command`
+        helper to get the current profiler level. Running the
+        `profile command`_ with the level set to ``-1`` returns the current
+        profiler information without changing it::
 
            res = db.command('profile', -1)
            profiling_level = res["was"]
 
-        The format of ``profile_info`` depends on the version of MongoDB in use.
+        The format of ``res`` depends on the version of MongoDB in use.
 
         Returns one of (:data:`~pymongo.OFF`,
         :data:`~pymongo.SLOW_ONLY`, :data:`~pymongo.ALL`).
@@ -936,9 +936,8 @@ class Database(common.BaseObject):
                             sample_rate=None, filter=None):
         """**DEPRECATED**: Set the database's profiling level.
 
-        Starting with PyMongo 3.12, this helper is obsolete. The functionality
-        provided by this helper is available in MongoDB using the
-        `profile command`_, which can be run using the :meth:`command`
+        Starting with PyMongo 3.12, this helper is obsolete. Instead, users
+        can directly run the `profile command`_, using the :meth:`command`
         helper, e.g.::
 
            res = db.command('profile', 2, filter={'op': 'query'})
@@ -1009,8 +1008,8 @@ class Database(common.BaseObject):
         """**DEPRECATED**: Returns a list containing current profiling
         information.
 
-        Starting with PyMongo 3.12, this helper is obsolete. To view the
-        database profiler output users can run
+        Starting with PyMongo 3.12, this helper is obsolete. Instead, users
+        can view the database profiler output by running
         :meth:`~pymongo.collection.Collection.find` against the
         ``system.profile`` collection as detailed in the `profiler output`_
         documentation::
