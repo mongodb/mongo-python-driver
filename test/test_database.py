@@ -58,6 +58,7 @@ from test.utils import (EventListener,
                         rs_or_single_client,
                         server_started_with_auth,
                         wait_until,
+                        DeprecationFilter,
                         IMPOSSIBLE_WRITE_CONCERN,
                         OvertCommandListener)
 from test.test_custom_types import DECIMAL_CODECOPTS
@@ -390,6 +391,7 @@ class TestDatabase(IntegrationTest):
                 db.validate_collection(coll, full=True, background=True)
 
     @client_context.require_no_mongos
+    @ignore_deprecations
     def test_profiling_levels(self):
         db = self.client.pymongo_test
         self.assertEqual(db.profiling_level(), OFF)  # default
@@ -420,6 +422,7 @@ class TestDatabase(IntegrationTest):
 
     @client_context.require_no_mongos
     @client_context.require_version_min(3, 6)
+    @ignore_deprecations
     def test_profiling_sample_rate(self):
         db = self.client.pymongo_test
         with self.assertRaises(TypeError):
@@ -438,6 +441,7 @@ class TestDatabase(IntegrationTest):
 
     @client_context.require_no_mongos
     @client_context.require_version_min(4, 4, 2)
+    @ignore_deprecations
     def test_profiling_filter(self):
         db = self.client.pymongo_test
         db.set_profiling_level(ALL, filter={'ns': {'$eq': 'test.test'}})
@@ -448,6 +452,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(100, db.command("profile", -1)['slowms'])
 
     @client_context.require_no_mongos
+    @ignore_deprecations
     def test_profiling_info(self):
         db = self.client.pymongo_test
 
@@ -475,6 +480,14 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(isinstance(info[0]['ns'], string_type))
         self.assertTrue(isinstance(info[0]['op'], string_type))
         self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
+
+    def test_profiling_helpers_deprecated(self):
+        filter = DeprecationFilter('error')
+        self.addCleanup(filter.stop)
+        db = self.client.pymongo_test
+        self.assertRaises(DeprecationWarning, db.profiling_level)
+        self.assertRaises(DeprecationWarning, db.profiling_info)
+        self.assertRaises(DeprecationWarning, db.set_profiling_level, OFF)
 
     # SERVER-47817 removes the resetError command.
     @client_context.require_version_max(4, 9)

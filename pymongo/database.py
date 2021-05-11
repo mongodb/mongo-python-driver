@@ -1067,7 +1067,18 @@ class Database(common.BaseObject):
         return self._current_op(include_all, session)
 
     def profiling_level(self, session=None):
-        """Get the database's current profiling level.
+        """**DEPRECATED**: Get the database's current profiling level.
+
+        Starting with PyMongo 3.12, this helper is obsolete. Instead, users
+        can run the `profile command`_, using the :meth:`command`
+        helper to get the current profiler level. Running the
+        `profile command`_ with the level set to ``-1`` returns the current
+        profiler information without changing it::
+
+           res = db.command("profile", -1)
+           profiling_level = res["was"]
+
+        The format of ``res`` depends on the version of MongoDB in use.
 
         Returns one of (:data:`~pymongo.OFF`,
         :data:`~pymongo.SLOW_ONLY`, :data:`~pymongo.ALL`).
@@ -1076,11 +1087,18 @@ class Database(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
+        .. versionchanged:: 3.12
+           Deprecated.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
         .. mongodoc:: profiling
+        .. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
         """
+        warnings.warn("profiling_level() is deprecated. See the documentation "
+                      "for more information",
+                      DeprecationWarning, stacklevel=2)
         result = self.command("profile", -1, session=session)
 
         assert result["was"] >= 0 and result["was"] <= 2
@@ -1088,7 +1106,13 @@ class Database(common.BaseObject):
 
     def set_profiling_level(self, level, slow_ms=None, session=None,
                             sample_rate=None, filter=None):
-        """Set the database's profiling level.
+        """**DEPRECATED**: Set the database's profiling level.
+
+        Starting with PyMongo 3.12, this helper is obsolete. Instead, users
+        can directly run the `profile command`_, using the :meth:`command`
+        helper, e.g.::
+
+           res = db.command("profile", 2, filter={"op": "query"})
 
         :Parameters:
           - `level`: Specifies a profiling level, see list of possible values
@@ -1121,12 +1145,18 @@ class Database(common.BaseObject):
 
         .. versionchanged:: 3.12
            Added the ``sample_rate`` and ``filter`` parameters.
+           Deprecated.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
         .. mongodoc:: profiling
+        .. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
         """
+        warnings.warn("set_profiling_level() is deprecated. See the "
+                      "documentation for more information",
+                      DeprecationWarning, stacklevel=2)
+
         if not isinstance(level, int) or level < 0 or level > 2:
             raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
 
@@ -1147,17 +1177,34 @@ class Database(common.BaseObject):
         self.command(cmd, session=session)
 
     def profiling_info(self, session=None):
-        """Returns a list containing current profiling information.
+        """**DEPRECATED**: Returns a list containing current profiling
+        information.
+
+        Starting with PyMongo 3.12, this helper is obsolete. Instead, users
+        can view the database profiler output by running
+        :meth:`~pymongo.collection.Collection.find` against the
+        ``system.profile`` collection as detailed in the `profiler output`_
+        documentation::
+
+           profiling_info = list(db["system.profile"].find())
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
 
+        .. versionchanged:: 3.12
+           Deprecated.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
         .. mongodoc:: profiling
+        .. _profiler output: https://docs.mongodb.com/manual/reference/database-profiler/
         """
+        warnings.warn("profiling_info() is deprecated. See the "
+                      "documentation for more information",
+                      DeprecationWarning, stacklevel=2)
+
         return list(self["system.profile"].find(session=session))
 
     def error(self):
