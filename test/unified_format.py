@@ -571,11 +571,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 raise unittest.SkipTest(
                     "MMAPv1 does not support retryWrites=True")
 
-    @classmethod
-    def tearDownClass(cls):
-        super(UnifiedSpecTestMixinV1, cls).tearDownClass()
-        cls.client.close()
-
     def setUp(self):
         super(UnifiedSpecTestMixinV1, self).setUp()
 
