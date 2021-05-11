@@ -32,10 +32,17 @@ Deprecations
 ............
 
 - Deprecated support for Python 2.7, 3.4 and 3.5.
+- Deprecated support for database profiler helpers
+  :meth:`~pymongo.database.Database.profiling_level`,
+  :meth:`~pymongo.database.Database.set_profiling_level`,
+  and :meth:`~pymongo.database.Database.profiling_info`. Instead, users
+  should run the `profile command`_ with the
+  :meth:`~pymongo.database.Database.command` helper directly.
 
 .. _PYTHON-2466: https://jira.mongodb.org/browse/PYTHON-2466
 .. _PYTHON-1690: https://jira.mongodb.org/browse/PYTHON-1690
 .. _PYTHON-2472: https://jira.mongodb.org/browse/PYTHON-2472
+.. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
 
 Issues Resolved
 ...............
