@@ -84,7 +84,7 @@ class TopologyDescription(object):
                                            for s in readable_servers)
 
     def _init_incompatible_err(self):
-        """Internal compatibl check helper."""
+        """Internal compatibility check for non-load balanced topologies."""
         for s in self._server_descriptions.values():
             if not s.is_server_type_known:
                 continue
