@@ -34,6 +34,7 @@ from pymongo.errors import (ConnectionFailure,
                             PyMongoError,
                             ServerSelectionTimeoutError,
                             WriteError)
+from pymongo.ismaster import IsMaster
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server
@@ -562,15 +563,7 @@ class Topology(object):
                 self._srv_monitor.open()
 
             if self._settings.load_balanced:
-                # Emit initial SDAM events:
-                # ServerDescriptionChangedEvent. The previousDescription MUST
-                # have ServerType Unknown. The newDescription MUST have
-                # ServerType
-                # LoadBalancer.
-                # TopologyDescriptionChangedEvent. The newDescription MUST have
-                # TopologyType LoadBalanced and one server with ServerType
-                # LoadBalancer.
-                from pymongo.ismaster import IsMaster
+                # Emit initial SDAM events for load balancer mode.
                 self._process_change(ServerDescription(
                     self._seed_addresses[0],
                     IsMaster({'ok': 1, 'serviceId': self._topology_id})))
