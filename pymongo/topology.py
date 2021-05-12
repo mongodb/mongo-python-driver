@@ -521,8 +521,8 @@ class Topology(object):
             if not self._settings.load_balanced:
                 session_timeout = self._check_session_support()
             else:
-                # TODO: make this None?
-                session_timeout = (1 << 63) - 1
+                # Sessions never time out in load balanced mode.
+                session_timeout = float('inf')
             return self._session_pool.get_server_session(session_timeout)
 
     def return_server_session(self, server_session, lock):
