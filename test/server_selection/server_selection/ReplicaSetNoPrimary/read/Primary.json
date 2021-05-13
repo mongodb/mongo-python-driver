@@ -1,32 +1,29 @@
 {
-    "in_latency_window": [], 
-    "operation": "read", 
-    "read_preference": {
-        "mode": "Primary", 
-        "tag_sets": [
-            {}
-        ]
-    }, 
-    "suitable_servers": [], 
-    "topology_description": {
-        "servers": [
-            {
-                "address": "b:27017", 
-                "avg_rtt_ms": 5, 
-                "tags": {
-                    "data_center": "nyc"
-                }, 
-                "type": "RSSecondary"
-            }, 
-            {
-                "address": "c:27017", 
-                "avg_rtt_ms": 100, 
-                "tags": {
-                    "data_center": "nyc"
-                }, 
-                "type": "RSSecondary"
-            }
-        ], 
-        "type": "ReplicaSetNoPrimary"
-    }
+  "topology_description": {
+    "type": "ReplicaSetNoPrimary",
+    "servers": [
+      {
+        "address": "b:27017",
+        "avg_rtt_ms": 5,
+        "type": "RSSecondary",
+        "tags": {
+          "data_center": "nyc"
+        }
+      },
+      {
+        "address": "c:27017",
+        "avg_rtt_ms": 100,
+        "type": "RSSecondary",
+        "tags": {
+          "data_center": "nyc"
+        }
+      }
+    ]
+  },
+  "operation": "read",
+  "read_preference": {
+    "mode": "Primary"
+  },
+  "suitable_servers": [],
+  "in_latency_window": []
 }
