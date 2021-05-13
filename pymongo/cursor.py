@@ -1283,7 +1283,7 @@ class RawBatchCursor(Cursor):
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):
-        return response.raw_response(cursor_id)
+        return response.raw_response(cursor_id, user_fields=user_fields)
 
     def explain(self):
         """Returns an explain plan record for this cursor.
