@@ -1133,7 +1133,6 @@ class Cursor(object):
                     limit = min(limit, self.__batch_size)
             else:
                 limit = self.__batch_size
-
             # Exhaust cursors don't send getMore messages.
             g = self._getmore_class(self.__dbname,
                                     self.__collname,
