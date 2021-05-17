@@ -97,7 +97,9 @@
           "expectResult": {
             "deletedCount": 0,
             "insertedCount": 0,
-            "insertedIds": {},
+            "insertedIds": {
+              "$$unsetOrMatches": {}
+            },
             "matchedCount": 2,
             "modifiedCount": 2,
             "upsertedCount": 0,
@@ -229,7 +231,9 @@
           "expectResult": {
             "deletedCount": 0,
             "insertedCount": 0,
-            "insertedIds": {},
+            "insertedIds": {
+              "$$unsetOrMatches": {}
+            },
             "matchedCount": 4,
             "modifiedCount": 4,
             "upsertedCount": 0,
@@ -353,7 +357,9 @@
           "expectResult": {
             "deletedCount": 0,
             "insertedCount": 0,
-            "insertedIds": {},
+            "insertedIds": {
+              "$$unsetOrMatches": {}
+            },
             "matchedCount": 2,
             "modifiedCount": 2,
             "upsertedCount": 0,

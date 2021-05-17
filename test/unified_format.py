@@ -440,7 +440,11 @@ class MatchEvaluatorUtil(object):
         if self._evaluate_if_special_operation(expectation, actual):
             return
 
-        self._test_class.assertIsInstance(actual, abc.Mapping)
+        try:
+            self._test_class.assertIsInstance(actual, abc.Mapping)
+        except AssertionError:
+            print()
+            raise
         for key, value in expectation.items():
             if self._evaluate_if_special_operation(expectation, actual, key):
                 continue
@@ -511,6 +515,25 @@ class MatchEvaluatorUtil(object):
                 'Unsupported event type %s' % (event_type,))
 
 
+def coerce_result(opname, result):
+    """Convert a pymongo result into the spec's result format."""
+    if opname == 'bulkWrite':
+        return parse_bulk_write_result(result)
+    if opname == 'insertOne':
+        return {'insertedId': result.inserted_id}
+    if opname == 'insertMany':
+        return {idx: _id for idx, _id in enumerate(result.inserted_ids)}
+    if opname in ('deleteOne', 'deleteMany'):
+        return {'deletedCount': result.deleted_count}
+    if opname in ('updateOne', 'updateMany', 'replaceOne'):
+        return {
+            'matchedCount': result.matched_count,
+            'modifiedCount': result.modified_count,
+            'upsertedCount': 0 if result.upserted_id is None else 1,
+        }
+    return result
+
+
 class UnifiedSpecTestMixinV1(IntegrationTest):
     """Mixin class to run test cases from test specification files.
 
@@ -520,7 +543,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     Specification of the test suite being currently run is available as
     a class attribute ``TEST_SPEC``.
     """
-    SCHEMA_VERSION = Version.from_string('1.1')
+    SCHEMA_VERSION = Version.from_string('1.4')
 
     @staticmethod
     def should_run_on(run_on_spec):
@@ -683,33 +706,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_aggregate(self, target, *args, **kwargs):
         return self.__entityOperation_aggregate(target, *args, **kwargs)
 
-    def _collectionOperation_bulkWrite(self, target, *args, **kwargs):
-        self.__raise_if_unsupported('bulkWrite', target, Collection)
-        write_result = target.bulk_write(*args, **kwargs)
-        return parse_bulk_write_result(write_result)
-
     def _collectionOperation_find(self, target, *args, **kwargs):
         self.__raise_if_unsupported('find', target, Collection)
         find_cursor = target.find(*args, **kwargs)
         return list(find_cursor)
-
-    def _collectionOperation_findOneAndReplace(self, target, *args, **kwargs):
-        self.__raise_if_unsupported('findOneAndReplace', target, Collection)
-        return target.find_one_and_replace(*args, **kwargs)
-
-    def _collectionOperation_findOneAndUpdate(self, target, *args, **kwargs):
-        self.__raise_if_unsupported('findOneAndReplace', target, Collection)
-        return target.find_one_and_update(*args, **kwargs)
-
-    def _collectionOperation_insertMany(self, target, *args, **kwargs):
-        self.__raise_if_unsupported('insertMany', target, Collection)
-        result = target.insert_many(*args, **kwargs)
-        return {idx: _id for idx, _id in enumerate(result.inserted_ids)}
-
-    def _collectionOperation_insertOne(self, target, *args, **kwargs):
-        self.__raise_if_unsupported('insertOne', target, Collection)
-        result = target.insert_one(*args, **kwargs)
-        return {'insertedId': result.inserted_id}
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == 'mmapv1':
@@ -775,7 +775,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             raise
 
         if 'expectResult' in spec:
-            self.match_evaluator.match_result(spec['expectResult'], result)
+            actual = coerce_result(opname, result)
+            self.match_evaluator.match_result(spec['expectResult'], actual)
 
         save_as_entity = spec.get('saveResultAsEntity')
         if save_as_entity:

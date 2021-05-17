@@ -87,7 +87,9 @@
           "expectResult": {
             "deletedCount": 2,
             "insertedCount": 0,
-            "insertedIds": {},
+            "insertedIds": {
+              "$$unsetOrMatches": {}
+            },
             "matchedCount": 0,
             "modifiedCount": 0,
             "upsertedCount": 0,
@@ -181,7 +183,9 @@
           "expectResult": {
             "deletedCount": 3,
             "insertedCount": 0,
-            "insertedIds": {},
+            "insertedIds": {
+              "$$unsetOrMatches": {}
+            },
             "matchedCount": 0,
             "modifiedCount": 0,
             "upsertedCount": 0,
