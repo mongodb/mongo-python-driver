@@ -440,11 +440,7 @@ class MatchEvaluatorUtil(object):
         if self._evaluate_if_special_operation(expectation, actual):
             return
 
-        try:
-            self._test_class.assertIsInstance(actual, abc.Mapping)
-        except AssertionError:
-            print()
-            raise
+        self._test_class.assertIsInstance(actual, abc.Mapping)
         for key, value in expectation.items():
             if self._evaluate_if_special_operation(expectation, actual, key):
                 continue
