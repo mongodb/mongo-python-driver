@@ -1526,7 +1526,9 @@ class _OpReply(object):
                                    error_object.get("$err"),
                                    error_object.get("code"),
                                    error_object)
-        return [self.documents]
+        if self.documents:
+            return [self.documents]
+        return []
 
     def unpack_response(self, cursor_id=None,
                         codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
