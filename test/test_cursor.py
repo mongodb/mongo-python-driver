@@ -1471,7 +1471,14 @@ class TestRawBatchCursor(IntegrationTest):
         explanation = c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
+    def test_empty(self):
+        self.db.test.drop()
+        cursor = self.db.test.find_raw_batches()
+        with self.assertRaises(StopIteration):
+            next(cursor)
+
     def test_clone(self):
+        self.db.test.insert_one({})
         cursor = self.db.test.find_raw_batches()
         # Copy of a RawBatchCursor is also a RawBatchCursor, not a Cursor.
         self.assertIsInstance(next(cursor.clone()), bytes)
