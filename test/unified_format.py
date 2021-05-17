@@ -524,7 +524,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     Specification of the test suite being currently run is available as
     a class attribute ``TEST_SPEC``.
     """
-    SCHEMA_VERSION = Version.from_string('1.1')
+    SCHEMA_VERSION = Version.from_string('1.4')
 
     @staticmethod
     def should_run_on(run_on_spec):

@@ -686,7 +686,7 @@ class SocketInfo(object):
             raise ConfigurationError(
                 'Must be connected to MongoDB 3.4+ to use a collation.')
 
-        self.add_server_api(spec, session)
+        self.add_server_api(spec)
         if session:
             session._apply_to(spec, retryable_write, read_preference)
         self.send_cluster_time(spec, session, client)
@@ -876,11 +876,8 @@ class SocketInfo(object):
         if self.max_wire_version >= 6 and client:
             client._send_cluster_time(command, session)
 
-    def add_server_api(self, command, session):
+    def add_server_api(self, command):
         """Add server_api parameters."""
-        if (session and session.in_transaction and
-                not session._starting_transaction):
-            return
         if self.opts.server_api:
             _add_to_command(command, self.opts.server_api)
 

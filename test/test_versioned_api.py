@@ -68,10 +68,9 @@ class TestServerApi(IntegrationTest):
     def assertNoServerApi(self, event):
         self.assertNotIn('apiVersion', event.command)
 
-    def assertServerApiOnlyInFirstCommand(self, events):
-        self.assertServerApi(events[0])
-        for event in events[1:]:
-            self.assertNoServerApi(event)
+    def assertServerApiInAllCommands(self, events):
+        for event in events:
+            self.assertServerApi(event)
 
     @client_context.require_version_min(4, 7)
     def test_command_options(self):
@@ -84,11 +83,7 @@ class TestServerApi(IntegrationTest):
         self.addCleanup(coll.delete_many, {})
         list(coll.find(batch_size=25))
         client.admin.command('ping')
-        for event in listener.results['started']:
-            if event.command_name == 'getMore':
-                self.assertNoServerApi(event)
-            else:
-                self.assertServerApi(event)
+        self.assertServerApiInAllCommands(listener.results['started'])
 
     @client_context.require_version_min(4, 7)
     @client_context.require_transactions
@@ -106,21 +101,7 @@ class TestServerApi(IntegrationTest):
             coll.insert_many([{} for _ in range(100)], session=s)
             list(coll.find(batch_size=25, session=s))
             client.test.command('find', 'test', session=s)
-            self.assertServerApiOnlyInFirstCommand(listener.results['started'])
-
-        listener.reset()
-        with client.start_session() as s, s.start_transaction():
-            list(coll.find(batch_size=25, session=s))
-            coll.insert_many([{} for _ in range(100)], session=s)
-            client.test.command('find', 'test', session=s)
-            self.assertServerApiOnlyInFirstCommand(listener.results['started'])
-
-        listener.reset()
-        with client.start_session() as s, s.start_transaction():
-            client.test.command('find', 'test', session=s)
-            list(coll.find(batch_size=25, session=s))
-            coll.insert_many([{} for _ in range(100)], session=s)
-            self.assertServerApiOnlyInFirstCommand(listener.results['started'])
+            self.assertServerApiInAllCommands(listener.results['started'])
 
 
 if __name__ == "__main__":
