@@ -999,15 +999,14 @@ def _decode_selective(rawdoc, fields, codec_options):
     return doc
 
 
-def _convert_raw_document_lists_to_streams(document, fields):
-    for key, value in fields.items():
-        if key in document:
-            if value == 1:
-                if isinstance(document[key], list) and len(document[key]) > 0:
-                    stream = b"".join(doc.raw for doc in document[key])
-                    document[key] = [stream]
-            else:
-                _convert_raw_document_lists_to_streams(document[key], value)
+def _convert_raw_document_lists_to_streams(document):
+    cursor = document.get('cursor')
+    if cursor:
+        for key in ('firstBatch', 'nextBatch'):
+            batch = cursor.get(key)
+            if batch:
+                stream = b"".join(doc.raw for doc in batch)
+                cursor[key] = [stream]
 
 
 def _decode_all_selective(data, codec_options, fields):
