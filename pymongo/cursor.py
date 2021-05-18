@@ -1282,7 +1282,20 @@ class RawBatchCursor(Cursor):
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):
-        return response.raw_response(cursor_id, user_fields=user_fields)
+        if legacy_response:
+            return response.raw_response(cursor_id)
+        else:
+            # OP_MSG returns firstBatch/nextBatch documents as a BSON array
+            # Re-assemble the array of documents into a document stream
+            raw_response = response.raw_response(
+                cursor_id, user_fields=user_fields)
+            first = raw_response[0]
+            for key in ('firstBatch', 'nextBatch'):
+                raw_doc_list = first.get('cursor', {}).get(key)
+                if raw_doc_list:
+                    raw_stream = b"".join(doc.raw for doc in raw_doc_list)
+                    first['cursor'][key] = [raw_stream]
+            return raw_response
 
     def explain(self):
         """Returns an explain plan record for this cursor.

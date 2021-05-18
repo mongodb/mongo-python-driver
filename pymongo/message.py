@@ -1611,15 +1611,6 @@ class _OpMsg(object):
             document_class=RawBSONDocument)
         inflated_response = _decode_selective(
             RawBSONDocument(self.payload_document), user_fields, codec_options)
-
-        for key in ('firstBatch', 'nextBatch'):
-            raw_list = inflated_response.get('cursor', {}).get(key)
-            if raw_list:
-                raw_stream = bytes()
-                for doc in raw_list:
-                    raw_stream += doc.raw
-                inflated_response['cursor'][key] = [raw_stream]
-
         return [inflated_response]
 
     def unpack_response(self, cursor_id=None,
