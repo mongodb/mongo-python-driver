@@ -1485,7 +1485,6 @@ class TestRawBatchCursor(IntegrationTest):
         self.assertIsInstance(next(copy.copy(cursor)), bytes)
 
     @client_context.require_no_mongos
-    @unittest.skip
     def test_exhaust(self):
         c = self.db.test
         c.drop()

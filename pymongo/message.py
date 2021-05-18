@@ -447,7 +447,7 @@ class _RawBatchQuery(_Query):
         # Compatibility checks.
         super(_RawBatchQuery, self).use_command(socket_info, exhaust)
         # Use OP_MSG when available.
-        if socket_info.op_msg_enabled:
+        if socket_info.op_msg_enabled and not exhaust:
             return True
         return False
 
@@ -459,7 +459,7 @@ class _RawBatchQuery(_Query):
 class _RawBatchGetMore(_GetMore):
     def use_command(self, socket_info, exhaust):
         # Use OP_MSG when available.
-        if socket_info.op_msg_enabled:
+        if socket_info.op_msg_enabled and not exhaust:
             return True
         return False
 
