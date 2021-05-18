@@ -130,6 +130,7 @@ def _parse_pool_options(options):
         options.get('compressors', []),
         options.get('zlibcompressionlevel', -1))
     ssl_context, ssl_match_hostname = _parse_ssl_options(options)
+    load_balanced = options.get('loadbalanced')
     return PoolOptions(max_pool_size,
                        min_pool_size,
                        max_idle_time_seconds,
@@ -140,7 +141,8 @@ def _parse_pool_options(options):
                        appname,
                        driver,
                        compression_settings,
-                       server_api=server_api)
+                       server_api=server_api,
+                       load_balanced=load_balanced)
 
 
 class ClientOptions(object):
