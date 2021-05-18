@@ -41,6 +41,7 @@ from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
                             ServerSelectionTimeoutError,
                             WriteError)
+from pymongo.ismaster import IsMaster
 from pymongo.monitor import SrvMonitor
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
@@ -140,7 +141,8 @@ class Topology(object):
             executor.open()
 
         self._srv_monitor = None
-        if self._settings.fqdn is not None:
+        if (self._settings.fqdn is not None and
+                not self._settings.load_balanced):
             self._srv_monitor = SrvMonitor(self, self._settings)
 
     def open(self):
@@ -486,29 +488,38 @@ class Topology(object):
         with self._lock:
             return self._session_pool.pop_all()
 
-    def get_server_session(self):
-        """Start or resume a server session, or raise ConfigurationError."""
-        with self._lock:
-            session_timeout = self._description.logical_session_timeout_minutes
-            if session_timeout is None:
-                # Maybe we need an initial scan? Can raise ServerSelectionError.
-                if self._description.topology_type == TOPOLOGY_TYPE.Single:
-                    if not self._description.has_known_servers:
-                        self._select_servers_loop(
-                            any_server_selector,
-                            self._settings.server_selection_timeout,
-                            None)
-                elif not self._description.readable_servers:
+    def _check_session_support(self):
+        """Internal check for session support on non-load balanced clusters."""
+        session_timeout = self._description.logical_session_timeout_minutes
+        if session_timeout is None:
+            # Maybe we need an initial scan? Can raise ServerSelectionError.
+            if self._description.topology_type == TOPOLOGY_TYPE.Single:
+                if not self._description.has_known_servers:
                     self._select_servers_loop(
-                        readable_server_selector,
+                        any_server_selector,
                         self._settings.server_selection_timeout,
                         None)
+            elif not self._description.readable_servers:
+                self._select_servers_loop(
+                    readable_server_selector,
+                    self._settings.server_selection_timeout,
+                    None)
 
             session_timeout = self._description.logical_session_timeout_minutes
             if session_timeout is None:
                 raise ConfigurationError(
                     "Sessions are not supported by this MongoDB deployment")
+        return session_timeout
 
+    def get_server_session(self):
+        """Start or resume a server session, or raise ConfigurationError."""
+        with self._lock:
+            # Sessions are always supported in load balanced mode.
+            if not self._settings.load_balanced:
+                session_timeout = self._check_session_support()
+            else:
+                # Sessions never time out in load balanced mode.
+                session_timeout = float('inf')
             return self._session_pool.get_server_session(session_timeout)
 
     def return_server_session(self, server_session, lock):
@@ -547,6 +558,12 @@ class Topology(object):
             if self._srv_monitor and (self.description.topology_type in
                                       SRV_POLLING_TOPOLOGIES):
                 self._srv_monitor.open()
+
+            if self._settings.load_balanced:
+                # Emit initial SDAM events for load balancer mode.
+                self._process_change(ServerDescription(
+                    self._seed_addresses[0],
+                    IsMaster({'ok': 1, 'serviceId': self._topology_id})))
 
         # Ensure that the monitors are open.
         for server in itervalues(self._servers):
@@ -601,7 +618,8 @@ class Topology(object):
             err_code = error.details.get('code', -1)
             is_shutting_down = err_code in helpers._SHUTDOWN_CODES
             # Mark server Unknown, clear the pool, and request check.
-            self._process_change(ServerDescription(address, error=error))
+            if not self._settings.load_balanced:
+                self._process_change(ServerDescription(address, error=error))
             if is_shutting_down or (err_ctx.max_wire_version <= 7):
                 # Clear the pool.
                 server.reset()
@@ -609,7 +627,8 @@ class Topology(object):
         elif issubclass(exc_type, ConnectionFailure):
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
-            self._process_change(ServerDescription(address, error=error))
+            if not self._settings.load_balanced:
+                self._process_change(ServerDescription(address, error=error))
             # Clear the pool.
             server.reset()
             # "When a client marks a server Unknown from `Network error when
@@ -620,7 +639,9 @@ class Topology(object):
             # Do not request an immediate check since the server is likely
             # shutting down.
             if error.code in helpers._NOT_MASTER_CODES:
-                self._process_change(ServerDescription(address, error=error))
+                if not self._settings.load_balanced:
+                    self._process_change(
+                        ServerDescription(address, error=error))
                 # Clear the pool.
                 server.reset()
 

@@ -46,7 +46,8 @@ class Server(object):
 
         Multiple calls have no effect.
         """
-        self._monitor.open()
+        if not self._pool.opts.load_balanced:
+            self._monitor.open()
 
     def reset(self):
         """Clear the connection pool."""

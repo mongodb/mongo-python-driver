@@ -27,7 +27,9 @@ def _get_server_type(doc):
     if not doc.get('ok'):
         return SERVER_TYPE.Unknown
 
-    if doc.get('isreplicaset'):
+    if doc.get('serviceId'):
+        return SERVER_TYPE.LoadBalancer
+    elif doc.get('isreplicaset'):
         return SERVER_TYPE.RSGhost
     elif doc.get('setName'):
         if doc.get('hidden'):
@@ -59,7 +61,8 @@ class IsMaster(object):
         self._is_writable = self._server_type in (
             SERVER_TYPE.RSPrimary,
             SERVER_TYPE.Standalone,
-            SERVER_TYPE.Mongos)
+            SERVER_TYPE.Mongos,
+            SERVER_TYPE.LoadBalancer)
 
         self._is_readable = (
             self.server_type == SERVER_TYPE.RSSecondary
@@ -186,3 +189,7 @@ class IsMaster(object):
     @property
     def awaitable(self):
         return self._awaitable
+
+    @property
+    def service_id(self):
+        return self._doc.get('serviceId')

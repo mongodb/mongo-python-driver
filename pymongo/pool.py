@@ -296,7 +296,7 @@ class PoolOptions(object):
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
                  '__event_listeners', '__appname', '__driver', '__metadata',
-                 '__compression_settings', '__server_api')
+                 '__compression_settings', '__server_api', '__load_balanced')
 
     def __init__(self, max_pool_size=MAX_POOL_SIZE,
                  min_pool_size=MIN_POOL_SIZE,
@@ -305,7 +305,8 @@ class PoolOptions(object):
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=True,
                  event_listeners=None, appname=None, driver=None,
-                 compression_settings=None, server_api=None):
+                 compression_settings=None, server_api=None,
+                 load_balanced=None):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
         self.__max_idle_time_seconds = max_idle_time_seconds
@@ -321,6 +322,7 @@ class PoolOptions(object):
         self.__driver = driver
         self.__compression_settings = compression_settings
         self.__server_api = server_api
+        self.__load_balanced = load_balanced
         self.__metadata = copy.deepcopy(_METADATA)
         if appname:
             self.__metadata['application'] = {'name': appname}
@@ -470,6 +472,12 @@ class PoolOptions(object):
         """
         return self.__server_api
 
+    @property
+    def load_balanced(self):
+        """True if this Pool is configured in load balanced mode.
+        """
+        return self.__load_balanced
+
 
 def _negotiate_creds(all_credentials):
     """Return one credential that needs mechanism negotiation, if any.
@@ -549,6 +557,8 @@ class SocketInfo(object):
             self.cancel_context = _CancellationContext()
         self.opts = pool.opts
         self.more_to_come = False
+        # For load balancer support.
+        self.service_id = None
 
     def hello_cmd(self):
         if self.opts.server_api:
@@ -569,6 +579,8 @@ class SocketInfo(object):
             cmd['client'] = self.opts.metadata
             if self.compression_settings:
                 cmd['compression'] = self.compression_settings.compressors
+            if self.opts.load_balanced:
+                cmd['loadBalanced'] = True
         elif topology_version is not None:
             cmd['topologyVersion'] = topology_version
             cmd['maxAwaitTimeMS'] = int(heartbeat_frequency*1000)
@@ -592,6 +604,10 @@ class SocketInfo(object):
 
         doc = self.command('admin', cmd, publish_events=False,
                            exhaust_allowed=awaitable)
+        # PYTHON-2712 will remove this topologyVersion fallback logic.
+        if self.opts.load_balanced:
+            process_id = doc.get('topologyVersion', {}).get('processId')
+            doc.setdefault('serviceId', process_id)
         ismaster = IsMaster(doc, awaitable=awaitable)
         self.is_writable = ismaster.is_writable
         self.max_wire_version = ismaster.max_wire_version
@@ -613,6 +629,12 @@ class SocketInfo(object):
             auth_ctx.parse_response(ismaster)
             if auth_ctx.speculate_succeeded():
                 self.auth_ctx[auth_ctx.credentials] = auth_ctx
+        if self.opts.load_balanced:
+            if not ismaster.service_id:
+                raise ConfigurationError(
+                    'Driver attempted to initialize in load balancing mode'
+                    ' but the server does not support this mode')
+            self.service_id = ismaster.service_id
         return ismaster
 
     def _next_reply(self):

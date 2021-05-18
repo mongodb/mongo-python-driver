@@ -1025,7 +1025,8 @@ class MongoClient(common.BaseObject):
                 'Cannot use "address" property when load balancing among'
                 ' mongoses, use "nodes" instead.')
         if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                                 TOPOLOGY_TYPE.Single):
+                                 TOPOLOGY_TYPE.Single,
+                                 TOPOLOGY_TYPE.LoadBalanced):
             return None
         return self._server_property('address')
 
