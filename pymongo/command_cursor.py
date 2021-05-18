@@ -16,6 +16,7 @@
 
 from collections import deque
 
+from bson import _convert_raw_document_lists_to_streams
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             NotMasterError,
@@ -300,7 +301,13 @@ class RawBatchCommandCursor(CommandCursor):
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):
-        return response.raw_response(cursor_id)
+        raw_response = response.raw_response(
+            cursor_id, user_fields=user_fields)
+        if not legacy_response:
+            # OP_MSG returns firstBatch/nextBatch documents as a BSON array
+            # Re-assemble the array of documents into a document stream
+            _convert_raw_document_lists_to_streams(raw_response[0], user_fields)
+        return raw_response
 
     def __getitem__(self, index):
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")

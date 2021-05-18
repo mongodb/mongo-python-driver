@@ -1605,7 +1605,7 @@ class _OpMsg(object):
     def raw_response(self, cursor_id=None, user_fields={}):
         """
         cursor_id is ignored
-        user_fields is
+        user_fields is used to determine which fields must not be decoded
         """
         codec_options = DEFAULT_CODEC_OPTIONS.with_options(
             document_class=RawBSONDocument)

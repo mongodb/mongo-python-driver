@@ -19,7 +19,7 @@ import warnings
 
 from collections import deque
 
-from bson import RE_TYPE
+from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers
@@ -1282,20 +1282,13 @@ class RawBatchCursor(Cursor):
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):
-        if legacy_response:
-            return response.raw_response(cursor_id)
-        else:
+        raw_response = response.raw_response(
+            cursor_id, user_fields=user_fields)
+        if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
-            raw_response = response.raw_response(
-                cursor_id, user_fields=user_fields)
-            first = raw_response[0]
-            for key in ('firstBatch', 'nextBatch'):
-                raw_doc_list = first.get('cursor', {}).get(key)
-                if raw_doc_list:
-                    raw_stream = b"".join(doc.raw for doc in raw_doc_list)
-                    first['cursor'][key] = [raw_stream]
-            return raw_response
+            _convert_raw_document_lists_to_streams(raw_response[0], user_fields)
+        return raw_response
 
     def explain(self):
         """Returns an explain plan record for this cursor.
