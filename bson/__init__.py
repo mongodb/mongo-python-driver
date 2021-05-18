@@ -1003,7 +1003,7 @@ def _convert_raw_document_lists_to_streams(document, fields):
     for key, value in fields.items():
         if key in document:
             if value == 1:
-                if isinstance(document[key], list):
+                if isinstance(document[key], list) and len(document[key]) > 0:
                     stream = b"".join(doc.raw for doc in document[key])
                     document[key] = [stream]
             else:
