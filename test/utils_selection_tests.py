@@ -75,7 +75,7 @@ def make_last_write_date(server):
 def make_server_description(server, hosts):
     """Make a ServerDescription from server info in a JSON test."""
     server_type = server['type']
-    if server_type == "Unknown":
+    if server_type in ("Unknown", "PossiblePrimary"):
         return ServerDescription(clean_node(server['address']), IsMaster({}))
 
     ismaster_response = {'ok': True, 'hosts': hosts}

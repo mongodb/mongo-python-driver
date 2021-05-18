@@ -393,7 +393,8 @@ class TestCreator(object):
     @staticmethod
     def valid_topology(run_on_req):
         return client_context.is_topology_type(
-            run_on_req.get('topology', ['single', 'replicaset', 'sharded']))
+            run_on_req.get('topology', ['single', 'replicaset', 'sharded',
+                                        'load-balanced']))
 
     @staticmethod
     def min_server_version(run_on_req):
