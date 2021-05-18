@@ -1205,7 +1205,9 @@ def create_test(scenario_def, test):
         finally:
             # Check for expected events
             results = self.listener.results
-            for idx, expectation in enumerate(test.get("expectations", [])):
+            # Note: expectations may be missing, null, or a list of events.
+            # Extra events emitted by the test are intentionally ignored.
+            for idx, expectation in enumerate(test.get("expectations") or []):
                 for event_type, event_desc in expectation.items():
                     results_key = event_type.split("_")[1]
                     event = results[results_key][idx] if len(results[results_key]) > idx else None
