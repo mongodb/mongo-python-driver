@@ -566,7 +566,8 @@ class Topology(object):
                 # Emit initial SDAM events for load balancer mode.
                 self._process_change(ServerDescription(
                     self._seed_addresses[0],
-                    IsMaster({'ok': 1, 'serviceId': self._topology_id})))
+                    IsMaster({'ok': 1, 'serviceId': self._topology_id,
+                              'maxWireVersion': 13})))
 
         # Ensure that the monitors are open.
         for server in self._servers.values():

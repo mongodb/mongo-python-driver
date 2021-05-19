@@ -204,10 +204,10 @@ class ServerDescription(object):
     @property
     def retryable_writes_supported(self):
         """Checks if this server supports retryable writes."""
-        return (
+        return ((
             self._ls_timeout_minutes is not None and
-            self._server_type in (SERVER_TYPE.Mongos, SERVER_TYPE.RSPrimary,
-                                  SERVER_TYPE.LoadBalancer))
+            self._server_type in (SERVER_TYPE.Mongos, SERVER_TYPE.RSPrimary))
+                or self._server_type == SERVER_TYPE.LoadBalancer)
 
     @property
     def retryable_reads_supported(self):
