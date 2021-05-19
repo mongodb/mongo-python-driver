@@ -1515,6 +1515,7 @@ class TestRawBatchCursor(IntegrationTest):
     @client_context.require_version_min(3, 2)
     def test_read_concern(self):
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
+        c.insert_one({})
         next(c.find_raw_batches())
 
     @client_context.require_version_max(3, 1)
