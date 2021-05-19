@@ -42,7 +42,11 @@ from pymongo.database import Database
 from pymongo.errors import BulkWriteError, InvalidOperation, PyMongoError
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
-    CommandSucceededEvent, _SENSITIVE_COMMANDS)
+    CommandSucceededEvent, _SENSITIVE_COMMANDS, PoolCreatedEvent,
+    PoolReadyEvent, PoolClearedEvent, PoolClosedEvent, ConnectionCreatedEvent,
+    ConnectionReadyEvent, ConnectionClosedEvent,
+    ConnectionCheckOutStartedEvent, ConnectionCheckOutFailedEvent,
+    ConnectionCheckedOutEvent, ConnectionCheckedInEvent)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult
@@ -52,7 +56,7 @@ from pymongo.write_concern import WriteConcern
 from test import client_context, unittest, IntegrationTest
 from test.utils import (
     camel_to_snake, get_pool, rs_or_single_client, single_client,
-    snake_to_camel)
+    snake_to_camel, CMAPListener)
 
 from test.version import Version
 from test.utils import (
@@ -161,32 +165,34 @@ class NonLazyCursor(object):
         self.find_cursor.close()
 
 
-class EventListenerUtil(CommandListener):
+class EventListenerUtil(CMAPListener, CommandListener):
     def __init__(self, observe_events, ignore_commands):
-        self._event_types = set(observe_events)
+        self._event_types = set(name.lower() for name in observe_events)
         self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
         self._ignore_commands.add('configurefailpoint')
-        self.results = []
+        super(EventListenerUtil, self).__init__()
 
-    def _add_event(self, event):
-        self.results.append(event)
+    def get_events(self, event_type):
+        if event_type == 'command':
+            return [e for e in self.events if 'Command' in type(e).__name__]
+        return [e for e in self.events if 'Command' not in type(e).__name__]
 
-    def _observe_event(self, event):
+    def add_event(self, event):
+        if type(event).__name__.lower() in self._event_types:
+            super(EventListenerUtil, self).add_event(event)
+
+    def _command_event(self, event):
         if event.command_name.lower() not in self._ignore_commands:
-            self._add_event(event)
+            self.add_event(event)
 
-    # TODO: Support CMAP events here?
     def started(self, event):
-        if 'commandStartedEvent' in self._event_types:
-            self._observe_event(event)
+        self._command_event(event)
 
     def succeeded(self, event):
-        if 'commandSucceededEvent' in self._event_types:
-            self._observe_event(event)
+        self._command_event(event)
 
     def failed(self, event):
-        if 'commandFailedEvent' in self._event_types:
-            self._observe_event(event)
+        self._command_event(event)
 
 
 class EntityMapUtil(object):
@@ -196,28 +202,28 @@ class EntityMapUtil(object):
         self._entities = {}
         self._listeners = {}
         self._session_lsids = {}
-        self._test_class = test_class
+        self.test = test_class
 
     def __getitem__(self, item):
         try:
             return self._entities[item]
         except KeyError:
-            self._test_class.fail('Could not find entity named %s in map' % (
+            self.test.fail('Could not find entity named %s in map' % (
                 item,))
 
     def __setitem__(self, key, value):
         if not isinstance(key, str):
-            self._test_class.fail(
+            self.test.fail(
                 'Expected entity name of type str, got %s' % (type(key)))
 
         if key in self._entities:
-            self._test_class.fail('Entity named %s already in map' % (key,))
+            self.test.fail('Entity named %s already in map' % (key,))
 
         self._entities[key] = value
 
     def _create_entity(self, entity_spec):
         if len(entity_spec) != 1:
-            self._test_class.fail(
+            self.test.fail(
                 "Entity spec %s did not contain exactly one top-level key" % (
                     entity_spec,))
 
@@ -226,6 +232,7 @@ class EntityMapUtil(object):
             kwargs = {}
             observe_events = spec.get('observeEvents', [])
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
+            # TODO: SUPPORT storeEventsAsEntities
             if len(observe_events) or len(ignore_commands):
                 ignore_commands = [cmd.lower() for cmd in ignore_commands]
                 listener = EventListenerUtil(observe_events, ignore_commands)
@@ -244,12 +251,12 @@ class EntityMapUtil(object):
                     deprecation_errors=server_api.get('deprecationErrors'))
             client = rs_or_single_client(**kwargs)
             self[spec['id']] = client
-            self._test_class.addCleanup(client.close)
+            self.test.addCleanup(client.close)
             return
         elif entity_type == 'database':
             client = self[spec['client']]
             if not isinstance(client, MongoClient):
-                self._test_class.fail(
+                self.test.fail(
                     'Expected entity %s to be of type MongoClient, got %s' % (
                         spec['client'], type(client)))
             options = parse_collection_or_database_options(
@@ -260,7 +267,7 @@ class EntityMapUtil(object):
         elif entity_type == 'collection':
             database = self[spec['database']]
             if not isinstance(database, Database):
-                self._test_class.fail(
+                self.test.fail(
                     'Expected entity %s to be of type Database, got %s' % (
                         spec['database'], type(database)))
             options = parse_collection_or_database_options(
@@ -271,7 +278,7 @@ class EntityMapUtil(object):
         elif entity_type == 'session':
             client = self[spec['client']]
             if not isinstance(client, MongoClient):
-                self._test_class.fail(
+                self.test.fail(
                     'Expected entity %s to be of type MongoClient, got %s' % (
                         spec['client'], type(client)))
             opts = camel_to_snake_args(spec.get('sessionOptions', {}))
@@ -284,13 +291,13 @@ class EntityMapUtil(object):
             session = client.start_session(**dict(opts))
             self[spec['id']] = session
             self._session_lsids[spec['id']] = copy.deepcopy(session.session_id)
-            self._test_class.addCleanup(session.end_session)
+            self.test.addCleanup(session.end_session)
             return
         elif entity_type == 'bucket':
             # TODO: implement the 'bucket' entity type
-            self._test_class.skipTest(
+            self.test.skipTest(
                 'GridFS is not currently supported (PYTHON-2459)')
-        self._test_class.fail(
+        self.test.fail(
             'Unable to create entity of unknown type %s' % (entity_type,))
 
     def create_entities_from_spec(self, entity_spec):
@@ -300,13 +307,13 @@ class EntityMapUtil(object):
     def get_listener_for_client(self, client_name):
         client = self[client_name]
         if not isinstance(client, MongoClient):
-            self._test_class.fail(
+            self.test.fail(
                 'Expected entity %s to be of type MongoClient, got %s' % (
                         client_name, type(client)))
 
         listener = self._listeners.get(client_name)
         if not listener:
-            self._test_class.fail(
+            self.test.fail(
                 'No listeners configured for client %s' % (client_name,))
 
         return listener
@@ -314,7 +321,7 @@ class EntityMapUtil(object):
     def get_lsid_for_session(self, session_name):
         session = self[session_name]
         if not isinstance(session, ClientSession):
-            self._test_class.fail(
+            self.test.fail(
                 'Expected entity %s to be of type ClientSession, got %s' % (
                     session_name, type(session)))
 
@@ -360,21 +367,21 @@ class MatchEvaluatorUtil(object):
     """Utility class that implements methods for evaluating matches as per
     the unified test format specification."""
     def __init__(self, test_class):
-        self._test_class = test_class
+        self.test = test_class
 
     def _operation_exists(self, spec, actual, key_to_compare):
         if spec is True:
-            self._test_class.assertIn(key_to_compare, actual)
+            self.test.assertIn(key_to_compare, actual)
         elif spec is False:
-            self._test_class.assertNotIn(key_to_compare, actual)
+            self.test.assertNotIn(key_to_compare, actual)
         else:
-            self._test_class.fail(
+            self.test.fail(
                 'Expected boolean value for $$exists operator, got %s' % (
                     spec,))
 
     def __type_alias_to_type(self, alias):
         if alias not in BSON_TYPE_ALIAS_MAP:
-            self._test_class.fail('Unrecognized BSON type alias %s' % (alias,))
+            self.test.fail('Unrecognized BSON type alias %s' % (alias,))
         return BSON_TYPE_ALIAS_MAP[alias]
 
     def _operation_type(self, spec, actual, key_to_compare):
@@ -383,13 +390,13 @@ class MatchEvaluatorUtil(object):
                 t for alias in spec for t in self.__type_alias_to_type(alias)])
         else:
             permissible_types = self.__type_alias_to_type(spec)
-        self._test_class.assertIsInstance(
+        self.test.assertIsInstance(
             actual[key_to_compare], permissible_types)
 
     def _operation_matchesEntity(self, spec, actual, key_to_compare):
-        expected_entity = self._test_class.entity_map[spec]
-        self._test_class.assertIsInstance(expected_entity, abc.Mapping)
-        self._test_class.assertEqual(expected_entity, actual[key_to_compare])
+        expected_entity = self.test.entity_map[spec]
+        self.test.assertIsInstance(expected_entity, abc.Mapping)
+        self.test.assertEqual(expected_entity, actual[key_to_compare])
 
     def _operation_matchesHexBytes(self, spec, actual, key_to_compare):
         raise NotImplementedError
@@ -406,8 +413,8 @@ class MatchEvaluatorUtil(object):
         self.match_result(spec, actual[key_to_compare], in_recursive_call=True)
 
     def _operation_sessionLsid(self, spec, actual, key_to_compare):
-        expected_lsid = self._test_class.entity_map.get_lsid_for_session(spec)
-        self._test_class.assertEqual(expected_lsid, actual[key_to_compare])
+        expected_lsid = self.test.entity_map.get_lsid_for_session(spec)
+        self.test.assertEqual(expected_lsid, actual[key_to_compare])
 
     def _evaluate_special_operation(self, opname, spec, actual,
                                     key_to_compare):
@@ -415,7 +422,7 @@ class MatchEvaluatorUtil(object):
         try:
             method = getattr(self, method_name)
         except AttributeError:
-            self._test_class.fail(
+            self.test.fail(
                 'Unsupported special matching operator %s' % (opname,))
         else:
             method(spec, actual, key_to_compare)
@@ -466,16 +473,16 @@ class MatchEvaluatorUtil(object):
         if self._evaluate_if_special_operation(expectation, actual):
             return
 
-        self._test_class.assertIsInstance(actual, abc.Mapping)
+        self.test.assertIsInstance(actual, abc.Mapping)
         for key, value in expectation.items():
             if self._evaluate_if_special_operation(expectation, actual, key):
                 continue
 
-            self._test_class.assertIn(key, actual)
+            self.test.assertIn(key, actual)
             self.match_result(value, actual[key], in_recursive_call=True)
 
         if not is_root:
-            self._test_class.assertEqual(
+            self.test.assertEqual(
                 set(expectation.keys()), set(actual.keys()))
 
     def match_result(self, expectation, actual,
@@ -485,7 +492,7 @@ class MatchEvaluatorUtil(object):
                 expectation, actual, is_root=not in_recursive_call)
 
         if isinstance(expectation, abc.MutableSequence):
-            self._test_class.assertIsInstance(actual, abc.MutableSequence)
+            self.test.assertIsInstance(actual, abc.MutableSequence)
             for e, a in zip(expectation, actual):
                 if isinstance(e, abc.Mapping):
                     self._match_document(
@@ -497,21 +504,22 @@ class MatchEvaluatorUtil(object):
         # account for flexible numerics in element-wise comparison
         if (isinstance(expectation, int) or
                 isinstance(expectation, float)):
-            self._test_class.assertEqual(expectation, actual)
+            self.test.assertEqual(expectation, actual)
         else:
-            self._test_class.assertIsInstance(actual, type(expectation))
-            self._test_class.assertEqual(expectation, actual)
+            self.test.assertIsInstance(actual, type(expectation))
+            self.test.assertEqual(expectation, actual)
 
-    def match_event(self, expectation, actual):
-        event_type, spec = next(iter(expectation.items()))
+    def match_event(self, event_type, expectation, actual):
+        name, spec = next(iter(expectation.items()))
 
-        # every event type has the commandName field
-        command_name = spec.get('commandName')
-        if command_name:
-            self._test_class.assertEqual(command_name, actual.command_name)
+        # every command event has the commandName field
+        if event_type == 'command':
+            command_name = spec.get('commandName')
+            if command_name:
+                self.test.assertEqual(command_name, actual.command_name)
 
-        if event_type == 'commandStartedEvent':
-            self._test_class.assertIsInstance(actual, CommandStartedEvent)
+        if name == 'commandStartedEvent':
+            self.test.assertIsInstance(actual, CommandStartedEvent)
             command = spec.get('command')
             database_name = spec.get('databaseName')
             if command:
@@ -523,18 +531,45 @@ class MatchEvaluatorUtil(object):
                         update.setdefault('multi', False)
                 self.match_result(command, actual.command)
             if database_name:
-                self._test_class.assertEqual(
+                self.test.assertEqual(
                     database_name, actual.database_name)
-        elif event_type == 'commandSucceededEvent':
-            self._test_class.assertIsInstance(actual, CommandSucceededEvent)
+        elif name == 'commandSucceededEvent':
+            self.test.assertIsInstance(actual, CommandSucceededEvent)
             reply = spec.get('reply')
             if reply:
                 self.match_result(reply, actual.reply)
-        elif event_type == 'commandFailedEvent':
-            self._test_class.assertIsInstance(actual, CommandFailedEvent)
+        elif name == 'commandFailedEvent':
+            self.test.assertIsInstance(actual, CommandFailedEvent)
+        elif name == 'poolCreatedEvent':
+            self.test.assertIsInstance(actual, PoolCreatedEvent)
+        elif name == 'poolReadyEvent':
+            self.test.assertIsInstance(actual, PoolReadyEvent)
+        elif name == 'poolClearedEvent':
+            self.test.assertIsInstance(actual, PoolClearedEvent)
+            if spec.get('hasServiceId'):
+                # TODO: Assert hasServiceId
+                self.test.assertTrue(actual.address)
+        elif name == 'poolClosedEvent':
+            self.test.assertIsInstance(actual, PoolClosedEvent)
+        elif name == 'connectionCreatedEvent':
+            self.test.assertIsInstance(actual, ConnectionCreatedEvent)
+        elif name == 'connectionReadyEvent':
+            self.test.assertIsInstance(actual, ConnectionReadyEvent)
+        elif name == 'connectionClosedEvent':
+            self.test.assertIsInstance(actual, ConnectionClosedEvent)
+            self.test.assertEqual(actual.reason, spec['reason'])
+        elif name == 'connectionCheckOutStartedEvent':
+            self.test.assertIsInstance(actual, ConnectionCheckOutStartedEvent)
+        elif name == 'connectionCheckOutFailedEvent':
+            self.test.assertIsInstance(actual, ConnectionCheckOutFailedEvent)
+            self.test.assertEqual(actual.reason, spec['reason'])
+        elif name == 'connectionCheckedOutEvent':
+            self.test.assertIsInstance(actual, ConnectionCheckedOutEvent)
+        elif name == 'connectionCheckedInEvent':
+            self.test.assertIsInstance(actual, ConnectionCheckedInEvent)
         else:
-            self._test_class.fail(
-                'Unsupported event type %s' % (event_type,))
+            self.test.fail(
+                'Unsupported event type %s' % (name,))
 
 
 def coerce_result(opname, result):
@@ -882,7 +917,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def __get_last_two_command_lsids(self, listener):
         cmd_started_events = []
-        for event in reversed(listener.results):
+        for event in reversed(listener.events):
             if isinstance(event, CommandStartedEvent):
                 cmd_started_events.append(event)
         if len(cmd_started_events) < 2:
@@ -957,22 +992,23 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for event_spec in spec:
             client_name = event_spec['client']
             events = event_spec['events']
-            # TODO: CMAP event matching
             # Valid types: 'command', 'cmap'
             event_type = event_spec.get('eventType', 'command')
-            listener = self.entity_map.get_listener_for_client(client_name)
+            assert event_type in ('command', 'cmap')
 
+            listener = self.entity_map.get_listener_for_client(client_name)
+            actual_events = listener.get_events(event_type)
             if len(events) == 0:
-                self.assertEqual(listener.results, [])
+                self.assertEqual(actual_events, [])
                 continue
 
-            if len(events) > len(listener.results):
+            if len(events) > len(actual_events):
                 self.fail('Expected to see %s events, got %s' % (
-                    len(events), len(listener.results)))
+                    len(events), len(actual_events)))
 
             for idx, expected_event in enumerate(events):
                 self.match_evaluator.match_event(
-                    expected_event, listener.results[idx])
+                    event_type, expected_event, actual_events[idx])
 
     def verify_outcome(self, spec):
         for collection_data in spec:
