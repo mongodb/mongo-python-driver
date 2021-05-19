@@ -528,11 +528,9 @@ class Topology(object):
     def return_server_session(self, server_session, lock):
         if lock:
             with self._lock:
-                session_timeout = \
-                    self._description.logical_session_timeout_minutes
-                if session_timeout is not None:
-                    self._session_pool.return_server_session(server_session,
-                                                             session_timeout)
+                self._session_pool.return_server_session(
+                    server_session,
+                    self._description.logical_session_timeout_minutes)
         else:
             # Called from a __del__ method, can't use a lock.
             self._session_pool.return_server_session_no_lock(server_session)

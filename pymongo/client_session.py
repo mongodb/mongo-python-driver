@@ -906,9 +906,11 @@ class _ServerSessionPool(collections.deque):
         return _ServerSession(self.generation)
 
     def return_server_session(self, server_session, session_timeout_minutes):
-        self._clear_stale(session_timeout_minutes)
-        if not server_session.timed_out(session_timeout_minutes):
-            self.return_server_session_no_lock(server_session)
+        if session_timeout_minutes is not None:
+            self._clear_stale(session_timeout_minutes)
+            if server_session.timed_out(session_timeout_minutes):
+                return
+        self.return_server_session_no_lock(server_session)
 
     def return_server_session_no_lock(self, server_session):
         # Discard sessions from an old pool to avoid duplicate sessions in the
