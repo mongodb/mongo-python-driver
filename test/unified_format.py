@@ -49,9 +49,10 @@ from pymongo.results import BulkWriteResult
 from pymongo.server_api import ServerApi
 from pymongo.write_concern import WriteConcern
 
-from test import client_context, unittest, IntegrationTest
+from test import client_context, unittest, IntegrationTest, MULTI_MONGOS_LB_URI
 from test.utils import (
-    camel_to_snake, rs_or_single_client, single_client, snake_to_camel)
+    camel_to_snake, get_pool, rs_or_single_client, single_client,
+    snake_to_camel)
 
 from test.version import Version
 from test.utils import (
@@ -142,6 +143,24 @@ def parse_bulk_write_error_result(error):
     return parse_bulk_write_result(write_result)
 
 
+class NonLazyCursor(object):
+    """A find cursor proxy that creates the remote cursor when initialized."""
+    def __init__(self, find_cursor):
+        self.find_cursor = find_cursor
+        # Create the server side cursor.
+        self.first_result = next(find_cursor, None)
+
+    def __next__(self):
+        if self.first_result is not None:
+            first = self.first_result
+            self.first_result = None
+            return first
+        return next(self.find_cursor)
+
+    def close(self):
+        self.find_cursor.close()
+
+
 class EventListenerUtil(CommandListener):
     def __init__(self, observe_events, ignore_commands):
         self._event_types = set(observe_events)
@@ -149,10 +168,14 @@ class EventListenerUtil(CommandListener):
         self._ignore_commands.add('configurefailpoint')
         self.results = []
 
+    def _add_event(self, event):
+        self.results.append(event)
+
     def _observe_event(self, event):
         if event.command_name.lower() not in self._ignore_commands:
-            self.results.append(event)
+            self._add_event(event)
 
+    # TODO: Support CMAP events here?
     def started(self, event):
         if 'commandStartedEvent' in self._event_types:
             self._observe_event(event)
@@ -208,8 +231,11 @@ class EntityMapUtil(object):
                 listener = EventListenerUtil(observe_events, ignore_commands)
                 self._listeners[spec['id']] = listener
                 kwargs['event_listeners'] = [listener]
-            if client_context.is_mongos and spec.get('useMultipleMongoses'):
-                kwargs['h'] = client_context.mongos_seeds()
+            if spec.get('useMultipleMongoses'):
+                if client_context.load_balancer:
+                    kwargs['h'] = MULTI_MONGOS_LB_URI
+                elif client_context.is_mongos:
+                    kwargs['h'] = client_context.mongos_seeds()
             kwargs.update(spec.get('uriOptions', {}))
             server_api = spec.get('serverApi')
             if server_api:
@@ -699,6 +725,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _databaseOperation_aggregate(self, target, *args, **kwargs):
         return self.__entityOperation_aggregate(target, *args, **kwargs)
 
+    def _databaseOperation_listCollections(self, target, *args, **kwargs):
+        cursor = target.list_collections(*args, **kwargs)
+        return list(cursor)
+
     def _collectionOperation_aggregate(self, target, *args, **kwargs):
         return self.__entityOperation_aggregate(target, *args, **kwargs)
 
@@ -706,6 +736,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported('find', target, Collection)
         find_cursor = target.find(*args, **kwargs)
         return list(find_cursor)
+
+    def _collectionOperation_createFindCursor(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('find', target, Collection)
+        return NonLazyCursor(target.find(*args, **kwargs))
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == 'mmapv1':
@@ -725,11 +759,27 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             'iterateUntilDocumentOrError', target, ChangeStream)
         return next(target)
 
+    def _cursor_iterateUntilDocumentOrError(self, target, *args, **kwargs):
+        self.__raise_if_unsupported(
+            'iterateUntilDocumentOrError', target, NonLazyCursor)
+        return next(target)
+
+    def _cursor_close(self, target, *args, **kwargs):
+        self.__raise_if_unsupported('close', target, NonLazyCursor)
+        return target.close()
+
     def run_entity_operation(self, spec):
         target = self.entity_map[spec['object']]
         opname = spec['name']
         opargs = spec.get('arguments')
         expect_error = spec.get('expectError')
+        save_as_entity = spec.get('saveResultAsEntity')
+        expect_result = spec.get('expectResult')
+        ignore = spec.get('ignoreResultAndError')
+        if ignore and (expect_error or save_as_entity or expect_result):
+            raise ValueError(
+                'ignoreResultAndError is incompatible with saveResultAsEntity'
+                ', expectError, and expectResult')
         if opargs:
             arguments = parse_spec_options(copy.deepcopy(opargs))
             prepare_spec_arguments(spec, arguments, camel_to_snake(opname),
@@ -745,6 +795,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             method_name = '_collectionOperation_%s' % (opname,)
         elif isinstance(target, ChangeStream):
             method_name = '_changeStreamOperation_%s' % (opname,)
+        elif isinstance(target, NonLazyCursor):
+            method_name = '_cursor_%s' % (opname,)
         elif isinstance(target, ClientSession):
             method_name = '_sessionOperation_%s' % (opname,)
         elif isinstance(target, GridFSBucket):
@@ -766,15 +818,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         try:
             result = cmd(**dict(arguments))
         except Exception as exc:
+            if ignore:
+                return
             if expect_error:
                 return self.process_error(exc, expect_error)
             raise
 
-        if 'expectResult' in spec:
+        if expect_result:
             actual = coerce_result(opname, result)
-            self.match_evaluator.match_result(spec['expectResult'], actual)
+            self.match_evaluator.match_result(expect_result, actual)
 
-        save_as_entity = spec.get('saveResultAsEntity')
         if save_as_entity:
             self.entity_map[save_as_entity] = result
 
@@ -869,6 +922,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for index in collection.list_indexes():
             self.assertNotEqual(spec['indexName'], index['name'])
 
+    def _testOperation_assertNumberConnectionsCheckedOut(self, spec):
+        client = self.entity_map[spec['client']]
+        pool = get_pool(client)
+        self.assertEqual(spec['connections'], pool.active_sockets)
+
     def run_special_operation(self, spec):
         opname = spec['name']
         method_name = '_testOperation_%s' % (opname,)
@@ -891,6 +949,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for event_spec in spec:
             client_name = event_spec['client']
             events = event_spec['events']
+            # TODO: CMAP event matching
+            # Valid types: 'command', 'cmap'
+            event_type = event_spec.get('eventType', 'command')
             listener = self.entity_map.get_listener_for_client(client_name)
 
             if len(events) == 0:
