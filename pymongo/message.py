@@ -28,10 +28,12 @@ import bson
 from bson import (CodecOptions,
                   decode,
                   encode,
+                  _decode_selective,
                   _dict_to_bson,
                   _make_c_string)
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.raw_bson import _inflate_bson, DEFAULT_RAW_BSON_OPTIONS
+from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
+                           RawBSONDocument)
 from bson.py3compat import b, StringIO
 from bson.son import SON
 
@@ -442,28 +444,30 @@ class _GetMore(object):
         return get_more(ns, self.ntoreturn, self.cursor_id, ctx)
 
 
-# TODO: Use OP_MSG once the server is able to respond with document streams.
 class _RawBatchQuery(_Query):
     def use_command(self, socket_info, exhaust):
         # Compatibility checks.
         super(_RawBatchQuery, self).use_command(socket_info, exhaust)
-
+        # Use OP_MSG when available.
+        if socket_info.op_msg_enabled and not exhaust:
+            return True
         return False
 
     def get_message(self, set_slave_ok, sock_info, use_cmd=False):
-        # Always pass False for use_cmd.
         return super(_RawBatchQuery, self).get_message(
-            set_slave_ok, sock_info, False)
+            set_slave_ok, sock_info, use_cmd)
 
 
 class _RawBatchGetMore(_GetMore):
     def use_command(self, socket_info, exhaust):
+        # Use OP_MSG when available.
+        if socket_info.op_msg_enabled and not exhaust:
+            return True
         return False
 
     def get_message(self, set_slave_ok, sock_info, use_cmd=False):
-        # Always pass False for use_cmd.
         return super(_RawBatchGetMore, self).get_message(
-            set_slave_ok, sock_info, False)
+            set_slave_ok, sock_info, use_cmd)
 
 
 class _CursorAddress(tuple):
@@ -1492,7 +1496,7 @@ class _OpReply(object):
         self.number_returned = number_returned
         self.documents = documents
 
-    def raw_response(self, cursor_id=None):
+    def raw_response(self, cursor_id=None, user_fields=None):
         """Check the response header from the database, without decoding BSON.
 
         Check the response for errors and unpack.
@@ -1602,8 +1606,15 @@ class _OpMsg(object):
         self.flags = flags
         self.payload_document = payload_document
 
-    def raw_response(self, cursor_id=None):
-        raise NotImplementedError
+    def raw_response(self, cursor_id=None, user_fields={}):
+        """
+        cursor_id is ignored
+        user_fields is used to determine which fields must not be decoded
+        """
+        inflated_response = _decode_selective(
+            RawBSONDocument(self.payload_document), user_fields,
+            DEFAULT_RAW_BSON_OPTIONS)
+        return [inflated_response]
 
     def unpack_response(self, cursor_id=None,
                         codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,

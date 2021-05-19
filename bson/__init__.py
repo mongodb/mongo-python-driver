@@ -1062,6 +1062,16 @@ def _decode_selective(rawdoc, fields, codec_options):
     return doc
 
 
+def _convert_raw_document_lists_to_streams(document):
+    cursor = document.get('cursor')
+    if cursor:
+        for key in ('firstBatch', 'nextBatch'):
+            batch = cursor.get(key)
+            if batch:
+                stream = b"".join(doc.raw for doc in batch)
+                cursor[key] = [stream]
+
+
 def _decode_all_selective(data, codec_options, fields):
     """Decode BSON data to a single document while using user-provided
     custom decoding logic.

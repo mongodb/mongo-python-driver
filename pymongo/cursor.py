@@ -19,7 +19,7 @@ import warnings
 
 from collections import deque
 
-from bson import RE_TYPE
+from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.py3compat import (iteritems,
                             integer_types,
@@ -1137,7 +1137,6 @@ class Cursor(object):
                     limit = min(limit, self.__batch_size)
             else:
                 limit = self.__batch_size
-
             # Exhaust cursors don't send getMore messages.
             g = self._getmore_class(self.__dbname,
                                     self.__collname,
@@ -1303,7 +1302,13 @@ class RawBatchCursor(Cursor):
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):
-        return response.raw_response(cursor_id)
+        raw_response = response.raw_response(
+            cursor_id, user_fields=user_fields)
+        if not legacy_response:
+            # OP_MSG returns firstBatch/nextBatch documents as a BSON array
+            # Re-assemble the array of documents into a document stream
+            _convert_raw_document_lists_to_streams(raw_response[0])
+        return raw_response
 
     def explain(self):
         """Returns an explain plan record for this cursor.

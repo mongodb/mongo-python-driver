@@ -41,6 +41,7 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   unittest,
                   IntegrationTest)
@@ -1526,6 +1527,8 @@ class TestRawBatchCursor(IntegrationTest):
 
     @client_context.require_version_min(3, 2)
     def test_read_concern(self):
+        self.db.get_collection(
+            "test", write_concern=WriteConcern(w="majority")).insert_one({})
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
         next(c.find_raw_batches())
 
