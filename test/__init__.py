@@ -199,6 +199,7 @@ def _all_users(db):
 
 
 class ClientContext(object):
+    MULTI_MONGOS_LB_URI = MULTI_MONGOS_LB_URI
 
     def __init__(self):
         """Create a client and grab essential information from the server."""

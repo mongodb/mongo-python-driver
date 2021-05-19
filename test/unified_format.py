@@ -49,7 +49,7 @@ from pymongo.results import BulkWriteResult
 from pymongo.server_api import ServerApi
 from pymongo.write_concern import WriteConcern
 
-from test import client_context, unittest, IntegrationTest, MULTI_MONGOS_LB_URI
+from test import client_context, unittest, IntegrationTest
 from test.utils import (
     camel_to_snake, get_pool, rs_or_single_client, single_client,
     snake_to_camel)
@@ -233,7 +233,7 @@ class EntityMapUtil(object):
                 kwargs['event_listeners'] = [listener]
             if spec.get('useMultipleMongoses'):
                 if client_context.load_balancer:
-                    kwargs['h'] = MULTI_MONGOS_LB_URI
+                    kwargs['h'] = client_context.MULTI_MONGOS_LB_URI
                 elif client_context.is_mongos:
                     kwargs['h'] = client_context.mongos_seeds()
             kwargs.update(spec.get('uriOptions', {}))
@@ -718,16 +718,18 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         kwargs['command'] = ordered_command
         return target.command(**kwargs)
 
+    def _databaseOperation_listCollections(self, target, *args, **kwargs):
+        if 'batch_size' in kwargs:
+            kwargs['cursor'] = {'batchSize': kwargs.pop('batch_size')}
+        cursor = target.list_collections(*args, **kwargs)
+        return list(cursor)
+
     def __entityOperation_aggregate(self, target, *args, **kwargs):
         self.__raise_if_unsupported('aggregate', target, Database, Collection)
         return list(target.aggregate(*args, **kwargs))
 
     def _databaseOperation_aggregate(self, target, *args, **kwargs):
         return self.__entityOperation_aggregate(target, *args, **kwargs)
-
-    def _databaseOperation_listCollections(self, target, *args, **kwargs):
-        cursor = target.list_collections(*args, **kwargs)
-        return list(cursor)
 
     def _collectionOperation_aggregate(self, target, *args, **kwargs):
         return self.__entityOperation_aggregate(target, *args, **kwargs)
@@ -740,6 +742,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_createFindCursor(self, target, *args, **kwargs):
         self.__raise_if_unsupported('find', target, Collection)
         return NonLazyCursor(target.find(*args, **kwargs))
+
+    def _collectionOperation_listIndexes(self, target, *args, **kwargs):
+        if 'batch_size' in kwargs:
+            self.skipTest('PyMongo does not support batch_size for '
+                          'list_indexes')
+        return target.list_indexes(*args, **kwargs)
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == 'mmapv1':
