@@ -1197,15 +1197,16 @@ class MongoClient(common.BaseObject):
                 server = topology.select_server(server_selector)
                 # Pin this session to the selected server if it's performing a
                 # sharded transaction.
-                if server.description.mongos and (session and
-                                                  session.in_transaction):
-                    session._pin_mongos(server)
+                if (server.description.server_type in (
+                        SERVER_TYPE.Mongos, SERVER_TYPE.LoadBalancer)
+                        and session and session.in_transaction):
+                    session._pin(server)
             return server
         except PyMongoError as exc:
             # Server selection errors in a transaction are transient.
             if session and session.in_transaction:
                 exc._add_error_label("TransientTransactionError")
-                session._unpin_mongos()
+                session._unpin()
             raise
 
     def _socket_for_writes(self, session):
@@ -1350,7 +1351,7 @@ class MongoClient(common.BaseObject):
                 _add_retryable_write_error(exc, max_wire_version)
                 retryable_error = exc.has_error_label("RetryableWriteError")
                 if retryable_error:
-                    session._unpin_mongos()
+                    session._unpin()
                 if is_retrying() or not retryable_error:
                     raise
                 if bulk:
@@ -2001,7 +2002,7 @@ class _MongoClientErrorHandler(object):
             if issubclass(exc_type, PyMongoError):
                 if (exc_val.has_error_label("TransientTransactionError") or
                         exc_val.has_error_label("RetryableWriteError")):
-                    self.session._unpin_mongos()
+                    self.session._unpin()
 
         err_ctx = _ErrorContext(
             exc_val, self.max_wire_version, self.sock_generation,

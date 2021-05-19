@@ -660,7 +660,7 @@ class ClientSession(object):
             pass
         finally:
             self._transaction.state = _TxnState.ABORTED
-            self._unpin_mongos()
+            self._unpin()
 
     def _finish_transaction_with_retry(self, command_name):
         """Run commit or abort with one retry after any retryable error.
@@ -779,13 +779,13 @@ class ClientSession(object):
             return self._transaction.pinned_address
         return None
 
-    def _pin_mongos(self, server):
-        """Pin this session to the given mongos Server."""
+    def _pin(self, server):
+        """Pin this session to the given Server."""
         self._transaction.sharded = True
         self._transaction.pinned_address = server.description.address
 
-    def _unpin_mongos(self):
-        """Unpin this session from any pinned mongos address."""
+    def _unpin(self):
+        """Unpin this session from any pinned Server."""
         self._transaction.pinned_address = None
 
     def _txn_read_preference(self):
