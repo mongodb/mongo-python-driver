@@ -1175,6 +1175,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue("x" not in db.test.find_one(projection={"x": 0}))
         self.assertTrue("mike" in db.test.find_one(projection={"x": 0}))
 
+    @client_context.require_version_max(4, 9, -1)  # PYTHON-2721
     def test_find_w_regex(self):
         db = self.db
         db.test.delete_many({})
