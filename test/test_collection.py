@@ -579,6 +579,9 @@ class TestCollection(IntegrationTest):
                 stage = self.get_plan_stage(i, stage)
                 if stage:
                     return stage
+        elif "queryPlan" in root:
+            # queryPlan (and slotBasedPlan) are new in 5.0.
+            return self.get_plan_stage(root["queryPlan"], stage)
         elif "shards" in root:
             for i in root['shards']:
                 stage = self.get_plan_stage(i['winningPlan'], stage)
