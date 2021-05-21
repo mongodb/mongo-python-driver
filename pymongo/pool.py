@@ -1129,7 +1129,7 @@ class Pool:
     def closed(self):
         return self.state == PoolState.CLOSED
 
-    def _reset(self, close, pause=True):
+    def _reset(self, close, pause=True, service_id=None):
         old_state = self.state
         with self.size_cond:
             if self.closed:
@@ -1161,7 +1161,8 @@ class Pool:
                 listeners.publish_pool_closed(self.address)
         else:
             if old_state != PoolState.PAUSED and self.enabled_for_cmap:
-                listeners.publish_pool_cleared(self.address)
+                listeners.publish_pool_cleared(self.address,
+                                               service_id=service_id)
             for sock_info in sockets:
                 sock_info.close_socket(ConnectionClosedReason.STALE)
 
@@ -1174,8 +1175,8 @@ class Pool:
             for socket in self.sockets:
                 socket.update_is_writable(self.is_writable)
 
-    def reset(self):
-        self._reset(close=False)
+    def reset(self, service_id=None):
+        self._reset(close=False, service_id=service_id)
 
     def reset_without_pause(self):
         self._reset(close=False, pause=False)

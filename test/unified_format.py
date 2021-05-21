@@ -39,7 +39,9 @@ from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.change_stream import ChangeStream
 from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import BulkWriteError, InvalidOperation, PyMongoError
+from pymongo.errors import (
+    BulkWriteError, ConnectionFailure, InvalidOperation, NotMasterError,
+    PyMongoError)
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
     CommandSucceededEvent, _SENSITIVE_COMMANDS, PoolCreatedEvent,
@@ -547,8 +549,10 @@ class MatchEvaluatorUtil(object):
         elif name == 'poolClearedEvent':
             self.test.assertIsInstance(actual, PoolClearedEvent)
             if spec.get('hasServiceId'):
-                # TODO: Assert hasServiceId
-                self.test.assertTrue(actual.address)
+                self.test.assertIsNotNone(actual.service_id)
+                self.test.assertIsInstance(actual.service_id, ObjectId)
+            else:
+                self.test.assertIsNone(actual.service_id)
         elif name == 'poolClosedEvent':
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == 'connectionCreatedEvent':
@@ -684,7 +688,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             pass
 
         if is_client_error:
-            self.assertNotIsInstance(exception, PyMongoError)
+            # Connection errors are considered client errors.
+            if isinstance(exception, ConnectionFailure):
+                self.assertNotIsInstance(exception, NotMasterError)
+            else:
+                self.assertNotIsInstance(exception, PyMongoError)
 
         if error_contains:
             if isinstance(exception, BulkWriteError):
