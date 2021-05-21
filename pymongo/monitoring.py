@@ -744,12 +744,13 @@ class PoolClearedEvent(_PoolEvent):
     :Parameters:
      - `address`: The address (host, port) pair of the server this Pool is
        attempting to connect to.
+     - `service_id`: The service_id this command was sent to, or ``None``.
 
     .. versionadded:: 3.9
     """
     __slots__ = ("__service_id",)
 
-    def __init__(self, address, service_id):
+    def __init__(self, address, service_id=None):
         super(PoolClearedEvent, self).__init__(address)
         self.__service_id = service_id
 

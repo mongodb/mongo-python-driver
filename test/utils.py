@@ -277,7 +277,7 @@ class MockPool(object):
     def ready(self):
         pass
 
-    def reset(self):
+    def reset(self, service_id=None):
         self._reset()
 
     def reset_without_pause(self):

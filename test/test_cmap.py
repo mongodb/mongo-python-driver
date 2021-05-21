@@ -22,6 +22,7 @@ import time
 sys.path[0:0] = [""]
 
 from bson.son import SON
+from bson.objectid import ObjectId
 
 from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
@@ -422,6 +423,7 @@ class TestCMAP(IntegrationTest):
         self.assertRepr(ConnectionCheckOutStartedEvent(host))
         self.assertRepr(PoolCreatedEvent(host, {}))
         self.assertRepr(PoolClearedEvent(host))
+        self.assertRepr(PoolClearedEvent(host, service_id=ObjectId()))
         self.assertRepr(PoolClosedEvent(host))
 
     def test_close_leaves_pool_unpaused(self):
