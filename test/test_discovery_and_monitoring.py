@@ -87,7 +87,8 @@ def got_app_error(topology, app_error):
     server_address = common.partition_node(app_error['address'])
     server = topology.get_server_by_address(server_address)
     error_type = app_error['type']
-    generation = app_error.get('generation', server.pool.generation)
+    generation = app_error.get(
+        'generation', server.pool._generations.get_overall())
     when = app_error['when']
     max_wire_version = app_error['maxWireVersion']
     # XXX: We could get better test coverage by mocking the errors on the
@@ -181,7 +182,7 @@ def check_outcome(self, topology, outcome):
         if expected_pool:
             self.assertEqual(
                 expected_pool.get('generation'),
-                actual_server.pool.generation)
+                actual_server.pool._generations.get_overall())
 
     self.assertEqual(outcome['setName'], topology.description.replica_set_name)
     self.assertEqual(outcome.get('logicalSessionTimeoutMinutes'),
@@ -270,7 +271,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
         # Wait for initial discovery.
         client.admin.command('ping')
         pool = get_pool(client)
-        starting_generation = pool.generation
+        starting_generation = pool._generations.get_overall()
         wait_until(lambda: len(pool.sockets) == N_THREADS, 'created sockets')
 
         def mock_command(*args, **kwargs):
@@ -296,7 +297,8 @@ class TestIgnoreStaleErrors(IntegrationTest):
             t.join()
 
         # Expect a single pool reset for the network error
-        self.assertEqual(starting_generation+1, pool.generation)
+        self.assertEqual(
+            starting_generation+1, pool._generations.get_overall())
 
         # Server should be selectable.
         client.admin.command('ping')

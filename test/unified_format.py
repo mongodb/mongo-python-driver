@@ -124,8 +124,16 @@ def is_run_on_requirement_satisfied(requirement):
             elif client_context.server_parameters[param] != val:
                 params_satisfied = False
 
+    auth_satisfied = True
+    req_auth = requirement.get('auth')
+    if req_auth is not None:
+        if req_auth:
+            auth_satisfied = client_context.auth_enabled
+        else:
+            auth_satisfied = not client_context.auth_enabled
+
     return (topology_satisfied and min_version_satisfied and
-            max_version_satisfied and params_satisfied)
+            max_version_satisfied and params_satisfied and auth_satisfied)
 
 
 def parse_collection_or_database_options(options):

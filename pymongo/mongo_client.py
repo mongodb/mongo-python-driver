@@ -1977,7 +1977,7 @@ class _MongoClientErrorHandler(object):
         # "Note that when a network error occurs before the handshake
         # completes then the error's generation number is the generation
         # of the pool at the time the connection attempt was started."
-        self.sock_generation = server.pool.generation
+        self.sock_generation = server.pool._generations.get_overall()
         self.completed_handshake = False
         self.service_id = None
 
