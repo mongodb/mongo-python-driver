@@ -325,7 +325,7 @@ setup(
     maintainer_email="bernie@mongodb.com",
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
-    install_requires=[],
+    install_requires=[dnspython],
     license="Apache License, Version 2.0",
     python_requires=">=3.6",
     classifiers=[
