@@ -61,6 +61,7 @@
       "runOnRequirements": [
         {
           "minServerVersion": "3.1",
+          "maxServerVersion": "4.9.0",
           "topologies": [
             "single",
             "replicaset"
