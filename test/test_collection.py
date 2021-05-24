@@ -619,6 +619,9 @@ class TestCollection(IntegrationTest):
                 stage = self.get_plan_stage(i, stage)
                 if stage:
                     return stage
+        elif "queryPlan" in root:
+            # queryPlan (and slotBasedPlan) are new in 5.0.
+            return self.get_plan_stage(root["queryPlan"], stage)
         elif "shards" in root:
             for i in root['shards']:
                 stage = self.get_plan_stage(i['winningPlan'], stage)
@@ -1182,6 +1185,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue("x" not in db.test.find_one(projection={"x": 0}))
         self.assertTrue("mike" in db.test.find_one(projection={"x": 0}))
 
+    @client_context.require_version_max(4, 9, -1)  # PYTHON-2721
     def test_find_w_regex(self):
         db = self.db
         db.test.delete_many({})
