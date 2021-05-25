@@ -1460,7 +1460,7 @@ class TestCursor(IntegrationTest):
         c = self.db.test
         c.drop()
         c.insert_many({'_id': i} for i in range(200))
-        result = list(c.find(cursor_type=CursorType.EXHAUST))
+        result = list(c.find(cursor_type=CursorType.EXHAUST, batch_size=50))
         self.assertEqual([{'_id': i} for i in range(200)], result)
 
 

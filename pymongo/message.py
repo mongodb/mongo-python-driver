@@ -268,8 +268,7 @@ class _Query(object):
     def use_command(self, sock_info, exhaust):
         use_find_cmd = False
         if sock_info.max_wire_version >= 4:
-            if not exhaust:
-                use_find_cmd = True
+            use_find_cmd = True
         elif not self.read_concern.ok_for_legacy:
             raise ConfigurationError(
                 'read concern level of %s is not valid '
@@ -341,12 +340,8 @@ class _Query(object):
         if use_cmd:
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
-                if self.flags & 64:   # exhaust bit is set
-                    op_msg_flags = 1 << 16    # set exhaustAllowed bit
-                else:
-                    op_msg_flags = 0
                 request_id, msg, size, _ = _op_msg(
-                    op_msg_flags, spec, self.db, self.read_preference,
+                    0, spec, self.db, self.read_preference,
                     set_slave_ok, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size
@@ -401,7 +396,7 @@ class _GetMore(object):
 
     def use_command(self, sock_info, exhaust):
         sock_info.validate_session(self.client, self.session)
-        return sock_info.max_wire_version >= 4 and not exhaust
+        return sock_info.max_wire_version >= 4
 
     def as_command(self, sock_info):
         """Return a getMore command document for this query."""
@@ -435,8 +430,12 @@ class _GetMore(object):
         if use_cmd:
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
+                if self.exhaust_mgr:
+                    op_msg_flags = _OpMsg.EXHAUST_ALLOWED
+                else:
+                    op_msg_flags = 0
                 request_id, msg, size, _ = _op_msg(
-                    0, spec, self.db, None,
+                    op_msg_flags, spec, self.db, None,
                     False, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size
@@ -455,10 +454,6 @@ class _RawBatchQuery(_Query):
             return True
         return False
 
-    def get_message(self, set_slave_ok, sock_info, use_cmd=False):
-        return super(_RawBatchQuery, self).get_message(
-            set_slave_ok, sock_info, use_cmd)
-
 
 class _RawBatchGetMore(_GetMore):
     def use_command(self, socket_info, exhaust):
@@ -466,10 +461,6 @@ class _RawBatchGetMore(_GetMore):
         if socket_info.op_msg_enabled and not exhaust:
             return True
         return False
-
-    def get_message(self, set_slave_ok, sock_info, use_cmd=False):
-        return super(_RawBatchGetMore, self).get_message(
-            set_slave_ok, sock_info, use_cmd)
 
 
 class _CursorAddress(tuple):

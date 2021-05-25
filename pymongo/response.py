@@ -68,10 +68,10 @@ class Response(object):
         return self._docs
 
 class ExhaustResponse(Response):
-    __slots__ = ('_socket_info', '_pool')
+    __slots__ = ('_socket_info', '_pool', '_exhaust_ready')
 
     def __init__(self, data, address, socket_info, pool, request_id, duration,
-                 from_command, docs):
+                 from_command, docs, exhaust_ready):
         """Represent a response to an exhaust cursor's initial query.
 
         :Parameters:
@@ -82,6 +82,8 @@ class ExhaustResponse(Response):
           - `request_id`: The request id of this operation.
           - `duration`: The duration of the operation.
           - `from_command`: If the response is the result of a db command.
+          - `docs`: List of documents.
+          - `exhaust_ready`: Cursor is ready to be exhausted.
         """
         super(ExhaustResponse, self).__init__(data,
                                               address,
@@ -90,6 +92,7 @@ class ExhaustResponse(Response):
                                               from_command, docs)
         self._socket_info = socket_info
         self._pool = pool
+        self._exhaust_ready = exhaust_ready
 
     @property
     def socket_info(self):
@@ -105,3 +108,9 @@ class ExhaustResponse(Response):
     def pool(self):
         """The Pool from which the SocketInfo came."""
         return self._pool
+
+    @property
+    def exhaust_ready(self):
+        """If true, server is ready to send batches on the socket until the
+        result set is exhausted or there is an error."""
+        return self._exhaust_ready

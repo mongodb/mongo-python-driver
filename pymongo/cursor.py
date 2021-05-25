@@ -78,12 +78,13 @@ class CursorType(object):
 
 # This has to be an old style class due to
 # http://bugs.jython.org/issue1057
-class _SocketManager:
+class _ExhaustManager:
     """Used with exhaust cursors to ensure the socket is returned.
     """
-    def __init__(self, sock, pool):
+    def __init__(self, sock, pool, exhaust_ready):
         self.sock = sock
         self.pool = pool
+        self.exhaust_ready = exhaust_ready
         self.__closed = False
 
     def __del__(self):
@@ -1039,10 +1040,11 @@ class Cursor(object):
             raise
 
         self.__address = response.address
-        if self.__exhaust and not self.__exhaust_mgr:
+        if self.__exhaust:
             # 'response' is an ExhaustResponse.
-            self.__exhaust_mgr = _SocketManager(response.socket_info,
-                                                response.pool)
+            self.__exhaust_mgr = _ExhaustManager(response.socket_info,
+                                                 response.pool,
+                                                 response.exhaust_ready)
 
         cmd_name = operation.name
         docs = response.docs
