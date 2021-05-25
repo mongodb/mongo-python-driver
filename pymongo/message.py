@@ -267,8 +267,12 @@ class _Query(object):
 
     def use_command(self, sock_info, exhaust):
         use_find_cmd = False
-        if sock_info.max_wire_version >= 4:
+        if sock_info.max_wire_version >= 4 and not exhaust:
             use_find_cmd = True
+        elif sock_info.max_wire_version >= 8 and exhaust:
+            # OP_MSG supports exhaust on MongoDB 4.2+
+            use_find_cmd = True
+
         elif not self.read_concern.ok_for_legacy:
             raise ConfigurationError(
                 'read concern level of %s is not valid '
@@ -395,8 +399,15 @@ class _GetMore(object):
         return "%s.%s" % (self.db, self.coll)
 
     def use_command(self, sock_info, exhaust):
+        use_cmd = False
+        if sock_info.max_wire_version >= 4 and not exhaust:
+            use_cmd = True
+        elif sock_info.max_wire_version >= 8 and exhaust:
+            # OP_MSG supports exhaust on MongoDB 4.2+
+            use_cmd = True
+
         sock_info.validate_session(self.client, self.session)
-        return sock_info.max_wire_version >= 4
+        return use_cmd
 
     def as_command(self, sock_info):
         """Return a getMore command document for this query."""
@@ -446,21 +457,23 @@ class _GetMore(object):
 
 
 class _RawBatchQuery(_Query):
-    def use_command(self, socket_info, exhaust):
-        # Compatibility checks.
-        super(_RawBatchQuery, self).use_command(socket_info, exhaust)
-        # Use OP_MSG when available.
-        if socket_info.op_msg_enabled and not exhaust:
-            return True
-        return False
+    pass
+    # def use_command(self, socket_info, exhaust):
+    #     # Compatibility checks.
+    #     super(_RawBatchQuery, self).use_command(socket_info, exhaust)
+    #     # Use OP_MSG when available.
+    #     if socket_info.op_msg_enabled:
+    #         return True
+    #     return False
 
 
 class _RawBatchGetMore(_GetMore):
-    def use_command(self, socket_info, exhaust):
-        # Use OP_MSG when available.
-        if socket_info.op_msg_enabled and not exhaust:
-            return True
-        return False
+    pass
+    # def use_command(self, socket_info, exhaust):
+    #     # Use OP_MSG when available.
+    #     if socket_info.op_msg_enabled:
+    #         return True
+    #     return False
 
 
 class _CursorAddress(tuple):
