@@ -341,8 +341,12 @@ class _Query(object):
         if use_cmd:
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
+                if self.flags & 64:   # exhaust bit is set
+                    op_msg_flags = 1 << 16    # set exhaustAllowed bit
+                else:
+                    op_msg_flags = 0
                 request_id, msg, size, _ = _op_msg(
-                    0, spec, self.db, self.read_preference,
+                    op_msg_flags, spec, self.db, self.read_preference,
                     set_slave_ok, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size

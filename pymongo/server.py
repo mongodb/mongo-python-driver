@@ -103,7 +103,7 @@ class Server(object):
                 set_slave_okay, sock_info, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
         else:
-            use_cmd = False
+            use_cmd = operation.use_command(sock_info, exhaust)
             request_id = 0
 
         if publish:
