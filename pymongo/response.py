@@ -68,7 +68,7 @@ class Response(object):
         return self._docs
 
 
-class ExhaustResponse(Response):
+class PinnedResponse(Response):
     __slots__ = ('_socket_info', '_pool', '_more_to_come')
 
     def __init__(self, data, address, socket_info, pool, request_id, duration,
@@ -87,11 +87,11 @@ class ExhaustResponse(Response):
           - `more_to_come`: Bool indicating whether cursor is ready to be
             exhausted.
         """
-        super(ExhaustResponse, self).__init__(data,
-                                              address,
-                                              request_id,
-                                              duration,
-                                              from_command, docs)
+        super(PinnedResponse, self).__init__(data,
+                                             address,
+                                             request_id,
+                                             duration,
+                                             from_command, docs)
         self._socket_info = socket_info
         self._pool = pool
         self._more_to_come = more_to_come

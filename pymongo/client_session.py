@@ -292,6 +292,7 @@ class _Transaction(object):
         self.state = _TxnState.NONE
         self.sharded = False
         self.pinned_address = None
+        self.pinned_conn = None
         self.recovery_token = None
         self.attempt = 0
 
@@ -305,6 +306,8 @@ class _Transaction(object):
         self.state = _TxnState.NONE
         self.sharded = False
         self.pinned_address = None
+        # TODO: What if pinned_conn is non-None here?
+        self.pinned_conn = None
         self.recovery_token = None
         self.attempt = 0
 
@@ -584,6 +587,7 @@ class ClientSession(object):
 
         self._transaction.opts = TransactionOptions(
             read_concern, write_concern, read_preference, max_commit_time_ms)
+        self._unpin()
         self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
@@ -784,9 +788,28 @@ class ClientSession(object):
         self._transaction.sharded = True
         self._transaction.pinned_address = server.description.address
 
+    @property
+    def _pinned_connection(self):
+        """The connection this transaction was started on."""
+        if self._transaction.active():
+            return self._transaction.pinned_conn
+        return None
+
+    def _pin_connection(self, conn):
+        """Pin this session to the given connection."""
+        self._transaction.pinned_conn = conn
+        conn.pinned = True
+
     def _unpin(self):
         """Unpin this session from any pinned Server."""
         self._transaction.pinned_address = None
+        conn = self._transaction.pinned_conn
+        self._transaction.pinned_conn = None
+        if conn:
+            # TODO: How do we know conn won't be returned to the pool twice?
+            topology = self.client._topology
+            server = topology.get_server_by_address(conn.address)
+            server.pool.return_socket(conn)
 
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""

@@ -1160,10 +1160,21 @@ class MongoClient(common.BaseObject):
         return self._topology
 
     @contextlib.contextmanager
-    def _get_socket(self, server, session, exhaust=False):
+    def _get_socket(self, server, session, pin=False):
         with _MongoClientErrorHandler(self, server, session) as err_handler:
+            # TODO: Are there cases where we need to unpin the connection here?
+            # Reuse the pinned connection, if it exists.
+            if (session and session.in_transaction and
+                    session._pinned_connection):
+                yield session._pinned_connection
+                return
+            pin_session = (
+                    session and session.in_transaction and
+                    server.description.server_type == SERVER_TYPE.LoadBalancer)
+            checkout = pin_session or pin
             with server.get_socket(
-                    self.__all_credentials, checkout=exhaust) as sock_info:
+                    self.__all_credentials, checkout=checkout,
+                    handler=err_handler) as sock_info:
                 err_handler.contribute_socket(sock_info)
                 if (self._encrypter and
                         not self._encrypter._bypass_auto_encryption and
@@ -1171,6 +1182,11 @@ class MongoClient(common.BaseObject):
                     raise ConfigurationError(
                         'Auto-encryption requires a minimum MongoDB version '
                         'of 4.2')
+
+                # Pin this session to the connection if it's performing a
+                # transaction in load balanced mode.
+                if pin_session:
+                    session._pin_connection(sock_info)
                 yield sock_info
 
     def _select_server(self, server_selector, session, address=None):
@@ -1186,6 +1202,8 @@ class MongoClient(common.BaseObject):
         """
         try:
             topology = self._get_topology()
+            if session and not session.in_transaction:
+                session._unpin()
             address = address or (session and session._pinned_address)
             if address:
                 # We're running a getMore or this session is pinned to a mongos.
@@ -1214,8 +1232,7 @@ class MongoClient(common.BaseObject):
         return self._get_socket(server, session)
 
     @contextlib.contextmanager
-    def _slaveok_for_server(self, read_preference, server, session,
-                            exhaust=False):
+    def _slaveok_for_server(self, read_preference, server, session, pin=False):
         assert read_preference is not None, "read_preference must not be None"
         # Get a socket for a server matching the read preference, and yield
         # sock_info, slave_ok. Server Selection Spec: "slaveOK must be sent to
@@ -1226,7 +1243,7 @@ class MongoClient(common.BaseObject):
         topology = self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
 
-        with self._get_socket(server, session, exhaust=exhaust) as sock_info:
+        with self._get_socket(server, session, pin=pin) as sock_info:
             slave_ok = (single and not sock_info.is_mongos) or (
                 read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
@@ -1249,47 +1266,39 @@ class MongoClient(common.BaseObject):
                 read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
 
-    def _run_operation_with_response(self, operation, unpack_res,
-                                     exhaust=False, address=None):
+    def _run_operation(self, operation, unpack_res, pin=False, address=None):
         """Run a _Query/_GetMore operation and return a Response.
 
         :Parameters:
           - `operation`: a _Query or _GetMore object.
           - `unpack_res`: A callable that decodes the wire protocol response.
-          - `exhaust` (optional): If True, the socket used stays checked out.
-            It is returned along with its Pool in the Response.
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
-        if operation.exhaust_mgr:
+        pin_cursor = (self.__options.load_balanced and
+                      not (operation.session and
+                           operation.session.in_transaction))
+        pin = pin_cursor or operation.exhaust
+        if operation.sock_mgr:
             server = self._select_server(
                 operation.read_preference, operation.session, address=address)
 
             with _MongoClientErrorHandler(
                     self, server, operation.session) as err_handler:
-                err_handler.contribute_socket(operation.exhaust_mgr.sock)
-                return server.run_operation_with_response(
-                    operation.exhaust_mgr.sock,
-                    operation,
-                    True,
-                    self._event_listeners,
-                    exhaust,
-                    unpack_res)
+                err_handler.contribute_socket(operation.sock_mgr.sock)
+                return server.run_operation(
+                    operation.sock_mgr.sock, operation, True,
+                    self._event_listeners, pin, unpack_res)
 
         def _cmd(session, server, sock_info, slave_ok):
-            return server.run_operation_with_response(
-                sock_info,
-                operation,
-                slave_ok,
-                self._event_listeners,
-                exhaust,
+            return server.run_operation(
+                sock_info, operation, slave_ok, self._event_listeners, pin,
                 unpack_res)
 
         return self._retryable_read(
             _cmd, operation.read_preference, operation.session,
-            address=address,
-            retryable=isinstance(operation, message._Query),
-            exhaust=exhaust)
+            address=address, retryable=isinstance(operation, message._Query),
+            pin=pin)
 
     def _retry_with_session(self, retryable, func, session, bulk):
         """Execute an operation with at most one consecutive retries
@@ -1361,7 +1370,7 @@ class MongoClient(common.BaseObject):
                 last_error = exc
 
     def _retryable_read(self, func, read_pref, session, address=None,
-                        retryable=True, exhaust=False):
+                        retryable=True, pin=False):
         """Execute an operation with at most one consecutive retries
 
         Returns func()'s return value on success. On error retries the same
@@ -1381,9 +1390,9 @@ class MongoClient(common.BaseObject):
                     read_pref, session, address=address)
                 if not server.description.retryable_reads_supported:
                     retryable = False
-                with self._slaveok_for_server(read_pref, server, session,
-                                              exhaust=exhaust) as (sock_info,
-                                                                   slave_ok):
+                with self._slaveok_for_server(
+                        read_pref, server, session, pin=pin) as (
+                            sock_info, slave_ok):
                     if retrying and not retryable:
                         # A retry is not possible because this server does
                         # not support retryable reads, raise the last error.
@@ -1496,7 +1505,8 @@ class MongoClient(common.BaseObject):
         """
         self.__kill_cursors_queue.append((address, [cursor_id]))
 
-    def _close_cursor_now(self, cursor_id, address=None, session=None):
+    def _close_cursor_now(self, cursor_id, address=None, session=None,
+                          sock_info=None):
         """Send a kill cursors message with the given id.
 
         The cursor is closed synchronously on the current thread.
@@ -1505,16 +1515,19 @@ class MongoClient(common.BaseObject):
             raise TypeError("cursor_id must be an instance of int")
 
         try:
-            self._kill_cursors(
-                [cursor_id], address, self._get_topology(), session)
+            if sock_info:
+                # Cursor is pinned to LB outside of a transaction.
+                self._kill_cursor_impl(
+                    [cursor_id], address, session, sock_info)
+            else:
+                self._kill_cursors(
+                    [cursor_id], address, self._get_topology(), session)
         except PyMongoError:
             # Make another attempt to kill the cursor later.
             self.__kill_cursors_queue.append((address, [cursor_id]))
 
     def _kill_cursors(self, cursor_ids, address, topology, session):
         """Send a kill cursors message with the given ids."""
-        listeners = self._event_listeners
-        publish = listeners.enabled_for_commands
         if address:
             # address could be a tuple or _CursorAddress, but
             # select_server_by_address needs (host, port).
@@ -1523,49 +1536,54 @@ class MongoClient(common.BaseObject):
             # Application called close_cursor() with no address.
             server = topology.select_server(writable_server_selector)
 
+        with self._get_socket(server, session) as sock_info:
+            self._kill_cursor_impl(cursor_ids, address, session, sock_info)
+
+    def _kill_cursor_impl(self, cursor_ids, address, session, sock_info):
+        listeners = self._event_listeners
+        publish = listeners.enabled_for_commands
+
         try:
             namespace = address.namespace
             db, coll = namespace.split('.', 1)
         except AttributeError:
             namespace = None
             db = coll = "OP_KILL_CURSORS"
-
         spec = SON([('killCursors', coll), ('cursors', cursor_ids)])
-        with server.get_socket(self.__all_credentials) as sock_info:
-            if sock_info.max_wire_version >= 4 and namespace is not None:
-                sock_info.command(db, spec, session=session, client=self)
-            else:
-                if publish:
-                    start = datetime.datetime.now()
-                request_id, msg = message.kill_cursors(cursor_ids)
-                if publish:
-                    duration = datetime.datetime.now() - start
-                    # Here and below, address could be a tuple or
-                    # _CursorAddress. We always want to publish a
-                    # tuple to match the rest of the monitoring
-                    # API.
-                    listeners.publish_command_start(
-                        spec, db, request_id, tuple(address))
-                    start = datetime.datetime.now()
+        if sock_info.max_wire_version >= 4 and namespace is not None:
+            sock_info.command(db, spec, session=session, client=self)
+        else:
+            if publish:
+                start = datetime.datetime.now()
+            request_id, msg = message.kill_cursors(cursor_ids)
+            if publish:
+                duration = datetime.datetime.now() - start
+                # Here and below, address could be a tuple or
+                # _CursorAddress. We always want to publish a
+                # tuple to match the rest of the monitoring
+                # API.
+                listeners.publish_command_start(
+                    spec, db, request_id, tuple(address))
+                start = datetime.datetime.now()
 
-                try:
-                    sock_info.send_message(msg, 0)
-                except Exception as exc:
-                    if publish:
-                        dur = ((datetime.datetime.now() - start) + duration)
-                        listeners.publish_command_failure(
-                            dur, message._convert_exception(exc),
-                            'killCursors', request_id,
-                            tuple(address))
-                    raise
-
+            try:
+                sock_info.send_message(msg, 0)
+            except Exception as exc:
                 if publish:
-                    duration = ((datetime.datetime.now() - start) + duration)
-                    # OP_KILL_CURSORS returns no reply, fake one.
-                    reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
-                    listeners.publish_command_success(
-                        duration, reply, 'killCursors', request_id,
+                    dur = ((datetime.datetime.now() - start) + duration)
+                    listeners.publish_command_failure(
+                        dur, message._convert_exception(exc),
+                        'killCursors', request_id,
                         tuple(address))
+                raise
+
+            if publish:
+                duration = ((datetime.datetime.now() - start) + duration)
+                # OP_KILL_CURSORS returns no reply, fake one.
+                reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
+                listeners.publish_command_success(
+                    duration, reply, 'killCursors', request_id,
+                    tuple(address))
 
     def _process_kill_cursors(self):
         """Process any pending kill cursors requests."""
@@ -1966,7 +1984,8 @@ def _add_retryable_write_error(exc, max_wire_version):
 class _MongoClientErrorHandler(object):
     """Handle errors raised when executing an operation."""
     __slots__ = ('client', 'server_address', 'session', 'max_wire_version',
-                 'sock_generation', 'completed_handshake', 'service_id')
+                 'sock_generation', 'completed_handshake', 'service_id',
+                 'handled')
 
     def __init__(self, client, server, session):
         self.client = client
@@ -1980,6 +1999,7 @@ class _MongoClientErrorHandler(object):
         self.sock_generation = server.pool.gen.get_overall()
         self.completed_handshake = False
         self.service_id = None
+        self.handled = False
 
     def contribute_socket(self, sock_info):
         """Provide socket information to the error handler."""
@@ -1988,13 +2008,10 @@ class _MongoClientErrorHandler(object):
         self.service_id = sock_info.service_id
         self.completed_handshake = True
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
+    def handle(self, exc_type, exc_val):
+        if self.handled or exc_type is None:
             return
-
+        self.handled = True
         if self.session:
             if issubclass(exc_type, ConnectionFailure):
                 if self.session.in_transaction:
@@ -2010,3 +2027,9 @@ class _MongoClientErrorHandler(object):
             exc_val, self.max_wire_version, self.sock_generation,
             self.completed_handshake, self.service_id)
         self.client._topology.handle_error(self.server_address, err_ctx)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self.handle(exc_type, exc_val)

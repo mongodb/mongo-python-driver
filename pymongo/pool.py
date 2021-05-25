@@ -541,6 +541,7 @@ class SocketInfo(object):
         self.more_to_come = False
         # For load balancer support.
         self.service_id = None
+        self.pinned = False
 
     def hello_cmd(self):
         if self.opts.server_api:
@@ -898,7 +899,13 @@ class SocketInfo(object):
         # ...) is called in Python code, which experiences the signal as a
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.
-        self.close_socket(ConnectionClosedReason.ERROR)
+        #
+        # The connection closed event will be emitted later in return_socket.
+        if self.ready:
+            reason = None
+        else:
+            reason = ConnectionClosedReason.ERROR
+        self.close_socket(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
         if isinstance(error, (IOError, OSError, _SSLError)):
             _raise_connection_failure(self.address, error)
@@ -1328,7 +1335,7 @@ class Pool:
         return sock_info
 
     @contextlib.contextmanager
-    def get_socket(self, all_credentials, checkout=False):
+    def get_socket(self, all_credentials, checkout=False, handler=None):
         """Get a socket from the pool. Use with a "with" statement.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -1362,11 +1369,17 @@ class Pool:
         try:
             yield sock_info
         except:
+            pinned = sock_info.pinned
+            if handler:
+                exc_type, exc_val, _ = sys.exc_info()
+                # This handler may check the connection back into the pool.
+                handler.handle(exc_type, exc_val)
             # Exception in caller. Decrement semaphore.
-            self.return_socket(sock_info)
+            if not pinned:
+                self.return_socket(sock_info)
             raise
         else:
-            if not checkout:
+            if not checkout and not sock_info.pinned:
                 self.return_socket(sock_info)
 
     def _raise_if_not_ready(self, emit_event):
@@ -1487,6 +1500,7 @@ class Pool:
         :Parameters:
           - `sock_info`: The socket to check into the pool.
         """
+        sock_info.pinned = False
         listeners = self.opts.event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_in(self.address, sock_info.id)
@@ -1495,7 +1509,13 @@ class Pool:
         else:
             if self.closed:
                 sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)
-            elif not sock_info.closed:
+            elif sock_info.closed:
+                # CMAP requires the closed event be emitted after the check in.
+                if self.enabled_for_cmap:
+                    listeners.publish_connection_closed(
+                        self.address, sock_info.id,
+                        ConnectionClosedReason.ERROR)
+            else:
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().

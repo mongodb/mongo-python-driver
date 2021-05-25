@@ -1323,11 +1323,11 @@ class TestClient(IntegrationTest):
         with self.assertRaises(AutoReconnect):
             client = rs_client(connect=False,
                                serverSelectionTimeoutMS=100)
-            client._run_operation_with_response(
+            client._run_operation(
                 operation=message._GetMore('pymongo_test', 'collection',
                                            101, 1234, client.codec_options,
                                            ReadPreference.PRIMARY,
-                                           None, client, None, None),
+                                           None, client, None, None, False),
                 unpack_res=Cursor(
                     client.pymongo_test.collection)._unpack_response,
                 address=('not-a-member', 27017))
@@ -1708,7 +1708,7 @@ class TestExhaustCursor(IntegrationTest):
         cursor.next()
 
         # Cause a network error.
-        sock_info = cursor._Cursor__exhaust_mgr.sock
+        sock_info = cursor._Cursor__sock_mgr.sock
         sock_info.sock.close()
 
         # A getmore fails.

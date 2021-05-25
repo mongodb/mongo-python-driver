@@ -559,8 +559,10 @@ class MatchEvaluatorUtil(object):
             if spec.get('hasServiceId'):
                 self.test.assertIsNotNone(actual.service_id)
                 self.test.assertIsInstance(actual.service_id, ObjectId)
-            else:
-                self.test.assertIsNone(actual.service_id)
+            # TODO: report bug missing hasServiceId:
+            # https://github.com/mongodb/specifications/blob/master/source/load-balancers/tests/sdam-error-handling.yml#L128
+            # else:
+            #     self.test.assertIsNone(actual.service_id)
         elif name == 'poolClosedEvent':
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == 'connectionCreatedEvent':
@@ -569,12 +571,14 @@ class MatchEvaluatorUtil(object):
             self.test.assertIsInstance(actual, ConnectionReadyEvent)
         elif name == 'connectionClosedEvent':
             self.test.assertIsInstance(actual, ConnectionClosedEvent)
-            self.test.assertEqual(actual.reason, spec['reason'])
+            if 'reason' in spec:
+                self.test.assertEqual(actual.reason, spec['reason'])
         elif name == 'connectionCheckOutStartedEvent':
             self.test.assertIsInstance(actual, ConnectionCheckOutStartedEvent)
         elif name == 'connectionCheckOutFailedEvent':
             self.test.assertIsInstance(actual, ConnectionCheckOutFailedEvent)
-            self.test.assertEqual(actual.reason, spec['reason'])
+            if 'reason' in spec:
+                self.test.assertEqual(actual.reason, spec['reason'])
         elif name == 'connectionCheckedOutEvent':
             self.test.assertIsInstance(actual, ConnectionCheckedOutEvent)
         elif name == 'connectionCheckedInEvent':

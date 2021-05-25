@@ -136,7 +136,7 @@ class CommandCursor(object):
 
         client = self.__collection.database.client
         try:
-            response = client._run_operation_with_response(
+            response = client._run_operation(
                 operation, self._unpack_response, address=self.__address)
         except OperationFailure:
             kill()
@@ -203,7 +203,7 @@ class CommandCursor(object):
                                     self.__session,
                                     self.__collection.database.client,
                                     self.__max_await_time_ms,
-                                    False))
+                                    None, False))
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
             self.__end_session(True)

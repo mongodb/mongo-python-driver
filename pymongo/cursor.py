@@ -35,6 +35,7 @@ from pymongo.message import (_CursorAddress,
                              _Query,
                              _RawBatchQuery)
 from pymongo.monitoring import ConnectionClosedReason
+from pymongo.response import PinnedResponse
 
 
 _QUERY_OPTIONS = {
@@ -78,7 +79,7 @@ class CursorType(object):
 
 # This has to be an old style class due to
 # http://bugs.jython.org/issue1057
-class _ExhaustManager:
+class _SocketManager:
     """Used with exhaust cursors to ensure the socket is returned.
     """
     def __init__(self, sock, pool, more_to_come):
@@ -128,7 +129,7 @@ class Cursor(object):
         # an error to avoid attribute errors during garbage collection.
         self.__id = None
         self.__exhaust = False
-        self.__exhaust_mgr = None
+        self.__sock_mgr = None
         self.__killed = False
 
         if session:
@@ -319,24 +320,29 @@ class Cursor(object):
 
         self.__killed = True
         if self.__id and not already_killed:
-            if self.__exhaust and self.__exhaust_mgr:
+            if self.__exhaust:
                 # If this is an exhaust cursor and we haven't completely
                 # exhausted the result set we *must* close the socket
                 # to stop the server from sending more data.
-                self.__exhaust_mgr.sock.close_socket(
+                self.__sock_mgr.sock.close_socket(
                     ConnectionClosedReason.ERROR)
-            else:
-                address = _CursorAddress(
-                    self.__address, self.__collection.full_name)
-                if synchronous:
-                    self.__collection.database.client._close_cursor_now(
-                        self.__id, address, session=self.__session)
+            address = _CursorAddress(
+                self.__address, self.__collection.full_name)
+            if synchronous:
+                if self.__sock_mgr and not self.__exhaust:
+                    sock_info = self.__sock_mgr.sock
                 else:
-                    # The cursor will be closed later in a different session.
-                    self.__collection.database.client._close_cursor(
-                        self.__id, address)
-        if self.__exhaust and self.__exhaust_mgr:
-            self.__exhaust_mgr.close()
+                    sock_info = None
+                self.__collection.database.client._close_cursor_now(
+                    self.__id, address, session=self.__session,
+                    sock_info=sock_info)
+            else:
+                # The cursor will be closed later in a different session.
+                self.__collection.database.client._close_cursor(
+                    self.__id, address)
+        if self.__sock_mgr:
+            self.__sock_mgr.close()
+            self.__sock_mgr = None
         if self.__session and not self.__explicit_session:
             self.__session._end_session(lock=synchronous)
             self.__session = None
@@ -1004,9 +1010,8 @@ class Cursor(object):
                 "exhaust cursors do not support auto encryption")
 
         try:
-            response = client._run_operation_with_response(
-                operation, self._unpack_response, exhaust=self.__exhaust,
-                address=self.__address)
+            response = client._run_operation(
+                operation, self._unpack_response, address=self.__address)
         except OperationFailure:
             self.__killed = True
 
@@ -1043,14 +1048,13 @@ class Cursor(object):
             raise
 
         self.__address = response.address
-        if self.__exhaust:
-            # 'response' is an ExhaustResponse.
-            if not self.__exhaust_mgr:
-                self.__exhaust_mgr = _ExhaustManager(response.socket_info,
-                                                     response.pool,
-                                                     response.more_to_come)
+        if isinstance(response, PinnedResponse):
+            if not self.__sock_mgr:
+                self.__sock_mgr = _SocketManager(response.socket_info,
+                                                 response.pool,
+                                                 response.more_to_come)
             else:
-                self.__exhaust_mgr.update_exhaust(response.more_to_come)
+                self.__sock_mgr.update_exhaust(response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs
@@ -1132,7 +1136,8 @@ class Cursor(object):
                                   self.__collation,
                                   self.__session,
                                   self.__collection.database.client,
-                                  self.__allow_disk_use)
+                                  self.__allow_disk_use,
+                                  self.__exhaust)
             self.__send_message(q)
         elif self.__id:  # Get More
             if self.__limit:
@@ -1151,7 +1156,8 @@ class Cursor(object):
                                     self.__session,
                                     self.__collection.database.client,
                                     self.__max_await_time_ms,
-                                    self.__exhaust_mgr)
+                                    self.__sock_mgr,
+                                    self.__exhaust)
             self.__send_message(g)
 
         return len(self.__data)
