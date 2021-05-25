@@ -327,10 +327,9 @@ class ReadPrefTester(MongoClient):
             yield sock_info, slave_ok
 
     @contextlib.contextmanager
-    def _slaveok_for_server(self, read_preference, server, session,
-                            exhaust=False):
+    def _slaveok_for_server(self, read_preference, server, session, pin=False):
         context = super(ReadPrefTester, self)._slaveok_for_server(
-            read_preference, server, session, exhaust=exhaust)
+            read_preference, server, session, pin=pin)
         with context as (sock_info, slave_ok):
             self.record_a_read(sock_info.address)
             yield sock_info, slave_ok
