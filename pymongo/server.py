@@ -21,7 +21,7 @@ from bson import _decode_all_selective
 from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception, _OpMsg
-from pymongo.response import Response, ExhaustResponse
+from pymongo.response import Response, PinnedResponse
 from pymongo.server_type import SERVER_TYPE
 
 _CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': 1, 'nextBatch': 1}}
@@ -68,14 +68,8 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def run_operation_with_response(
-            self,
-            sock_info,
-            operation,
-            set_slave_okay,
-            listeners,
-            exhaust,
-            unpack_res):
+    def run_operation(self, sock_info, operation, set_slave_okay, listeners,
+                      pin, unpack_res):
         """Run a _Query or _GetMore operation and return a Response object.
 
         This method is used only to run _Query/_GetMore operations from
@@ -87,7 +81,7 @@ class Server(object):
           - `set_slave_okay`: Pass to operation.get_message.
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `listeners`: Instance of _EventListeners or None.
-          - `exhaust`: If True, then this is an exhaust cursor operation.
+          - `pin`: If True, then this is a pinned cursor operation.
           - `unpack_res`: A callable that decodes the wire protocol response.
         """
         duration = None
@@ -95,9 +89,9 @@ class Server(object):
         if publish:
             start = datetime.now()
 
-        use_cmd = operation.use_command(sock_info, exhaust)
-        more_to_come = (operation.exhaust_mgr
-                        and operation.exhaust_mgr.more_to_come)
+        use_cmd = operation.use_command(sock_info)
+        more_to_come = (operation.sock_mgr
+                        and operation.sock_mgr.more_to_come)
         if more_to_come:
             request_id = 0
         else:
@@ -108,7 +102,8 @@ class Server(object):
         if publish:
             cmd, dbn = operation.as_command(sock_info)
             listeners.publish_command_start(
-                cmd, dbn, request_id, sock_info.address)
+                cmd, dbn, request_id, sock_info.address,
+                service_id=sock_info.service_id)
             start = datetime.now()
 
         try:
@@ -142,7 +137,8 @@ class Server(object):
                     failure = _convert_exception(exc)
                 listeners.publish_command_failure(
                     duration, failure, operation.name,
-                    request_id, sock_info.address)
+                    request_id, sock_info.address,
+                    service_id=sock_info.service_id)
             raise
 
         if publish:
@@ -163,7 +159,7 @@ class Server(object):
                     res["cursor"]["nextBatch"] = docs
             listeners.publish_command_success(
                 duration, res, operation.name, request_id,
-                sock_info.address)
+                sock_info.address, service_id=sock_info.service_id)
 
         # Decrypt response.
         client = operation.client
@@ -174,19 +170,20 @@ class Server(object):
                 docs = _decode_all_selective(
                     decrypted, operation.codec_options, user_fields)
 
-        if exhaust:
+        if pin:
             if isinstance(reply, _OpMsg):
                 # In OP_MSG, the server keeps sending only if the
                 # more_to_come flag is set.
                 more_to_come = reply.more_to_come
             else:
                 # In OP_REPLY, the server keeps sending until cursor_id is 0.
-                more_to_come = bool(reply.cursor_id)
-            response = ExhaustResponse(
+                more_to_come = bool(operation.exhaust and reply.cursor_id)
+            if operation.sock_mgr:
+                operation.sock_mgr.update_exhaust(more_to_come)
+            response = PinnedResponse(
                 data=reply,
                 address=self._description.address,
                 socket_info=sock_info,
-                pool=self._pool,
                 duration=duration,
                 request_id=request_id,
                 from_command=use_cmd,
@@ -203,8 +200,8 @@ class Server(object):
 
         return response
 
-    def get_socket(self, all_credentials, checkout=False):
-        return self.pool.get_socket(all_credentials, checkout)
+    def get_socket(self, all_credentials, checkout=False, handler=None):
+        return self.pool.get_socket(all_credentials, checkout, handler)
 
     @property
     def description(self):

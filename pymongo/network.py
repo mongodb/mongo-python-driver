@@ -134,7 +134,8 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
-        listeners.publish_command_start(orig, dbname, request_id, address)
+        listeners.publish_command_start(orig, dbname, request_id, address,
+                                        service_id=sock_info.service_id)
         start = datetime.datetime.now()
 
     try:
@@ -164,12 +165,14 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
             else:
                 failure = message._convert_exception(exc)
             listeners.publish_command_failure(
-                duration, failure, name, request_id, address)
+                duration, failure, name, request_id, address,
+                service_id=sock_info.service_id)
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         listeners.publish_command_success(
-            duration, response_doc, name, request_id, address)
+            duration, response_doc, name, request_id, address,
+            service_id=sock_info.service_id)
 
     if client and client._encrypter and reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())

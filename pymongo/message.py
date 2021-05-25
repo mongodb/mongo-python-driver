@@ -234,16 +234,17 @@ class _Query(object):
     __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'spec',
                  'fields', 'codec_options', 'read_preference', 'limit',
                  'batch_size', 'name', 'read_concern', 'collation',
-                 'session', 'client', 'allow_disk_use', '_as_command')
+                 'session', 'client', 'allow_disk_use', '_as_command',
+                 'exhaust')
 
     # For compatibility with the _GetMore class.
-    exhaust_mgr = None
+    sock_mgr = None
     cursor_id = None
 
     def __init__(self, flags, db, coll, ntoskip, spec, fields,
                  codec_options, read_preference, limit,
                  batch_size, read_concern, collation, session, client,
-                 allow_disk_use):
+                 allow_disk_use, exhaust):
         self.flags = flags
         self.db = db
         self.coll = coll
@@ -261,13 +262,14 @@ class _Query(object):
         self.allow_disk_use = allow_disk_use
         self.name = 'find'
         self._as_command = None
+        self.exhaust = exhaust
 
     def namespace(self):
         return "%s.%s" % (self.db, self.coll)
 
-    def use_command(self, sock_info, exhaust):
+    def use_command(self, sock_info):
         use_find_cmd = False
-        if sock_info.max_wire_version >= 4 and not exhaust:
+        if sock_info.max_wire_version >= 4 and not self.exhaust:
             use_find_cmd = True
         elif sock_info.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
@@ -375,13 +377,13 @@ class _GetMore(object):
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_await_time_ms',
                  'codec_options', 'read_preference', 'session', 'client',
-                 'exhaust_mgr', '_as_command')
+                 'sock_mgr', '_as_command', 'exhaust')
 
     name = 'getMore'
 
     def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
                  read_preference, session, client, max_await_time_ms,
-                 exhaust_mgr):
+                 sock_mgr, exhaust):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
@@ -391,15 +393,16 @@ class _GetMore(object):
         self.session = session
         self.client = client
         self.max_await_time_ms = max_await_time_ms
-        self.exhaust_mgr = exhaust_mgr
+        self.sock_mgr = sock_mgr
         self._as_command = None
+        self.exhaust = exhaust
 
     def namespace(self):
         return "%s.%s" % (self.db, self.coll)
 
-    def use_command(self, sock_info, exhaust):
+    def use_command(self, sock_info):
         use_cmd = False
-        if sock_info.max_wire_version >= 4 and not exhaust:
+        if sock_info.max_wire_version >= 4 and not self.exhaust:
             use_cmd = True
         elif sock_info.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
@@ -440,7 +443,7 @@ class _GetMore(object):
         if use_cmd:
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
-                if self.exhaust_mgr:
+                if self.sock_mgr:
                     flags = _OpMsg.EXHAUST_ALLOWED
                 else:
                     flags = 0
@@ -456,23 +459,23 @@ class _GetMore(object):
 
 
 class _RawBatchQuery(_Query):
-    def use_command(self, socket_info, exhaust):
+    def use_command(self, sock_info):
         # Compatibility checks.
-        super(_RawBatchQuery, self).use_command(socket_info, exhaust)
-        if socket_info.max_wire_version >= 8:
+        super(_RawBatchQuery, self).use_command(sock_info)
+        if sock_info.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True
-        elif socket_info.op_msg_enabled and not exhaust:
+        elif sock_info.op_msg_enabled and not self.exhaust:
             return True
         return False
 
 
 class _RawBatchGetMore(_GetMore):
-    def use_command(self, socket_info, exhaust):
-        if socket_info.max_wire_version >= 8:
+    def use_command(self, sock_info):
+        if sock_info.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True
-        elif socket_info.op_msg_enabled and not exhaust:
+        elif sock_info.op_msg_enabled and not self.exhaust:
             return True
         return False
 
@@ -1033,20 +1036,23 @@ class _BulkWriteContext(object):
         cmd[self.field] = docs
         self.listeners.publish_command_start(
             cmd, self.db_name,
-            request_id, self.sock_info.address, self.op_id)
+            request_id, self.sock_info.address, self.op_id,
+            self.sock_info.service_id)
         return cmd
 
     def _succeed(self, request_id, reply, duration):
         """Publish a CommandSucceededEvent."""
         self.listeners.publish_command_success(
             duration, reply, self.name,
-            request_id, self.sock_info.address, self.op_id)
+            request_id, self.sock_info.address, self.op_id,
+            self.sock_info.service_id)
 
     def _fail(self, request_id, failure, duration):
         """Publish a CommandFailedEvent."""
         self.listeners.publish_command_failure(
             duration, failure, self.name,
-            request_id, self.sock_info.address, self.op_id)
+            request_id, self.sock_info.address, self.op_id,
+            self.sock_info.service_id)
 
 
 # From the Client Side Encryption spec:
@@ -1686,7 +1692,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     query = _Query(
         0, db, coll, 0, query, None, codec_options,
         read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, None,
-        None, None)
+        None, None, False)
 
     name = next(iter(cmd))
     publish = listeners.enabled_for_commands
@@ -1698,7 +1704,8 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     if publish:
         encoding_duration = datetime.datetime.now() - start
         listeners.publish_command_start(
-            cmd, db, request_id, sock_info.address)
+            cmd, db, request_id, sock_info.address,
+            service_id=sock_info.service_id)
         start = datetime.datetime.now()
 
     sock_info.send_message(msg, max_doc_size)
@@ -1713,7 +1720,8 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
             else:
                 failure = _convert_exception(exc)
             listeners.publish_command_failure(
-                duration, failure, name, request_id, sock_info.address)
+                duration, failure, name, request_id, sock_info.address,
+                service_id=sock_info.service_id)
         raise
     # listIndexes
     if 'cursor' in cmd:
@@ -1732,6 +1740,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         listeners.publish_command_success(
-            duration, result, name, request_id, sock_info.address)
+            duration, result, name, request_id, sock_info.address,
+            service_id=sock_info.service_id)
 
     return result

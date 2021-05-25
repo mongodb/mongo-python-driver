@@ -520,7 +520,8 @@ class Collection(common.BaseObject):
         if publish:
             duration = datetime.datetime.now() - start
             listeners.publish_command_start(
-                cmd, self.__database.name, rqst_id, sock_info.address, op_id)
+                cmd, self.__database.name, rqst_id, sock_info.address, op_id,
+                sock_info.service_id)
             start = datetime.datetime.now()
         try:
             result = sock_info.legacy_write(rqst_id, msg, max_size, False)
@@ -534,12 +535,14 @@ class Collection(common.BaseObject):
                         reply = message._convert_write_result(
                             name, cmd, details)
                         listeners.publish_command_success(
-                            dur, reply, name, rqst_id, sock_info.address, op_id)
+                            dur, reply, name, rqst_id, sock_info.address,
+                            op_id, sock_info.service_id)
                         raise
                 else:
                     details = message._convert_exception(exc)
                 listeners.publish_command_failure(
-                    dur, details, name, rqst_id, sock_info.address, op_id)
+                    dur, details, name, rqst_id, sock_info.address, op_id,
+                    sock_info.service_id)
             raise
         if publish:
             if result is not None:
@@ -549,7 +552,8 @@ class Collection(common.BaseObject):
                 reply = {'ok': 1}
             duration = (datetime.datetime.now() - start) + duration
             listeners.publish_command_success(
-                duration, reply, name, rqst_id, sock_info.address, op_id)
+                duration, reply, name, rqst_id, sock_info.address, op_id,
+                sock_info.service_id)
         return result
 
     def _insert_one(
@@ -2072,9 +2076,9 @@ class Collection(common.BaseObject):
                         if exc.code != 26:
                             raise
                         cursor = {'id': 0, 'firstBatch': []}
-                return CommandCursor(coll, cursor, sock_info.address,
-                                     session=s,
-                                     explicit_session=session is not None)
+                cmd_cursor = CommandCursor(
+                    coll, cursor, sock_info.address, session=s,
+                    explicit_session=session is not None)
             else:
                 res = message._first_batch(
                     sock_info, self.__database.name, "system.indexes",
@@ -2084,10 +2088,13 @@ class Collection(common.BaseObject):
                 cursor = res["cursor"]
                 # Note that a collection can only have 64 indexes, so there
                 # will never be a getMore call.
-                return CommandCursor(coll, cursor, sock_info.address)
+                cmd_cursor = CommandCursor(coll, cursor, sock_info.address)
+            cmd_cursor._maybe_pin_connection(sock_info)
+            return cmd_cursor
 
         return self.__database.client._retryable_read(
-            _cmd, read_pref, session)
+            _cmd, read_pref, session,
+            pin=self.__database.client._should_pin_cursor(session))
 
     def index_information(self, session=None):
         """Get information on this collection's indexes.
@@ -2168,7 +2175,8 @@ class Collection(common.BaseObject):
             user_fields={'cursor': {'firstBatch': 1}})
         return self.__database.client._retryable_read(
             cmd.get_cursor, cmd.get_read_preference(session), session,
-            retryable=not cmd._performs_write)
+            retryable=not cmd._performs_write,
+            pin=self.database.client._should_pin_cursor(session))
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this

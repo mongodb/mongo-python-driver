@@ -15,6 +15,7 @@
 """Cursor class to iterate over Mongo query results."""
 
 import copy
+import threading
 import warnings
 
 from collections import deque
@@ -27,7 +28,6 @@ from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
-                            NotMasterError,
                             OperationFailure)
 from pymongo.message import (_CursorAddress,
                              _GetMore,
@@ -35,7 +35,37 @@ from pymongo.message import (_CursorAddress,
                              _Query,
                              _RawBatchQuery)
 from pymongo.monitoring import ConnectionClosedReason
+from pymongo.response import PinnedResponse
 
+# These errors mean that the server has already killed the cursor so there is
+# no need to send killCursors.
+_CURSOR_CLOSED_ERRORS = frozenset([
+    43,   # CursorNotFound
+    50,   # MaxTimeMSExpired
+    175,  # QueryPlanKilled
+    237,  # CursorKilled
+
+    # On a tailable cursor, the following errors mean the capped collection
+    # rolled over.
+    # MongoDB 2.6:
+    # {'$err': 'Runner killed during getMore', 'code': 28617, 'ok': 0}
+    28617,
+    # MongoDB 3.0:
+    # {'$err': 'getMore executor error: UnknownError no details available',
+    #  'code': 17406, 'ok': 0}
+    17406,
+    # MongoDB 3.2 + 3.4:
+    # {'ok': 0.0, 'errmsg': 'GetMore command executor error:
+    #  CappedPositionLost: CollectionScan died due to failure to restore
+    #  tailable cursor position. Last seen record id: RecordId(3)',
+    #  'code': 96}
+    96,
+    # MongoDB 3.6+:
+    # {'ok': 0.0, 'errmsg': 'errmsg: "CollectionScan died due to failure to
+    #  restore tailable cursor position. Last seen record id: RecordId(3)"',
+    #  'code': 136, 'codeName': 'CappedPositionLost'}
+    136,
+])
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -78,14 +108,14 @@ class CursorType(object):
 
 # This has to be an old style class due to
 # http://bugs.jython.org/issue1057
-class _ExhaustManager:
+class _SocketManager:
     """Used with exhaust cursors to ensure the socket is returned.
     """
-    def __init__(self, sock, pool, more_to_come):
+    def __init__(self, sock, more_to_come):
         self.sock = sock
-        self.pool = pool
         self.more_to_come = more_to_come
         self.__closed = False
+        self.lock = threading.Lock()
 
     def __del__(self):
         self.close()
@@ -98,8 +128,8 @@ class _ExhaustManager:
         """
         if not self.__closed:
             self.__closed = True
-            self.pool.return_socket(self.sock)
-            self.sock, self.pool = None, None
+            self.sock.unpin()
+            self.sock = None
 
 
 class Cursor(object):
@@ -128,7 +158,7 @@ class Cursor(object):
         # an error to avoid attribute errors during garbage collection.
         self.__id = None
         self.__exhaust = False
-        self.__exhaust_mgr = None
+        self.__sock_mgr = None
         self.__killed = False
 
         if session:
@@ -319,24 +349,26 @@ class Cursor(object):
 
         self.__killed = True
         if self.__id and not already_killed:
-            if self.__exhaust and self.__exhaust_mgr:
+            if self.__exhaust and self.__sock_mgr:
                 # If this is an exhaust cursor and we haven't completely
                 # exhausted the result set we *must* close the socket
                 # to stop the server from sending more data.
-                self.__exhaust_mgr.sock.close_socket(
+                self.__sock_mgr.sock.close_socket(
                     ConnectionClosedReason.ERROR)
             else:
                 address = _CursorAddress(
                     self.__address, self.__collection.full_name)
                 if synchronous:
                     self.__collection.database.client._close_cursor_now(
-                        self.__id, address, session=self.__session)
+                        self.__id, address, session=self.__session,
+                        sock_mgr=self.__sock_mgr)
                 else:
                     # The cursor will be closed later in a different session.
                     self.__collection.database.client._close_cursor(
                         self.__id, address)
-        if self.__exhaust and self.__exhaust_mgr:
-            self.__exhaust_mgr.close()
+        if self.__sock_mgr:
+            self.__sock_mgr.close()
+            self.__sock_mgr = None
         if self.__session and not self.__explicit_session:
             self.__session._end_session(lock=synchronous)
             self.__session = None
@@ -1004,53 +1036,35 @@ class Cursor(object):
                 "exhaust cursors do not support auto encryption")
 
         try:
-            response = client._run_operation_with_response(
-                operation, self._unpack_response, exhaust=self.__exhaust,
-                address=self.__address)
-        except OperationFailure:
-            self.__killed = True
-
-            # Make sure exhaust socket is returned immediately, if necessary.
-            self.__die()
-
+            response = client._run_operation(
+                operation, self._unpack_response, address=self.__address)
+        except OperationFailure as exc:
+            if exc.code in _CURSOR_CLOSED_ERRORS or self.__exhaust:
+                # Don't send killCursors because the cursor is already closed.
+                self.__killed = True
+            self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
             # False. No need to re-raise.
-            if self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]:
+            if (exc.code in _CURSOR_CLOSED_ERRORS and
+                    self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]):
                 return
             raise
-        except NotMasterError:
-            # Don't send kill cursors to another server after a "not master"
-            # error. It's completely pointless.
-            self.__killed = True
-
-            # Make sure exhaust socket is returned immediately, if necessary.
-            self.__die()
-
-            raise
         except ConnectionFailure:
-            # Don't try to send kill cursors on another socket
-            # or to another server. It can cause a _pinValue
-            # assertion on some server releases if we get here
-            # due to a socket timeout.
+            # Don't send killCursors because the cursor is already closed.
             self.__killed = True
-            self.__die()
+            self.close()
             raise
         except Exception:
-            # Close the cursor
-            self.__die()
+            self.close()
             raise
 
         self.__address = response.address
-        if self.__exhaust:
-            # 'response' is an ExhaustResponse.
-            if not self.__exhaust_mgr:
-                self.__exhaust_mgr = _ExhaustManager(response.socket_info,
-                                                     response.pool,
-                                                     response.more_to_come)
-            else:
-                self.__exhaust_mgr.update_exhaust(response.more_to_come)
+        if isinstance(response, PinnedResponse):
+            if not self.__sock_mgr:
+                self.__sock_mgr = _SocketManager(response.socket_info,
+                                                 response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs
@@ -1078,7 +1092,6 @@ class Cursor(object):
             self.__retrieved += response.data.number_returned
 
         if self.__id == 0:
-            self.__killed = True
             # Don't wait for garbage collection to call __del__, return the
             # socket and the session to the pool now.
             self.__die()
@@ -1132,7 +1145,8 @@ class Cursor(object):
                                   self.__collation,
                                   self.__session,
                                   self.__collection.database.client,
-                                  self.__allow_disk_use)
+                                  self.__allow_disk_use,
+                                  self.__exhaust)
             self.__send_message(q)
         elif self.__id:  # Get More
             if self.__limit:
@@ -1151,7 +1165,8 @@ class Cursor(object):
                                     self.__session,
                                     self.__collection.database.client,
                                     self.__max_await_time_ms,
-                                    self.__exhaust_mgr)
+                                    self.__sock_mgr,
+                                    self.__exhaust)
             self.__send_message(g)
 
         return len(self.__data)

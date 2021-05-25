@@ -376,7 +376,7 @@
       ]
     },
     {
-      "description": "pinned connections are not returned after an network error during getMore",
+      "description": "pinned connections are returned after an network error during getMore",
       "operations": [
         {
           "name": "failPoint",
@@ -440,7 +440,7 @@
           "object": "testRunner",
           "arguments": {
             "client": "client0",
-            "connections": 1
+            "connections": 0
           }
         },
         {
@@ -659,7 +659,7 @@
       ]
     },
     {
-      "description": "pinned connections are not returned to the pool after a non-network error on getMore",
+      "description": "pinned connections are returned to the pool after a non-network error on getMore",
       "operations": [
         {
           "name": "failPoint",
@@ -715,7 +715,7 @@
           "object": "testRunner",
           "arguments": {
             "client": "client0",
-            "connections": 1
+            "connections": 0
           }
         },
         {

@@ -20,6 +20,7 @@ import warnings
 
 sys.path[0:0] = [""]
 
+from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import CursorType, monitoring, InsertOne, UpdateOne, DeleteOne
@@ -397,7 +398,8 @@ class TestCommandMonitoring(PyMongoTestCase):
     def test_get_more_failure(self):
         address = self.client.address
         coll = self.client.pymongo_test.test
-        cursor_doc = {"id": 12345, "firstBatch": [], "ns": coll.full_name}
+        cursor_id = Int64(12345)
+        cursor_doc = {"id": cursor_id, "firstBatch": [], "ns": coll.full_name}
         cursor = CommandCursor(coll, cursor_doc, address)
         try:
             next(cursor)
@@ -410,7 +412,7 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
         self.assertEqualCommand(
-            SON([('getMore', 12345),
+            SON([('getMore', cursor_id),
                  ('collection', 'test')]),
             started.command)
         self.assertEqual('getMore', started.command_name)
