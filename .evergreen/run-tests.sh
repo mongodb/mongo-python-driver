@@ -198,7 +198,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     fi
 
     if [ -n "$TEST_LOADBALANCER" ]; then
-        $PYTHON -m unittest discover -s test/load_balancer -v
+        $PYTHON -m xmlrunner discover -s test/load_balancer -v --locals -o xunit-results
     else
         $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
     fi
