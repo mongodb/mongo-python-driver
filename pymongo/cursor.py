@@ -31,7 +31,9 @@ from pymongo.errors import (ConnectionFailure,
                             OperationFailure)
 from pymongo.message import (_CursorAddress,
                              _GetMore,
-                             _Query)
+                             _RawBatchGetMore,
+                             _Query,
+                             _RawBatchQuery)
 from pymongo.monitoring import ConnectionClosedReason
 
 
@@ -1271,6 +1273,9 @@ class Cursor(object):
 
 class RawBatchCursor(Cursor):
     """A cursor / iterator over raw batches of BSON data from a query result."""
+
+    _query_class = _RawBatchQuery
+    _getmore_class = _RawBatchGetMore
 
     def __init__(self, *args, **kwargs):
         """Create a new cursor / iterator over raw batches of BSON data.

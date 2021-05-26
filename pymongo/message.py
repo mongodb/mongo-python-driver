@@ -456,6 +456,28 @@ class _GetMore(object):
         return get_more(ns, self.ntoreturn, self.cursor_id, ctx)
 
 
+class _RawBatchQuery(_Query):
+    def use_command(self, socket_info, exhaust):
+        # Compatibility checks.
+        super(_RawBatchQuery, self).use_command(socket_info, exhaust)
+        if socket_info.max_wire_version >= 8:
+            # MongoDB 4.2+ supports exhaust over OP_MSG
+            return True
+        elif socket_info.op_msg_enabled and not exhaust:
+            return True
+        return False
+
+
+class _RawBatchGetMore(_GetMore):
+    def use_command(self, socket_info, exhaust):
+        if socket_info.max_wire_version >= 8:
+            # MongoDB 4.2+ supports exhaust over OP_MSG
+            return True
+        elif socket_info.op_msg_enabled and not exhaust:
+            return True
+        return False
+
+
 class _CursorAddress(tuple):
     """The server address (host, port) of a cursor, with namespace property."""
 

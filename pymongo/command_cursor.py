@@ -22,7 +22,8 @@ from pymongo.errors import (ConnectionFailure,
                             NotMasterError,
                             OperationFailure)
 from pymongo.message import (_CursorAddress,
-                             _GetMore)
+                             _GetMore,
+                             _RawBatchGetMore)
 
 
 class CommandCursor(object):
@@ -280,6 +281,8 @@ class CommandCursor(object):
 
 
 class RawBatchCommandCursor(CommandCursor):
+    _getmore_class = _RawBatchGetMore
+
     def __init__(self, collection, cursor_info, address, retrieved=0,
                  batch_size=0, max_await_time_ms=None, session=None,
                  explicit_session=False):
