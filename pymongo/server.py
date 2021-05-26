@@ -20,7 +20,7 @@ from bson import _decode_all_selective
 
 from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.helpers import _check_command_response
-from pymongo.message import _convert_exception
+from pymongo.message import _convert_exception, _OpMsg
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
 
@@ -175,13 +175,11 @@ class Server(object):
                     decrypted, operation.codec_options, user_fields)
 
         if exhaust:
-            if use_cmd and sock_info.op_msg_enabled:
-                # reply is _OpMsg
+            if isinstance(reply, _OpMsg):
                 # cursor ready to be exhausted only if more_to_come bit set
                 exhaust_ready = reply.more_to_come
             else:
-                # reply is _OpReply
-                # cursor is always ready to be exhausted
+                # reply is _OpReply, cursor is always ready to be exhausted
                 exhaust_ready = True
             response = ExhaustResponse(
                 data=reply,
