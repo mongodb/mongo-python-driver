@@ -88,6 +88,9 @@ class _ExhaustManager:
     def __del__(self):
         self.close()
 
+    def update_exhaust(self, more_to_come):
+        self.more_to_come = more_to_come
+
     def close(self):
         """Return this instance's socket to the connection pool.
         """
@@ -1040,9 +1043,12 @@ class Cursor(object):
         self.__address = response.address
         if self.__exhaust:
             # 'response' is an ExhaustResponse.
-            self.__exhaust_mgr = _ExhaustManager(response.socket_info,
-                                                 response.pool,
-                                                 response.more_to_come)
+            if not self.__exhaust_mgr:
+                self.__exhaust_mgr = _ExhaustManager(response.socket_info,
+                                                     response.pool,
+                                                     response.more_to_come)
+            else:
+                self.__exhaust_mgr.update_exhaust(response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs
