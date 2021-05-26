@@ -96,9 +96,9 @@ class Server(object):
             start = datetime.now()
 
         use_cmd = operation.use_command(sock_info, exhaust)
-        exhaust_ready = (operation.exhaust_mgr
-                         and operation.exhaust_mgr.exhaust_ready)
-        if exhaust_ready:
+        more_to_come = (operation.exhaust_mgr
+                        and operation.exhaust_mgr.more_to_come)
+        if more_to_come:
             request_id = 0
         else:
             message = operation.get_message(
@@ -112,7 +112,7 @@ class Server(object):
             start = datetime.now()
 
         try:
-            if exhaust_ready:
+            if more_to_come:
                 reply = sock_info.receive_message(None)
             else:
                 sock_info.send_message(data, max_doc_size)
@@ -177,10 +177,10 @@ class Server(object):
         if exhaust:
             if isinstance(reply, _OpMsg):
                 # cursor ready to be exhausted only if more_to_come bit set
-                exhaust_ready = reply.more_to_come
+                more_to_come = reply.more_to_come
             else:
                 # reply is _OpReply, cursor is always ready to be exhausted
-                exhaust_ready = True
+                more_to_come = True
             response = ExhaustResponse(
                 data=reply,
                 address=self._description.address,
@@ -190,7 +190,7 @@ class Server(object):
                 request_id=request_id,
                 from_command=use_cmd,
                 docs=docs,
-                exhaust_ready=exhaust_ready)
+                more_to_come=more_to_come)
         else:
             response = Response(
                 data=reply,

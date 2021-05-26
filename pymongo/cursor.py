@@ -31,9 +31,7 @@ from pymongo.errors import (ConnectionFailure,
                             OperationFailure)
 from pymongo.message import (_CursorAddress,
                              _GetMore,
-                             _RawBatchGetMore,
-                             _Query,
-                             _RawBatchQuery)
+                             _Query)
 from pymongo.monitoring import ConnectionClosedReason
 
 
@@ -81,10 +79,10 @@ class CursorType(object):
 class _ExhaustManager:
     """Used with exhaust cursors to ensure the socket is returned.
     """
-    def __init__(self, sock, pool, exhaust_ready):
+    def __init__(self, sock, pool, more_to_come):
         self.sock = sock
         self.pool = pool
-        self.exhaust_ready = exhaust_ready
+        self.more_to_come = more_to_come
         self.__closed = False
 
     def __del__(self):
@@ -1044,7 +1042,7 @@ class Cursor(object):
             # 'response' is an ExhaustResponse.
             self.__exhaust_mgr = _ExhaustManager(response.socket_info,
                                                  response.pool,
-                                                 response.exhaust_ready)
+                                                 response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs
@@ -1267,9 +1265,6 @@ class Cursor(object):
 
 class RawBatchCursor(Cursor):
     """A cursor / iterator over raw batches of BSON data from a query result."""
-
-    _query_class = _RawBatchQuery
-    _getmore_class = _RawBatchGetMore
 
     def __init__(self, *args, **kwargs):
         """Create a new cursor / iterator over raw batches of BSON data.

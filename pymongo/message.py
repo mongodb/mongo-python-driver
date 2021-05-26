@@ -269,7 +269,7 @@ class _Query(object):
         use_find_cmd = False
         if sock_info.max_wire_version >= 4 and not exhaust:
             use_find_cmd = True
-        elif sock_info.max_wire_version >= 8 and exhaust:
+        elif sock_info.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
             use_find_cmd = True
 
@@ -402,7 +402,7 @@ class _GetMore(object):
         use_cmd = False
         if sock_info.max_wire_version >= 4 and not exhaust:
             use_cmd = True
-        elif sock_info.max_wire_version >= 8 and exhaust:
+        elif sock_info.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
             use_cmd = True
 
@@ -442,11 +442,11 @@ class _GetMore(object):
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
                 if self.exhaust_mgr:
-                    op_msg_flags = _OpMsg.EXHAUST_ALLOWED
+                    flags = _OpMsg.EXHAUST_ALLOWED
                 else:
-                    op_msg_flags = 0
+                    flags = 0
                 request_id, msg, size, _ = _op_msg(
-                    op_msg_flags, spec, self.db, None,
+                    flags, spec, self.db, None,
                     False, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size
@@ -454,26 +454,6 @@ class _GetMore(object):
             return query(0, ns, 0, -1, spec, None, self.codec_options, ctx=ctx)
 
         return get_more(ns, self.ntoreturn, self.cursor_id, ctx)
-
-
-class _RawBatchQuery(_Query):
-    pass
-    # def use_command(self, socket_info, exhaust):
-    #     # Compatibility checks.
-    #     super(_RawBatchQuery, self).use_command(socket_info, exhaust)
-    #     # Use OP_MSG when available.
-    #     if socket_info.op_msg_enabled:
-    #         return True
-    #     return False
-
-
-class _RawBatchGetMore(_GetMore):
-    pass
-    # def use_command(self, socket_info, exhaust):
-    #     # Use OP_MSG when available.
-    #     if socket_info.op_msg_enabled:
-    #         return True
-    #     return False
 
 
 class _CursorAddress(tuple):
