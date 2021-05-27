@@ -176,11 +176,12 @@ class Server(object):
 
         if exhaust:
             if isinstance(reply, _OpMsg):
-                # cursor ready to be exhausted only if more_to_come bit set
+                # In OP_MSG, the server keeps sending only if the
+                # more_to_come flag is set.
                 more_to_come = reply.more_to_come
             else:
-                # reply is _OpReply, cursor is always ready to be exhausted
-                more_to_come = True
+                # In OP_REPLY, the server keeps sending until cursor_id is 0.
+                more_to_come = bool(reply.cursor_id)
             response = ExhaustResponse(
                 data=reply,
                 address=self._description.address,
