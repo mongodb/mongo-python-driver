@@ -272,7 +272,6 @@ class _Query(object):
         elif sock_info.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
             use_find_cmd = True
-
         elif not self.read_concern.ok_for_legacy:
             raise ConfigurationError(
                 'read concern level of %s is not valid '
