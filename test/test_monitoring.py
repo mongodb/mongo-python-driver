@@ -1438,7 +1438,7 @@ class TestEventClasses(PyMongoTestCase):
         self.assertEqual(
             repr(event),
             "<CommandStartedEvent ('localhost', 27017) db: 'admin', "
-            "command: 'isMaster', operation_id: 2>")
+            "command: 'isMaster', operation_id: 2, service_id: None>")
         delta = datetime.timedelta(milliseconds=100)
         event = monitoring.CommandSucceededEvent(
             delta, {'ok': 1}, 'isMaster', request_id, connection_id,
@@ -1446,7 +1446,8 @@ class TestEventClasses(PyMongoTestCase):
         self.assertEqual(
             repr(event),
             "<CommandSucceededEvent ('localhost', 27017) "
-            "command: 'isMaster', operation_id: 2, duration_micros: 100000>")
+            "command: 'isMaster', operation_id: 2, duration_micros: 100000, "
+            "service_id: None>")
         event = monitoring.CommandFailedEvent(
             delta, {'ok': 0}, 'isMaster', request_id, connection_id,
             operation_id)
@@ -1454,7 +1455,7 @@ class TestEventClasses(PyMongoTestCase):
             repr(event),
             "<CommandFailedEvent ('localhost', 27017) "
             "command: 'isMaster', operation_id: 2, duration_micros: 100000, "
-            "failure: {'ok': 0}>")
+            "failure: {'ok': 0}, service_id: None>")
 
     def test_server_heartbeat_event_repr(self):
         connection_id = ('localhost', 27017)

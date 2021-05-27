@@ -56,6 +56,11 @@ fi
 if [ "$SSL" != "nossl" ]; then
     export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
     export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
+
+    if [ -n "$TEST_LOADBALANCER" ]; then
+        export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}&tls=true"
+        export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}&tls=true"
+    fi
 fi
 
 # For createvirtualenv.
@@ -220,7 +225,19 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-    $COVERAGE_OR_PYTHON $PYTHON_ARGS $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
+    if [ -n "$TEST_LOADBALANCER" ]; then
+        PY_MAJOR=$($PYTHON -c "import sys; sys.stdout.write(str(sys.version_info[0]))")
+        if [ "$PY_MAJOR" = "2" ]; then
+            RUNNER="unittest"
+            RUNNER_ARGS=""
+        else
+            RUNNER="xmlrunner"
+            RUNNER_ARGS="--locals -o $XUNIT_DIR"
+        fi
+        $COVERAGE_OR_PYTHON $PYTHON_ARGS $COVERAGE_ARGS -m $RUNNER discover $RUNNER_ARGS -s test/load_balancer -v
+    else
+        $COVERAGE_OR_PYTHON $PYTHON_ARGS $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
+    fi
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT

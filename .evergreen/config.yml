@@ -421,6 +421,11 @@ functions:
           if [ -n "${SETDEFAULTENCODING}" ]; then
             export SETDEFAULTENCODING="${SETDEFAULTENCODING}"
           fi
+          if [ -n "${test_loadbalancer}" ]; then
+            export TEST_LOADBALANCER=1
+            export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
+            export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
+          fi
 
           PYTHON_BINARY=${PYTHON_BINARY} \
             GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
@@ -797,6 +802,22 @@ functions:
           -p 8100 \
           -v \
           --fault revoked
+
+  "run load-balancer":
+    - command: shell.exec
+      params:
+        script: |
+          DRIVERS_TOOLS=${DRIVERS_TOOLS} MONGODB_URI=${MONGODB_URI} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh start
+    - command: expansions.update
+      params:
+        file: lb-expansion.yml
+
+  "stop load-balancer":
+    - command: shell.exec
+      params:
+        script: |
+          cd ${DRIVERS_TOOLS}/.evergreen
+          DRIVERS_TOOLS=${DRIVERS_TOOLS} bash ${DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh stop
 
   "teardown_docker":
     - command: shell.exec
@@ -1556,6 +1577,13 @@ tasks:
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws ECS auth test"
 
+    - name: load-balancer-test
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            TOPOLOGY: "sharded_cluster"
+        - func: "run load-balancer"
+        - func: "run tests"
 # }}}
     - name: "coverage-report"
       tags: ["coverage"]
@@ -2031,6 +2059,16 @@ axes:
         tags: [ "versionedApi_tag" ]
         variables:
           ORCHESTRATION_FILE: "versioned-api-testing.json"
+
+  # Run load balancer tests?
+  - id: loadbalancer
+    display_name: "Load Balancer"
+    values:
+      - id: "enabled"
+        display_name: "Load Balancer"
+        variables:
+          test_loadbalancer: true
+        batchtime: 10080  # 7 days
 
 buildvariants:
 - matrix_name: "tests-all"
@@ -2636,6 +2674,17 @@ buildvariants:
   tasks:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-latest"
+
+- matrix_name: "load-balancer"
+  matrix_spec:
+    platform: ubuntu-18.04
+    mongodb-version: ["latest"]
+    auth-ssl: "*"
+    python-version: ["2.7", "3.5", "3.9"]
+    loadbalancer: "*"
+  display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
+  tasks:
+    - name: "load-balancer-test"
 
 - matrix_name: "Release"
   matrix_spec:

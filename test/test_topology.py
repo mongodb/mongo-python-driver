@@ -419,7 +419,7 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        errctx = _ErrorContext(AutoReconnect('mock'), 0, 0, True)
+        errctx = _ErrorContext(AutoReconnect('mock'), 0, 0, True, None)
         t.handle_error(('a', 27017), errctx)
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.RSSecondary, get_type(t, 'b'))
@@ -480,7 +480,7 @@ class TestMultiServerTopology(TopologyTest):
         t = create_mock_topology(replica_set_name='rs')
 
         # No error resetting a server not in the TopologyDescription.
-        errctx = _ErrorContext(AutoReconnect('mock'), 0, 0, True)
+        errctx = _ErrorContext(AutoReconnect('mock'), 0, 0, True, None)
         t.handle_error(('b', 27017), errctx)
 
         # Server was *not* added as type Unknown.

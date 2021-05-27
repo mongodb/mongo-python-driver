@@ -22,6 +22,8 @@ import threading
 
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
+
 from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
                             PyMongoError)
@@ -372,6 +374,7 @@ class TestCMAP(IntegrationTest):
         self.assertRepr(ConnectionCheckOutStartedEvent(host))
         self.assertRepr(PoolCreatedEvent(host, {}))
         self.assertRepr(PoolClearedEvent(host))
+        self.assertRepr(PoolClearedEvent(host, service_id=ObjectId()))
         self.assertRepr(PoolClosedEvent(host))
 
 

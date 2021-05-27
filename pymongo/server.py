@@ -49,9 +49,9 @@ class Server(object):
         if not self._pool.opts.load_balanced:
             self._monitor.open()
 
-    def reset(self):
+    def reset(self, service_id=None):
         """Clear the connection pool."""
-        self.pool.reset()
+        self.pool.reset(service_id)
 
     def close(self):
         """Clear the connection pool and stop the monitor.

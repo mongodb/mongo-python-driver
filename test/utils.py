@@ -279,7 +279,7 @@ class MockPool(object):
         with self._lock:
             self.generation += 1
 
-    def reset(self):
+    def reset(self, service_id=None):
         self._reset()
 
     def close(self):
