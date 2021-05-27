@@ -1455,14 +1455,6 @@ class TestCursor(IntegrationTest):
         self.assertEqual('getMore', started[1].command_name)
         self.assertNotIn('$readPreference', started[1].command)
 
-    @client_context.require_no_mongos
-    def test_exhaust(self):
-        c = self.db.test
-        c.drop()
-        c.insert_many({'_id': i} for i in range(200))
-        result = list(c.find(cursor_type=CursorType.EXHAUST, batch_size=50))
-        self.assertEqual([{'_id': i} for i in range(200)], result)
-
 
 class TestRawBatchCursor(IntegrationTest):
     def test_find_raw(self):
