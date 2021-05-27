@@ -1483,7 +1483,7 @@ class TestClient(IntegrationTest):
             def run(self):
                 while self.running:
                     exc = AutoReconnect('mock pool error')
-                    ctx = _ErrorContext(exc, 0, pool.generation, False)
+                    ctx = _ErrorContext(exc, 0, pool.generation, False, None)
                     client._topology.handle_error(pool.address, ctx)
                     time.sleep(0.001)
 

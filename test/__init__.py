@@ -50,6 +50,7 @@ from pymongo import common, message
 from pymongo.common import partition_node
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
+from pymongo.uri_parser import parse_uri
 from test.version import Version
 
 if HAVE_SSL:
@@ -92,6 +93,14 @@ if CA_PEM:
 
 COMPRESSORS = os.environ.get("COMPRESSORS")
 MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
+TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
+SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
+MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
+if TEST_LOADBALANCER:
+    res = parse_uri(SINGLE_MONGOS_LB_URI)
+    host, port = res['nodelist'][0]
+    db_user = res['username'] or db_user
+    db_pwd = res['password'] or db_pwd
 
 
 def is_server_resolvable():
@@ -190,6 +199,7 @@ def _all_users(db):
 
 
 class ClientContext(object):
+    MULTI_MONGOS_LB_URI = MULTI_MONGOS_LB_URI
 
     def __init__(self):
         """Create a client and grab essential information from the server."""
@@ -216,7 +226,9 @@ class ClientContext(object):
         self.client = None
         self.conn_lock = threading.Lock()
         self.is_data_lake = False
-        self.load_balancer = False
+        self.load_balancer = TEST_LOADBALANCER
+        if self.load_balancer:
+            self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
         if MONGODB_API_VERSION:
@@ -632,8 +644,10 @@ class ClientContext(object):
                              func=func)
 
     def is_topology_type(self, topologies):
-        if 'load-balanced' in topologies and self.load_balancer:
-            return True
+        if self.load_balancer:
+            if 'load-balanced' in topologies:
+                return True
+            return False
         if 'single' in topologies and not (self.is_mongos or self.is_rs):
             return True
         if 'replicaset' in topologies and self.is_rs:

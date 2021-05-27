@@ -113,7 +113,7 @@ def got_app_error(topology, app_error):
 
         topology.handle_error(
             server_address, _ErrorContext(e, max_wire_version, generation,
-                                          completed_handshake))
+                                          completed_handshake, None))
 
 
 def get_type(topology, hostname):

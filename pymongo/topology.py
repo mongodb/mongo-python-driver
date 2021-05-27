@@ -453,7 +453,7 @@ class Topology(object):
             try:
                 server.pool.remove_stale_sockets(generation, all_credentials)
             except PyMongoError as exc:
-                ctx = _ErrorContext(exc, 0, generation, False)
+                ctx = _ErrorContext(exc, 0, generation, False, None)
                 self.handle_error(server.description.address, ctx)
                 raise
 
@@ -528,11 +528,9 @@ class Topology(object):
     def return_server_session(self, server_session, lock):
         if lock:
             with self._lock:
-                session_timeout = \
-                    self._description.logical_session_timeout_minutes
-                if session_timeout is not None:
-                    self._session_pool.return_server_session(server_session,
-                                                             session_timeout)
+                self._session_pool.return_server_session(
+                    server_session,
+                    self._description.logical_session_timeout_minutes)
         else:
             # Called from a __del__ method, can't use a lock.
             self._session_pool.return_server_session_no_lock(server_session)
@@ -566,7 +564,8 @@ class Topology(object):
                 # Emit initial SDAM events for load balancer mode.
                 self._process_change(ServerDescription(
                     self._seed_addresses[0],
-                    IsMaster({'ok': 1, 'serviceId': self._topology_id})))
+                    IsMaster({'ok': 1, 'serviceId': self._topology_id,
+                              'maxWireVersion': 13})))
 
         # Ensure that the monitors are open.
         for server in self._servers.values():
@@ -599,6 +598,7 @@ class Topology(object):
         server = self._servers[address]
         error = err_ctx.error
         exc_type = type(error)
+        service_id = err_ctx.service_id
         if (issubclass(exc_type, NetworkTimeout) and
                 err_ctx.completed_handshake):
             # The socket has been closed. Don't reset the server.
@@ -629,21 +629,21 @@ class Topology(object):
                     self._process_change(ServerDescription(address, error=error))
                 if is_shutting_down or (err_ctx.max_wire_version <= 7):
                     # Clear the pool.
-                    server.reset()
+                    server.reset(service_id)
                 server.request_check()
             elif not err_ctx.completed_handshake:
                 # Unknown command error during the connection handshake.
                 if not self._settings.load_balanced:
                     self._process_change(ServerDescription(address, error=error))
                 # Clear the pool.
-                server.reset()
+                server.reset(service_id)
         elif issubclass(exc_type, ConnectionFailure):
             # "Client MUST replace the server's description with type Unknown
             # ... MUST NOT request an immediate check of the server."
             if not self._settings.load_balanced:
                 self._process_change(ServerDescription(address, error=error))
             # Clear the pool.
-            server.reset()
+            server.reset(service_id)
             # "When a client marks a server Unknown from `Network error when
             # reading or writing`_, clients MUST cancel the isMaster check on
             # that server and close the current monitoring connection."
@@ -795,11 +795,12 @@ class Topology(object):
 class _ErrorContext(object):
     """An error with context for SDAM error handling."""
     def __init__(self, error, max_wire_version, sock_generation,
-                 completed_handshake):
+                 completed_handshake, service_id):
         self.error = error
         self.max_wire_version = max_wire_version
         self.sock_generation = sock_generation
         self.completed_handshake = completed_handshake
+        self.service_id = service_id
 
 
 def _is_stale_error_topology_version(current_tv, error_tv):

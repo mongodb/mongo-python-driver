@@ -504,15 +504,16 @@ class SpecRunner(IntegrationTest):
                 client_context.storage_engine == 'mmapv1'):
             self.skipTest("MMAPv1 does not support retryWrites=True")
         use_multi_mongos = test['useMultipleMongoses']
-        if client_context.is_mongos and use_multi_mongos:
-            client = rs_client(
-                client_context.mongos_seeds(),
-                event_listeners=[listener, pool_listener, server_listener],
-                **client_options)
-        else:
-            client = rs_client(
-                event_listeners=[listener, pool_listener, server_listener],
-                **client_options)
+        host = None
+        if use_multi_mongos:
+            if client_context.load_balancer:
+                host = client_context.MULTI_MONGOS_LB_URI
+            elif client_context.is_mongos:
+                host = client_context.mongos_seeds()
+        client = rs_client(
+            h=host,
+            event_listeners=[listener, pool_listener, server_listener],
+            **client_options)
         self.scenario_client = client
         self.listener = listener
         self.pool_listener = pool_listener

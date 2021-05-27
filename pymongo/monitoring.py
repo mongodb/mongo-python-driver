@@ -512,13 +512,16 @@ _SENSITIVE_COMMANDS = set(
 class _CommandEvent(object):
     """Base class for command events."""
 
-    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id")
+    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id",
+                 "__service_id")
 
-    def __init__(self, command_name, request_id, connection_id, operation_id):
+    def __init__(self, command_name, request_id, connection_id, operation_id,
+                 service_id=None):
         self.__cmd_name = command_name
         self.__rqst_id = request_id
         self.__conn_id = connection_id
         self.__op_id = operation_id
+        self.__service_id = service_id
 
     @property
     def command_name(self):
@@ -536,6 +539,14 @@ class _CommandEvent(object):
         return self.__conn_id
 
     @property
+    def service_id(self):
+        """The service_id this command was sent to, or ``None``.
+
+        .. versionadded:: 3.12
+        """
+        return self.__service_id
+
+    @property
     def operation_id(self):
         """An id for this series of events or None."""
         return self.__op_id
@@ -551,15 +562,17 @@ class CommandStartedEvent(_CommandEvent):
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
+      - `service_id`: The service_id this command was sent to, or ``None``.
     """
     __slots__ = ("__cmd", "__db")
 
-    def __init__(self, command, database_name, *args):
+    def __init__(self, command, database_name, *args, service_id=None):
         if not command:
             raise ValueError("%r is not a valid command" % (command,))
         # Command name must be first key.
         command_name = next(iter(command))
-        super(CommandStartedEvent, self).__init__(command_name, *args)
+        super(CommandStartedEvent, self).__init__(
+            command_name, *args, service_id=service_id)
         if command_name.lower() in _SENSITIVE_COMMANDS:
             self.__cmd = {}
         else:
@@ -577,9 +590,12 @@ class CommandStartedEvent(_CommandEvent):
         return self.__db
 
     def __repr__(self):
-        return "<%s %s db: %r, command: %r, operation_id: %s>" % (
-            self.__class__.__name__, self.connection_id, self.database_name,
-            self.command_name, self.operation_id)
+        return (
+            "<%s %s db: %r, command: %r, operation_id: %s, "
+            "service_id: %s>") % (
+                self.__class__.__name__, self.connection_id,
+                self.database_name, self.command_name, self.operation_id,
+                self.service_id)
 
 
 class CommandSucceededEvent(_CommandEvent):
@@ -593,13 +609,15 @@ class CommandSucceededEvent(_CommandEvent):
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
+      - `service_id`: The service_id this command was sent to, or ``None``.
     """
     __slots__ = ("__duration_micros", "__reply")
 
     def __init__(self, duration, reply, command_name,
-                 request_id, connection_id, operation_id):
+                 request_id, connection_id, operation_id, service_id=None):
         super(CommandSucceededEvent, self).__init__(
-            command_name, request_id, connection_id, operation_id)
+            command_name, request_id, connection_id, operation_id,
+            service_id=service_id)
         self.__duration_micros = _to_micros(duration)
         if command_name.lower() in _SENSITIVE_COMMANDS:
             self.__reply = {}
@@ -617,9 +635,12 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self):
-        return "<%s %s command: %r, operation_id: %s, duration_micros: %s>" % (
-            self.__class__.__name__, self.connection_id,
-            self.command_name, self.operation_id, self.duration_micros)
+        return (
+            "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
+            "service_id: %s>") % (
+                self.__class__.__name__, self.connection_id,
+                self.command_name, self.operation_id, self.duration_micros,
+                self.service_id)
 
 
 class CommandFailedEvent(_CommandEvent):
@@ -633,11 +654,12 @@ class CommandFailedEvent(_CommandEvent):
       - `connection_id`: The address (host, port) of the server this command
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
+      - `service_id`: The service_id this command was sent to, or ``None``.
     """
     __slots__ = ("__duration_micros", "__failure")
 
-    def __init__(self, duration, failure, *args):
-        super(CommandFailedEvent, self).__init__(*args)
+    def __init__(self, duration, failure, *args, service_id=None):
+        super(CommandFailedEvent, self).__init__(*args, service_id=service_id)
         self.__duration_micros = _to_micros(duration)
         self.__failure = failure
 
@@ -654,9 +676,10 @@ class CommandFailedEvent(_CommandEvent):
     def __repr__(self):
         return (
             "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
-            "failure: %r>" % (
+            "failure: %r, service_id: %s>") % (
                 self.__class__.__name__, self.connection_id, self.command_name,
-                self.operation_id, self.duration_micros, self.failure))
+                self.operation_id, self.duration_micros, self.failure,
+                self.service_id)
 
 
 class _PoolEvent(object):
@@ -721,10 +744,29 @@ class PoolClearedEvent(_PoolEvent):
     :Parameters:
      - `address`: The address (host, port) pair of the server this Pool is
        attempting to connect to.
+     - `service_id`: The service_id this command was sent to, or ``None``.
 
     .. versionadded:: 3.9
     """
-    __slots__ = ()
+    __slots__ = ("__service_id",)
+
+    def __init__(self, address, service_id=None):
+        super(PoolClearedEvent, self).__init__(address)
+        self.__service_id = service_id
+
+    @property
+    def service_id(self):
+        """Connections with this service_id are cleared.
+
+        When service_id is ``None``, all connections in the pool are cleared.
+
+        .. versionadded:: 3.12
+        """
+        return self.__service_id
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (
+            self.__class__.__name__, self.address, self.__service_id)
 
 
 class PoolClosedEvent(_PoolEvent):
@@ -1508,10 +1550,10 @@ class _EventListeners(object):
             except Exception:
                 _handle_exception()
 
-    def publish_pool_cleared(self, address):
+    def publish_pool_cleared(self, address, service_id):
         """Publish a :class:`PoolClearedEvent` to all pool listeners.
         """
-        event = PoolClearedEvent(address)
+        event = PoolClearedEvent(address, service_id)
         for subscriber in self.__cmap_listeners:
             try:
                 subscriber.pool_cleared(event)
