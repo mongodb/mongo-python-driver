@@ -512,12 +512,7 @@ class TestCommandMonitoring(PyMongoTestCase):
             self.assertTrue(isinstance(event.request_id, int))
             self.assertEqual(cursor.address, event.connection_id)
         # Last getMore receives a response with cursor id 0.
-        expected_result = {
-            'cursor': {'id': 0,
-                       'ns': 'pymongo_test.test',
-                       'nextBatch': [{}]},
-            'ok': 1}
-        self.assertEqualReply(expected_result, results['succeeded'][-1].reply)
+        self.assertEqual(0, results['succeeded'][-1].reply['cursor']['id'])
 
     def test_kill_cursors(self):
         with client_knobs(kill_cursor_frequency=0.01):
