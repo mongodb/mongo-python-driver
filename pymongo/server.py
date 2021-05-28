@@ -20,7 +20,7 @@ from bson import _decode_all_selective
 
 from pymongo.errors import NotMasterError, OperationFailure
 from pymongo.helpers import _check_command_response
-from pymongo.message import _convert_exception
+from pymongo.message import _convert_exception, _OpMsg
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
 
@@ -95,16 +95,15 @@ class Server(object):
         if publish:
             start = datetime.now()
 
-        send_message = not operation.exhaust_mgr
-
-        if send_message:
-            use_cmd = operation.use_command(sock_info, exhaust)
+        use_cmd = operation.use_command(sock_info, exhaust)
+        more_to_come = (operation.exhaust_mgr
+                        and operation.exhaust_mgr.more_to_come)
+        if more_to_come:
+            request_id = 0
+        else:
             message = operation.get_message(
                 set_slave_okay, sock_info, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
-        else:
-            use_cmd = False
-            request_id = 0
 
         if publish:
             cmd, dbn = operation.as_command(sock_info)
@@ -113,11 +112,11 @@ class Server(object):
             start = datetime.now()
 
         try:
-            if send_message:
+            if more_to_come:
+                reply = sock_info.receive_message(None)
+            else:
                 sock_info.send_message(data, max_doc_size)
                 reply = sock_info.receive_message(request_id)
-            else:
-                reply = sock_info.receive_message(None)
 
             # Unpack and check for command errors.
             if use_cmd:
@@ -176,6 +175,13 @@ class Server(object):
                     decrypted, operation.codec_options, user_fields)
 
         if exhaust:
+            if isinstance(reply, _OpMsg):
+                # In OP_MSG, the server keeps sending only if the
+                # more_to_come flag is set.
+                more_to_come = reply.more_to_come
+            else:
+                # In OP_REPLY, the server keeps sending until cursor_id is 0.
+                more_to_come = bool(reply.cursor_id)
             response = ExhaustResponse(
                 data=reply,
                 address=self._description.address,
@@ -184,7 +190,8 @@ class Server(object):
                 duration=duration,
                 request_id=request_id,
                 from_command=use_cmd,
-                docs=docs)
+                docs=docs,
+                more_to_come=more_to_come)
         else:
             response = Response(
                 data=reply,
