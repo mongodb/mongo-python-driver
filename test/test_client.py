@@ -2033,6 +2033,42 @@ class TestMongoClientFailover(MockClientTest):
         self.assertIsNone(tt.get())
         self.assertIsNone(ct.get())
 
+    def test_gevent_timeout_when_creating_connection(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import Timeout, spawn
+        client = rs_or_single_client()
+        self.addCleanup(client.close)
+        coll = client.pymongo_test.test
+        pool = get_pool(client)
+
+        # Patch the pool to delay the connect method.
+        def delayed_connect(*args, **kwargs):
+            time.sleep(3)
+            return pool.__class__.connect(pool, *args, **kwargs)
+
+        pool.connect = delayed_connect
+
+        def timeout_task():
+            with Timeout(1):
+                try:
+                    coll.find_one({})
+                    return False
+                except Timeout:
+                    return True
+
+        tt = spawn(timeout_task)
+        tt.join(10)
+
+        # Assert that we got our active_sockets count back
+        self.assertEqual(pool.active_sockets, 0)
+        # Assert the greenlet is dead
+        self.assertTrue(tt.dead)
+        # Assert that the Timeout was raised all the way to the try
+        self.assertTrue(tt.get())
+        # Unpatch the instance.
+        del pool.connect
+
 
 class TestClientPool(MockClientTest):
 

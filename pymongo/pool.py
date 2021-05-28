@@ -1221,7 +1221,7 @@ class Pool:
 
         try:
             sock = _configured_socket(self.address, self.opts)
-        except Exception as error:
+        except BaseException as error:
             if self.enabled_for_cmap:
                 listeners.publish_connection_closed(
                     self.address, conn_id, ConnectionClosedReason.ERROR)
@@ -1238,7 +1238,7 @@ class Pool:
 
         try:
             sock_info.check_auth(all_credentials)
-        except Exception:
+        except BaseException:
             sock_info.close_socket(ConnectionClosedReason.ERROR)
             raise
 
@@ -1326,7 +1326,7 @@ class Pool:
                     if self._perished(sock_info):
                         sock_info = None
             sock_info.check_auth(all_credentials)
-        except Exception:
+        except BaseException:
             if sock_info:
                 # We checked out a socket but authentication failed.
                 sock_info.close_socket(ConnectionClosedReason.ERROR)
