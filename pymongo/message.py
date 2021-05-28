@@ -269,9 +269,11 @@ class _Query(object):
 
     def use_command(self, sock_info, exhaust):
         use_find_cmd = False
-        if sock_info.max_wire_version >= 4:
-            if not exhaust:
-                use_find_cmd = True
+        if sock_info.max_wire_version >= 4 and not exhaust:
+            use_find_cmd = True
+        elif sock_info.max_wire_version >= 8:
+            # OP_MSG supports exhaust on MongoDB 4.2+
+            use_find_cmd = True
         elif not self.read_concern.ok_for_legacy:
             raise ConfigurationError(
                 'read concern level of %s is not valid '
@@ -398,8 +400,15 @@ class _GetMore(object):
         return _UJOIN % (self.db, self.coll)
 
     def use_command(self, sock_info, exhaust):
+        use_cmd = False
+        if sock_info.max_wire_version >= 4 and not exhaust:
+            use_cmd = True
+        elif sock_info.max_wire_version >= 8:
+            # OP_MSG supports exhaust on MongoDB 4.2+
+            use_cmd = True
+
         sock_info.validate_session(self.client, self.session)
-        return sock_info.max_wire_version >= 4 and not exhaust
+        return use_cmd
 
     def as_command(self, sock_info):
         """Return a getMore command document for this query."""
@@ -433,8 +442,12 @@ class _GetMore(object):
         if use_cmd:
             spec = self.as_command(sock_info)[0]
             if sock_info.op_msg_enabled:
+                if self.exhaust_mgr:
+                    flags = _OpMsg.EXHAUST_ALLOWED
+                else:
+                    flags = 0
                 request_id, msg, size, _ = _op_msg(
-                    0, spec, self.db, None,
+                    flags, spec, self.db, None,
                     False, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size
@@ -448,26 +461,22 @@ class _RawBatchQuery(_Query):
     def use_command(self, socket_info, exhaust):
         # Compatibility checks.
         super(_RawBatchQuery, self).use_command(socket_info, exhaust)
-        # Use OP_MSG when available.
-        if socket_info.op_msg_enabled and not exhaust:
+        if socket_info.max_wire_version >= 8:
+            # MongoDB 4.2+ supports exhaust over OP_MSG
+            return True
+        elif socket_info.op_msg_enabled and not exhaust:
             return True
         return False
-
-    def get_message(self, set_slave_ok, sock_info, use_cmd=False):
-        return super(_RawBatchQuery, self).get_message(
-            set_slave_ok, sock_info, use_cmd)
 
 
 class _RawBatchGetMore(_GetMore):
     def use_command(self, socket_info, exhaust):
-        # Use OP_MSG when available.
-        if socket_info.op_msg_enabled and not exhaust:
+        if socket_info.max_wire_version >= 8:
+            # MongoDB 4.2+ supports exhaust over OP_MSG
+            return True
+        elif socket_info.op_msg_enabled and not exhaust:
             return True
         return False
-
-    def get_message(self, set_slave_ok, sock_info, use_cmd=False):
-        return super(_RawBatchGetMore, self).get_message(
-            set_slave_ok, sock_info, use_cmd)
 
 
 class _CursorAddress(tuple):
