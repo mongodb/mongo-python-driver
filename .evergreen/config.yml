@@ -1686,7 +1686,7 @@ axes:
           python3_binary: "/opt/python/3.8/bin/python3"
       - id: ubuntu-18.04
         display_name: "Ubuntu 18.04"
-        run_on: ubuntu1804-test
+        run_on: ubuntu1804-small
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
@@ -2083,7 +2083,7 @@ buildvariants:
   matrix_spec:
     platform:
       # OSes that support versions of MongoDB>=3.2 with SSL.
-      - ubuntu-16.04
+      - ubuntu-18.04
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
