@@ -1415,7 +1415,7 @@ class Pool:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
             sock_info.check_auth(all_credentials)
-        except BaseException:
+        except Exception:
             if sock_info:
                 # We checked out a socket but authentication failed.
                 sock_info.close_socket(ConnectionClosedReason.ERROR)
