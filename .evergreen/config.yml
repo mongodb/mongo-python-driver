@@ -1689,7 +1689,7 @@ axes:
         run_on: ubuntu1804-small
         batchtime: 10080  # 7 days
         variables:
-          python3_binary: python3
+          python3_binary: "/opt/python/3.8/bin/python3"
       - id: ubuntu-20.04
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
