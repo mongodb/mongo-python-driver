@@ -27,9 +27,8 @@ from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (ConnectionFailure,
-                            InvalidOperation,
-                            NotMasterError,
-                            OperationFailure)
+                            CursorNotFound,
+                            InvalidOperation)
 from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore,
@@ -1010,39 +1009,23 @@ class Cursor(object):
         try:
             response = client._run_operation(
                 operation, self._unpack_response, address=self.__address)
-        except OperationFailure:
+        except (CursorNotFound, ConnectionFailure) as exc:
+            # Don't send killCursors because the cursor is already closed.
             self.__killed = True
-
-            # Make sure exhaust socket is returned immediately, if necessary.
+            # Return the session and pinned connection, if necessary.
             self.__die()
 
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
             # False. No need to re-raise.
-            if self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]:
+            if (isinstance(exc, CursorNotFound) and
+                    self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]):
                 return
-            raise
-        except NotMasterError:
-            # Don't send kill cursors to another server after a "not master"
-            # error. It's completely pointless.
-            self.__killed = True
-
-            # Make sure exhaust socket is returned immediately, if necessary.
-            self.__die()
-
-            raise
-        except ConnectionFailure:
-            # Don't try to send kill cursors on another socket
-            # or to another server. It can cause a _pinValue
-            # assertion on some server releases if we get here
-            # due to a socket timeout.
-            self.__killed = True
-            self.__die()
             raise
         except Exception:
             # Close the cursor
-            self.__die()
+            self.__die(True)
             raise
 
         self.__address = response.address
@@ -1078,7 +1061,6 @@ class Cursor(object):
             self.__retrieved += response.data.number_returned
 
         if self.__id == 0:
-            self.__killed = True
             # Don't wait for garbage collection to call __del__, return the
             # socket and the session to the pool now.
             self.__die()

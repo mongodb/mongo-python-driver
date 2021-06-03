@@ -19,9 +19,8 @@ from collections import deque
 from bson import _convert_raw_document_lists_to_streams
 from pymongo.cursor import _SocketManager
 from pymongo.errors import (ConnectionFailure,
-                            InvalidOperation,
-                            NotMasterError,
-                            OperationFailure)
+                            CursorNotFound,
+                            InvalidOperation)
 from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore)
@@ -150,32 +149,19 @@ class CommandCursor(object):
     def __send_message(self, operation):
         """Send a getmore message and handle the response.
         """
-        def kill():
-            self.__killed = True
-            self.__end_session(True)
-
         client = self.__collection.database.client
         try:
             response = client._run_operation(
                 operation, self._unpack_response, address=self.__address)
-        except OperationFailure:
-            kill()
-            raise
-        except NotMasterError:
-            # Don't send kill cursors to another server after a "not master"
-            # error. It's completely pointless.
-            kill()
-            raise
-        except ConnectionFailure:
-            # Don't try to send kill cursors on another socket
-            # or to another server. It can cause a _pinValue
-            # assertion on some server releases if we get here
-            # due to a socket timeout.
-            kill()
+        except (CursorNotFound, ConnectionFailure):
+            # Don't send killCursors because the cursor is already closed.
+            self.__killed = True
+            # Return the session and pinned connection, if necessary.
+            self.__die()
             raise
         except Exception:
             # Close the cursor
-            self.__die()
+            self.__die(True)
             raise
 
         if isinstance(response, PinnedResponse):
@@ -193,7 +179,7 @@ class CommandCursor(object):
             self.__id = response.data.cursor_id
 
         if self.__id == 0:
-            kill()
+            self.__die(True)
         self.__data = deque(documents)
 
     def _unpack_response(self, response, cursor_id, codec_options,
@@ -226,8 +212,7 @@ class CommandCursor(object):
                                     self.__max_await_time_ms,
                                     self.__sock_mgr, False))
         else:  # Cursor id is zero nothing else to return
-            self.__killed = True
-            self.__end_session(True)
+            self.__die(True)
 
         return len(self.__data)
 
