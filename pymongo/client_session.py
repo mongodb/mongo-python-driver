@@ -807,9 +807,7 @@ class ClientSession(object):
         self._transaction.pinned_conn = None
         if conn:
             # TODO: How do we know conn won't be returned to the pool twice?
-            topology = self.client._topology
-            server = topology.get_server_by_address(conn.address)
-            server.pool.return_socket(conn)
+            self._client._return_socket(conn)
 
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""

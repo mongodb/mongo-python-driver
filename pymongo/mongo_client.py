@@ -60,6 +60,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             PyMongoError,
                             ServerSelectionTimeoutError)
+from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (writable_preferred_server_selector,
                                       writable_server_selector)
@@ -1189,6 +1190,13 @@ class MongoClient(common.BaseObject):
                     session._pin_connection(sock_info)
                 yield sock_info
 
+    def _return_socket(self, sock_info):
+        server = self._topology.get_server_by_address(sock_info.address)
+        if server:
+            server.pool.return_socket(sock_info)
+        else:
+            sock_info.close(ConnectionClosedReason.STALE)
+
     def _select_server(self, server_selector, session, address=None):
         """Select a server to run an operation on this client.
 
@@ -1266,6 +1274,10 @@ class MongoClient(common.BaseObject):
                 read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
 
+    def _should_pin_cursor(self, session):
+        return (self.__options.load_balanced and
+                not (session and session.in_transaction))
+
     def _run_operation(self, operation, unpack_res, pin=False, address=None):
         """Run a _Query/_GetMore operation and return a Response.
 
@@ -1275,20 +1287,18 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
-        pin_cursor = (self.__options.load_balanced and
-                      not (operation.session and
-                           operation.session.in_transaction))
-        pin = pin_cursor or operation.exhaust
+        pin = self._should_pin_cursor(operation.session) or operation.exhaust
         if operation.sock_mgr:
             server = self._select_server(
                 operation.read_preference, operation.session, address=address)
 
-            with _MongoClientErrorHandler(
-                    self, server, operation.session) as err_handler:
-                err_handler.contribute_socket(operation.sock_mgr.sock)
-                return server.run_operation(
-                    operation.sock_mgr.sock, operation, True,
-                    self._event_listeners, pin, unpack_res)
+            with operation.sock_mgr.lock:
+                with _MongoClientErrorHandler(
+                        self, server, operation.session) as err_handler:
+                    err_handler.contribute_socket(operation.sock_mgr.sock)
+                    return server.run_operation(
+                        operation.sock_mgr.sock, operation, True,
+                        self._event_listeners, pin, unpack_res)
 
         def _cmd(session, server, sock_info, slave_ok):
             return server.run_operation(
@@ -1506,7 +1516,7 @@ class MongoClient(common.BaseObject):
         self.__kill_cursors_queue.append((address, [cursor_id]))
 
     def _close_cursor_now(self, cursor_id, address=None, session=None,
-                          sock_info=None):
+                          sock_mgr=None):
         """Send a kill cursors message with the given id.
 
         The cursor is closed synchronously on the current thread.
@@ -1515,10 +1525,11 @@ class MongoClient(common.BaseObject):
             raise TypeError("cursor_id must be an instance of int")
 
         try:
-            if sock_info:
-                # Cursor is pinned to LB outside of a transaction.
-                self._kill_cursor_impl(
-                    [cursor_id], address, session, sock_info)
+            if sock_mgr:
+                with sock_mgr.lock:
+                    # Cursor is pinned to LB outside of a transaction.
+                    self._kill_cursor_impl(
+                        [cursor_id], address, session, sock_mgr.sock)
             else:
                 self._kill_cursors(
                     [cursor_id], address, self._get_topology(), session)

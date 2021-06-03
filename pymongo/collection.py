@@ -2072,9 +2072,9 @@ class Collection(common.BaseObject):
                         if exc.code != 26:
                             raise
                         cursor = {'id': 0, 'firstBatch': []}
-                return CommandCursor(coll, cursor, sock_info.address,
-                                     session=s,
-                                     explicit_session=session is not None)
+                cmd_cursor = CommandCursor(
+                    coll, cursor, sock_info.address, session=s,
+                    explicit_session=session is not None)
             else:
                 res = message._first_batch(
                     sock_info, self.__database.name, "system.indexes",
@@ -2084,10 +2084,13 @@ class Collection(common.BaseObject):
                 cursor = res["cursor"]
                 # Note that a collection can only have 64 indexes, so there
                 # will never be a getMore call.
-                return CommandCursor(coll, cursor, sock_info.address)
+                cmd_cursor = CommandCursor(coll, cursor, sock_info.address)
+            cmd_cursor._maybe_pin_connection(sock_info)
+            return cmd_cursor
 
         return self.__database.client._retryable_read(
-            _cmd, read_pref, session)
+            _cmd, read_pref, session,
+            pin=self.__database.client._should_pin_cursor(session))
 
     def index_information(self, session=None):
         """Get information on this collection's indexes.
@@ -2168,7 +2171,8 @@ class Collection(common.BaseObject):
             user_fields={'cursor': {'firstBatch': 1}})
         return self.__database.client._retryable_read(
             cmd.get_cursor, cmd.get_read_preference(session), session,
-            retryable=not cmd._performs_write)
+            retryable=not cmd._performs_write,
+            pin=self.database.client._should_pin_cursor(session))
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this

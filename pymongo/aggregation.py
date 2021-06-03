@@ -161,11 +161,13 @@ class _AggregationCommand(object):
             }
 
         # Create and return cursor instance.
-        return self._cursor_class(
+        cmd_cursor = self._cursor_class(
             self._cursor_collection(cursor), cursor, sock_info.address,
             batch_size=self._batch_size or 0,
             max_await_time_ms=self._max_await_time_ms,
             session=session, explicit_session=self._explicit_session)
+        cmd_cursor._maybe_pin_connection(sock_info)
+        return cmd_cursor
 
 
 class _CollectionAggregationCommand(_AggregationCommand):

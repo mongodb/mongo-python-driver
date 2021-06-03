@@ -69,9 +69,9 @@ class Response(object):
 
 
 class PinnedResponse(Response):
-    __slots__ = ('_socket_info', '_pool', '_more_to_come')
+    __slots__ = ('_socket_info', '_more_to_come')
 
-    def __init__(self, data, address, socket_info, pool, request_id, duration,
+    def __init__(self, data, address, socket_info, request_id, duration,
                  from_command, docs, more_to_come):
         """Represent a response to an exhaust cursor's initial query.
 
@@ -93,7 +93,6 @@ class PinnedResponse(Response):
                                              duration,
                                              from_command, docs)
         self._socket_info = socket_info
-        self._pool = pool
         self._more_to_come = more_to_come
 
     @property
@@ -105,11 +104,6 @@ class PinnedResponse(Response):
         is an error.
         """
         return self._socket_info
-
-    @property
-    def pool(self):
-        """The Pool from which the SocketInfo came."""
-        return self._pool
 
     @property
     def more_to_come(self):

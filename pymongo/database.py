@@ -377,7 +377,8 @@ class Database(common.BaseObject):
                 user_fields={'cursor': {'firstBatch': 1}})
             return self.client._retryable_read(
                 cmd.get_cursor, cmd.get_read_preference(s), s,
-                retryable=not cmd._performs_write)
+                retryable=not cmd._performs_write,
+                pin=self.client._should_pin_cursor(s))
 
     def watch(self, pipeline=None, full_document=None, resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
@@ -636,7 +637,7 @@ class Database(common.BaseObject):
                     sock_info, cmd, slave_okay,
                     read_preference=read_preference,
                     session=tmp_session)["cursor"]
-                return CommandCursor(
+                cmd_cursor = CommandCursor(
                     coll,
                     cursor,
                     sock_info.address,
@@ -656,7 +657,10 @@ class Database(common.BaseObject):
                        ("pipeline", pipeline),
                        ("cursor", kwargs.get("cursor", {}))])
             cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
-            return CommandCursor(coll, cursor, sock_info.address)
+            cmd_cursor = CommandCursor(coll, cursor, sock_info.address)
+        cmd_cursor._maybe_pin_connection(sock_info)
+        return cmd_cursor
+
 
     def list_collections(self, session=None, filter=None, **kwargs):
         """Get a cursor over the collectons of this database.
@@ -688,7 +692,8 @@ class Database(common.BaseObject):
                 **kwargs)
 
         return self.__client._retryable_read(
-            _cmd, read_pref, session)
+            _cmd, read_pref, session,
+            pin=self.client._should_pin_cursor(session))
 
     def list_collection_names(self, session=None, filter=None, **kwargs):
         """Get a list of all the collection names in this database.

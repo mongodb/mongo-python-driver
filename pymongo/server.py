@@ -176,11 +176,12 @@ class Server(object):
             else:
                 # In OP_REPLY, the server keeps sending until cursor_id is 0.
                 more_to_come = bool(operation.exhaust and reply.cursor_id)
+            if operation.sock_mgr:
+                operation.sock_mgr.update_exhaust(more_to_come)
             response = PinnedResponse(
                 data=reply,
                 address=self._description.address,
                 socket_info=sock_info,
-                pool=self._pool,
                 duration=duration,
                 request_id=request_id,
                 from_command=use_cmd,

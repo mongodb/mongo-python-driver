@@ -15,6 +15,7 @@
 """Cursor class to iterate over Mongo query results."""
 
 import copy
+import threading
 import warnings
 
 from collections import deque
@@ -82,11 +83,12 @@ class CursorType(object):
 class _SocketManager:
     """Used with exhaust cursors to ensure the socket is returned.
     """
-    def __init__(self, sock, pool, more_to_come):
+    def __init__(self, sock, client, more_to_come):
         self.sock = sock
-        self.pool = pool
+        self.client = client
         self.more_to_come = more_to_come
         self.__closed = False
+        self.lock = threading.Lock()
 
     def __del__(self):
         self.close()
@@ -99,8 +101,8 @@ class _SocketManager:
         """
         if not self.__closed:
             self.__closed = True
-            self.pool.return_socket(self.sock)
-            self.sock, self.pool = None, None
+            self.client._return_socket(self.sock)
+            self.sock, self.client = None, None
 
 
 class Cursor(object):
@@ -329,13 +331,9 @@ class Cursor(object):
             address = _CursorAddress(
                 self.__address, self.__collection.full_name)
             if synchronous:
-                if self.__sock_mgr and not self.__exhaust:
-                    sock_info = self.__sock_mgr.sock
-                else:
-                    sock_info = None
                 self.__collection.database.client._close_cursor_now(
                     self.__id, address, session=self.__session,
-                    sock_info=sock_info)
+                    sock_mgr=self.__sock_mgr)
             else:
                 # The cursor will be closed later in a different session.
                 self.__collection.database.client._close_cursor(
@@ -1051,10 +1049,8 @@ class Cursor(object):
         if isinstance(response, PinnedResponse):
             if not self.__sock_mgr:
                 self.__sock_mgr = _SocketManager(response.socket_info,
-                                                 response.pool,
+                                                 client,
                                                  response.more_to_come)
-            else:
-                self.__sock_mgr.update_exhaust(response.more_to_come)
 
         cmd_name = operation.name
         docs = response.docs

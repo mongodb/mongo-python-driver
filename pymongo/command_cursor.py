@@ -17,6 +17,7 @@
 from collections import deque
 
 from bson import _convert_raw_document_lists_to_streams
+from pymongo.cursor import _SocketManager
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             NotMasterError,
@@ -24,6 +25,7 @@ from pymongo.errors import (ConnectionFailure,
 from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore)
+from pymongo.response import PinnedResponse
 
 
 class CommandCursor(object):
@@ -37,6 +39,7 @@ class CommandCursor(object):
 
         The parameter 'retrieved' is unused.
         """
+        self.__sock_mgr = None
         self.__collection = collection
         self.__id = cursor_info['id']
         self.__data = deque(cursor_info['firstBatch'])
@@ -75,11 +78,15 @@ class CommandCursor(object):
                 self.__address, self.__collection.full_name)
             if synchronous:
                 self.__collection.database.client._close_cursor_now(
-                    self.__id, address, session=self.__session)
+                    self.__id, address, session=self.__session,
+                    sock_mgr=self.__sock_mgr)
             else:
                 # The cursor will be closed later in a different session.
                 self.__collection.database.client._close_cursor(
                     self.__id, address)
+        if self.__sock_mgr:
+            self.__sock_mgr.close()
+            self.__sock_mgr = None
         self.__end_session(synchronous)
 
     def __end_session(self, synchronous):
@@ -127,6 +134,19 @@ class CommandCursor(object):
         changeStream aggregate or getMore."""
         return self.__postbatchresumetoken
 
+    def _maybe_pin_connection(self, sock_info):
+        client = self.__collection.database.client
+        if not client._should_pin_cursor(self.__session):
+            return
+        if not self.__sock_mgr:
+            sock_mgr = _SocketManager(sock_info, client, False)
+            # Ensure the connection gets returned when the entire result is
+            # returned in the first batch.
+            if self.__id == 0:
+                sock_mgr.close()
+            else:
+                self.__sock_mgr = sock_mgr
+
     def __send_message(self, operation):
         """Send a getmore message and handle the response.
         """
@@ -158,18 +178,19 @@ class CommandCursor(object):
             self.__die()
             raise
 
-        from_command = response.from_command
-        reply = response.data
-        docs = response.docs
-
-        if from_command:
-            cursor = docs[0]['cursor']
+        if isinstance(response, PinnedResponse):
+            if not self.__sock_mgr:
+                self.__sock_mgr = _SocketManager(response.socket_info,
+                                                 client,
+                                                 response.more_to_come)
+        if response.from_command:
+            cursor = response.docs[0]['cursor']
             documents = cursor['nextBatch']
             self.__postbatchresumetoken = cursor.get('postBatchResumeToken')
             self.__id = cursor['id']
         else:
-            documents = docs
-            self.__id = reply.cursor_id
+            documents = response.docs
+            self.__id = response.data.cursor_id
 
         if self.__id == 0:
             kill()
@@ -203,7 +224,7 @@ class CommandCursor(object):
                                     self.__session,
                                     self.__collection.database.client,
                                     self.__max_await_time_ms,
-                                    None, False))
+                                    self.__sock_mgr, False))
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
             self.__end_session(True)
