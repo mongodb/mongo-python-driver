@@ -1961,6 +1961,49 @@ class TestMongoClientFailover(MockClientTest):
         self.assertIsNone(tt.get())
         self.assertIsNone(ct.get())
 
+    def test_gevent_timeout_after_active_socket(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        import mock
+        from gevent import Timeout, spawn
+        client = rs_or_single_client(maxPoolSize=2)
+        coll = client.pymongo_test.test
+        coll.insert_one({})
+
+        # We need explicit control over where this exception is raised.
+        # In test_gevent_timeout, the exception is raised on pool.py:1356
+        # By mocking sockets.popleft, we can force it to happen on pool.py:1403
+        # Thus exercising the except block we care about
+        # Although having to reach into pool to do like this kind of sucks
+        coll.database.client._topology._servers[('localhost', 27017)]._pool.sockets = mock.MagicMock()
+        
+        def mock_popleft(*args, **kwargs):
+            time.sleep(10)
+        
+        coll.database.client._topology._servers[('localhost', 27017)]._pool.sockets.popleft = mock_popleft
+
+        def contentious_task():
+            # The 10 second timeout causes this test to fail without blocking
+            # forever if a bug like PYTHON-2334 is reintroduced.
+            with Timeout(0.5):
+                try:
+                    coll.find_one({'$where': delay(5)})
+                    return False
+                except Timeout:
+                    return True
+
+        ct = spawn(contentious_task)
+        ct.join(15)
+
+        # Assert that we got our active_sockets count back
+        assert coll.database.client._topology._servers[('localhost', 27017)]._pool.active_sockets == 0
+        
+        # Assert the greenlet is dead
+        self.assertTrue(ct.dead)
+
+        # Assert that the Timeout was raised all the way to the try
+        self.assertTrue(ct.get())
+
 
 class TestClientPool(MockClientTest):
 
