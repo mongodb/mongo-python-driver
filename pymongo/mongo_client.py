@@ -1190,13 +1190,6 @@ class MongoClient(common.BaseObject):
                     session._pin_connection(sock_info)
                 yield sock_info
 
-    def _return_socket(self, sock_info):
-        server = self._topology.get_server_by_address(sock_info.address)
-        if server:
-            server.pool.return_socket(sock_info)
-        else:
-            sock_info.close(ConnectionClosedReason.STALE)
-
     def _select_server(self, server_selector, session, address=None):
         """Select a server to run an operation on this client.
 

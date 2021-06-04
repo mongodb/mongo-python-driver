@@ -138,7 +138,7 @@ class CommandCursor(object):
         if not client._should_pin_cursor(self.__session):
             return
         if not self.__sock_mgr:
-            sock_mgr = _SocketManager(sock_info, client, False)
+            sock_mgr = _SocketManager(sock_info, False)
             # Ensure the connection gets returned when the entire result is
             # returned in the first batch.
             if self.__id == 0:
@@ -167,7 +167,6 @@ class CommandCursor(object):
         if isinstance(response, PinnedResponse):
             if not self.__sock_mgr:
                 self.__sock_mgr = _SocketManager(response.socket_info,
-                                                 client,
                                                  response.more_to_come)
         if response.from_command:
             cursor = response.docs[0]['cursor']

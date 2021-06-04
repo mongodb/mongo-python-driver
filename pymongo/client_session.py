@@ -377,6 +377,10 @@ class ClientSession(object):
             try:
                 if self.in_transaction:
                     self.abort_transaction()
+                # It's possible we're still pinned here when the transaction
+                # is in the committed state when the session is discarded.
+                # TODO: Write a test for this case.
+                self._unpin()
             finally:
                 self._client._return_server_session(self._server_session, lock)
                 self._server_session = None
@@ -807,7 +811,7 @@ class ClientSession(object):
         self._transaction.pinned_conn = None
         if conn:
             # TODO: How do we know conn won't be returned to the pool twice?
-            self._client._return_socket(conn)
+            conn.unpin()
 
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""

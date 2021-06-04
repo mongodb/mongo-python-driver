@@ -82,9 +82,8 @@ class CursorType(object):
 class _SocketManager:
     """Used with exhaust cursors to ensure the socket is returned.
     """
-    def __init__(self, sock, client, more_to_come):
+    def __init__(self, sock, more_to_come):
         self.sock = sock
-        self.client = client
         self.more_to_come = more_to_come
         self.__closed = False
         self.lock = threading.Lock()
@@ -100,8 +99,8 @@ class _SocketManager:
         """
         if not self.__closed:
             self.__closed = True
-            self.client._return_socket(self.sock)
-            self.sock, self.client = None, None
+            self.sock.unpin()
+            self.sock = None
 
 
 class Cursor(object):
@@ -1032,7 +1031,6 @@ class Cursor(object):
         if isinstance(response, PinnedResponse):
             if not self.__sock_mgr:
                 self.__sock_mgr = _SocketManager(response.socket_info,
-                                                 client,
                                                  response.more_to_come)
 
         cmd_name = operation.name

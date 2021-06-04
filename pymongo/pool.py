@@ -23,6 +23,7 @@ import socket
 import sys
 import threading
 import time
+import weakref
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -503,6 +504,7 @@ class SocketInfo(object):
       - `id`: the id of this socket in it's pool
     """
     def __init__(self, sock, pool, address, id):
+        self.pool_ref = weakref.ref(pool)
         self.sock = sock
         self.address = address
         self.id = id
@@ -542,6 +544,14 @@ class SocketInfo(object):
         # For load balancer support.
         self.service_id = None
         self.pinned = False
+
+    def unpin(self):
+        self.pinned = False
+        pool = self.pool_ref()
+        if pool:
+            pool.return_socket(self)
+        else:
+            self.close_socket(ConnectionClosedReason.STALE)
 
     def hello_cmd(self):
         if self.opts.server_api:

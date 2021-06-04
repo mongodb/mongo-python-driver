@@ -661,7 +661,6 @@ class Database(common.BaseObject):
         cmd_cursor._maybe_pin_connection(sock_info)
         return cmd_cursor
 
-
     def list_collections(self, session=None, filter=None, **kwargs):
         """Get a cursor over the collectons of this database.
 
