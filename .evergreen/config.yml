@@ -2471,23 +2471,12 @@ buildvariants:
   tasks:
     # Versioned API was introduced in MongoDB 4.7
     - "test-latest-standalone"
+    - "test-5.0-standalone"
 
 - matrix_name: "ocsp-test"
   matrix_spec:
-    platform: ubuntu-18.04
-    python-version: ["3.6", "3.9"]
-    mongodb-version: ["4.4", "5.0", "latest"]
-    auth: "noauth"
-    ssl: "ssl"
-  display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
-  batchtime: 20160 # 14 days
-  tasks:
-    - name: ".ocsp"
-
-- matrix_name: "ocsp-test-pypy"
-  matrix_spec:
-    platform: debian92
-    python-version: ["pypy3.6", "pypy3.7"]
+    platform: awslinux
+    python-version: ["3.6", "3.9", "pypy3.6", "pypy3.7"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
