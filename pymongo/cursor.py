@@ -28,7 +28,8 @@ from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (ConnectionFailure,
                             CursorNotFound,
-                            InvalidOperation)
+                            InvalidOperation,
+                            OperationFailure)
 from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore,
@@ -37,6 +38,35 @@ from pymongo.message import (_CursorAddress,
 from pymongo.monitoring import ConnectionClosedReason
 from pymongo.response import PinnedResponse
 
+# These errors mean that the server has already killed the cursor so there is
+# no need to send killCursors.
+_CURSOR_CLOSED_ERRORS = frozenset([
+    43,   # CursorNotFound
+    50,   # MaxTimeMSExpired
+    175,  # QueryPlanKilled
+    237,  # CursorKilled
+
+    # On a tailable cursor, the following errors mean the capped collection
+    # rolled over.
+    # MongoDB 2.6:
+    # {'$err': 'Runner killed during getMore', 'code': 28617, 'ok': 0}
+    28617,
+    # MongoDB 3.0:
+    # {'$err': 'getMore executor error: UnknownError no details available',
+    #  'code': 17406, 'ok': 0}
+    17406,
+    # MongoDB 3.2 + 3.4:
+    # {'ok': 0.0, 'errmsg': 'GetMore command executor error:
+    #  CappedPositionLost: CollectionScan died due to failure to restore
+    #  tailable cursor position. Last seen record id: RecordId(3)',
+    #  'code': 96}
+    96,
+    # MongoDB 3.6+:
+    # {'ok': 0.0, 'errmsg': 'errmsg: "CollectionScan died due to failure to
+    #  restore tailable cursor position. Last seen record id: RecordId(3)"',
+    #  'code': 136, 'codeName': 'CappedPositionLost'}
+    136,
+])
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -326,16 +356,17 @@ class Cursor(object):
                 # to stop the server from sending more data.
                 self.__sock_mgr.sock.close_socket(
                     ConnectionClosedReason.ERROR)
-            address = _CursorAddress(
-                self.__address, self.__collection.full_name)
-            if synchronous:
-                self.__collection.database.client._close_cursor_now(
-                    self.__id, address, session=self.__session,
-                    sock_mgr=self.__sock_mgr)
             else:
-                # The cursor will be closed later in a different session.
-                self.__collection.database.client._close_cursor(
-                    self.__id, address)
+                address = _CursorAddress(
+                    self.__address, self.__collection.full_name)
+                if synchronous:
+                    self.__collection.database.client._close_cursor_now(
+                        self.__id, address, session=self.__session,
+                        sock_mgr=self.__sock_mgr)
+                else:
+                    # The cursor will be closed later in a different session.
+                    self.__collection.database.client._close_cursor(
+                        self.__id, address)
         if self.__sock_mgr:
             self.__sock_mgr.close()
             self.__sock_mgr = None
@@ -1008,23 +1039,26 @@ class Cursor(object):
         try:
             response = client._run_operation(
                 operation, self._unpack_response, address=self.__address)
-        except (CursorNotFound, ConnectionFailure) as exc:
-            # Don't send killCursors because the cursor is already closed.
-            self.__killed = True
-            # Return the session and pinned connection, if necessary.
-            self.__die()
-
+        except OperationFailure as exc:
+            if exc.code in _CURSOR_CLOSED_ERRORS:
+                # Don't send killCursors because the cursor is already closed.
+                self.__killed = True
+            self.close()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
             # False. No need to re-raise.
-            if (isinstance(exc, CursorNotFound) and
+            if (exc.code in _CURSOR_CLOSED_ERRORS and
                     self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]):
                 return
             raise
+        except ConnectionFailure:
+            # Don't send killCursors because the cursor is already closed.
+            self.__killed = True
+            self.close()
+            raise
         except Exception:
-            # Close the cursor
-            self.__die(True)
+            self.close()
             raise
 
         self.__address = response.address

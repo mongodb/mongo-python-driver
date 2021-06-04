@@ -17,10 +17,10 @@
 from collections import deque
 
 from bson import _convert_raw_document_lists_to_streams
-from pymongo.cursor import _SocketManager
+from pymongo.cursor import _SocketManager, _CURSOR_CLOSED_ERRORS
 from pymongo.errors import (ConnectionFailure,
-                            CursorNotFound,
-                            InvalidOperation)
+                            InvalidOperation,
+                            OperationFailure)
 from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore)
@@ -153,15 +153,21 @@ class CommandCursor(object):
         try:
             response = client._run_operation(
                 operation, self._unpack_response, address=self.__address)
-        except (CursorNotFound, ConnectionFailure):
+        except OperationFailure as exc:
+            if exc.code in _CURSOR_CLOSED_ERRORS:
+                # Don't send killCursors because the cursor is already closed.
+                self.__killed = True
+            # Return the session and pinned connection, if necessary.
+            self.close()
+            raise
+        except ConnectionFailure:
             # Don't send killCursors because the cursor is already closed.
             self.__killed = True
             # Return the session and pinned connection, if necessary.
-            self.__die()
+            self.close()
             raise
         except Exception:
-            # Close the cursor
-            self.__die(True)
+            self.close()
             raise
 
         if isinstance(response, PinnedResponse):
