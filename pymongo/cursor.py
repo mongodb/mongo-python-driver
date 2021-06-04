@@ -350,7 +350,7 @@ class Cursor(object):
 
         self.__killed = True
         if self.__id and not already_killed:
-            if self.__exhaust:
+            if self.__exhaust and self.__sock_mgr:
                 # If this is an exhaust cursor and we haven't completely
                 # exhausted the result set we *must* close the socket
                 # to stop the server from sending more data.
@@ -1040,7 +1040,7 @@ class Cursor(object):
             response = client._run_operation(
                 operation, self._unpack_response, address=self.__address)
         except OperationFailure as exc:
-            if exc.code in _CURSOR_CLOSED_ERRORS:
+            if exc.code in _CURSOR_CLOSED_ERRORS or self.__exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self.__killed = True
             self.close()
