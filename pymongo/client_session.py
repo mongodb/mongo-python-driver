@@ -379,7 +379,6 @@ class ClientSession(object):
                     self.abort_transaction()
                 # It's possible we're still pinned here when the transaction
                 # is in the committed state when the session is discarded.
-                # TODO: Write a test for this case.
                 self._unpin()
             finally:
                 self._client._return_server_session(self._server_session, lock)
