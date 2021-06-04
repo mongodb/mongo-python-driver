@@ -2079,23 +2079,6 @@ buildvariants:
     - ".3.0"
     - ".2.6"
 
-- matrix_name: "tests-os-requires-32"
-  matrix_spec:
-    platform:
-      # OSes that support versions of MongoDB>=3.2 with SSL.
-      - ubuntu-18.04
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
-  tasks:
-    - ".latest"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-    - ".3.6"
-    - ".3.4"
-    - ".3.2"
-
 - matrix_name: "test-macos"
   matrix_spec:
     platform:
@@ -2162,14 +2145,14 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: awslinux
     python-version: ["3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
-    platform: ubuntu-18.04
+    platform: awslinux
     python-version: ["3.6", "3.8", "3.9"]
     auth: "noauth"
     ssl: "ssl"
