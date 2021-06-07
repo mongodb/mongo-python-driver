@@ -2161,9 +2161,8 @@ buildvariants:
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
     - '.replica_set !.2.6 !.3.0'
-    # Test standalone and sharded only on 4.4 and later.
+    # Test standalone and sharded only on 5.0 and later.
     - '.5.0'
-    - '.4.4'
 
 - matrix_name: "tests-pyopenssl-pypy"
   matrix_spec:
@@ -2175,9 +2174,8 @@ buildvariants:
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
     - '.replica_set !.2.6 !.3.0 !.3.2 !.3.4'
-    # Test standalone and sharded only on 4.4 and later.
+    # Test standalone and sharded only on 5.0 and later.
     - '.5.0'
-    - '.4.4'
 
 - matrix_name: "tests-pyopenssl-macOS"
   matrix_spec:
