@@ -1484,8 +1484,8 @@ class Collection(common.BaseObject):
            encryption.
 
         .. versionchanged:: 3.12
-           Instead of raising ConfigurationError, this method now sends the
-           user-specified read concern to the server.
+           Instead of ignoring the user-specified read concern, this method
+           now sends it to the server.
 
         .. versionadded:: 3.6
         """
