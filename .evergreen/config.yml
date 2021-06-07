@@ -2129,6 +2129,7 @@ buildvariants:
   display_name: "${platform} ${auth-ssl}"
   tasks: &all-server-versions
     - ".latest"
+    - ".5.0"
     - ".4.4"
     - ".4.2"
     - ".4.0"
@@ -2149,6 +2150,7 @@ buildvariants:
   display_name: "Encryption ${platform} ${auth-ssl}"
   tasks: &encryption-server-versions
     - ".latest"
+    - ".5.0"
     - ".4.4"
     - ".4.2"
     - ".4.0"
@@ -2187,6 +2189,7 @@ buildvariants:
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - ".latest"
+    - ".5.0"
     - ".4.4"
     - ".4.2"
     - ".4.0"
