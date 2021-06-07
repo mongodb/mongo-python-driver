@@ -1483,6 +1483,10 @@ class Collection(common.BaseObject):
         .. note:: find_raw_batches does not support sessions or auto
            encryption.
 
+        .. versionchanged:: 3.12
+           Instead of raising ConfigurationError, this method now sends the
+           user-specified read concern to the server.
+
         .. versionadded:: 3.6
         """
         # OP_MSG with document stream returns is required to support
