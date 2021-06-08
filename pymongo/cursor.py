@@ -27,7 +27,6 @@ from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (ConnectionFailure,
-                            CursorNotFound,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.message import (_CursorAddress,

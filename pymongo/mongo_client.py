@@ -1162,20 +1162,23 @@ class MongoClient(common.BaseObject):
 
     @contextlib.contextmanager
     def _get_socket(self, server, session, pin=False):
+        in_txn = session and session.in_transaction
         with _MongoClientErrorHandler(self, server, session) as err_handler:
-            # TODO: Are there cases where we need to unpin the connection here?
             # Reuse the pinned connection, if it exists.
-            if (session and session.in_transaction and
-                    session._pinned_connection):
+            if in_txn and session._pinned_connection:
                 yield session._pinned_connection
                 return
-            pin_session = (
-                    session and session.in_transaction and
-                    server.description.server_type == SERVER_TYPE.LoadBalancer)
-            checkout = pin_session or pin
+            # TODO: confirm that pin_conn is not needed.
+            pin_conn = (in_txn and server.description.server_type ==
+                        SERVER_TYPE.LoadBalancer)
+            checkout = pin_conn or pin
             with server.get_socket(
                     self.__all_credentials, checkout=checkout,
                     handler=err_handler) as sock_info:
+                # Pin this session to the selected server or connection.
+                if (in_txn and server.description.server_type in (
+                        SERVER_TYPE.Mongos, SERVER_TYPE.LoadBalancer)):
+                    session._pin(server, sock_info)
                 err_handler.contribute_socket(sock_info)
                 if (self._encrypter and
                         not self._encrypter._bypass_auto_encryption and
@@ -1183,11 +1186,6 @@ class MongoClient(common.BaseObject):
                     raise ConfigurationError(
                         'Auto-encryption requires a minimum MongoDB version '
                         'of 4.2')
-
-                # Pin this session to the connection if it's performing a
-                # transaction in load balanced mode.
-                if pin_session:
-                    session._pin_connection(sock_info)
                 yield sock_info
 
     def _select_server(self, server_selector, session, address=None):
@@ -1214,12 +1212,6 @@ class MongoClient(common.BaseObject):
                                         % address)
             else:
                 server = topology.select_server(server_selector)
-                # Pin this session to the selected server if it's performing a
-                # sharded transaction.
-                if (server.description.server_type in (
-                        SERVER_TYPE.Mongos, SERVER_TYPE.LoadBalancer)
-                        and session and session.in_transaction):
-                    session._pin(server)
             return server
         except PyMongoError as exc:
             # Server selection errors in a transaction are transient.

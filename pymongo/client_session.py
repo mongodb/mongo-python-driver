@@ -108,6 +108,7 @@ from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
 
+from pymongo.cursor import _SocketManager
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
@@ -117,6 +118,7 @@ from pymongo.errors import (ConfigurationError,
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
 
@@ -292,7 +294,7 @@ class _Transaction(object):
         self.state = _TxnState.NONE
         self.sharded = False
         self.pinned_address = None
-        self.pinned_conn = None
+        self.sock_mgr = None
         self.recovery_token = None
         self.attempt = 0
 
@@ -302,12 +304,29 @@ class _Transaction(object):
     def starting(self):
         return self.state == _TxnState.STARTING
 
+    @property
+    def pinned_conn(self):
+        if self.active() and self.sock_mgr:
+            return self.sock_mgr.sock
+        return None
+
+    def pin(self, server, sock_info):
+        self.sharded = True
+        self.pinned_address = server.description.address
+        if server.description.server_type == SERVER_TYPE.LoadBalancer:
+            sock_info.pinned = True
+            self.sock_mgr = _SocketManager(sock_info, False)
+
+    def unpin(self):
+        self.pinned_address = None
+        if self.sock_mgr:
+            self.sock_mgr.close()
+        self.sock_mgr = None
+
     def reset(self):
+        self.unpin()
         self.state = _TxnState.NONE
         self.sharded = False
-        self.pinned_address = None
-        # TODO: What if pinned_conn is non-None here?
-        self.pinned_conn = None
         self.recovery_token = None
         self.attempt = 0
 
@@ -590,7 +609,6 @@ class ClientSession(object):
 
         self._transaction.opts = TransactionOptions(
             read_concern, write_concern, read_preference, max_commit_time_ms)
-        self._unpin()
         self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
@@ -786,31 +804,18 @@ class ClientSession(object):
             return self._transaction.pinned_address
         return None
 
-    def _pin(self, server):
-        """Pin this session to the given Server."""
-        self._transaction.sharded = True
-        self._transaction.pinned_address = server.description.address
-
     @property
     def _pinned_connection(self):
         """The connection this transaction was started on."""
-        if self._transaction.active():
-            return self._transaction.pinned_conn
-        return None
+        return self._transaction.pinned_conn
 
-    def _pin_connection(self, conn):
-        """Pin this session to the given connection."""
-        self._transaction.pinned_conn = conn
-        conn.pinned = True
+    def _pin(self, server, sock_info):
+        """Pin this session to the given Server or to the given connection."""
+        self._transaction.pin(server, sock_info)
 
     def _unpin(self):
         """Unpin this session from any pinned Server."""
-        self._transaction.pinned_address = None
-        conn = self._transaction.pinned_conn
-        self._transaction.pinned_conn = None
-        if conn:
-            # TODO: How do we know conn won't be returned to the pool twice?
-            conn.unpin()
+        self._transaction.unpin()
 
     def _txn_read_preference(self):
         """Return read preference of this transaction or None."""
@@ -825,6 +830,7 @@ class ClientSession(object):
         command['lsid'] = self._server_session.session_id
 
         if not self.in_transaction:
+            # TODO: Confirm that this is not needed.
             self._transaction.reset()
 
         if is_retryable:
