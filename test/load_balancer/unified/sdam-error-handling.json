@@ -240,8 +240,8 @@
               "connectionCheckedInEvent": {}
             },
             {
-              "connectionClosedEvent": {
-                "reason": "error"
+              "connectionClosedEvent":  {
+                "reason": "stale"
               }
             },
             {

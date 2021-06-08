@@ -723,7 +723,7 @@ class SocketInfo(object):
                            unacknowledged=unacknowledged,
                            user_fields=user_fields,
                            exhaust_allowed=exhaust_allowed)
-        except OperationFailure:
+        except (OperationFailure, NotMasterError):
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
         except BaseException as error:
