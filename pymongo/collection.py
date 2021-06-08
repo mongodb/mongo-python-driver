@@ -1485,7 +1485,7 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.12
            Instead of ignoring the user-specified read concern, this method
-           now sends it to the server when connected to MongoDB 3.2+.
+           now sends it to the server when connected to MongoDB 3.6+.
 
         .. versionadded:: 3.6
         """
