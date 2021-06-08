@@ -15,7 +15,6 @@
 """Utilities for testing pymongo
 """
 
-import collections
 import contextlib
 import copy
 import functools
@@ -27,7 +26,7 @@ import threading
 import time
 import warnings
 
-from collections import defaultdict
+from collections import abc, defaultdict
 from functools import partial
 
 from bson import json_util
@@ -300,11 +299,11 @@ class ScenarioDict(dict):
     """Dict that returns {} for any unknown key, recursively."""
     def __init__(self, data):
         def convert(v):
-            if isinstance(v, collections.Mapping):
+            if isinstance(v, abc.Mapping):
                 return ScenarioDict(v)
             if isinstance(v, (str, bytes)):
                 return v
-            if isinstance(v, collections.Sequence):
+            if isinstance(v, abc.Sequence):
                 return [convert(item) for item in v]
             return v
 

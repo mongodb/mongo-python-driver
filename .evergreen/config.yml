@@ -1846,6 +1846,10 @@ axes:
         display_name: "Python 3.9"
         variables:
           PYTHON_BINARY: "/opt/python/3.9/bin/python3"
+      - id: "3.10"
+        display_name: "Python 3.10"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.10/bin/python3"
       - id: "pypy3.6"
         display_name: "PyPy 3.6"
         variables:
@@ -1878,6 +1882,10 @@ axes:
         display_name: "Python 3.9"
         variables:
           PYTHON_BINARY: "C:/python/Python39/python.exe"
+      - id: "3.10"
+        display_name: "Python 3.10"
+        variables:
+          PYTHON_BINARY: "C:/python/Python310/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -1898,6 +1906,10 @@ axes:
         display_name: "32-bit Python 3.9"
         variables:
           PYTHON_BINARY: "C:/python/32/Python39/python.exe"
+      - id: "3.10"
+        display_name: "32-bit Python 3.10"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python310/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2143,6 +2155,17 @@ buildvariants:
     coverage: "*"
   display_name: "${python-version} ${platform} ${auth-ssl} ${coverage}"
   tasks: *all-server-versions
+
+- matrix_name: "tests-python-version-ubuntu20-ssl"
+  matrix_spec:
+    platform: ubuntu-20.04
+    python-version: ["3.10"]
+    auth-ssl: "*"
+  display_name: "${python-version} ${platform} ${auth-ssl} ${coverage}"
+  tasks:
+    - ".latest"
+    - ".5.0"
+    - ".4.4"
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
