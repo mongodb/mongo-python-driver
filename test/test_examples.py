@@ -1113,27 +1113,28 @@ class TestVersionedApiExamples(IntegrationTest):
     @client_context.require_version_min(4, 7)
     def test_versioned_api(self):
         # Versioned API examples
-        MongoClient = lambda _, server_api: rs_client(server_api=server_api)
-        uriString = None
+        MongoClient = lambda _, server_api: rs_client(
+            server_api=server_api, connect=False)
+        uri = None
 
         # Start Versioned API Example 1
         from pymongo.server_api import ServerApi
-        client = MongoClient(uriString, server_api=ServerApi("1"))
+        client = MongoClient(uri, server_api=ServerApi("1"))
         # End Versioned API Example 1
 
         # Start Versioned API Example 2
         client = MongoClient(
-            uriString, server_api=ServerApi("1", strict=True))
+            uri, server_api=ServerApi("1", strict=True))
         # End Versioned API Example 2
 
         # Start Versioned API Example 3
         client = MongoClient(
-            uriString, server_api=ServerApi("1", strict=False))
+            uri, server_api=ServerApi("1", strict=False))
         # End Versioned API Example 3
 
         # Start Versioned API Example 4
         client = MongoClient(
-            uriString, server_api=ServerApi("1", deprecation_errors=False))
+            uri, server_api=ServerApi("1", deprecation_errors=True))
         # End Versioned API Example 4
 
 
