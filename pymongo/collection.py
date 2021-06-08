@@ -1546,6 +1546,10 @@ class Collection(common.BaseObject):
         .. note:: find_raw_batches does not support sessions or auto
            encryption.
 
+        .. versionchanged:: 3.12
+           Instead of ignoring the user-specified read concern, this method
+           now sends it to the server when connected to MongoDB 3.6+.
+
         .. versionadded:: 3.6
         """
         # OP_MSG with document stream returns is required to support
