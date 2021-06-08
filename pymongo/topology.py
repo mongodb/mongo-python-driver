@@ -448,7 +448,7 @@ class Topology(object):
             for sd in self.data_bearing_servers():
                 server = self._servers[sd.address]
                 servers.append((server,
-                                server.pool._generations.get_overall()))
+                                server.pool.gen.get_overall()))
 
         for server, generation in servers:
             try:

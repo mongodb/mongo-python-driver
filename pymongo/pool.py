@@ -530,8 +530,8 @@ class SocketInfo(object):
 
         # The pool's generation changes with each reset() so we can close
         # sockets created before the last reset.
-        self._generations = pool._generations
-        self.generation = self._generations.get_overall()
+        self.pool_gen = pool.gen
+        self.generation = self.pool_gen.get_overall()
         self.ready = False
         self.cancel_context = None
         if not pool.handshake:
@@ -617,7 +617,7 @@ class SocketInfo(object):
                     'Driver attempted to initialize in load balancing mode'
                     ' but the server does not support this mode')
             self.service_id = ismaster.service_id
-            self.generation = self._generations.get(self.service_id)
+            self.generation = self.pool_gen.get(self.service_id)
         return ismaster
 
     def _next_reply(self):
@@ -1112,7 +1112,7 @@ class Pool:
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
         # self.generation = 0
-        self._generations = _PoolGeneration()
+        self.gen = _PoolGeneration()
         self.pid = os.getpid()
         self.address = address
         self.opts = options
@@ -1169,7 +1169,7 @@ class Pool:
             if (self.opts.pause_enabled and pause and
                     not self.opts.load_balanced):
                 old_state, self.state = self.state, PoolState.PAUSED
-            self._generations.inc(service_id)
+            self.gen.inc(service_id)
             newpid = os.getpid()
             if self.pid != newpid:
                 self.pid = newpid
@@ -1229,7 +1229,7 @@ class Pool:
         self._reset(close=True)
 
     def stale_generation(self, gen, service_id):
-        return self._generations.stale(gen, service_id)
+        return self.gen.stale(gen, service_id)
 
     def remove_stale_sockets(self, reference_generation, all_credentials):
         """Removes stale sockets then adds new ones if pool is too small and
@@ -1269,7 +1269,7 @@ class Pool:
                 with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
-                    if self._generations.get_overall() != reference_generation:
+                    if self.gen.get_overall() != reference_generation:
                         sock_info.close_socket(ConnectionClosedReason.STALE)
                         return
                     self.sockets.appendleft(sock_info)

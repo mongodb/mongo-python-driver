@@ -659,11 +659,11 @@ class TestTopologyErrors(TopologyTest):
         self.addCleanup(t.close)
         server = wait_for_master(t)
         self.assertEqual(1, ismaster_count[0])
-        generation = server.pool._generations.get_overall()
+        generation = server.pool.gen.get_overall()
 
         # Pool is reset by ismaster failure.
         t.request_check_all()
-        self.assertNotEqual(generation, server.pool._generations.get_overall())
+        self.assertNotEqual(generation, server.pool.gen.get_overall())
 
     def test_ismaster_retry(self):
         # ismaster succeeds at first, then raises socket error, then succeeds.

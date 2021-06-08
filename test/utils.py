@@ -259,13 +259,13 @@ class MockSocketInfo(object):
 
 class MockPool(object):
     def __init__(self, address, options, handshake=True):
-        self._generations = _PoolGeneration()
+        self.gen = _PoolGeneration()
         self._lock = threading.Lock()
         self.opts = options
         self.operation_count = 0
 
     def stale_generation(self, gen, service_id):
-        return self._generations.stale(gen, service_id)
+        return self.gen.stale(gen, service_id)
 
     def get_socket(self, all_credentials, checkout=False):
         return MockSocketInfo()
@@ -275,7 +275,7 @@ class MockPool(object):
 
     def _reset(self, service_id=None):
         with self._lock:
-            self._generations.inc(service_id)
+            self.gen.inc(service_id)
 
     def ready(self):
         pass
