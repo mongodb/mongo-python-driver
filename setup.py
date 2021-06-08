@@ -24,11 +24,15 @@ except ImportError:
     use_setuptools()
     from setuptools import setup, __version__ as _setuptools_version
 
-from distutils.cmd import Command
-from distutils.command.build_ext import build_ext
-from distutils.errors import CCompilerError, DistutilsOptionError
-from distutils.errors import DistutilsPlatformError, DistutilsExecError
-from distutils.core import Extension
+
+if sys.version_info[:2] < (3, 10):
+    from distutils.cmd import Command
+    from distutils.command.build_ext import build_ext
+    from distutils.core import Extension
+else:
+    from setuptools import Command
+    from setuptools.command.build_ext import build_ext
+    from setuptools.extension import Extension
 
 _HAVE_SPHINX = True
 try:
@@ -89,7 +93,7 @@ class test(Command):
         if self.test_suite is None and self.test_module is None:
             self.test_module = 'test'
         elif self.test_module is not None and self.test_suite is not None:
-            raise DistutilsOptionError(
+            raise Exception(
                 "You may specify a module or suite, but not both"
             )
 
@@ -223,15 +227,6 @@ class doc(Command):
                          "   %s/\n" % (mode, path))
 
 
-if sys.platform == 'win32':
-    # distutils.msvc9compiler can raise an IOError when failing to
-    # find the compiler
-    build_errors = (CCompilerError, DistutilsExecError,
-                    DistutilsPlatformError, IOError)
-else:
-    build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
-
-
 class custom_build_ext(build_ext):
     """Allow C extension building to fail.
 
@@ -284,7 +279,7 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
     def run(self):
         try:
             build_ext.run(self)
-        except DistutilsPlatformError:
+        except Exception:
             e = sys.exc_info()[1]
             sys.stdout.write('%s\n' % str(e))
             warnings.warn(self.warning_message % ("Extension modules",
@@ -296,7 +291,7 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
         name = ext.name
         try:
             build_ext.build_extension(self, ext)
-        except build_errors:
+        except Exception:
             e = sys.exc_info()[1]
             sys.stdout.write('%s\n' % str(e))
             warnings.warn(self.warning_message % ("The %s extension "

@@ -15,7 +15,6 @@
 """Utilities for testing pymongo
 """
 
-import collections
 import contextlib
 import copy
 import functools
@@ -32,7 +31,7 @@ from functools import partial
 
 from bson import json_util, py3compat
 from bson.objectid import ObjectId
-from bson.py3compat import iteritems, string_type
+from bson.py3compat import abc, iteritems, string_type
 from bson.son import SON
 
 from pymongo import (MongoClient,
@@ -300,11 +299,11 @@ class ScenarioDict(dict):
     """Dict that returns {} for any unknown key, recursively."""
     def __init__(self, data):
         def convert(v):
-            if isinstance(v, collections.Mapping):
+            if isinstance(v, abc.Mapping):
                 return ScenarioDict(v)
             if isinstance(v, (py3compat.string_type, bytes)):
                 return v
-            if isinstance(v, collections.Sequence):
+            if isinstance(v, abc.Sequence):
                 return [convert(item) for item in v]
             return v
 
