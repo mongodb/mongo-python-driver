@@ -24,6 +24,7 @@ import pymongo
 from pymongo.errors import ConnectionFailure, OperationFailure
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
+from pymongo.server_api import ServerApi
 from pymongo.write_concern import WriteConcern
 
 from test import client_context, unittest, IntegrationTest
@@ -1106,6 +1107,35 @@ class TestCausalConsistencyExamples(IntegrationTest):
             for item in items.find({'end': None}, session=s2):
                 print(item)
         # End Causal Consistency Example 2
+
+
+class TestVersionedApiExamples(IntegrationTest):
+    @client_context.require_version_min(4, 7)
+    def test_versioned_api(self):
+        # Versioned API examples
+        MongoClient = lambda _, server_api: rs_client(
+            server_api=server_api, connect=False)
+        uri = None
+
+        # Start Versioned API Example 1
+        from pymongo.server_api import ServerApi
+        client = MongoClient(uri, server_api=ServerApi("1"))
+        # End Versioned API Example 1
+
+        # Start Versioned API Example 2
+        client = MongoClient(
+            uri, server_api=ServerApi("1", strict=True))
+        # End Versioned API Example 2
+
+        # Start Versioned API Example 3
+        client = MongoClient(
+            uri, server_api=ServerApi("1", strict=False))
+        # End Versioned API Example 3
+
+        # Start Versioned API Example 4
+        client = MongoClient(
+            uri, server_api=ServerApi("1", deprecation_errors=True))
+        # End Versioned API Example 4
 
 
 if __name__ == "__main__":
