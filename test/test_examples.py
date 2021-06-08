@@ -1113,7 +1113,7 @@ class TestVersionedApiExamples(IntegrationTest):
     @client_context.require_version_min(4, 7)
     def test_versioned_api(self):
         # Versioned API examples
-        MongoClient = lambda _: rs_client()
+        MongoClient = lambda _, server_api: rs_client(server_api=server_api)
         uriString = None
 
         # Start Versioned API Example 1
