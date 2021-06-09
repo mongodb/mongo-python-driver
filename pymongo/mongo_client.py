@@ -1168,12 +1168,8 @@ class MongoClient(common.BaseObject):
             if in_txn and session._pinned_connection:
                 yield session._pinned_connection
                 return
-            # TODO: confirm that pin_conn is not needed.
-            pin_conn = (in_txn and server.description.server_type ==
-                        SERVER_TYPE.LoadBalancer)
-            checkout = pin_conn or pin
             with server.get_socket(
-                    self.__all_credentials, checkout=checkout,
+                    self.__all_credentials, checkout=pin,
                     handler=err_handler) as sock_info:
                 # Pin this session to the selected server or connection.
                 if (in_txn and server.description.server_type in (
@@ -1202,7 +1198,7 @@ class MongoClient(common.BaseObject):
         try:
             topology = self._get_topology()
             if session and not session.in_transaction:
-                session._unpin()
+                session._transaction.reset()
             address = address or (session and session._pinned_address)
             if address:
                 # We're running a getMore or this session is pinned to a mongos.

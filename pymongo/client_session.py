@@ -829,10 +829,6 @@ class ClientSession(object):
         self._server_session.last_use = time.monotonic()
         command['lsid'] = self._server_session.session_id
 
-        if not self.in_transaction:
-            # TODO: Confirm that this is not needed.
-            self._transaction.reset()
-
         if is_retryable:
             command['txnNumber'] = self._server_session.transaction_id
             return
