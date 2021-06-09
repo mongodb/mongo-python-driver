@@ -520,7 +520,8 @@ class Collection(common.BaseObject):
         if publish:
             duration = datetime.datetime.now() - start
             listeners.publish_command_start(
-                cmd, self.__database.name, rqst_id, sock_info.address, op_id)
+                cmd, self.__database.name, rqst_id, sock_info.address, op_id,
+                sock_info.service_id)
             start = datetime.datetime.now()
         try:
             result = sock_info.legacy_write(rqst_id, msg, max_size, False)
@@ -534,12 +535,14 @@ class Collection(common.BaseObject):
                         reply = message._convert_write_result(
                             name, cmd, details)
                         listeners.publish_command_success(
-                            dur, reply, name, rqst_id, sock_info.address, op_id)
+                            dur, reply, name, rqst_id, sock_info.address,
+                            op_id, sock_info.service_id)
                         raise
                 else:
                     details = message._convert_exception(exc)
                 listeners.publish_command_failure(
-                    dur, details, name, rqst_id, sock_info.address, op_id)
+                    dur, details, name, rqst_id, sock_info.address, op_id,
+                    sock_info.service_id)
             raise
         if publish:
             if result is not None:
@@ -549,7 +552,8 @@ class Collection(common.BaseObject):
                 reply = {'ok': 1}
             duration = (datetime.datetime.now() - start) + duration
             listeners.publish_command_success(
-                duration, reply, name, rqst_id, sock_info.address, op_id)
+                duration, reply, name, rqst_id, sock_info.address, op_id,
+                sock_info.service_id)
         return result
 
     def _insert_one(

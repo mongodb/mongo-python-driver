@@ -102,7 +102,8 @@ class Server(object):
         if publish:
             cmd, dbn = operation.as_command(sock_info)
             listeners.publish_command_start(
-                cmd, dbn, request_id, sock_info.address)
+                cmd, dbn, request_id, sock_info.address,
+                service_id=sock_info.service_id)
             start = datetime.now()
 
         try:
@@ -136,7 +137,8 @@ class Server(object):
                     failure = _convert_exception(exc)
                 listeners.publish_command_failure(
                     duration, failure, operation.name,
-                    request_id, sock_info.address)
+                    request_id, sock_info.address,
+                    service_id=sock_info.service_id)
             raise
 
         if publish:
@@ -157,7 +159,7 @@ class Server(object):
                     res["cursor"]["nextBatch"] = docs
             listeners.publish_command_success(
                 duration, res, operation.name, request_id,
-                sock_info.address)
+                sock_info.address, service_id=sock_info.service_id)
 
         # Decrypt response.
         client = operation.client

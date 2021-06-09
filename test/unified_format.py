@@ -519,6 +519,14 @@ class MatchEvaluatorUtil(object):
             self.test.assertIsInstance(actual, type(expectation))
             self.test.assertEqual(expectation, actual)
 
+    def assertHasServiceId(self, spec, actual):
+        if 'hasServiceId' in spec:
+            if spec.get('hasServiceId'):
+                self.test.assertIsNotNone(actual.service_id)
+                self.test.assertIsInstance(actual.service_id, ObjectId)
+            else:
+                self.test.assertIsNone(actual.service_id)
+
     def match_event(self, event_type, expectation, actual):
         name, spec = next(iter(expectation.items()))
 
@@ -543,26 +551,23 @@ class MatchEvaluatorUtil(object):
             if database_name:
                 self.test.assertEqual(
                     database_name, actual.database_name)
+            self.assertHasServiceId(spec, actual)
         elif name == 'commandSucceededEvent':
             self.test.assertIsInstance(actual, CommandSucceededEvent)
             reply = spec.get('reply')
             if reply:
                 self.match_result(reply, actual.reply)
+            self.assertHasServiceId(spec, actual)
         elif name == 'commandFailedEvent':
             self.test.assertIsInstance(actual, CommandFailedEvent)
+            self.assertHasServiceId(spec, actual)
         elif name == 'poolCreatedEvent':
             self.test.assertIsInstance(actual, PoolCreatedEvent)
         elif name == 'poolReadyEvent':
             self.test.assertIsInstance(actual, PoolReadyEvent)
         elif name == 'poolClearedEvent':
             self.test.assertIsInstance(actual, PoolClearedEvent)
-            if spec.get('hasServiceId'):
-                self.test.assertIsNotNone(actual.service_id)
-                self.test.assertIsInstance(actual.service_id, ObjectId)
-            # TODO: report bug missing hasServiceId:
-            # https://github.com/mongodb/specifications/blob/master/source/load-balancers/tests/sdam-error-handling.yml#L128
-            # else:
-            #     self.test.assertIsNone(actual.service_id)
+            self.assertHasServiceId(spec, actual)
         elif name == 'poolClosedEvent':
             self.test.assertIsInstance(actual, PoolClosedEvent)
         elif name == 'connectionCreatedEvent':

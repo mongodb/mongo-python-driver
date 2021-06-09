@@ -1555,7 +1555,8 @@ class MongoClient(common.BaseObject):
                 # tuple to match the rest of the monitoring
                 # API.
                 listeners.publish_command_start(
-                    spec, db, request_id, tuple(address))
+                    spec, db, request_id, tuple(address),
+                    service_id=sock_info.service_id)
                 start = datetime.datetime.now()
 
             try:
@@ -1566,7 +1567,7 @@ class MongoClient(common.BaseObject):
                     listeners.publish_command_failure(
                         dur, message._convert_exception(exc),
                         'killCursors', request_id,
-                        tuple(address))
+                        tuple(address), service_id=sock_info.service_id)
                 raise
 
             if publish:
@@ -1575,7 +1576,7 @@ class MongoClient(common.BaseObject):
                 reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
                 listeners.publish_command_success(
                     duration, reply, 'killCursors', request_id,
-                    tuple(address))
+                    tuple(address), service_id=sock_info.service_id)
 
     def _process_kill_cursors(self):
         """Process any pending kill cursors requests."""

@@ -1036,20 +1036,23 @@ class _BulkWriteContext(object):
         cmd[self.field] = docs
         self.listeners.publish_command_start(
             cmd, self.db_name,
-            request_id, self.sock_info.address, self.op_id)
+            request_id, self.sock_info.address, self.op_id,
+            self.sock_info.service_id)
         return cmd
 
     def _succeed(self, request_id, reply, duration):
         """Publish a CommandSucceededEvent."""
         self.listeners.publish_command_success(
             duration, reply, self.name,
-            request_id, self.sock_info.address, self.op_id)
+            request_id, self.sock_info.address, self.op_id,
+            self.sock_info.service_id)
 
     def _fail(self, request_id, failure, duration):
         """Publish a CommandFailedEvent."""
         self.listeners.publish_command_failure(
             duration, failure, self.name,
-            request_id, self.sock_info.address, self.op_id)
+            request_id, self.sock_info.address, self.op_id,
+            self.sock_info.service_id)
 
 
 # From the Client Side Encryption spec:
@@ -1701,7 +1704,8 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     if publish:
         encoding_duration = datetime.datetime.now() - start
         listeners.publish_command_start(
-            cmd, db, request_id, sock_info.address)
+            cmd, db, request_id, sock_info.address,
+            service_id=sock_info.service_id)
         start = datetime.datetime.now()
 
     sock_info.send_message(msg, max_doc_size)
@@ -1716,7 +1720,8 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
             else:
                 failure = _convert_exception(exc)
             listeners.publish_command_failure(
-                duration, failure, name, request_id, sock_info.address)
+                duration, failure, name, request_id, sock_info.address,
+                service_id=sock_info.service_id)
         raise
     # listIndexes
     if 'cursor' in cmd:
@@ -1735,6 +1740,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         listeners.publish_command_success(
-            duration, result, name, request_id, sock_info.address)
+            duration, result, name, request_id, sock_info.address,
+            service_id=sock_info.service_id)
 
     return result
