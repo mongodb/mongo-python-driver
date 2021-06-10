@@ -2377,23 +2377,23 @@ buildvariants:
 - matrix_name: "tests-python-version-ubuntu18-compression"
   matrix_spec:
     # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
-    platform: ubuntu-18.04
+    platform: awslinux
     python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - platform: ubuntu-18.04
+   - platform: awslinux
      python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
      c-extensions: "with-c-extensions"
      compression: "*"
   # Jython doesn't support some compression types.
-   - platform: ubuntu-18.04
+   - platform: awslinux
      python-version: ["jython2.7"]
      c-extensions: "*"
      compression: ["snappy", "zstd"]
    # PYTHON-2365 Some tests fail with CPython 3.8+ and python-snappy
-   - platform: ubuntu-18.04
+   - platform: awslinux
      python-version: ["3.8", "3.9"]
      c-extensions: "*"
      compression: ["snappy"]
