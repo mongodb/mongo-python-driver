@@ -2656,6 +2656,19 @@ buildvariants:
   tasks:
     - name: ".ocsp"
 
+# PyPy2 cannot install cryptography on Amazon Linux so we test it separately
+- matrix_name: "ocsp-test-pypy2"
+  matrix_spec:
+    platform: debian92
+    python-version: ["pypy"]
+    mongodb-version: ["4.4", "5.0", "latest"]
+    auth: "noauth"
+    ssl: "ssl"
+  display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
+  batchtime: 20160 # 14 days
+  tasks:
+    - name: ".ocsp"
+
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
