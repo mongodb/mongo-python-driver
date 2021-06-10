@@ -543,6 +543,8 @@ class SocketInfo(object):
         self.more_to_come = False
         # For load balancer support.
         self.service_id = None
+        # When executing a transaction in load balancing mode, this flag is
+        # set to true to indicate that the session now owns the connection.
         self.pinned = False
 
     def unpin(self):
@@ -1169,6 +1171,10 @@ class Pool:
                 self.address, self.opts.non_default_options)
         # Similar to active_sockets but includes threads in the wait queue.
         self.operation_count = 0
+        # Retain references to pinned connections to prevent the CPython GC
+        # from thinking that a cursor's pinned connection can be GC'd when the
+        # cursor is GC'd (see PYTHON-2751).
+        self.__pinned_sockets = set()
 
     def ready(self):
         old_state, self.state = self.state, PoolState.READY
@@ -1366,12 +1372,15 @@ class Pool:
         :Parameters:
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `checkout` (optional): keep socket checked out.
+          - `handler` (optional): A _MongoClientErrorHandler.
         """
         listeners = self.opts.event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_started(self.address)
 
         sock_info = self._get_socket(all_credentials)
+        if checkout:
+            self.__pinned_sockets.add(sock_info)
 
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(
@@ -1379,17 +1388,23 @@ class Pool:
         try:
             yield sock_info
         except:
+            # Exception in caller. Ensure the connection gets returned.
+            # Note that when pinned is True, the session owns the
+            # connection and it is responsible for checking the connection
+            # back into the pool.
             pinned = sock_info.pinned
             if handler:
+                # Perform SDAM error handling rules while the connection is
+                # still checked out.
                 exc_type, exc_val, _ = sys.exc_info()
-                # This handler may check the connection back into the pool.
                 handler.handle(exc_type, exc_val)
-            # Exception in caller. Decrement semaphore.
             if not pinned:
                 self.return_socket(sock_info)
             raise
         else:
-            if not checkout and not sock_info.pinned:
+            if sock_info.pinned:
+                self.__pinned_sockets.add(sock_info)
+            elif not checkout:
                 self.return_socket(sock_info)
 
     def _raise_if_not_ready(self, emit_event):
@@ -1510,6 +1525,7 @@ class Pool:
         :Parameters:
           - `sock_info`: The socket to check into the pool.
         """
+        self.__pinned_sockets.discard(sock_info)
         sock_info.pinned = False
         listeners = self.opts.event_listeners
         if self.enabled_for_cmap:
