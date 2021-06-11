@@ -2388,7 +2388,7 @@ buildvariants:
      compression: ["snappy"]
    # Ubuntu-18.04 does not have Python 3.4 installed
    - platform: ubuntu-18.04
-     python-version: ["3.7"]
+     python-version: ["3.4"]
      c-extensions: "*"
      compression: ["snappy"]
    # Only test zlib and zstd on Amazon Linux
