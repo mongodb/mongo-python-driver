@@ -314,7 +314,7 @@ class _Transaction(object):
         self.sharded = True
         self.pinned_address = server.description.address
         if server.description.server_type == SERVER_TYPE.LoadBalancer:
-            sock_info.pinned = True
+            sock_info.pinned_txn = True
             self.sock_mgr = _SocketManager(sock_info, False)
 
     def unpin(self):
