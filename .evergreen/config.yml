@@ -2661,7 +2661,7 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: awslinux
-    python-version: ["2.7", "pypy", "3.4", "pypy3.5", "pypy3.6", "pypy3.7", "3.8", "3.9"]
+    python-version: ["2.7", "3.4", "pypy3.5", "pypy3.6", "pypy3.7", "3.8", "3.9"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
