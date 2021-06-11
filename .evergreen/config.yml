@@ -1139,6 +1139,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-5.0-standalone"
+      tags: ["5.0", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "5.0"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-5.0-replica_set"
+      tags: ["5.0", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "5.0"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-5.0-sharded_cluster"
+      tags: ["5.0", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "5.0"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-latest-standalone"
       tags: ["latest", "standalone"]
       commands:
@@ -1561,6 +1588,22 @@ tasks:
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws ECS auth test"
 
+    - name: "aws-auth-test-5.0"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-aws.json"
+            TOPOLOGY: "server"
+            VERSION: "5.0"
+        - func: "add aws auth variables to file"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws ECS auth test"
+
     - name: "aws-auth-test-latest"
       commands:
         - func: "bootstrap mongo-orchestration"
@@ -1619,6 +1662,7 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/linux-64-amazon-ami/master/latest/libmongocrypt.tar.gz
+          python3_binary: "/opt/python/3.8/bin/python3"
       - id: archlinux-test
         display_name: "Archlinux"
         run_on: archlinux-test
@@ -1669,10 +1713,10 @@ axes:
           python3_binary: "/opt/python/3.8/bin/python3"
       - id: ubuntu-18.04
         display_name: "Ubuntu 18.04"
-        run_on: ubuntu1804-test
+        run_on: ubuntu1804-small
         batchtime: 10080  # 7 days
         variables:
-          python3_binary: python3
+          python3_binary: "/opt/python/3.8/bin/python3"
       - id: ubuntu-20.04
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
@@ -1801,6 +1845,10 @@ axes:
         display_name: "MongoDB latest"
         variables:
           VERSION: "latest"
+      - id: "5.0"
+        display_name: "MongoDB 5.0"
+        variables:
+          VERSION: "5.0"
 
   # Choice of Python runtime version
   - id: python-version
@@ -2081,6 +2129,7 @@ buildvariants:
   display_name: "${platform} ${auth-ssl}"
   tasks: &all-server-versions
     - ".latest"
+    - ".5.0"
     - ".4.4"
     - ".4.2"
     - ".4.0"
@@ -2101,6 +2150,7 @@ buildvariants:
   display_name: "Encryption ${platform} ${auth-ssl}"
   tasks: &encryption-server-versions
     - ".latest"
+    - ".5.0"
     - ".4.4"
     - ".4.2"
     - ".4.0"
@@ -2123,23 +2173,6 @@ buildvariants:
     - ".3.0"
     - ".2.6"
 
-- matrix_name: "tests-os-requires-32"
-  matrix_spec:
-    platform:
-      # OSes that support versions of MongoDB>=3.2 with SSL.
-      - ubuntu-16.04
-      - suse12-x86-64-test
-    auth-ssl: "*"
-  display_name: "${platform} ${auth-ssl}"
-  tasks:
-    - ".latest"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-    - ".3.6"
-    - ".3.4"
-    - ".3.2"
-
 - matrix_name: "test-macos"
   matrix_spec:
     platform:
@@ -2156,6 +2189,7 @@ buildvariants:
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - ".latest"
+    - ".5.0"
     - ".4.4"
     - ".4.2"
     - ".4.0"
@@ -2237,14 +2271,14 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
-    platform: ubuntu-16.04
+    platform: awslinux
     python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
-    platform: ubuntu-16.04
+    platform: awslinux
     python-version: ["2.7", "3.4", "3.5", "3.6", "3.8", "3.9"]
     auth: "noauth"
     ssl: "ssl"
@@ -2252,8 +2286,8 @@ buildvariants:
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
     - '.replica_set !.2.6 !.3.0'
-    # Test standalone and sharded only on 4.4.
-    - '.4.4'
+    # Test standalone and sharded only on 5.0.
+    - '.5.0'
 
 - matrix_name: "tests-pyopenssl-pypy"
   matrix_spec:
@@ -2265,8 +2299,8 @@ buildvariants:
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
     - '.replica_set !.2.6 !.3.0 !.3.2 !.3.4'
-    # Test standalone and sharded only on 4.4.
-    - '.4.4'
+    # Test standalone and sharded only on 5.0.
+    - '.5.0'
 
 - matrix_name: "test-pyopenssl-old-py27"
   matrix_spec:
@@ -2340,42 +2374,58 @@ buildvariants:
   display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
   tasks: *all-server-versions
 
-- matrix_name: "tests-python-version-ubuntu16-compression"
+- matrix_name: "tests-python-version-ubuntu18-compression"
   matrix_spec:
-    # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
-    platform: ubuntu-16.04
+    platform: [awslinux, ubuntu-18.04]
     python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
+   # Only test snappy on Ubuntu-18.04 as Ubuntu 18.04 images have libsnappy-dev installed
+   - platform: awslinux
+     python-version: "*"
+     c-extensions: "*"
+     compression: ["snappy"]
+   # Ubuntu-18.04 does not have Python 3.4 installed
+   - platform: ubuntu-18.04
+     python-version: ["3.4"]
+     c-extensions: "*"
+     compression: ["snappy"]
+   # Only test zlib and zstd on Amazon Linux
+   - platform: ubuntu-18.04
+     python-version: "*"
+     c-extensions: "*"
+     compression: ["zlib", "zstd"]
    # These interpreters are always tested without extensions.
-   - platform: ubuntu-16.04
+   - platform: "*"
      python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
      c-extensions: "with-c-extensions"
      compression: "*"
   # Jython doesn't support some compression types.
-   - platform: ubuntu-16.04
+   - platform: "*"
      python-version: ["jython2.7"]
      c-extensions: "*"
      compression: ["snappy", "zstd"]
    # PYTHON-2365 Some tests fail with CPython 3.8+ and python-snappy
-   - platform: ubuntu-16.04
+   - platform: "*"
      python-version: ["3.8", "3.9"]
      c-extensions: "*"
      compression: ["snappy"]
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
   tasks:
     - "test-latest-standalone"
+    - "test-5.0-standalone"
     - "test-4.4-standalone"
     - "test-4.2-standalone"
   rules:
-    # Server versions 3.6 and 4.0 support snappy and zlib.
+    # Server versions 3.6+ support snappy and zlib.
     - if:
         python-version: "*"
         c-extensions: "*"
         compression: ["snappy", "zlib"]
       then:
         add_tasks:
+          - "test-5.0-standalone"
           - "test-4.0-standalone"
           - "test-3.6-standalone"
 
@@ -2610,9 +2660,9 @@ buildvariants:
 
 - matrix_name: "ocsp-test"
   matrix_spec:
-    platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.8", "3.9"]
-    mongodb-version: ["4.4", "latest"]
+    platform: awslinux
+    python-version: ["2.7", "3.4", "pypy3.5", "pypy3.6", "pypy3.7", "3.8", "3.9"]
+    mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
@@ -2620,11 +2670,12 @@ buildvariants:
   tasks:
     - name: ".ocsp"
 
-- matrix_name: "ocsp-test-pypy"
+# PyPy2 cannot install cryptography on Amazon Linux so we test it separately
+- matrix_name: "ocsp-test-pypy2"
   matrix_spec:
     platform: debian92
-    python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7"]
-    mongodb-version: ["4.4", "latest"]
+    python-version: ["pypy"]
+    mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
@@ -2636,7 +2687,7 @@ buildvariants:
   matrix_spec:
     platform: windows-64-vsMulti-small
     python-version-windows: ["2.7", "3.4", "3.9"]
-    mongodb-version: ["4.4", "latest"]
+    mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version-windows} ${mongodb-version}"
@@ -2648,7 +2699,7 @@ buildvariants:
 - matrix_name: "ocsp-test-macos"
   matrix_spec:
     platform: macos-1014
-    mongodb-version: ["4.4", "latest"]
+    mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${mongodb-version}"
@@ -2664,6 +2715,7 @@ buildvariants:
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
     - name: "aws-auth-test-4.4"
+    - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
 
 - matrix_name: "aws-auth-test-windows"
@@ -2673,12 +2725,13 @@ buildvariants:
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-windows}"
   tasks:
     - name: "aws-auth-test-4.4"
+    - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
 
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: ubuntu-18.04
-    mongodb-version: ["latest"]
+    mongodb-version: ["5.0", "latest"]
     auth-ssl: "*"
     python-version: ["2.7", "3.5", "3.9"]
     loadbalancer: "*"
