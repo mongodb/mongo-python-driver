@@ -2534,7 +2534,7 @@ buildvariants:
     platform: ubuntu-18.04
     mongodb-version: ["5.0", "latest"]
     auth-ssl: "*"
-    python-version: ["3.6", "3.9"]
+    python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7"]
     loadbalancer: "*"
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
