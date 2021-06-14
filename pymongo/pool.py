@@ -1051,24 +1051,26 @@ class _PoolGeneration(object):
         # Maps service_id to generation.
         self._generations = collections.defaultdict(int)
         # Overall pool generation.
-        self._generations[None] = 0
+        self._generation = 0
 
     def get(self, service_id):
         """Get the generation for the given service_id."""
+        if service_id is None:
+            return self._generation
         return self._generations[service_id]
 
     def get_overall(self):
         """Get the Pool's overall generation."""
-        return self._generations[None]
+        return self._generation
 
     def inc(self, service_id):
         """Increment the generation for the given service_id."""
+        self._generation += 1
         if service_id is None:
             for service_id in self._generations:
                 self._generations[service_id] += 1
         else:
             self._generations[service_id] += 1
-            self._generations[None] += 1
 
     def stale(self, gen, service_id):
         """Return if the given generation for a given service_id is stale."""
